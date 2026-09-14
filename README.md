@@ -179,22 +179,22 @@ The target is a **surface family**, not a collection of unrelated windows.
 ```text
 TOP EDGE
 ┌──────────────────────────────────────────────────────────────┐
-│  Classic Bar · top · existing hug corners                  │
-└───╮───────────────╭──────────────────────╮───────────────╭───┘
-    │               │ connector / neck     │               │
-    │               ╰───────╮      ╭───────╯               │
+│            Classic Bar · top · existing hug corners          │
+└───╮───────────────╭──────────────────────╮────────────────╭──┘
+    │               │ connector / neck     │                │
+    │               ╰───────╮      ╭───────╯                │
     │                       │ POPUP│                        │
     │                       ╰──────╯                        │
     │                                                       │
-    │                                      ╭──────────────╮ │
-    │                                      │   SIDEBAR    │ │
-    │                                      │ normal page  │ │
-    │                                      │ clipboard    │ │
-    │                                      ╰──────────────╯ │
+    │ ╭──────────────╮                     ╭──────────────╮ │
+    │ │   SIDEBAR    │                     │   SIDEBAR    │ │
+    │ │ normal page  │                     │ normal page  │ │
+    │ │              │                     │ clipboard    │ │
+    │ ╰──────────────╯                     ╰──────────────╯ │
     │                                                       │
     │        ╭────────────────────────────────────╮         │
-    │        │ OVERVIEW or DASHBOARD (one route) │         │
-    └────────╯ bottom-attached + bottom hug       ╰─────────┘
+    │        │ OVERVIEW or DASHBOARD (one route)  │         │
+    └────────╯   bottom-attached + bottom hug     ╰─────────┘
 BOTTOM EDGE
 ```
 

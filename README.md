@@ -1,309 +1,615 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8" alt="iNiR" width="800">
-</p>
+# Hadalis Connected Surfaces — Research Handoff
 
-<h1 align="center">iNiR</h1>
+> **Status:** research / architecture handoff only  
+> **Branch:** `dev`  
+> **Research baseline:** `f8e254a7542eb22dd39c0dd3c3aba66692fc3451`  
+> **Date:** 2026-09-15  
+> **Functional implementation:** **not started**
 
-<p align="center">
-  <b>A complete desktop shell for Niri, built on Quickshell</b>
-</p>
+This README intentionally replaces the previous project README for the current development handoff. The goal of this pass was to study Hadalis and Caelestia deeply enough to define a low-regression path toward connected Quickshell surfaces before changing functional QML.
 
-<p align="center">
-  <a href="https://github.com/snowarch/inir/releases"><img src="https://img.shields.io/badge/version-2.29.3-blue?style=flat-square" alt="Version"></a>
-  <a href="https://github.com/snowarch/inir/stargazers"><img src="https://img.shields.io/github/stars/snowarch/inir?style=flat-square" alt="Stars"></a>
-  <a href="https://discord.gg/pAPTfAhZUJ"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green?style=flat-square" alt="License"></a>
-</p>
+The requested target is:
 
-<p align="center">
-  <a href="https://github.com/snowarch/inir/wiki/INSTALL">Install</a> &bull;
-  <a href="https://github.com/snowarch/inir/wiki/KEYBINDS">Keybinds</a> &bull;
-  <a href="https://github.com/snowarch/inir/wiki/IPC">IPC Reference</a> &bull;
-  <a href="https://discord.gg/pAPTfAhZUJ">Discord</a> &bull;
-  <a href="CONTRIBUTING.md">Contributing</a>
-</p>
+- Material ii **Classic Bar**.
+- Bar at the **top**.
+- Existing **hug-corner** language retained and extended.
+- Bar popups should look physically attached to the bar rather than like independent floating cards.
+- Sidebar should use the same connected geometry language.
+- Clipboard should be **merged into the sidebar**, not remain a standalone full-screen overlay.
+- Overview should become a **bottom-attached** surface.
+- Dashboard should become a **bottom-attached** surface.
+- These surfaces should share state, geometry rules, animation language, focus policy, and per-output routing.
+- The Waffle family is outside this migration unless explicitly brought into scope later.
 
-<p align="center">
-  <sub>
-    <a href="README.md">English</a> · <a href="docs/readme/README.es.md">Español</a> · <a href="docs/readme/README.ru.md">Русский</a> · <a href="docs/readme/README.zh.md">中文</a> · <a href="docs/readme/README.ja.md">日本語</a> · <a href="docs/readme/README.pt.md">Português</a> · <a href="docs/readme/README.fr.md">Français</a> · <a href="docs/readme/README.de.md">Deutsch</a> · <a href="docs/readme/README.ko.md">한국어</a> · <a href="docs/readme/README.hi.md">हिन्दी</a> · <a href="docs/readme/README.ar.md">العربية</a> · <a href="docs/readme/README.it.md">Italiano</a>
-  </sub>
-</p>
+No functional Connected Surface code was changed during this research pass. The only intended repository modification in this pass is this handoff document.
 
 ---
 
-<details>
-<summary><b>🤔 New here? Click if you have no idea what any of this is</b></summary>
+## Executive decision
 
-### What is this?
+**Yes, Hadalis can reproduce the connected / seamless feel associated with Caelestia.** The correct adaptation is architectural, not a direct copy of Caelestia's popup QML.
 
-iNiR is your entire desktop. The bar at the top, the dock, notifications, settings, wallpapers, all of it. Not a theme, not dotfiles you paste. A full shell that runs on Linux.
+Caelestia's result comes from several layers working together:
 
-### What do I need to run it?
+1. a per-screen composition window / coordinate space,
+2. centralized surface and interaction state,
+3. geometry-aware input regions,
+4. coordinated panel deformation / clipping,
+5. and, for the organic merged background, a native `Caelestia.Blobs` scene-graph implementation.
 
-A compositor. That's the thing that handles your windows and puts pixels on screen. iNiR is made for [Niri](https://github.com/YaLTeR/niri) (a tiling Wayland compositor). There's some old Hyprland code from when this was a fork of end-4's dots, but Niri is what I actually use and test.
+Hadalis already owns most of the difficult compositor-facing infrastructure that should **not** be discarded: per-output `PanelWindow`s, precise `Region` masks, target-output resolution, sidebar lifecycle management, focus handling, fullscreen/direct-scanout protection, blur regions, and Classic Bar hug corners.
 
-The shell runs on [Quickshell](https://quickshell.outfoxxed.me/), a framework for building shells in QML (Qt's UI language). You don't need to know any of that to use it though, everything is configurable through the GUI or a JSON file.
+Therefore the recommended migration is:
 
-### How it all connects
+> **Keep Hadalis' window/lifecycle strengths, add a shared Connected Surface state + geometry layer, migrate surfaces incrementally, and only introduce a native blob renderer if QML-native geometry cannot meet the final visual fidelity target.**
 
-```
-your apps
-   ↓
-iNiR (shell: bar, sidebars, dock, notifications, settings...)
-   ↓
-Quickshell (runs QML shells)
-   ↓
-Niri (compositor: windows, rendering)
-   ↓
-Wayland → GPU
-```
-
-### Is it stable?
-
-It's a personal project that got out of hand. I use it daily, lots of people in the Discord do too. But stuff breaks sometimes, code is messy in places, I'm learning as I go.
-
-If something doesn't work, `inir doctor` fixes most things. Discord is active if that doesn't help. Just don't expect polished software, this is one person's rice that others happen to like.
-
-### Why does it exist?
-
-I wanted my desktop to look and work a certain way and nothing else did exactly that. Started as end-4's Hyprland dots, became a full rewrite for Niri with way more features.
-
-### Words you'll see around
-
-- **Shell**: the UI layer (bar, panels, overlays)
-- **Compositor**: manages windows, draws to screen (Niri, Hyprland, Sway...)
-- **Wayland**: Linux display protocol (the new one, replaces X11)
-- **QML**: Qt's declarative UI language, what iNiR is written in
-- **Material You**: Google's color system that makes palettes from images (that's the auto-theming)
-- **ii / waffle**: the two panel styles. ii = Material Design vibes, waffle = Windows 11 vibes. `Super+Shift+W` switches between them
-
-</details>
+This avoids turning a visual redesign into a high-risk rewrite of focus, input, monitor routing, and fullscreen behavior.
 
 ---
 
-## Screenshots
+## What was studied
 
-<details open>
-<summary><b>Material ii</b>: floating bar, sidebars, Material Design aesthetic</summary>
+### Hadalis (`dev`)
 
-| | |
-|:---:|:---:|
-| ![](https://github.com/user-attachments/assets/1fe258bc-8aec-4fd9-8574-d9d7472c3cc8) | ![](https://github.com/user-attachments/assets/3ce2055b-648c-45a1-9d09-705c1b4a03b7) |
-| ![](https://github.com/user-attachments/assets/ea2311dc-769e-44dc-a46d-37cf8807d2cc) | ![](https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8) |
-| ![](https://github.com/user-attachments/assets/ba866063-b26a-47cb-83c8-d77bd033bf8b) | ![](https://github.com/user-attachments/assets/88e76566-061b-4f8c-a9a8-53c157950138) |
+Primary files and boundaries reviewed:
 
-</details>
+- `modules/bar/Bar.qml`
+- `GlobalStates.qml`
+- `modules/sidebar/SidebarHost.qml`
+- `modules/sidebarRight/SidebarRight.qml`
+- `modules/clipboard/ClipboardPanel.qml`
+- `modules/overview/Overview.qml`
+- `modules/overview/OverviewWindow.qml`
+- `modules/dashboard/Dashboard.qml`
+- `modules/ii/ShellIiPanelsImpl.qml`
+- `ARCHITECTURE.md`
+- `STRUCTURE.md`
 
-<details>
-<summary><b>Waffle</b>: bottom taskbar, action center, Windows 11 vibes</summary>
+### Caelestia Shell (`main`)
 
-| | |
-|:---:|:---:|
-| ![](https://github.com/user-attachments/assets/5c5996e7-90eb-4789-9921-0d5fe5283fa3) | ![](https://github.com/user-attachments/assets/fadf9562-751e-4138-a3a1-b87b31114d44) |
+Primary reference files reviewed:
 
-</details>
+- `modules/drawers/ContentWindow.qml`
+- `modules/drawers/Panels.qml`
+- `modules/drawers/Interactions.qml`
+- `modules/bar/BarWrapper.qml`
+- `modules/bar/popouts/Wrapper.qml`
+- `modules/bar/popouts/ClipWrapper.qml`
+- `modules/nexus/common/BlobPopup.qml`
+- `modules/nexus/common/ConnectedRect.qml`
+- `plugin/src/Caelestia/Blobs/*`
+- `plugin/src/Caelestia/Blobs/blobgroup.cpp`
 
----
-
-> [!WARNING]
-> Not for low-spec machines.
-> You can strip it down a lot though. Turn off effects, drop panels, flatten the design. Settings or `config.json`, whichever you prefer.
-
-## Features
-
-**Two panel families**, switchable on the fly with `Super+Shift+W`:
-- **Material ii**: floating bar, sidebars, dock, and 8 visual styles (Material, Cards, Aurora, iNiR, Angel, Regalia, ZZZ, Cookie Shapes)
-- **Waffle**: Windows 11-inspired taskbar, start menu, action center, notification center
-
-**Automatic theming**. Pick a wallpaper and everything adapts:
-- Shell colors via Material You, propagated to GTK3/4, Qt, terminals, Firefox, Discord, SDDM
-- 10 theming targets covering terminals, editors, browsers, Spicetify, Steam, Cava and more
-- Theme presets: Regalia / Regalia Ivory, Gruvbox, Catppuccin, Rosé Pine, and custom
-
-**Built for Niri.** Hyprland code survives from the fork but is not tested.
-
-**Kira**, the mascot, lives on your desktop if you want her there. Off by default, art pack is a separate download.
-
-<details>
-<summary><b>Full feature list</b></summary>
-
-### Theming and appearance
-
-- **8 visual styles**: Material (solid), Cards, Aurora (glass blur), iNiR (TUI-inspired), Angel (neo-brutalism), Regalia (black engineered chassis, warm ivory ink, restrained champagne hardware), ZZZ (poster plates), Cookie Shapes (animated shape morphing)
-- **Dynamic wallpaper colors** via Material You, propagated system-wide
-- **10 terminal and TUI tools auto-themed**: foot, kitty, alacritty, ghostty, wezterm, starship, fuzzel, btop, lazygit, yazi
-- **App theming**: GTK3/4, Qt (via plasma-integration and darkly), Firefox (MaterialFox), Discord/Vesktop (System24), Zed, Spicetify, Steam, SDDM
-- **Theme presets**: Gruvbox, Catppuccin, Rosé Pine, and more, or create your own
-- **Video wallpapers**: mp4/webm/gif with optional blur, or frozen first frame for performance
-- **Desktop widgets**: clock (multiple styles), weather, media controls on the wallpaper layer
-
-### Bar
-
-- **6 bar styles**: classic, islands, scenic, frame, Material 3 capsules, and pill
-- **Pill bar**: a morphing centre island that opens on hover into workspaces, launcher, mixer, media, calendar and a screen recorder
-- **Modular layout** with a drag editor in Settings, so any module can go anywhere
-- **Vertical bar** for the people who want the screen edge back
-
-### Sidebars and widgets (Material ii)
-
-Left sidebar (app drawer):
-- **AI Chat**: live model catalogs across Ollama, LM Studio, OpenRouter, Gemini, Groq, Mistral, Cerebras, Anthropic, OpenAI and OpenCode
-- **YT Music**: cookie-less InnerTube player with search, queue, radio and synced lyrics
-- **Wallhaven browser**: search and apply wallpapers directly
-- **Anime tracker**: AniList integration with schedule view
-- **Translator**: via Gemini or translate-shell
-- **Draggable widgets**: crypto, media player, quick notes, status rings, weekly calendar
-
-Right sidebar:
-- **Calendar** with event integration
-- **Notification center**
-- **Quick toggles**: WiFi, Bluetooth, night light, DND, power profiles, WARP VPN, EasyEffects
-- **Volume mixer** with per-app control
-- **Bluetooth and WiFi** device management
-- **Pomodoro timer**, **todo list**, **calculator**, **notepad**
-- **System monitor**: CPU, RAM, temperature
-
-### Tools
-
-- **Workspace overview**: adapted for Niri's scrolling model, with app search and calculator
-- **Dashboard hub**: configurable three-column overlay with agenda, notifications, todo, notes, media and weather
-- **Workspace edge strip**: hover rail with live workspace previews and drag-to-reorder
-- **Window switcher**: an animated Alt-Tab across all workspaces, opt-in since Niri ships its own now
-- **Clipboard manager**: history with search and image preview
-- **Region tools**: screenshots, screen recording, OCR, reverse image search
-- **Cheatsheet**: keybind viewer pulled from your Niri config
-- **Media controls**: full MPRIS player with multiple layout presets
-- **On-screen display**: volume, brightness, and media OSD
-- **Song recognition**: Shazam-style identification via SongRec
-- **Voice input**: local whisper.cpp when installed, or a connected Groq, Gemini or OpenAI backend
-
-### System
-
-- **GUI settings**: configure everything without touching files
-- **GameMode**: auto-disables effects for fullscreen apps
-- **Auto-updates**: `inir update` with rollback, migrations, and user change preservation
-- **Lock screen** and **session screen** (logout/reboot/shutdown/suspend)
-- **Polkit agent**, **on-screen keyboard**, **autostart manager** backed by niri's own startup file
-- **Kira**: pixel-art cat girl who wanders the screen edges, reacts to what you do, and has a chaos mode. Opt-in, separate ~32 MiB art pack under `./setup` › Extras
-- **15 languages** with auto-detection
-- **Night light**: scheduled or manual
-- **Weather**: Open-Meteo, supports GPS, manual coordinates, or city name
-- **Battery management**: configurable thresholds, auto-suspend on critical
-- **Custom event sounds** with a master volume and per-event audio files
-- **Shell update checker**: notifies when new versions are available
-
-</details>
+The current Caelestia implementation studied is built around a side-oriented bar and therefore cannot be transplanted geometrically into Hadalis' top Classic Bar. Its **composition model** is the useful reference.
 
 ---
 
-## Quick Start
+## Why Caelestia feels seamless
 
-```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
-./setup install       # interactive, asks before each step
-./setup install -y    # automatic, no questions asked
+Caelestia does not achieve the effect by opening a normal rounded `PopupWindow` and placing it near the bar.
+
+`modules/drawers/ContentWindow.qml` is effectively a full-screen per-output composition surface. Bar and drawers share the same coordinate system. The window uses a precise region mask instead of treating the transparent full-screen area as interactive. Surface state is shared, focus is coordinated, and drawer/popup geometry is known by one parent.
+
+The connected background is then rendered through `Caelestia.Blobs`. A `BlobGroup` owns multiple shapes and coordinates smoothing / deformation between spatial neighbours. `PanelBg` instances for dashboard, launcher, session, sidebar, utilities and bar popouts participate in one visual system. Caelestia deliberately adds overlap in places where SDF joins could otherwise reveal seams.
+
+The transferable lessons are therefore:
+
+- **One geometry authority per output.**
+- **One active-route/state authority per surface family.**
+- **Render visible geometry and input geometry from the same source.**
+- **Animate geometry, not just opacity.**
+- **Treat the connector/neck as part of the surface, not decoration drawn afterward.**
+- **Keep source-anchor knowledge when moving between bar items and popouts.**
+- **Centralize conflict rules between sidebar, dashboard, launcher, popouts, etc.**
+
+The native blob plugin is an implementation detail of Caelestia's highest-fidelity organic deformation. Hadalis does not need to begin there.
+
+---
+
+## Hadalis baseline: what should be preserved
+
+### 1. Classic Bar is already a strong host
+
+`modules/bar/Bar.qml` already provides the critical primitives needed for a connected top bar:
+
+- a `PanelWindow` per selected screen,
+- top/bottom placement,
+- exact input masking,
+- blur regions tied to visible bar geometry,
+- autohide / exclusive-zone behavior,
+- and existing Classic Bar **hug-corner** decorators.
+
+The present `hugCorners` path is especially important. It already disables incompatible native-blur behavior and renders concave corner decoration around the Classic background. The new popup system should extend this language rather than replace it.
+
+**Decision:** do not rewrite `Bar.qml` first. Add anchor publication and a connected popup presentation layer around it.
+
+### 2. SidebarHost contains valuable lifecycle engineering
+
+`modules/sidebar/SidebarHost.qml` already solves problems that a visual rewrite could easily reintroduce:
+
+- semantic left/right roles,
+- output targeting,
+- fullscreen awareness,
+- edge-open regions,
+- size modes and min/max sizing,
+- resident-vs-unloaded content lifecycle,
+- render suspension,
+- resume/remap handling,
+- direct-scanout-conscious mapping,
+- exact click-through masks,
+- focus-grab behavior,
+- backdrop closing,
+- and multiple animation modes.
+
+**Decision:** keep `SidebarHost` as the compositor/window boundary. Connected geometry should become a presentation layer inside/around this host, not a replacement for the host.
+
+### 3. GlobalStates already has the output resolver
+
+`GlobalStates.qml` already contains focused-screen / primary-screen fallback logic and resolves presentation outputs for overview and both sidebar roles.
+
+The current state model is boolean-heavy (`overviewOpen`, `dashboardOpen`, `clipboardOpen`, sidebar flags, etc.), but those booleans are also compatibility contracts for keybinds and IPC.
+
+**Decision:** introduce a coordinating Connected Surface route while retaining legacy booleans during migration. Do not perform a big-bang state rewrite.
+
+### 4. Overview and Dashboard currently own independent windows
+
+`modules/overview/Overview.qml` creates a `PanelWindow` variant per screen and contains substantial Niri/Orbit state, search, screencopy and presentation logic.
+
+`modules/dashboard/Dashboard.qml` currently uses a full-screen overlay `PanelWindow`, with the actual dashboard content centered inside it.
+
+`modules/ii/ShellIiPanelsImpl.qml` loads Overview, Dashboard and Clipboard as independent on-demand panels.
+
+**Decision:** keep their complex content implementations, but move outer presentation responsibility toward a shared bottom-surface topology. The owning windows — not individual overview preview delegates/cards — are the refactor boundary.
+
+### 5. Clipboard is currently both view and window
+
+`modules/clipboard/ClipboardPanel.qml` mixes two responsibilities:
+
+- clipboard model/search/pin/copy/delete behavior,
+- and a standalone full-screen overlay `PanelWindow` with its own exclusive keyboard focus.
+
+**Decision:** do not embed `ClipboardPanel.qml` directly in a sidebar. First split reusable clipboard content/model behavior from window-host behavior. Clipboard then becomes a sidebar page/mode while `Cliphist` remains the underlying service.
+
+---
+
+## Target surface topology
+
+The target is a **surface family**, not a collection of unrelated windows.
+
+```text
+TOP EDGE
+┌──────────────────────────────────────────────────────────────┐
+│  Classic Bar · top · existing hug corners                  │
+└───╮───────────────╭──────────────────────╮───────────────╭───┘
+    │               │ connector / neck     │               │
+    │               ╰───────╮      ╭───────╯               │
+    │                       │ POPUP│                        │
+    │                       ╰──────╯                        │
+    │                                                       │
+    │                                      ╭──────────────╮ │
+    │                                      │   SIDEBAR    │ │
+    │                                      │ normal page  │ │
+    │                                      │ clipboard    │ │
+    │                                      ╰──────────────╯ │
+    │                                                       │
+    │        ╭────────────────────────────────────╮         │
+    │        │ OVERVIEW or DASHBOARD (one route) │         │
+    └────────╯ bottom-attached + bottom hug       ╰─────────┘
+BOTTOM EDGE
 ```
 
-The installer handles dependencies, system config and theming. After install, run `inir run` to start the shell, or log out and back in.
+Important interpretation: Overview and Dashboard cannot literally remain attached to a top bar across the whole screen without creating a giant visual bridge. Their "connected" requirement should mean **shared geometry language, routing, motion, color/blur tokens and edge-hug behavior**, while their physical attachment is to the **bottom edge**.
 
-```bash
-inir run                        # launch the shell
-inir settings                   # open settings GUI
-inir logs                       # check runtime logs
-inir doctor                     # auto-diagnose and fix
-inir update                     # pull + migrate + restart
+---
+
+## Proposed architecture
+
+### A. Connected Surface controller
+
+Add one coordinating state owner for Material ii, preferably as a small singleton/service rather than expanding ad-hoc boolean coupling.
+
+Conceptual state:
+
+```qml
+surfaceRoute: ({
+    output: "",
+    family: "none",      // none | barPopup | sidebar | bottom
+    surface: "",         // volume | network | clipboard | overview | dashboard | ...
+    page: "",
+    source: "",
+    anchorRect: Qt.rect(0, 0, 0, 0)
+})
 ```
 
-Other ways in, if `./setup install` isn't what you want:
+This route does **not** need to replace existing `GlobalStates` flags immediately. During migration it should synchronize with them and become the authority for conflict/transition rules.
 
-```bash
-./setup                 # TUI menu, pick what you want
-sudo make install       # system-wide instead of your home
-./setup rollback        # undo the last update
+Required policies:
+
+- only one anchored bar popup per output,
+- one bottom surface per output (`overview` **or** `dashboard`),
+- clipboard routes to the system sidebar page rather than its own window,
+- opening a bottom surface closes transient bar popouts,
+- sidebar/bar-popup transitions on the same output should be deliberate rather than accidental overlap,
+- Escape/backdrop/focus-loss should close the current route through one policy path,
+- output targeting must use the existing `GlobalStates.resolveOutputName()` family of helpers.
+
+Suggested future name: `ConnectedSurfaces.qml` or `SurfaceFamilyController.qml`.
+
+### B. Anchor registry
+
+Bar modules that can open a connected popup must publish their visual source rectangle in screen-local coordinates.
+
+Suggested fields:
+
+```text
+outputName
+anchorId
+sourceItem
+screenRect
+preferredAlignment
+preferredWidth
+surfaceName
 ```
 
-**Distros:** Arch gets the automated installer. Everything else installs by hand, the [package list](https://github.com/snowarch/inir/wiki/PACKAGES) tells you what you need.
+The popup should animate from the source location and keep the connector centered/clamped around that source. This is the equivalent of Caelestia retaining `currentCenter`/active popout geometry.
+
+Do not derive popup position from hard-coded module ordering. The Classic Bar is configurable; the anchor must come from the actual rendered item.
+
+### C. Connected Surface tokens
+
+Create one token source derived from `Appearance` so every connected surface uses the same geometry vocabulary:
+
+- outer radius,
+- concave connector radius,
+- neck width,
+- neck minimum/maximum clamp,
+- edge inset,
+- overlap/seam guard,
+- elevation/shadow margin,
+- border width,
+- blur expansion,
+- enter/exit duration and curves.
+
+Suggested path: `modules/common/surfaces/ConnectedSurfaceTokens.qml`.
+
+### D. Connected Surface frame / renderer
+
+Phase 1 should be QML-native and deliberately conservative.
+
+Suggested primitives:
+
+- `ConnectedSurfaceFrame.qml`
+- `ConnectedSurfaceConnector.qml`
+- `ConnectedSurfaceMask.qml`
+- `BottomConnectedFrame.qml`
+
+The renderer should own **both visible shape and hit shape**. Avoid a beautiful visual shape with a larger rectangular input surface behind it.
+
+For the top bar, render a popup body plus a short neck/bridge that overlaps the bottom edge of the Classic Bar enough to avoid fractional-scale hairlines. Concave corners around the neck should match the existing hug-corner vocabulary.
+
+If QML-native geometry cannot eliminate seams at fractional scaling or cannot reproduce the desired organic morphing, escalate after the prototype to either:
+
+1. a single per-output visual canvas, or
+2. a Hadalis-native scene-graph / SDF blob renderer inspired by the architecture of Caelestia's `Blobs` plugin.
+
+Do **not** start by importing the C++ plugin. That would add CMake/plugin packaging, ABI, shader and deployment work before validating that Hadalis actually needs it.
+
+### E. Optional single visual canvas — Phase 2 escalation
+
+Caelestia's strongest continuity comes from drawing connected backgrounds inside one full-screen window. Hadalis can adopt this concept later without immediately surrendering the existing window hosts.
+
+A low-regression variant would split responsibility:
+
+- existing Bar/Sidebar/Overview/Dashboard hosts retain interaction, focus, exclusive-zone and lifecycle responsibilities,
+- a per-output `ConnectedSurfaceCanvas` renders the shared backgrounds/bridges in one coordinate space,
+- host backgrounds become transparent while their content stays in place,
+- the canvas mask remains empty/click-through because interaction still belongs to the existing hosts.
+
+This path must be tested carefully against direct scanout/fullscreen mapping. It is an escalation, not Phase 1.
 
 ---
 
-## Keybinds
+## Surface-specific adaptation
 
-| Key | Action |
-|-----|--------|
-| <kbd>Super</kbd> + <kbd>Space</kbd> | Overview: search apps, navigate workspaces |
-| <kbd>Super</kbd> + <kbd>V</kbd> | Clipboard history |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Screenshot a region |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> | OCR a region |
-| <kbd>Super</kbd> + <kbd>,</kbd> | Settings |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Switch panel family |
-| <kbd>Super</kbd> + <kbd>/</kbd> | Cheatsheet, in case you forget the rest |
+### Classic Bar — top + hug corner
 
-Full list: [Keybinds](https://github.com/snowarch/inir/wiki/KEYBINDS)
+Keep the existing Classic Bar host and its top position. When a popup opens:
+
+1. the source bar module publishes its actual screen rectangle,
+2. the controller selects one active popup for that output,
+3. popup geometry is clamped to the screen while preserving the source connector where possible,
+4. the connector grows downward from the bar,
+5. the body expands from the connector rather than fading in as an unrelated card,
+6. the input/blur region follows the connected geometry,
+7. closing reverses the geometry path back toward the source.
+
+The first migration should target a small, self-contained bar popup. Do not migrate every popup simultaneously.
+
+### Sidebar
+
+Preserve `SidebarHost.qml` and its current per-output/window lifecycle.
+
+The connected redesign should primarily change:
+
+- internal frame/background geometry,
+- top/bottom edge relationship,
+- routing/page state,
+- optional connector to the relevant bar/system anchor,
+- and motion between sidebar pages.
+
+The sidebar should not lose edge-open behavior, resume remapping, full-screen protection or exact masks.
+
+### Clipboard → Sidebar
+
+Recommended sequence:
+
+1. extract clipboard model/view logic from `ClipboardPanel.qml` into reusable content (`ClipboardView.qml` / `ClipboardPage.qml`),
+2. preserve `Cliphist` refresh/search/pin/copy/delete semantics,
+3. add a `clipboard` page to the system sidebar,
+4. change clipboard keybind/IPC route to open the correct sidebar on the target output and select that page,
+5. keep the legacy `clipboardOpen` property temporarily as a compatibility trigger that redirects to the sidebar,
+6. once callers are migrated, stop loading the Material ii standalone `ClipboardPanel` from `ShellIiPanelsImpl.qml`.
+
+The Waffle clipboard state is a separate family and should not be changed by this work unless explicitly requested.
+
+### Overview — bottom
+
+`Overview.qml` is complex and should not be gutted. Preserve search, screencopy, workspace/window models and Orbit-specific logic.
+
+Refactor its outer presentation so the active output presents Overview through a bottom-attached body with bottom hug corners. The connected frame should be independent of individual `OverviewWindow.qml` preview cards.
+
+The initial bottom version should prioritize correctness over blob deformation. Once the host topology is stable, add shared motion/geometry tokens.
+
+### Dashboard — bottom
+
+`DashboardContent` and card internals should remain reusable. Replace the current centered full-screen-card presentation with the same bottom-surface host family used by Overview.
+
+Overview and Dashboard should be mutually exclusive routes of the same bottom host. This prevents two independent overlays from fighting for focus, backdrop, animation and edge geometry.
 
 ---
 
-## Wallpapers
+## Window, mask, focus and blur rules
 
-15 wallpapers ship bundled. For more, check [iNiR-Walls](https://github.com/snowarch/iNiR-Walls), a curated collection that works well with the Material You pipeline.
+These are non-negotiable constraints for implementation:
+
+### Input
+
+- Transparent areas must remain click-through.
+- `Region`/mask geometry must track the rendered connected shape.
+- Do not use a full-screen interactive mask merely because the host window is full-screen.
+- Backdrop close behavior must not steal clicks from unrelated surfaces when another sidebar role is intentionally open.
+
+### Focus
+
+- Bar popouts should avoid exclusive keyboard focus unless content actually requires text input/navigation.
+- Sidebar keeps its existing focus policy and hold-open behavior.
+- Bottom interactive surfaces can own focus while active, but they must release it deterministically on close.
+- Avoid `OnDemand` as a catch-all solution; focus ownership should be explicit per route.
+
+### Blur and borders
+
+- Blur region must follow the visible connected geometry.
+- Test Classic hug corners with native blur enabled/disabled paths.
+- A connector spanning two separately composited windows needs a seam guard/overlap; do not assume identical rounded colors eliminate a 1 px fractional-scale line.
+- Borders should be rendered from the same geometry source as the fill whenever possible.
+
+### Fullscreen / direct scanout
+
+- Preserve the existing sidebar behavior that can unmap/suspend transparent overlay hosts when fullscreen owns an output.
+- Connected visual hosts must also disappear/unmap when the bar/surfaces are not supposed to render over fullscreen.
+- Do not introduce a permanently mapped transparent full-screen window without measuring the direct-scanout consequence.
 
 ---
 
-## Documentation
+## Proposed file-level touch plan
 
-Everything user-facing lives in the [Wiki](https://github.com/snowarch/inir/wiki).
+This is a **future plan**, not a list of changes already made.
 
-| Page | What's in it |
+| Area | Likely action |
 |---|---|
-| [Install](https://github.com/snowarch/inir/wiki/INSTALL) | Getting it running |
-| [Setup](https://github.com/snowarch/inir/wiki/SETUP) | Updates, migrations, rollback |
-| [Keybinds](https://github.com/snowarch/inir/wiki/KEYBINDS) | Every shortcut |
-| [IPC](https://github.com/snowarch/inir/wiki/IPC) | Targets you can bind or script |
-| [Packages](https://github.com/snowarch/inir/wiki/PACKAGES) | Every dependency and why it's there |
-| [Limitations](https://github.com/snowarch/inir/wiki/LIMITATIONS) | What's known broken, and workarounds |
-| [Architecture](ARCHITECTURE.md) | How the code is put together |
+| `GlobalStates.qml` | compatibility bridge + target-output helpers for connected route |
+| `modules/common/surfaces/` | new tokens, controller-facing geometry primitives, masks/connectors |
+| `modules/bar/Bar.qml` | publish bar geometry / connected state; preserve Classic host and hug corners |
+| bar module popup callers | route through common popup host instead of independent presentation |
+| `modules/sidebar/SidebarHost.qml` | connected frame integration, page routing hook; preserve lifecycle |
+| `modules/sidebarRight/*` | add system-sidebar page selection / clipboard page |
+| `modules/clipboard/ClipboardPanel.qml` | split content from standalone window; later retire Material ii host |
+| `modules/overview/Overview.qml` | move outer presentation to bottom host while preserving internals |
+| `modules/dashboard/Dashboard.qml` | move presentation to shared bottom host; preserve `DashboardContent` |
+| `modules/ii/ShellIiPanelsImpl.qml` | load shared connected hosts/routes instead of duplicate standalone hosts after migration |
+
+Do not begin by changing every caller. Build the primitives and migrate one surface at a time.
 
 ---
 
-## Troubleshooting
+## Implementation phases
 
-```bash
-inir logs                       # check recent runtime logs
-inir restart                    # restart the active runtime
-inir repair                     # doctor + restart + filtered log check
-./setup doctor                  # auto-diagnose and fix common problems
-./setup rollback                # undo the last update
-```
+### Phase 0 — completed by this handoff
 
-Check [Limitations](https://github.com/snowarch/inir/wiki/LIMITATIONS) before opening an issue. If you'd rather just ask someone, Discord is faster.
+- Research Hadalis and Caelestia architecture.
+- Identify preservation boundaries.
+- Replace the old README with this handoff.
+- No functional QML migration.
+
+### Phase 1 — foundation
+
+- Add Connected Surface tokens.
+- Add route/controller compatibility layer.
+- Add source-anchor registry.
+- Add QML-native connector/frame/mask primitives.
+- Add geometry diagnostics under a debug flag.
+
+Exit criterion: a static/prototype connected surface can be placed correctly on every output without breaking input masks.
+
+### Phase 2 — first Classic Bar popup
+
+- Choose one small popup.
+- Register source anchor.
+- Open through common popup state.
+- Animate connector + body.
+- Validate blur/mask/focus.
+- Test fractional scale.
+
+Exit criterion: the popup visually reads as one surface with the top Classic Bar and has no visible seam under the target scale matrix.
+
+### Phase 3 — migrate remaining bar popups
+
+- Move compatible popups incrementally.
+- Keep one active popup per output.
+- Add transitions between adjacent popup sources without close/reopen flicker.
+
+### Phase 4 — Sidebar + Clipboard
+
+- Add connected frame to current SidebarHost.
+- Add sidebar page routing.
+- Extract Clipboard view/content.
+- Route clipboard trigger into system sidebar.
+- Remove Material ii standalone clipboard window only after feature parity is verified.
+
+### Phase 5 — Overview bottom host
+
+- Refactor outer Overview presentation only.
+- Preserve screencopy/search/Orbit state.
+- Add bottom edge hug geometry and shared route.
+
+### Phase 6 — Dashboard bottom host
+
+- Reuse the same bottom host family.
+- Preserve `DashboardContent`.
+- Make Overview/Dashboard mutually exclusive with coherent transitions.
+
+### Phase 7 — hardening
+
+- multi-monitor,
+- Niri and Hyprland,
+- fractional scaling,
+- fullscreen/GameMode,
+- shell edit mode,
+- animations disabled,
+- screen lock/resume,
+- bar autohide/exclusive zone,
+- right + left sidebar coexistence,
+- native blur on/off,
+- panel keep-loaded/on-demand lifecycle.
+
+### Phase 8 — optional native renderer
+
+Only if QML-native connected geometry is visibly insufficient:
+
+- prototype a Hadalis-native SDF/blob renderer,
+- or adapt the conceptual `BlobGroup` model,
+- measure GPU/CPU and packaging impact,
+- retain a non-native fallback.
 
 ---
 
-## Contributing
+## Acceptance criteria
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code patterns, and pull request guidelines.
+The migration is not complete because the corners look similar. It is complete when all of the following are true:
+
+- Classic Bar stays at the top and retains correct hug-corner behavior.
+- A bar popup opens from its real source item and visually attaches to the bar.
+- No hairline seam at common fractional scales (at minimum 1.0, 1.25, 1.5 and 2.0 where the compositor/output setup supports them).
+- Popup movement between source modules does not flash a detached rectangle.
+- Transparent host regions are click-through.
+- Blur/border/mask agree with visible geometry.
+- Per-output targeting follows the output that initiated the action.
+- Sidebar preserves current edge-open, resize, focus, fullscreen and resume behavior.
+- Clipboard opens as a sidebar page and retains search, pin, copy, delete, image/rich-content behavior expected from the current implementation.
+- Material ii no longer needs a second standalone Clipboard window after migration.
+- Overview is bottom-attached without breaking screencopy, search or Orbit flows.
+- Dashboard is bottom-attached while reusing existing content.
+- Overview and Dashboard do not overlap as independent full-screen overlays.
+- Escape, backdrop click and focus loss have deterministic route-specific behavior.
+- Lock/resume and fullscreen transitions do not leave invisible mapped surfaces behind.
+- Waffle remains functionally unchanged unless separately scoped.
 
 ---
 
-## Credits
+## Risks and open decisions
 
-- [**end-4**](https://github.com/end-4/dots-hyprland): illogical-impulse, the Hyprland dots iNiR forked from
-- [**Gakuseei**](https://github.com/Gakuseei): [Ricelin](https://github.com/Gakuseei/Ricelin), where the pill bar and the washi and flame look come from
-- [**Quickshell**](https://quickshell.outfoxxed.me/): the framework this runs on
-- [**Niri**](https://github.com/YaLTeR/niri): the compositor it's built for
+### Separate-window seam vs one visual canvas
 
-GPL-3.0, same as end-4's dots. Copyright (C) 2025-2026 snowarch.
+Hadalis currently has robust independent hosts. The first prototype should preserve them. If identical geometry + overlap still produces visible seams with blur/fractional scale, the next escalation is a single visual canvas per output while retaining existing interaction windows.
+
+Do not decide this from screenshots alone; test on the compositor at multiple scales.
+
+### Native blob plugin
+
+Caelestia's organic merging is powered by native code and shaders. Copying the idea at QML level is straightforward; matching every deformation characteristic is not.
+
+A native plugin is justified only if the desired result explicitly requires metaball/SDF deformation rather than a precise connected neck + concave-corner shape.
+
+### Overview complexity
+
+Overview is far more than a card. Its Niri/Orbit state and screencopy pipeline make it a high-risk early migration target. Do it after the top popup and sidebar primitives are stable.
+
+### Focus differences between compositors
+
+Niri and Hyprland do not behave identically around layer-shell focus/focus grabs. Preserve current working host policies and introduce the new controller around them rather than normalizing everything prematurely.
 
 ---
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/snowarch/inir-mascot/main/inir-mascot-hero-banner.png" alt="iNiR mascot leaning on the iNiR logotype" width="720">
-</p>
+## License / attribution boundary
+
+Both repositories currently carry **GNU GPL v3** license files.
+
+This research pass imported **no Caelestia source code** into Hadalis. Caelestia is being used as an architectural/reference source.
+
+If a future implementation copies or closely adapts source-level code — especially the `Caelestia.Blobs` plugin/shaders — preserve the applicable GPL obligations, copyright notices and attribution, and document which files were adapted. Prefer a clean Hadalis-specific implementation when the requirement is only the architectural idea.
 
 ---
 
-<p align="center">
-  <a href="https://github.com/snowarch/inir/graphs/contributors">Contributors</a> &bull;
-  <a href="CHANGELOG.md">Changelog</a> &bull;
-  <a href="LICENSE">GPL-3.0 License</a>
-</p>
+## Reference links
+
+### Hadalis
+
+- https://github.com/llocphann/Hadalis/blob/dev/modules/bar/Bar.qml
+- https://github.com/llocphann/Hadalis/blob/dev/GlobalStates.qml
+- https://github.com/llocphann/Hadalis/blob/dev/modules/sidebar/SidebarHost.qml
+- https://github.com/llocphann/Hadalis/blob/dev/modules/clipboard/ClipboardPanel.qml
+- https://github.com/llocphann/Hadalis/blob/dev/modules/overview/Overview.qml
+- https://github.com/llocphann/Hadalis/blob/dev/modules/dashboard/Dashboard.qml
+- https://github.com/llocphann/Hadalis/blob/dev/modules/ii/ShellIiPanelsImpl.qml
+- https://github.com/llocphann/Hadalis/blob/dev/ARCHITECTURE.md
+
+### Caelestia
+
+- https://github.com/caelestia-dots/shell/blob/main/modules/drawers/ContentWindow.qml
+- https://github.com/caelestia-dots/shell/blob/main/modules/drawers/Panels.qml
+- https://github.com/caelestia-dots/shell/blob/main/modules/drawers/Interactions.qml
+- https://github.com/caelestia-dots/shell/blob/main/modules/bar/popouts/Wrapper.qml
+- https://github.com/caelestia-dots/shell/blob/main/modules/bar/popouts/ClipWrapper.qml
+- https://github.com/caelestia-dots/shell/blob/main/modules/nexus/common/BlobPopup.qml
+- https://github.com/caelestia-dots/shell/tree/main/plugin/src/Caelestia/Blobs
+
+### Quickshell concepts to keep aligned with
+
+- Panel/window edge attachment and exclusive zones
+- Window `mask` / input `Region`
+- Layer-shell namespace/layer/keyboard focus
+- Popup anchoring where a real popup window is still appropriate
+
+Documentation root: https://quickshell.outfoxxed.me/docs/
+
+---
+
+## Handoff checklist for the next implementation session
+
+Before writing production code:
+
+- confirm Material ii + Classic + top + hug-corner is the implementation scope,
+- create the common surface primitives/controller first,
+- select one small bar popup as the prototype,
+- keep a debug overlay for anchor/body/connector/mask rectangles,
+- validate at least one Niri multi-monitor setup before broad migration,
+- record before/after focus and mask behavior,
+- do not remove legacy state or ClipboardPanel until compatibility routing works,
+- do not refactor Overview internals while changing its host,
+- do not introduce the native blob plugin until the QML prototype has been evaluated visually and technically.
+
+### Recommended first production change
+
+The first implementation commit after this handoff should contain **only the Connected Surface foundation plus one prototype popup**. It should not include Sidebar, Clipboard, Overview and Dashboard in the same commit.
+
+That sequencing gives a clean rollback point and answers the most important unresolved question early: whether Hadalis can reach the required seamless visual quality with its existing QML/window architecture, or whether a single visual canvas/native geometry renderer is actually necessary.

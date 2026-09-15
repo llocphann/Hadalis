@@ -69,6 +69,27 @@ jobs:
           grep -Fq 'github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz' distro/arch/inir-shell/PKGBUILD
           grep -Fq 'git+https://github.com/llocphann/Hadalis.git#branch=dev' distro/arch/inir-shell-git/PKGBUILD
 
+          for info in distro/arch/inir-shell/.SRCINFO distro/arch/inir-shell-git/.SRCINFO distro/arch/inir-meta/.SRCINFO; do
+            grep -Fq 'url = https://github.com/llocphann/Hadalis' "$info"
+            if grep -Fqi 'github.com/snowarch/inir' "$info"; then
+              echo "$info still advertises the upstream iNiR repository" >&2
+              exit 1
+            fi
+          done
+
+          for pkg in inir-shell inir-meta; do
+            pkgbuild="distro/arch/$pkg/PKGBUILD"
+            srcinfo="distro/arch/$pkg/.SRCINFO"
+            pkgver="$(grep -m1 '^pkgver=' "$pkgbuild" | cut -d= -f2)"
+            pkgrel="$(grep -m1 '^pkgrel=' "$pkgbuild" | cut -d= -f2)"
+            grep -Fq "pkgver = $pkgver" "$srcinfo"
+            grep -Fq "pkgrel = $pkgrel" "$srcinfo"
+          done
+          grep -Fq 'license = GPL-3.0-only' distro/arch/inir-shell-git/.SRCINFO
+          grep -Fq 'source = inir::git+https://github.com/llocphann/Hadalis.git#branch=dev' distro/arch/inir-shell-git/.SRCINFO
+          grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell/.SRCINFO
+          grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell-git/.SRCINFO
+
       - name: Validate privileged integration packaging
         run: |
           grep -Fq 'org.freedesktop.policykit.exec.path">/usr/libexec/inir-thinkfan' assets/polkit/org.inir.thinkfan.policy

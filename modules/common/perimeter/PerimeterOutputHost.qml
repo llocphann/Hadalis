@@ -46,7 +46,12 @@ Item {
             && topCenterDesiredX <= topCenterMaxX)
     readonly property bool topEdgeSegmentsFit: !topStartOccupied || !topEndOccupied
         || topStart.x + topStart.width + segmentSpacing <= topEnd.x
-    readonly property bool topCollision: !topEdgeSegmentsFit || !topCenterFits
+    readonly property bool topEdgeOverflowsOutput:
+        root._overflowsOutput(topStart)
+        || root._overflowsOutput(topCenter)
+        || root._overflowsOutput(topEnd)
+    readonly property bool topCollision: topEdgeOverflowsOutput
+        || !topEdgeSegmentsFit || !topCenterFits
 
     readonly property real bottomCenterDesiredX: (width - bottomCenter.width) / 2
     readonly property real bottomCenterMinX: bottomStartOccupied
@@ -59,14 +64,17 @@ Item {
             && bottomCenterDesiredX <= bottomCenterMaxX)
     readonly property bool bottomEdgeSegmentsFit: !bottomStartOccupied || !bottomEndOccupied
         || bottomStart.x + bottomStart.width + segmentSpacing <= bottomEnd.x
-    readonly property bool bottomCollision: !bottomEdgeSegmentsFit || !bottomCenterFits
+    readonly property bool bottomEdgeOverflowsOutput:
+        root._overflowsOutput(bottomStart)
+        || root._overflowsOutput(bottomCenter)
+        || root._overflowsOutput(bottomEnd)
+    readonly property bool bottomCollision: bottomEdgeOverflowsOutput
+        || !bottomEdgeSegmentsFit || !bottomCenterFits
 
     // Side slots stay truly centered at their natural size. Core never shrinks or
     // shifts them; these flags only expose overload/collision state to consumers.
-    readonly property bool leftCenterOverflowsOutput: leftCenterOccupied
-        && (leftCenter.y < 0 || leftCenter.y + leftCenter.height > height)
-    readonly property bool rightCenterOverflowsOutput: rightCenterOccupied
-        && (rightCenter.y < 0 || rightCenter.y + rightCenter.height > height)
+    readonly property bool leftCenterOverflowsOutput: root._overflowsOutput(leftCenter)
+    readonly property bool rightCenterOverflowsOutput: root._overflowsOutput(rightCenter)
     readonly property bool sideSlotsOverlap: root._itemsOverlap(leftCenter, rightCenter)
     readonly property bool leftCollision: leftCenterOverflowsOutput
         || sideSlotsOverlap
@@ -87,6 +95,14 @@ Item {
 
     function _occupied(item) {
         return item !== null && item.visible && item.width > 0 && item.height > 0
+    }
+
+    function _overflowsOutput(item) {
+        if (!root._occupied(item))
+            return false
+        return item.x < 0 || item.y < 0
+            || item.x + item.width > root.width
+            || item.y + item.height > root.height
     }
 
     function _itemsOverlap(a, b) {

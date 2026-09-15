@@ -113,6 +113,7 @@ QtObject {
     readonly property bool valid: PerimeterTopology.edges.includes(edge)
         && alignmentValid
         && outputRect.width > 0 && outputRect.height > 0
+        && rectHasArea(anchorRect)
         && clampedBodySize.width > 0 && clampedBodySize.height > 0
 
     readonly property real tangentBodyExtent: horizontal

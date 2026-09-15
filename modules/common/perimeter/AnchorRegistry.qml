@@ -6,11 +6,13 @@ QtObject {
     signal changed(string key, var record)
     signal removed(string key)
     function keyFor(outputName, instanceId, surfaceName) { return String(outputName) + "::" + String(instanceId) + "::" + String(surfaceName || "default") }
+    function rectHasArea(rect) { return rect && rect.width > 0 && rect.height > 0 }
     function publish(record) {
-        if (!record || !record.outputName || !record.instanceId || !record.moduleId || !PerimeterTopology.isValidSlot(record.slotId)) return false
+        const coordinateSpace = String(record?.coordinateSpace || "output-local")
+        if (!record || !record.outputName || !record.instanceId || !record.moduleId || !PerimeterTopology.isValidSlot(record.slotId) || !root.rectHasArea(record.rect) || coordinateSpace !== "output-local") return false
         const key = root.keyFor(record.outputName, record.instanceId, record.surfaceName)
         const next = Object.assign({}, root.records)
-        next[key] = Object.assign({}, record, { edge: PerimeterTopology.edgeForSlot(record.slotId), alignment: PerimeterTopology.alignmentForSlot(record.slotId), coordinateSpace: record.coordinateSpace || "output-local" })
+        next[key] = Object.assign({}, record, { edge: PerimeterTopology.edgeForSlot(record.slotId), alignment: PerimeterTopology.alignmentForSlot(record.slotId), coordinateSpace: "output-local" })
         root.records = next
         root.changed(key, next[key])
         return true

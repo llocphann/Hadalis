@@ -32,6 +32,10 @@ QtObject {
         if (edge !== expectedEdge)
             return null
 
+        const anchorRect = route?.anchorRect
+        if (!anchorRect || anchorRect.width <= 0 || anchorRect.height <= 0)
+            return null
+
         return {
             output: outputName,
             family: String(route?.family ?? "default"),
@@ -40,7 +44,7 @@ QtObject {
             sourceInstance: sourceInstance,
             slot: slot,
             edge: edge,
-            anchorRect: route?.anchorRect ?? Qt.rect(0, 0, 0, 0)
+            anchorRect: anchorRect
         }
     }
 

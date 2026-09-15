@@ -8,6 +8,7 @@ Item {
     required property string instanceId
     required property string slotId
     property rect slotRect: Qt.rect(0, 0, width, height)
+    property Item slotItem: null
     property bool hostEnabled: true
 
     readonly property var instanceDescriptor: PerimeterConfig.instanceDescriptor(outputName, instanceId)
@@ -55,6 +56,7 @@ Item {
         orientation: root.orientation
         inwardDirection: root.inwardDirection
         slotRect: root.slotRect
+        slotItem: root.slotItem
     }
 
     Loader {

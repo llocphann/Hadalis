@@ -269,8 +269,9 @@ PopupWindow {
                 horizontalPadding: 12
                 implicitWidth: contentItem.implicitWidth + horizontalPadding * 2
                 implicitHeight: 36
+                Accessible.name: Translation.tr("Back")
 
-                downAction: () => stackView.pop()
+                onClicked: stackView.pop()
 
                 contentItem: RowLayout {
                     anchors {

@@ -439,6 +439,13 @@ Singleton {
         JsonAdapter {
             id: configOptionsJsonAdapter
 
+            property JsonObject perimeter: JsonObject {
+                property int schemaVersion: 1
+                property list<var> instances: []
+                property list<var> defaultSlots: []
+                property list<var> outputs: []
+            }
+
             property list<string> enabledPanels: ["iiBar", "iiBackground", "iiBackdrop", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock", "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", "iiOverlay", "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners", "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar", "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiDashboard"]
             property list<string> knownPanels: []
             property string panelFamily: "ii"

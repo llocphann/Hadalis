@@ -1,23 +1,23 @@
 name: Question
-description: Ask for help with setup, configuration, or usage
+description: Ask for help with Hadalis setup, configuration, or usage
 labels: ["question"]
 body:
   - type: markdown
     attributes:
       value: |
-        Check the documentation first:
-        - [Installation](https://github.com/snowarch/inir/wiki/INSTALL)
-        - [Setup & Maintenance](https://github.com/snowarch/inir/wiki/SETUP)
-        - [Keybindings](https://github.com/snowarch/inir/wiki/KEYBINDS)
-        - [IPC Reference](https://github.com/snowarch/inir/wiki/IPC)
-        - [Limitations](https://github.com/snowarch/inir/wiki/LIMITATIONS)
+        Check the Hadalis documentation first:
+        - [Documentation index](https://github.com/llocphann/Hadalis/tree/stable/docs)
+        - [Installation](https://github.com/llocphann/Hadalis/blob/stable/docs/INSTALL.md)
+        - [Keybindings](https://github.com/llocphann/Hadalis/blob/stable/docs/KEYBINDS.md)
+        - [IPC reference](https://github.com/llocphann/Hadalis/blob/stable/docs/IPC.md)
+        - [Known limitations](https://github.com/llocphann/Hadalis/blob/stable/docs/LIMITATIONS.md)
 
   - type: textarea
     id: question
     attributes:
       label: Question
       description: What do you need help with
-      placeholder: How do I configure the bar to show on multiple monitors
+      placeholder: How do I configure a module or surface for my monitor layout?
     validations:
       required: true
 
@@ -25,15 +25,14 @@ body:
     id: tried
     attributes:
       label: What you have tried
-      description: Steps you have already taken
-      placeholder: Checked config.json for monitor options, searched existing issues
+      description: Steps, settings, or documentation you already checked
 
-  - type: input
+  - type: textarea
     id: version
     attributes:
       label: Version
-      description: Output of cat ~/.config/quickshell/inir/VERSION
-      placeholder: 2.11.11
+      description: Paste the output of `inir version`
+      render: shell
     validations:
       required: true
 
@@ -50,4 +49,4 @@ body:
     id: context
     attributes:
       label: Additional context
-      description: Relevant config, screenshots, or logs
+      description: Relevant configuration, monitor layout, screenshots, or logs; remove secrets before posting

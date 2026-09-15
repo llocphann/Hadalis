@@ -1,20 +1,20 @@
 name: Bug Report
-description: Report something that is not working correctly
+description: Report something in Hadalis that is not working correctly
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        If the shell broke right after a system update or crashes at
-        startup, run `inir doctor` first — it detects and can fix the most
-        common cause (a Qt ABI mismatch).
+        If the shell broke right after a system update or crashes at startup,
+        run `inir doctor` first. Remove secrets, tokens, and private user data
+        from logs or configuration before submitting them.
 
   - type: textarea
     id: summary
     attributes:
       label: Summary
       description: One sentence describing what is broken
-      placeholder: Bar crashes when enabling the weather widget
+      placeholder: Weather module stops rendering after moving it to another perimeter slot
     validations:
       required: true
 
@@ -22,11 +22,11 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: Numbered steps to trigger the issue
+      description: Numbered steps that reproduce the issue from a known state
       placeholder: |
-        1. Enable weather widget in settings
-        2. Restart shell with inir restart
-        3. Bar crashes on startup
+        1. Start Hadalis
+        2. Change the affected setting or module placement
+        3. Observe the failure
     validations:
       required: true
 
@@ -35,7 +35,6 @@ body:
     attributes:
       label: Expected behavior
       description: What should happen instead
-      placeholder: Weather widget should display without errors
     validations:
       required: true
 
@@ -44,8 +43,8 @@ body:
     attributes:
       label: Logs
       description: |
-        Output from `inir logs` (last 50 lines or relevant errors).
-        If the shell crashed, also include crash output if available.
+        Paste the relevant output from `inir logs`. Include crash output when
+        available, but remove credentials and unrelated private data first.
       render: shell
     validations:
       required: true
@@ -55,24 +54,32 @@ body:
     attributes:
       label: Environment
       description: |
-        Paste the output of these three commands:
+        Include the output of:
         ```
         inir version
         qs --version
         niri msg version   # or: hyprctl version
         ```
-        Plus your distro name (e.g. Arch Linux, Fedora 42).
+        Also include your distribution and display scale when relevant.
       render: shell
     validations:
       required: true
 
   - type: dropdown
-    id: family
+    id: area
     attributes:
-      label: Panel family
+      label: Affected area
       options:
-        - ii
-        - waffle
+        - Perimeter / module placement
+        - Top or bottom surface
+        - Left or right sidebar
+        - Dock
+        - Settings / configuration
+        - Notifications
+        - Media / weather / status module
+        - System or hardware integration
+        - Install / update / packaging
+        - Other
     validations:
       required: true
 
@@ -80,11 +87,11 @@ body:
     id: config
     attributes:
       label: Relevant configuration
-      description: Paste the relevant section from ~/.config/illogical-impulse/config.json if applicable
+      description: Paste only the relevant configuration fragment if applicable; remove secrets first
       render: json
 
   - type: textarea
     id: notes
     attributes:
-      label: Additional notes
-      description: Screenshots, display scale, GPU info, or other context
+      label: Additional context
+      description: Screenshots, monitor layout, GPU information, or other details that help reproduce the issue

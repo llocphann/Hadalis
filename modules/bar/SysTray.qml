@@ -95,7 +95,7 @@ Item {
 
     CompositorFocusGrab {
         id: focusGrab
-        active: (root.trayOverflowOpen && overflowPopup.QsWindow?.window !== null) || root.activeMenu !== null
+        active: (root.trayOverflowOpen && overflowPopup.QsWindow?.window != null) || root.activeMenu !== null
         windows: [overflowPopup.QsWindow?.window, root.activeMenu]
         onCleared: {
             if (root.activeMenu) {

@@ -108,6 +108,7 @@ Singleton {
     Process {
         id: detector
         property bool statusSeen: false
+        property bool timedOut: false
         command: ["/usr/libexec/inir-thinkfan", "--status"]
 
         stdout: SplitParser {
@@ -117,9 +118,16 @@ Singleton {
             }
         }
 
-        onStarted: detector.statusSeen = false
+        onStarted: {
+            detector.statusSeen = false
+            detector.timedOut = false
+            detectorTimeout.restart()
+        }
         onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0 || !detector.statusSeen)
+            detectorTimeout.stop()
+            if (detector.timedOut)
+                root._clearStatus("status-timeout")
+            else if (exitCode !== 0 || !detector.statusSeen)
                 root._clearStatus(exitCode === 127
                     ? "helper-unavailable" : "status-failed")
             if (root._refreshQueued) {
@@ -129,22 +137,57 @@ Singleton {
         }
     }
 
+    Timer {
+        id: detectorTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!detector.running)
+                return
+            detector.timedOut = true
+            detector.running = false
+        }
+    }
+
     Process {
         id: applyProcess
+        property bool timedOut: false
 
         stdout: SplitParser {
             onRead: data => root._parseStatus(data)
         }
 
+        onStarted: {
+            applyProcess.timedOut = false
+            applyTimeout.restart()
+        }
         onExited: (exitCode, exitStatus) => {
+            applyTimeout.stop()
             root.busy = false
-            root.lastApplySucceeded = exitCode === 0
-            root.lastApplyError = exitCode === 0 ? "" : "apply-failed"
-            if (exitCode !== 0)
-                console.warn("[ThinkFan] Failed to apply profile intent (exit code " + exitCode + ")")
+            root.lastApplySucceeded = exitCode === 0 && !applyProcess.timedOut
+            root.lastApplyError = applyProcess.timedOut
+                ? "apply-timeout" : (exitCode === 0 ? "" : "apply-failed")
+            if (!root.lastApplySucceeded) {
+                if (applyProcess.timedOut)
+                    console.warn("[ThinkFan] Timed out while applying profile intent")
+                else
+                    console.warn("[ThinkFan] Failed to apply profile intent (exit code " + exitCode + ")")
+            }
             // Always re-read through the unprivileged path. The privileged helper
             // also verifies service state before returning success.
             Qt.callLater(() => root.refresh())
+        }
+    }
+
+    Timer {
+        id: applyTimeout
+        interval: 60000
+        repeat: false
+        onTriggered: {
+            if (!applyProcess.running)
+                return
+            applyProcess.timedOut = true
+            applyProcess.running = false
         }
     }
 

@@ -1,11 +1,9 @@
-# Maintainer: snowarch
-
 pkgname=inir-shell-git
 pkgver=2.21.0.r0.g0000000
 pkgrel=1
-pkgdesc='iNiR shell payload, launcher, and user service (git)'
+pkgdesc='Hadalis shell payload, launcher, and user service (git)'
 arch=(any)
-url='https://github.com/snowarch/iNiR'
+url='https://github.com/llocphann/Hadalis'
 license=('GPL-3.0-only')
 depends=(
   bash
@@ -100,7 +98,7 @@ install=inir-shell-git.install
 provides=('inir-shell')
 conflicts=('inir-shell' 'noctalia-qs' 'noctalia-shell' 'cachyos-niri-noctalia')
 source=(
-  'inir::git+https://github.com/snowarch/iNiR.git'
+  'inir::git+https://github.com/llocphann/Hadalis.git#branch=dev'
 )
 sha256sums=('SKIP')
 

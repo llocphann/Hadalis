@@ -1,14 +1,12 @@
-# Maintainer: snowarch
-
 pkgname=inir-meta
 pkgver=2.29.3
-pkgrel=1
-pkgdesc='Full iNiR desktop experience meta-package'
+pkgrel=2
+pkgdesc='Full Hadalis desktop experience meta-package'
 arch=(any)
-url='https://github.com/snowarch/iNiR'
+url='https://github.com/llocphann/Hadalis'
 license=('GPL-3.0-only')
-source=("LICENSE::https://raw.githubusercontent.com/snowarch/iNiR/main/LICENSE")
-sha256sums=('SKIP')
+source=()
+sha256sums=()
 depends=(
   adw-gtk-theme
   awww
@@ -67,6 +65,5 @@ optdepends=(
 )
 
 package() {
-  install -dm755 "${pkgdir}/usr/share/doc/${pkgname}"
-  install -Dm644 "${srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  :
 }

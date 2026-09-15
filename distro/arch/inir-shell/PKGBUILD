@@ -1,14 +1,17 @@
-# Maintainer: snowarch
-
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=1
-pkgdesc='iNiR shell payload, launcher, and user service'
+pkgrel=2
+pkgdesc='Hadalis shell payload, launcher, and user service'
 arch=(any)
-url='https://github.com/snowarch/iNiR'
+url='https://github.com/llocphann/Hadalis'
 license=('GPL-3.0-only')
-_default_source_archive="https://github.com/snowarch/iNiR/archive/refs/tags/v${pkgver}.tar.gz"
+# Hadalis does not publish version tags/releases yet. Keep the non-VCS package
+# reproducible by pinning the reviewed source snapshot; release automation can
+# switch this to a tag once the project publishes one.
+_source_ref="${INIR_SOURCE_REF:-cd570573f98eecb28900b378a17934223ca0a0a3}"
+_default_source_archive="https://github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz"
 _source_archive="${INIR_SOURCE_ARCHIVE:-${_default_source_archive}}"
+_source_dir="${INIR_SOURCE_DIR:-Hadalis-${_source_ref}}"
 depends=(
   bash
   brightnessctl
@@ -101,12 +104,12 @@ optdepends=(
 )
 conflicts=('inir-shell-git' 'noctalia-qs' 'noctalia-shell' 'cachyos-niri-noctalia')
 source=(
-  "inir-${pkgver}.tar.gz::${_source_archive}"
+  "hadalis-${pkgver}-${_source_ref}.tar.gz::${_source_archive}"
 )
 sha256sums=('SKIP')
 
 package() {
-  local srcroot="${srcdir}/iNiR-${pkgver}"
+  local srcroot="${srcdir}/${_source_dir}"
   local shellroot="${pkgdir}/usr/share/quickshell/inir"
   local docroot="${pkgdir}/usr/share/doc/${pkgname}"
   local timestamp
@@ -136,7 +139,7 @@ package() {
   cat > "$shellroot/version.json" <<EOF
 {
   "version": "${pkgver}",
-  "commit": "release",
+  "commit": "${_source_ref}",
   "installed_at": "${timestamp}",
   "installedAt": "${timestamp}",
   "source": "pacman",

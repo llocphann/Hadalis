@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import qs.modules.bootGreeting
 import qs.modules.cheatsheet
 import qs.modules.lock
-import qs.modules.mascot
 import qs.modules.onScreenKeyboard
 import qs.modules.recordingOsd
 import qs.modules.tilingOverlay
@@ -15,7 +14,6 @@ import qs.modules.sessionScreen
 import qs.modules.wallpaperSelector
 import qs.modules.wallpaperLauncher
 import qs.modules.ii.overlay
-import qs.modules.workspaceStrip
 import qs.modules.clipboard as ClipboardModule
 
 import qs.modules.waffle.actionCenter
@@ -140,8 +138,6 @@ Item {
         closeGraceMs: 250
         component: TilingOverlay {}
     }
-    DeferredPanelLoader { identifier: "iiWorkspaceStrip"; component: WorkspaceStrip {} }
-    DeferredPanelLoader { identifier: "iiMascotCompanion"; extraCondition: Config.options?.mascot?.enable ?? false; component: MascotCompanion {} }
 
     LazyLoader {
         loading: Config.ready && GlobalStates.shellEntryReady

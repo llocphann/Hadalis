@@ -128,7 +128,7 @@ QtObject {
     }
 
     function _outputEntryValid(output) {
-        if (!output || typeof output !== "object")
+        if (!output || typeof output !== "object" || Array.isArray(output))
             return false
         if (output.instances !== undefined) {
             if (!Array.isArray(output.instances)

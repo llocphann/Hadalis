@@ -91,13 +91,11 @@
     "scripts/verify-docs.sh",
     "scripts/qml-check.fish",
     "scripts/test-local-distribution.sh",
-    "scripts/test-mascot-pack-flow.sh",
     "scripts/test-battery-charge-limit-helper.sh",
     "scripts/test-tlp-integration-lifecycle.sh",
     "scripts/test-tlp-settings-ui-guards.sh",
     "scripts/test-update-lifecycle.sh",
     "scripts/test-runtime-payload.py",
-    "scripts/orbit-visual-audit.sh",
     "scripts/lib/generate-ipc-registry.py",
     "scripts/quickshell-webengine",
     "scripts/setup/_template.sh.example",
@@ -105,7 +103,6 @@
     "translations/tools",
     "translations/l10n",
     "assets/graphify-out",
-    "assets/images/mascot/frames",
     "scripts/zzz-audit.sh",
     "sdata/dist-arch/inir-audio/pkg",
     "sdata/dist-arch/inir-audio/src",
@@ -126,10 +123,5 @@
     "scripts/colors/system24_themegen/system24_themegen",
     "scripts/colors/zed_themegen/zed_themegen"
   ],
-  "excludedDirectorySuffixes": {
-    "assets/images/mascot": [
-      ".png",
-      ".gif"
-    ]
-  }
+  "excludedDirectorySuffixes": {}
 }

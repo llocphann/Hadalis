@@ -35,7 +35,7 @@ VERSION_FILE_RUNTIME_SYSTEM_LOCAL="${RUNTIME_DIR_SYSTEM_LOCAL}/version.json"
 VERSION_FILE_RUNTIME_SYSTEM="${RUNTIME_DIR_SYSTEM}/version.json"
 VERSION_FILE_REPO="${REPO_ROOT}/VERSION"
 CHANGELOG_FILE="${REPO_ROOT}/CHANGELOG.md"
-GITHUB_REPO="snowarch/inir"
+GITHUB_REPO="llocphann/Hadalis"
 GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}"
 
 # Cache for remote version checks (avoid hammering GitHub)
@@ -612,7 +612,7 @@ get_remote_commit() {
     fi
     
     local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)
-    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="main"
+    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="stable"
     
     git -C "$REPO_ROOT" fetch --quiet 2>/dev/null
     git -C "$REPO_ROOT" rev-parse --short "origin/${branch}" 2>/dev/null || echo "unknown"

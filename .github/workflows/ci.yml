@@ -65,8 +65,25 @@ jobs:
             grep -Fq 'assets/tlp/tlp-settings-schema.json' "$pkg"
             grep -Fq 'assets/helpers/inir-thinkfan' "$pkg"
             grep -Fq '$pkgdir/usr/libexec/inir-thinkfan' "$pkg"
-            grep -Fq 'assets/polkit/org.inir.thinkfan.policy' "$pkg"
+            grep -Fq 'assets/polkit/org.inir-thinkfan.policy' "$pkg"
           done
+
+      - name: Validate ThinkFan process timeout guards
+        run: |
+          service=services/ThinkFanService.qml
+          grep -Fq 'detectorTimeout.restart()' "$service"
+          grep -Fq 'root._clearStatus("status-timeout")' "$service"
+          grep -Fq 'id: detectorTimeout' "$service"
+          grep -Fq 'interval: 5000' "$service"
+          grep -Fq 'detector.timedOut = true' "$service"
+          grep -Fq 'detector.running = false' "$service"
+          grep -Fq 'applyTimeout.restart()' "$service"
+          grep -Fq 'root.lastApplySucceeded = exitCode === 0 && !applyProcess.timedOut' "$service"
+          grep -Fq '? "apply-timeout"' "$service"
+          grep -Fq 'id: applyTimeout' "$service"
+          grep -Fq 'interval: 60000' "$service"
+          grep -Fq 'applyProcess.timedOut = true' "$service"
+          grep -Fq 'applyProcess.running = false' "$service"
 
       - name: Validate distribution install contracts
         run: |

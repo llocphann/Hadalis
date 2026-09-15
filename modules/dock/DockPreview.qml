@@ -131,6 +131,7 @@ PopupWindow {
         id: hoverChecker
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.NoButton
 
         StyledRectangularShadow {
             target: contentItem

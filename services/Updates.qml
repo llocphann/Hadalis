@@ -56,7 +56,7 @@ Singleton {
     Process {
         id: checkAvailabilityProc
         running: false
-        command: ["which", "checkupdates"]
+        command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]
         onExited: (exitCode, exitStatus) => {
             root.available = (exitCode === 0);
             root.refresh();

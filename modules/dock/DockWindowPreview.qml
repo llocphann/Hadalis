@@ -20,6 +20,13 @@ Button {
     padding: 6
     Layout.fillHeight: true
 
+    readonly property string windowTitle: root.toplevel?._sourceToplevel?.title
+        ?? root.toplevel?.title
+        ?? ""
+
+    Accessible.name: root.windowTitle.length > 0
+        ? root.windowTitle : Translation.tr("Window preview")
+
     // Emitted BEFORE focus IPC so the popup can close instantly
     signal windowActivated()
     // Emitted when the user closes a window from the preview
@@ -100,9 +107,7 @@ Button {
                     id: appTitleText
                     anchors.fill: parent
                     anchors.rightMargin: closeButton.visible ? closeButton.width + 4 : 0
-                    text: root.toplevel?._sourceToplevel?.title
-                        ?? root.toplevel?.title
-                        ?? ""
+                    text: root.windowTitle
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.inirEverywhere 
@@ -114,11 +119,13 @@ Button {
 
             RippleButton {
                 id: closeButton
-                opacity: root.hovered ? 1 : 0
+                readonly property bool keyboardReachable: root.activeFocus || closeButton.activeFocus
+                opacity: root.hovered || closeButton.keyboardReachable ? 1 : 0
                 visible: opacity > 0
                 implicitWidth: 20
                 implicitHeight: 20
                 buttonRadius: Appearance.rounding.full
+                Accessible.name: Translation.tr("Close window")
                 Behavior on opacity {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

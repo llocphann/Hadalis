@@ -91,9 +91,11 @@ QtObject {
     readonly property real effectiveConnectorLength: Math.max(0, connectorLength)
     readonly property real effectiveSeamOverlap: Math.max(0, seamOverlap)
     readonly property real availableWidth: Math.max(0,
-        outputRect.width - effectiveScreenMargin * 2)
+        snapDown(outputRect.x + outputRect.width - effectiveScreenMargin)
+            - snapUp(outputRect.x + effectiveScreenMargin))
     readonly property real availableHeight: Math.max(0,
-        outputRect.height - effectiveScreenMargin * 2)
+        snapDown(outputRect.y + outputRect.height - effectiveScreenMargin)
+            - snapUp(outputRect.y + effectiveScreenMargin))
 
     // Preserve the source-to-body gap while clamping: when a requested surface
     // is too large for the inward side of its anchor, shrink it instead of

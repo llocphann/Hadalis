@@ -35,6 +35,7 @@ jobs:
           bash -n scripts/test-battery-charge-limit-helper.sh
           bash -n scripts/test-tlp-settings-ui-guards.sh
           bash -n scripts/test-tlp-integration-lifecycle.sh
+          bash -n scripts/verify-docs.sh
           sh -n assets/helpers/inir-thinkfan
           bash -n distro/arch/inir-shell/PKGBUILD
           bash -n distro/arch/inir-shell-git/PKGBUILD

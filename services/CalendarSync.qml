@@ -75,6 +75,7 @@ Singleton {
     property int _fetchIndex: -1
     property var _pendingSources: []
     property var _fetchedEvents: []
+    property bool _fetchHadError: false
 
     function fetchAll(): void {
         if (root.fetching) return
@@ -89,6 +90,7 @@ Singleton {
         root.fetching = true
         root._pendingSources = enabledSources
         root._fetchedEvents = []
+        root._fetchHadError = false
         root._fetchIndex = 0
         root.fetchStarted()
         _log("Fetching", enabledSources.length, "calendar sources")
@@ -102,7 +104,7 @@ Singleton {
             root.fetching = false
             root.ready = true
             root.eventsUpdated()
-            root.fetchFinished(true)
+            root.fetchFinished(!root._fetchHadError)
             root.saveCache()
             _log("Fetch complete:", root.events.length, "events from", root._pendingSources.length, "sources")
             return
@@ -137,6 +139,7 @@ Singleton {
         onExited: (code, status) => {
             const source = root._currentFetchSource
             if (!source) {
+                root._fetchHadError = true
                 root._fetchIndex++
                 root._fetchNext()
                 return
@@ -144,6 +147,7 @@ Singleton {
 
             if (code !== 0 || fetchProc._rawData.trim() === "") {
                 const errMsg = code !== 0 ? `curl exited with code ${code}` : "Empty response"
+                root._fetchHadError = true
                 _log("Error fetching", source.name, ":", errMsg)
                 root._updateSourceStatus(source.id, { error: errMsg, lastFetch: new Date().toISOString() })
                 root.sourceError(source.id, errMsg)
@@ -159,6 +163,7 @@ Singleton {
                     _log("Parsed", parsed.length, "events from", source.name)
                 } catch (e) {
                     const errMsg = `Parse error: ${e.message}`
+                    root._fetchHadError = true
                     _log("Parse error for", source.name, ":", e.message)
                     root._updateSourceStatus(source.id, { error: errMsg, lastFetch: new Date().toISOString() })
                     root.sourceError(source.id, errMsg)

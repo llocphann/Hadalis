@@ -44,12 +44,25 @@ QtObject {
         const sourceInstance = String(route?.sourceInstance ?? "")
         const slot = String(route?.slot ?? route?.slotId ?? "")
         const surface = String(route?.surface ?? "default")
-        if (!outputName || !sourceInstance || !PerimeterTopology.isValidSlot(slot))
+        if (!outputName || !sourceInstance || !PerimeterTopology.isValidSlot(slot)
+                || !PerimeterConfig.validate(outputName)) {
             return null
+        }
 
         const expectedEdge = PerimeterTopology.edgeForSlot(slot)
         const edge = String(route?.edge ?? expectedEdge)
         if (edge !== expectedEdge)
+            return null
+
+        // Route placement and module identity come from the persisted perimeter
+        // configuration. A stale publisher must not make an old slot/module
+        // authoritative after the same instance ID has been reconfigured.
+        const configuredSlot = PerimeterConfig.placementForInstance(
+            outputName, sourceInstance)
+        const descriptor = PerimeterConfig.instanceDescriptor(
+            outputName, sourceInstance)
+        const configuredModule = String(descriptor?.moduleId ?? "")
+        if (configuredSlot !== slot || !configuredModule)
             return null
 
         // AnchorRegistry is the geometry authority. Never accept a caller-owned
@@ -58,6 +71,7 @@ QtObject {
         const anchor = AnchorRegistry.lookup(outputName, sourceInstance, surface)
         if (!anchor
                 || String(anchor.slotId ?? "") !== slot
+                || String(anchor.moduleId ?? "") !== configuredModule
                 || String(anchor.coordinateSpace ?? "") !== "output-local"
                 || !root._rectHasArea(anchor.rect)) {
             return null
@@ -69,6 +83,7 @@ QtObject {
             surface: surface,
             page: String(route?.page ?? ""),
             sourceInstance: sourceInstance,
+            sourceModule: configuredModule,
             slot: slot,
             edge: edge,
             anchorRect: anchor.rect
@@ -84,6 +99,7 @@ QtObject {
         const slot = String(record?.slotId ?? "")
         const rect = record?.rect
         if (!PerimeterTopology.isValidSlot(slot)
+                || String(record?.moduleId ?? "") !== active.sourceModule
                 || String(record?.coordinateSpace ?? "") !== "output-local"
                 || !root._rectHasArea(rect)) {
             return root.close(outputName, "source-hidden")
@@ -163,7 +179,14 @@ QtObject {
 
             const configuredSlot = PerimeterConfig.placementForInstance(
                 outputName, active.sourceInstance)
-            if (!PerimeterTopology.isValidSlot(configuredSlot))
+            if (!PerimeterTopology.isValidSlot(configuredSlot)) {
+                root.close(outputName, "source-hidden")
+                continue
+            }
+
+            const descriptor = PerimeterConfig.instanceDescriptor(
+                outputName, active.sourceInstance)
+            if (String(descriptor?.moduleId ?? "") !== active.sourceModule)
                 root.close(outputName, "source-hidden")
         }
     }

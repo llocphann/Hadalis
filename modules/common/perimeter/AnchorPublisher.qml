@@ -122,12 +122,15 @@ Item {
             publisherGeneration: publisherGeneration
         })
 
-        if (published) {
-            root._publishedOutputName = output
-            root._publishedInstanceId = instance
-            root._publishedSurfaceName = surface
+        if (!published) {
+            root._unregisterPublished()
+            return false
         }
-        return published
+
+        root._publishedOutputName = output
+        root._publishedInstanceId = instance
+        root._publishedSurfaceName = surface
+        return true
     }
 
     onRefreshTokenChanged: publish()

@@ -30,9 +30,9 @@ Singleton {
     property bool isSuspending: available && (percentage <= ((Config.options?.battery?.suspend ?? 5) / 100))
     property bool isFull: available && (percentage >= ((Config.options?.battery?.full ?? 95) / 100))
 
-    property bool isLowAndNotCharging: isLow && !isCharging
-    property bool isCriticalAndNotCharging: isCritical && !isCharging
-    property bool isSuspendingAndNotCharging: allowAutomaticSuspend && isSuspending && !isCharging
+    property bool isLowAndNotCharging: isLow && onBattery
+    property bool isCriticalAndNotCharging: isCritical && onBattery
+    property bool isSuspendingAndNotCharging: allowAutomaticSuspend && isSuspending && onBattery
     property bool isFullAndCharging: isFull && isCharging
 
     property real energyRate: UPower.displayDevice.changeRate

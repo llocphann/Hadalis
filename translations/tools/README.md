@@ -1,307 +1,142 @@
 # Translation Management Tool Suite
 
-This suite is used to manage project translation files, automatically extract translatable texts, compare differences between language files, and provide maintenance functions.
+`translations/en_US.json` is the canonical runtime catalog. Every other locale must keep the same key set and translate only the values.
 
-All commands below assume the repository root unless a section explicitly changes directories. Translation files live in `translations/`, and source scanning defaults to the repository root so the tools remain independent of the runtime/config installation path.
+All commands below are run from the repository root. The tools resolve `translations/` and the source tree relative to the repository, so they do not depend on an installed iNiR/Hadalis config path.
 
-## Contextual localization
+## Tool roles
 
-Use `l10n.py` for current runtime localization work. It audits English fallbacks, creates contextual review batches and validates reviewed translations before applying them.
+### `l10n.py` — structural audit and reviewed localization
+
+Use this for locale contract checks and contextual review batches.
 
 ```bash
 python3 translations/tools/l10n.py audit-all
 python3 translations/tools/l10n.py audit es_AR --strict-terms
-python3 translations/tools/l10n.py extract es_AR /tmp/es_AR-001.json --limit 200
-python3 translations/tools/l10n.py apply /tmp/es_AR-001.json
+python3 translations/tools/l10n.py extract es_AR /tmp/es_AR-review.json --limit 200
+python3 translations/tools/l10n.py apply /tmp/es_AR-review.json
 ```
 
-See `translations/l10n/README.md` for the full workflow. The older automatic translators below are useful only for rough drafts and are not an approval step.
+`audit-all` validates key parity and placeholder structure against `en_US.json`. See `translations/l10n/README.md` for the reviewed translation workflow.
 
-## Tool Components
+### `translation-manager.py` — source extraction and missing-key updates
 
-### 1. `translation-manager.py` - Main Translation Manager
-- Extract translatable texts
-- Compare and update translation files
-- Interactive addition/removal of translation keys
-
-### 2. `translation-cleaner.py` - Translation File Maintenance Tool
-- Clean unused translation keys
-- Synchronize key structure across different language files
-
-### 3. `manage-translations.sh` - Convenient Wrapper Script
-- Provides a unified command-line interface
-- Displays translation status
-- Simplifies common operations
-
-### 4. `auto-translate.js` - Bulk Auto-Translation Tool
-- Uses Google Translate to automatically fill empty or missing translations.
-- Processes keys in batches to avoid API limits.
-- **Usage**: `node translations/tools/auto-translate.js <lang_code>` (e.g. `node translations/tools/auto-translate.js es_AR`)
-
-## Quick Start
-
-### Using the Wrapper Script (Recommended)
-
-From the repository root:
+The manager scans repository `*.qml` and `*.js` files for static `Translation.tr(...)` strings.
 
 ```bash
-# Show help
-translations/tools/manage-translations.sh --help
+translations/tools/translation-manager.py --extract-only
+translations/tools/translation-manager.py --language zh_CN
+translations/tools/translation-manager.py --yes
+```
 
-# Show current translation status
+The manager may add missing static keys. It **does not prune extra keys**. Extra keys are only reported so cleanup cannot diverge locale keysets one language at a time.
+
+### `translation-cleaner.py` — canonical pruning and synchronization
+
+The cleaner owns deletion of unused translation keys.
+
+```bash
+translations/tools/translation-cleaner.py --clean
+translations/tools/translation-cleaner.py --clean --yes --no-backup
+translations/tools/translation-cleaner.py --sync
+translations/tools/translation-cleaner.py --sync --source-lang en_US
+```
+
+Before pruning, the cleaner requires every locale keyset to match the canonical source locale. It derives one orphan set from the source locale and removes exactly that set from every locale, then verifies parity again.
+
+### `manage-translations.sh` — wrapper
+
+```bash
 translations/tools/manage-translations.sh status
-
-# Extract translatable texts
 translations/tools/manage-translations.sh extract
-
-# Update all translation files
 translations/tools/manage-translations.sh update
-
-# Update a specific language
 translations/tools/manage-translations.sh update -l zh_CN
-
-# Clean unused keys
 translations/tools/manage-translations.sh clean
-
-# Synchronize keys across all language files
 translations/tools/manage-translations.sh sync
 ```
 
-You can also enter the tools directory first:
+Custom paths remain available through `--trans-dir` and `--source-dir`.
+
+### `auto-translate.js` — rough draft helper
+
+This helper can fill untranslated values through Google Translate. Its output is not an approval step and must still pass the localization audits and human review.
 
 ```bash
-cd translations/tools
-./manage-translations.sh status
-./manage-translations.sh update
+node translations/tools/auto-translate.js es_AR
 ```
 
-## Detailed Usage
+## Safe workflow after source changes
 
-### Translation Manager (`translation-manager.py`)
-
-Basic usage from the repository root:
+For ordinary source additions:
 
 ```bash
-# Process all languages
-translations/tools/translation-manager.py
-
-# Specify a particular language
-translations/tools/translation-manager.py --language zh_CN
-
-# Extract translatable texts only
-translations/tools/translation-manager.py --extract-only
-
-# Show extracted texts
-translations/tools/translation-manager.py --extract-only --show-temp
+translations/tools/manage-translations.sh update
+python3 translations/tools/l10n.py audit-all
 ```
 
-Parameter description:
-- `--translations-dir`, `-t`: Translation files directory (default: repository `translations/` directory)
-- `--source-dir`, `-s`: Source code directory (default: repository root)
-- `--language`, `-l`: Specify the language code to process
-- `--extract-only`, `-e`: Only extract translatable texts
-- `--show-temp`: Show the content of the temporary extraction file
-
-### Translation Cleaner (`translation-cleaner.py`)
+For cleanup after deleting or retiring runtime features:
 
 ```bash
-# Clean unused translation keys
-translations/tools/translation-cleaner.py --clean
+# 1. Confirm the catalog is structurally aligned before deletion.
+python3 translations/tools/l10n.py audit-all
 
-# Synchronize translation keys (using en_US as the base)
-translations/tools/translation-cleaner.py --sync
+# 2. Add any newly introduced static Translation.tr(...) strings.
+translations/tools/manage-translations.sh update
 
-# Specify a different source language for syncing
-translations/tools/translation-cleaner.py --sync --source-lang zh_CN
+# 3. Prune source-orphaned keys consistently from every locale.
+translations/tools/manage-translations.sh clean
 
-# Clean without creating backups
-translations/tools/translation-cleaner.py --clean --no-backup
+# 4. Verify the resulting locale contract again.
+python3 translations/tools/l10n.py audit-all
 ```
 
-The cleaner also defaults to the repository `translations/` directory and repository root for source scanning.
+Do not manually delete a key from only one generated locale. If a retired-feature key is being removed, prove it is no longer a live source string and let the source-driven cleaner apply the same deletion across all locales.
 
-## Workflow
+## Dynamic translation keys
 
-### Regular Translation Update Workflow
+Static extraction cannot discover strings constructed or selected dynamically at runtime. A key that must survive static cleanup should be retained in the canonical source locale with `/*keep*/` at the end of its value.
 
-1. **Check status**:
-   ```bash
-   translations/tools/manage-translations.sh status
-   ```
-
-2. **Update translations**:
-   ```bash
-   translations/tools/manage-translations.sh update
-   ```
-
-3. **Clean unused keys** (optional):
-   ```bash
-   translations/tools/manage-translations.sh clean
-   ```
-
-### Adding a New Language
-
-1. **Create a new language file**:
-   ```bash
-   translations/tools/manage-translations.sh update -l new_lang
-   ```
-
-2. **Synchronize key structure**:
-   ```bash
-   translations/tools/manage-translations.sh sync
-   ```
-
-### Cleanup After Large Refactoring
-
-1. **Backup translation files**:
-   ```bash
-   cp -r translations translations.backup
-   ```
-
-2. **Clean unused keys**:
-   ```bash
-   translations/tools/manage-translations.sh clean
-   ```
-
-3. **Synchronize all languages**:
-   ```bash
-   translations/tools/manage-translations.sh sync
-   ```
-
-## Supported Translatable Text Formats
-
-The tool recognizes the following formats for translatable texts:
-
-```qml
-// Basic format
-Translation.tr("Hello, world!")
-Translation.tr('Hello, world!')
-Translation.tr(`Hello, world!`)
-
-// With line breaks
-Translation.tr("Line 1\nLine 2")
-
-// With escape characters
-Translation.tr("Say \"Hello\"")
-
-// With parameter placeholders
-Translation.tr("Hello, %1!").arg(name)
-```
-
-## Example Output
-
-### Status Display
-```
-$ translations/tools/manage-translations.sh status
-Analyzing translation status...
-=== Current Project Status ===
-166 translatable texts extracted
-
-=== Translation File Status ===
-  en_US: 470 keys
-  zh_CN: 470 keys
-```
-
-### Update Translations
-```
-$ translations/tools/manage-translations.sh update -l zh_CN
-Updating translation files...
-==================================================
-Processing language: zh_CN
-==================================================
-Analysis result:
-  Missing keys: 5
-  Extra keys: 20
-
-Found 5 missing translation keys:
-1. "New feature text"
-2. "Another new text"
-...
-
-Add these 5 missing keys? (y/n): y
-5 keys added
-
-Found 20 extra translation keys:
-1. "Removed old text" -> "已删除的旧文本"
-...
-
-Delete these 20 extra keys? (y/n): y
-20 keys deleted
-
-Translation file saved
-```
-
-### Clean Unused Keys
-```
-$ translations/tools/manage-translations.sh clean
-Cleaning unused translation keys...
-Processing language: zh_CN
-Found 50 unused keys:
-  1. "old_unused_text"
-  2. "deprecated_message"
-  ...
-
-Delete these 50 unused keys? (y/n): y
-50 keys deleted
-Original key count: 470, after cleaning: 420
-```
-
-## Advanced Features
-
-### Custom Directory Structure
-
-```bash
-# Use custom directories
-translations/tools/translation-manager.py \
-  --translations-dir /path/to/translations \
-  --source-dir /path/to/source
-```
-
-### Ignore Mark Feature
-
-For dynamic resources or special texts that should not be automatically cleaned, you can add `/*keep*/` at the end of the translation value. The tool will automatically ignore these keys and will not delete them during cleaning or syncing.
-
-Example:
 ```json
 {
   "dynamic_key": "Some dynamic value /*keep*/"
 }
 ```
 
-## Notes
+Because pruning is source-driven, the preservation marker belongs in the source locale (`en_US.json`). A marker present only in a target translation does not override the canonical orphan decision.
 
-1. **Backup is important**: The tool automatically creates backups before cleaning, but it is recommended to manually back up important files
+## Supported static forms
 
-2. **Text extraction limitations**:
-   - Dynamic resources (such as variable concatenation or runtime-generated text) cannot be automatically extracted. You need to manually add them to the translation file and use the `/*keep*/` mark for ignore management.
-   - Must use the `Translation.tr()` format
+```qml
+Translation.tr("Hello, world!")
+Translation.tr('Hello, world!')
+Translation.tr(`Hello, world!`)
+Translation.tr("Line 1\nLine 2")
+Translation.tr("Hello, %1!").arg(name)
+```
 
-3. **File encoding**: All files must use UTF-8 encoding
+Dynamic expressions such as `Translation.tr(variable)` require explicit catalog preservation because the extractor cannot infer their possible values.
 
-4. **Key naming conventions**: It is recommended to use English for key names and avoid special characters
+## Backups and recovery
 
-## Troubleshooting
-
-### Common Issues
-
-**Q: Text does not appear after adding Translation.tr?**
-A: You need to import the translation feature in your QML file using `import "root:/"`, otherwise the translation text will not be displayed correctly.
-
-**Q: The number of extracted texts does not match expectations?**
-A: Check whether all translatable texts use the `Translation.tr()` format and ensure there are no dynamically constructed strings.
-
-**Q: Some translations are missing after syncing?**
-A: Check whether the source language file contains all necessary keys, and consider using a different source language for syncing.
-
-**Q: The cleaning operation deleted needed keys?**
-A: Restore from the automatically created backup file and check whether `Translation.tr()` is used correctly in the source code.
-
-### Restore Backup
+The cleaner creates `*.json.bak` files by default before mutations. For a larger refactor, an explicit repository-local backup is also reasonable:
 
 ```bash
-# Restore a single file
-cp translations.backup/zh_CN.json translations/zh_CN.json
+cp -r translations translations.backup
+```
 
-# Restore all files
+Restore a locale or the whole catalog with:
+
+```bash
+cp translations.backup/zh_CN.json translations/zh_CN.json
 cp translations.backup/*.json translations/
 ```
+
+After recovery, run:
+
+```bash
+python3 translations/tools/l10n.py audit-all
+```
+
+## CI expectations
+
+Translation tooling should remain shell/Python-syntax clean, locale and localization metadata must remain valid JSON, and locale key/placeholder contracts should be checked with `l10n.py audit-all` whenever the catalog changes.

@@ -58,8 +58,18 @@ QtObject {
         return root.snap(root.clamp(v, lo, hi))
     }
 
+    function numberFinite(value) {
+        return Number.isFinite(Number(value))
+    }
+
     function rectHasArea(rect) {
-        return rect.width > 0 && rect.height > 0
+        return rect
+            && root.numberFinite(rect.x)
+            && root.numberFinite(rect.y)
+            && root.numberFinite(rect.width)
+            && root.numberFinite(rect.height)
+            && rect.width > 0
+            && rect.height > 0
     }
 
     function unionRect(a, b) {
@@ -112,7 +122,7 @@ QtObject {
         || clampedBodySize.height !== snapSizeDown(bodySize.height)
     readonly property bool valid: PerimeterTopology.edges.includes(edge)
         && alignmentValid
-        && outputRect.width > 0 && outputRect.height > 0
+        && rectHasArea(outputRect)
         && rectHasArea(anchorRect)
         && clampedBodySize.width > 0 && clampedBodySize.height > 0
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Translation management script - convenient wrapper
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TRANSLATIONS_DIR="$(dirname "$SCRIPT_DIR")"
@@ -37,17 +37,17 @@ show_help() {
 
 show_status() {
     echo "Analyzing translation status..."
-    
+
     # Extract current text count
     echo "=== Current Project Status ==="
     python3 "$SCRIPT_DIR/translation-manager.py" \
         --translations-dir "$TRANSLATIONS_DIR" \
         --source-dir "$SOURCE_DIR" \
         --extract-only | grep "Extracted"
-    
+
     echo ""
     echo "=== Translation File Status ==="
-    
+
     if [ -d "$TRANSLATIONS_DIR" ]; then
         for file in "$TRANSLATIONS_DIR"/*.json; do
             if [ -f "$file" ]; then
@@ -64,7 +64,7 @@ show_status() {
 # Parse command line arguments
 LANG_CODE=""
 COMMAND=""
-YES_FLAG=""
+YES_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -81,7 +81,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -y|--yes)
-            YES_FLAG="-y"
+            YES_ARGS=(--yes)
             shift
             ;;
         -h|--help)
@@ -126,23 +126,23 @@ BASE_ARGS=(--translations-dir "$TRANSLATIONS_DIR" --source-dir "$SOURCE_DIR")
 case $COMMAND in
     extract)
         echo "Extracting translatable texts..."
-        python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" $YES_FLAG --extract-only --show-temp
+        python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}" --extract-only --show-temp
         ;;
     update)
         echo "Updating translation files..."
         if [ -n "$LANG_CODE" ]; then
-            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" $YES_FLAG --language "$LANG_CODE"
+            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}" --language "$LANG_CODE"
         else
-            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" $YES_FLAG
+            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}"
         fi
         ;;
     clean)
         echo "Cleaning unused translation keys..."
-        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" $YES_FLAG --clean
+        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}" --clean
         ;;
     sync)
         echo "Syncing translation keys..."
-        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" $YES_FLAG --sync
+        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}" --sync
         ;;
     status)
         show_status

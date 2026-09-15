@@ -16,9 +16,10 @@ Item {
         return ["top", "right", "bottom", "left"].includes(candidate)
             ? candidate : "bottom"
     }
-    readonly property real thickness: Math.max(40, Math.min(200,
-        Number(root.instanceConfig?.thickness
-            ?? Config.options?.dock?.height ?? 70)))
+    readonly property real configuredThickness: Number(
+        root.instanceConfig?.thickness ?? Config.options?.dock?.height ?? 70)
+    readonly property real thickness: Number.isFinite(root.configuredThickness)
+        ? Math.max(40, Math.min(200, root.configuredThickness)) : 70
     readonly property real outerPadding: Appearance.sizes.elevationMargin
 
     implicitWidth: root.vertical

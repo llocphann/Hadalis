@@ -84,6 +84,22 @@ async function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+// Match the structural token contract enforced by l10n.py. URL percent
+// escapes are data, not Qt placeholders, so strip URL destinations first.
+function placeholders(text) {
+  if (typeof text !== 'string') return [];
+  const withoutMarkdownUrls = text.replace(/\]\([^\n)]*https?:\/\/[^\n)]*\)/g, ']()');
+  const withoutUrls = withoutMarkdownUrls.replace(/https?:\/\/[^\s)]+/g, '');
+  return (withoutUrls.match(/%[1-9]\d?|%n|\{\d+\}|<[^<>]+>/g) ?? []).sort();
+}
+
+function samePlaceholders(source, target) {
+  const sourceTokens = placeholders(source);
+  const targetTokens = placeholders(target);
+  return sourceTokens.length === targetTokens.length &&
+    sourceTokens.every((token, index) => token === targetTokens[index]);
+}
+
 // Strip lone surrogates and U+FFFD replacement chars so we never persist
 // malformed text. Valid supplementary Unicode characters are UTF-16 surrogate
 // pairs and must survive intact (emoji and some CJK characters depend on this).
@@ -160,16 +176,20 @@ async function run() {
 
         let batchBadStrings = 0;
         for (let j = 0; j < batchKeys.length; j++) {
+          const key = batchKeys[j];
           const raw = batchValues[j];
           if (typeof raw !== 'string' || raw.trim().length === 0) {
-            throw new Error(`Empty or invalid translation response for key ${batchKeys[j]}`);
+            throw new Error(`Empty or invalid translation response for key ${key}`);
           }
           const clean = sanitizeTranslation(raw);
           if (clean.trim().length === 0) {
-            throw new Error(`Translation became empty after sanitizing key ${batchKeys[j]}`);
+            throw new Error(`Translation became empty after sanitizing key ${key}`);
+          }
+          if (!samePlaceholders(sourceData[key], clean)) {
+            throw new Error(`Translation changed placeholder structure for key ${key}`);
           }
           if (clean !== raw) batchBadStrings++;
-          data[batchKeys[j]] = clean;
+          data[key] = clean;
         }
         writeAtomic(filePath, data);
         badStrings += batchBadStrings;

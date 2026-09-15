@@ -15,6 +15,11 @@ from typing import Dict, Set, List, Tuple
 import tempfile
 import subprocess
 
+CURRENT_DIR = Path(__file__).resolve().parent
+DEFAULT_TRANSLATIONS_DIR = str(CURRENT_DIR.parent)
+DEFAULT_SOURCE_DIR = str(CURRENT_DIR.parents[1])
+
+
 class TranslationManager:
     def __init__(self, translations_dir: str, source_dir: str, yes_mode: bool = False):
         self.translations_dir = Path(translations_dir)
@@ -213,11 +218,11 @@ class TranslationManager:
 def main():
     parser = argparse.ArgumentParser(description="Translation file management tool")
     parser.add_argument("--translations-dir", "-t", 
-                       default=".config/quickshell/translations",
-                       help="Translation files directory (default: .config/quickshell/translations)")
+                       default=DEFAULT_TRANSLATIONS_DIR,
+                       help=f"Translation files directory (default: {DEFAULT_TRANSLATIONS_DIR})")
     parser.add_argument("--source-dir", "-s", 
-                       default=".config/quickshell/inir",
-                       help="Source code directory (default: .config/quickshell/inir)")
+                       default=DEFAULT_SOURCE_DIR,
+                       help=f"Source code directory (default: {DEFAULT_SOURCE_DIR})")
     parser.add_argument("--language", "-l", 
                        help="Specify language code to process (e.g., zh_CN)")
     parser.add_argument("--extract-only", "-e", action="store_true",

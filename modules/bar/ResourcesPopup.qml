@@ -67,14 +67,6 @@ StyledPopup {
         anchors.centerIn: parent
         spacing: 12
 
-        // Helper functions inline
-        function formatKB(kb) {
-            return (kb / (1024 * 1024)).toFixed(1) + " GB";
-        }
-        function formatTemp(temp) {
-            return temp + "°C"
-        }
-
         Column {
             anchors.top: parent.top
             spacing: 8

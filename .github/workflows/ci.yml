@@ -68,6 +68,40 @@ jobs:
             grep -Fq 'assets/polkit/org.inir.thinkfan.policy' "$pkg"
           done
 
+      - name: Validate distribution install contracts
+        run: |
+          grep -qx 'Type=dbus' assets/systemd/inir.service
+          grep -qx 'BusName=org.kde.StatusNotifierWatcher' assets/systemd/inir.service
+          grep -qx 'After=graphical-session-pre.target' assets/systemd/inir.service
+          grep -qx 'Before=graphical-session.target' assets/systemd/inir.service
+          if grep -qx 'After=graphical-session.target' assets/systemd/inir.service; then
+            echo 'canonical user service starts too late for tray ownership' >&2
+            exit 1
+          fi
+
+          for module in nix/nixos-module.nix nix/home-module.nix; do
+            grep -Fq 'Type = "dbus";' "$module"
+            grep -Fq 'BusName = "org.kde.StatusNotifierWatcher";' "$module"
+            grep -Fq '"graphical-session-pre.target"' "$module"
+            grep -Fq '"graphical-session.target"' "$module"
+            if grep -Fq 'Requisite' "$module"; then
+              echo "$module still requires graphical-session.target before startup" >&2
+              exit 1
+            fi
+          done
+
+          install_plan="$(make -n install PREFIX=/usr DESTDIR=/tmp/inir-stage-test)"
+          for staged_path in \
+            /tmp/inir-stage-test/usr/bin/inir \
+            /tmp/inir-stage-test/usr/share/quickshell/inir \
+            /tmp/inir-stage-test/usr/lib/systemd/user/inir.service \
+            /tmp/inir-stage-test/usr/share/applications/inir.desktop \
+            /tmp/inir-stage-test/usr/share/doc/inir-shell/README.md \
+            /tmp/inir-stage-test/usr/libexec/inir-battery-charge-limit \
+            /tmp/inir-stage-test/usr/libexec/inir-thinkfan; do
+            grep -Fq "$staged_path" <<< "$install_plan"
+          done
+
       - name: Run updater and TLP regressions
         run: |
           bash scripts/test-update-lifecycle.sh

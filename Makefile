@@ -18,7 +18,7 @@ TLP_SETTINGS_SCHEMA = $(INIR_SYSTEM_SHAREDIR)/tlp-settings-schema.json
 THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 
-.PHONY: all build test-local test-battery-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -33,6 +33,9 @@ test-local: build
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh
+
+test-thinkfan-helper:
+	@bash scripts/test-thinkfan-helper.sh
 
 install-bin:
 	@install -Dm755 scripts/inir "$(DESTDIR)$(BINDIR)/inir"

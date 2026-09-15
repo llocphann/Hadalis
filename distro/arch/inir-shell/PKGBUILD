@@ -87,6 +87,7 @@ optdepends=(
   'socat: mpv IPC fallback helpers'
   'swappy: screenshot annotation helpers'
   'tesseract: OCR-backed screenshot tools'
+  'thinkfan: managed fan-control integration'
   'translate-shell: translation helpers'
   'ttf-oxanium: angel style font'
   'upower: battery monitoring service'
@@ -120,6 +121,11 @@ package() {
   install -Dm644 "$srcroot/assets/applications/inir.desktop" "$pkgdir/usr/share/applications/inir.desktop"
   install -Dm644 "$srcroot/assets/applications/inir-settings.desktop" "$pkgdir/usr/share/applications/inir-settings.desktop"
   install -Dm644 "$srcroot/assets/icons/desktop-symbolic.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/inir.svg"
+  install -Dm755 "$srcroot/assets/helpers/inir-battery-charge-limit" "$pkgdir/usr/libexec/inir-battery-charge-limit"
+  install -Dm644 "$srcroot/assets/polkit/org.inir.battery-charge-limit.policy" "$pkgdir/usr/share/polkit-1/actions/org.inir.battery-charge-limit.policy"
+  install -Dm644 "$srcroot/assets/tlp/tlp-settings-schema.json" "$pkgdir/usr/share/inir/tlp-settings-schema.json"
+  install -Dm755 "$srcroot/assets/helpers/inir-thinkfan" "$pkgdir/usr/libexec/inir-thinkfan"
+  install -Dm644 "$srcroot/assets/polkit/org.inir.thinkfan.policy" "$pkgdir/usr/share/polkit-1/actions/org.inir.thinkfan.policy"
   install -Dm644 "$srcroot/distro/arch/inir-shell/inir-quickshell-rebuild.hook" \
     "$pkgdir/usr/share/libalpm/hooks/inir-quickshell-rebuild.hook"
   install -Dm644 "$srcroot/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"

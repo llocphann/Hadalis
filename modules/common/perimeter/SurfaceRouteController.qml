@@ -105,6 +105,26 @@ QtObject {
             return root.close(outputName, "source-hidden")
         }
 
+        // Persisted placement remains authoritative while an instance moves.
+        // During declarative reflow the old publisher can still emit geometry
+        // with the same registry key for one turn; ignore that stale record
+        // rather than letting it move the route back to the old slot.
+        if (!PerimeterConfig.validate(outputName))
+            return root.close(outputName, "source-hidden")
+        const configuredSlot = PerimeterConfig.placementForInstance(
+            outputName, active.sourceInstance)
+        const descriptor = PerimeterConfig.instanceDescriptor(
+            outputName, active.sourceInstance)
+        if (!PerimeterTopology.isValidSlot(configuredSlot)
+                || String(descriptor?.moduleId ?? "") !== active.sourceModule) {
+            return root.close(outputName, "source-hidden")
+        }
+        if (slot !== configuredSlot) {
+            if (configuredSlot !== active.slot)
+                return false
+            return root.close(outputName, "source-hidden")
+        }
+
         const edge = PerimeterTopology.edgeForSlot(slot)
         if (active.slot === slot && active.edge === edge
                 && root._sameRect(active.anchorRect, rect)) {

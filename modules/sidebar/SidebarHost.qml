@@ -58,11 +58,17 @@ Scope {
         root.roleId, sidebarRoot.screen?.name ?? "")
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
-    readonly property string sizeMode: root.roleLayoutState?.sizeMode ?? "full"
+    // Perimeter sidebars are content-sized by definition. Preserve explicit
+    // custom height, but treat legacy/full layout state as fit-to-content.
+    readonly property string configuredSizeMode:
+        root.roleLayoutState?.sizeMode ?? "fit"
+    readonly property string sizeMode:
+        root.configuredSizeMode === "custom" ? "custom" : "fit"
     readonly property int customHeight: Math.round(
         root.roleLayoutState?.customHeight ?? 720)
     readonly property real availableContentHeight: Math.max(0,
-        sidebarRoot.height - Appearance.sizes.hyprlandGapsOut * 2)
+        (sidebarRoot.screen?.height ?? 1080)
+            - Appearance.sizes.hyprlandGapsOut * 2)
     readonly property real reportedPreferredHeight:
         sidebarContentLoader.item?.preferredContentHeight ?? -1
     readonly property real reportedMinimumHeight:
@@ -72,17 +78,16 @@ Scope {
     readonly property real reportedMaximumWidth:
         sidebarContentLoader.item?.maximumUsefulWidth ?? 900
     readonly property real effectiveContentHeight: {
-        if (root.sizeMode === "full")
-            return root.availableContentHeight
+        const maxHeight = root.availableContentHeight
+        const minHeight = Math.min(root.reportedMinimumHeight, maxHeight)
         const requested = root.heightPreview >= 0
             ? root.heightPreview
             : root.sizeMode === "custom"
                 ? root.customHeight
             : root.reportedPreferredHeight > 0
                 ? root.reportedPreferredHeight
-                : root.availableContentHeight
-        return Math.max(root.reportedMinimumHeight,
-            Math.min(root.availableContentHeight, requested))
+                : maxHeight
+        return Math.max(minHeight, Math.min(maxHeight, requested))
     }
     readonly property bool instantOpen: Config.options?.sidebar?.instantOpen ?? false
     readonly property string animationType: Config.options?.sidebar?.animationType ?? "slide"
@@ -159,10 +164,11 @@ Scope {
             && (root.pluginViewActive || root.roleExpanded)
             ? Math.max(configuredRequest, Appearance.sizes.sidebarWidthExtended)
             : configuredRequest
-        const screenLimit = Math.max(root.reportedMinimumWidth,
+        const screenLimit = Math.max(0,
             (sidebarRoot.screen?.width ?? 1920)
                 - Appearance.sizes.hyprlandGapsOut * 2)
-        return Math.max(root.reportedMinimumWidth,
+        const minimumWidth = Math.min(root.reportedMinimumWidth, screenLimit)
+        return Math.max(minimumWidth,
             Math.min(root.reportedMaximumWidth, screenLimit, requested))
     }
 
@@ -573,6 +579,8 @@ Scope {
 
         exclusiveZone: 0
         implicitWidth: Math.ceil(root.effectiveSidebarWidth)
+        implicitHeight: Math.ceil(root.effectiveContentHeight
+            + Appearance.sizes.hyprlandGapsOut * 2)
         WlrLayershell.namespace: root.isLeftEdge
             ? "quickshell:sidebarLeft" : "quickshell:sidebarRight"
         WlrLayershell.layer: WlrLayer.Overlay
@@ -591,9 +599,11 @@ Scope {
                 || sidebarContentLoader.animating)
         updatesEnabled: sidebarRoot.visible && root._renderUpdatesNeeded
 
+        // With neither vertical edge anchored, layer-shell centers the surface
+        // on the unconstrained axis. The explicit implicitHeight keeps the
+        // native surface content-sized instead of a transparent full-height
+        // overlay while left/right placement remains compositor-managed.
         anchors {
-            top: true
-            bottom: true
             left: root.isLeftEdge
             right: !root.isLeftEdge
         }
@@ -758,10 +768,9 @@ Scope {
             layer.effect: ShellDesaturationEffect {}
 
             anchors {
-                bottom: parent.bottom
+                verticalCenter: parent.verticalCenter
                 left: root.isLeftEdge ? parent.left : undefined
                 right: root.isLeftEdge ? undefined : parent.right
-                bottomMargin: Appearance.sizes.hyprlandGapsOut
                 rightMargin: root.isLeftEdge
                     ? Appearance.sizes.elevationMargin
                     : Appearance.sizes.hyprlandGapsOut

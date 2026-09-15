@@ -13,6 +13,7 @@ MouseArea {
     required property SystemTrayItem item
     property var trayParent: null  // Reference to SysTray for closing other menus
     property bool targetMenuOpen: false
+    property bool keyboardMenuMode: false
 
     signal menuOpened(qsWindow: var)
     signal menuClosed()
@@ -33,11 +34,12 @@ MouseArea {
             root.item.activate()
     }
 
-    function openContextMenu(): void {
+    function openContextMenu(fromKeyboard: bool): void {
         if (!root.item.hasMenu)
             return
         if (root.trayParent)
             root.trayParent.closeAllTrayMenus()
+        root.keyboardMenuMode = fromKeyboard
         menu.open()
     }
 
@@ -54,7 +56,7 @@ MouseArea {
         if (event.key === Qt.Key_Menu
                 || (event.key === Qt.Key_F10
                     && (event.modifiers & Qt.ShiftModifier))) {
-            root.openContextMenu()
+            root.openContextMenu(true)
             event.accepted = true
         }
     }
@@ -72,7 +74,7 @@ MouseArea {
             item.secondaryActivate();
             break;
         case Qt.RightButton:
-            root.openContextMenu();
+            root.openContextMenu(false);
             break;
         }
         event.accepted = true;
@@ -110,6 +112,7 @@ MouseArea {
             Component.onCompleted: this.open();
             trayItemMenuHandle: root.item.menu
             anchorHovered: root.containsMouse
+            keyboardMode: root.keyboardMenuMode
             anchor {
                 item: root
                 edges: (Config.options?.bar?.vertical ?? false)
@@ -123,6 +126,7 @@ MouseArea {
             }
             onMenuOpened: (window) => root.menuOpened(window);
             onMenuClosed: {
+                root.keyboardMenuMode = false;
                 root.menuClosed();
                 menu.active = false;
             }

@@ -35,6 +35,16 @@ MouseArea {
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton
+    activeFocusOnTab: true
+
+    Keys.onPressed: event => {
+        if (event.key !== Qt.Key_Return
+                && event.key !== Qt.Key_Enter
+                && event.key !== Qt.Key_Space)
+            return
+        root.requestExpanded()
+        event.accepted = true
+    }
 
     function requestExpanded(): void {
         if (!(root.perimeterContext?.valid ?? false))

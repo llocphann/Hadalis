@@ -4,7 +4,12 @@ singleton PerimeterConfig 1.0 PerimeterConfig.qml
 singleton ModuleRegistry 1.0 ModuleRegistry.qml
 singleton AnchorRegistry 1.0 AnchorRegistry.qml
 singleton SurfaceRouteController 1.0 SurfaceRouteController.qml
+singleton PerimeterTokens 1.0 PerimeterTokens.qml
 PerimeterContext 1.0 PerimeterContext.qml
 PerimeterSlotModel 1.0 PerimeterSlotModel.qml
 PerimeterModuleHost 1.0 PerimeterModuleHost.qml
 AnchorPublisher 1.0 AnchorPublisher.qml
+ConnectedSurfaceGeometry 1.0 ConnectedSurfaceGeometry.qml
+ConnectedSurfaceConnector 1.0 ConnectedSurfaceConnector.qml
+ConnectedSurfaceFrame 1.0 ConnectedSurfaceFrame.qml
+ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml

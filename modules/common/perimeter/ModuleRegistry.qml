@@ -7,7 +7,7 @@ QtObject {
 
     // Core registration is metadata-only. Feature implementations register a
     // source URL when they are ready to be hosted; placement is never encoded here.
-    property var _registry: ({
+    readonly property var _builtinRegistry: ({
         "thinkfan": { moduleId: "thinkfan", preferredOrientation: "any", compact: true, expanded: true, source: "" },
         "system-monitor": { moduleId: "system-monitor", preferredOrientation: "any", compact: true, expanded: true, source: "" },
         "workspaces": { moduleId: "workspaces", preferredOrientation: "horizontal", compact: true, expanded: false, source: "" },
@@ -17,6 +17,7 @@ QtObject {
         "right-sidebar": { moduleId: "right-sidebar", preferredOrientation: "vertical", compact: true, expanded: true, source: "" },
         "dock": { moduleId: "dock", preferredOrientation: "horizontal", compact: true, expanded: true, source: "" }
     })
+    property var _registry: Object.assign({}, _builtinRegistry)
 
     signal moduleRegistered(string moduleId)
     signal moduleUnregistered(string moduleId)
@@ -57,7 +58,11 @@ QtObject {
         if (!id || !root._registry[id])
             return false
         const next = Object.assign({}, root._registry)
-        delete next[id]
+        const builtin = root._builtinRegistry[id] ?? null
+        if (builtin)
+            next[id] = Object.assign({}, builtin)
+        else
+            delete next[id]
         root._registry = next
         root.moduleUnregistered(id)
         return true

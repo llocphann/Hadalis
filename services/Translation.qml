@@ -146,6 +146,12 @@ Singleton {
         }
     }
 
+    Component.onCompleted: {
+        if (Config.ready) {
+            scanDefer.start()
+        }
+    }
+
     component TranslationReader: FileView {
         id: translationReader
         required property string translationsDir

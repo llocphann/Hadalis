@@ -56,6 +56,18 @@ jobs:
           python3 scripts/lib/generate-ipc-registry.py --check
           make -n install PREFIX=/tmp/inir-stage-test >/dev/null
 
+      - name: Validate package source identity
+        run: |
+          for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD distro/arch/inir-meta/PKGBUILD; do
+            grep -Fq "url='https://github.com/llocphann/Hadalis'" "$pkg"
+            if grep -Fqi 'github.com/snowarch/inir' "$pkg"; then
+              echo "$pkg still sources the upstream iNiR repository" >&2
+              exit 1
+            fi
+          done
+          grep -Fq 'github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz' distro/arch/inir-shell/PKGBUILD
+          grep -Fq 'git+https://github.com/llocphann/Hadalis.git#branch=dev' distro/arch/inir-shell-git/PKGBUILD
+
       - name: Validate privileged integration packaging
         run: |
           grep -Fq 'org.freedesktop.policykit.exec.path">/usr/libexec/inir-thinkfan' assets/polkit/org.inir.thinkfan.policy

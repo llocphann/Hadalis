@@ -1,0 +1,4 @@
+module qs.modules.perimeter
+WorkspacesModule 1.0 WorkspacesModule.qml
+SystemMonitorModule 1.0 SystemMonitorModule.qml
+WeatherModule 1.0 WeatherModule.qml

@@ -1,0 +1,89 @@
+import qs.modules.common
+import qs.modules.common.perimeter
+import qs.modules.common.widgets
+import qs.services
+import QtQuick
+import QtQuick.Layouts
+
+MouseArea {
+    id: root
+
+    property var perimeterContext: null
+    property var instanceConfig: ({})
+
+    readonly property bool vertical:
+        (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
+    readonly property string outputName: root.perimeterContext?.outputName ?? ""
+    readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
+    readonly property string slotId: root.perimeterContext?.slotId ?? ""
+
+    implicitWidth: root.vertical
+        ? Math.max(content.implicitWidth, Appearance.sizes.barHeight)
+        : content.implicitWidth + 12
+    implicitHeight: root.vertical
+        ? content.implicitHeight + 12
+        : Appearance.sizes.barHeight
+
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
+    acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+    function requestExpanded(): void {
+        if (!(root.perimeterContext?.valid ?? false))
+            return
+        anchorPublisher.publish()
+        const anchor = AnchorRegistry.lookup(root.outputName, root.instanceId, "weather")
+        if (!anchor)
+            return
+        SurfaceRouteController.toggle({
+            output: root.outputName,
+            family: "perimeter",
+            surface: "weather",
+            sourceInstance: root.instanceId,
+            slot: root.slotId,
+            anchorRect: anchor.rect
+        })
+    }
+
+    onClicked: mouse => {
+        if (mouse.button === Qt.RightButton) {
+            Weather.forceRefresh()
+            return
+        }
+        root.requestExpanded()
+    }
+
+    AnchorPublisher {
+        id: anchorPublisher
+        sourceItem: root
+        outputName: root.outputName
+        slotId: root.slotId
+        instanceId: root.instanceId
+        moduleId: "weather"
+        surfaceName: "weather"
+        preferredExtent: Qt.size(360, 520)
+    }
+
+    RowLayout {
+        id: content
+        anchors.centerIn: parent
+        spacing: 4
+
+        MaterialSymbol {
+            text: Icons.getWeatherIcon(Weather.data?.wCode, Weather.isNightNow()) ?? "cloud"
+            iconSize: Appearance.font.pixelSize.large
+            color: Appearance.inirEverywhere
+                ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        StyledText {
+            visible: !root.vertical
+            text: Weather.data?.temp ?? "--°"
+            font.pixelSize: Appearance.font.pixelSize.small
+            color: Appearance.inirEverywhere
+                ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+            Layout.alignment: Qt.AlignVCenter
+        }
+    }
+}

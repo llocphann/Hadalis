@@ -7,7 +7,16 @@ QtObject {
     signal removed(string key)
     function surfaceName(value) { const name = String(value ?? "default"); return name.length > 0 ? name : "default" }
     function keyFor(outputName, instanceId, surfaceName) { return JSON.stringify([String(outputName ?? ""), String(instanceId ?? ""), root.surfaceName(surfaceName)]) }
-    function rectHasArea(rect) { return rect && rect.width > 0 && rect.height > 0 }
+    function numberFinite(value) { return Number.isFinite(Number(value)) }
+    function rectHasArea(rect) {
+        return rect
+            && root.numberFinite(rect.x)
+            && root.numberFinite(rect.y)
+            && root.numberFinite(rect.width)
+            && root.numberFinite(rect.height)
+            && rect.width > 0
+            && rect.height > 0
+    }
     function publish(record) {
         const outputName = String(record?.outputName ?? "")
         const instanceId = String(record?.instanceId ?? "")

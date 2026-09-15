@@ -79,19 +79,8 @@ ContentPage {
             { key: "newsTicker", title: Translation.tr("News Ticker"), icon: "newspaper", defaultOn: false },
             { key: "japaneseTypography", title: Translation.tr("Japanese Typography"), icon: "translate", defaultOn: false },
             { key: "customImage", title: Translation.tr("Custom image"), icon: "add_photo_alternate", defaultOn: false },
-            { key: "imageConverter", title: Translation.tr("Image converter"), icon: "transform", defaultOn: false },
-            { key: "mascot", title: Translation.tr("Mascot"), icon: "pets", defaultOn: false }
+            { key: "imageConverter", title: Translation.tr("Image converter"), icon: "transform", defaultOn: false }
         ]
-        const instances = Config.getNestedValue("background.widgets.mascotInstances", {}) ?? {}
-        let mascotIndex = 1
-        for (const id of Object.keys(instances).sort()) {
-            widgets.push({
-                key: "mascotInstances." + id,
-                title: Translation.tr("Mascot") + " " + mascotIndex++,
-                icon: "pets",
-                defaultOn: Boolean(instances[id]?.enable)
-            })
-        }
         if (CustomWidgets.ready) {
             for (const widget of CustomWidgets.widgets) {
                 widgets.push({
@@ -1247,7 +1236,6 @@ ContentPage {
                     anchors.fill: parent
                     color: "transparent"
                     border.width: 0
-
                     Repeater {
                         model: 5
                         Rectangle {

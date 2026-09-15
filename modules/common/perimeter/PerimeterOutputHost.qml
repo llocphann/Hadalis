@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common
 
 Item {
     id: root
@@ -13,8 +14,10 @@ Item {
     property real leftInset: 0
     property real rightInset: 0
 
+    readonly property int configRevision: Config.revision
     readonly property rect outputRect: Qt.rect(0, 0, width, height)
-    readonly property bool configValid: PerimeterConfig.validate(outputName)
+    readonly property bool configValid: configRevision >= 0
+        && PerimeterConfig.validate(outputName)
     readonly property Item topStartSlot: topStart
     readonly property Item topCenterSlot: topCenter
     readonly property Item topEndSlot: topEnd

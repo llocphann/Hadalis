@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common
 
 Item {
     id: root
@@ -12,13 +13,15 @@ Item {
     // its output-local coordinate space; standalone consumers may override this.
     property rect slotRect: Qt.rect(x, y, width, height)
 
+    readonly property int configRevision: Config.revision
     readonly property string edge: PerimeterTopology.edgeForSlot(slotId)
     readonly property string alignment: PerimeterTopology.alignmentForSlot(slotId)
     readonly property string orientation: PerimeterTopology.orientationForEdge(edge)
     readonly property var instanceIds: slotModel.instanceIds
     readonly property int count: slotModel.count
     readonly property bool empty: slotModel.empty
-    readonly property bool configValid: PerimeterConfig.validate(outputName)
+    readonly property bool configValid: configRevision >= 0
+        && PerimeterConfig.validate(outputName)
 
     implicitWidth: positionerLoader.item?.implicitWidth ?? 0
     implicitHeight: positionerLoader.item?.implicitHeight ?? 0

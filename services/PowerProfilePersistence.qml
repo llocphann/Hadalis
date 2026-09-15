@@ -81,12 +81,38 @@ Singleton {
 
     Process {
         id: tlpPdProbe
+        property bool timedOut: false
         command: ["/usr/bin/systemctl", "is-enabled", "--quiet", "tlp-pd.service"]
+
+        onStarted: {
+            tlpPdProbe.timedOut = false
+            tlpPdTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
+            tlpPdTimeout.stop()
+            if (tlpPdProbe.timedOut) {
+                root._tlpProbeDone = false
+                console.warn("[PowerProfilePersistence] Timed out probing tlp-pd ownership")
+                return
+            }
+
             root._tlpPdManaged = exitCode === 0
             root._tlpProbeDone = true
             if (Config.ready)
                 Qt.callLater(() => root._applyPreferredProfile())
+        }
+    }
+
+    Timer {
+        id: tlpPdTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!tlpPdProbe.running)
+                return
+            tlpPdProbe.timedOut = true
+            tlpPdProbe.running = false
         }
     }
 
@@ -101,8 +127,9 @@ Singleton {
     Connections {
         target: PowerProfiles
         function onProfileChanged(): void {
-            // Don't persist tlp-pd's automatic AC/BAT selection as a user preference.
-            if (root._tlpPdManaged)
+            // Ownership is unknown until the tlp-pd probe succeeds. Persisting
+            // before then can capture tlp-pd's automatic startup profile.
+            if (!root._tlpProbeDone || root._tlpPdManaged)
                 return
 
             const s = root._profileToString(PowerProfiles.profile)

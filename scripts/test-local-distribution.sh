@@ -29,6 +29,17 @@ sh -n \
     "$runtime_root/assets/helpers/inir-battery-charge-limit" \
     "$runtime_root/scripts/test-battery-charge-limit-helper.sh"
 
+step "Hadalis updater source"
+versioning_lib="$runtime_root/sdata/lib/versioning.sh"
+if ! grep -Fq 'GITHUB_REPO="llocphann/Hadalis"' "$versioning_lib"; then
+    printf 'FAIL: updater release API does not target llocphann/Hadalis\n' >&2
+    exit 1
+fi
+if ! grep -Fq '[[ -z "$branch" || "$branch" == "HEAD" ]] && branch="stable"' "$versioning_lib"; then
+    printf 'FAIL: detached updater fallback does not target the stable branch\n' >&2
+    exit 1
+fi
+
 step "battery charge-limit helper"
 sh "$runtime_root/scripts/test-battery-charge-limit-helper.sh"
 

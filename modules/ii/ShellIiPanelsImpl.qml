@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.bootGreeting
 import qs.modules.lock
-import qs.modules.mascot
 import qs.modules.mediaControls
 import qs.modules.notificationPopup
 import qs.modules.onScreenDisplay
@@ -17,7 +16,6 @@ import qs.modules.wallpaperSelector
 import qs.modules.wallpaperLauncher
 import qs.modules.ii.overlay
 import qs.modules.shellUpdate
-import qs.modules.workspaceStrip
 import qs.modules.clipboard as ClipboardModule
 
 import QtQuick
@@ -102,18 +100,6 @@ Item {
         activeAsync: enabledPanel && GlobalStates.deferredPanelsReady && resident
     }
 
-    readonly property bool barVertical: Config.options?.bar?.vertical ?? false
-    readonly property bool barPill: (Config.options?.bar?.appearanceStyle ?? "classic") === "pill"
-    readonly property bool barM3: (Config.options?.bar?.appearanceStyle ?? "classic") === "m3"
-    readonly property bool barStock: !panelsRoot.barPill && !panelsRoot.barM3
-    readonly property bool pillHostActive: panelsRoot.barPill
-        && !panelsRoot.barVertical
-        && (Config.options?.enabledPanels ?? []).includes("iiBar")
-    readonly property bool pillToastTakeover: panelsRoot.pillHostActive
-        && (Config.options?.bar?.pill?.toasts ?? true)
-    readonly property bool pillOsdTakeover: panelsRoot.pillHostActive
-        && (Config.options?.bar?.pill?.osd ?? true)
-
     function screensFor(list: var): var {
         const screens = Quickshell.screens
         if (!list || list.length === 0)
@@ -125,31 +111,9 @@ Item {
         return matched.length > 0 ? matched : screens
     }
 
-    readonly property var pillHostScreens: panelsRoot.pillHostActive
-        ? panelsRoot.screensFor(Config.options?.bar?.screenList ?? []) : []
-    readonly property var pillHostScreenNames: panelsRoot.pillHostScreens.map(screen => screen?.name ?? "")
-    readonly property var notificationScreens: panelsRoot.screensFor(Config.options?.notifications?.screenList ?? [])
-    readonly property var osdScreens: panelsRoot.screensFor(Config.options?.osd?.screenList ?? [])
-    readonly property bool notificationStandaloneNeeded: !panelsRoot.pillToastTakeover
-        || panelsRoot.notificationScreens.some(screen => !panelsRoot.pillHostScreenNames.includes(screen?.name ?? ""))
-    readonly property bool osdStandaloneNeeded: !panelsRoot.pillOsdTakeover
-        || panelsRoot.osdScreens.some(screen => !panelsRoot.pillHostScreenNames.includes(screen?.name ?? ""))
-
     PanelLoader { identifier: "iiBackdrop"; extraCondition: Config.options?.background?.backdrop?.enable ?? false; source: "../background/Backdrop.qml" }
-    PanelLoader {
-        identifier: "iiNotificationPopup"
-        extraCondition: panelsRoot.notificationStandaloneNeeded
-        component: NotificationPopup {
-            excludedScreenNames: panelsRoot.pillToastTakeover ? panelsRoot.pillHostScreenNames : []
-        }
-    }
-    PanelLoader {
-        identifier: "iiOnScreenDisplay"
-        extraCondition: panelsRoot.osdStandaloneNeeded
-        component: OnScreenDisplay {
-            excludedScreenNames: panelsRoot.pillOsdTakeover ? panelsRoot.pillHostScreenNames : []
-        }
-    }
+    PanelLoader { identifier: "iiNotificationPopup"; component: NotificationPopup {} }
+    PanelLoader { identifier: "iiOnScreenDisplay"; component: OnScreenDisplay {} }
 
     DeferredPanelLoader { identifier: "iiBootGreeting"; component: BootGreeting {} }
     OnDemandPanelLoader { identifier: "iiCheatsheet"; open: GlobalStates.cheatsheetOpen; source: "../cheatsheet/Cheatsheet.qml" }
@@ -242,8 +206,6 @@ Item {
     OnDemandPanelLoader { identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; retainAfterUse: true; closeGraceMs: 250; component: ClipboardModule.ClipboardPanel {} }
     OnDemandPanelLoader { identifier: "iiShellUpdate"; open: ShellUpdates.overlayOpen; closeGraceMs: 250; component: ShellUpdateOverlay {} }
     OnDemandPanelLoader { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; closeGraceMs: 250; component: RecordingOsd {} }
-    DeferredPanelLoader { identifier: "iiWorkspaceStrip"; component: WorkspaceStrip {} }
-    DeferredPanelLoader { identifier: "iiMascotCompanion"; extraCondition: Config.options?.mascot?.enable ?? false; component: MascotCompanion {} }
 
     Loader {
         active: CompositorService.isHyprland

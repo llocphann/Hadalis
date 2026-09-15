@@ -165,6 +165,8 @@ QtObject {
     function _configuredShapeValid() {
         if (root.configured === null)
             return true
+        if (typeof root.configured !== "object" || Array.isArray(root.configured))
+            return false
 
         const instances = root.configured?.instances
         if (instances !== undefined && !Array.isArray(instances))

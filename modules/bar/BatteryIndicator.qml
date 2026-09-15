@@ -1,7 +1,6 @@
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
-import Quickshell
 import QtQuick
 import QtQuick.Layouts
 
@@ -9,12 +8,6 @@ MouseArea {
     id: root
     property bool borderless: Config.options.bar.borderless
 
-    // Easter egg: long-press the battery and she boops in
-    onPressAndHold: {
-        if (Config.options?.mascot?.enable ?? false)
-            Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "mascot", "appearWithLine",
-                "camera-boop", "top", Translation.tr("Boop.")])
-    }
     readonly property var chargeState: Battery.chargeState
     readonly property bool isCharging: Battery.isCharging
     readonly property bool isPluggedIn: Battery.isPluggedIn

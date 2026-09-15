@@ -2,6 +2,8 @@
 
 This suite is used to manage project translation files, automatically extract translatable texts, compare differences between language files, and provide maintenance functions.
 
+All commands below assume the repository root unless a section explicitly changes directories. Translation files live in `translations/`, and source scanning defaults to the repository root so the tools remain independent of the runtime/config installation path.
+
 ## Contextual localization
 
 Use `l10n.py` for current runtime localization work. It audits English fallbacks, creates contextual review batches and validates reviewed translations before applying them.
@@ -34,67 +36,68 @@ See `translations/l10n/README.md` for the full workflow. The older automatic tra
 ### 4. `auto-translate.js` - Bulk Auto-Translation Tool
 - Uses Google Translate to automatically fill empty or missing translations.
 - Processes keys in batches to avoid API limits.
-- **Usage**: `node auto-translate.js <lang_code>` (e.g. `node auto-translate.js es_AR`)
+- **Usage**: `node translations/tools/auto-translate.js <lang_code>` (e.g. `node translations/tools/auto-translate.js es_AR`)
 
 ## Quick Start
 
 ### Using the Wrapper Script (Recommended)
 
-```bash
-# Enter the tools directory
-cd .config/quickshell/translations/tools
+From the repository root:
 
+```bash
 # Show help
-./manage-translations.sh --help
+translations/tools/manage-translations.sh --help
 
 # Show current translation status
-./manage-translations.sh status
+translations/tools/manage-translations.sh status
 
 # Extract translatable texts
-./manage-translations.sh extract
+translations/tools/manage-translations.sh extract
 
 # Update all translation files
-./manage-translations.sh update
+translations/tools/manage-translations.sh update
 
 # Update a specific language
-./manage-translations.sh update -l zh_CN
+translations/tools/manage-translations.sh update -l zh_CN
 
 # Clean unused keys
-./manage-translations.sh clean
+translations/tools/manage-translations.sh clean
 
 # Synchronize keys across all language files
-./manage-translations.sh sync
+translations/tools/manage-translations.sh sync
 ```
 
-Or run from the project root:
+You can also enter the tools directory first:
+
 ```bash
-# Run from the project root
-.config/quickshell/translations/tools/manage-translations.sh status
-.config/quickshell/translations/tools/manage-translations.sh update
+cd translations/tools
+./manage-translations.sh status
+./manage-translations.sh update
 ```
 
 ## Detailed Usage
 
 ### Translation Manager (`translation-manager.py`)
 
-Basic usage:
+Basic usage from the repository root:
+
 ```bash
 # Process all languages
-./translation-manager.py
+translations/tools/translation-manager.py
 
 # Specify a particular language
-./translation-manager.py --language zh_CN
+translations/tools/translation-manager.py --language zh_CN
 
 # Extract translatable texts only
-./translation-manager.py --extract-only
+translations/tools/translation-manager.py --extract-only
 
 # Show extracted texts
-./translation-manager.py --extract-only --show-temp
+translations/tools/translation-manager.py --extract-only --show-temp
 ```
 
 Parameter description:
-- `--translations-dir`, `-t`: Translation files directory (default: `.config/quickshell/translations`)
-- `--source-dir`, `-s`: Source code directory (default: `.config/quickshell`)
+- `--translations-dir`, `-t`: Translation files directory (default: repository `translations/` directory)
+- `--source-dir`, `-s`: Source code directory (default: repository root)
 - `--language`, `-l`: Specify the language code to process
 - `--extract-only`, `-e`: Only extract translatable texts
 - `--show-temp`: Show the content of the temporary extraction file
@@ -103,17 +106,19 @@ Parameter description:
 
 ```bash
 # Clean unused translation keys
-./translation-cleaner.py --clean
+translations/tools/translation-cleaner.py --clean
 
 # Synchronize translation keys (using en_US as the base)
-./translation-cleaner.py --sync
+translations/tools/translation-cleaner.py --sync
 
 # Specify a different source language for syncing
-./translation-cleaner.py --sync --source-lang zh_CN
+translations/tools/translation-cleaner.py --sync --source-lang zh_CN
 
 # Clean without creating backups
-./translation-cleaner.py --clean --no-backup
+translations/tools/translation-cleaner.py --clean --no-backup
 ```
+
+The cleaner also defaults to the repository `translations/` directory and repository root for source scanning.
 
 ## Workflow
 
@@ -121,46 +126,46 @@ Parameter description:
 
 1. **Check status**:
    ```bash
-   ./manage-translations.sh status
+   translations/tools/manage-translations.sh status
    ```
 
 2. **Update translations**:
    ```bash
-   ./manage-translations.sh update
+   translations/tools/manage-translations.sh update
    ```
 
 3. **Clean unused keys** (optional):
    ```bash
-   ./manage-translations.sh clean
+   translations/tools/manage-translations.sh clean
    ```
 
 ### Adding a New Language
 
 1. **Create a new language file**:
    ```bash
-   ./manage-translations.sh update -l new_lang
+   translations/tools/manage-translations.sh update -l new_lang
    ```
 
 2. **Synchronize key structure**:
    ```bash
-   ./manage-translations.sh sync
+   translations/tools/manage-translations.sh sync
    ```
 
 ### Cleanup After Large Refactoring
 
 1. **Backup translation files**:
    ```bash
-   cp -r .config/quickshell/translations .config/quickshell/translations.backup
+   cp -r translations translations.backup
    ```
 
 2. **Clean unused keys**:
    ```bash
-   ./manage-translations.sh clean
+   translations/tools/manage-translations.sh clean
    ```
 
 3. **Synchronize all languages**:
    ```bash
-   ./manage-translations.sh sync
+   translations/tools/manage-translations.sh sync
    ```
 
 ## Supported Translatable Text Formats
@@ -187,7 +192,7 @@ Translation.tr("Hello, %1!").arg(name)
 
 ### Status Display
 ```
-$ ./manage-translations.sh status
+$ translations/tools/manage-translations.sh status
 Analyzing translation status...
 === Current Project Status ===
 166 translatable texts extracted
@@ -199,7 +204,7 @@ Analyzing translation status...
 
 ### Update Translations
 ```
-$ ./manage-translations.sh update -l zh_CN
+$ translations/tools/manage-translations.sh update -l zh_CN
 Updating translation files...
 ==================================================
 Processing language: zh_CN
@@ -228,7 +233,7 @@ Translation file saved
 
 ### Clean Unused Keys
 ```
-$ ./manage-translations.sh clean
+$ translations/tools/manage-translations.sh clean
 Cleaning unused translation keys...
 Processing language: zh_CN
 Found 50 unused keys:
@@ -247,7 +252,7 @@ Original key count: 470, after cleaning: 420
 
 ```bash
 # Use custom directories
-./translation-manager.py \
+translations/tools/translation-manager.py \
   --translations-dir /path/to/translations \
   --source-dir /path/to/source
 ```
@@ -268,7 +273,6 @@ Example:
 1. **Backup is important**: The tool automatically creates backups before cleaning, but it is recommended to manually back up important files
 
 2. **Text extraction limitations**:
-   - ~~Only supports static strings, not dynamically constructed strings~~
    - Dynamic resources (such as variable concatenation or runtime-generated text) cannot be automatically extracted. You need to manually add them to the translation file and use the `/*keep*/` mark for ignore management.
    - Must use the `Translation.tr()` format
 
@@ -296,8 +300,8 @@ A: Restore from the automatically created backup file and check whether `Transla
 
 ```bash
 # Restore a single file
-cp .config/quickshell/translations/zh_CN.json.backup .config/quickshell/translations/zh_CN.json
+cp translations.backup/zh_CN.json translations/zh_CN.json
 
 # Restore all files
-cp .config/quickshell/translations.backup/* .config/quickshell/translations/
+cp translations.backup/*.json translations/
 ```

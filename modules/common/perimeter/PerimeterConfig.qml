@@ -228,7 +228,8 @@ QtObject {
     }
 
     function validate(outputName) {
-        if (!root.schemaSupported || !root._configuredShapeValid())
+        if (!String(outputName ?? "").length
+                || !root.schemaSupported || !root._configuredShapeValid())
             return false
 
         const base = root._sharedInstances()

@@ -57,7 +57,10 @@ Singleton {
     }
 
     function biggestWindowForWorkspace(workspaceId) {
-        const windowsInThisWorkspace = HyprlandData.windowList.filter(w => w.workspace.id == workspaceId);
+        if (workspaceId === null || workspaceId === undefined)
+            return null;
+        const windowsInThisWorkspace = HyprlandData.windowList.filter(
+            w => w?.workspace?.id == workspaceId);
         return windowsInThisWorkspace.reduce((maxWin, win) => {
             const maxArea = (maxWin?.size?.[0] ?? 0) * (maxWin?.size?.[1] ?? 0);
             const winArea = (win?.size?.[0] ?? 0) * (win?.size?.[1] ?? 0);
@@ -143,7 +146,7 @@ Singleton {
             id: workspacesCollector
             onStreamFinished: {
                 try {
-                    root.workspaces = JSON.parse(workspacesCollector.text);
+                    root.workspaces = JSON.parse(workspacesCollector.text)
                 } catch (e) {
                     console.log("[HyprlandData] Failed to parse workspaces JSON:", e);
                     root.workspaces = [];
@@ -166,7 +169,7 @@ Singleton {
             id: activeWorkspaceCollector
             onStreamFinished: {
                 try {
-                    root.activeWorkspace = JSON.parse(activeWorkspaceCollector.text);
+                    root.activeWorkspace = JSON.parse(activeWorkspaceCollector.text)
                 } catch (e) {
                     console.log("[HyprlandData] Failed to parse active workspace JSON:", e);
                     root.activeWorkspace = null;

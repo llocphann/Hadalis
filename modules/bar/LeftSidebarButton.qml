@@ -56,7 +56,7 @@ RippleButton {
     toggled: ShellLayoutController.sidebarOpenAtSlot("left",
         root.QsWindow.window?.screen?.name ?? "")
 
-    onPressed: {
+    onClicked: {
         ShellLayoutController.toggleSidebarAtSlot("left",
             root.QsWindow.window?.screen?.name ?? "");
     }

@@ -1,615 +1,710 @@
-# Hadalis Connected Surfaces — Research Handoff
+# Hadalis Connected Perimeter — Architecture Handoff
 
-> **Status:** research / architecture handoff only  
+> **Status:** architecture/source-of-truth handoff  
 > **Branch:** `dev`  
-> **Research baseline:** `f8e254a7542eb22dd39c0dd3c3aba66692fc3451`  
 > **Date:** 2026-09-15  
-> **Functional implementation:** **not started**
+> **Functional Connected Perimeter implementation:** not started  
+> **Baseline policy:** implementation must be built on the cleaned **Material ii / Classic-only** baseline and must not reintroduce retired appearance/features removed by the concurrent cleanup work.
 
-This README intentionally replaces the previous project README for the current development handoff. The goal of this pass was to study Hadalis and Caelestia deeply enough to define a low-regression path toward connected Quickshell surfaces before changing functional QML.
+This document supersedes the previous single-top-bar / single-bottom-host interpretation of the Connected Surfaces research.
 
-The requested target is:
+The target is now a **configurable per-output perimeter system** inspired by Caelestia's connected-composition model while preserving Hadalis/iNiR's services, compositor integration, routing, lifecycle and Niri engineering.
 
-- Material ii **Classic Bar**.
-- Bar at the **top**.
-- Existing **hug-corner** language retained and extended.
-- Bar popups should look physically attached to the bar rather than like independent floating cards.
-- Sidebar should use the same connected geometry language.
-- Clipboard should be **merged into the sidebar**, not remain a standalone full-screen overlay.
-- Overview should become a **bottom-attached** surface.
-- Dashboard should become a **bottom-attached** surface.
-- These surfaces should share state, geometry rules, animation language, focus policy, and per-output routing.
-- The Waffle family is outside this migration unless explicitly brought into scope later.
+Hadalis is **not** a source merge of Caelestia and iNiR. The intended combination is:
 
-No functional Connected Surface code was changed during this research pass. The only intended repository modification in this pass is this handoff document.
+- iNiR/Hadalis supplies runtime/services/configuration/Niri integration/window lifecycle/output routing.
+- Caelestia supplies architectural lessons for connected geometry, anchor-aware popouts, state coordination and seamless surface composition.
+- Hadalis owns the final visual language, topology and implementation.
 
 ---
 
-## Executive decision
+## 1. Non-negotiable target topology
 
-**Yes, Hadalis can reproduce the connected / seamless feel associated with Caelestia.** The correct adaptation is architectural, not a direct copy of Caelestia's popup QML.
-
-Caelestia's result comes from several layers working together:
-
-1. a per-screen composition window / coordinate space,
-2. centralized surface and interaction state,
-3. geometry-aware input regions,
-4. coordinated panel deformation / clipping,
-5. and, for the organic merged background, a native `Caelestia.Blobs` scene-graph implementation.
-
-Hadalis already owns most of the difficult compositor-facing infrastructure that should **not** be discarded: per-output `PanelWindow`s, precise `Region` masks, target-output resolution, sidebar lifecycle management, focus handling, fullscreen/direct-scanout protection, blur regions, and Classic Bar hug corners.
-
-Therefore the recommended migration is:
-
-> **Keep Hadalis' window/lifecycle strengths, add a shared Connected Surface state + geometry layer, migrate surfaces incrementally, and only introduce a native blob renderer if QML-native geometry cannot meet the final visual fidelity target.**
-
-This avoids turning a visual redesign into a high-risk rewrite of focus, input, monitor routing, and fullscreen behavior.
-
----
-
-## What was studied
-
-### Hadalis (`dev`)
-
-Primary files and boundaries reviewed:
-
-- `modules/bar/Bar.qml`
-- `GlobalStates.qml`
-- `modules/sidebar/SidebarHost.qml`
-- `modules/sidebarRight/SidebarRight.qml`
-- `modules/clipboard/ClipboardPanel.qml`
-- `modules/overview/Overview.qml`
-- `modules/overview/OverviewWindow.qml`
-- `modules/dashboard/Dashboard.qml`
-- `modules/ii/ShellIiPanelsImpl.qml`
-- `ARCHITECTURE.md`
-- `STRUCTURE.md`
-
-### Caelestia Shell (`main`)
-
-Primary reference files reviewed:
-
-- `modules/drawers/ContentWindow.qml`
-- `modules/drawers/Panels.qml`
-- `modules/drawers/Interactions.qml`
-- `modules/bar/BarWrapper.qml`
-- `modules/bar/popouts/Wrapper.qml`
-- `modules/bar/popouts/ClipWrapper.qml`
-- `modules/nexus/common/BlobPopup.qml`
-- `modules/nexus/common/ConnectedRect.qml`
-- `plugin/src/Caelestia/Blobs/*`
-- `plugin/src/Caelestia/Blobs/blobgroup.cpp`
-
-The current Caelestia implementation studied is built around a side-oriented bar and therefore cannot be transplanted geometrically into Hadalis' top Classic Bar. Its **composition model** is the useful reference.
-
----
-
-## Why Caelestia feels seamless
-
-Caelestia does not achieve the effect by opening a normal rounded `PopupWindow` and placing it near the bar.
-
-`modules/drawers/ContentWindow.qml` is effectively a full-screen per-output composition surface. Bar and drawers share the same coordinate system. The window uses a precise region mask instead of treating the transparent full-screen area as interactive. Surface state is shared, focus is coordinated, and drawer/popup geometry is known by one parent.
-
-The connected background is then rendered through `Caelestia.Blobs`. A `BlobGroup` owns multiple shapes and coordinates smoothing / deformation between spatial neighbours. `PanelBg` instances for dashboard, launcher, session, sidebar, utilities and bar popouts participate in one visual system. Caelestia deliberately adds overlap in places where SDF joins could otherwise reveal seams.
-
-The transferable lessons are therefore:
-
-- **One geometry authority per output.**
-- **One active-route/state authority per surface family.**
-- **Render visible geometry and input geometry from the same source.**
-- **Animate geometry, not just opacity.**
-- **Treat the connector/neck as part of the surface, not decoration drawn afterward.**
-- **Keep source-anchor knowledge when moving between bar items and popouts.**
-- **Centralize conflict rules between sidebar, dashboard, launcher, popouts, etc.**
-
-The native blob plugin is an implementation detail of Caelestia's highest-fidelity organic deformation. Hadalis does not need to begin there.
-
----
-
-## Hadalis baseline: what should be preserved
-
-### 1. Classic Bar is already a strong host
-
-`modules/bar/Bar.qml` already provides the critical primitives needed for a connected top bar:
-
-- a `PanelWindow` per selected screen,
-- top/bottom placement,
-- exact input masking,
-- blur regions tied to visible bar geometry,
-- autohide / exclusive-zone behavior,
-- and existing Classic Bar **hug-corner** decorators.
-
-The present `hugCorners` path is especially important. It already disables incompatible native-blur behavior and renders concave corner decoration around the Classic background. The new popup system should extend this language rather than replace it.
-
-**Decision:** do not rewrite `Bar.qml` first. Add anchor publication and a connected popup presentation layer around it.
-
-### 2. SidebarHost contains valuable lifecycle engineering
-
-`modules/sidebar/SidebarHost.qml` already solves problems that a visual rewrite could easily reintroduce:
-
-- semantic left/right roles,
-- output targeting,
-- fullscreen awareness,
-- edge-open regions,
-- size modes and min/max sizing,
-- resident-vs-unloaded content lifecycle,
-- render suspension,
-- resume/remap handling,
-- direct-scanout-conscious mapping,
-- exact click-through masks,
-- focus-grab behavior,
-- backdrop closing,
-- and multiple animation modes.
-
-**Decision:** keep `SidebarHost` as the compositor/window boundary. Connected geometry should become a presentation layer inside/around this host, not a replacement for the host.
-
-### 3. GlobalStates already has the output resolver
-
-`GlobalStates.qml` already contains focused-screen / primary-screen fallback logic and resolves presentation outputs for overview and both sidebar roles.
-
-The current state model is boolean-heavy (`overviewOpen`, `dashboardOpen`, `clipboardOpen`, sidebar flags, etc.), but those booleans are also compatibility contracts for keybinds and IPC.
-
-**Decision:** introduce a coordinating Connected Surface route while retaining legacy booleans during migration. Do not perform a big-bang state rewrite.
-
-### 4. Overview and Dashboard currently own independent windows
-
-`modules/overview/Overview.qml` creates a `PanelWindow` variant per screen and contains substantial Niri/Orbit state, search, screencopy and presentation logic.
-
-`modules/dashboard/Dashboard.qml` currently uses a full-screen overlay `PanelWindow`, with the actual dashboard content centered inside it.
-
-`modules/ii/ShellIiPanelsImpl.qml` loads Overview, Dashboard and Clipboard as independent on-demand panels.
-
-**Decision:** keep their complex content implementations, but move outer presentation responsibility toward a shared bottom-surface topology. The owning windows — not individual overview preview delegates/cards — are the refactor boundary.
-
-### 5. Clipboard is currently both view and window
-
-`modules/clipboard/ClipboardPanel.qml` mixes two responsibilities:
-
-- clipboard model/search/pin/copy/delete behavior,
-- and a standalone full-screen overlay `PanelWindow` with its own exclusive keyboard focus.
-
-**Decision:** do not embed `ClipboardPanel.qml` directly in a sidebar. First split reusable clipboard content/model behavior from window-host behavior. Clipboard then becomes a sidebar page/mode while `Cliphist` remains the underlying service.
-
----
-
-## Target surface topology
-
-The target is a **surface family**, not a collection of unrelated windows.
+Each output owns eight perimeter slots:
 
 ```text
-TOP EDGE
-┌──────────────────────────────────────────────────────────────┐
-│            Classic Bar · top · existing hug corners          │
-└───╮───────────────╭──────────────────────╮────────────────╭──┘
-    │               │ connector / neck     │                │
-    │               ╰───────╮      ╭───────╯                │
-    │                       │ POPUP│                        │
-    │                       ╰──────╯                        │
-    │                                                       │
-    │ ╭──────────────╮                     ╭──────────────╮ │
-    │ │   SIDEBAR    │                     │   SIDEBAR    │ │
-    │ │ normal page  │                     │ normal page  │ │
-    │ │              │                     │ clipboard    │ │
-    │ ╰──────────────╯                     ╰──────────────╯ │
-    │                                                       │
-    │        ╭────────────────────────────────────╮         │
-    │        │ OVERVIEW or DASHBOARD (one route)  │         │
-    └────────╯   bottom-attached + bottom hug     ╰─────────┘
-BOTTOM EDGE
+┌─────────────────────────────────────────────────────────────────┐
+│ TOP-LEFT              TOP-CENTER                    TOP-RIGHT    │
+│                                                                 │
+│                                                                 │
+│ LEFT-EDGE                                         RIGHT-EDGE     │
+│                                                                 │
+│                                                                 │
+│ BOTTOM-LEFT          BOTTOM-CENTER                BOTTOM-RIGHT   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-Important interpretation: Overview and Dashboard cannot literally remain attached to a top bar across the whole screen without creating a giant visual bridge. Their "connected" requirement should mean **shared geometry language, routing, motion, color/blur tokens and edge-hug behavior**, while their physical attachment is to the **bottom edge**.
+Canonical logical form:
+
+```text
+Perimeter(output)
+├── top
+│   ├── start
+│   ├── center
+│   └── end
+├── left
+│   └── center
+├── right
+│   └── center
+└── bottom
+    ├── start
+    ├── center
+    └── end
+```
+
+The low-level renderer/layout engine should prefer **edge + alignment** over eight unrelated hard-coded implementations:
+
+```text
+edge: top | bottom | left | right
+alignment: start | center | end
+```
+
+For left/right edges only `center` is part of the initial topology.
+
+### Inward directions
+
+```text
+top    -> inward = down
+bottom -> inward = up
+left   -> inward = right
+right  -> inward = left
+```
+
+Connected popups/drawers expand inward from their real module anchor.
 
 ---
 
-## Proposed architecture
+## 2. Default Hadalis preset
 
-### A. Connected Surface controller
+The following is the **initial/default configuration only**:
 
-Add one coordinating state owner for Material ii, preferably as a small singleton/service rather than expanding ad-hoc boolean coupling.
+```text
+TOP-LEFT
+- ThinkFan
+- System Monitor
 
-Conceptual state:
+TOP-CENTER
+- Workspaces
+- Media
+- Weather
+- additional user-selected modules
+
+TOP-RIGHT
+- empty
+
+LEFT-EDGE
+- Left Sidebar
+- vertically centered
+- no max-size presentation mode
+
+RIGHT-EDGE
+- Right Sidebar
+- vertically centered
+- no max-size presentation mode
+
+BOTTOM-LEFT
+- empty
+
+BOTTOM-CENTER
+- Dock
+
+BOTTOM-RIGHT
+- empty
+```
+
+This preset must never become module ownership.
+
+### Critical rule
+
+> **No module is locked to any perimeter slot.**
+
+Every perimeter slot must support:
+
+- zero modules,
+- one module,
+- multiple ordered modules,
+- add,
+- remove from layout,
+- reorder within the slot,
+- move to another slot,
+- being completely empty.
+
+The system must not contain special rules such as:
+
+```text
+ThinkFan => top-left only
+Dock => bottom-center only
+Sidebar => side edge only
+Weather => top-center only
+```
+
+Those are forbidden architectural assumptions.
+
+A module may expose presentation capabilities or preferences, but placement remains configuration-driven.
+
+---
+
+## 3. Module instances, not hard-coded children
+
+The perimeter should be populated from configuration through a module registry/factory.
+
+Conceptual model:
+
+```text
+config
+  -> slot definition
+     -> ordered module instance IDs
+        -> module registry
+           -> instantiate module with perimeter context
+```
+
+Prefer instance-aware configuration so the architecture does not unnecessarily forbid multiple instances of the same module:
+
+```yaml
+perimeter:
+  top:
+    start:
+      - instance: thinkfan-main
+        module: thinkfan
+      - instance: monitor-main
+        module: systemMonitor
+    center:
+      - instance: workspaces-main
+        module: workspaces
+      - instance: media-main
+        module: media
+      - instance: weather-main
+        module: weather
+    end: []
+
+  left:
+    center:
+      - instance: sidebar-left
+        module: leftSidebar
+
+  right:
+    center:
+      - instance: sidebar-right
+        module: rightSidebar
+
+  bottom:
+    start: []
+    center:
+      - instance: dock-main
+        module: dock
+    end: []
+```
+
+Exact schema may differ after auditing the existing Hadalis config system. Do not invent an incompatible parallel configuration stack if the current config can be extended cleanly.
+
+### Module context
+
+A module should receive presentation context rather than infer its location from global state:
+
+```text
+outputName
+instanceId
+moduleId
+edge
+alignment
+orientation
+inwardDirection
+slotRect
+```
+
+Useful derived orientation:
+
+```text
+top/bottom -> horizontal
+left/right -> vertical
+```
+
+Modules should adapt to context where reasonable. A preferred orientation is advisory, not a placement lock.
+
+---
+
+## 4. Empty slots are first-class
+
+An empty slot must not create useless compositor state.
+
+If a slot contains no visible modules, it should have, wherever architecture permits:
+
+- no background,
+- no blur region,
+- no hit region,
+- no fake transparent visual surface,
+- no unnecessary reserved space.
+
+Do not keep invisible full-size windows merely to preserve an empty slot abstraction.
+
+---
+
+## 5. Connected-composition rules inherited from Caelestia research
+
+The useful Caelestia reference is its **composition model**, not a direct QML transplant.
+
+Hadalis should preserve these principles:
+
+1. one geometry authority per output,
+2. centralized route/conflict policy for transient surfaces,
+3. anchor-aware popouts,
+4. visible geometry and input geometry derived from the same source,
+5. geometry animation rather than opacity-only animation,
+6. connector/neck treated as part of the surface,
+7. overlap/seam guards where separately composited pieces meet,
+8. deliberate conflict policy between adjacent surfaces.
+
+Do not begin by copying the native `Caelestia.Blobs` plugin. Start with QML-native geometry. Escalate to a Hadalis-native scene-graph/SDF renderer only if measured visual results require it.
+
+---
+
+## 6. Module anchors and connected popups
+
+Every module capable of opening a transient surface must publish its **actual rendered anchor rectangle** in output-local coordinates.
+
+Suggested anchor record:
+
+```text
+outputName
+slotId
+instanceId
+moduleId
+sourceItem/screenRect
+edge
+alignment
+preferredPopupExtent
+surfaceName
+```
+
+Popup placement must never be derived from hard-coded module ordering.
+
+The same module should naturally invert its connected expansion according to the slot:
+
+```text
+TOP:       module -> popup grows downward
+BOTTOM:    module -> popup grows upward
+LEFT:      module -> popup grows rightward
+RIGHT:     module -> popup grows leftward
+```
+
+The popup body may clamp to screen bounds, but the connector should remain aligned to the real source module as far as geometry allows.
+
+---
+
+## 7. Connected geometry primitives
+
+Create shared QML-native primitives rather than separate implementations per edge.
+
+Suggested family:
+
+```text
+modules/common/perimeter/
+  PerimeterTokens.qml
+  PerimeterContext.qml
+  ConnectedSurfaceFrame.qml
+  ConnectedSurfaceConnector.qml
+  ConnectedSurfaceMask.qml
+  AnchorRegistry.qml
+  SurfaceRouteController.qml
+```
+
+Names are suggestions, not requirements. Reuse existing project conventions if better names/locations already exist.
+
+The geometry layer should understand:
+
+- edge,
+- alignment,
+- anchor rect,
+- body rect,
+- connector center,
+- connector/concave radius,
+- outer radius,
+- seam overlap,
+- blur expansion,
+- border geometry,
+- animation progress,
+- input region.
+
+Avoid four copies of the same renderer for top/bottom/left/right.
+
+---
+
+## 8. Route/controller model
+
+Existing `GlobalStates` booleans and IPC/keybind contracts may need to remain temporarily for compatibility.
+
+Add a coordinating authority for connected transient surfaces rather than allowing every module/window to fight independently.
+
+Conceptual route:
 
 ```qml
 surfaceRoute: ({
     output: "",
-    family: "none",      // none | barPopup | sidebar | bottom
-    surface: "",         // volume | network | clipboard | overview | dashboard | ...
+    family: "none",       // popup | sidebar | large | ...
+    surface: "",
     page: "",
-    source: "",
+    sourceInstance: "",
+    slot: "",
+    edge: "",
     anchorRect: Qt.rect(0, 0, 0, 0)
 })
 ```
 
-This route does **not** need to replace existing `GlobalStates` flags immediately. During migration it should synchronize with them and become the authority for conflict/transition rules.
+Required behavior:
 
-Required policies:
+- per-output routing,
+- deterministic Escape/backdrop/focus-loss behavior,
+- explicit transient-surface conflicts,
+- adjacency-aware conflict policy where useful,
+- no accidental overlap caused by independent booleans,
+- compatibility with existing output resolution until migration is complete.
 
-- only one anchored bar popup per output,
-- one bottom surface per output (`overview` **or** `dashboard`),
-- clipboard routes to the system sidebar page rather than its own window,
-- opening a bottom surface closes transient bar popouts,
-- sidebar/bar-popup transitions on the same output should be deliberate rather than accidental overlap,
-- Escape/backdrop/focus-loss should close the current route through one policy path,
-- output targeting must use the existing `GlobalStates.resolveOutputName()` family of helpers.
+Do not perform a big-bang rewrite of every existing state flag.
 
-Suggested future name: `ConnectedSurfaces.qml` or `SurfaceFamilyController.qml`.
+---
 
-### B. Anchor registry
+## 9. Top perimeter
 
-Bar modules that can open a connected popup must publish their visual source rectangle in screen-local coordinates.
-
-Suggested fields:
+Top is not a monolithic full-width hard-coded bar anymore. It contains three independent configurable slots:
 
 ```text
-outputName
-anchorId
-sourceItem
-screenRect
-preferredAlignment
-preferredWidth
-surfaceName
+top.start   = top-left
+top.center  = top-center
+top.end     = top-right
 ```
 
-The popup should animate from the source location and keep the connector centered/clamped around that source. This is the equivalent of Caelestia retaining `currentCenter`/active popout geometry.
+The default preset happens to populate left and center and leave right empty.
 
-Do not derive popup position from hard-coded module ordering. The Classic Bar is configurable; the anchor must come from the actual rendered item.
+Modules inside a slot form an ordered strip/cluster. Each module can independently become the anchor of a connected popup.
 
-### C. Connected Surface tokens
-
-Create one token source derived from `Appearance` so every connected surface uses the same geometry vocabulary:
-
-- outer radius,
-- concave connector radius,
-- neck width,
-- neck minimum/maximum clamp,
-- edge inset,
-- overlap/seam guard,
-- elevation/shadow margin,
-- border width,
-- blur expansion,
-- enter/exit duration and curves.
-
-Suggested path: `modules/common/surfaces/ConnectedSurfaceTokens.qml`.
-
-### D. Connected Surface frame / renderer
-
-Phase 1 should be QML-native and deliberately conservative.
-
-Suggested primitives:
-
-- `ConnectedSurfaceFrame.qml`
-- `ConnectedSurfaceConnector.qml`
-- `ConnectedSurfaceMask.qml`
-- `BottomConnectedFrame.qml`
-
-The renderer should own **both visible shape and hit shape**. Avoid a beautiful visual shape with a larger rectangular input surface behind it.
-
-For the top bar, render a popup body plus a short neck/bridge that overlaps the bottom edge of the Classic Bar enough to avoid fractional-scale hairlines. Concave corners around the neck should match the existing hug-corner vocabulary.
-
-If QML-native geometry cannot eliminate seams at fractional scaling or cannot reproduce the desired organic morphing, escalate after the prototype to either:
-
-1. a single per-output visual canvas, or
-2. a Hadalis-native scene-graph / SDF blob renderer inspired by the architecture of Caelestia's `Blobs` plugin.
-
-Do **not** start by importing the C++ plugin. That would add CMake/plugin packaging, ABI, shader and deployment work before validating that Hadalis actually needs it.
-
-### E. Optional single visual canvas — Phase 2 escalation
-
-Caelestia's strongest continuity comes from drawing connected backgrounds inside one full-screen window. Hadalis can adopt this concept later without immediately surrendering the existing window hosts.
-
-A low-regression variant would split responsibility:
-
-- existing Bar/Sidebar/Overview/Dashboard hosts retain interaction, focus, exclusive-zone and lifecycle responsibilities,
-- a per-output `ConnectedSurfaceCanvas` renders the shared backgrounds/bridges in one coordinate space,
-- host backgrounds become transparent while their content stays in place,
-- the canvas mask remains empty/click-through because interaction still belongs to the existing hosts.
-
-This path must be tested carefully against direct scanout/fullscreen mapping. It is an escalation, not Phase 1.
+Classic/Hadalis hug-corner language remains the visual basis. Existing Classic behavior that is still valid after cleanup should be reused rather than discarded.
 
 ---
 
-## Surface-specific adaptation
+## 10. Side edges / Sidebar requirements
 
-### Classic Bar — top + hug corner
+Initial defaults:
 
-Keep the existing Classic Bar host and its top position. When a popup opens:
+```text
+left.center  -> Left Sidebar
+right.center -> Right Sidebar
+```
 
-1. the source bar module publishes its actual screen rectangle,
-2. the controller selects one active popup for that output,
-3. popup geometry is clamped to the screen while preserving the source connector where possible,
-4. the connector grows downward from the bar,
-5. the body expands from the connector rather than fading in as an unrelated card,
-6. the input/blur region follows the connected geometry,
-7. closing reverses the geometry path back toward the source.
+Both are **vertically centered** on the output.
 
-The first migration should target a small, self-contained bar popup. Do not migrate every popup simultaneously.
+Do not top-align or bottom-align the default sidebar presentation.
 
-### Sidebar
+### No max-size presentation
 
-Preserve `SidebarHost.qml` and its current per-output/window lifecycle.
+The Connected Perimeter version must not use the previous max-size/full-height style as its target presentation.
 
-The connected redesign should primarily change:
+Desired sizing model:
 
-- internal frame/background geometry,
-- top/bottom edge relationship,
-- routing/page state,
-- optional connector to the relevant bar/system anchor,
-- and motion between sidebar pages.
+```text
+content/config desired extent
+  -> clamp only to safe available output bounds
+```
 
-The sidebar should not lose edge-open behavior, resume remapping, full-screen protection or exact masks.
+not:
 
-### Clipboard → Sidebar
+```text
+available output height
+  -> expand sidebar toward maximum height
+```
 
-Recommended sequence:
+Preserve valuable existing `SidebarHost` lifecycle/compositor behavior where possible:
 
-1. extract clipboard model/view logic from `ClipboardPanel.qml` into reusable content (`ClipboardView.qml` / `ClipboardPage.qml`),
-2. preserve `Cliphist` refresh/search/pin/copy/delete semantics,
-3. add a `clipboard` page to the system sidebar,
-4. change clipboard keybind/IPC route to open the correct sidebar on the target output and select that page,
-5. keep the legacy `clipboardOpen` property temporarily as a compatibility trigger that redirects to the sidebar,
-6. once callers are migrated, stop loading the Material ii standalone `ClipboardPanel` from `ShellIiPanelsImpl.qml`.
+- target-output handling,
+- focus policy,
+- exact masks,
+- fullscreen/direct-scanout protection,
+- resume/remap handling,
+- edge-open semantics if still desired,
+- resident/on-demand lifecycle.
 
-The Waffle clipboard state is a separate family and should not be changed by this work unless explicitly requested.
+Change presentation and sizing without casually rewriting these proven boundaries.
 
-### Overview — bottom
-
-`Overview.qml` is complex and should not be gutted. Preserve search, screencopy, workspace/window models and Orbit-specific logic.
-
-Refactor its outer presentation so the active output presents Overview through a bottom-attached body with bottom hug corners. The connected frame should be independent of individual `OverviewWindow.qml` preview cards.
-
-The initial bottom version should prioritize correctness over blob deformation. Once the host topology is stable, add shared motion/geometry tokens.
-
-### Dashboard — bottom
-
-`DashboardContent` and card internals should remain reusable. Replace the current centered full-screen-card presentation with the same bottom-surface host family used by Overview.
-
-Overview and Dashboard should be mutually exclusive routes of the same bottom host. This prevents two independent overlays from fighting for focus, backdrop, animation and edge geometry.
+Despite the default placement, Sidebar modules must not be permanently locked to left/right edge slots by the generic perimeter engine.
 
 ---
 
-## Window, mask, focus and blur rules
+## 11. Bottom perimeter
 
-These are non-negotiable constraints for implementation:
+Bottom mirrors top:
+
+```text
+bottom.start  = bottom-left
+bottom.center = bottom-center
+bottom.end    = bottom-right
+```
+
+Default preset:
+
+```text
+bottom.start  = empty
+bottom.center = Dock
+bottom.end    = empty
+```
+
+Dock is a normal configurable module instance from the perimeter engine's perspective, not a special hard-coded root surface.
+
+Moving/removing Dock must be structurally possible through configuration.
+
+Large transient surfaces such as Overview/Dashboard must not be modeled as permanent ownership of the whole bottom edge. If retained in the product, their launch/anchor/span policy must use the same route/geometry system and remain configurable rather than consuming `bottom.center` by architectural fiat.
+
+---
+
+## 12. ThinkFan default module
+
+Reference upstream: `https://github.com/vmatare/thinkfan`.
+
+Hadalis' default `top.start` cluster should include a ThinkFan integration intended to expose fan status/control, including the user's requested startup fan behavior/profile controls.
+
+Implementation must audit the actual thinkfan configuration/service interfaces before choosing the write path. Do not assume a runtime API exists for every requested setting.
+
+Required engineering constraints:
+
+- separate read-only telemetry from privileged mutation,
+- validate configuration before applying,
+- surface service/config/fan availability states distinctly,
+- do not claim a write succeeded until verified,
+- preserve safe bounds and do not expose arbitrary unsafe raw values without validation,
+- support graceful absence of thinkfan/hwmon/compatible hardware,
+- avoid blocking the QML UI on privileged/system commands.
+
+Upstream explicitly warns that unsafe fan/temperature configuration can damage hardware or shorten component lifetime. Treat this integration as hardware control, not a cosmetic slider.
+
+ThinkFan remains movable like every other module; `top.start` is only its default placement.
+
+---
+
+## 13. System Monitor default module
+
+System Monitor is the second default `top.start` module.
+
+It should be implemented as a normal registry module and should be portable to any perimeter slot.
+
+Telemetry sources and exact compact/expanded presentation should reuse existing Hadalis services where available instead of duplicating polling daemons.
+
+---
+
+## 14. Top-center defaults
+
+Default `top.center` contains:
+
+- Workspaces,
+- Media,
+- Weather,
+- future/additional user-selected modules.
+
+These are module instances in an ordered cluster, not mandatory fixed children of one special center component.
+
+Each module that owns an expanded surface must publish its own actual anchor rect. The connector follows the clicked/active module, not the center of the overall slot.
+
+---
+
+## 15. Settings / configuration UX target
+
+Do not add one independent `position` dropdown inside every module if the perimeter can be edited centrally.
+
+Preferred model: a **Perimeter Layout editor** that exposes all eight slots and allows users to:
+
+- add module instance,
+- remove from layout,
+- reorder,
+- move between slots,
+- leave slot empty,
+- configure module-specific options.
+
+Removing a module from a slot does not necessarily uninstall/disable the underlying feature/service.
+
+The exact Settings UI should follow existing Hadalis Settings architecture and should not resurrect retired appearance selectors.
+
+---
+
+## 16. Window/input/blur requirements
+
+These constraints remain non-negotiable:
 
 ### Input
 
-- Transparent areas must remain click-through.
-- `Region`/mask geometry must track the rendered connected shape.
-- Do not use a full-screen interactive mask merely because the host window is full-screen.
-- Backdrop close behavior must not steal clicks from unrelated surfaces when another sidebar role is intentionally open.
+- transparent areas stay click-through,
+- hit region follows rendered geometry,
+- no full-screen interactive mask solely because a visual host spans the screen.
+
+### Blur/border
+
+- blur follows visible connected geometry,
+- border and fill derive from compatible geometry,
+- connector/window joins use overlap/seam guards where necessary,
+- validate fractional scales.
 
 ### Focus
 
-- Bar popouts should avoid exclusive keyboard focus unless content actually requires text input/navigation.
-- Sidebar keeps its existing focus policy and hold-open behavior.
-- Bottom interactive surfaces can own focus while active, but they must release it deterministically on close.
-- Avoid `OnDemand` as a catch-all solution; focus ownership should be explicit per route.
+- transient popups should not steal exclusive keyboard focus unless required,
+- sidebars preserve intentional focus semantics,
+- focused surfaces release focus deterministically on close.
 
-### Blur and borders
+### Fullscreen/direct scanout
 
-- Blur region must follow the visible connected geometry.
-- Test Classic hug corners with native blur enabled/disabled paths.
-- A connector spanning two separately composited windows needs a seam guard/overlap; do not assume identical rounded colors eliminate a 1 px fractional-scale line.
-- Borders should be rendered from the same geometry source as the fill whenever possible.
-
-### Fullscreen / direct scanout
-
-- Preserve the existing sidebar behavior that can unmap/suspend transparent overlay hosts when fullscreen owns an output.
-- Connected visual hosts must also disappear/unmap when the bar/surfaces are not supposed to render over fullscreen.
-- Do not introduce a permanently mapped transparent full-screen window without measuring the direct-scanout consequence.
+- do not introduce permanently mapped transparent full-screen windows without measuring impact,
+- preserve current fullscreen protection where still applicable,
+- no invisible mapped leftovers after close, lock/resume or output changes.
 
 ---
 
-## Proposed file-level touch plan
+## 17. Multi-output requirements
 
-This is a **future plan**, not a list of changes already made.
+The perimeter is **per output**.
 
-| Area | Likely action |
-|---|---|
-| `GlobalStates.qml` | compatibility bridge + target-output helpers for connected route |
-| `modules/common/surfaces/` | new tokens, controller-facing geometry primitives, masks/connectors |
-| `modules/bar/Bar.qml` | publish bar geometry / connected state; preserve Classic host and hug corners |
-| bar module popup callers | route through common popup host instead of independent presentation |
-| `modules/sidebar/SidebarHost.qml` | connected frame integration, page routing hook; preserve lifecycle |
-| `modules/sidebarRight/*` | add system-sidebar page selection / clipboard page |
-| `modules/clipboard/ClipboardPanel.qml` | split content from standalone window; later retire Material ii host |
-| `modules/overview/Overview.qml` | move outer presentation to bottom host while preserving internals |
-| `modules/dashboard/Dashboard.qml` | move presentation to shared bottom host; preserve `DashboardContent` |
-| `modules/ii/ShellIiPanelsImpl.qml` | load shared connected hosts/routes instead of duplicate standalone hosts after migration |
+A module action on output B must resolve its connected surface on output B unless an explicit policy says otherwise.
 
-Do not begin by changing every caller. Build the primitives and migrate one surface at a time.
+Anchor records, routes, slot layouts and input regions must all carry output identity.
+
+Do not regress the existing `GlobalStates` output resolver semantics while introducing the new system.
 
 ---
 
-## Implementation phases
+## 18. Cleanup boundary
 
-### Phase 0 — completed by this handoff
+Several agents are concurrently cleaning `dev` to produce a Classic-only baseline before Connected Perimeter implementation.
 
-- Research Hadalis and Caelestia architecture.
-- Identify preservation boundaries.
-- Replace the old README with this handoff.
-- No functional QML migration.
+Connected Perimeter work must **not** reintroduce or depend on retired systems being removed by that cleanup, including obsolete bar appearance families and retired shell features.
 
-### Phase 1 — foundation
+In particular:
 
-- Add Connected Surface tokens.
-- Add route/controller compatibility layer.
-- Add source-anchor registry.
-- Add QML-native connector/frame/mask primitives.
-- Add geometry diagnostics under a debug flag.
+- do not restore removed appearance selectors/branches merely because old code references them,
+- do not build the new architecture on Orbit/Mascot/Workspace Strip paths being removed,
+- refetch `dev` before mutations,
+- reconstruct changes on current HEAD if cleanup agents advanced the branch,
+- prefer small atomic commits,
+- never overwrite another agent's changes.
 
-Exit criterion: a static/prototype connected surface can be placed correctly on every output without breaking input masks.
-
-### Phase 2 — first Classic Bar popup
-
-- Choose one small popup.
-- Register source anchor.
-- Open through common popup state.
-- Animate connector + body.
-- Validate blur/mask/focus.
-- Test fractional scale.
-
-Exit criterion: the popup visually reads as one surface with the top Classic Bar and has no visible seam under the target scale matrix.
-
-### Phase 3 — migrate remaining bar popups
-
-- Move compatible popups incrementally.
-- Keep one active popup per output.
-- Add transitions between adjacent popup sources without close/reopen flicker.
-
-### Phase 4 — Sidebar + Clipboard
-
-- Add connected frame to current SidebarHost.
-- Add sidebar page routing.
-- Extract Clipboard view/content.
-- Route clipboard trigger into system sidebar.
-- Remove Material ii standalone clipboard window only after feature parity is verified.
-
-### Phase 5 — Overview bottom host
-
-- Refactor outer Overview presentation only.
-- Preserve screencopy/search/Orbit state.
-- Add bottom edge hug geometry and shared route.
-
-### Phase 6 — Dashboard bottom host
-
-- Reuse the same bottom host family.
-- Preserve `DashboardContent`.
-- Make Overview/Dashboard mutually exclusive with coherent transitions.
-
-### Phase 7 — hardening
-
-- multi-monitor,
-- Niri and Hyprland,
-- fractional scaling,
-- fullscreen/GameMode,
-- shell edit mode,
-- animations disabled,
-- screen lock/resume,
-- bar autohide/exclusive zone,
-- right + left sidebar coexistence,
-- native blur on/off,
-- panel keep-loaded/on-demand lifecycle.
-
-### Phase 8 — optional native renderer
-
-Only if QML-native connected geometry is visibly insufficient:
-
-- prototype a Hadalis-native SDF/blob renderer,
-- or adapt the conceptual `BlobGroup` model,
-- measure GPU/CPU and packaging impact,
-- retain a non-native fallback.
+`README.md` is the architecture handoff; the live code on current `dev` is authoritative for exact surviving file paths and APIs.
 
 ---
 
-## Acceptance criteria
+## 19. Recommended implementation split
 
-The migration is not complete because the corners look similar. It is complete when all of the following are true:
+Two new implementation agents should work with explicit ownership.
 
-- Classic Bar stays at the top and retains correct hug-corner behavior.
-- A bar popup opens from its real source item and visually attaches to the bar.
-- No hairline seam at common fractional scales (at minimum 1.0, 1.25, 1.5 and 2.0 where the compositor/output setup supports them).
-- Popup movement between source modules does not flash a detached rectangle.
-- Transparent host regions are click-through.
-- Blur/border/mask agree with visible geometry.
-- Per-output targeting follows the output that initiated the action.
-- Sidebar preserves current edge-open, resize, focus, fullscreen and resume behavior.
-- Clipboard opens as a sidebar page and retains search, pin, copy, delete, image/rich-content behavior expected from the current implementation.
-- Material ii no longer needs a second standalone Clipboard window after migration.
-- Overview is bottom-attached without breaking screencopy, search or Orbit flows.
-- Dashboard is bottom-attached while reusing existing content.
-- Overview and Dashboard do not overlap as independent full-screen overlays.
-- Escape, backdrop click and focus loss have deterministic route-specific behavior.
-- Lock/resume and fullscreen transitions do not leave invisible mapped surfaces behind.
-- Waffle remains functionally unchanged unless separately scoped.
+### Agent A — Perimeter Core / Connected Geometry
 
----
+Owns the shared substrate:
 
-## Risks and open decisions
+- eight-slot topology,
+- slot configuration model,
+- module instance registry/factory contract,
+- perimeter context propagation,
+- per-output geometry authority,
+- anchor registry,
+- connected frame/connector/mask primitives,
+- route/controller infrastructure,
+- core layout/settings schema hooks where unavoidable.
 
-### Separate-window seam vs one visual canvas
+Agent A should not implement the full ThinkFan/System Monitor/Weather/Media/Dock/sidebar feature set.
 
-Hadalis currently has robust independent hosts. The first prototype should preserve them. If identical geometry + overlap still produces visible seams with blur/fractional scale, the next escalation is a single visual canvas per output while retaining existing interaction windows.
+### Agent B — Module & Surface Integration
 
-Do not decide this from screenshots alone; test on the compositor at multiple scales.
+Consumes Agent A's contract and integrates concrete modules/surfaces:
 
-### Native blob plugin
+- default preset wiring,
+- ThinkFan integration,
+- System Monitor,
+- Workspaces,
+- Media,
+- Weather,
+- Dock,
+- Left/Right Sidebar presentation migration,
+- connected popup migrations for integrated modules,
+- Settings presentation for module placement using the core contract.
 
-Caelestia's organic merging is powered by native code and shaders. Copying the idea at QML level is straightforward; matching every deformation characteristic is not.
+Agent B should not fork or duplicate the perimeter engine, anchor registry, route controller or connected geometry primitives.
 
-A native plugin is justified only if the desired result explicitly requires metaball/SDF deformation rather than a precise connected neck + concave-corner shape.
-
-### Overview complexity
-
-Overview is far more than a card. Its Niri/Orbit state and screencopy pipeline make it a high-risk early migration target. Do it after the top popup and sidebar primitives are stable.
-
-### Focus differences between compositors
-
-Niri and Hyprland do not behave identically around layer-shell focus/focus grabs. Preserve current working host policies and introduce the new controller around them rather than normalizing everything prematurely.
+If Agent A's contract is not yet present on current `dev`, Agent B should perform research/preparation only or work on clearly independent adapters; it must not create a competing temporary architecture that will later need to be merged.
 
 ---
 
-## License / attribution boundary
+## 20. Implementation order
 
-Both repositories currently carry **GNU GPL v3** license files.
+Recommended sequence:
 
-This research pass imported **no Caelestia source code** into Hadalis. Caelestia is being used as an architectural/reference source.
-
-If a future implementation copies or closely adapts source-level code — especially the `Caelestia.Blobs` plugin/shaders — preserve the applicable GPL obligations, copyright notices and attribution, and document which files were adapted. Prefer a clean Hadalis-specific implementation when the requirement is only the architectural idea.
+1. finish/verify Classic-only cleanup baseline,
+2. add perimeter slot/config/context substrate,
+3. add anchor registry + route controller,
+4. add orientation-agnostic connected geometry primitives,
+5. render empty/default slots correctly per output,
+6. wire the default preset,
+7. migrate one small popup end-to-end as geometry proof,
+8. integrate top-center/top-left modules incrementally,
+9. migrate sidebars to centered/no-max-size presentation,
+10. integrate Dock as normal bottom-center default module,
+11. build/edit Perimeter Layout Settings,
+12. harden multi-monitor/fractional-scale/fullscreen/resume behavior,
+13. only then evaluate whether native SDF/blob rendering is necessary.
 
 ---
 
-## Reference links
+## 21. Acceptance criteria
+
+The Connected Perimeter foundation is not complete until all of the following are true:
+
+- eight logical slots exist per output,
+- all eight slots can be empty,
+- all eight slots can receive configured modules,
+- modules are instantiated from configuration/registry rather than hard-coded into slot QML,
+- module order is configurable,
+- module movement between slots does not require source-code changes,
+- top/bottom/left/right context produces correct inward direction,
+- real module rects drive popup connectors,
+- empty slots do not reserve bogus hit/blur/visual regions,
+- default preset matches the documented mapping,
+- Left/Right Sidebar defaults are vertically centered and do not use max-size presentation,
+- Dock is the default bottom-center module but is movable/removable,
+- ThinkFan is default top-left but is movable/removable,
+- per-output routing remains correct,
+- transparent areas stay click-through,
+- connected geometry has no obvious seam at common fractional scales,
+- cleanup-removed features/appearances are not reintroduced,
+- no native Caelestia plugin dependency is introduced without an explicit later decision.
+
+---
+
+## 22. References
 
 ### Hadalis
 
-- https://github.com/llocphann/Hadalis/blob/dev/modules/bar/Bar.qml
-- https://github.com/llocphann/Hadalis/blob/dev/GlobalStates.qml
-- https://github.com/llocphann/Hadalis/blob/dev/modules/sidebar/SidebarHost.qml
-- https://github.com/llocphann/Hadalis/blob/dev/modules/clipboard/ClipboardPanel.qml
-- https://github.com/llocphann/Hadalis/blob/dev/modules/overview/Overview.qml
-- https://github.com/llocphann/Hadalis/blob/dev/modules/dashboard/Dashboard.qml
-- https://github.com/llocphann/Hadalis/blob/dev/modules/ii/ShellIiPanelsImpl.qml
-- https://github.com/llocphann/Hadalis/blob/dev/ARCHITECTURE.md
+- `modules/bar/Bar.qml`
+- `GlobalStates.qml`
+- `modules/sidebar/SidebarHost.qml`
+- `modules/sidebarRight/`
+- `modules/ii/ShellIiPanelsImpl.qml`
+- `ARCHITECTURE.md`
+- `STRUCTURE.md`
 
-### Caelestia
+Exact paths may change during cleanup. Always inspect current `dev` before editing.
 
-- https://github.com/caelestia-dots/shell/blob/main/modules/drawers/ContentWindow.qml
-- https://github.com/caelestia-dots/shell/blob/main/modules/drawers/Panels.qml
-- https://github.com/caelestia-dots/shell/blob/main/modules/drawers/Interactions.qml
-- https://github.com/caelestia-dots/shell/blob/main/modules/bar/popouts/Wrapper.qml
-- https://github.com/caelestia-dots/shell/blob/main/modules/bar/popouts/ClipWrapper.qml
-- https://github.com/caelestia-dots/shell/blob/main/modules/nexus/common/BlobPopup.qml
-- https://github.com/caelestia-dots/shell/tree/main/plugin/src/Caelestia/Blobs
+### Caelestia architectural references
 
-### Quickshell concepts to keep aligned with
+- `modules/drawers/ContentWindow.qml`
+- `modules/drawers/Panels.qml`
+- `modules/drawers/Interactions.qml`
+- `modules/bar/popouts/Wrapper.qml`
+- `modules/bar/popouts/ClipWrapper.qml`
+- `modules/nexus/common/BlobPopup.qml`
+- `modules/nexus/common/ConnectedRect.qml`
+- `plugin/src/Caelestia/Blobs/`
 
-- Panel/window edge attachment and exclusive zones
-- Window `mask` / input `Region`
-- Layer-shell namespace/layer/keyboard focus
-- Popup anchoring where a real popup window is still appropriate
+Reference repository: `https://github.com/caelestia-dots/shell`
 
-Documentation root: https://quickshell.outfoxxed.me/docs/
+### ThinkFan
+
+- `https://github.com/vmatare/thinkfan`
 
 ---
 
-## Handoff checklist for the next implementation session
+## 23. Final architecture rule
 
-Before writing production code:
-
-- confirm Material ii + Classic + top + hug-corner is the implementation scope,
-- create the common surface primitives/controller first,
-- select one small bar popup as the prototype,
-- keep a debug overlay for anchor/body/connector/mask rectangles,
-- validate at least one Niri multi-monitor setup before broad migration,
-- record before/after focus and mask behavior,
-- do not remove legacy state or ClipboardPanel until compatibility routing works,
-- do not refactor Overview internals while changing its host,
-- do not introduce the native blob plugin until the QML prototype has been evaluated visually and technically.
-
-### Recommended first production change
-
-The first implementation commit after this handoff should contain **only the Connected Surface foundation plus one prototype popup**. It should not include Sidebar, Clipboard, Overview and Dashboard in the same commit.
-
-That sequencing gives a clean rollback point and answers the most important unresolved question early: whether Hadalis can reach the required seamless visual quality with its existing QML/window architecture, or whether a single visual canvas/native geometry renderer is actually necessary.
+> **Hadalis is a configurable connected perimeter, not a fixed top bar plus fixed sidebars plus a fixed dock.**
+>
+> The eight perimeter slots are layout locations. Modules are movable instances. Connected surfaces derive their direction and geometry from the slot context and their real rendered anchor. The documented placements are defaults only.

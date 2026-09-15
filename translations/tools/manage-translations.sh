@@ -17,7 +17,7 @@ show_help() {
     echo "  update       Add missing translation keys across all locales; report extra keys"
     echo "  clean        Clean unused translation keys source-first across locales"
     echo "  sync         Sync keys across all language files"
-    echo "  status       Show translation status"
+    echo "  status       Show translation status and live-source parity"
     echo ""
     echo "Options:"
     echo "  -t, --trans-dir DIR Translation files directory (default: $TRANSLATIONS_DIR)"
@@ -30,7 +30,7 @@ show_help() {
     echo "  $0 update                     # Add missing keys to every locale"
     echo "  $0 clean                      # Clean unused keys"
     echo "  $0 sync                       # Sync keys across all languages"
-    echo "  $0 status                     # Show translation status"
+    echo "  $0 status                     # Show translation status + source parity"
 }
 
 show_status() {
@@ -56,6 +56,10 @@ show_status() {
     else
         echo "  Translation directory does not exist: $TRANSLATIONS_DIR"
     fi
+
+    echo ""
+    echo "=== Live Source / English Catalog Parity ==="
+    python3 "$SCRIPT_DIR/source-parity.py"
 }
 
 COMMAND=""

@@ -8,7 +8,7 @@ QtObject {
     function keyFor(outputName, instanceId, surfaceName) { return String(outputName) + "::" + String(instanceId) + "::" + String(surfaceName || "default") }
     function rectHasArea(rect) { return rect && rect.width > 0 && rect.height > 0 }
     function publish(record) {
-        const coordinateSpace = String(record?.coordinateSpace || "output-local")
+        const coordinateSpace = String(record?.coordinateSpace ?? "")
         if (!record || !record.outputName || !record.instanceId || !record.moduleId || !PerimeterTopology.isValidSlot(record.slotId) || !root.rectHasArea(record.rect) || coordinateSpace !== "output-local") return false
         const key = root.keyFor(record.outputName, record.instanceId, record.surfaceName)
         const next = Object.assign({}, root.records)
@@ -30,10 +30,12 @@ QtObject {
     function unregisterInstance(outputName, instanceId) {
         const prefix = String(outputName) + "::" + String(instanceId) + "::"
         const next = Object.assign({}, root.records)
-        let changed = false
-        for (const key of Object.keys(next)) if (key.startsWith(prefix)) { delete next[key]; root.removed(key); changed = true }
-        if (changed) root.records = next
-        return changed
+        const removedKeys = []
+        for (const key of Object.keys(next)) if (key.startsWith(prefix)) { delete next[key]; removedKeys.push(key) }
+        if (removedKeys.length === 0) return false
+        root.records = next
+        for (const key of removedKeys) root.removed(key)
+        return true
     }
     function forOutput(outputName) { return Object.values(root.records).filter(record => record.outputName === String(outputName)) }
 }

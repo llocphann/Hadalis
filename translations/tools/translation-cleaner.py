@@ -151,7 +151,9 @@ def clean_translation_files(
 
 def sync_translations(
     translations_dir: str,
+    source_dir: str,
     target_langs: List[str] = None,
+    backup: bool = True,
     yes_mode: bool = False,
 ):
     """Sync every target locale to the canonical English keyset."""
@@ -161,14 +163,13 @@ def sync_translations(
     )
 
     translations_path = Path(translations_dir)
+    manager = TranslationManager(translations_dir, source_dir)
 
     source_file = translations_path / f"{CANONICAL_SOURCE_LANG}.json"
     if not source_file.exists():
         raise ValueError(f"canonical source locale does not exist: {source_file}")
 
-    with open(source_file, "r", encoding="utf-8") as f:
-        source_translations = json.load(f)
-
+    source_translations = manager.load_translation_file(CANONICAL_SOURCE_LANG)
     source_keys = set(source_translations.keys())
     print(
         f"Source language {CANONICAL_SOURCE_LANG} has {len(source_keys)} keys"
@@ -191,12 +192,7 @@ def sync_translations(
         print(f"\nSyncing language: {target_lang}")
 
         target_file = translations_path / f"{target_lang}.json"
-        if target_file.exists():
-            with open(target_file, "r", encoding="utf-8") as f:
-                target_translations = json.load(f)
-        else:
-            target_translations = {}
-
+        target_translations = manager.load_translation_file(target_lang)
         target_keys = set(target_translations.keys())
 
         missing_keys = source_keys - target_keys
@@ -205,11 +201,7 @@ def sync_translations(
         print(f"  Missing keys: {len(missing_keys)}")
         print(f"  Extra keys: {len(extra_keys)}")
 
-        if missing_keys:
-            for key in missing_keys:
-                target_translations[key] = source_translations[key]
-            print(f"  Added {len(missing_keys)} missing keys")
-
+        delete_extra = False
         if extra_keys:
             if yes_mode:
                 response = "y"
@@ -221,14 +213,30 @@ def sync_translations(
                 response = input(
                     f"  Delete {len(extra_keys)} extra keys? (y/n): "
                 )
-            if response.lower().strip() in ["y", "yes"]:
-                for key in extra_keys:
-                    del target_translations[key]
-                print(f"  Deleted {len(extra_keys)} extra keys")
+            delete_extra = response.lower().strip() in ["y", "yes"]
 
-        with open(target_file, "w", encoding="utf-8", newline="") as f:
-            json.dump(target_translations, f, ensure_ascii=False, indent=2)
-        print(f"  Saved: {target_file}")
+        if not missing_keys and not delete_extra:
+            print("  No changes needed")
+            continue
+
+        if backup and target_file.exists():
+            backup_file = translations_path / f"{target_lang}.json.bak"
+            with open(backup_file, "w", encoding="utf-8") as f:
+                json.dump(target_translations, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+            print(f"  Created backup: {backup_file}")
+
+        if missing_keys:
+            for key in missing_keys:
+                target_translations[key] = source_translations[key]
+            print(f"  Added {len(missing_keys)} missing keys")
+
+        if delete_extra:
+            for key in extra_keys:
+                del target_translations[key]
+            print(f"  Deleted {len(extra_keys)} extra keys")
+
+        manager.save_translation_file(target_lang, target_translations)
 
 
 def main():
@@ -261,7 +269,7 @@ def main():
     parser.add_argument(
         "--no-backup",
         action="store_true",
-        help="Do not create backup files when cleaning",
+        help="Do not create backup files when cleaning or syncing",
     )
     parser.add_argument(
         "-y",
@@ -285,6 +293,8 @@ def main():
     elif args.sync:
         sync_translations(
             translations_dir,
+            source_dir,
+            backup=not args.no_backup,
             yes_mode=args.yes,
         )
     else:

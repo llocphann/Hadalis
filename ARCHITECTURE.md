@@ -192,8 +192,8 @@ Names such as `m3primary`, `m3surface`, etc. are Material color-token identifier
 ## Distribution
 
 ```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
 ./setup
 ./setup install -y
 ./setup update

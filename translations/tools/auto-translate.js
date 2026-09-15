@@ -42,7 +42,7 @@ const langMap = {
   'ja_JP.json': 'ja', 'ru_RU.json': 'ru', 'uk_UA.json': 'uk',
   'vi_VN.json': 'vi', 'zh_CN.json': 'zh-cn', 'pt_BR.json': 'pt',
   'hi_IN.json': 'hi', 'fr_FR.json': 'fr', 'de_DE.json': 'de',
-  'ko_KR.json': 'ko', 'ar_SA.json': 'ar'
+  'ko_KR.json': 'ko', 'ar_SA.json': 'ar', 'tr_TR.json': 'tr'
 };
 
 const targetLang = langMap[targetFile];

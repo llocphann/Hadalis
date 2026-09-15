@@ -64,10 +64,11 @@ Singleton {
     }
 
     function refresh(): void {
-        if (detector.running) {
+        if (root.busy || detector.running) {
             root._refreshQueued = true
             return
         }
+        root._refreshQueued = false
         detector.running = true
     }
 

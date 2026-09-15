@@ -10,9 +10,16 @@ import qs.modules.common
  * (settings.qml): page list, sidebar categories and the static search index.
  * Component paths are relative to the shell root — resolve with
  * Quickshell.shellPath(page.component).
+ *
+ * Historical page slots 18, 19, 21, 27 and 28 intentionally remain in-place
+ * so persisted numeric page/category values do not shift. The public registry
+ * hides and redirects them; the retired feature slots carry no feature UI or
+ * searchable metadata.
  */
 Singleton {
     id: root
+
+    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28]
 
     readonly property var pages: [
         {
@@ -161,20 +168,20 @@ Singleton {
             component: "modules/settings/AutostartConfig.qml"
         },
         {
-            key: "workspace-strip",
-            name: Translation.tr("Workspace Strip"),
-            icon: "view_sidebar",
-            desc: Translation.tr("Edge strip for workspace navigation"),
+            key: "_retired-18",
+            name: "",
+            icon: "settings",
+            desc: "",
             essential: false,
-            component: "modules/settings/WorkspaceStripConfig.qml"
+            component: "modules/settings/InterfaceConfig.qml"
         },
         {
-            key: "mascot",
-            name: Translation.tr("Mascot"),
-            icon: "pets",
-            desc: Translation.tr("Companion behavior, reactions, poses"),
+            key: "_retired-19",
+            name: "",
+            icon: "settings",
+            desc: "",
             essential: false,
-            component: "modules/settings/MascotConfig.qml"
+            component: "modules/settings/InterfaceConfig.qml"
         },
         {
             key: "arrange",
@@ -185,12 +192,12 @@ Singleton {
             component: "modules/settings/ArrangeConfig.qml"
         },
         {
-            key: "ricelin",
-            name: Translation.tr("Ricelin"),
-            icon: "jp:リ",
-            desc: Translation.tr("The washi & flame dialect: pill bar, islands, surfaces"),
+            key: "_retired-21",
+            name: "",
+            icon: "settings",
+            desc: "",
             essential: false,
-            component: "modules/settings/RicelinConfig.qml"
+            component: "modules/settings/InterfaceConfig.qml"
         },
         {
             key: "dock",
@@ -233,38 +240,31 @@ Singleton {
             component: "modules/settings/ShellLayoutConfig.qml"
         },
         {
-            key: "orbit",
-            name: Translation.tr("Orbit"),
-            icon: "hub",
-            desc: Translation.tr("Niri workspace navigator, Trail and Stash"),
-            essential: true,
-            component: "modules/settings/OrbitConfig.qml"
+            key: "_retired-27",
+            name: "",
+            icon: "settings",
+            desc: "",
+            essential: false,
+            component: "modules/settings/InterfaceConfig.qml"
         },
         {
-            key: "tlp",
-            name: Translation.tr("Battery"),
-            icon: "battery_saver",
-            desc: Translation.tr("Charge care and TLP power management"),
-            essential: true,
-            component: "modules/settings/TlpConfig.qml"
+            key: "_retired-28",
+            name: "",
+            icon: "settings",
+            desc: "",
+            essential: false,
+            component: "modules/settings/GeneralConfig.qml"
         }
     ]
 
-    // Sidebar grouping shared by both modes. Page indices reference the
-    // pages array above — order here defines the visual nav order.
     readonly property var defaultCategories: [
         { label: Translation.tr("Essentials"), pages: [0] },
-        { label: Translation.tr("Appearance"), pages: [4, 25, 3, 14, 21] },
-        { label: Translation.tr("Shell"), pages: [2, 26, 27, 5, 22, 23, 16, 10, 11, 18, 19, 20] },
-        { label: Translation.tr("System"), pages: [1, 28, 24, 7, 6, 12, 15, 8, 17] },
+        { label: Translation.tr("Appearance"), pages: [4, 25, 3, 14] },
+        { label: Translation.tr("Shell"), pages: [2, 26, 5, 22, 23, 16, 10, 11, 20] },
+        { label: Translation.tr("System"), pages: [1, 24, 7, 6, 12, 15, 8, 17] },
         { label: Translation.tr("Reference"), pages: [9, 13] }
     ]
 
-    // User-arranged nav (Settings › Arrange). Saved value is either the v1
-    // array of groups or the v2 object { groups, hidden }. Sanitized so
-    // every non-hidden page stays reachable: invalid indices drop, pages
-    // missing from the saved layout land in a trailing "More" group.
-    // Hidden pages leave the nav but search still reaches them.
     readonly property var _arrangement: {
         const fallback = ({ groups: defaultCategories, hidden: [] })
         const raw = Config.options?.settingsUi?.categories ?? ""
@@ -278,15 +278,14 @@ Singleton {
         const groupsIn = Array.isArray(saved) ? saved : (Array.isArray(saved?.groups) ? saved.groups : null)
         if (!groupsIn || groupsIn.length === 0) return fallback
         const hidden = (Array.isArray(saved?.hidden) ? saved.hidden : [])
-            .filter(i => Number.isInteger(i) && i >= 0 && i < pages.length)
-        const seen = new Set(hidden)
+            .filter(i => Number.isInteger(i) && i >= 0 && i < pages.length && !legacyHiddenIndexes.includes(i))
+        const seen = new Set(legacyHiddenIndexes.concat(hidden))
         const out = []
         for (const c of groupsIn) {
             if (!c || typeof c.label !== "string") continue
             const pageIdxs = (Array.isArray(c.pages) ? c.pages : [])
                 .filter(i => Number.isInteger(i) && i >= 0 && i < pages.length && !seen.has(i))
             pageIdxs.forEach(i => seen.add(i))
-            // empty groups survive so the editor can move pages into them
             out.push({ label: c.label, pages: pageIdxs })
         }
         const missing = []
@@ -317,34 +316,6 @@ Singleton {
 
         _staticSearchIndex = [
         {
-            pageIndex: 27, pageName: root.pages[27].name,
-            section: Translation.tr("Activation"),
-            label: Translation.tr("Orbit hot corner"),
-            description: Translation.tr("Choose the corner, activation distance and conflict-safe behavior with Niri Overview"),
-            keywords: ["orbit", "overview", "task view", "hot corner", "niri", "workspace", "navigation", "distance", "conflict"]
-        },
-        {
-            pageIndex: 27, pageName: root.pages[27].name,
-            section: Translation.tr("Workspace layout"),
-            label: Translation.tr("Orbit layout"),
-            description: Translation.tr("Visible workspaces, scale, spacing and balanced window grid"),
-            keywords: ["orbit", "workspace", "grid", "scale", "spacing", "preview", "window"]
-        },
-        {
-            pageIndex: 27, pageName: root.pages[27].name,
-            section: Translation.tr("Navigation"),
-            label: Translation.tr("Trail and Stash"),
-            description: Translation.tr("Recent-window navigation and temporary window parking"),
-            keywords: ["orbit", "trail", "stash", "recent", "mru", "minimize", "park", "window"]
-        },
-        {
-            pageIndex: 27, pageName: root.pages[27].name,
-            section: Translation.tr("Material motion"),
-            label: Translation.tr("Orbit motion"),
-            description: Translation.tr("Entry presentation and workspace navigation motion"),
-            keywords: ["orbit", "animation", "motion", "navigation", "glide", "material"]
-        },
-        {
             pageIndex: 28, pageName: root.pages[28].name,
             section: Translation.tr("Power management"),
             label: Translation.tr("Battery and TLP settings"),
@@ -372,9 +343,6 @@ Singleton {
             description: Translation.tr("Full, fit and custom sidebar height and width"),
             keywords: ["layout", "sidebar", "size", "height", "width", "fit", "custom", "resize", "reset"]
         },
-        // =====================================================================
-        // Quick (page 0)
-        // =====================================================================
         {
             pageIndex: 0, pageName: root.pages[0].name,
             section: Translation.tr("Wallpaper & Colors"),
@@ -404,51 +372,12 @@ Singleton {
             keywords: ["capture", "screenshot", "snip", "save", "path", "folder", "directory", "picture"]
         },
         {
-            pageIndex: 19, pageName: root.pages[19].name,
-            section: Translation.tr("Mascot"),
-            label: Translation.tr("Mascot"),
-            description: Translation.tr("Mascot illustration and playful companion"),
-            keywords: ["mascot", "cat", "girl", "companion", "waifu", "illustration", "peek"]
-        },
-        {
-            pageIndex: 19, pageName: root.pages[19].name,
-            section: Translation.tr("Mascot"),
-            label: Translation.tr("Event reactions"),
-            description: Translation.tr("What she reacts to and which pose each event uses"),
-            keywords: ["mascot", "reactions", "events", "music", "battery", "notifications", "wallpaper", "screenshot", "gaming", "unlock", "pose", "image", "artist", "video", "monitor", "focused"]
-        },
-        {
-            pageIndex: 19, pageName: root.pages[19].name,
-            section: Translation.tr("Mascot"),
-            label: Translation.tr("Pose for this event"),
-            description: Translation.tr("Choose from the curated full-body pose collection"),
-            keywords: ["mascot", "pose", "full body", "animation", "event", "override", "picker"]
-        },
-        {
-            pageIndex: 19, pageName: root.pages[19].name,
-            section: Translation.tr("Mascot"),
-            label: Translation.tr("Chaos mode"),
-            description: Translation.tr("She runs across the desktop, bonks widgets and rattles the bar"),
-            keywords: ["mascot", "chaos", "romp", "kick", "bonk", "widgets", "rearrange", "tidy", "physics"]
-        },
-        {
-            pageIndex: 19, pageName: root.pages[19].name,
-            section: Translation.tr("Kira collection"),
-            label: Translation.tr("Kira collection"),
-            description: Translation.tr("Browse every full-body pose, animation, portrait, chibi and editorial illustration"),
-            keywords: ["mascot", "kira", "collection", "gallery", "archive", "pose", "full body", "animated", "portrait", "chibi", "editorial"]
-        },
-        {
             pageIndex: 20, pageName: root.pages[20].name,
             section: Translation.tr("Arrange settings"),
             label: Translation.tr("Arrange settings"),
             description: Translation.tr("Reorder groups and pages, or hide pages from navigation"),
             keywords: ["arrange", "reorder", "categories", "groups", "nav", "sidebar", "customize", "layout", "settings", "hide", "show", "visibility", "drag"]
         },
-
-        // =====================================================================
-        // General (page 1) — per-option entries
-        // =====================================================================
         {
             pageIndex: 1, pageName: root.pages[1].name,
             section: Translation.tr("Audio"),
@@ -575,16 +504,12 @@ Singleton {
             description: Translation.tr("Hide sensitive content on public networks"),
             keywords: ["work", "safety", "nsfw", "public", "network", "hide", "clipboard", "wallpaper"]
         },
-
-        // =====================================================================
-        // Bar (page 2) — per-option entries
-        // =====================================================================
         {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Appearance & Layout"),
             label: Translation.tr("Bar position"),
-            description: Translation.tr("Bar position, auto hide and style"),
-            keywords: ["bar", "position", "auto", "hide", "corner", "style", "top", "bottom", "float", "vertical"]
+            description: Translation.tr("Bar position and auto hide"),
+            keywords: ["bar", "position", "auto", "hide", "corner", "top", "bottom", "float", "vertical"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
@@ -597,71 +522,15 @@ Singleton {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Appearance & Layout"),
             label: Translation.tr("Corner style"),
-            description: Translation.tr("Bar corner style: hug, float, rectangle or card"),
-            keywords: ["bar", "corner", "style", "hug", "float", "rectangle", "card", "rounding"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("Appearance & Layout"),
-            label: Translation.tr("Bar appearance"),
-            description: Translation.tr("Bar surface style: classic, islands, scenic, frame, M3 or pill"),
-            keywords: ["bar", "appearance", "islands", "scenic", "frame", "m3", "material", "tonal", "pill", "surface", "floating", "capsule", "gradient", "outline"]
+            description: Translation.tr("Bar corner style: hug, float or rectangle"),
+            keywords: ["bar", "corner", "style", "hug", "float", "rectangle", "rounding"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Audio spectrum"),
             label: Translation.tr("Bar audio spectrum"),
-            description: Translation.tr("Bars, waves, frequency accents, dynamic curve fit and screen-spanning Pill wings"),
-            keywords: ["spectrum", "audio", "cava", "bars", "wave", "origin", "bottom", "top", "center", "mirror", "ribbon", "density", "gap", "smoothing", "edge", "curve", "headroom", "profile", "accent", "bass", "warm", "vocal", "treble", "smile", "pill", "wings", "full screen", "bleed", "underlap", "ytmusic", "youtube music"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("M3 Bar"),
-            label: Translation.tr("M3 layout and surfaces"),
-            description: Translation.tr("M3 presets, joined or separate pills, transparent mode, gaps and widget layout"),
-            keywords: ["m3", "material", "bar", "layout", "preset", "joined", "separate", "transparent", "surface", "gap", "left", "center", "right", "widgets"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("M3 Bar"),
-            label: Translation.tr("M3 media and dividers"),
-            description: Translation.tr("Media title, preferred player, width and divider appearance"),
-            keywords: ["m3", "media", "title", "artist", "player", "width", "divider", "line", "dot", "space"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("M3 Bar"),
-            label: Translation.tr("M3 resources and utility buttons"),
-            description: Translation.tr("Resource rings, thresholds, dock sizing and utility controls"),
-            keywords: ["m3", "resources", "cpu", "ram", "temperature", "disk", "swap", "threshold", "dock", "utility", "screenshot", "mic", "wallpaper"]
-        },
-        {
-            pageIndex: 21, pageName: root.pages[21].name,
-            section: Translation.tr("Pill bar"),
-            label: Translation.tr("Pill setup"),
-            description: Translation.tr("Behavior, floating window overlap, entry points, readability, surfaces, modules and geometry"),
-            keywords: ["ricelin", "pill", "bar", "morph", "float", "floating", "overlap", "underlap", "window", "reserve", "launcher", "media", "overview", "kanji", "glyph", "sysmon", "clipboard", "scale", "gap", "expanded", "persistent", "compact", "toast", "osd", "notification", "hover", "row", "workspaces", "weather", "tray", "wifi", "battery", "mixer", "sidebar", "power", "soul", "bead", "icon", "size", "spacing"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("Appearance & Layout"),
-            label: Translation.tr("Islands options"),
-            description: Translation.tr("Islands bar geometry: capsule inset and padding"),
-            keywords: ["islands", "bar", "inset", "padding", "capsule", "geometry", "spacing", "ricelin"]
-        },
-        {
-            pageIndex: 21, pageName: root.pages[21].name,
-            section: Translation.tr("Pill bar"),
-            label: Translation.tr("Ricelin dialect"),
-            description: Translation.tr("Enable the Ricelin Pill bar and configure it in this page"),
-            keywords: ["ricelin", "pill", "bar", "mode", "setup", "washi", "flame"]
-        },
-        {
-            pageIndex: 21, pageName: root.pages[21].name,
-            section: Translation.tr("Island surfaces"),
-            label: Translation.tr("Island surfaces and skin"),
-            description: Translation.tr("Shared Ricelin body opacity, glass background, blur, radius and surface opt-ins"),
-            keywords: ["ricelin", "island", "dock", "sidebar", "search", "control panel", "widgets", "workspace strip", "card", "body", "opacity", "glass", "background", "blur", "radius", "sheen", "shadow", "skin", "transparency"]
+            description: Translation.tr("Bars, waves, frequency accents and dynamic curve fit"),
+            keywords: ["spectrum", "audio", "cava", "bars", "wave", "origin", "bottom", "top", "center", "mirror", "ribbon", "density", "gap", "smoothing", "edge", "curve", "headroom", "profile", "accent", "bass", "warm", "vocal", "treble", "smile", "ytmusic", "youtube music"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
@@ -703,7 +572,7 @@ Singleton {
             section: Translation.tr("System Tray"),
             label: Translation.tr("Monochrome tray icons"),
             description: Translation.tr("Tint tray icons to match theme"),
-            keywords: ["tray", "monochrome", "tint", "icons", "theme", "color", "m3", "classic"]
+            keywords: ["tray", "monochrome", "tint", "icons", "theme", "color", "classic"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
@@ -768,10 +637,6 @@ Singleton {
             description: Translation.tr("Reorder and toggle bar modules"),
             keywords: ["bar", "module", "layout", "order", "reorder", "resources", "media", "clock"]
         },
-
-        // =====================================================================
-        // Background (page 3) — per-option entries
-        // =====================================================================
         {
             pageIndex: 3, pageName: root.pages[3].name,
             section: Translation.tr("Parallax"),
@@ -842,10 +707,6 @@ Singleton {
             description: Translation.tr("Vignette darkening effect on backdrop"),
             keywords: ["backdrop", "vignette", "darken", "edges", "effect"]
         },
-
-        // =====================================================================
-        // Themes (page 4) — per-option entries
-        // =====================================================================
         {
             pageIndex: 4, pageName: root.pages[4].name,
             section: Translation.tr("Global Style"),
@@ -893,8 +754,7 @@ Singleton {
             section: Translation.tr("Color Themes"),
             label: Translation.tr("Theme Presets"),
             description: Translation.tr("Predefined color themes like Gruvbox, Catppuccin, Nord, Dracula"),
-            keywords: ["theme", "preset", "gruvbox", "catppuccin", "nord", "dracula", "material", "colors", "palette",
-                       "monokai", "solarized", "tokyo", "night", "everforest", "rose", "pine"]
+            keywords: ["theme", "preset", "gruvbox", "catppuccin", "nord", "dracula", "material", "colors", "palette", "monokai", "solarized", "tokyo", "night", "everforest", "rose", "pine"]
         },
         {
             pageIndex: 4, pageName: root.pages[4].name,
@@ -966,10 +826,6 @@ Singleton {
             description: Translation.tr("Automatically switch themes at day/night times"),
             keywords: ["theme", "schedule", "day", "night", "auto", "switch", "time"]
         },
-
-        // =====================================================================
-        // Interface (page 5) — per-option entries
-        // =====================================================================
         {
             pageIndex: 10, pageName: root.pages[10].name,
             section: Translation.tr("Display scaling"),
@@ -1167,18 +1023,11 @@ Singleton {
             keywords: ["sidebar", "left", "arrange", "order", "tabs", "drag", "widgets", "ai"]
         },
         {
-            pageIndex: 21, pageName: root.pages[21].name,
-            section: Translation.tr("Island surfaces"),
-            label: Translation.tr("Island body & glass"),
-            description: Translation.tr("Shared body opacity, glass background, blur, radius, shadow and top edge for Ricelin surfaces"),
-            keywords: ["island", "pill", "radius", "opacity", "shadow", "sheen", "card", "gradient", "ricelin", "skin", "glass", "blur", "transparency"]
-        },
-        {
             pageIndex: 23, pageName: root.pages[23].name,
             section: Translation.tr("Sidebars"),
             label: Translation.tr("Sidebar style"),
             description: Translation.tr("Panel or island (gradient card) sidebar surface"),
-            keywords: ["sidebar", "style", "island", "panel", "card", "gradient", "ricelin"]
+            keywords: ["sidebar", "style", "island", "panel", "card", "gradient"]
         },
         {
             pageIndex: 23, pageName: root.pages[23].name,
@@ -1206,7 +1055,7 @@ Singleton {
             section: Translation.tr("Search"),
             label: Translation.tr("Search surface style"),
             description: Translation.tr("Default or island (gradient card) search surface"),
-            keywords: ["search", "style", "island", "card", "gradient", "launcher", "apps", "ricelin"]
+            keywords: ["search", "style", "island", "card", "gradient", "launcher", "apps"]
         },
         {
             pageIndex: 23, pageName: root.pages[23].name,
@@ -1268,8 +1117,8 @@ Singleton {
             pageIndex: 6, pageName: root.pages[6].name,
             section: Translation.tr("On-screen display"),
             label: Translation.tr("Media OSD"),
-            description: Translation.tr("Control explicit media feedback and Pill track announcements; automatic changes stay hidden during games"),
-            keywords: ["osd", "media", "music", "player", "shortcuts", "pill", "track", "fullscreen", "game", "automatic", "skip"]
+            description: Translation.tr("Control explicit media feedback; automatic changes stay hidden during games"),
+            keywords: ["osd", "media", "music", "player", "shortcuts", "track", "fullscreen", "game", "automatic", "skip"]
         },
         {
             pageIndex: 5, pageName: root.pages[5].name,
@@ -1299,10 +1148,6 @@ Singleton {
             description: Translation.tr("Wallpaper picker behaviour"),
             keywords: ["wallpaper", "selector", "file", "dialog", "picker"]
         },
-
-        // =====================================================================
-        // Tools (page 6)
-        // =====================================================================
         {
             pageIndex: 6, pageName: root.pages[6].name,
             section: Translation.tr("Screen recording"),
@@ -1359,10 +1204,6 @@ Singleton {
             description: Translation.tr("Volume and brightness OSD settings"),
             keywords: ["osd", "on", "screen", "display", "volume", "brightness"]
         },
-
-        // =====================================================================
-        // Services (page 7) — per-option entries
-        // =====================================================================
         {
             pageIndex: 24, pageName: root.pages[24].name,
             section: Translation.tr("Get started"),
@@ -1496,10 +1337,6 @@ Singleton {
             description: Translation.tr("Terminal, file manager, browser commands"),
             keywords: ["apps", "applications", "terminal", "browser", "file", "manager", "discord", "default"]
         },
-
-        // =====================================================================
-        // Advanced (page 8)
-        // =====================================================================
         {
             pageIndex: 8, pageName: root.pages[8].name,
             section: Translation.tr("Color generation"),
@@ -1556,24 +1393,13 @@ Singleton {
             description: Translation.tr("Touchpad and mouse scroll speed"),
             keywords: ["scroll", "touchpad", "mouse", "speed", "fast", "slow", "sensitivity"]
         },
-
-        // =====================================================================
-        // Shortcuts (page 9)
-        // =====================================================================
         {
             pageIndex: 9, pageName: root.pages[9].name,
             section: Translation.tr("Add keybind"),
             label: Translation.tr("Keyboard Shortcuts"),
             description: Translation.tr("Niri and ii keybindings reference"),
-            keywords: ["shortcuts", "keybindings", "hotkeys", "keyboard", "cheatsheet",
-                       "terminal", "clipboard", "volume", "brightness", "screenshot", "lock",
-                       "workspace", "window", "focus", "move", "fullscreen", "floating",
-                       "overview", "settings", "wallpaper", "media", "play", "pause"]
+            keywords: ["shortcuts", "keybindings", "hotkeys", "keyboard", "cheatsheet", "terminal", "clipboard", "volume", "brightness", "screenshot", "lock", "workspace", "window", "focus", "move", "fullscreen", "floating", "overview", "settings", "wallpaper", "media", "play", "pause"]
         },
-
-        // =====================================================================
-        // Modules (page 10)
-        // =====================================================================
         {
             pageIndex: 10, pageName: root.pages[10].name,
             section: Translation.tr("Shell Modules"),
@@ -1616,10 +1442,6 @@ Singleton {
             description: Translation.tr("Window switcher style and behavior"),
             keywords: ["alt", "tab", "switcher", "windows", "thumbnails"]
         },
-
-        // =====================================================================
-        // Waffle Style (page 11)
-        // =====================================================================
         {
             pageIndex: 11, pageName: root.pages[11].name,
             section: Translation.tr("Taskbar"),
@@ -1669,10 +1491,6 @@ Singleton {
             description: Translation.tr("Hide the Waffle wallpaper while keeping the Task View backdrop available"),
             keywords: ["waffle", "fullscreen", "wallpaper", "background", "gaming", "performance", "task view", "backdrop", "hide"]
         },
-
-        // =====================================================================
-        // Compositor (page 12)
-        // =====================================================================
         {
             pageIndex: 12, pageName: root.pages[12].name,
             section: Translation.tr("Displays"),
@@ -1785,10 +1603,6 @@ Singleton {
             description: Translation.tr("Actionable managed overrides and extra files in Niri config"),
             keywords: ["niri", "status", "managed", "override", "extra", "config", "kdl"]
         },
-
-        // =====================================================================
-        // About (page 13)
-        // =====================================================================
         {
             pageIndex: 13, pageName: root.pages[13].name,
             section: Translation.tr("System"),
@@ -1796,10 +1610,6 @@ Singleton {
             description: Translation.tr("Version info, credits and links"),
             keywords: ["about", "version", "credits", "github", "info"]
         },
-
-        // =====================================================================
-        // Desktop Widgets (page 14)
-        // =====================================================================
         { pageIndex: 14, pageName: root.pages[14].name, section: Translation.tr("Edit Mode"), label: Translation.tr("Widget edit mode"), description: Translation.tr("Grid overlay and snap-to-grid for widget placement"), keywords: ["widget", "edit", "grid", "snap", "placement", "drag"] },
         { pageIndex: 14, pageName: root.pages[14].name, section: Translation.tr("Appearance"), label: Translation.tr("Desktop widgets"), description: Translation.tr("Current iNiR palette"), keywords: ["widget", "color", "colour", "palette", "preset", "primary", "secondary", "tertiary", "signal", "surface", "wallpaper"] },
         { pageIndex: 14, pageName: root.pages[14].name, section: Translation.tr("Clock"), label: Translation.tr("Desktop clock"), description: Translation.tr("Clock widget on the desktop background"), keywords: ["clock", "widget", "cookie", "digital", "background", "desktop", "wallpaper", "adaptive", "colors"] },
@@ -1815,28 +1625,16 @@ Singleton {
         { pageIndex: 14, pageName: root.pages[14].name, section: Translation.tr("System Monitor"), label: Translation.tr("System monitor widget"), description: Translation.tr("CPU, RAM, GPU usage on the desktop"), keywords: ["system", "monitor", "cpu", "ram", "gpu", "usage", "performance"] },
         { pageIndex: 14, pageName: root.pages[14].name, section: Translation.tr("Battery"), label: Translation.tr("Desktop battery widget"), description: Translation.tr("Battery status on the desktop background"), keywords: ["battery", "widget", "background", "charge", "power"] },
         { pageIndex: 14, pageName: root.pages[14].name, section: Translation.tr("Custom Widgets"), label: Translation.tr("Custom widgets"), description: Translation.tr("Create, install, and manage custom QML widgets"), keywords: ["custom", "widget", "create", "qml", "install", "user", "plugin"] },
-
-        // =====================================================================
-        // Monitors (page 15)
-        // =====================================================================
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Monitor arrangement"), label: Translation.tr("Arrange monitors"), description: Translation.tr("Drag displays to match the physical layout of your desk"), keywords: ["monitor", "display", "arrange", "layout", "position", "drag", "niri", "output", "screen", "snap"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Shell visibility"), label: Translation.tr("Primary monitor"), description: Translation.tr("Choose the default output for shell popups"), keywords: ["monitor", "display", "primary", "screen", "output"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Overview placement"), label: Translation.tr("Active screen only"), description: Translation.tr("Open the overview on the monitor where it was invoked"), keywords: ["overview", "monitor", "screen", "focused", "active", "output"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Material shell surfaces"), label: Translation.tr("Bar, dock, sidebars, and media controls"), description: Translation.tr("Choose which monitors show Material shell surfaces"), keywords: ["monitor", "visibility", "bar", "dock", "sidebar", "media", "workspace", "secondary"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Popups"), label: Translation.tr("Notification popups and OSD indicators"), description: Translation.tr("Choose which monitors show notifications and OSD feedback"), keywords: ["monitor", "visibility", "notifications", "osd", "popups", "secondary", "workspace"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Desktop widgets"), label: Translation.tr("Desktop widgets"), description: Translation.tr("Choose widget visibility and layout per monitor"), keywords: ["monitor", "visibility", "desktop", "widgets", "layout", "secondary", "workspace"] },
-
-        // =====================================================================
-        // Dashboard (page 16)
-        // =====================================================================
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Dashboard"), description: Translation.tr("Centered welcome hub panel with configurable widgets"), keywords: ["dashboard", "hub", "welcome", "panel", "home", "greeting"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel width"), description: Translation.tr("Dashboard width as a percentage of the screen"), keywords: ["dashboard", "width", "size", "ratio", "screen"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("GitHub username"), description: Translation.tr("GitHub user for the contributions heatmap widget"), keywords: ["dashboard", "github", "contributions", "heatmap", "username", "activity"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Widgets"), label: Translation.tr("Dashboard widgets"), description: Translation.tr("Place, hide and reorder dashboard widgets per column"), keywords: ["dashboard", "widgets", "layout", "column", "reorder", "clock", "weather", "media", "todo", "calendar", "notifications", "system"] },
-
-        // =====================================================================
-        // Autostart (page 17)
-        // =====================================================================
         {
             pageIndex: 17, pageName: root.pages[17].name,
             section: Translation.tr("How autostart works"),
@@ -1844,17 +1642,8 @@ Singleton {
             description: Translation.tr("Launch apps when iNiR starts"),
             keywords: ["autostart", "startup", "launch", "apps", "boot", "discord", "steam", "telegram"]
         },
-
-        // =====================================================================
-        // Workspace Strip (page 18)
-        // =====================================================================
-        { pageIndex: 18, pageName: root.pages[18].name, section: Translation.tr("Edge behavior"), label: Translation.tr("Workspace strip"), description: Translation.tr("Hidden edge-hover navigator with workspace previews"), keywords: ["workspace", "strip", "edge", "hover", "navigate", "switch", "thumbnail", "preview"] },
-        { pageIndex: 18, pageName: root.pages[18].name, section: Translation.tr("Edge behavior"), label: Translation.tr("Hover timing"), description: Translation.tr("Control edge activation and close delays"), keywords: ["workspace", "strip", "hover", "delay", "open", "close", "trigger"] },
-        { pageIndex: 18, pageName: root.pages[18].name, section: Translation.tr("Workspace cards"), label: Translation.tr("Window previews"), description: Translation.tr("Live active preview with cached hidden-workspace snapshots"), keywords: ["workspace", "strip", "preview", "live", "cached", "thumbnail", "window"] },
-        { pageIndex: 18, pageName: root.pages[18].name, section: Translation.tr("Workspace cards"), label: Translation.tr("Metadata and app icons"), description: Translation.tr("Show focused-window details and filter workspaces per monitor"), keywords: ["workspace", "strip", "metadata", "icons", "monitor", "per-monitor", "apps"] },
-
         { pageIndex: 25, pageName: root.pages[25].name, section: Translation.tr("Blur and glass"), label: Translation.tr("Default blur backend"), description: Translation.tr("Let the style choose, use wallpaper glass, compositor blur, or disable blur"), keywords: ["effects", "blur", "backend", "wallpaper", "compositor", "style", "glass"] },
-        { pageIndex: 25, pageName: root.pages[25].name, section: Translation.tr("Per-area overrides"), label: Translation.tr("Bars, dock, panels, islands and widgets"), description: Translation.tr("Override the blur backend independently for each shell area"), keywords: ["effects", "area", "bar", "dock", "panel", "island", "ricelin", "widget"] },
+        { pageIndex: 25, pageName: root.pages[25].name, section: Translation.tr("Per-area overrides"), label: Translation.tr("Bars, dock, panels, islands and widgets"), description: Translation.tr("Override the blur backend independently for each shell area"), keywords: ["effects", "area", "bar", "dock", "panel", "island", "widget"] },
         { pageIndex: 25, pageName: root.pages[25].name, section: Translation.tr("Motion and power"), label: Translation.tr("Reduce animations"), description: Translation.tr("Use immediate reduced-motion state changes"), keywords: ["motion", "animation", "reduce", "accessibility", "performance"] }
         ]
         return _staticSearchIndex

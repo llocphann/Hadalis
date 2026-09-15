@@ -18,10 +18,16 @@ Item {
     readonly property string alignment: PerimeterTopology.alignmentForSlot(slotId)
     readonly property string orientation: PerimeterTopology.orientationForEdge(edge)
     readonly property string inwardDirection: PerimeterTopology.inwardDirectionForEdge(edge)
-    readonly property bool resolvable: instanceDescriptor !== null
+    readonly property int configRevision: Config.revision
+    readonly property string configuredSlotId:
+        PerimeterConfig.placementForInstance(outputName, instanceId)
+    readonly property bool placementValid: configRevision >= 0
+        && PerimeterConfig.validate(outputName)
+        && configuredSlotId === slotId
+    readonly property bool resolvable: placementValid
+        && instanceDescriptor !== null
         && ModuleRegistry.isResolvable(moduleId)
     readonly property Item loadedItem: moduleLoader.item
-    readonly property int configRevision: Config.revision
     property int anchorLayoutRevision: 0
     property var perimeterContext: context
 

@@ -18,10 +18,11 @@ Item {
     readonly property var instanceIds: slotModel.instanceIds
     readonly property int count: slotModel.count
     readonly property bool empty: slotModel.empty
+    readonly property bool configValid: PerimeterConfig.validate(outputName)
 
     implicitWidth: positionerLoader.item?.implicitWidth ?? 0
     implicitHeight: positionerLoader.item?.implicitHeight ?? 0
-    visible: hostEnabled && !empty
+    visible: hostEnabled && configValid && !empty
     enabled: visible
 
     PerimeterSlotModel {
@@ -33,7 +34,7 @@ Item {
 
     Loader {
         id: positionerLoader
-        active: root.hostEnabled && !root.empty
+        active: root.hostEnabled && root.configValid && !root.empty
         sourceComponent: root.orientation === "vertical"
             ? verticalPositioner : horizontalPositioner
         width: item?.implicitWidth ?? 0
@@ -55,7 +56,7 @@ Item {
                     slotId: root.slotId
                     slotRect: root.slotRect
                     slotItem: root
-                    hostEnabled: root.hostEnabled
+                    hostEnabled: root.hostEnabled && root.configValid
                     width: implicitWidth
                     height: implicitHeight
                 }
@@ -78,7 +79,7 @@ Item {
                     slotId: root.slotId
                     slotRect: root.slotRect
                     slotItem: root
-                    hostEnabled: root.hostEnabled
+                    hostEnabled: root.hostEnabled && root.configValid
                     width: implicitWidth
                     height: implicitHeight
                 }

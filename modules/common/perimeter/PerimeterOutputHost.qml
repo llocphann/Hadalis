@@ -13,6 +13,7 @@ Item {
     property real rightInset: 0
 
     readonly property rect outputRect: Qt.rect(0, 0, width, height)
+    readonly property bool configValid: PerimeterConfig.validate(outputName)
     readonly property Item topStartSlot: topStart
     readonly property Item topCenterSlot: topCenter
     readonly property Item topEndSlot: topEnd
@@ -40,7 +41,7 @@ Item {
         id: topStart
         outputName: root.outputName
         slotId: "top.start"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.top: parent.top
         anchors.left: parent.left
@@ -52,7 +53,7 @@ Item {
         id: topCenter
         outputName: root.outputName
         slotId: "top.center"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
@@ -63,7 +64,7 @@ Item {
         id: topEnd
         outputName: root.outputName
         slotId: "top.end"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.top: parent.top
         anchors.right: parent.right
@@ -77,7 +78,7 @@ Item {
         id: leftCenter
         outputName: root.outputName
         slotId: "left.center"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
@@ -88,7 +89,7 @@ Item {
         id: rightCenter
         outputName: root.outputName
         slotId: "right.center"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
@@ -99,7 +100,7 @@ Item {
         id: bottomStart
         outputName: root.outputName
         slotId: "bottom.start"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.bottom: parent.bottom
         anchors.left: parent.left
@@ -111,7 +112,7 @@ Item {
         id: bottomCenter
         outputName: root.outputName
         slotId: "bottom.center"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
@@ -122,7 +123,7 @@ Item {
         id: bottomEnd
         outputName: root.outputName
         slotId: "bottom.end"
-        hostEnabled: root.hostEnabled
+        hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
         anchors.bottom: parent.bottom
         anchors.right: parent.right

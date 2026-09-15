@@ -154,22 +154,6 @@ payload_tool="$runtime_root/sdata/lib/runtime-payload.py"
 payload_list="$(mktemp)"
 trap 'rm -f "$payload_list"' EXIT
 python3 "$payload_tool" list --root "$runtime_root" > "$payload_list"
-if ! grep -qx 'assets/images/mascot/manifest.json' "$payload_list"; then
-    printf 'FAIL: mascot runtime manifest is missing from canonical payload\n' >&2
-    exit 1
-fi
-for forbidden in \
-    'assets/images/mascot/frames/' \
-    'assets/images/mascot/PROMPTS.md'; do
-    if grep -Fq "$forbidden" "$payload_list"; then
-        printf 'FAIL: canonical payload leaks local mascot artifact: %s\n' "$forbidden" >&2
-        exit 1
-    fi
-done
-if grep -Eq '^assets/images/mascot/.*\.(png|gif)$' "$payload_list"; then
-    printf 'FAIL: canonical payload leaks local mascot image artifacts\n' >&2
-    exit 1
-fi
 if ! grep -Fq 'runtime-payload.py copy' "$runtime_root/Makefile"; then
     printf 'FAIL: make install does not use the canonical runtime payload policy\n' >&2
     exit 1

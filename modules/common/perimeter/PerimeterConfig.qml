@@ -36,7 +36,11 @@ QtObject {
         outputs: {}
     })
 
-    readonly property var configured: Config.options?.perimeter ?? null
+    // Use Config's revision-aware accessor instead of binding directly to an
+    // optional QObject property. This keeps the contract reactive once the typed
+    // Config perimeter node is introduced.
+    readonly property var configured: Config.getNestedValue("perimeter", null)
+    readonly property bool persistenceReady: configured !== null
     readonly property int configuredSchemaVersion:
         Number(configured?.schemaVersion ?? schemaVersion)
     readonly property bool schemaSupported:
@@ -73,7 +77,12 @@ QtObject {
 
     function _sharedInstances() {
         const shared = root.configured?.instances
-        return Array.isArray(shared) ? shared : root.defaultPreset.instances
+        // A typed JsonAdapter schema can safely default instances to []. Treat
+        // that empty schema value as "use the architecture preset"; modules are
+        // removed from the layout by empty slot arrays, not by deleting the
+        // descriptor catalog.
+        return Array.isArray(shared) && shared.length > 0
+            ? shared : root.defaultPreset.instances
     }
 
     function _outputInstances(outputName) {

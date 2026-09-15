@@ -151,10 +151,10 @@ def clean_translation_files(
 
 def sync_translations(
     translations_dir: str,
-    source_dir: str,
     target_langs: List[str] = None,
-    backup: bool = True,
     yes_mode: bool = False,
+    source_dir: str = DEFAULT_SOURCE_DIR,
+    backup: bool = True,
 ):
     """Sync every target locale to the canonical English keyset."""
     print(
@@ -293,7 +293,7 @@ def main():
     elif args.sync:
         sync_translations(
             translations_dir,
-            source_dir,
+            source_dir=source_dir,
             backup=not args.no_backup,
             yes_mode=args.yes,
         )

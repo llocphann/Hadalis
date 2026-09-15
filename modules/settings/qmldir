@@ -12,7 +12,6 @@ GeneralConfigCore 1.0 GeneralConfigCore.qml
 TlpPowerSettings 1.0 TlpPowerSettings.qml
 WaffleConfig 1.0 WaffleConfig.qml
 AutostartConfig 1.0 AutostartConfig.qml
-WorkspaceStripConfig 1.0 WorkspaceStripConfig.qml
 DockConfig 1.0 DockConfig.qml
 M3LayoutSection 1.0 M3LayoutSection.qml
 SidebarsConfig 1.0 SidebarsConfig.qml
@@ -24,4 +23,3 @@ SettingsChromeEditFrame 1.0 SettingsChromeEditFrame.qml
 SettingsNativeDialogGuard 1.0 SettingsNativeDialogGuard.qml
 PillOptionsEditor 1.0 PillOptionsEditor.qml
 RicelinIslandEditor 1.0 RicelinIslandEditor.qml
-OrbitShelfEditor 1.0 OrbitShelfEditor.qml

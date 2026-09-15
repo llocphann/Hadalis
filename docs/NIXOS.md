@@ -1,69 +1,73 @@
 # NixOS
 
-> Experimental. The Arch installer is still the primary supported path.
+> Experimental. The Arch installer remains the primary supported installation path.
 
-iNiR provides a flake with:
+Hadalis ships Nix packaging for the existing `inir` runtime/launcher identity. The current flake supports `x86_64-linux` and `aarch64-linux` and exports:
 
 | Output | Purpose |
 |---|---|
-| `packages.<system>.default` | Packaged iNiR runtime and `inir` launcher |
-| `packages.<system>.inir-mascot` | Optional mascot art pack companion package |
-| `nixosModules.inir` | NixOS module for system package + user service |
-| `homeModules.inir` | Home Manager module for user package + user service |
+| `packages.<system>.default` | Packaged Hadalis/iNiR runtime and `inir` launcher |
+| `packages.<system>.inir` | Alias of the default package |
+| `nixosModules.default` / `nixosModules.inir` | NixOS module for the package and user service |
+| `homeModules.default` / `homeModules.inir` | Home Manager module |
+| `homeManagerModules.default` / `homeManagerModules.inir` | Conventional Home Manager aliases |
+| `formatter.<system>` | `nixpkgs-fmt` |
 
-The module does not run `./setup install` or `./setup update`. Nix owns the installed files, and iNiR runs from the package store path.
+The flake does **not** run `./setup install` or `./setup update`. Nix owns the packaged files and the shell runs from the immutable store path.
 
-The package and modules are ordinary Nix expressions under `nix/`. Flakes are only one entrypoint, so traditional Nix configurations can import them directly. Both entrypoints use the same `package.nix`, NixOS module, and Home Manager module rather than maintaining separate implementations.
+The package and modules are ordinary expressions under `nix/`, so flakes are optional. Both flake and non-flake consumers use the same `package.nix`, NixOS module, and Home Manager module.
 
 ## Without flakes
 
-Point `inirSrc` at a local checkout or a source pinned with your preferred Nix fetcher:
+Point a source variable at a Hadalis checkout or a source pinned with your preferred Nix fetcher:
 
 ```nix
 { pkgs, ... }:
 let
-  inirSrc = /path/to/inir;
+  hadalisSrc = /path/to/Hadalis;
 in
 {
   imports = [
-    (import (inirSrc + "/nix/nixos-module.nix"))
+    (import (hadalisSrc + "/nix/nixos-module.nix"))
   ];
 
   programs.inir = {
     enable = true;
-    package = pkgs.callPackage (inirSrc + "/nix/package.nix") { inherit pkgs; };
+    package = pkgs.callPackage (hadalisSrc + "/nix/package.nix") { inherit pkgs; };
     service.compositor = "niri";
   };
 }
 ```
 
-For Home Manager, import `nix/home-module.nix` instead. The package expression accepts the consumer's `pkgs` set explicitly, so traditional configurations can choose or pin nixpkgs without converting the project to a flake. Both modules use that same package expression by default unless `programs.inir.package` is overridden.
+For Home Manager, import `nix/home-module.nix` instead. `programs.inir.package` can be overridden when you need a custom build.
 
-## With niri-flake
+## With flakes and niri-flake
 
-Add both flakes:
+Add Hadalis and niri-flake as inputs:
 
 ```nix
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     niri.url = "github:sodiboo/niri-flake";
-    inir.url = "github:snowarch/inir";
+    hadalis.url = "github:llocphann/Hadalis";
   };
 }
 ```
 
-The default input tracks the stable branch. To test development builds before
-they reach `main`, point the iNiR input at `github:snowarch/inir/prerelease`
-instead and rebuild through Nix.
+The unqualified Hadalis input follows this repository's default `stable` branch. To test the active development branch explicitly:
 
-Then import both modules in your NixOS configuration:
+```nix
+hadalis.url = "github:llocphann/Hadalis/dev";
+```
+
+Import the NixOS module together with niri-flake:
 
 ```nix
 { config, inputs, ... }: {
   imports = [
     inputs.niri.nixosModules.niri
-    inputs.inir.nixosModules.inir
+    inputs.hadalis.nixosModules.inir
   ];
 
   programs.niri.enable = true;
@@ -76,50 +80,51 @@ Then import both modules in your NixOS configuration:
 }
 ```
 
-`programs.inir.service.compositor = "niri"` creates the user unit wiring under `niri.service.wants/inir.service`. It does not wire iNiR to `graphical-session.target`, so it will not auto-start under KDE, GNOME, or other desktop sessions.
+`extraPackages = [ config.programs.niri.package ];` puts the same `niri` client used by your compositor on the shell service `PATH`, so integrations that call `niri msg` use the matching package.
 
-`extraPackages = [ config.programs.niri.package ];` puts the same `niri` client binary used by your compositor on iNiR's runtime `PATH`, so features that call `niri msg` use the matching package.
+## Service wiring
 
-Recorder runtime dependencies are provided by the iNiR package itself, including
-`wf-recorder`, `slurp`, `xdg-user-dirs`, `xdg-utils`, PipeWire/Pulse tooling, and
-FFmpeg when available in nixpkgs. They do not need to be duplicated in
-`programs.inir.extraPackages`.
+`programs.inir.service.enable` defaults to `true`.
 
-For useful default shortcuts, merge iNiR actions into `programs.niri.settings.binds`:
+`programs.inir.service.compositor = "niri"` makes `niri.service` want `inir.service`. The generated user service participates in the graphical-session lifecycle and starts early enough to claim the StatusNotifierWatcher bus name before the main graphical session target:
+
+- `Type=dbus`
+- `BusName=org.kde.StatusNotifierWatcher`
+- `Wants=graphical-session-pre.target`
+- `After=graphical-session-pre.target`
+- `Before=graphical-session.target`
+- `PartOf=graphical-session.target`
+
+This ordering mirrors the canonical packaged user service and avoids the cold-login tray ownership race.
+
+For Hyprland/UWSM:
 
 ```nix
-{
-  programs.niri.settings.binds = {
-    "Mod+Space" = {
-      repeat = false;
-      action.spawn = [ "inir" "overview" "toggle" ];
-    };
+programs.inir.service.compositor = "hyprland";
+```
 
-    "Mod+V".action.spawn = [ "inir" "clipboard" "toggle" ];
-    "Mod+Comma".action.spawn = [ "inir" "settings" ];
-    "Mod+Slash".action.spawn = [ "inir" "cheatsheet" "toggle" ];
-    "Mod+Shift+W".action.spawn = [ "inir" "panelFamily" "cycle" ];
+That wires the service under `wayland-wm@Hyprland.service`.
 
-    "Mod+Alt+L" = {
-      allow-when-locked = true;
-      action.spawn = [ "inir" "lock" "activate" ];
-    };
+To create the service without compositor auto-start wiring:
 
-    "Mod+Shift+S".action.spawn = [ "inir" "region" "screenshot" ];
-    "Mod+Shift+X".action.spawn = [ "inir" "region" "ocr" ];
-    "Mod+Shift+A".action.spawn = [ "inir" "region" "search" ];
-  };
-}
+```nix
+programs.inir.service.compositor = null;
+```
+
+Then start it manually when needed:
+
+```bash
+systemctl --user start inir.service
 ```
 
 ## Home Manager
 
-If you manage your user session with Home Manager, import the Home Manager module instead:
+Import the Home Manager module from the same Hadalis input:
 
 ```nix
 { inputs, ... }: {
   imports = [
-    inputs.inir.homeModules.inir
+    inputs.hadalis.homeModules.inir
   ];
 
   programs.inir = {
@@ -129,70 +134,53 @@ If you manage your user session with Home Manager, import the Home Manager modul
 }
 ```
 
-The Home Manager module can also expose the packaged runtime at:
-
-```text
-~/.config/quickshell/inir
-```
-
-That symlink keeps tools that expect the traditional config path working, but it is opt-in because it will conflict with an existing repo checkout at the same path. Enable it with:
+The Home Manager module can optionally expose the packaged runtime at the traditional Quickshell path:
 
 ```nix
 programs.inir.configSymlink.enable = true;
 ```
 
-## Optional mascot art pack
+This creates a symlink at:
 
-The mascot artwork is distributed separately from the shell runtime. The flake
-exposes the current art pack as `packages.<system>.inir-mascot`. Combine it with
-the main package when you want the full mascot asset set:
-
-```nix
-{ inputs, pkgs, ... }:
-let
-  inirWithMascot = pkgs.symlinkJoin {
-    name = "inir-with-mascot";
-    paths = [
-      inputs.inir.packages.${pkgs.system}.default
-      inputs.inir.packages.${pkgs.system}.inir-mascot
-    ];
-  };
-in
-{
-  programs.inir.package = inirWithMascot;
-}
+```text
+~/.config/quickshell/inir
 ```
 
-The companion package is pinned to a mascot release; updating the art pack does
-not mutate the immutable iNiR package in place.
+Do not enable it when that path is already occupied by a repo-managed checkout.
 
-## Hyprland
+## Runtime dependencies
 
-Hyprland users can wire the service to the UWSM unit:
+The Nix package wraps `inir` with the runtime dependencies declared in `nix/package.nix`. Core tools include Quickshell, clipboard/screenshot/audio tooling, systemd utilities, and the shell's command-line dependencies. Optional packages are added when they exist in the selected nixpkgs set.
 
-```nix
-programs.inir.service.compositor = "hyprland";
-```
+The package also sets the runtime location through `INIR_SYSTEM_RUNTIME_DIR` / `INIR_FALLBACK_SYSTEM_RUNTIME_DIR`, so package-managed runs do not depend on a mutable source checkout.
 
-This creates `wayland-wm@Hyprland.service.wants/inir.service`.
+## Privileged integration limitation
 
-## Manual service wiring
+The current Nix package installs the shell runtime and launcher into the Nix store. It does **not** provision the system-level privileged helper/polkit installation used by the source/Arch paths for:
 
-To create the service but avoid auto-start wiring:
+- `/usr/libexec/inir-battery-charge-limit`
+- `/usr/libexec/inir-thinkfan`
 
-```nix
-programs.inir.service.compositor = null;
-```
+As a result, do not assume battery charge-limit or ThinkFan privileged controls are available merely because the Nix package/module is enabled. Those integrations require separate system-level provisioning until Hadalis gains a Nix-native privileged-helper/polkit path.
 
-Then start it manually:
+This limitation is specific to privileged system integration; the shell should continue to degrade gracefully when those helpers are unavailable.
+
+## Updating
+
+For Nix-managed installations, `inir update` is not the package update path. Update the Hadalis flake/source pin and rebuild your NixOS or Home Manager configuration.
+
+For example, with a flake lock:
 
 ```bash
-systemctl --user start inir.service
+nix flake update hadalis
+sudo nixos-rebuild switch --flake .#<host>
 ```
 
-## Notes
+Use the equivalent Home Manager rebuild command when the package is managed there.
 
-- Use `inir logs --full` for runtime errors.
-- The packaged `inir` launcher wraps Quickshell and runtime tools in `PATH`.
-- User preferences still live in iNiR's normal config/state files; the packaged QML source itself is immutable.
-- `inir update` is not the right update path for a Nix install. Update through your flake inputs and rebuild.
+## Troubleshooting
+
+- Use `inir logs` (or your normal user-service journal workflow) for runtime errors.
+- Check `systemctl --user status inir.service` when startup ordering or DBus ownership is in question.
+- Keep `programs.inir.extraPackages` for compositor/runtime tools that are intentionally supplied by your configuration rather than duplicating packages already wrapped by `nix/package.nix`.
+- User preferences continue to live in the normal iNiR/Hadalis config/state locations; the packaged QML payload itself is immutable.

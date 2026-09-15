@@ -84,14 +84,30 @@ async function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-// Strip lone surrogates and U+FFFD replacement chars so we never write
-// invalid UTF-8 to disk. Google Translate occasionally returns truncated
-// or malformed strings that JSON.stringify would happily persist as
-// broken bytes — JSON.parse later refuses to read them.
+// Strip lone surrogates and U+FFFD replacement chars so we never persist
+// malformed text. Valid supplementary Unicode characters are UTF-16 surrogate
+// pairs and must survive intact (emoji and some CJK characters depend on this).
 function sanitizeTranslation(s) {
   if (typeof s !== 'string') return s;
-  // Drop U+FFFD (decoder replacement char) and unpaired surrogates (D800..DFFF)
-  return s.replace(/[\uFFFD\uD800-\uDFFF]/g, '');
+
+  let clean = '';
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code === 0xFFFD) continue;
+
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      const next = i + 1 < s.length ? s.charCodeAt(i + 1) : -1;
+      if (next >= 0xDC00 && next <= 0xDFFF) {
+        clean += s[i] + s[i + 1];
+        i++;
+      }
+      continue;
+    }
+
+    if (code >= 0xDC00 && code <= 0xDFFF) continue;
+    clean += s[i];
+  }
+  return clean;
 }
 
 function writeAtomic(filePath, data) {

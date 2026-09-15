@@ -37,6 +37,8 @@ _retired_paths() {
       (if has("workspaceStrip") then "workspaceStrip" else empty end),
       (if has("mascot") then "mascot" else empty end),
       (if has("orbit") then "orbit" else empty end),
+      (if ((.enabledPanels? | type) == "array" and (.enabledPanels | index("iiMascotCompanion")) != null) then "enabledPanels[iiMascotCompanion]" else empty end),
+      (if ((.knownPanels? | type) == "array" and (.knownPanels | index("iiMascotCompanion")) != null) then "knownPanels[iiMascotCompanion]" else empty end),
       (if (try (.background.widgets | has("mascot")) catch false) then "background.widgets.mascot" else empty end),
       (if (try (.background.widgets | has("mascotInstances")) catch false) then "background.widgets.mascotInstances" else empty end),
       (if (try (.bar | has("appearanceStyle")) catch false) then "bar.appearanceStyle" else empty end),
@@ -63,6 +65,7 @@ migration_preview() {
   echo -e "  ${STY_RED}- workspaceStrip${STY_RST}"
   echo -e "  ${STY_RED}- mascot${STY_RST}"
   echo -e "  ${STY_RED}- orbit${STY_RST}"
+  echo -e "  ${STY_RED}- iiMascotCompanion from enabledPanels / knownPanels${STY_RST}"
   echo -e "  ${STY_RED}- background.widgets.mascot / mascotInstances${STY_RST}"
   echo -e "  ${STY_RED}- bar.appearanceStyle / pill / islands / m3${STY_RST}"
   echo ""
@@ -100,6 +103,12 @@ migration_apply() {
 
   if ! jq '
     del(.workspaceStrip, .mascot, .orbit)
+    | if ((.enabledPanels? | type) == "array")
+      then .enabledPanels |= map(select(. != "iiMascotCompanion"))
+      else . end
+    | if ((.knownPanels? | type) == "array")
+      then .knownPanels |= map(select(. != "iiMascotCompanion"))
+      else . end
     | if ((.background? | type) == "object" and (.background.widgets? | type) == "object")
       then del(.background.widgets.mascot, .background.widgets.mascotInstances)
       else . end

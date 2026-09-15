@@ -65,6 +65,7 @@ modules/
 ├── common/                   # Shared infrastructure
 │   ├── Appearance.qml        # ii visual tokens
 │   ├── Config.qml            # Central JsonAdapter config
+│   ├── perimeter/            # Connected Perimeter core substrate
 │   └── widgets/              # Reusable widgets + qmldir
 ├── bar/                      # Classic Bar runtime
 ├── background/               # Wallpaper + desktop widgets/items
@@ -231,9 +232,9 @@ inir audio volumeUp
 
 Never run raw `qs kill -c inir` / `qs -c inir` by hand. iNiR runs under `inir.service` (`systemd --user`); `inir restart` is the supported forced restart path.
 
-## Connected Surfaces Boundary
+## Connected Perimeter Status
 
-This architecture document describes the **pre-Connected-Surfaces Classic-only baseline**. Connected Popup / Connected Surfaces are future work and are **not implemented by this cleanup**.
+The cleaned Classic-only shell remains the compatibility baseline. Current `dev` now contains the shared Connected Perimeter core under `modules/common/perimeter/`: topology/config, module registry/hosting, anchor publication/lookup, route coordination, and connected geometry/input primitives. Concrete module and transient-surface integration is incremental and should be assessed from the live implementation rather than assumed complete.
 
 ## Known Harmless Warnings
 

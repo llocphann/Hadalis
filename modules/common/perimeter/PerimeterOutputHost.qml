@@ -24,32 +24,78 @@ Item {
     readonly property Item bottomCenterSlot: bottomCenter
     readonly property Item bottomEndSlot: bottomEnd
 
+    readonly property bool topStartOccupied: root._occupied(topStart)
+    readonly property bool topCenterOccupied: root._occupied(topCenter)
+    readonly property bool topEndOccupied: root._occupied(topEnd)
+    readonly property bool leftCenterOccupied: root._occupied(leftCenter)
+    readonly property bool rightCenterOccupied: root._occupied(rightCenter)
+    readonly property bool bottomStartOccupied: root._occupied(bottomStart)
+    readonly property bool bottomCenterOccupied: root._occupied(bottomCenter)
+    readonly property bool bottomEndOccupied: root._occupied(bottomEnd)
+
     readonly property real topCenterDesiredX: (width - topCenter.width) / 2
-    readonly property real topCenterMinX: topStart.visible
+    readonly property real topCenterMinX: topStartOccupied
         ? topStart.x + topStart.width + segmentSpacing : leftInset
-    readonly property real topCenterMaxX: topEnd.visible
+    readonly property real topCenterMaxX: topEndOccupied
         ? topEnd.x - topCenter.width - segmentSpacing
         : width - rightInset - topCenter.width
-    readonly property bool topCenterFits: !topCenter.visible
+    readonly property bool topCenterFits: !topCenterOccupied
         || topCenterMinX <= topCenterMaxX
-    readonly property bool topEdgeSegmentsFit: !topStart.visible || !topEnd.visible
+    readonly property bool topEdgeSegmentsFit: !topStartOccupied || !topEndOccupied
         || topStart.x + topStart.width + segmentSpacing <= topEnd.x
     readonly property bool topCollision: !topEdgeSegmentsFit || !topCenterFits
 
     readonly property real bottomCenterDesiredX: (width - bottomCenter.width) / 2
-    readonly property real bottomCenterMinX: bottomStart.visible
+    readonly property real bottomCenterMinX: bottomStartOccupied
         ? bottomStart.x + bottomStart.width + segmentSpacing : leftInset
-    readonly property real bottomCenterMaxX: bottomEnd.visible
+    readonly property real bottomCenterMaxX: bottomEndOccupied
         ? bottomEnd.x - bottomCenter.width - segmentSpacing
         : width - rightInset - bottomCenter.width
-    readonly property bool bottomCenterFits: !bottomCenter.visible
+    readonly property bool bottomCenterFits: !bottomCenterOccupied
         || bottomCenterMinX <= bottomCenterMaxX
-    readonly property bool bottomEdgeSegmentsFit: !bottomStart.visible || !bottomEnd.visible
+    readonly property bool bottomEdgeSegmentsFit: !bottomStartOccupied || !bottomEndOccupied
         || bottomStart.x + bottomStart.width + segmentSpacing <= bottomEnd.x
     readonly property bool bottomCollision: !bottomEdgeSegmentsFit || !bottomCenterFits
 
+    // Side slots stay truly centered at their natural size. Core never shrinks or
+    // shifts them; these flags only expose overload/collision state to consumers.
+    readonly property bool leftCenterOverflowsOutput: leftCenterOccupied
+        && (leftCenter.y < 0 || leftCenter.y + leftCenter.height > height)
+    readonly property bool rightCenterOverflowsOutput: rightCenterOccupied
+        && (rightCenter.y < 0 || rightCenter.y + rightCenter.height > height)
+    readonly property bool sideSlotsOverlap: root._itemsOverlap(leftCenter, rightCenter)
+    readonly property bool leftCollision: leftCenterOverflowsOutput
+        || sideSlotsOverlap
+        || root._itemsOverlap(leftCenter, topStart)
+        || root._itemsOverlap(leftCenter, topCenter)
+        || root._itemsOverlap(leftCenter, topEnd)
+        || root._itemsOverlap(leftCenter, bottomStart)
+        || root._itemsOverlap(leftCenter, bottomCenter)
+        || root._itemsOverlap(leftCenter, bottomEnd)
+    readonly property bool rightCollision: rightCenterOverflowsOutput
+        || sideSlotsOverlap
+        || root._itemsOverlap(rightCenter, topStart)
+        || root._itemsOverlap(rightCenter, topCenter)
+        || root._itemsOverlap(rightCenter, topEnd)
+        || root._itemsOverlap(rightCenter, bottomStart)
+        || root._itemsOverlap(rightCenter, bottomCenter)
+        || root._itemsOverlap(rightCenter, bottomEnd)
+
     function _clamp(value, minimum, maximum) {
         return Math.max(minimum, Math.min(maximum, value))
+    }
+
+    function _occupied(item) {
+        return item !== null && item.visible && item.width > 0 && item.height > 0
+    }
+
+    function _itemsOverlap(a, b) {
+        if (!root._occupied(a) || !root._occupied(b))
+            return false
+        return a.x < b.x + b.width
+            && a.x + a.width > b.x
+            && a.y < b.y + b.height
+            && a.y + a.height > b.y
     }
 
     function slotHost(slotId) {

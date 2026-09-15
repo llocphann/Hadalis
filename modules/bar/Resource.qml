@@ -99,14 +99,6 @@ Item {
         }
     }
 
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-        enabled: resourceRowLayout.x >= 0 && root.width > 0 && root.visible
-    }
-
     Behavior on implicitWidth {
         enabled: Appearance.animationsEnabled
         NumberAnimation {

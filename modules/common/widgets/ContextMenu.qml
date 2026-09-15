@@ -86,7 +86,7 @@ Loader {
             id: clickOutsideBackdrop
             visible: CompositorService.isNiri && popupWindow.visible
                 && (root.closeOnFocusLost || root.closeOnOutsideClick)
-            color: "transparent"
+            color: Qt.rgba(0, 0, 0, 1/255)
             exclusiveZone: 0
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.namespace: "quickshell:contextMenuBackdrop"

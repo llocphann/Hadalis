@@ -38,8 +38,17 @@ jobs:
           bash -n distro/arch/inir-shell/PKGBUILD
           bash -n distro/arch/inir-shell-git/PKGBUILD
           bash -n distro/arch/inir-meta/PKGBUILD
+          bash -n translations/tools/manage-translations.sh
           python3 -m json.tool sdata/runtime-exclusions.json >/dev/null
-          python3 -m py_compile sdata/lib/runtime-payload.py scripts/lib/generate-ipc-registry.py
+          for locale in translations/*.json; do python3 -m json.tool "$locale" >/dev/null; done
+          python3 -m json.tool translations/l10n/glossary.json >/dev/null
+          python3 -m json.tool translations/l10n/locale-guides.json >/dev/null
+          python3 -m py_compile \
+            sdata/lib/runtime-payload.py \
+            scripts/lib/generate-ipc-registry.py \
+            translations/tools/l10n.py \
+            translations/tools/translation-manager.py \
+            translations/tools/translation-cleaner.py
           python3 scripts/lib/generate-ipc-registry.py --check
           make -n install PREFIX=/tmp/inir-stage-test >/dev/null
 

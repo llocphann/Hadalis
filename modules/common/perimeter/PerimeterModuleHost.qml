@@ -22,6 +22,7 @@ Item {
         && ModuleRegistry.isResolvable(moduleId)
     readonly property Item loadedItem: moduleLoader.item
     readonly property int configRevision: Config.revision
+    property int anchorLayoutRevision: 0
     property var perimeterContext: context
 
     implicitWidth: moduleLoader.item?.implicitWidth ?? 0
@@ -42,8 +43,16 @@ Item {
             item.instanceConfig = root.instanceDescriptor?.config ?? ({})
     }
 
+    function _bumpAnchorLayoutRevision() {
+        root.anchorLayoutRevision = (root.anchorLayoutRevision + 1) % 2147483647
+    }
+
     onInstanceDescriptorChanged: root._syncLoadedItem()
     onConfigRevisionChanged: root._syncLoadedItem()
+    onXChanged: root._bumpAnchorLayoutRevision()
+    onYChanged: root._bumpAnchorLayoutRevision()
+    onWidthChanged: root._bumpAnchorLayoutRevision()
+    onHeightChanged: root._bumpAnchorLayoutRevision()
 
     PerimeterContext {
         id: context
@@ -57,6 +66,7 @@ Item {
         inwardDirection: root.inwardDirection
         slotRect: root.slotRect
         slotItem: root.slotItem
+        layoutRevision: root.anchorLayoutRevision
     }
 
     Loader {

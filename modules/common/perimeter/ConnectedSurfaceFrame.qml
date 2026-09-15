@@ -17,22 +17,21 @@ Item {
 
     visible: geometry.valid && geometry.progress > 0
 
-    // Geometry-only proxy for compositor blur. This may be rectangular and
-    // expanded because it never participates in the input mask.
+    // Expanded rectangular blur proxy. It never participates in the input mask.
     Item {
         id: blurBounds
-        x: root.geometry.blurRect.x + root.geometry.offsetX
-        y: root.geometry.blurRect.y + root.geometry.offsetY
+        x: root.geometry.blurRect.x
+        y: root.geometry.blurRect.y
         width: root.geometry.blurRect.width
         height: root.geometry.blurRect.height
     }
 
     Rectangle {
         id: body
-        x: root.geometry.bodyRect.x + root.geometry.offsetX
-        y: root.geometry.bodyRect.y + root.geometry.offsetY
-        width: root.geometry.bodyRect.width
-        height: root.geometry.bodyRect.height
+        x: root.geometry.animatedBodyRect.x
+        y: root.geometry.animatedBodyRect.y
+        width: root.geometry.animatedBodyRect.width
+        height: root.geometry.animatedBodyRect.height
         radius: Math.min(root.geometry.outerRadius, width / 2, height / 2)
         color: root.fillColor
         border.color: root.borderColor
@@ -43,8 +42,7 @@ Item {
 
     // Render after the body so seamOverlap covers the body's border at the
     // attachment edge. Connector border is disabled by default to avoid a
-    // double-line seam; a future unified outline renderer can replace it
-    // without changing the geometry/input contracts.
+    // double-line seam until a unified outline renderer replaces it.
     ConnectedSurfaceConnector {
         id: connector
         geometry: root.geometry

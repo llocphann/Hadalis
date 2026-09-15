@@ -19,88 +19,179 @@ QtObject {
     property real progress: 1
     property real devicePixelRatio: 1
 
-    readonly property bool horizontal: edge === "top" || edge === "bottom"
-    readonly property string inwardDirection: PerimeterTopology.inwardDirectionForEdge(edge)
-    readonly property bool valid: PerimeterTopology.edges.includes(edge) && bodySize.width > 0 && bodySize.height > 0
+    function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v))
+    }
 
-    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
+    function pixelScale() {
+        return devicePixelRatio > 0 ? devicePixelRatio : 1
+    }
+
     function snap(v) {
-        const scale = Math.max(1, devicePixelRatio)
+        const scale = root.pixelScale()
         return Math.round(v * scale) / scale
     }
+
+    function snapDown(v) {
+        const scale = root.pixelScale()
+        return Math.floor(v * scale) / scale
+    }
+
+    function snapUp(v) {
+        const scale = root.pixelScale()
+        return Math.ceil(v * scale) / scale
+    }
+
+    function snapSize(v) {
+        return Math.max(0, root.snap(Math.max(0, v)))
+    }
+
+    function rectHasArea(rect) {
+        return rect.width > 0 && rect.height > 0
+    }
+
+    function unionRect(a, b) {
+        if (!root.rectHasArea(a))
+            return b
+        if (!root.rectHasArea(b))
+            return a
+        const left = Math.min(a.x, b.x)
+        const top = Math.min(a.y, b.y)
+        const right = Math.max(a.x + a.width, b.x + b.width)
+        const bottom = Math.max(a.y + a.height, b.y + b.height)
+        return Qt.rect(left, top, Math.max(0, right - left), Math.max(0, bottom - top))
+    }
+
+    readonly property bool horizontal: edge === "top" || edge === "bottom"
+    readonly property bool alignmentValid: ["start", "center", "end"].includes(alignment)
+    readonly property string inwardDirection: PerimeterTopology.inwardDirectionForEdge(edge)
+    readonly property real effectiveScreenMargin: Math.max(0, screenMargin)
+    readonly property real availableWidth: Math.max(0,
+        outputRect.width - effectiveScreenMargin * 2)
+    readonly property real availableHeight: Math.max(0,
+        outputRect.height - effectiveScreenMargin * 2)
+    readonly property size clampedBodySize: Qt.size(
+        snapSize(Math.min(Math.max(0, bodySize.width), availableWidth)),
+        snapSize(Math.min(Math.max(0, bodySize.height), availableHeight)))
+    readonly property bool bodyWasClamped: clampedBodySize.width !== snapSize(bodySize.width)
+        || clampedBodySize.height !== snapSize(bodySize.height)
+    readonly property bool valid: PerimeterTopology.edges.includes(edge)
+        && alignmentValid
+        && outputRect.width > 0 && outputRect.height > 0
+        && clampedBodySize.width > 0 && clampedBodySize.height > 0
+
+    readonly property real tangentBodyExtent: horizontal
+        ? clampedBodySize.width : clampedBodySize.height
+    readonly property real tangentOutputStart: horizontal ? outputRect.x : outputRect.y
+    readonly property real tangentOutputExtent: horizontal ? outputRect.width : outputRect.height
+    readonly property real tangentMinimum: tangentOutputStart + effectiveScreenMargin
+    readonly property real tangentMaximum: tangentOutputStart + tangentOutputExtent
+        - effectiveScreenMargin - tangentBodyExtent
 
     readonly property real tangentStart: {
         const anchorStart = horizontal ? anchorRect.x : anchorRect.y
         const anchorExtent = horizontal ? anchorRect.width : anchorRect.height
-        const bodyExtent = horizontal ? bodySize.width : bodySize.height
         let wanted = alignment === "start" ? anchorStart
-            : alignment === "end" ? anchorStart + anchorExtent - bodyExtent
-            : anchorStart + anchorExtent / 2 - bodyExtent / 2
-        const minimum = (horizontal ? outputRect.x : outputRect.y) + screenMargin
-        const maximum = (horizontal ? outputRect.x + outputRect.width - bodySize.width
-            : outputRect.y + outputRect.height - bodySize.height) - screenMargin
-        return snap(clamp(wanted, minimum, Math.max(minimum, maximum)))
+            : alignment === "end" ? anchorStart + anchorExtent - tangentBodyExtent
+            : anchorStart + anchorExtent / 2 - tangentBodyExtent / 2
+        return snap(clamp(wanted, tangentMinimum, Math.max(tangentMinimum, tangentMaximum)))
     }
 
-    readonly property real bodyCrossStart: snap(edge === "top"
-        ? Math.min(anchorRect.y + anchorRect.height + connectorLength - seamOverlap,
-            outputRect.y + outputRect.height - screenMargin - bodySize.height)
+    readonly property real crossBodyExtent: horizontal
+        ? clampedBodySize.height : clampedBodySize.width
+    readonly property real crossOutputStart: horizontal ? outputRect.y : outputRect.x
+    readonly property real crossOutputExtent: horizontal ? outputRect.height : outputRect.width
+    readonly property real crossMinimum: crossOutputStart + effectiveScreenMargin
+    readonly property real crossMaximum: crossOutputStart + crossOutputExtent
+        - effectiveScreenMargin - crossBodyExtent
+    readonly property real wantedBodyCrossStart: edge === "top"
+        ? anchorRect.y + anchorRect.height + connectorLength - seamOverlap
         : edge === "bottom"
-            ? Math.max(anchorRect.y - bodySize.height - connectorLength + seamOverlap,
-                outputRect.y + screenMargin)
+            ? anchorRect.y - clampedBodySize.height - connectorLength + seamOverlap
         : edge === "left"
-            ? Math.min(anchorRect.x + anchorRect.width + connectorLength - seamOverlap,
-                outputRect.x + outputRect.width - screenMargin - bodySize.width)
-        : Math.max(anchorRect.x - bodySize.width - connectorLength + seamOverlap,
-            outputRect.x + screenMargin))
+            ? anchorRect.x + anchorRect.width + connectorLength - seamOverlap
+        : anchorRect.x - clampedBodySize.width - connectorLength + seamOverlap
+    readonly property real bodyCrossStart: snap(clamp(wantedBodyCrossStart,
+        crossMinimum, Math.max(crossMinimum, crossMaximum)))
 
+    // Resting body geometry. Consumers rendering an animated surface should use
+    // animatedBodyRect so the shared geometry remains the single visual authority.
     readonly property rect bodyRect: horizontal
-        ? Qt.rect(tangentStart, bodyCrossStart, snap(bodySize.width), snap(bodySize.height))
-        : Qt.rect(bodyCrossStart, tangentStart, snap(bodySize.width), snap(bodySize.height))
+        ? Qt.rect(tangentStart, bodyCrossStart,
+            clampedBodySize.width, clampedBodySize.height)
+        : Qt.rect(bodyCrossStart, tangentStart,
+            clampedBodySize.width, clampedBodySize.height)
+
+    readonly property real animationOffset: snap((1 - clamp(progress, 0, 1))
+        * Math.max(0, connectorLength))
+    readonly property real offsetX: edge === "left" ? -animationOffset
+        : edge === "right" ? animationOffset : 0
+    readonly property real offsetY: edge === "top" ? -animationOffset
+        : edge === "bottom" ? animationOffset : 0
+    readonly property rect animatedBodyRect: Qt.rect(
+        snap(bodyRect.x + offsetX),
+        snap(bodyRect.y + offsetY),
+        bodyRect.width,
+        bodyRect.height)
 
     readonly property real anchorCenter: horizontal
         ? anchorRect.x + anchorRect.width / 2
         : anchorRect.y + anchorRect.height / 2
     readonly property real bodyTangentExtent: horizontal ? bodyRect.width : bodyRect.height
-    readonly property real connectorCenter: snap(clamp(anchorCenter,
-        tangentStart + connectorWidth / 2,
-        tangentStart + bodyTangentExtent - connectorWidth / 2))
+    readonly property real connectorTangentExtent: snapSize(Math.min(
+        Math.max(0, connectorWidth), bodyTangentExtent))
+    readonly property real connectorCenter: connectorTangentExtent > 0
+        ? snap(clamp(anchorCenter,
+            tangentStart + connectorTangentExtent / 2,
+            tangentStart + bodyTangentExtent - connectorTangentExtent / 2))
+        : snap(tangentStart)
 
-    readonly property rect connectorRect: {
-        if (edge === "top") {
-            const y = anchorRect.y + anchorRect.height - seamOverlap
-            return Qt.rect(connectorCenter - connectorWidth / 2, y, connectorWidth,
-                Math.max(0, bodyRect.y - y + seamOverlap))
+    function connectorRectForBody(body) {
+        const extent = root.connectorTangentExtent
+        const overlap = Math.max(0, root.seamOverlap)
+        if (extent <= 0)
+            return Qt.rect(0, 0, 0, 0)
+
+        if (root.edge === "top") {
+            const x = root.snap(root.connectorCenter - extent / 2)
+            const y = root.snap(root.anchorRect.y + root.anchorRect.height - overlap)
+            const end = root.snap(body.y + overlap)
+            return Qt.rect(x, y, extent, root.snapSize(end - y))
         }
-        if (edge === "bottom") {
-            const y = bodyRect.y + bodyRect.height - seamOverlap
-            return Qt.rect(connectorCenter - connectorWidth / 2, y, connectorWidth,
-                Math.max(0, anchorRect.y + seamOverlap - y))
+        if (root.edge === "bottom") {
+            const x = root.snap(root.connectorCenter - extent / 2)
+            const y = root.snap(body.y + body.height - overlap)
+            const end = root.snap(root.anchorRect.y + overlap)
+            return Qt.rect(x, y, extent, root.snapSize(end - y))
         }
-        if (edge === "left") {
-            const x = anchorRect.x + anchorRect.width - seamOverlap
-            return Qt.rect(x, connectorCenter - connectorWidth / 2,
-                Math.max(0, bodyRect.x - x + seamOverlap), connectorWidth)
+        if (root.edge === "left") {
+            const x = root.snap(root.anchorRect.x + root.anchorRect.width - overlap)
+            const y = root.snap(root.connectorCenter - extent / 2)
+            const end = root.snap(body.x + overlap)
+            return Qt.rect(x, y, root.snapSize(end - x), extent)
         }
-        const x = bodyRect.x + bodyRect.width - seamOverlap
-        return Qt.rect(x, connectorCenter - connectorWidth / 2,
-            Math.max(0, anchorRect.x + seamOverlap - x), connectorWidth)
+        const x = root.snap(body.x + body.width - overlap)
+        const y = root.snap(root.connectorCenter - extent / 2)
+        const end = root.snap(root.anchorRect.x + overlap)
+        return Qt.rect(x, y, root.snapSize(end - x), extent)
     }
 
+    // The live connector keeps its source end fixed at anchorRect while its body
+    // end follows animatedBodyRect, so it never detaches during enter/exit motion.
+    readonly property rect restConnectorRect: connectorRectForBody(bodyRect)
+    readonly property rect connectorRect: connectorRectForBody(animatedBodyRect)
     readonly property point connectorCenterPoint: Qt.point(
         connectorRect.x + connectorRect.width / 2,
         connectorRect.y + connectorRect.height / 2)
-    readonly property rect visualBounds: Qt.rect(
-        Math.min(bodyRect.x, connectorRect.x),
-        Math.min(bodyRect.y, connectorRect.y),
-        Math.max(bodyRect.x + bodyRect.width, connectorRect.x + connectorRect.width) - Math.min(bodyRect.x, connectorRect.x),
-        Math.max(bodyRect.y + bodyRect.height, connectorRect.y + connectorRect.height) - Math.min(bodyRect.y, connectorRect.y))
-    readonly property rect blurRect: Qt.rect(
-        visualBounds.x - blurExpansion,
-        visualBounds.y - blurExpansion,
-        visualBounds.width + blurExpansion * 2,
-        visualBounds.height + blurExpansion * 2)
-    readonly property real animationOffset: (1 - clamp(progress, 0, 1)) * connectorLength
-    readonly property real offsetX: edge === "left" ? -animationOffset : edge === "right" ? animationOffset : 0
-    readonly property real offsetY: edge === "top" ? -animationOffset : edge === "bottom" ? animationOffset : 0
+
+    readonly property rect restVisualBounds: unionRect(bodyRect, restConnectorRect)
+    readonly property rect visualBounds: unionRect(animatedBodyRect, connectorRect)
+    readonly property rect blurRect: {
+        const expansion = Math.max(0, blurExpansion)
+        const left = snapDown(visualBounds.x - expansion)
+        const top = snapDown(visualBounds.y - expansion)
+        const right = snapUp(visualBounds.x + visualBounds.width + expansion)
+        const bottom = snapUp(visualBounds.y + visualBounds.height + expansion)
+        return Qt.rect(left, top, Math.max(0, right - left), Math.max(0, bottom - top))
+    }
 }

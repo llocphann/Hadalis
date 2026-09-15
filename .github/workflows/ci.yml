@@ -55,6 +55,19 @@ jobs:
           python3 scripts/lib/generate-ipc-registry.py --check
           make -n install PREFIX=/tmp/inir-stage-test >/dev/null
 
+      - name: Validate privileged integration packaging
+        run: |
+          grep -Fq 'org.freedesktop.policykit.exec.path">/usr/libexec/inir-thinkfan' assets/polkit/org.inir.thinkfan.policy
+          for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
+            grep -Fq 'assets/helpers/inir-battery-charge-limit' "$pkg"
+            grep -Fq '$pkgdir/usr/libexec/inir-battery-charge-limit' "$pkg"
+            grep -Fq 'assets/polkit/org.inir.battery-charge-limit.policy' "$pkg"
+            grep -Fq 'assets/tlp/tlp-settings-schema.json' "$pkg"
+            grep -Fq 'assets/helpers/inir-thinkfan' "$pkg"
+            grep -Fq '$pkgdir/usr/libexec/inir-thinkfan' "$pkg"
+            grep -Fq 'assets/polkit/org.inir.thinkfan.policy' "$pkg"
+          done
+
       - name: Run updater and TLP regressions
         run: |
           bash scripts/test-update-lifecycle.sh

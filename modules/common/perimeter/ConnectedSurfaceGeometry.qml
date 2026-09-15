@@ -46,6 +46,18 @@ QtObject {
         return Math.max(0, root.snap(Math.max(0, v)))
     }
 
+    function snapSizeDown(v) {
+        return Math.max(0, root.snapDown(Math.max(0, v)))
+    }
+
+    function snapWithin(v, lo, hi) {
+        const lower = root.snapUp(lo)
+        const upper = root.snapDown(hi)
+        if (upper >= lower)
+            return root.clamp(root.snap(v), lower, upper)
+        return root.snap(root.clamp(v, lo, hi))
+    }
+
     function rectHasArea(rect) {
         return rect.width > 0 && rect.height > 0
     }
@@ -66,15 +78,38 @@ QtObject {
     readonly property bool alignmentValid: ["start", "center", "end"].includes(alignment)
     readonly property string inwardDirection: PerimeterTopology.inwardDirectionForEdge(edge)
     readonly property real effectiveScreenMargin: Math.max(0, screenMargin)
+    readonly property real effectiveConnectorLength: Math.max(0, connectorLength)
+    readonly property real effectiveSeamOverlap: Math.max(0, seamOverlap)
     readonly property real availableWidth: Math.max(0,
         outputRect.width - effectiveScreenMargin * 2)
     readonly property real availableHeight: Math.max(0,
         outputRect.height - effectiveScreenMargin * 2)
+
+    // Preserve the source-to-body gap while clamping: when a requested surface
+    // is too large for the inward side of its anchor, shrink it instead of
+    // shifting it back through the anchor/source item.
+    readonly property real inwardCrossCapacity: Math.max(0,
+        edge === "top"
+            ? outputRect.y + outputRect.height - effectiveScreenMargin
+                - (anchorRect.y + anchorRect.height + effectiveConnectorLength - effectiveSeamOverlap)
+        : edge === "bottom"
+            ? anchorRect.y - effectiveConnectorLength + effectiveSeamOverlap
+                - (outputRect.y + effectiveScreenMargin)
+        : edge === "left"
+            ? outputRect.x + outputRect.width - effectiveScreenMargin
+                - (anchorRect.x + anchorRect.width + effectiveConnectorLength - effectiveSeamOverlap)
+        : anchorRect.x - effectiveConnectorLength + effectiveSeamOverlap
+            - (outputRect.x + effectiveScreenMargin))
+    readonly property real maximumBodyWidth: horizontal
+        ? availableWidth : Math.min(availableWidth, inwardCrossCapacity)
+    readonly property real maximumBodyHeight: horizontal
+        ? Math.min(availableHeight, inwardCrossCapacity) : availableHeight
     readonly property size clampedBodySize: Qt.size(
-        snapSize(Math.min(Math.max(0, bodySize.width), availableWidth)),
-        snapSize(Math.min(Math.max(0, bodySize.height), availableHeight)))
-    readonly property bool bodyWasClamped: clampedBodySize.width !== snapSize(bodySize.width)
-        || clampedBodySize.height !== snapSize(bodySize.height)
+        snapSizeDown(Math.min(Math.max(0, bodySize.width), maximumBodyWidth)),
+        snapSizeDown(Math.min(Math.max(0, bodySize.height), maximumBodyHeight)))
+    readonly property bool bodyWasClamped:
+        clampedBodySize.width !== snapSizeDown(bodySize.width)
+        || clampedBodySize.height !== snapSizeDown(bodySize.height)
     readonly property bool valid: PerimeterTopology.edges.includes(edge)
         && alignmentValid
         && outputRect.width > 0 && outputRect.height > 0
@@ -94,7 +129,8 @@ QtObject {
         let wanted = alignment === "start" ? anchorStart
             : alignment === "end" ? anchorStart + anchorExtent - tangentBodyExtent
             : anchorStart + anchorExtent / 2 - tangentBodyExtent / 2
-        return snap(clamp(wanted, tangentMinimum, Math.max(tangentMinimum, tangentMaximum)))
+        return snapWithin(wanted, tangentMinimum,
+            Math.max(tangentMinimum, tangentMaximum))
     }
 
     readonly property real crossBodyExtent: horizontal
@@ -105,14 +141,14 @@ QtObject {
     readonly property real crossMaximum: crossOutputStart + crossOutputExtent
         - effectiveScreenMargin - crossBodyExtent
     readonly property real wantedBodyCrossStart: edge === "top"
-        ? anchorRect.y + anchorRect.height + connectorLength - seamOverlap
+        ? anchorRect.y + anchorRect.height + effectiveConnectorLength - effectiveSeamOverlap
         : edge === "bottom"
-            ? anchorRect.y - clampedBodySize.height - connectorLength + seamOverlap
+            ? anchorRect.y - clampedBodySize.height - effectiveConnectorLength + effectiveSeamOverlap
         : edge === "left"
-            ? anchorRect.x + anchorRect.width + connectorLength - seamOverlap
-        : anchorRect.x - clampedBodySize.width - connectorLength + seamOverlap
-    readonly property real bodyCrossStart: snap(clamp(wantedBodyCrossStart,
-        crossMinimum, Math.max(crossMinimum, crossMaximum)))
+            ? anchorRect.x + anchorRect.width + effectiveConnectorLength - effectiveSeamOverlap
+        : anchorRect.x - clampedBodySize.width - effectiveConnectorLength + effectiveSeamOverlap
+    readonly property real bodyCrossStart: snapWithin(wantedBodyCrossStart,
+        crossMinimum, Math.max(crossMinimum, crossMaximum))
 
     // Resting body geometry. Consumers rendering an animated surface should use
     // animatedBodyRect so the shared geometry remains the single visual authority.
@@ -123,7 +159,7 @@ QtObject {
             clampedBodySize.width, clampedBodySize.height)
 
     readonly property real animationOffset: snap((1 - clamp(progress, 0, 1))
-        * Math.max(0, connectorLength))
+        * effectiveConnectorLength)
     readonly property real offsetX: edge === "left" ? -animationOffset
         : edge === "right" ? animationOffset : 0
     readonly property real offsetY: edge === "top" ? -animationOffset
@@ -141,14 +177,14 @@ QtObject {
     readonly property real connectorTangentExtent: snapSize(Math.min(
         Math.max(0, connectorWidth), bodyTangentExtent))
     readonly property real connectorCenter: connectorTangentExtent > 0
-        ? snap(clamp(anchorCenter,
+        ? snapWithin(anchorCenter,
             tangentStart + connectorTangentExtent / 2,
-            tangentStart + bodyTangentExtent - connectorTangentExtent / 2))
+            tangentStart + bodyTangentExtent - connectorTangentExtent / 2)
         : snap(tangentStart)
 
     function connectorRectForBody(body) {
         const extent = root.connectorTangentExtent
-        const overlap = Math.max(0, root.seamOverlap)
+        const overlap = root.effectiveSeamOverlap
         if (extent <= 0)
             return Qt.rect(0, 0, 0, 0)
 

@@ -43,7 +43,7 @@ QtObject {
         const outputName = String(route?.output ?? route?.outputName ?? "")
         const sourceInstance = String(route?.sourceInstance ?? "")
         const slot = String(route?.slot ?? route?.slotId ?? "")
-        const surface = String(route?.surface ?? "default")
+        const surface = AnchorRegistry.surfaceName(route?.surface)
         if (!outputName || !sourceInstance || !PerimeterTopology.isValidSlot(slot)
                 || !PerimeterConfig.validate(outputName)) {
             return null

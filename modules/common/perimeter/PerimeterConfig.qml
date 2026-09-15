@@ -8,9 +8,8 @@ QtObject {
 
     readonly property int schemaVersion: 1
 
-    // Persistence remains owned by Config. Until Config exposes a schema-backed
-    // perimeter node, this preset is the architecture default and configured
-    // data is consumed when that node exists.
+    // Persistence is owned by Config; this preset supplies architecture defaults
+    // when the typed perimeter node is empty or has no explicit overrides.
     readonly property var defaultPreset: ({
         schemaVersion: 1,
         instances: [
@@ -37,8 +36,7 @@ QtObject {
     })
 
     // Use Config's revision-aware accessor instead of binding directly to an
-    // optional QObject property. This keeps the contract reactive once the typed
-    // Config perimeter node is introduced.
+    // optional QObject property. This keeps the contract reactive.
     readonly property var configured: Config.getNestedValue("perimeter", null)
     readonly property bool persistenceReady: configured !== null
     readonly property int configuredSchemaVersion:
@@ -61,6 +59,33 @@ QtObject {
             return entry?.instanceIds ?? entry?.instances
         }
         return container?.[id]
+    }
+
+    function _slotContainerValid(container) {
+        if (container === undefined || container === null)
+            return true
+
+        if (Array.isArray(container)) {
+            const seen = ({})
+            for (const entry of container) {
+                const slotId = String(entry?.slotId ?? entry?.slot ?? "")
+                const instanceIds = entry?.instanceIds ?? entry?.instances
+                if (!PerimeterTopology.isValidSlot(slotId)
+                        || seen[slotId] || !Array.isArray(instanceIds))
+                    return false
+                seen[slotId] = true
+            }
+            return true
+        }
+
+        if (typeof container !== "object")
+            return false
+        for (const slotId of Object.keys(container)) {
+            if (!PerimeterTopology.isValidSlot(slotId)
+                    || !Array.isArray(container[slotId]))
+                return false
+        }
+        return true
     }
 
     // Likewise, per-output overrides may be an object keyed by output name or
@@ -100,6 +125,58 @@ QtObject {
             seen[instanceId] = true
         }
         return true
+    }
+
+    function _outputEntryValid(output) {
+        if (!output || typeof output !== "object")
+            return false
+        if (output.instances !== undefined) {
+            if (!Array.isArray(output.instances)
+                    || !root._descriptorLayerValid(output.instances))
+                return false
+        }
+        return root._slotContainerValid(output.slots)
+    }
+
+    function _outputsContainerValid(outputs) {
+        if (outputs === undefined || outputs === null)
+            return true
+
+        if (Array.isArray(outputs)) {
+            const seen = ({})
+            for (const output of outputs) {
+                const name = String(output?.outputName ?? output?.output ?? "")
+                if (!name || seen[name] || !root._outputEntryValid(output))
+                    return false
+                seen[name] = true
+            }
+            return true
+        }
+
+        if (typeof outputs !== "object")
+            return false
+        for (const name of Object.keys(outputs)) {
+            if (!name || !root._outputEntryValid(outputs[name]))
+                return false
+        }
+        return true
+    }
+
+    function _configuredShapeValid() {
+        if (root.configured === null)
+            return true
+
+        const instances = root.configured?.instances
+        if (instances !== undefined && !Array.isArray(instances))
+            return false
+        if (Array.isArray(instances) && instances.length > 0
+                && !root._descriptorLayerValid(instances))
+            return false
+
+        const sharedSlots = root.configured?.defaultSlots ?? root.configured?.slots
+        if (!root._slotContainerValid(sharedSlots))
+            return false
+        return root._outputsContainerValid(root.configured?.outputs)
     }
 
     function slotInstanceIds(outputName, slotId) {
@@ -149,7 +226,7 @@ QtObject {
     }
 
     function validate(outputName) {
-        if (!root.schemaSupported)
+        if (!root.schemaSupported || !root._configuredShapeValid())
             return false
 
         const base = root._sharedInstances()

@@ -59,6 +59,13 @@ Item {
 
     // Bar-anchored media popup
     property bool barMediaPopupVisible: false
+
+    function toggleExpanded(): void {
+        if (root.popupMode === "bar")
+            root.barMediaPopupVisible = !root.barMediaPopupVisible
+        else
+            GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
+    }
     
     Timer {
         id: hideTimer
@@ -223,8 +230,25 @@ Item {
     }
 
     MouseArea {
+        id: mediaInput
         anchors.fill: parent
         acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
+        activeFocusOnTab: true
+
+        Accessible.role: Accessible.Button
+        Accessible.name: Translation.tr("Media controls")
+        Accessible.focusable: true
+
+        Keys.onPressed: event => {
+            if (event.isAutoRepeat
+                    || (event.key !== Qt.Key_Return
+                        && event.key !== Qt.Key_Enter
+                        && event.key !== Qt.Key_Space))
+                return
+            root.toggleExpanded()
+            event.accepted = true
+        }
+
         onPressed: (event) => {
             if (event.button === Qt.MiddleButton) {
                 MprisController.togglePlaying();
@@ -235,11 +259,7 @@ Item {
                 root.pendingTrackDirection = 1
                 MprisController.next();
             } else if (event.button === Qt.LeftButton) {
-                if (root.popupMode === "bar") {
-                    root.barMediaPopupVisible = !root.barMediaPopupVisible
-                } else {
-                    GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
-                }
+                root.toggleExpanded()
             }
         }
         onWheel: (event) => {

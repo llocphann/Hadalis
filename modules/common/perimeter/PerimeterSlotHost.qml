@@ -22,6 +22,15 @@ Item {
 
     implicitWidth: positionerLoader.item?.implicitWidth ?? 0
     implicitHeight: positionerLoader.item?.implicitHeight ?? 0
+
+    // PerimeterSlotHost is a plain Item, so implicit size does not become actual
+    // geometry automatically. Keep the slot's real rect equal to its natural
+    // Row/Column extent unless a standalone consumer explicitly overrides it.
+    // Anchor provenance and OutputHost collision math both depend on this rect
+    // having the same area as the rendered slot content.
+    width: implicitWidth
+    height: implicitHeight
+
     visible: hostEnabled && configValid && !empty
     enabled: visible
 

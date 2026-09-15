@@ -33,6 +33,7 @@ jobs:
           bash -n scripts/test-update-lifecycle.sh
           bash -n scripts/test-local-distribution.sh
           bash -n scripts/test-battery-charge-limit-helper.sh
+          bash -n scripts/test-thinkfan-helper.sh
           bash -n scripts/test-tlp-settings-ui-guards.sh
           bash -n scripts/test-tlp-integration-lifecycle.sh
           bash -n scripts/verify-docs.sh
@@ -72,6 +73,10 @@ jobs:
         run: |
           grep -Fq 'org.freedesktop.policykit.exec.path">/usr/libexec/inir-thinkfan' assets/polkit/org.inir.thinkfan.policy
           for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
+            grep -Fq 'assets/applications/inir-settings.desktop' "$pkg"
+            grep -Fq '$pkgdir/usr/share/applications/inir-settings.desktop' "$pkg"
+            grep -Fq 'distro/arch/inir-shell/inir-quickshell-rebuild.hook' "$pkg"
+            grep -Fq '$pkgdir/usr/share/libalpm/hooks/inir-quickshell-rebuild.hook' "$pkg"
             grep -Fq 'assets/helpers/inir-battery-charge-limit' "$pkg"
             grep -Fq '$pkgdir/usr/libexec/inir-battery-charge-limit' "$pkg"
             grep -Fq 'assets/polkit/org.inir.battery-charge-limit.policy' "$pkg"

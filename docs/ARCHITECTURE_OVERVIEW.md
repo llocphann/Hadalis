@@ -119,8 +119,8 @@ Full breakdown: [Project Map](PROJECT_MAP.md)
 iNiR ships as a git repo with an interactive installer:
 
 ```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
 ./setup install
 ```
 

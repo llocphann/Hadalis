@@ -159,8 +159,23 @@ QtObject {
             // registry gap as a genuinely hidden source.
             const replacement = AnchorRegistry.lookup(outputName,
                 sourceInstance, surface)
-            if (!replacement)
+            const configuredSlot = PerimeterConfig.validate(outputName)
+                ? PerimeterConfig.placementForInstance(outputName, sourceInstance)
+                : ""
+            const descriptor = PerimeterConfig.instanceDescriptor(
+                outputName, sourceInstance)
+            const replacementValid = replacement
+                && PerimeterTopology.isValidSlot(configuredSlot)
+                && String(replacement?.slotId ?? "") === configuredSlot
+                && String(replacement?.moduleId ?? "") === active.sourceModule
+                && String(descriptor?.moduleId ?? "") === active.sourceModule
+                && String(replacement?.coordinateSpace ?? "") === "output-local"
+                && root._rectHasArea(replacement?.rect)
+            if (!replacementValid) {
                 root.close(outputName, "source-hidden")
+                return
+            }
+            root._onAnchorChanged(anchorKey, replacement)
         })
     }
 

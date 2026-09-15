@@ -30,10 +30,15 @@ MouseArea {
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     activeFocusOnTab: true
 
+    Accessible.role: Accessible.Button
+    Accessible.name: Translation.tr("Weather")
+    Accessible.focusable: true
+
     Keys.onPressed: event => {
-        if (event.key !== Qt.Key_Return
-                && event.key !== Qt.Key_Enter
-                && event.key !== Qt.Key_Space)
+        if (event.isAutoRepeat
+                || (event.key !== Qt.Key_Return
+                    && event.key !== Qt.Key_Enter
+                    && event.key !== Qt.Key_Space))
             return
         root.requestExpanded()
         event.accepted = true

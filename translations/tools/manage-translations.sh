@@ -5,7 +5,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TRANSLATIONS_DIR="$(dirname "$SCRIPT_DIR")"
-SOURCE_DIR="$(dirname "$(dirname "$TRANSLATIONS_DIR")")"
+SOURCE_DIR="$(dirname "$TRANSLATIONS_DIR")"
 
 show_help() {
     echo "Translation Management Tool - Convenient Wrapper"
@@ -120,29 +120,29 @@ if [ "$COMMAND" = "status" ] && ! command -v jq >/dev/null 2>&1; then
     echo "Warning: jq is not installed, status display may be incomplete"
 fi
 
-# Build base arguments
-BASE_ARGS="--translations-dir $TRANSLATIONS_DIR --source-dir $SOURCE_DIR"
+# Build base arguments without losing spaces in custom paths.
+BASE_ARGS=(--translations-dir "$TRANSLATIONS_DIR" --source-dir "$SOURCE_DIR")
 
 case $COMMAND in
     extract)
         echo "Extracting translatable texts..."
-        python3 "$SCRIPT_DIR/translation-manager.py" $BASE_ARGS $YES_FLAG --extract-only --show-temp
+        python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" $YES_FLAG --extract-only --show-temp
         ;;
     update)
         echo "Updating translation files..."
         if [ -n "$LANG_CODE" ]; then
-            python3 "$SCRIPT_DIR/translation-manager.py" $BASE_ARGS $YES_FLAG --language "$LANG_CODE"
+            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" $YES_FLAG --language "$LANG_CODE"
         else
-            python3 "$SCRIPT_DIR/translation-manager.py" $BASE_ARGS $YES_FLAG
+            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" $YES_FLAG
         fi
         ;;
     clean)
         echo "Cleaning unused translation keys..."
-        python3 "$SCRIPT_DIR/translation-cleaner.py" $BASE_ARGS $YES_FLAG --clean
+        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" $YES_FLAG --clean
         ;;
     sync)
         echo "Syncing translation keys..."
-        python3 "$SCRIPT_DIR/translation-cleaner.py" $BASE_ARGS $YES_FLAG --sync
+        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" $YES_FLAG --sync
         ;;
     status)
         show_status

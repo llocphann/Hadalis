@@ -66,7 +66,7 @@ PopupWindow {
     PanelWindow {
         id: clickOutsideBackdrop
         visible: root.visible && CompositorService.isNiri
-        color: "transparent"
+        color: Qt.rgba(0, 0, 0, 1/255)
         exclusiveZone: 0
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "quickshell:trayMenuBackdrop"

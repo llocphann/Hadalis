@@ -175,9 +175,6 @@ if ! grep -Fq 'runtime-payload.py copy' "$runtime_root/Makefile"; then
     exit 1
 fi
 
-step "mascot pack install and repair"
-bash "$runtime_root/scripts/test-mascot-pack-flow.sh"
-
 if [[ -f "$runtime_root/Makefile" ]]; then
     step "make install dry run"
     make -n install PREFIX=/tmp/inir-stage-test -C "$runtime_root" >/dev/null
@@ -268,7 +265,6 @@ for forbidden in \
     scripts/verify-docs.sh \
     scripts/qml-check.fish \
     scripts/test-local-distribution.sh \
-    scripts/test-mascot-pack-flow.sh \
     scripts/test-battery-charge-limit-helper.sh \
     scripts/test-tlp-integration-lifecycle.sh \
     scripts/test-tlp-settings-ui-guards.sh \

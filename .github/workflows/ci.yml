@@ -39,6 +39,7 @@ jobs:
           bash -n distro/arch/inir-shell-git/PKGBUILD
           bash -n distro/arch/inir-meta/PKGBUILD
           bash -n translations/tools/manage-translations.sh
+          node --check translations/tools/auto-translate.js
           python3 -m json.tool sdata/runtime-exclusions.json >/dev/null
           for locale in translations/*.json; do python3 -m json.tool "$locale" >/dev/null; done
           python3 -m json.tool translations/l10n/glossary.json >/dev/null
@@ -49,6 +50,7 @@ jobs:
             translations/tools/l10n.py \
             translations/tools/translation-manager.py \
             translations/tools/translation-cleaner.py
+          python3 translations/tools/l10n.py audit-all
           python3 scripts/lib/generate-ipc-registry.py --check
           make -n install PREFIX=/tmp/inir-stage-test >/dev/null
 

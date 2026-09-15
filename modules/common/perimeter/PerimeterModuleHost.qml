@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common
 
 Item {
     id: root
@@ -19,12 +20,29 @@ Item {
     readonly property bool resolvable: instanceDescriptor !== null
         && ModuleRegistry.isResolvable(moduleId)
     readonly property Item loadedItem: moduleLoader.item
+    readonly property int configRevision: Config.revision
     property var perimeterContext: context
 
     implicitWidth: moduleLoader.item?.implicitWidth ?? 0
     implicitHeight: moduleLoader.item?.implicitHeight ?? 0
     visible: hostEnabled && resolvable
     enabled: visible
+
+    function _syncLoadedItem() {
+        const item = moduleLoader.item
+        if (!item)
+            return
+        // Feature modules consume this generic contract. Properties remain
+        // optional during migration so legacy components can be adapted
+        // incrementally instead of requiring a big-bang rewrite.
+        if (item.perimeterContext !== undefined)
+            item.perimeterContext = context
+        if (item.instanceConfig !== undefined)
+            item.instanceConfig = root.instanceDescriptor?.config ?? ({})
+    }
+
+    onInstanceDescriptorChanged: root._syncLoadedItem()
+    onConfigRevisionChanged: root._syncLoadedItem()
 
     PerimeterContext {
         id: context
@@ -45,14 +63,6 @@ Item {
         active: root.hostEnabled && root.resolvable
         source: active ? String(root.registration?.source ?? "") : ""
 
-        onLoaded: {
-            // Feature modules consume this generic contract. Properties remain
-            // optional during migration so legacy components can be adapted
-            // incrementally by Agent B instead of requiring a big-bang rewrite.
-            if (item && item.perimeterContext !== undefined)
-                item.perimeterContext = context
-            if (item && item.instanceConfig !== undefined)
-                item.instanceConfig = root.instanceDescriptor?.config ?? ({})
-        }
+        onLoaded: root._syncLoadedItem()
     }
 }

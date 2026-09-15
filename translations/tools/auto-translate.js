@@ -38,7 +38,7 @@ if (!filePaths.includes(sourceFile)) {
 }
 
 const langMap = {
-  'es_AR.json': 'es', 'he_HE.json': 'iw', 'it_IT.json': 'it',
+  'es_ES.json': 'es', 'he_IL.json': 'iw', 'it_IT.json': 'it',
   'ja_JP.json': 'ja', 'ru_RU.json': 'ru', 'uk_UA.json': 'uk',
   'vi_VN.json': 'vi', 'zh_CN.json': 'zh-cn', 'pt_BR.json': 'pt',
   'hi_IN.json': 'hi', 'fr_FR.json': 'fr', 'de_DE.json': 'de',

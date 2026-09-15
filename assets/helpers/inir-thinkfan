@@ -114,6 +114,10 @@ apply_profile() {
                 printf '%s\n' 'inir-thinkfan: service remained active after disable' >&2
                 exit 70
             fi
+            if systemctl is-enabled --quiet "$service_name"; then
+                printf '%s\n' 'inir-thinkfan: service remained enabled after disable' >&2
+                exit 70
+            fi
             ;;
         *) usage ;;
     esac

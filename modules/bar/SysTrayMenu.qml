@@ -12,12 +12,14 @@ PopupWindow {
     required property QsMenuHandle trayItemMenuHandle
     property real popupBackgroundMargin: 0
     property bool anchorHovered: false  // Set by parent to indicate if anchor is hovered
+    property bool keyboardMode: false
     property bool closing: false
 
     signal menuClosed
     signal menuOpened(qsWindow: var) // Correct type is QsWindow, but QML does not like that
 
     color: "transparent"
+    grabFocus: root.keyboardMode
     property real padding: Appearance.sizes.elevationMargin
 
     implicitHeight: {
@@ -77,7 +79,8 @@ PopupWindow {
         }
     }
 
-    // Close when mouse leaves the popup AND anchor
+    // Close when mouse leaves the popup AND anchor. Keyboard-opened sessions
+    // must not disappear just because there is no pointer hover.
     HoverHandler {
         id: hoverHandler
     }
@@ -85,7 +88,8 @@ PopupWindow {
     Timer {
         id: closeTimer
         interval: 450
-        running: root.visible && !hoverHandler.hovered && !root.anchorHovered
+        running: root.visible && !root.keyboardMode
+            && !hoverHandler.hovered && !root.anchorHovered
         onTriggered: root.close()
     }
 
@@ -93,6 +97,17 @@ PopupWindow {
         id: closeAnimTimer
         interval: Math.max(Appearance.animation.elementMoveExit.duration, Appearance.animation.elementResize.duration)
         onTriggered: root.finalizeClose()
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: root.visible
+        onActivated: {
+            if (stackView.depth > 1)
+                stackView.pop()
+            else
+                root.close()
+        }
     }
 
     MouseArea {

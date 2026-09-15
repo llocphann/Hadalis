@@ -5,7 +5,6 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
-    property bool borderless: Config.options?.bar?.borderless ?? false
     property bool alwaysShowAllResources: false
     implicitWidth: rowLayout.implicitWidth + rowLayout.anchors.leftMargin + rowLayout.anchors.rightMargin
     implicitHeight: Appearance.sizes.barHeight
@@ -34,8 +33,8 @@ MouseArea {
             iconName: "thermostat"
             percentage: ResourceUsage.tempPercentage
             shown: (Config.options?.bar?.resources?.showTempIndicator ?? true) &&
-                ((Config.options?.bar?.resources?.alwaysShowTemp ?? true) || 
-                    (MprisController.activePlayer?.trackTitle == null) ||
+                ((Config.options?.bar?.resources?.alwaysShowTemp ?? true) ||
+                    !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
             Layout.leftMargin: shown ? 6 : 0
             cautionThreshold: Config.options?.bar?.resources?.tempCautionThreshold ?? 65
@@ -46,7 +45,7 @@ MouseArea {
             iconName: "planner_review"
             percentage: ResourceUsage.cpuUsage
             shown: (Config.options?.bar?.resources?.showCpuIndicator ?? true) &&
-                ((Config.options?.bar?.resources?.alwaysShowCpu ?? true) || 
+                ((Config.options?.bar?.resources?.alwaysShowCpu ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
             Layout.leftMargin: shown ? 6 : 0
@@ -57,7 +56,7 @@ MouseArea {
             iconName: "memory_alt"
             percentage: ResourceUsage.gpuUsage
             shown: (Config.options?.bar?.resources?.showGpuIndicator ?? true) &&
-                ((Config.options?.bar?.resources?.alwaysShowGpu ?? true) || 
+                ((Config.options?.bar?.resources?.alwaysShowGpu ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
             Layout.leftMargin: shown ? 6 : 0

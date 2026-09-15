@@ -126,8 +126,7 @@ Scope {
                 "background.widgets.weather.enable": false,
                 "background.widgets.battery.enable": false,
                 "background.widgets.mediaControls.enable": false,
-                "background.widgets.calendarUpcoming.enable": false,
-                "mascot.enable": false
+                "background.widgets.calendarUpcoming.enable": false
             }
         if (profile === "full")
             return {
@@ -177,8 +176,7 @@ Scope {
                 "background.widgets.weather.enable": false,
                 "background.widgets.battery.enable": false,
                 "background.widgets.mediaControls.enable": false,
-                "background.widgets.calendarUpcoming.enable": false,
-                "mascot.enable": true
+                "background.widgets.calendarUpcoming.enable": false
             }
         return {
             "bar.modules.resources": true,
@@ -216,8 +214,7 @@ Scope {
             "background.widgets.weather.enable": false,
             "background.widgets.battery.enable": false,
             "background.widgets.mediaControls.enable": false,
-            "background.widgets.calendarUpcoming.enable": false,
-            "mascot.enable": false
+            "background.widgets.calendarUpcoming.enable": false
         }
     }
 
@@ -1579,42 +1576,6 @@ Scope {
                     }
                 }
             }
-
-            // Only the ii horizontal bar reads bar.appearanceStyle.
-            SettingsGroup {
-                Layout.columnSpan: 2
-                Layout.fillWidth: true
-                visible: (Config.options?.panelFamily ?? "ii") === "ii"
-                    && !(Config.options?.bar?.vertical ?? false)
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    RowLayout {
-                        MaterialSymbol { text: "wysiwyg"; iconSize: 18; color: Appearance.colors.colPrimary }
-                        StyledText {
-                            text: "Material II · " + Translation.tr("Bar shape")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                        }
-                        Item { Layout.fillWidth: true }
-                        StyledText {
-                            text: Translation.tr("Changes how the whole bar reads")
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colSubtext
-                        }
-                    }
-                    ConfigSelectionArray {
-                        Layout.fillWidth: true
-                        currentValue: Config.options?.bar?.appearanceStyle ?? "classic"
-                        onSelected: v => root.setProfileFeature("bar.appearanceStyle", v)
-                        options: [
-                            { displayName: Translation.tr("Classic"), icon: "horizontal_rule", value: "classic" },
-                            { displayName: Translation.tr("Islands"), icon: "view_column", value: "islands" },
-                            { displayName: "Material 3", icon: "widgets", value: "m3" },
-                            { displayName: Translation.tr("Pill"), icon: "blur_circular", value: "pill" }
-                        ]
-                    }
-                }
-            }
         }
 
         SettingsGroup {
@@ -1830,20 +1791,6 @@ Scope {
                         checked: Config.options?.audio?.protection?.enable ?? true
                         onToggledByUser: checked => root.setProfileFeature("audio.protection.enable", checked)
                     }
-                }
-            }
-
-            SettingsGroup {
-                Layout.fillWidth: true
-                Layout.maximumWidth: 600
-                Layout.alignment: Qt.AlignHCenter
-
-                ConfigSwitch {
-                    buttonIcon: "pets"
-                    text: Translation.tr("Kira, the desktop companion")
-                    description: Translation.tr("iNiR's mascot peeks in from the screen edges and reacts to what you do. Purely decorative, and she never takes focus.")
-                    checked: Config.options?.mascot?.enable ?? false
-                    onToggledByUser: checked => root.setProfileFeature("mascot.enable", checked)
                 }
             }
 

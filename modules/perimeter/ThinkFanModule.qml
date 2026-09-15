@@ -25,6 +25,16 @@ Item {
 
     implicitWidth: statusLoader.item?.implicitWidth ?? 0
     implicitHeight: statusLoader.item?.implicitHeight ?? 0
+    activeFocusOnTab: true
+
+    Keys.onPressed: event => {
+        if (event.key !== Qt.Key_Return
+                && event.key !== Qt.Key_Enter
+                && event.key !== Qt.Key_Space)
+            return
+        ThinkFanService.refresh()
+        event.accepted = true
+    }
 
     Loader {
         id: statusLoader
@@ -85,6 +95,8 @@ Item {
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         onClicked: ThinkFanService.refresh()
     }
 }

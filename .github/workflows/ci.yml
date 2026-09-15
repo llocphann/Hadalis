@@ -54,9 +54,11 @@ jobs:
             translations/tools/l10n.py \
             translations/tools/source-parity.py \
             translations/tools/translation-manager.py \
-            translations/tools/translation-cleaner.py
+            translations/tools/translation-cleaner.py \
+            translations/tools/test-cleaner.py
           python3 translations/tools/l10n.py audit-all
           python3 translations/tools/source-parity.py
+          python3 translations/tools/test-cleaner.py
           python3 scripts/lib/generate-ipc-registry.py --check
           make -n install PREFIX=/tmp/inir-stage-test >/dev/null
 

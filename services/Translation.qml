@@ -95,8 +95,9 @@ Singleton {
         if (root.isLoading || (!root?.translations?.hasOwnProperty(key) && !root?.generatedTranslations?.hasOwnProperty(key)))
             return key;
         
-        // Normal cases
-        var translation = root.translations[key] || root.generatedTranslations[key] || key;
+        // User-generated locale files are explicit local overrides of the
+        // bundled catalog, including for locales that ship with the shell.
+        var translation = root.generatedTranslations[key] || root.translations[key] || key;
         // print(key, "-> [", root.translations[key], root.generatedTranslations[key], key, "] ->", translation);
         if (translation.endsWith(root.translationKeepSuffix)) {
             translation = translation.substring(0, translation.length - root.translationKeepSuffix.length).trim();

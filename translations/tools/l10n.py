@@ -77,6 +77,32 @@ def load_config() -> tuple[set[str], list[re.Pattern[str]]]:
     return exact, patterns
 
 
+def load_locale_guides() -> dict[str, str]:
+    guides = json.loads((L10N / "locale-guides.json").read_text(encoding="utf-8"))
+    if not isinstance(guides, dict) or not all(
+        isinstance(locale, str) and isinstance(guide, str) and guide.strip()
+        for locale, guide in guides.items()
+    ):
+        raise ValueError("locale-guides.json must map locale names to non-empty strings")
+    return guides
+
+
+def validate_locale_guides() -> dict[str, str]:
+    guides = load_locale_guides()
+    expected = set(available_locales())
+    actual = set(guides)
+    missing = sorted(expected - actual)
+    extra = sorted(actual - expected)
+    if missing or extra:
+        details: list[str] = []
+        if missing:
+            details.append("missing: " + ", ".join(missing))
+        if extra:
+            details.append("extra: " + ", ".join(extra))
+        raise ValueError("locale guide coverage mismatch (" + "; ".join(details) + ")")
+    return guides
+
+
 def term_pattern(term: str) -> re.Pattern[str]:
     return re.compile(
         rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])"
@@ -199,6 +225,7 @@ def audit(locale: str, as_json: bool, strict_terms: bool) -> int:
 
 
 def audit_all(as_json: bool) -> int:
+    validate_locale_guides()
     reports = [build_report(locale) for locale in available_locales()]
     if as_json:
         print(json.dumps(reports, ensure_ascii=False, indent=2))
@@ -211,7 +238,7 @@ def audit_all(as_json: bool) -> int:
 def extract(locale: str, output: Path, limit: int) -> int:
     source = load_json(SOURCE)
     target = load_json(locale_path(locale))
-    guides = json.loads((L10N / "locale-guides.json").read_text(encoding="utf-8"))
+    guides = validate_locale_guides()
     exact, patterns = load_config()
 
     keys = [
@@ -224,7 +251,7 @@ def extract(locale: str, output: Path, limit: int) -> int:
 
     batch = {
         "locale": locale,
-        "guide": guides.get(locale, "Natural concise desktop UI language."),
+        "guide": guides[locale],
         "instructions": [
             "Translate only the value in translated.",
             "Keep key and source unchanged.",

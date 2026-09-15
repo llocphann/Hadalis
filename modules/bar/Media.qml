@@ -133,7 +133,7 @@ Item {
         active: root.barMediaPopupVisible && root.popupMode === "bar" && CompositorService.isNiri
         sourceComponent: PanelWindow {
             anchors { top: true; bottom: true; left: true; right: true }
-            color: "transparent"
+            color: Qt.rgba(0, 0, 0, 1/255)
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.namespace: "quickshell:mediaBackdrop"

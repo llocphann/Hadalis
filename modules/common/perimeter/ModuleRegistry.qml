@@ -63,16 +63,22 @@ QtObject {
         return true
     }
 
+    // Readiness is a property of the rendered layout, not of the whole instance
+    // catalog. Descriptors may intentionally exist unplaced so Settings can move
+    // or stage modules without making an otherwise valid output fail readiness.
     function validateConfiguredModules(outputName, requireSources) {
         if (!PerimeterConfig.validate(outputName))
             return false
 
         const needSources = Boolean(requireSources ?? false)
-        for (const instance of PerimeterConfig.instancesForOutput(outputName)) {
-            if (!root.isRegistered(instance?.moduleId))
-                return false
-            if (needSources && !root.isResolvable(instance?.moduleId))
-                return false
+        for (const slotId of PerimeterTopology.slotIds) {
+            for (const instanceId of PerimeterConfig.slotInstanceIds(outputName, slotId)) {
+                const instance = PerimeterConfig.instanceDescriptor(outputName, instanceId)
+                if (!instance || !root.isRegistered(instance?.moduleId))
+                    return false
+                if (needSources && !root.isResolvable(instance?.moduleId))
+                    return false
+            }
         }
         return true
     }

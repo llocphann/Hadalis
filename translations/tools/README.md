@@ -33,13 +33,12 @@ The manager may add missing static keys. It **does not prune extra keys**. Extra
 
 ### `translation-cleaner.py` — canonical pruning and synchronization
 
-The cleaner owns deletion of unused translation keys.
+The cleaner owns deletion of unused translation keys. Both cleanup and sync always use `en_US.json` as the canonical key source.
 
 ```bash
 translations/tools/translation-cleaner.py --clean
 translations/tools/translation-cleaner.py --clean --yes --no-backup
 translations/tools/translation-cleaner.py --sync
-translations/tools/translation-cleaner.py --sync --source-lang en_US
 ```
 
 Before pruning, the cleaner requires every locale keyset to match the canonical source locale. It derives one orphan set from the source locale and removes exactly that set from every locale, then verifies parity again.

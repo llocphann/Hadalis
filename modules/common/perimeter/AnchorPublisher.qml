@@ -154,5 +154,11 @@ Item {
         function onWidthChanged() { root.publish() }
         function onHeightChanged() { root.publish() }
         function onVisibleChanged() { root.publish() }
+        // mapToItem() changes under direct transforms and reparenting even when
+        // the source item's local position and size stay unchanged.
+        function onRotationChanged() { root.publish() }
+        function onScaleChanged() { root.publish() }
+        function onTransformOriginChanged() { root.publish() }
+        function onParentChanged() { root.publish() }
     }
 }

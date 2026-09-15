@@ -106,12 +106,45 @@ QtObject {
         return true
     }
 
+    function _closeAfterPlacementMove(outputName, anchorKey, sourceInstance, surface) {
+        Qt.callLater(() => {
+            const active = root.current(outputName)
+            if (!active
+                    || active.sourceInstance !== sourceInstance
+                    || active.surface !== surface
+                    || root._routeAnchorKey(active) !== anchorKey) {
+                return
+            }
+
+            // A slot move destroys the old hosted publisher and creates a new
+            // one with the same output/instance/surface key. Give that synchronous
+            // declarative reflow one event-loop turn before treating the temporary
+            // registry gap as a genuinely hidden source.
+            const replacement = AnchorRegistry.lookup(outputName,
+                sourceInstance, surface)
+            if (!replacement)
+                root.close(outputName, "source-hidden")
+        })
+    }
+
     function _onAnchorRemoved(key) {
         const anchorKey = String(key ?? "")
         for (const outputName of Object.keys(root.routes)) {
             const active = root.routes[outputName]
-            if (root._routeAnchorKey(active) === anchorKey)
-                return root.close(outputName, "source-hidden")
+            if (root._routeAnchorKey(active) !== anchorKey)
+                continue
+
+            const configuredSlot = PerimeterConfig.validate(outputName)
+                ? PerimeterConfig.placementForInstance(outputName,
+                    active.sourceInstance)
+                : ""
+            if (PerimeterTopology.isValidSlot(configuredSlot)
+                    && configuredSlot !== active.slot) {
+                root._closeAfterPlacementMove(outputName, anchorKey,
+                    active.sourceInstance, active.surface)
+                return true
+            }
+            return root.close(outputName, "source-hidden")
         }
         return false
     }

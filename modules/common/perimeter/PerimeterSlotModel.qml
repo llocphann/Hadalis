@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common
 
 QtObject {
     id: root
@@ -7,11 +8,13 @@ QtObject {
     property string slotId: "top.center"
     property rect slotRect: Qt.rect(0, 0, 0, 0)
 
+    readonly property int configRevision: Config.revision
     readonly property string edge: PerimeterTopology.edgeForSlot(slotId)
     readonly property string alignment: PerimeterTopology.alignmentForSlot(slotId)
     readonly property string orientation: PerimeterTopology.orientationForEdge(edge)
     readonly property string inwardDirection: PerimeterTopology.inwardDirectionForEdge(edge)
-    readonly property var instanceIds: PerimeterConfig.slotInstanceIds(outputName, slotId)
+    readonly property var instanceIds: configRevision >= 0
+        ? PerimeterConfig.slotInstanceIds(outputName, slotId) : []
     readonly property int count: instanceIds.length
     readonly property bool empty: count === 0
 

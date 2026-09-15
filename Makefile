@@ -15,8 +15,10 @@ BATTERY_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.battery-charge-limit.policy
 BATTERY_DROPIN = $(TLP_CONFDIR)/99-inir-battery-charge-limit.conf
 TLP_SETTINGS_DROPIN = $(TLP_CONFDIR)/99-inir-tlp-settings.conf
 TLP_SETTINGS_SCHEMA = $(INIR_SYSTEM_SHAREDIR)/tlp-settings-schema.json
+THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
+THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 
-.PHONY: all build test-local test-battery-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-battery-helper
+.PHONY: all build test-local test-battery-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -67,7 +69,11 @@ install-battery-helper:
 	@install -Dm644 assets/polkit/org.inir.battery-charge-limit.policy "$(DESTDIR)$(BATTERY_POLICY)"
 	@install -Dm644 assets/tlp/tlp-settings-schema.json "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
 
-install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper
+install-thinkfan-helper:
+	@install -Dm755 assets/helpers/inir-thinkfan "$(DESTDIR)$(THINKFAN_HELPER)"
+	@install -Dm644 assets/polkit/org.inir.thinkfan.policy "$(DESTDIR)$(THINKFAN_POLICY)"
+
+install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper install-thinkfan-helper
 
 uninstall-bin:
 	@rm -f $(BINDIR)/inir
@@ -98,4 +104,7 @@ uninstall-battery-helper:
 	@rm -f "$(DESTDIR)$(TLP_SETTINGS_DROPIN)"
 	@rm -f "$(DESTDIR)$(BATTERY_HELPER)" "$(DESTDIR)$(BATTERY_POLICY)" "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
 
-uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-shell uninstall-bin uninstall-battery-helper
+uninstall-thinkfan-helper:
+	@rm -f "$(DESTDIR)$(THINKFAN_HELPER)" "$(DESTDIR)$(THINKFAN_POLICY)"
+
+uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-shell uninstall-bin uninstall-battery-helper uninstall-thinkfan-helper

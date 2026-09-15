@@ -1,0 +1,134 @@
+#!/bin/sh
+
+service_name=thinkfan.service
+
+usage() {
+    printf '%s\n' 'Usage: inir-thinkfan --status | --apply managed | --apply firmware' >&2
+    exit 2
+}
+
+json_bool() {
+    [ "${1:-0}" -eq 1 ] && printf true || printf false
+}
+
+json_string() {
+    printf '"%s"' "$(printf '%s' "${1:-}" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+}
+
+find_thinkfan() {
+    command -v thinkfan 2>/dev/null || true
+}
+
+service_installed() {
+    systemctl cat "$service_name" >/dev/null 2>&1
+}
+
+read_fan_value() {
+    key=$1
+    [ -r /proc/acpi/ibm/fan ] || return 0
+    sed -n "s/^${key}:[[:space:]]*//p" /proc/acpi/ibm/fan | head -n 1
+}
+
+status() {
+    binary=$(find_thinkfan)
+    available=0
+    installed=0
+    active=0
+    enabled=0
+    reason=""
+    rpm=""
+    level=""
+    profile=firmware
+    config=""
+
+    [ -n "$binary" ] && available=1
+    if service_installed; then
+        installed=1
+        systemctl is-active --quiet "$service_name" && active=1
+        systemctl is-enabled --quiet "$service_name" && enabled=1
+    fi
+    [ "$active" -eq 0 ] || profile=managed
+
+    if [ -r /etc/thinkfan.yaml ]; then
+        config=/etc/thinkfan.yaml
+    elif [ -r /etc/thinkfan.conf ]; then
+        config=/etc/thinkfan.conf
+    fi
+
+    rpm=$(read_fan_value speed)
+    level=$(read_fan_value level)
+    case "$rpm" in ''|*[!0-9]*) rpm="" ;; esac
+
+    if [ "$available" -eq 0 ]; then
+        reason=thinkfan-unavailable
+    elif [ "$installed" -eq 0 ]; then
+        reason=service-unavailable
+    elif [ "$active" -eq 0 ]; then
+        reason=firmware-control
+    fi
+
+    printf '{"schema":1,"available":%s,"serviceInstalled":%s,"active":%s,"enabled":%s,"profile":' \
+        "$(json_bool "$available")" "$(json_bool "$installed")" \
+        "$(json_bool "$active")" "$(json_bool "$enabled")"
+    json_string "$profile"
+    printf ',"fanRpm":%s,"fanLevel":' "${rpm:-null}"
+    json_string "$level"
+    printf ',"configPath":'
+    json_string "$config"
+    printf ',"reason":'
+    json_string "$reason"
+    printf '}\n'
+}
+
+apply_profile() {
+    profile=$1
+    [ "$(id -u)" -eq 0 ] || {
+        printf '%s\n' 'inir-thinkfan: privileged apply requires polkit/root' >&2
+        exit 77
+    }
+
+    service_installed || {
+        printf '%s\n' 'inir-thinkfan: thinkfan.service is not installed' >&2
+        exit 69
+    }
+
+    case "$profile" in
+        managed)
+            [ -n "$(find_thinkfan)" ] || {
+                printf '%s\n' 'inir-thinkfan: thinkfan executable is unavailable' >&2
+                exit 69
+            }
+            systemctl enable --now "$service_name" || exit $?
+            systemctl is-active --quiet "$service_name" || {
+                printf '%s\n' 'inir-thinkfan: service did not become active' >&2
+                exit 70
+            }
+            systemctl is-enabled --quiet "$service_name" || {
+                printf '%s\n' 'inir-thinkfan: service did not become enabled' >&2
+                exit 70
+            }
+            ;;
+        firmware)
+            systemctl disable --now "$service_name" || exit $?
+            if systemctl is-active --quiet "$service_name"; then
+                printf '%s\n' 'inir-thinkfan: service remained active after disable' >&2
+                exit 70
+            fi
+            ;;
+        *) usage ;;
+    esac
+
+    status
+}
+
+case "${1:-}" in
+    --status)
+        [ "$#" -eq 1 ] || usage
+        status
+        ;;
+    --apply)
+        [ "$#" -eq 2 ] || usage
+        apply_profile "$2"
+        ;;
+    *) usage ;;
+esac

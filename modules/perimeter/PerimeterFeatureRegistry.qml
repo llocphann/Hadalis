@@ -17,7 +17,8 @@ QtObject {
             { moduleId: "system-monitor", source: Qt.resolvedUrl("SystemMonitorModule.qml") },
             { moduleId: "weather", source: Qt.resolvedUrl("WeatherModule.qml") },
             { moduleId: "media", source: Qt.resolvedUrl("MediaModule.qml") },
-            { moduleId: "dock", source: Qt.resolvedUrl("DockModule.qml") }
+            { moduleId: "dock", source: Qt.resolvedUrl("DockModule.qml") },
+            { moduleId: "thinkfan", source: Qt.resolvedUrl("ThinkFanModule.qml") }
         ]
 
         for (const registration of registrations) {

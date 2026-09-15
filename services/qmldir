@@ -46,6 +46,7 @@ singleton PowerProfilePersistence 1.0 PowerProfilePersistence.qml
 singleton TlpRuntimeCapabilities 1.0 TlpRuntimeCapabilities.qml
 singleton TlpService 1.0 TlpService.qml
 singleton TlpSettingsService 1.0 TlpSettingsService.qml
+singleton ThinkFanService 1.0 ThinkFanService.qml
 singleton Privacy 1.0 Privacy.qml
 singleton RecorderStatus 1.0 RecorderStatus.qml
 singleton ResourceUsage 1.0 ResourceUsage.qml

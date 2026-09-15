@@ -7,9 +7,8 @@ RippleButton {
     id: button
 
     required default property Item content
-    property bool extraActiveCondition: false
 
-    implicitHeight: Math.max(content.implicitHeight, 26, content.implicitHeight)
+    implicitHeight: Math.max(content.implicitHeight, 26)
     implicitWidth: implicitHeight
     // Square and standalone, so the face stays organic in cookie mode.
     cookieMorphing: true

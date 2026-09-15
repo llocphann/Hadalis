@@ -34,23 +34,23 @@ done < <(grep -noP '^### \K[a-zA-Z]+' docs/IPC.md 2>/dev/null)
 # 3. Backtick-quoted .qml references in docs/*.md must resolve to a real file
 #    (docs cite by basename, so match the file ANYWHERE in the tree).
 echo "[paths] .qml references in docs/*.md"
-grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' docs/*.md 2>/dev/null | sort -u \
-  | while read -r p; do
-      b=$(basename "$p")
-      find . -name "$b" -not -path './.git/*' -print -quit 2>/dev/null | grep -q . \
-        || note "docs reference '$p' but no file named '$b' exists"
-    done
+while read -r p; do
+  [ -n "$p" ] || continue
+  b=$(basename "$p")
+  find . -name "$b" -not -path './.git/*' -print -quit 2>/dev/null | grep -q . \
+    || note "docs reference '$p' but no file named '$b' exists"
+done < <(grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' docs/*.md 2>/dev/null | sort -u)
 
 # 4. (local, optional) nested AGENTS.md are gitignored — only checked if present.
 #    Same basename match; these cite components by name.
 if find modules services -name AGENTS.md -print -quit 2>/dev/null | grep -q .; then
   echo "[local] nested AGENTS.md .qml references"
-  grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' $(find modules services -name AGENTS.md) 2>/dev/null \
-    | sort -u | while read -r p; do
-        b=$(basename "$p")
-        find . -name "$b" -not -path './.git/*' -print -quit 2>/dev/null | grep -q . \
-          || note "a nested AGENTS.md references '$p' but no file named '$b' exists"
-      done
+  while read -r p; do
+    [ -n "$p" ] || continue
+    b=$(basename "$p")
+    find . -name "$b" -not -path './.git/*' -print -quit 2>/dev/null | grep -q . \
+      || note "a nested AGENTS.md references '$p' but no file named '$b' exists"
+  done < <(grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' $(find modules services -name AGENTS.md) 2>/dev/null | sort -u)
 fi
 
 # 5. Runtime locales must expose the same keys, placeholders and markup as

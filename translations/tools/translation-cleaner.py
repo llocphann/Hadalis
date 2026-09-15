@@ -23,6 +23,7 @@ TranslationManager = translation_manager.TranslationManager
 
 DEFAULT_TRANSLATIONS_DIR = str(Path(current_dir).parent)
 DEFAULT_SOURCE_DIR = str(Path(current_dir).parents[1])
+CANONICAL_SOURCE_LANG = "en_US"
 
 
 def _is_keep_value(value) -> bool:
@@ -32,12 +33,11 @@ def _is_keep_value(value) -> bool:
 def _assert_key_parity(
     manager: TranslationManager,
     languages: List[str],
-    source_lang: str,
     source_keys: Set[str],
 ) -> None:
     mismatches = []
     for lang in languages:
-        if lang == source_lang:
+        if lang == CANONICAL_SOURCE_LANG:
             continue
         keys = set(manager.load_translation_file(lang).keys())
         missing = source_keys - keys
@@ -48,7 +48,7 @@ def _assert_key_parity(
     if mismatches:
         print(
             "Error: Translation keysets already differ from "
-            f"{source_lang}; run --sync before cleaning."
+            f"{CANONICAL_SOURCE_LANG}; run --sync before cleaning."
         )
         for lang, missing, extra in mismatches:
             print(f"  {lang}: {missing} missing, {extra} extra")
@@ -58,11 +58,10 @@ def _assert_key_parity(
 def clean_translation_files(
     translations_dir: str,
     source_dir: str,
-    source_lang: str = "en_US",
     backup: bool = True,
     yes_mode: bool = False,
 ):
-    """Remove source-orphaned keys consistently from every locale."""
+    """Remove canonical-source-orphaned keys consistently from every locale."""
     print("Starting translation file cleanup...")
 
     manager = TranslationManager(translations_dir, source_dir)
@@ -75,14 +74,16 @@ def clean_translation_files(
     if not languages:
         print("No translation files found")
         return
-    if source_lang not in languages:
-        raise ValueError(f"source locale does not exist: {source_lang}")
+    if CANONICAL_SOURCE_LANG not in languages:
+        raise ValueError(
+            f"canonical source locale does not exist: {CANONICAL_SOURCE_LANG}"
+        )
 
     print(f"Found language files: {', '.join(languages)}")
 
-    source_translations = manager.load_translation_file(source_lang)
+    source_translations = manager.load_translation_file(CANONICAL_SOURCE_LANG)
     source_keys = set(source_translations.keys())
-    _assert_key_parity(manager, languages, source_lang, source_keys)
+    _assert_key_parity(manager, languages, source_keys)
 
     unused_keys = {
         key
@@ -136,8 +137,10 @@ def clean_translation_files(
         total_removed += len(keys_to_remove)
         print(f"{lang}: deleted {len(keys_to_remove)} keys")
 
-    final_source_keys = set(manager.load_translation_file(source_lang).keys())
-    _assert_key_parity(manager, languages, source_lang, final_source_keys)
+    final_source_keys = set(
+        manager.load_translation_file(CANONICAL_SOURCE_LANG).keys()
+    )
+    _assert_key_parity(manager, languages, final_source_keys)
 
     print(
         "\nCleanup completed! "
@@ -148,31 +151,34 @@ def clean_translation_files(
 
 def sync_translations(
     translations_dir: str,
-    source_lang: str = "en_US",
     target_langs: List[str] = None,
     yes_mode: bool = False,
 ):
-    """Sync translation keys to ensure all language files have the same keys"""
-    print(f"Starting translation key sync using {source_lang} as reference...")
+    """Sync every target locale to the canonical English keyset."""
+    print(
+        "Starting translation key sync using "
+        f"{CANONICAL_SOURCE_LANG} as canonical source..."
+    )
 
     translations_path = Path(translations_dir)
 
-    source_file = translations_path / f"{source_lang}.json"
+    source_file = translations_path / f"{CANONICAL_SOURCE_LANG}.json"
     if not source_file.exists():
-        print(f"Error: Source language file does not exist: {source_file}")
-        return
+        raise ValueError(f"canonical source locale does not exist: {source_file}")
 
     with open(source_file, "r", encoding="utf-8") as f:
         source_translations = json.load(f)
 
     source_keys = set(source_translations.keys())
-    print(f"Source language {source_lang} has {len(source_keys)} keys")
+    print(
+        f"Source language {CANONICAL_SOURCE_LANG} has {len(source_keys)} keys"
+    )
 
     if target_langs is None:
         target_langs = []
         for file_path in translations_path.glob("*.json"):
             lang_code = file_path.stem
-            if lang_code != source_lang:
+            if lang_code != CANONICAL_SOURCE_LANG:
                 target_langs.append(lang_code)
 
     if not target_langs:
@@ -253,11 +259,6 @@ def main():
         help="Sync translation keys",
     )
     parser.add_argument(
-        "--source-lang",
-        default="en_US",
-        help="Source language for cleaning/syncing (default: en_US)",
-    )
-    parser.add_argument(
         "--no-backup",
         action="store_true",
         help="Do not create backup files when cleaning",
@@ -278,14 +279,12 @@ def main():
         clean_translation_files(
             translations_dir,
             source_dir,
-            source_lang=args.source_lang,
             backup=not args.no_backup,
             yes_mode=args.yes,
         )
     elif args.sync:
         sync_translations(
             translations_dir,
-            args.source_lang,
             yes_mode=args.yes,
         )
     else:

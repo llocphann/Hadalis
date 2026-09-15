@@ -79,7 +79,7 @@ ShellRoot {
         root._bootCompletedAt = Date.now();
         console.info("[Boot] T+0ms: Component.onCompleted (shell.qml ready)");
         Quickshell.watchFiles = !disableHotReload;
-        
+
         // Tier 0: startup-critical singletons (no delay)
         root._log("[Boot] Tier 0: startup-critical singletons");
         FirstRunExperience.load();
@@ -92,11 +92,11 @@ ShellRoot {
         // keeps the gap after a config reload as short as every other handler's.
         root._globalActionsService = GlobalActions;
         DevNavigation.registerSettingsPages(SettingsPageRegistry.pages);
-        
+
         // Reset shell entry state (hot-reload may preserve singletons)
         GlobalStates.shellEntryReady = false;
         GlobalStates.deferredPanelsReady = false;
-        
+
         if (Config.ready) {
             root._bootConfigReadyAt = Date.now();
             console.info("[Boot] T+" + (root._bootConfigReadyAt - root._bootCompletedAt) + "ms: Config.ready (immediate)");
@@ -246,14 +246,18 @@ ShellRoot {
         _migrationDone = true;
 
         const family = Config.options?.panelFamily ?? "ii";
-        let panels = [...(Config.options?.enabledPanels ?? [])];
-        let changed = false;
+        const retiredPanels = ["iiMascotCompanion"];
+        let panels = [...(Config.options?.enabledPanels ?? [])].filter(panel => !retiredPanels.includes(panel));
+        let changed = panels.length !== (Config.options?.enabledPanels ?? []).length;
 
         // Only add genuinely NEW panels (from updates), not panels the user deliberately disabled.
         // knownPanels tracks what the user has seen. If a panel is in knownPanels but not in
         // enabledPanels, the user removed it — don't re-add.
         const basePanels = root.panelFamilies[family] ?? [];
-        let known = [...(Config.options?.knownPanels ?? [])];
+        let known = [...(Config.options?.knownPanels ?? [])].filter(panel => !retiredPanels.includes(panel));
+        const rawKnown = Config.options?.knownPanels ?? [];
+        if (known.length !== rawKnown.length)
+            Config.setNestedValue("knownPanels", known);
         const isFirstRun = known.length === 0;
 
         if (isFirstRun) {
@@ -431,7 +435,7 @@ ShellRoot {
         function _isWaffle(): bool { return (Config.options?.panelFamily ?? "ii") === "waffle" }
         function toggle(): void {
             if (_isWaffle()) { GlobalStates.waffleTaskViewOpen = !GlobalStates.waffleTaskViewOpen; return }
-            if (CompositorService.isNiri) GlobalStates.toggleTaskView("")
+            GlobalStates.toggleTaskView("")
         }
         function close(): void {
             if (_isWaffle()) { GlobalStates.waffleTaskViewOpen = false; return }
@@ -439,7 +443,7 @@ ShellRoot {
         }
         function open(): void {
             if (_isWaffle()) { GlobalStates.waffleTaskViewOpen = true; return }
-            if (CompositorService.isNiri) GlobalStates.openTaskView("")
+            GlobalStates.openTaskView("")
         }
     }
 
@@ -584,25 +588,17 @@ ShellRoot {
     IpcHandler {
         target: "overview"
         function _isWaffle(): bool { return (Config.options?.panelFamily ?? "ii") === "waffle" }
-        function _usePillLauncher(): bool {
-            return !_isWaffle()
-                && (Config.options?.bar?.appearanceStyle ?? "classic") === "pill"
-                && (Config.options?.bar?.pill?.superSpaceLauncher ?? "overview") === "pill"
-        }
         function toggle(): void {
             if (_isWaffle()) { GlobalStates.searchOpen = !GlobalStates.searchOpen; return }
-            if (_usePillLauncher()) { GlobalStates.pillSurfaceCommand("toggle", "launcher"); return }
             GlobalStates.overviewSearchPrefix = ""
             GlobalStates.toggleOverview("")
         }
         function close(): void {
             if (_isWaffle()) { GlobalStates.searchOpen = false; return }
-            if (_usePillLauncher()) { GlobalStates.pillSurfaceCommand("close", "launcher"); return }
             GlobalStates.overviewOpen = false
         }
         function open(): void {
             if (_isWaffle()) { GlobalStates.searchOpen = true; return }
-            if (_usePillLauncher()) { GlobalStates.pillSurfaceCommand("open", "launcher"); return }
             GlobalStates.overviewSearchPrefix = ""
             GlobalStates.openOverview("")
         }
@@ -680,8 +676,7 @@ ShellRoot {
             "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard",
             "iiOverlay", "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners",
             "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar",
-            "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiRecordingOsd", "iiDashboard",
-            "iiMascotCompanion"
+            "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiRecordingOsd", "iiDashboard"
         ],
         "waffle": [
             "wBar", "wBackground", "wBackdrop", "wStartMenu", "wActionCenter", "wNotificationCenter", "wNotificationPopup", "wOnScreenDisplay", "wWidgets", "wTaskView", "wLock", "wPolkit", "wSessionScreen",
@@ -689,8 +684,7 @@ ShellRoot {
             // WaffleAltSwitcher is family-local and loaded by ShellWafflePanels;
             // the shared `altSwitcher` target reaches it through the lightweight router.
             "iiBootGreeting", "iiCheatsheet", "iiOnScreenKeyboard", "iiOverlay", "iiOverview",
-            "iiRegionSelector", "iiScreenCorners", "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard",
-            "iiMascotCompanion"
+            "iiRegionSelector", "iiScreenCorners", "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard"
         ]
     })
 

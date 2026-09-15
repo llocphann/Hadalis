@@ -221,8 +221,10 @@ class TranslationManager:
         for i, key in enumerate(sorted(filtered), 1):
             print(f'{i}. "{key}" -> "{source_translations.get(key, "")}"')
         print(
-            "Not deleting extra keys here; run translation-cleaner.py --clean "
-            "so pruning is source-driven and applied consistently to every locale."
+            "Not deleting extra keys here. Static extraction cannot prove a key is "
+            "unused when runtime code translates dynamic values. Run "
+            "translation-cleaner.py --clean for a read-only candidate report, then "
+            "prune only an exact reviewed set with --prune-file or --prune-key."
         )
 
     def ask_yes_no(self, question: str) -> bool:

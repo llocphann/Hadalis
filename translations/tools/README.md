@@ -30,17 +30,26 @@ translations/tools/translation-manager.py --yes
 
 Before updating, the manager requires every locale keyset to match `en_US.json`. New static keys are then added to every locale together after one confirmation. It **does not prune extra keys**. Extra keys are only reported so cleanup cannot diverge locale keysets one language at a time.
 
-### `translation-cleaner.py` — canonical pruning and synchronization
+### `translation-cleaner.py` — cleanup reporting, reviewed pruning, and synchronization
 
-The cleaner owns deletion of unused translation keys.
+Static extraction is useful for finding candidates, but it cannot prove a key is unused because runtime code can call `Translation.tr(variable)`. Therefore `--clean` is deliberately **read-only**.
 
 ```bash
 translations/tools/translation-cleaner.py --clean
-translations/tools/translation-cleaner.py --clean --yes --no-backup
 translations/tools/translation-cleaner.py --sync
 ```
 
-Before pruning, the cleaner requires every locale keyset to match the canonical source locale. It derives one orphan set from `en_US` and removes exactly that set from every locale, then verifies parity again.
+After reviewing candidates against dynamic callsites, prune only an explicit exact keyset:
+
+```bash
+# reviewed-keys.json must be a JSON array of exact canonical keys.
+translations/tools/translation-cleaner.py --prune-file reviewed-keys.json
+
+# Small reviewed sets can be supplied directly; --prune-key may be repeated.
+translations/tools/translation-cleaner.py --prune-key "Retired label" --prune-key "Retired description"
+```
+
+Exact pruning requires every locale to match the canonical keyset before mutation, rejects unknown and `/*keep*/`-protected keys, removes the same keys from every locale through the atomic writer, and verifies parity again. Use `--yes` only after reviewing the exact set; `--no-backup` is available for controlled environments where repository history is the recovery mechanism.
 
 ### `manage-translations.sh` — wrapper
 
@@ -51,6 +60,8 @@ translations/tools/manage-translations.sh update
 translations/tools/manage-translations.sh clean
 translations/tools/manage-translations.sh sync
 ```
+
+`clean` only reports candidates. Reviewed deletion intentionally stays on the explicit `translation-cleaner.py --prune-file/--prune-key` interface so a wrapper command cannot accidentally turn a heuristic orphan scan into deletion.
 
 Custom paths remain available through `--trans-dir` and `--source-dir`.
 
@@ -80,18 +91,22 @@ python3 translations/tools/l10n.py audit-all
 # 2. Add any newly introduced static Translation.tr(...) strings.
 translations/tools/manage-translations.sh update
 
-# 3. Prune source-orphaned keys consistently from every locale.
+# 3. Produce a read-only list of static-orphan candidates.
 translations/tools/manage-translations.sh clean
 
-# 4. Verify the resulting locale contract again.
+# 4. Review candidates against dynamic Translation.tr(...) callsites and put
+#    only proven-retired exact keys in a JSON array.
+python3 translations/tools/translation-cleaner.py --prune-file /tmp/reviewed-retired-keys.json
+
+# 5. Verify the resulting locale contract again.
 python3 translations/tools/l10n.py audit-all
 ```
 
-Do not manually add or delete a key in only one locale. New keys are catalog-wide updates, and retired-feature keys must be proven absent from live source before the source-driven cleaner removes the same exact set from every locale.
+Do not manually add or delete a key in only one locale. New keys are catalog-wide updates, and retired-feature keys must be explicitly reviewed before the same exact set is removed from every locale.
 
 ## Dynamic translation keys
 
-Static extraction cannot discover strings constructed or selected dynamically at runtime. A key that must survive static cleanup should be retained in the canonical source locale with `/*keep*/` at the end of its value.
+Static extraction cannot discover strings constructed or selected dynamically at runtime. A key that must survive cleanup analysis can also be documented in the canonical source locale with `/*keep*/` at the end of its value.
 
 ```json
 {
@@ -99,7 +114,7 @@ Static extraction cannot discover strings constructed or selected dynamically at
 }
 ```
 
-Because pruning is source-driven, the preservation marker belongs in the source locale (`en_US.json`). A marker present only in a target translation does not override the canonical orphan decision.
+The preservation marker belongs in the source locale (`en_US.json`). Exact pruning refuses to remove a source key marked `/*keep*/`.
 
 ## Supported static forms
 
@@ -111,11 +126,11 @@ Translation.tr("Line 1\nLine 2")
 Translation.tr("Hello, %1!").arg(name)
 ```
 
-Dynamic expressions such as `Translation.tr(variable)` require explicit catalog preservation because the extractor cannot infer their possible values.
+Dynamic expressions such as `Translation.tr(variable)` are not proof of a particular key, which is why heuristic cleanup never deletes automatically.
 
 ## Backups and recovery
 
-The manager and cleaner create `*.json.bak` files before catalog mutations. For a larger refactor, an explicit repository-local backup is also reasonable:
+The manager, sync path, and exact-prune path create `*.json.bak` files before catalog mutations. For a larger refactor, an explicit repository-local backup is also reasonable:
 
 ```bash
 cp -r translations translations.backup
@@ -136,4 +151,4 @@ python3 translations/tools/l10n.py audit-all
 
 ## CI expectations
 
-Translation tooling should remain shell/Python-syntax clean, locale and localization metadata must remain valid JSON, and locale key/placeholder contracts should be checked with `l10n.py audit-all` whenever the catalog changes.
+Translation tooling should remain shell/Python-syntax clean, locale and localization metadata must remain valid JSON, source parity must not lose live literal keys, and locale key/placeholder contracts should be checked with `l10n.py audit-all` whenever the catalog changes. Blanket strict-orphan deletion is intentionally not a CI gate because dynamic runtime translation keys cannot be proven unused by static extraction alone.

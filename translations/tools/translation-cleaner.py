@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Translation File Maintenance Helper
-Used to clean and organize translation files, removing unused keys
+Translation File Maintenance Helper.
+
+Static source extraction is intentionally advisory for deletion because runtime
+code can translate dynamic values that cannot be enumerated safely. Catalog
+pruning therefore requires an explicit reviewed key list.
 """
 
-import os
-import sys
-import json
 import argparse
 import importlib.util
+import json
+import os
+import sys
 from pathlib import Path
-from typing import Set, List
+from typing import List, Set
 
 # Import from the same directory using importlib
 current_dir = os.path.dirname(os.path.abspath(__file__))
-manager_path = os.path.join(current_dir, 'translation-manager.py')
+manager_path = os.path.join(current_dir, "translation-manager.py")
 spec = importlib.util.spec_from_file_location("translation_manager", manager_path)
 translation_manager = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(translation_manager)
@@ -48,11 +51,31 @@ def _assert_key_parity(
     if mismatches:
         print(
             "Error: Translation keysets already differ from "
-            f"{CANONICAL_SOURCE_LANG}; run --sync before cleaning."
+            f"{CANONICAL_SOURCE_LANG}; run --sync before pruning."
         )
         for lang, missing, extra in mismatches:
             print(f"  {lang}: {missing} missing, {extra} extra")
         raise ValueError("translation keysets are not in parity")
+
+
+def _catalog_context(
+    translations_dir: str,
+    source_dir: str,
+    yes_mode: bool = False,
+):
+    manager = TranslationManager(translations_dir, source_dir, yes_mode=yes_mode)
+    languages = manager.get_available_languages()
+    if not languages:
+        raise ValueError("no translation files found")
+    if CANONICAL_SOURCE_LANG not in languages:
+        raise ValueError(
+            f"canonical source locale does not exist: {CANONICAL_SOURCE_LANG}"
+        )
+
+    source_translations = manager.load_translation_file(CANONICAL_SOURCE_LANG)
+    source_keys = set(source_translations.keys())
+    _assert_key_parity(manager, languages, source_keys)
+    return manager, languages, source_translations, source_keys
 
 
 def clean_translation_files(
@@ -60,30 +83,22 @@ def clean_translation_files(
     source_dir: str,
     backup: bool = True,
     yes_mode: bool = False,
-):
-    """Remove canonical-source-orphaned keys consistently from every locale."""
-    print("Starting translation file cleanup...")
+) -> Set[str]:
+    """Report static-orphan candidates without mutating any locale file.
 
-    manager = TranslationManager(translations_dir, source_dir)
+    ``backup`` and ``yes_mode`` remain accepted for call compatibility. They no
+    longer enable deletion; exact pruning is a separate explicit operation.
+    """
+    del backup, yes_mode
+    print("Analyzing translation cleanup candidates...")
+    manager, languages, source_translations, _ = _catalog_context(
+        translations_dir, source_dir
+    )
 
-    print("Extracting currently used translatable texts...")
+    print("Extracting statically discoverable Translation.tr(...) texts...")
     current_texts = manager.extract_translatable_texts()
-    print(f"Extracted {len(current_texts)} currently used texts")
-
-    languages = manager.get_available_languages()
-    if not languages:
-        print("No translation files found")
-        return
-    if CANONICAL_SOURCE_LANG not in languages:
-        raise ValueError(
-            f"canonical source locale does not exist: {CANONICAL_SOURCE_LANG}"
-        )
-
+    print(f"Extracted {len(current_texts)} statically discoverable texts")
     print(f"Found language files: {', '.join(languages)}")
-
-    source_translations = manager.load_translation_file(CANONICAL_SOURCE_LANG)
-    source_keys = set(source_translations.keys())
-    _assert_key_parity(manager, languages, source_keys)
 
     unused_keys = {
         key
@@ -92,59 +107,118 @@ def clean_translation_files(
     }
 
     if not unused_keys:
-        print("No unused source keys found")
+        print("No static-orphan candidates found")
+        return set()
+
+    print(f"Found {len(unused_keys)} static-orphan candidates:")
+    for i, key in enumerate(sorted(unused_keys), 1):
+        print(f'{i}. "{key}"')
+
+    print(
+        "\nNo files changed. Static extraction cannot prove that a catalog key is "
+        "unused because Translation.tr(...) also accepts runtime values. Review the "
+        "candidates against live dynamic callsites, then prune only an exact reviewed "
+        "set with --prune-file or --prune-key."
+    )
+    return unused_keys
+
+
+def _load_prune_file(path: str) -> Set[str]:
+    prune_path = Path(path)
+    with prune_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, list):
+        raise ValueError(f"prune file must contain a JSON array of exact keys: {path}")
+
+    keys = set()
+    for value in data:
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"prune file contains a non-string or empty key: {path}")
+        keys.add(value)
+    return keys
+
+
+def _write_backup(path: Path, translations) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        json.dump(translations, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+
+
+def prune_translation_keys(
+    translations_dir: str,
+    source_dir: str,
+    requested_keys: Set[str],
+    backup: bool = True,
+    yes_mode: bool = False,
+) -> None:
+    """Remove one explicitly reviewed exact keyset from every locale."""
+    requested_keys = {key for key in requested_keys if key}
+    if not requested_keys:
+        raise ValueError("no exact translation keys were supplied for pruning")
+
+    manager, languages, source_translations, source_keys = _catalog_context(
+        translations_dir, source_dir, yes_mode=yes_mode
+    )
+
+    unknown = requested_keys - source_keys
+    if unknown:
+        print("Error: Refusing to prune keys absent from the canonical catalog:")
+        for key in sorted(unknown):
+            print(f'  "{key}"')
+        raise ValueError("prune set contains unknown canonical keys")
+
+    kept = {
+        key
+        for key in requested_keys
+        if _is_keep_value(source_translations.get(key))
+    }
+    if kept:
+        print("Error: Refusing to prune keys explicitly protected by /*keep*/:")
+        for key in sorted(kept):
+            print(f'  "{key}"')
+        raise ValueError("prune set contains protected keys")
+
+    print(
+        f"Reviewed prune set: {len(requested_keys)} exact keys across "
+        f"{len(languages)} locales"
+    )
+    for i, key in enumerate(sorted(requested_keys), 1):
+        print(f'{i}. "{key}"')
+
+    if not manager.ask_yes_no(
+        f"\nDelete exactly these {len(requested_keys)} keys from all locales?"
+    ):
+        print("Skipped pruning")
         return
 
-    print(f"Found {len(unused_keys)} unused source keys:")
-    for i, key in enumerate(sorted(unused_keys)[:10], 1):
-        suffix = "..." if len(key) > 50 else ""
-        print(f'  {i}. "{key[:50]}{suffix}"')
-    if len(unused_keys) > 10:
-        print(f"  ... and {len(unused_keys) - 10} more keys")
-
-    if yes_mode:
-        response = "y"
-        print(
-            f"Delete these {len(unused_keys)} keys from all locales? "
-            "(auto-confirmed by --yes)"
-        )
-    else:
-        response = input(
-            f"Delete these {len(unused_keys)} keys from all locales? (y/n): "
-        )
-
-    if response.lower().strip() not in ["y", "yes"]:
-        print("Skipped deletion")
-        return
-
+    translations_path = Path(translations_dir)
     total_removed = 0
     for lang in languages:
         translations = manager.load_translation_file(lang)
-        keys_to_remove = unused_keys & set(translations.keys())
-        if not keys_to_remove:
-            continue
+        missing = requested_keys - set(translations.keys())
+        if missing:
+            raise ValueError(
+                f"{lang} lost parity before pruning; missing {len(missing)} requested keys"
+            )
 
         if backup:
-            backup_file = Path(translations_dir) / f"{lang}.json.bak"
-            with open(backup_file, "w", encoding="utf-8") as f:
-                json.dump(translations, f, ensure_ascii=False, indent=2)
+            backup_file = translations_path / f"{lang}.json.bak"
+            _write_backup(backup_file, translations)
             print(f"Created backup: {backup_file}")
 
-        for key in keys_to_remove:
+        for key in requested_keys:
             del translations[key]
-
         manager.save_translation_file(lang, translations)
-        total_removed += len(keys_to_remove)
-        print(f"{lang}: deleted {len(keys_to_remove)} keys")
+        total_removed += len(requested_keys)
+        print(f"{lang}: deleted {len(requested_keys)} reviewed keys")
 
     final_source_keys = set(
         manager.load_translation_file(CANONICAL_SOURCE_LANG).keys()
     )
     _assert_key_parity(manager, languages, final_source_keys)
-
     print(
-        "\nCleanup completed! "
-        f"Deleted {len(unused_keys)} source keys across {len(languages)} locales "
+        "\nPrune completed! "
+        f"Deleted {len(requested_keys)} reviewed keys across {len(languages)} locales "
         f"({total_removed} entries)."
     )
 
@@ -221,9 +295,7 @@ def sync_translations(
 
         if backup and target_file.exists():
             backup_file = translations_path / f"{target_lang}.json.bak"
-            with open(backup_file, "w", encoding="utf-8") as f:
-                json.dump(target_translations, f, ensure_ascii=False, indent=2)
-                f.write("\n")
+            _write_backup(backup_file, target_translations)
             print(f"  Created backup: {backup_file}")
 
         if missing_keys:
@@ -259,7 +331,7 @@ def main():
         "--clean",
         "-c",
         action="store_true",
-        help="Clean unused translation keys",
+        help="Report static-orphan candidates without deleting catalog keys",
     )
     parser.add_argument(
         "--sync",
@@ -267,21 +339,39 @@ def main():
         help="Sync translation keys",
     )
     parser.add_argument(
+        "--prune-file",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="JSON array of exact reviewed keys to prune from every locale",
+    )
+    parser.add_argument(
+        "--prune-key",
+        action="append",
+        default=[],
+        metavar="KEY",
+        help="Exact reviewed key to prune from every locale; may be repeated",
+    )
+    parser.add_argument(
         "--no-backup",
         action="store_true",
-        help="Do not create backup files when cleaning or syncing",
+        help="Do not create backup files when syncing or pruning",
     )
     parser.add_argument(
         "-y",
         "--yes",
         action="store_true",
-        help="Skip all confirmation prompts (auto-confirm)",
+        help="Skip confirmation prompts for mutating operations",
     )
 
     args = parser.parse_args()
 
     translations_dir = os.path.abspath(args.translations_dir)
     source_dir = os.path.abspath(args.source_dir)
+    prune_requested = bool(args.prune_file or args.prune_key)
+    operation_count = int(args.clean) + int(args.sync) + int(prune_requested)
+    if operation_count > 1:
+        raise ValueError("choose exactly one of --clean, --sync, or an exact prune operation")
 
     if args.clean:
         clean_translation_files(
@@ -297,10 +387,22 @@ def main():
             backup=not args.no_backup,
             yes_mode=args.yes,
         )
+    elif prune_requested:
+        prune_keys = set(args.prune_key)
+        for prune_file in args.prune_file:
+            prune_keys.update(_load_prune_file(prune_file))
+        prune_translation_keys(
+            translations_dir,
+            source_dir,
+            prune_keys,
+            backup=not args.no_backup,
+            yes_mode=args.yes,
+        )
     else:
         print("Please specify an operation:")
-        print("  --clean: Clean unused translation keys")
-        print("  --sync: Sync translation keys")
+        print("  --clean: Report static-orphan candidates (read-only)")
+        print("  --sync: Sync keys across locale files")
+        print("  --prune-file PATH / --prune-key KEY: Prune exact reviewed keys")
 
 
 if __name__ == "__main__":

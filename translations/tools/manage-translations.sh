@@ -15,7 +15,7 @@ show_help() {
     echo "Commands:"
     echo "  extract      Extract translatable texts to temporary file"
     echo "  update       Add missing translation keys across all locales; report extra keys"
-    echo "  clean        Clean unused translation keys source-first across locales"
+    echo "  clean        Report static-orphan candidates without deleting keys"
     echo "  sync         Sync keys across all language files"
     echo "  status       Show translation status and live-source parity"
     echo ""
@@ -28,9 +28,12 @@ show_help() {
     echo "Examples:"
     echo "  $0 extract                    # Extract translatable texts"
     echo "  $0 update                     # Add missing keys to every locale"
-    echo "  $0 clean                      # Clean unused keys"
+    echo "  $0 clean                      # Report cleanup candidates (read-only)"
     echo "  $0 sync                       # Sync keys across all languages"
     echo "  $0 status                     # Show translation status + source parity"
+    echo ""
+    echo "Reviewed deletion is intentionally explicit; use:"
+    echo "  python3 $SCRIPT_DIR/translation-cleaner.py --prune-file reviewed-keys.json"
 }
 
 show_status() {
@@ -126,8 +129,8 @@ case $COMMAND in
         python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}"
         ;;
     clean)
-        echo "Cleaning unused translation keys..."
-        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}" --clean
+        echo "Reporting static-orphan translation candidates (read-only)..."
+        python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" --clean
         ;;
     sync)
         echo "Syncing translation keys..."

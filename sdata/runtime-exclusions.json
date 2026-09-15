@@ -92,6 +92,7 @@
     "scripts/qml-check.fish",
     "scripts/test-local-distribution.sh",
     "scripts/test-battery-charge-limit-helper.sh",
+    "scripts/test-thinkfan-helper.sh",
     "scripts/test-tlp-integration-lifecycle.sh",
     "scripts/test-tlp-settings-ui-guards.sh",
     "scripts/test-update-lifecycle.sh",

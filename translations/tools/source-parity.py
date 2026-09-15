@@ -17,8 +17,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "translations" / "tools"
-TRANSLATIONS = ROOT / "translations"
-SOURCE = TRANSLATIONS / "en_US.json"
+DEFAULT_TRANSLATIONS = ROOT / "translations"
+DEFAULT_SOURCE_DIR = ROOT
 MANAGER_PATH = TOOLS / "translation-manager.py"
 
 
@@ -34,21 +34,22 @@ def load_manager_class() -> type[Any]:
     return module.TranslationManager
 
 
-def load_catalog() -> dict[str, str]:
-    data = json.loads(SOURCE.read_text(encoding="utf-8"))
+def load_catalog(translations_dir: Path) -> dict[str, str]:
+    source = translations_dir / "en_US.json"
+    data = json.loads(source.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not all(
         isinstance(key, str) and isinstance(value, str)
         for key, value in data.items()
     ):
-        raise ValueError(f"{SOURCE} must contain a string-to-string JSON object")
+        raise ValueError(f"{source} must contain a string-to-string JSON object")
     return data
 
 
-def build_report() -> dict[str, Any]:
+def build_report(translations_dir: Path, source_dir: Path) -> dict[str, Any]:
     manager_class = load_manager_class()
-    manager = manager_class(str(TRANSLATIONS), str(ROOT))
+    manager = manager_class(str(translations_dir), str(source_dir))
     live_keys = manager.extract_translatable_texts()
-    catalog = load_catalog()
+    catalog = load_catalog(translations_dir)
     catalog_keys = set(catalog)
     kept_orphans = {
         key
@@ -80,6 +81,18 @@ def print_report(report: dict[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--translations-dir",
+        type=Path,
+        default=DEFAULT_TRANSLATIONS,
+        help=f"translation catalog directory (default: {DEFAULT_TRANSLATIONS})",
+    )
+    parser.add_argument(
+        "--source-dir",
+        type=Path,
+        default=DEFAULT_SOURCE_DIR,
+        help=f"source tree to scan (default: {DEFAULT_SOURCE_DIR})",
+    )
+    parser.add_argument(
         "--strict-orphans",
         action="store_true",
         help="also fail when unmarked English keys have no live static callsite",
@@ -87,7 +100,9 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()
 
-    report = build_report()
+    translations_dir = args.translations_dir.resolve()
+    source_dir = args.source_dir.resolve()
+    report = build_report(translations_dir, source_dir)
     if args.as_json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:

@@ -62,7 +62,9 @@ show_status() {
 
     echo ""
     echo "=== Live Source / English Catalog Parity ==="
-    python3 "$SCRIPT_DIR/source-parity.py"
+    python3 "$SCRIPT_DIR/source-parity.py" \
+        --translations-dir "$TRANSLATIONS_DIR" \
+        --source-dir "$SOURCE_DIR"
 }
 
 COMMAND=""

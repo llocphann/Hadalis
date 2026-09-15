@@ -13,7 +13,6 @@ TlpPowerSettings 1.0 TlpPowerSettings.qml
 WaffleConfig 1.0 WaffleConfig.qml
 AutostartConfig 1.0 AutostartConfig.qml
 DockConfig 1.0 DockConfig.qml
-M3LayoutSection 1.0 M3LayoutSection.qml
 SidebarsConfig 1.0 SidebarsConfig.qml
 SettingsOverlay 1.0 SettingsOverlay.qml
 SettingsFocus 1.0 SettingsFocus.qml

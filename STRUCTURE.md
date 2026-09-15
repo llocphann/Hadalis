@@ -17,6 +17,7 @@ inir/
 │   ├── common/                   # Shared infrastructure
 │   │   ├── Appearance.qml        # ii visual tokens
 │   │   ├── Config.qml            # Central JsonAdapter config
+│   │   ├── perimeter/            # Connected Perimeter core substrate
 │   │   └── widgets/              # Reusable widgets + qmldir
 │   ├── bar/                      # Classic Bar runtime
 │   ├── background/               # Wallpaper + desktop widgets/items
@@ -50,7 +51,9 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **modules/:** all UI modules organized by panel family and feature area.
 
-**modules/common/:** shared config, visual infrastructure, and reusable widgets. `Config.qml` owns the typed runtime schema and the custom-widget persistence workaround.
+**modules/common/:** shared config, visual infrastructure, perimeter infrastructure, and reusable widgets. `Config.qml` owns the typed runtime schema and the custom-widget persistence workaround.
+
+**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Core presence does not mean every shell module or popup has already migrated to it; feature integration remains incremental.
 
 **modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement and Classic geometry modes (Hug, Float, Rectangle, Card). There is no Bar appearance-family selector.
 
@@ -101,6 +104,16 @@ Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specif
 - `bar.cornerStyle` — Hug/Float/Rectangle/Card geometry.
 - `bar.blurBackground` — native compositor blur controls.
 - `bar.autoHide.showWhenPressingSuper` — Super-key reveal behavior.
+
+### Connected Perimeter core
+- `modules/common/perimeter/PerimeterTopology.qml` — canonical edge/alignment slot topology.
+- `modules/common/perimeter/PerimeterConfig.qml` — perimeter configuration adapter.
+- `modules/common/perimeter/ModuleRegistry.qml` and `PerimeterModuleHost.qml` — module registration/hosting contract.
+- `modules/common/perimeter/AnchorRegistry.qml` and `AnchorPublisher.qml` — rendered-anchor publication and lookup.
+- `modules/common/perimeter/SurfaceRouteController.qml` — transient-surface route coordination.
+- `modules/common/perimeter/ConnectedSurfaceGeometry.qml`, `ConnectedSurfaceFrame.qml`, `ConnectedSurfaceConnector.qml`, and `ConnectedSurfaceMask.qml` — shared connected geometry/render/input primitives.
+
+These files are the shared substrate. Concrete Bar/Dock/Sidebar/module migration is allowed to remain incremental while the core contract stabilizes.
 
 ### Overview and task view
 - `modules/overview/Overview.qml` — workspace/window overview and navigation.
@@ -158,6 +171,6 @@ Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specif
 
 **New Classic Bar component:** place it under `modules/bar/`; do not introduce a renderer-family selector as part of ordinary Bar changes.
 
-## Connected Surfaces Boundary
+## Connected Perimeter Status
 
-This structure is the pre-Connected-Surfaces baseline. Connected Popup / Connected Surfaces are future work and are **not implemented by this cleanup**.
+The cleaned Classic-only shell remains the compatibility baseline, but current `dev` now contains the shared Connected Perimeter substrate under `modules/common/perimeter/`. Topology/config, module hosting, anchor routing and connected geometry/input primitives exist; migration of concrete modules and surfaces is incremental and must be judged from the live code rather than assumed complete.

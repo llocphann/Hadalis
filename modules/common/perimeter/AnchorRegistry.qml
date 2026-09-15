@@ -3,6 +3,7 @@ import QtQuick
 QtObject {
     id: root
     property var records: ({})
+    property double _nextPublisherGeneration: 0
     signal changed(string key, var record)
     signal removed(string key)
     function surfaceName(value) { const name = String(value ?? "default"); return name.length > 0 ? name : "default" }
@@ -17,6 +18,10 @@ QtObject {
             && rect.width > 0
             && rect.height > 0
     }
+    function allocatePublisherGeneration() {
+        root._nextPublisherGeneration += 1
+        return root._nextPublisherGeneration
+    }
     function publish(record) {
         const outputName = String(record?.outputName ?? "")
         const instanceId = String(record?.instanceId ?? "")
@@ -24,18 +29,31 @@ QtObject {
         const slotId = String(record?.slotId ?? "")
         const surfaceName = root.surfaceName(record?.surfaceName)
         const coordinateSpace = String(record?.coordinateSpace ?? "")
-        if (!record || !outputName || !instanceId || !moduleId || !PerimeterTopology.isValidSlot(slotId) || !root.rectHasArea(record.rect) || coordinateSpace !== "output-local") return false
+        const publisherGeneration = Number(record?.publisherGeneration ?? 0)
+        if (!record || !outputName || !instanceId || !moduleId || !PerimeterTopology.isValidSlot(slotId) || !root.rectHasArea(record.rect) || coordinateSpace !== "output-local" || !root.numberFinite(publisherGeneration) || publisherGeneration < 0) return false
         const key = root.keyFor(outputName, instanceId, surfaceName)
+        const existing = root.records[key] ?? null
+        const existingGeneration = Number(existing?.publisherGeneration ?? 0)
+        if (existing && root.numberFinite(existingGeneration)
+                && existingGeneration > publisherGeneration)
+            return false
         const next = Object.assign({}, root.records)
-        next[key] = Object.assign({}, record, { outputName: outputName, instanceId: instanceId, moduleId: moduleId, slotId: slotId, surfaceName: surfaceName, edge: PerimeterTopology.edgeForSlot(slotId), alignment: PerimeterTopology.alignmentForSlot(slotId), coordinateSpace: "output-local" })
+        next[key] = Object.assign({}, record, { outputName: outputName, instanceId: instanceId, moduleId: moduleId, slotId: slotId, surfaceName: surfaceName, edge: PerimeterTopology.edgeForSlot(slotId), alignment: PerimeterTopology.alignmentForSlot(slotId), coordinateSpace: "output-local", publisherGeneration: publisherGeneration })
         root.records = next
         root.changed(key, next[key])
         return true
     }
     function lookup(outputName, instanceId, surfaceName) { return root.records[root.keyFor(outputName, instanceId, surfaceName)] || null }
-    function unregister(outputName, instanceId, surfaceName) {
+    function unregister(outputName, instanceId, surfaceName, publisherGeneration) {
         const key = root.keyFor(outputName, instanceId, surfaceName)
-        if (!root.records[key]) return false
+        const current = root.records[key] ?? null
+        if (!current) return false
+        if (publisherGeneration !== undefined && publisherGeneration !== null) {
+            const expectedGeneration = Number(publisherGeneration)
+            if (!root.numberFinite(expectedGeneration)
+                    || Number(current?.publisherGeneration ?? 0) !== expectedGeneration)
+                return false
+        }
         const next = Object.assign({}, root.records)
         delete next[key]
         root.records = next

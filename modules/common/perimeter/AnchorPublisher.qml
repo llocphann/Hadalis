@@ -34,6 +34,7 @@ Item {
     property string _publishedOutputName: ""
     property string _publishedInstanceId: ""
     property string _publishedSurfaceName: ""
+    property double _publisherGeneration: 0
 
     width: 0
     height: 0
@@ -43,10 +44,17 @@ Item {
         return String(root.surfaceName || "default")
     }
 
+    function _ensurePublisherGeneration() {
+        if (root._publisherGeneration <= 0)
+            root._publisherGeneration = AnchorRegistry.allocatePublisherGeneration()
+        return root._publisherGeneration
+    }
+
     function _unregisterPublished() {
         if (root._publishedOutputName && root._publishedInstanceId) {
             AnchorRegistry.unregister(root._publishedOutputName,
-                root._publishedInstanceId, root._publishedSurfaceName)
+                root._publishedInstanceId, root._publishedSurfaceName,
+                root._publisherGeneration)
         }
         root._publishedOutputName = ""
         root._publishedInstanceId = ""
@@ -101,6 +109,7 @@ Item {
             return false
         }
 
+        const publisherGeneration = root._ensurePublisherGeneration()
         const published = AnchorRegistry.publish({
             outputName: output,
             slotId: root.slotId,
@@ -109,7 +118,8 @@ Item {
             rect: rect,
             surfaceName: surface,
             preferredExtent: root.preferredExtent,
-            coordinateSpace: root.coordinateSpace
+            coordinateSpace: root.coordinateSpace,
+            publisherGeneration: publisherGeneration
         })
 
         if (published) {

@@ -1,5 +1,5 @@
 {
-  description = "iNiR desktop shell for Niri, packaged for NixOS and Home Manager";
+  description = "Hadalis desktop shell runtime, packaged for NixOS and Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

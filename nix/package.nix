@@ -172,8 +172,8 @@ pkgs.stdenvNoCC.mkDerivation {
   passthru.runtimeDependencies = runtimeDeps;
 
   meta = {
-    description = "Complete desktop shell for Niri, built on Quickshell";
-    homepage = "https://github.com/snowarch/inir";
+    description = "Hadalis desktop shell runtime built on Quickshell";
+    homepage = "https://github.com/llocphann/Hadalis";
     license = lib.licenses.gpl3Only;
     platforms = lib.platforms.linux;
     mainProgram = "inir";

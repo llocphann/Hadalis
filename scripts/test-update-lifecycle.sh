@@ -16,8 +16,9 @@ setup_file="$repo_root/setup"
 robust="$repo_root/sdata/lib/robust-update.sh"
 snapshots="$repo_root/sdata/lib/snapshots.sh"
 payload_tool="$repo_root/sdata/lib/runtime-payload.py"
+updates_service="$repo_root/services/Updates.qml"
 
-for required in "$setup_file" "$robust" "$snapshots" "$payload_tool"; do
+for required in "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service"; do
     [[ -f "$required" ]] || fail "missing lifecycle file: ${required#$repo_root/}"
 done
 
@@ -70,6 +71,28 @@ version = run.rfind('set_installed_version "$repo_ver" "$repo_commit" "update"')
 success = run.rfind('_write_update_status "success"')
 if restart < 0 or version < restart or success < version:
     raise SystemExit('update completion ordering must be restart -> version metadata -> success')
+PY
+
+# Arch's checkupdates uses exit 2 for the normal "nothing to update" state.
+# Keep the availability probe self-contained in the declared shell dependency
+# instead of requiring the separate `which` package.
+grep -Fq 'command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]' "$updates_service" \
+    || fail 'updates availability probe still depends on an external which executable'
+if grep -Fq 'command: ["which", "checkupdates"]' "$updates_service"; then
+    fail 'updates availability probe regressed to the undeclared which dependency'
+fi
+python3 - "$updates_service" <<'PY'
+from pathlib import Path
+import sys
+
+text = Path(sys.argv[1]).read_text()
+process = text.split('id: checkUpdatesProc', 1)[1]
+on_exit = process.split('onExited:', 1)[1]
+no_updates = on_exit.find('if (exitCode === 2)')
+clear_count = on_exit.find('root.count = 0;', no_updates)
+error_branch = on_exit.find('if (exitCode !== 0)', no_updates)
+if no_updates < 0 or clear_count < no_updates or error_branch < clear_count:
+    raise SystemExit('checkupdates exit 2 must clear stale count before the genuine error branch')
 PY
 
 # Runtime payload manifest must exclude source-only tests/tooling while retaining

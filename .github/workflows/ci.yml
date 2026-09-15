@@ -65,7 +65,7 @@ jobs:
             grep -Fq 'assets/tlp/tlp-settings-schema.json' "$pkg"
             grep -Fq 'assets/helpers/inir-thinkfan' "$pkg"
             grep -Fq '$pkgdir/usr/libexec/inir-thinkfan' "$pkg"
-            grep -Fq 'assets/polkit/org.inir-thinkfan.policy' "$pkg"
+            grep -Fq 'assets/polkit/org.inir.thinkfan.policy' "$pkg"
           done
 
       - name: Validate ThinkFan process timeout guards

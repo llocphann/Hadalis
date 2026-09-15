@@ -30,22 +30,30 @@ Item {
             spacing: 6
 
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "memory"
                 percentage: ResourceUsage.memoryUsedPercentage
                 warningThreshold: 90
             }
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "thermostat"
                 percentage: ResourceUsage.tempPercentage
                 cautionThreshold: 65
                 warningThreshold: 80
             }
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "planner_review"
                 percentage: ResourceUsage.cpuUsage
                 warningThreshold: 90
             }
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "memory_alt"
                 percentage: ResourceUsage.gpuUsage
                 warningThreshold: 90
@@ -60,22 +68,30 @@ Item {
             spacing: 2
 
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "memory"
                 percentage: ResourceUsage.memoryUsedPercentage
                 warningThreshold: 90
             }
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "thermostat"
                 percentage: ResourceUsage.tempPercentage
                 cautionThreshold: 65
                 warningThreshold: 80
             }
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "planner_review"
                 percentage: ResourceUsage.cpuUsage
                 warningThreshold: 90
             }
             Resource {
+                width: implicitWidth
+                height: implicitHeight
                 iconName: "memory_alt"
                 percentage: ResourceUsage.gpuUsage
                 warningThreshold: 90

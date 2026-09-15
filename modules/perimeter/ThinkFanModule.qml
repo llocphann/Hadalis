@@ -27,6 +27,10 @@ Item {
     implicitHeight: statusLoader.item?.implicitHeight ?? 0
     activeFocusOnTab: true
 
+    Accessible.role: Accessible.Button
+    Accessible.name: Translation.tr("ThinkFan")
+    Accessible.focusable: true
+
     Keys.onPressed: event => {
         if (event.isAutoRepeat
                 || (event.key !== Qt.Key_Return

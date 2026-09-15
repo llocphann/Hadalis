@@ -21,7 +21,6 @@ Singleton {
     property string statusReason: ""
     property bool lastApplySucceeded: false
     property string lastApplyError: ""
-    property bool _statusSeen: false
     property bool _refreshQueued: false
 
     function _clearStatus(reason: string): void {
@@ -37,17 +36,17 @@ Singleton {
         root.statusReason = reason
     }
 
-    function _parseStatus(line: string): void {
+    function _parseStatus(line: string): bool {
         let data
         try {
             data = JSON.parse(String(line ?? "").trim())
         } catch (error) {
             root._clearStatus("invalid-status")
-            return
+            return false
         }
         if (data?.schema !== 1) {
             root._clearStatus("unsupported-status-schema")
-            return
+            return false
         }
 
         root.available = data.available === true
@@ -61,7 +60,7 @@ Singleton {
         root.configPath = String(data.configPath ?? "")
         root.statusReason = String(data.reason ?? "")
         root.stateKnown = true
-        root._statusSeen = true
+        return true
     }
 
     function refresh(): void {
@@ -107,15 +106,19 @@ Singleton {
 
     Process {
         id: detector
+        property bool statusSeen: false
         command: ["/usr/libexec/inir-thinkfan", "--status"]
 
         stdout: SplitParser {
-            onRead: data => root._parseStatus(data)
+            onRead: data => {
+                if (root._parseStatus(data))
+                    detector.statusSeen = true
+            }
         }
 
-        onStarted: root._statusSeen = false
+        onStarted: detector.statusSeen = false
         onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0 || !root._statusSeen)
+            if (exitCode !== 0 || !detector.statusSeen)
                 root._clearStatus(exitCode === 127
                     ? "helper-unavailable" : "status-failed")
             if (root._refreshQueued) {

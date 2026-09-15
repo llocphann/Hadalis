@@ -89,6 +89,7 @@ Item {
     }
 
     function closeOverflowMenu() {
+        root.trayOverflowOpen = false;
         focusGrab.active = false;
     }
 

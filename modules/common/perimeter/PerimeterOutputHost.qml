@@ -50,8 +50,6 @@ Item {
         root._overflowsOutput(topStart)
         || root._overflowsOutput(topCenter)
         || root._overflowsOutput(topEnd)
-    readonly property bool topCollision: topEdgeOverflowsOutput
-        || !topEdgeSegmentsFit || !topCenterFits
 
     readonly property real bottomCenterDesiredX: (width - bottomCenter.width) / 2
     readonly property real bottomCenterMinX: bottomStartOccupied
@@ -68,8 +66,25 @@ Item {
         root._overflowsOutput(bottomStart)
         || root._overflowsOutput(bottomCenter)
         || root._overflowsOutput(bottomEnd)
+
+    // Top and bottom hosts can overlap on short outputs without either host
+    // leaving output bounds. Report that pressure instead of silently accepting
+    // intersecting edge chrome at natural sizes.
+    readonly property bool topBottomOverlap:
+        root._itemsOverlap(topStart, bottomStart)
+        || root._itemsOverlap(topStart, bottomCenter)
+        || root._itemsOverlap(topStart, bottomEnd)
+        || root._itemsOverlap(topCenter, bottomStart)
+        || root._itemsOverlap(topCenter, bottomCenter)
+        || root._itemsOverlap(topCenter, bottomEnd)
+        || root._itemsOverlap(topEnd, bottomStart)
+        || root._itemsOverlap(topEnd, bottomCenter)
+        || root._itemsOverlap(topEnd, bottomEnd)
+
+    readonly property bool topCollision: topEdgeOverflowsOutput
+        || !topEdgeSegmentsFit || !topCenterFits || topBottomOverlap
     readonly property bool bottomCollision: bottomEdgeOverflowsOutput
-        || !bottomEdgeSegmentsFit || !bottomCenterFits
+        || !bottomEdgeSegmentsFit || !bottomCenterFits || topBottomOverlap
 
     // Side slots stay truly centered at their natural size. Core never shrinks or
     // shifts them; these flags only expose overload/collision state to consumers.

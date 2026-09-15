@@ -95,7 +95,6 @@
     "scripts/test-tlp-integration-lifecycle.sh",
     "scripts/test-tlp-settings-ui-guards.sh",
     "scripts/test-update-lifecycle.sh",
-    "scripts/test-runtime-payload.py",
     "scripts/lib/generate-ipc-registry.py",
     "scripts/quickshell-webengine",
     "scripts/setup/_template.sh.example",

@@ -17,7 +17,7 @@ Singleton {
         const combined = new Set([...root.availableLanguages, ...root.availableGeneratedLanguages]);
         return Array.from(combined).sort();
     }
-    property bool isScanning: scanLanguagesProcess.running
+    property bool isScanning: scanLanguagesProcess.running || scanGeneratedLanguagesProcess.running
     property bool isLoading: false
     property string translationKeepSuffix: "/*keep*/"
     property string translationsDir: Quickshell.shellPath("translations")
@@ -43,6 +43,7 @@ Singleton {
     TranslationScanner {
         id: scanGeneratedLanguagesProcess
         translationsDir: root.generatedTranslationsDir
+        fallbackLanguages: []
         onLanguagesScanned: (languages) => {
             root.availableGeneratedLanguages = [...languages];
         }
@@ -52,6 +53,8 @@ Singleton {
         print("[Translation] Language changed to", root.languageCode);
         translationFileView.languageCode = root.languageCode;
         generatedTranslationFileView.languageCode = root.languageCode;
+        if (!scanGeneratedLanguagesProcess.running)
+            scanGeneratedLanguagesProcess.running = true;
         translationFileView.reread();
         generatedTranslationFileView.reread();
     }
@@ -104,6 +107,7 @@ Singleton {
     component TranslationScanner: Process {
         id: translationScanner
         required property string translationsDir
+        property var fallbackLanguages: ["en_US"]
         signal languagesScanned(var languages)
 
         command: ["/usr/bin/find", translationScanner.translationsDir, "-maxdepth", "1", "-type", "f", "-name", "*.json", "-exec", "/usr/bin/basename", "{}", ".json", ";"]
@@ -122,7 +126,7 @@ Singleton {
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
-                translationScanner.languagesScanned(["en_US"]);
+                translationScanner.languagesScanned([...translationScanner.fallbackLanguages]);
             }
         }
     }

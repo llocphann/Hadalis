@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dir = path.join(__dirname, '..'); // translations folder
+const sourceFile = 'en_US.json';
 
 const args = process.argv.slice(2);
 let targetFile = args[0];
@@ -20,10 +21,19 @@ if (!targetFile.endsWith('.json')) {
   targetFile += '.json';
 }
 
+if (targetFile === sourceFile) {
+  console.error(`Error: ${sourceFile} is the canonical source locale and must not be auto-translated.`);
+  process.exit(1);
+}
+
 const filePaths = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
 
 if (!filePaths.includes(targetFile)) {
   console.error(`Error: File ${targetFile} not found in ${dir}`);
+  process.exit(1);
+}
+if (!filePaths.includes(sourceFile)) {
+  console.error(`Error: Canonical source locale ${sourceFile} not found in ${dir}`);
   process.exit(1);
 }
 
@@ -41,6 +51,33 @@ if (!targetLang) {
   console.error(`Error: No google translate code mapped for ${targetFile}`);
   console.error(`Please add it to langMap in auto-translate.js`);
   process.exit(1);
+}
+
+function loadJson(fileName) {
+  const filePath = path.join(dir, fileName);
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+}
+
+function assertKeyParity(sourceData, targetData) {
+  const sourceKeys = new Set(Object.keys(sourceData));
+  const targetKeys = new Set(Object.keys(targetData));
+  const missing = [...sourceKeys].filter(k => !targetKeys.has(k)).sort();
+  const extra = [...targetKeys].filter(k => !sourceKeys.has(k)).sort();
+
+  if (missing.length === 0 && extra.length === 0) return;
+
+  console.error(
+    `Error: ${targetFile} keyset differs from ${sourceFile} ` +
+    `(${missing.length} missing, ${extra.length} extra).`
+  );
+  if (missing.length > 0) {
+    console.error(`  Missing sample: ${missing.slice(0, 5).join(' | ')}`);
+  }
+  if (extra.length > 0) {
+    console.error(`  Extra sample: ${extra.slice(0, 5).join(' | ')}`);
+  }
+  console.error('Run the locale sync/clean pipeline before auto-translation.');
+  process.exit(2);
 }
 
 async function sleep(ms) {
@@ -71,11 +108,17 @@ function writeAtomic(filePath, data) {
 async function run() {
   console.log(`Processing ${targetFile} (to ${targetLang})...`);
   const filePath = path.join(dir, targetFile);
-  const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const sourceData = loadJson(sourceFile);
+  const data = loadJson(targetFile);
+
+  assertKeyParity(sourceData, data);
 
   const keysToTranslate = Object.keys(data).filter(k => {
-    if (data[k] && data[k].endsWith('/*keep*/')) return false;
-    return data[k] === k || !data[k];
+    const sourceValue = sourceData[k];
+    const targetValue = data[k];
+    if (typeof sourceValue === 'string' && sourceValue.trim().endsWith('/*keep*/')) return false;
+    if (typeof targetValue === 'string' && targetValue.trim().endsWith('/*keep*/')) return false;
+    return targetValue === k || !targetValue;
   });
 
   console.log(`Found ${keysToTranslate.length} keys to translate.`);

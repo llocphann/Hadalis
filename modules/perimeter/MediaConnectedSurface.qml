@@ -1,0 +1,116 @@
+import qs
+import qs.modules.common
+import qs.modules.common.perimeter
+import qs.modules.mediaControls
+import qs.services
+import QtQuick
+import Quickshell
+import Quickshell.Wayland
+
+PanelWindow {
+    id: root
+
+    property var perimeterContext: null
+    property var sourceScreen: null
+
+    readonly property string outputName: root.perimeterContext?.outputName ?? ""
+    readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
+    readonly property var route: SurfaceRouteController.current(root.outputName)
+    readonly property bool routeOwned: root.route !== null
+        && root.route.family === "perimeter"
+        && root.route.surface === "media"
+        && root.route.sourceInstance === root.instanceId
+    readonly property color surfaceColor: Appearance.inirEverywhere
+        ? Appearance.inir.colLayer1 : Appearance.colors.colLayer0
+
+    screen: root.sourceScreen ?? Quickshell.screens[0]
+    color: "transparent"
+    exclusiveZone: 0
+    visible: root.routeOwned && root.sourceScreen !== null
+
+    WlrLayershell.namespace: "hadalis:perimeter-media"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+
+    anchors {
+        top: true
+        bottom: true
+        left: true
+        right: true
+    }
+
+    ConnectedSurfaceGeometry {
+        id: geometry
+        edge: root.route?.edge ?? "top"
+        alignment: PerimeterTopology.alignmentForSlot(root.route?.slot ?? "top.center")
+        outputRect: Qt.rect(0, 0, root.width, root.height)
+        anchorRect: root.route?.anchorRect ?? Qt.rect(0, 0, 0, 0)
+        bodySize: Qt.size(
+            Math.max(360, mediaPopup.implicitWidth + 24),
+            Math.max(220, Math.min(Math.max(220, root.height - 32),
+                mediaPopup.implicitHeight + 24)))
+    }
+
+    ConnectedSurfaceFrame {
+        id: frame
+        anchors.fill: parent
+        geometry: geometry
+        fillColor: root.surfaceColor
+        borderColor: Appearance.inirEverywhere
+            ? Appearance.inir.colBorder : "transparent"
+        borderWidth: Appearance.inirEverywhere ? 1 : 0
+    }
+
+    Item {
+        id: popupBody
+        x: geometry.bodyRect.x + geometry.offsetX + 12
+        y: geometry.bodyRect.y + geometry.offsetY + 12
+        width: Math.max(0, geometry.bodyRect.width - 24)
+        height: Math.max(0, geometry.bodyRect.height - 24)
+        visible: root.routeOwned
+
+        BarMediaPopup {
+            id: mediaPopup
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth, parent.width)
+            height: Math.min(implicitHeight, parent.height)
+            popupRounding: Math.max(0, geometry.outerRadius - 8)
+            onCloseRequested: SurfaceRouteController.close(root.outputName, "explicit")
+        }
+    }
+
+    ConnectedSurfaceMask {
+        id: connectedMask
+        geometry: geometry
+        bodyItem: frame.bodyItem
+        connectorItem: frame.connectorItem
+    }
+
+    Item {
+        id: emptyInputArea
+        width: 0
+        height: 0
+    }
+
+    Region {
+        id: emptyInputRegion
+        item: emptyInputArea
+    }
+
+    mask: root.routeOwned ? connectedMask : emptyInputRegion
+
+    CompositorFocusGrab {
+        windows: [root]
+        active: root.routeOwned && CompositorService.isHyprland
+        onCleared: () => {
+            if (root.routeOwned)
+                SurfaceRouteController.dismiss(root.outputName, "focus-loss")
+        }
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: root.routeOwned
+        onActivated: SurfaceRouteController.dismiss(root.outputName, "escape")
+    }
+}

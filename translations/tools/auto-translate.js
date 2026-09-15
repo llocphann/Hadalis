@@ -144,24 +144,33 @@ async function run() {
   }
 
   const batchSize = 100;
+  const maxBatchAttempts = 3;
   let badStrings = 0;
   for (let i = 0; i < keysToTranslate.length; i += batchSize) {
     const batchKeys = keysToTranslate.slice(i, i + batchSize);
     console.log(` Translating batch ${i} to ${i + batchSize} of ${keysToTranslate.length}...`);
 
-    try {
-      const batchValues = await translate(batchKeys, { to: targetLang });
-      for (let j = 0; j < batchKeys.length; j++) {
-        const raw = batchValues[j];
-        const clean = sanitizeTranslation(raw);
-        if (clean !== raw) badStrings++;
-        data[batchKeys[j]] = clean;
+    let completed = false;
+    for (let attempt = 1; attempt <= maxBatchAttempts && !completed; attempt++) {
+      try {
+        const batchValues = await translate(batchKeys, { to: targetLang });
+        let batchBadStrings = 0;
+        for (let j = 0; j < batchKeys.length; j++) {
+          const raw = batchValues[j];
+          const clean = sanitizeTranslation(raw);
+          if (clean !== raw) batchBadStrings++;
+          data[batchKeys[j]] = clean;
+        }
+        writeAtomic(filePath, data);
+        badStrings += batchBadStrings;
+        completed = true;
+      } catch (err) {
+        console.error(`Error on batch ${i} (attempt ${attempt}/${maxBatchAttempts}):`, err.message);
+        if (attempt === maxBatchAttempts) {
+          throw new Error(`Translation failed for batch ${i} after ${maxBatchAttempts} attempts`);
+        }
+        await sleep(5000);
       }
-      writeAtomic(filePath, data);
-    } catch (err) {
-      console.error(`Error on batch ${i}:`, err.message);
-      await sleep(5000);
-      i -= batchSize;
     }
 
     await sleep(1000);
@@ -171,4 +180,7 @@ async function run() {
   console.log(`Finished ${targetFile}.${badStrings > 0 ? ` (sanitized ${badStrings} malformed string(s))` : ''}`);
 }
 
-run();
+run().catch(err => {
+  console.error('Translation failed:', err.message);
+  process.exitCode = 1;
+});

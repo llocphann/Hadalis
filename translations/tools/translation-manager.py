@@ -104,11 +104,31 @@ class TranslationManager:
         return data
 
     def save_translation_file(self, lang_code: str, translations: Dict[str, str]) -> None:
-        """Save one locale JSON file."""
+        """Atomically save one locale JSON file without exposing a partial write."""
         file_path = self.translations_dir / f"{lang_code}.json"
-        with open(file_path, "w", encoding="utf-8", newline="") as f:
-            json.dump(translations, f, ensure_ascii=False, indent=2)
-            f.write("\n")
+        target_mode = (file_path.stat().st_mode & 0o777) if file_path.exists() else 0o644
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                dir=self.translations_dir,
+                prefix=f".{lang_code}.",
+                suffix=".tmp",
+                delete=False,
+                encoding="utf-8",
+                newline="",
+            ) as f:
+                json.dump(translations, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+                f.flush()
+                os.fsync(f.fileno())
+                temp_path = Path(f.name)
+
+            os.chmod(temp_path, target_mode)
+            os.replace(temp_path, file_path)
+        finally:
+            if temp_path is not None and temp_path.exists():
+                temp_path.unlink()
         print(f"Translation file saved: {file_path}")
 
     def get_available_languages(self) -> List[str]:

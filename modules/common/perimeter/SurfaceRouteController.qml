@@ -9,6 +9,7 @@ QtObject {
     property var routes: ({})
 
     signal opened(string outputName, var route)
+    signal updated(string outputName, var route)
     signal closed(string outputName, var route, string reason)
     signal backRequested(string outputName, var route)
 
@@ -20,10 +21,28 @@ QtObject {
         return root.current(outputName) !== null
     }
 
+    function _routeAnchorKey(route) {
+        if (!route)
+            return ""
+        return AnchorRegistry.keyFor(route.output,
+            route.sourceInstance, route.surface)
+    }
+
+    function _rectHasArea(rect) {
+        return rect && rect.width > 0 && rect.height > 0
+    }
+
+    function _sameRect(a, b) {
+        return a && b
+            && a.x === b.x && a.y === b.y
+            && a.width === b.width && a.height === b.height
+    }
+
     function _normalize(route) {
         const outputName = String(route?.output ?? route?.outputName ?? "")
         const sourceInstance = String(route?.sourceInstance ?? "")
         const slot = String(route?.slot ?? route?.slotId ?? "")
+        const surface = String(route?.surface ?? "default")
         if (!outputName || !sourceInstance || !PerimeterTopology.isValidSlot(slot))
             return null
 
@@ -32,20 +51,69 @@ QtObject {
         if (edge !== expectedEdge)
             return null
 
-        const anchorRect = route?.anchorRect
-        if (!anchorRect || anchorRect.width <= 0 || anchorRect.height <= 0)
+        // AnchorRegistry is the geometry authority. Never accept a caller-owned
+        // anchor snapshot here: it can already be stale by the time a surface
+        // opens, and it may not use output-local coordinates.
+        const anchor = AnchorRegistry.lookup(outputName, sourceInstance, surface)
+        if (!anchor
+                || String(anchor.slotId ?? "") !== slot
+                || String(anchor.coordinateSpace ?? "") !== "output-local"
+                || !root._rectHasArea(anchor.rect)) {
             return null
+        }
 
         return {
             output: outputName,
             family: String(route?.family ?? "default"),
-            surface: String(route?.surface ?? "default"),
+            surface: surface,
             page: String(route?.page ?? ""),
             sourceInstance: sourceInstance,
             slot: slot,
             edge: edge,
-            anchorRect: anchorRect
+            anchorRect: anchor.rect
         }
+    }
+
+    function _onAnchorChanged(key, record) {
+        const outputName = String(record?.outputName ?? "")
+        const active = root.current(outputName)
+        if (!active || root._routeAnchorKey(active) !== String(key ?? ""))
+            return false
+
+        const slot = String(record?.slotId ?? "")
+        const rect = record?.rect
+        if (!PerimeterTopology.isValidSlot(slot)
+                || String(record?.coordinateSpace ?? "") !== "output-local"
+                || !root._rectHasArea(rect)) {
+            return root.close(outputName, "source-hidden")
+        }
+
+        const edge = PerimeterTopology.edgeForSlot(slot)
+        if (active.slot === slot && active.edge === edge
+                && root._sameRect(active.anchorRect, rect)) {
+            return false
+        }
+
+        const nextRoute = Object.assign({}, active, {
+            slot: slot,
+            edge: edge,
+            anchorRect: rect
+        })
+        const next = Object.assign({}, root.routes)
+        next[outputName] = nextRoute
+        root.routes = next
+        root.updated(outputName, nextRoute)
+        return true
+    }
+
+    function _onAnchorRemoved(key) {
+        const anchorKey = String(key ?? "")
+        for (const outputName of Object.keys(root.routes)) {
+            const active = root.routes[outputName]
+            if (root._routeAnchorKey(active) === anchorKey)
+                return root.close(outputName, "source-hidden")
+        }
+        return false
     }
 
     function open(route) {
@@ -112,5 +180,15 @@ QtObject {
             return true
         }
         return root.close(name, "back")
+    }
+
+    property var _anchorRegistryConnections: Connections {
+        target: AnchorRegistry
+        function onChanged(key, record) {
+            root._onAnchorChanged(key, record)
+        }
+        function onRemoved(key) {
+            root._onAnchorRemoved(key)
+        }
     }
 }

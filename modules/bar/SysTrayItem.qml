@@ -18,17 +18,53 @@ MouseArea {
     signal menuClosed()
 
     hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+    activeFocusOnTab: true
     implicitWidth: 18
     implicitHeight: 18
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.item?.tooltipTitle || root.item?.title || Translation.tr("System tray item")
+    Accessible.focusable: true
+
+    function activatePrimary(): void {
+        if (!TrayService.smartToggle(root.item))
+            root.item.activate()
+    }
+
+    function openContextMenu(): void {
+        if (!root.item.hasMenu)
+            return
+        if (root.trayParent)
+            root.trayParent.closeAllTrayMenus()
+        menu.open()
+    }
+
+    Keys.onPressed: event => {
+        if (event.isAutoRepeat)
+            return
+        if (event.key === Qt.Key_Return
+                || event.key === Qt.Key_Enter
+                || event.key === Qt.Key_Space) {
+            root.activatePrimary()
+            event.accepted = true
+            return
+        }
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            root.openContextMenu()
+            event.accepted = true
+        }
+    }
+
     onPressed: (event) => {
         switch (event.button) {
         case Qt.LeftButton: {
             // Smart toggle: click to show, click again to minimize
             // Falls back to normal activate() if not handled
-            if (!TrayService.smartToggle(item)) {
-                item.activate();
-            }
+            root.activatePrimary();
             break;
         }
         case Qt.MiddleButton:
@@ -36,11 +72,7 @@ MouseArea {
             item.secondaryActivate();
             break;
         case Qt.RightButton:
-            if (item.hasMenu) {
-                // Close other tray menus first
-                if (trayParent) trayParent.closeAllTrayMenus();
-                menu.open();
-            }
+            root.openContextMenu();
             break;
         }
         event.accepted = true;

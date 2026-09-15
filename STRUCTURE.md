@@ -2,204 +2,162 @@
 
 ## Directory Layout
 
-```
+```text
 inir/
-├── shell.qml                     # Root entry — loads services, selects panel family
-├── ShellIiPanels.qml             # Material Design panel family
+├── shell.qml                     # Root entry — loads services and selects panel family
+├── ShellIiPanels.qml             # Material ii panel family
 ├── ShellWafflePanels.qml         # Windows 11 panel family
-├── GlobalStates.qml              # Runtime UI state (panel open/closed booleans)
+├── GlobalStates.qml              # Runtime UI state
 ├── FamilyTransitionOverlay.qml   # Animated family switch
-├── settings.qml                  # Settings GUI (separate Quickshell config)
+├── settings.qml                  # Settings GUI
 ├── waffleSettings.qml            # Waffle-specific settings GUI
 ├── welcome.qml                   # First-run wizard
 ├── killDialog.qml                # Process kill confirmation
-├── modules/                      # UI module directories
+├── modules/
 │   ├── common/                   # Shared infrastructure
 │   │   ├── Appearance.qml        # ii visual tokens
-│   │   ├── Config.qml            # Central config (JsonAdapter)
+│   │   ├── Config.qml            # Central JsonAdapter config
 │   │   └── widgets/              # Reusable widgets + qmldir
-│   ├── bar/                      # Top bar (ii family)
-│   ├── barM3/                    # Material 3 bar — independent layout model, bar.appearanceStyle "m3"
-│   ├── background/               # Wallpaper backdrop + desktop widgets + desktop items
-│   ├── sidebarLeft/              # AI chat, YT Music, widgets
+│   ├── bar/                      # Classic Bar runtime
+│   ├── background/               # Wallpaper + desktop widgets/items
+│   ├── sidebarLeft/              # AI chat, music, widgets
 │   ├── sidebarRight/             # Toggles, calendar, tools
-│   ├── settings/                 # All config UI pages
-│   ├── dock/                     # App dock (all 4 positions)
-│   ├── overview/                 # Workspace overview + app search
-│   ├── wallpaperLauncher/        # Shared compact wallpaper carousel
+│   ├── settings/                 # Config UI pages
+│   ├── dock/                     # App dock
+│   ├── overview/                 # Workspace overview + app search/task view
+│   ├── wallpaperLauncher/        # Compact wallpaper carousel
 │   ├── waffle/                   # Windows 11 family
 │   │   ├── bar/                  # Bottom taskbar
 │   │   ├── startMenu/            # Start menu with search
 │   │   ├── actionCenter/         # Quick settings
 │   │   ├── notificationCenter/   # Notification list + calendar
-│   │   ├── looks/Looks.qml       # Waffle visual tokens
-│   │   └── [13 more subdirs]
-│   ├── ii/                       # ii-family overlay and sidebarRight components
-│   │   ├── overlay/
-│   │   └── sidebarRight/
-│   └── [more modules]
-├── services/                     # Runtime singletons (+ services/deferred/)
-│   ├── qmldir                    # Service module registration
-│   ├── Audio.qml                 # PipeWire volume, mute, per-app mixer
-│   ├── NiriService.qml           # Niri compositor IPC
-│   ├── CompositorService.qml     # Compositor detection (Niri vs Hyprland)
-│   ├── Network.qml               # NetworkManager integration
-│   ├── Weather.qml               # Weather polling + privacy-aware location
-│   ├── BluetoothStatus.qml       # BlueZ device management
-│   ├── Translation.qml           # i18n string lookup
-│   ├── DevNavigation.qml         # Session-only semantic UI navigation + dev IPC
-│   ├── DesktopItems.qml          # Desktop item persistence + undo (desktop-items.json)
-│   ├── DesktopWidgetLayout.qml   # Per-output widget layout (background.widgets.outputOverrides)
-│   ├── LyricsService.qml         # Synchronized lyrics for media controls
-│   └── [more services]
+│   │   └── looks/Looks.qml       # Waffle visual tokens
+│   ├── ii/                       # ii-family overlay/sidebar components
+│   └── ...
+├── services/                     # Runtime singletons (+ deferred services)
 ├── scripts/                      # Shell/fish/python helpers
-│   ├── inir                      # CLI launcher (bash, IPC + lifecycle commands)
-│   ├── colors/                   # Color generation pipeline
-│   │   ├── applycolor.sh         # Orchestrator
-│   │   ├── generate_colors_material.py  # Material You color generation
-│   │   ├── modules/              # Per-app theming (terminals, GTK, etc.)
-│   │   └── lib/                  # Shared infrastructure
-│   └── [more scripts]
-├── sdata/                        # Install/update lifecycle
-│   ├── lib/                      # Shared bash libraries
-│   ├── migrations/               # Numbered scripts
-│   ├── subcmd-install/           # Install phases
-│   └── subcmd-uninstall/         # Uninstall phases
-├── defaults/                     # Shipped defaults
-│   ├── config.json               # Default config
-│   ├── niri/                     # Niri config templates
-│   └── [GTK, KDE, fuzzel, etc.]
-├── translations/                 # i18n strings (15 languages)
-├── distro/arch/                  # Arch PKGBUILDs (dependency manifests)
+├── sdata/                        # Install/update lifecycle and migrations
+├── defaults/                     # Shipped default configuration/templates
+├── translations/                 # i18n catalogs and maintenance tools
+├── distro/                       # Packaging/distribution data
 ├── assets/                       # Icons, wallpapers, systemd unit, desktop entry
-├── docs/                         # User documentation
-└── wiki/                         # Wiki documentation
+└── docs/                         # User documentation
 ```
+
+The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill-Bar, Islands-Bar, Scenic-Bar, or Frame-Bar module directory. Those systems are retired, not optional renderers.
 
 ## Directory Purposes
 
-**modules/:**
-- Purpose: All UI module directories organized by panel family and feature area
-- Contains: QML components, qmldir registration files, subdirectories per feature
-- Key files: `modules/common/Config.qml`, `modules/common/Appearance.qml`, `modules/common/widgets/qmldir`
+**modules/:** all UI modules organized by panel family and feature area.
 
-**modules/common/:**
-- Purpose: Shared infrastructure used across both panel families
-- Contains: Visual token definitions (Appearance.qml), config schema (Config.qml), reusable widget library (widgets/)
-- Key files: `modules/common/Config.qml`, `modules/common/Appearance.qml`, `modules/common/widgets/qmldir`
+**modules/common/:** shared config, visual infrastructure, and reusable widgets. `Config.qml` owns the typed runtime schema and the custom-widget persistence workaround.
 
-**modules/waffle/:**
-- Purpose: Windows 11-style panel family components
-- Contains: Bottom taskbar, start menu, action center, notification center, visual tokens (Looks.qml), settings pages
-- Key files: `modules/waffle/looks/Looks.qml`, `modules/waffle/bar/WaffleBar.qml`, `modules/waffle/settings/WSettingsContent.qml`
+**modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement and Classic geometry modes (Hug, Float, Rectangle, Card). There is no Bar appearance-family selector.
 
-**modules/ii/:**
-- Purpose: ii-family-specific overlay and sidebarRight components
-- Contains: Overlay system (crosshair, discord, floatingImage, fpsLimiter, notes, recorder, volumeMixer), sidebarRight integration
-- Key files: `modules/ii/overlay/Overlay.qml`, `modules/ii/sidebarRight/`
+**modules/waffle/:** Windows 11-style panel family with its own bottom taskbar, Start menu, action center, notification center, visual tokens, and settings. Waffle is a separate family rather than a Classic Bar appearance.
 
-**modules/background/:**
-- Purpose: Per-output desktop surface rendering the wallpaper and hosting desktop widgets and desktop items
-- Contains: Background render surface (Background.qml), desktop items (desktopItems/), widget instances (widgets/)
-- Key files: `modules/background/Background.qml`, `modules/background/desktopItems/DesktopItemDelegate.qml`, `modules/background/widgets/WidgetManagerPanel.qml`
+**modules/ii/:** ii-family-specific overlay/sidebar components.
 
-**modules/barM3/:**
-- Purpose: Separate Material 3 bar implementation selected by `bar.appearanceStyle === "m3"`
-- Contains: M3Bar.qml and its own widget components; the layout contract lives under `bar.m3` in Config
-- Key files: `modules/barM3/M3Bar.qml`, `modules/barM3/M3Palette.qml`
+**modules/background/:** per-output desktop surface, wallpaper renderer, desktop items, and desktop widgets.
 
-**services/:**
-- Purpose: Runtime singletons providing backend functionality (audio, network, compositor IPC, theming, etc.)
-- Contains: QML singleton services, qmldir for module registration, deferred/ subdirectory for lazy-loaded services
-- Key files: `services/qmldir`, `services/DevNavigation.qml`, `services/GlobalActions.qml`
+**modules/overview/:** normal workspace overview/app search/task-view implementation. Orbit is not part of the live overview path.
 
-**scripts/:**
-- Purpose: Shell/fish/python helper scripts for theming, CLI, and automation
-- Contains: CLI launcher (`inir`), color generation pipeline (`colors/`), utility scripts
-- Key files: `scripts/inir` (CLI launcher), `scripts/colors/applycolor.sh` (orchestrator)
+**services/:** runtime singletons for audio, network, compositor IPC, theming, navigation, wallpaper, desktop layout, lyrics, and related backend behavior.
 
-**sdata/:**
-- Purpose: Install/update lifecycle scripts and migration history
-- Contains: Shared bash libraries (lib/), numbered migration scripts (migrations/), install/uninstall subcommands
-- Key files: `sdata/migrations/` (numbered scripts), `sdata/lib/` (shared libraries)
+**scripts/:** CLI, theming, maintenance, and helper scripts.
 
-**defaults/:**
-- Purpose: Shipped default configuration files
-- Contains: config.json (default config), niri/ (Niri config templates), GTK/KDE/fuzzel/ etc. templates
-- Key files: `defaults/config.json`
+**sdata/:** install/update lifecycle and append-only migration history.
 
-**translations/:**
-- Purpose: i18n string files for all supported languages
-- Contains: JSON translation files (ar_SA, de_DE, en_US, es_AR, fr_FR, he_HE, hi_IN, it_IT, ja_JP, ko_KR, pt_BR, ru_RU, uk_UA, vi_VN, zh_CN)
-- Key files: `translations/en_US.json`
+**defaults/:** curated shipped defaults and platform/application templates.
 
-**distro/arch/:**
-- Purpose: Arch Linux packaging files (PKGBUILDs and dependency manifests)
-- Contains: inir-shell, inir-shell-git, inir-meta PKGBUILDs
-- Key files: `distro/arch/inir-shell/PKGBUILD`, `distro/arch/inir-shell-git/PKGBUILD`
+**translations/:** JSON locale catalogs plus extraction/cleanup tooling. Translation keys come from live `Translation.tr(...)` call sites; retired-feature strings should not be kept merely for historical UI.
 
-**assets/:**
-- Purpose: Static assets (icons, wallpapers, systemd units, desktop entries)
-- Contains: applications/, icons/, images/, systemd/, wallpapers/
+**assets/:** static icons, images, wallpapers, systemd units, desktop entries, and related packaged data.
 
-**docs/:**
-- Purpose: User-facing documentation (IPC, packages, setup, etc.)
-- Contains: Markdown documentation files
-
-**wiki/:**
-- Purpose: Internal wiki documentation (architecture, modules, compositors, etc.)
-- Contains: Categorized documentation pages and assets
+**docs/:** user/developer Markdown documentation.
 
 ## Key File Locations
 
-**Entry Points:**
-- `shell.qml`: Root entry — loads services, selects panel family, triggers panel loading
-- `ShellIiPanels.qml`: Material Design panel family loader
-- `ShellWafflePanels.qml`: Windows 11 panel family loader
-- `settings.qml`: Settings GUI (separate Quickshell config)
-- `welcome.qml`: First-run wizard
+### Entry points
+- `shell.qml` — root shell, services, IPC and family selection.
+- `ShellIiPanels.qml` — ii-family loader.
+- `ShellWafflePanels.qml` — Waffle-family loader.
+- `settings.qml` — standalone Settings process/UI.
+- `waffleSettings.qml` — Waffle settings.
+- `welcome.qml` — first-run wizard.
 
-**Configuration:**
-- `modules/common/Config.qml`: Config schema (JsonAdapter, typed QML properties)
-- `defaults/config.json`: Default config values
-- `Config.options.path.to.key`: Read config values in QML
-- `Config.setNestedValue("path.to.key", value)`: Write config values from QML
+### Configuration
+- `modules/common/Config.qml` — typed `JsonAdapter` schema and persistence handling.
+- `defaults/config.json` — curated default file.
+- `Config.options.path.to.key` — runtime reads.
+- `Config.setNestedValue("path.to.key", value)` — runtime writes.
 
-**Core Logic:**
-- `modules/common/Appearance.qml`: ii visual tokens and style dispatch
-- `modules/waffle/looks/Looks.qml`: Waffle visual tokens
-- `services/DevNavigation.qml`: Session-only semantic UI navigation + dev IPC
-- `services/GlobalActions.qml`: Global keybind and action handling
-- `services/CompositorService.qml`: Compositor detection (Niri vs Hyprland)
+Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specific Islands state are not part of the live schema. Shared `m3*` Material color tokens, generic pill-shaped UI, and shared island skins remain valid where consumed by unrelated features.
 
-**Tests:**
-- `scripts/test-local-distribution.sh`: Local distribution test script
-- Co-located test files are not present in this repo
+### Classic Bar
+- `modules/bar/` — Classic Bar runtime.
+- `modules/settings/BarConfig.qml` — Classic Bar settings.
+- `bar.bottom` + `bar.vertical` — placement.
+- `bar.cornerStyle` — Hug/Float/Rectangle/Card geometry.
+- `bar.blurBackground` — native compositor blur controls.
+- `bar.autoHide.showWhenPressingSuper` — Super-key reveal behavior.
+
+### Overview and task view
+- `modules/overview/Overview.qml` — workspace/window overview and navigation.
+- `GlobalStates.qml` — live task-view/overview state.
+- `shell.qml` — `taskview` IPC route to the normal task-view state.
+
+### Settings
+- `modules/settings/SettingsPageRegistryData.qml` — page metadata/search data.
+- `modules/settings/SettingsPageRegistry.qml` — page compatibility routing.
+- Historical retired page indices remain hidden compatibility slots; TLP index 28 still redirects to System.
+
+### Core services
+- `modules/common/Appearance.qml` — ii visual tokens/style dispatch.
+- `modules/waffle/looks/Looks.qml` — Waffle visual tokens.
+- `services/DevNavigation.qml` — semantic dev navigation/IPC.
+- `services/GlobalActions.qml` — global actions.
+- `services/CompositorService.qml` — Niri/Hyprland detection.
+
+### Tests/checks
+- `.github/workflows/ci.yml` — repository CI definition.
+- `scripts/test-local-distribution.sh` — local distribution test script.
+- Translation tooling lives in `translations/tools/`.
 
 ## Naming Conventions
 
-**Files:**
-- QML components: `PascalCase.qml` (e.g., `BarTaskbar.qml`, `WaffleActionCenter.qml`)
-- Services: `PascalCase.qml` (e.g., `Audio.qml`, `NiriService.qml`)
-- Scripts: `snake_case.sh` or `snake_case.py` (e.g., `applycolor.sh`, `generate_colors_material.py`)
-- Config JSON: `config.json`
-- Translation files: `ll_CC.json` (e.g., `en_US.json`, `de_DE.json`)
+**Files**
+- QML components: `PascalCase.qml`.
+- Services: `PascalCase.qml`.
+- Scripts: existing shell/python naming conventions in their owning directory.
+- Config JSON: `config.json`.
+- Translation files: `ll_CC.json`.
 
-**Directories:**
-- Module directories: `snake_case` (e.g., `sidebarLeft/`, `actionCenter/`)
-- Widget subdirectories: `snake_case` (e.g., `widgets/`, `tasks/`)
-- Settings pages: `W` prefix + PascalCase (e.g., `WAboutPage.qml`, `WBackgroundPage.qml`)
+**Directories**
+- Keep the established module names (`sidebarLeft/`, `sidebarRight/`, `actionCenter/`, etc.).
+- Waffle-owned surfaces stay under `modules/waffle/`.
+- Shared components belong under `modules/common/` only when they are genuinely family-independent.
 
 ## Where to Add New Code
 
-**New QML component:** `modules/common/widgets/` for shared widgets, `modules/[module-name]/` for module-specific components
-**New service:** `services/` as a top-level `PascalCase.qml` singleton, register in `services/qmldir`
-**New module directory:** Scaffold and register it through the owning family loader and Config contract
-**New script:** `scripts/[category]/` following existing category conventions (colors/, inir/, lib/, etc.)
-**New migration:** `sdata/migrations/` with next sequential number (check `ls sdata/migrations/` for current maximum)
-**New config key:** Update `modules/common/Config.qml`, consumers, and every owning Settings family; use `defaults/config.json` only for curated fresh-install preferences
-**New translation:** Wrap a literal in `Translation.tr(...)`, then synchronize and audit every locale catalog
-**New waffle subdir:** `modules/waffle/[subdir]/` following existing waffle subdir patterns
-**New ii-family component:** `modules/ii/[subdir]/` for overlay or sidebarRight additions
-**New desktop widget:** `modules/background/widgets/[name]/` — declare a `background.widgets.<name>` key in `modules/common/Config.qml` and expose it in both Settings families
-**New M3 bar widget:** `modules/barM3/<Name>.qml` — reference it from the `bar.m3` layout lists in `modules/common/Config.qml`
+**New shared QML component:** `modules/common/widgets/`.
+
+**New module-specific component:** the owning live module directory.
+
+**New service:** `services/` as a `PascalCase.qml` singleton, registered in `services/qmldir` when required.
+
+**New script:** the appropriate existing `scripts/` category.
+
+**New migration:** `sdata/migrations/` using the next sequential number. Existing migrations are append-only history.
+
+**New config key:** update `modules/common/Config.qml`, every live consumer, and the owning Settings UI together; use `defaults/config.json` only for curated fresh-install differences.
+
+**New translation:** wrap the live literal in `Translation.tr(...)`, then synchronize/audit locale catalogs.
+
+**New Waffle component:** place it under `modules/waffle/` and keep its taskbar/settings contract separate from Classic Bar.
+
+**New Classic Bar component:** place it under `modules/bar/`; do not introduce a renderer-family selector as part of ordinary Bar changes.
+
+## Connected Surfaces Boundary
+
+This structure is the pre-Connected-Surfaces baseline. Connected Popup / Connected Surfaces are future work and are **not implemented by this cleanup**.

@@ -73,6 +73,13 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
+            // pacman-contrib checkupdates uses exit 2 for the normal
+            // "no updates available" state. Clear any stale previous count and
+            // reserve error logging for genuine failures.
+            if (exitCode === 2) {
+                root.count = 0;
+                return;
+            }
             if (exitCode !== 0) {
                 console.error("[Updates] checkupdates failed", exitCode, exitStatus)
             }

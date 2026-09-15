@@ -4,6 +4,7 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 MouseArea {
     id: root
@@ -95,5 +96,10 @@ MouseArea {
                 ? Appearance.inir.colText : Appearance.colors.colOnLayer1
             Layout.alignment: Qt.AlignVCenter
         }
+    }
+
+    WeatherConnectedSurface {
+        perimeterContext: root.perimeterContext
+        sourceScreen: root.QsWindow.window?.screen ?? null
     }
 }

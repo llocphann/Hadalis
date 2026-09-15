@@ -1,6 +1,7 @@
 pragma Singleton
 
 import QtQuick
+import qs.modules.common
 
 QtObject {
     id: root
@@ -149,6 +150,24 @@ QtObject {
         return false
     }
 
+    function _onConfigRevisionChanged() {
+        // Config changes can invalidate a route before the hosted source has had
+        // a chance to destroy its publisher. Fail closed for invalid/unplaced
+        // sources, while leaving valid slot moves to the anchor handoff path.
+        for (const outputName of Object.keys(root.routes)) {
+            const active = root.routes[outputName]
+            if (!PerimeterConfig.validate(outputName)) {
+                root.close(outputName, "source-hidden")
+                continue
+            }
+
+            const configuredSlot = PerimeterConfig.placementForInstance(
+                outputName, active.sourceInstance)
+            if (!PerimeterTopology.isValidSlot(configuredSlot))
+                root.close(outputName, "source-hidden")
+        }
+    }
+
     function open(route) {
         const normalized = root._normalize(route)
         if (!normalized)
@@ -222,6 +241,13 @@ QtObject {
         }
         function onRemoved(key) {
             root._onAnchorRemoved(key)
+        }
+    }
+
+    property var _configConnections: Connections {
+        target: Config
+        function onRevisionChanged() {
+            root._onConfigRevisionChanged()
         }
     }
 }

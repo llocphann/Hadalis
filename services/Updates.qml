@@ -49,6 +49,10 @@ Singleton {
         }
     }
 
+    Component.onCompleted: {
+        if (Config.ready) availabilityDefer.start()
+    }
+
     Process {
         id: checkAvailabilityProc
         running: false

@@ -35,8 +35,6 @@ singleton LyricsService 1.0 LyricsService.qml
 singleton MaterialThemeLoader 1.0 MaterialThemeLoader.qml
 singleton MemoryPressureService 1.0 MemoryPressureService.qml
 singleton MinimizedWindows 1.0 MinimizedWindows.qml
-singleton MascotChaos 1.0 MascotChaos.qml
-singleton MascotMood 1.0 MascotMood.qml
 singleton MprisController 1.0 MprisController.qml
 singleton Network 1.0 Network.qml
 singleton NiriService 1.0 NiriService.qml

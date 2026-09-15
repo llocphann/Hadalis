@@ -34,7 +34,6 @@ Item {
         { key: "calendarUpcoming", icon: "event", label: "Upcoming Events", defaultEnabled: false },
         { key: "uptime", icon: "avg_pace", label: "System uptime", defaultEnabled: false },
         { key: "newsTicker", icon: "newspaper", label: "News Ticker", defaultEnabled: false },
-        { key: "mascot", icon: "pets", label: "Mascot", defaultEnabled: false },
         { key: "japaneseTypography", icon: "translate", label: "Japanese Typography", defaultEnabled: false },
         { key: "worldClock", icon: "public", label: "World clock", defaultEnabled: false },
         { key: "userCard", icon: "account_circle", label: "User card", defaultEnabled: false }
@@ -79,10 +78,6 @@ Item {
             if (root._builtinState(item).enabled)
                 count++
         }
-        for (const id of root._mascotInstanceIds) {
-            if (DesktopWidgetLayout.enabled(root.outputName, "mascotInstances." + id, true))
-                count++
-        }
         if (CustomWidgets.ready) {
             for (const item of CustomWidgets.widgets) {
                 if (DesktopWidgetLayout.enabled(root.outputName, "custom." + item.id,
@@ -99,23 +94,6 @@ Item {
         for (const item of root._builtinWidgets) {
             const state = root._builtinState(item)
             if (root._cardVisible(Translation.tr(item.label), state.enabled, state.locked, false))
-                count++
-        }
-        return count
-    }
-
-    readonly property int _mascotVisibleCount: {
-        Config.revision
-        let count = 0
-        for (let i = 0; i < root._mascotInstanceIds.length; ++i) {
-            const id = root._mascotInstanceIds[i]
-            const key = "mascotInstances." + id
-            const prefix = "background.widgets.mascotInstances." + id
-            const enabled = DesktopWidgetLayout.enabled(root.outputName, key,
-                Config.getNestedValue(prefix + ".enable", true))
-            const locked = Boolean(DesktopWidgetLayout.value(root.outputName, key, "locked",
-                Config.getNestedValue(prefix + ".locked", false)))
-            if (root._cardVisible(Translation.tr("Mascot") + " #" + (i + 1), enabled, locked, false))
                 count++
         }
         return count
@@ -140,7 +118,7 @@ Item {
     }
 
     readonly property int _visibleCardCount: root._builtinVisibleCount
-        + root._mascotVisibleCount + root._customVisibleCount
+        + root._customVisibleCount
 
     // Output geometry for the glass backdrop. This panel floats straight on the
     // wallpaper, so under aurora and angel its translucent fill needs the blurred
@@ -211,12 +189,6 @@ Item {
         for (let i = 0; i < CustomWidgets.widgets.length; i++)
             if (CustomWidgets.widgets[i].id === "example-widget") return true;
         return false;
-    }
-
-    readonly property var _mascotInstanceIds: {
-        Config.revision;
-        const obj = Config.getNestedValue("background.widgets.mascotInstances", {});
-        return Object.keys(obj ?? {}).sort();
     }
 
     // Block clicks from reaching desktop
@@ -567,69 +539,6 @@ Item {
                 }
             }
 
-            // ── Extra mascot instances ── (each is its own WidgetCard, positioned/posed independently)
-            Item { visible: (root.filterMode === "all" && root.searchText.length === 0) || root._mascotVisibleCount > 0; width: 1; height: visible ? 8 : 0 }
-
-            Item {
-                visible: (root.filterMode === "all" && root.searchText.length === 0)
-                    || root._mascotVisibleCount > 0
-                width: parent.width; height: visible ? 28 : 0
-                StyledText {
-                    text: Translation.tr("More mascots")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    font.weight: Font.Medium
-                    color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.45)
-                    anchors.verticalCenter: parent.verticalCenter
-                    leftPadding: 4
-                }
-                RippleButton {
-                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    width: 28; height: 28; buttonRadius: Appearance.rounding.full
-                    colBackground: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.08)
-                    colBackgroundHover: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.14)
-                    colRipple: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.12)
-                    releaseAction: () => {
-                        const n = root._mascotInstanceIds.length
-                        // Perch-flavored poses read as "sitting on something" out of
-                        // the box, since a fresh instance usually lands on/near a widget
-                        const perchPoses = ["panel-sitter", "dock-hang", "bottom-corner-lean"]
-                        Config.addMascotInstance({
-                            pose: perchPoses[n % perchPoses.length], placementStrategy: "free",
-                            x: 160 + (n % 4) * 40, y: 360 + (n % 4) * 40,
-                            contentWidth: 200
-                        })
-                    }
-                    cancelAction: () => {}
-                    contentItem: MaterialSymbol { anchors.centerIn: parent; text: "add"; iconSize: 16; color: Appearance.colors.colPrimary }
-                    StyledToolTip { text: Translation.tr("Add another mascot") }
-                }
-            }
-
-            Repeater {
-                model: root._mascotInstanceIds
-                WidgetCard {
-                    required property string modelData
-                    required property int index
-                    widgetKey: modelData
-                    widgetIcon: "pets"
-                    widgetLabel: Translation.tr("Mascot") + " #" + (index + 1)
-                    defaultEnabled: true
-                    isMascotInstance: true
-                }
-            }
-
-            Item {
-                visible: root.filterMode === "all" && root.searchText.length === 0
-                    && root._mascotInstanceIds.length === 0
-                width: parent.width; height: visible ? 40 : 0
-                StyledText {
-                    anchors.centerIn: parent
-                    text: Translation.tr("Add a second, third… mascot, each posed independently")
-                    color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.5)
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                }
-            }
-
             // ── Custom widgets section ──
             Item { visible: (root.filterMode === "all" && root.searchText.length === 0) || root.filterMode === "custom" || root._customVisibleCount > 0; width: 1; height: visible ? 8 : 0 }
 
@@ -760,16 +669,13 @@ Item {
         required property bool defaultEnabled
         property bool isCustom: false
         property var customConfigKeys: ({})
-        // An extra mascot instance (Settings › Widgets › Mascot › "+"); widgetKey
-        // is the instance id, config lives under background.widgets.mascotInstances.<id>
-        property bool isMascotInstance: false
 
-        readonly property string _cfgPrefix: isMascotInstance
-            ? ("background.widgets.mascotInstances." + widgetKey)
-            : (isCustom ? ("background.widgets.custom." + widgetKey) : ("background.widgets." + widgetKey))
-        readonly property string _layoutKey: isMascotInstance
-            ? ("mascotInstances." + widgetKey)
-            : (isCustom ? ("custom." + widgetKey) : widgetKey)
+        readonly property string _cfgPrefix: isCustom
+            ? ("background.widgets.custom." + widgetKey)
+            : ("background.widgets." + widgetKey)
+        readonly property string _layoutKey: isCustom
+            ? ("custom." + widgetKey)
+            : widgetKey
         readonly property bool _enabled: DesktopWidgetLayout.enabled(
             root.outputName, card._layoutKey,
             Config.getNestedValue(card._cfgPrefix + ".enable", card.defaultEnabled))
@@ -782,15 +688,15 @@ Item {
         // Surface controls are shown only while the active renderer consumes
         // WidgetSurface. Cookie Clock, Weather Shape and Media Controls own
         // different backgrounds, so exposing these controls there is misleading.
-        readonly property bool _supportsAppearance: card.isMascotInstance
-            || (card.isCustom && root._manifestSupportsSurface(card.customConfigKeys))
+        readonly property bool _supportsAppearance:
+            (card.isCustom && root._manifestSupportsSurface(card.customConfigKeys))
             || (!card.isCustom && (
                 (card.widgetKey === "clock"
                     && Config.getNestedValue(card._cfgPrefix + ".style", "cookie") === "digital")
                 || (card.widgetKey === "weather"
                     && Config.getNestedValue(card._cfgPrefix + ".style", "pill") === "card")
                 || ["imageConverter", "visualizer", "systemMonitor", "battery", "notes",
-                    "calendarUpcoming", "uptime", "newsTicker", "mascot",
+                    "calendarUpcoming", "uptime", "newsTicker",
                     "japaneseTypography", "worldClock", "userCard"].indexOf(card.widgetKey) !== -1
             ))
         readonly property bool _expanded: card._enabled && _expandToggle
@@ -944,20 +850,6 @@ Item {
                             text: card._locked ? Translation.tr("Unlock position")
                                 : Translation.tr("Lock position")
                         }
-                    }
-
-                    // Remove button (extra mascot instances only — built-ins toggle off instead)
-                    RippleButton {
-                        visible: card.isMascotInstance
-                        width: 30; height: 30
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: "transparent"
-                        colBackgroundHover: ColorUtils.applyAlpha(Appearance.colors.colError, 0.10)
-                        colRipple: ColorUtils.applyAlpha(Appearance.colors.colError, 0.14)
-                        releaseAction: () => Config.removeMascotInstance(card.widgetKey)
-                        cancelAction: () => {}
-                        contentItem: MaterialSymbol { anchors.centerIn: parent; text: "delete"; iconSize: 16; color: ColorUtils.applyAlpha(Appearance.colors.colError, 0.85) }
-                        StyledToolTip { text: Translation.tr("Remove this mascot") }
                     }
 
                     // Expand button

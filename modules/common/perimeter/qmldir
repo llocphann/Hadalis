@@ -1,0 +1,5 @@
+module qs.modules.common.perimeter
+singleton PerimeterTopology 1.0 PerimeterTopology.qml
+singleton PerimeterConfig 1.0 PerimeterConfig.qml
+PerimeterContext 1.0 PerimeterContext.qml
+PerimeterSlotModel 1.0 PerimeterSlotModel.qml

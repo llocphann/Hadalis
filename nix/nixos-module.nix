@@ -15,16 +15,18 @@ in
       description = "iNiR shell";
       wantedBy = lib.optional (wantedUnit != null) wantedUnit;
       partOf = [ "graphical-session.target" ];
-      after = [ "graphical-session.target" ];
+      wants = [ "graphical-session-pre.target" ];
+      after = [ "graphical-session-pre.target" ];
+      before = [ "graphical-session.target" ];
       path = [ cfg.package ] ++ cfg.extraPackages;
       environment = common.serviceEnvironment cfg;
       unitConfig = {
-        Requisite = "graphical-session.target";
         StartLimitIntervalSec = 30;
         StartLimitBurst = 3;
       };
       serviceConfig = {
-        Type = "simple";
+        Type = "dbus";
+        BusName = "org.kde.StatusNotifierWatcher";
         ExecStart = "${lib.getExe cfg.package} run --session";
         ExecStopPost = "-${lib.getExe cfg.package} cleanup-orphans";
         SuccessExitStatus = 143;

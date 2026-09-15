@@ -26,6 +26,9 @@ RippleButton {
     enabled: !menuEntry.isSeparator
     opacity: 1
 
+    Accessible.name: root.menuEntry.text
+    Accessible.focusable: root.enabled
+
     horizontalPadding: 8
     implicitWidth: contentItem.implicitWidth + horizontalPadding * 2
     implicitHeight: menuEntry.isSeparator ? 1 : 32

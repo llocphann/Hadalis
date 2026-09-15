@@ -173,4 +173,4 @@ These files are the shared substrate. Concrete Bar/Dock/Sidebar/module migration
 
 ## Connected Perimeter Status
 
-The cleaned Classic-only shell remains the compatibility baseline, but current `dev` now contains the shared Connected Perimeter substrate under `modules/common/perimeter/`. Topology/config, module hosting, anchor routing and connected geometry/input primitives exist; migration of concrete modules and surfaces is incremental and must be judged from the live code rather than assumed complete.
+The live shell currently supports both the ii and Waffle panel families, while `dev` also contains the shared Connected Perimeter substrate under `modules/common/perimeter/`. Topology/config, module hosting, anchor routing and connected geometry/input primitives exist; migration of concrete modules and surfaces is incremental and must be judged from the live code rather than assumed complete.

@@ -12,7 +12,8 @@ Describe what you actually ran and what you observed. Use the checks that match 
 - [ ] Runtime behavior was exercised and logs inspected if runtime code changed
 - [ ] Screenshots or a recording are attached if the change is visual
 - [ ] Install/package changes were checked with a dry-run or staged install path
-- [ ] No retired appearance family or legacy placement assumption was reintroduced
+- [ ] Active ii/Waffle behavior was checked if shared family/runtime code changed
+- [ ] No hard-coded perimeter placement assumption was introduced
 
 ## Architecture / configuration impact
 

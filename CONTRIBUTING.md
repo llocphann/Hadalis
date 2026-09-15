@@ -57,6 +57,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) and [STRUCTURE.md](STRUCTURE.md) for the 
 | `modules/` | QML shell modules and surfaces |
 | `modules/common/` | Shared configuration, appearance, and widget infrastructure |
 | `modules/ii/` | Active Material ii / Classic presentation components |
+| `modules/waffle/` | Active Waffle/Windows-style presentation family |
 | `services/` | Runtime service singletons and integrations |
 | `scripts/` | Launcher, checks, generators, and runtime helpers |
 | `sdata/` | Install/update lifecycle, payload policy, and migrations |
@@ -65,7 +66,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) and [STRUCTURE.md](STRUCTURE.md) for the 
 | `nix/` | Nix package and module definitions |
 | `translations/` | Localization data and tooling |
 
-The retired Waffle family and other removed appearance families are not alternate targets to keep in sync. Do not reintroduce them while implementing new Hadalis work.
+Both `ii` and `waffle` are active panel families. Shared runtime, service, IPC, and configuration changes must preserve both families when their contract is family-independent. Keep family-specific UI in its owning family instead of treating a family switch as perimeter module placement. Genuinely retired renderers or features should not be reintroduced without a deliberate architecture decision.
 
 ## Connected Perimeter invariant
 
@@ -82,21 +83,21 @@ Configuration has a single persistence/runtime pipeline. When adding or changing
 1. `modules/common/Config.qml` schema/default contract
 2. `defaults/config.json`
 3. Runtime consumer(s)
-4. The active settings UI, when the value is user-configurable
+4. The owning active settings UI(s), when the value is user-configurable
 5. Migration logic when an existing persisted key or data shape changes
 
 Use the project's persistence APIs (for example `Config.setNestedValue(...)`) rather than assigning a persisted option directly and assuming it will be saved.
 
 ## Visual tokens
 
-Use the active appearance/theme primitives instead of introducing per-component magic colors, radii, typography, or spacing. For example:
+Use the owning family's active appearance/theme primitives instead of introducing per-component magic colors, radii, typography, or spacing. For ii components, for example:
 
 ```qml
 color: Appearance.colors.colPrimary
 radius: Appearance.rounding.normal
 ```
 
-Do not add dispatch logic for appearance families that have been removed from the current baseline.
+Waffle owns its family-specific visual tokens under `modules/waffle/looks/`. Shared components should not hard-code either family's presentation assumptions unless they are deliberately family-specific. Do not add dispatch logic for genuinely removed appearance systems.
 
 ## Compositor guards
 
@@ -129,7 +130,7 @@ and update `docs/IPC.md` when the public contract changes.
 
 ## New QML files
 
-Follow nearby active components rather than retired-family examples. New components should normally use bound component behavior and typed properties:
+Follow nearby active components rather than retired-feature examples. New components should normally use bound component behavior and typed properties:
 
 ```qml
 pragma ComponentBehavior: Bound
@@ -169,7 +170,7 @@ Changes to these areas can affect a large part of the shell and deserve narrower
 
 | When you change... | Also inspect/update... |
 |---|---|
-| Config schema | `defaults/config.json` + consumer(s) + active settings UI |
+| Config schema | `defaults/config.json` + consumer(s) + active settings UI(s) |
 | A new service | `services/qmldir` |
 | A new shared widget | `modules/common/widgets/qmldir` |
 | IPC targets | generated IPC registry + `docs/IPC.md` |

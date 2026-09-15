@@ -83,6 +83,16 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: family
+    attributes:
+      label: Panel family
+      description: Select this when the issue may depend on the active panel family
+      options:
+        - ii
+        - waffle
+        - Not family-specific / unknown
+
   - type: textarea
     id: config
     attributes:

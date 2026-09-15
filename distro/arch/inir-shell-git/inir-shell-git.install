@@ -1,14 +1,18 @@
 post_install() {
   cat <<'EOF'
-iNiR has been installed.
+Hadalis has been installed.
 
 Recommended next steps:
   - Start the shell manually with: inir run
-  - Or enable the user service with:
-      systemctl --user enable --now inir.service
+  - Or wire the user service to the detected compositor and start it with:
+      inir service enable
+      inir service start
 
 Package-managed installs keep user config in:
-  ~/.config/illogical-impulse/config.json
+  ~/.config/inir/config.json
+
+Legacy installs may continue using ~/.config/illogical-impulse/config.json
+until their configuration is migrated.
 
 The packaged runtime lives in:
   /usr/share/quickshell/inir
@@ -17,11 +21,11 @@ EOF
 
 post_upgrade() {
   cat <<'EOF'
-iNiR has been upgraded.
+Hadalis has been upgraded.
 
 Recommended next steps:
   - Restart the shell with: inir restart
   - Package-managed installs use pacman for updates.
-  - Runtime migrations, when needed, are applied by iNiR's packaged lifecycle.
+  - Runtime migrations, when needed, are applied by Hadalis's packaged lifecycle.
 EOF
 }

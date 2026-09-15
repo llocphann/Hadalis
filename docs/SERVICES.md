@@ -78,7 +78,6 @@
 | **Hyprsunset** | Night light via wlsunset (Niri) or hyprsunset (Hyprland). Scheduled or manual. |
 | **EasyEffects** | EasyEffects audio effects toggle. Supports native and flatpak. |
 | **RecorderStatus** | Screen recording status detection (wf-recorder). |
-| **MascotMood** | Session-long personality mood for the mascot, with time-of-day seeding and jittered changes. IPC target: `mascotMood`. |
 | **SessionWarnings** | Detects running package managers before logout. |
 | **ConflictKiller** | Kills conflicting system trays and notification daemons on startup. |
 | **FirstRunExperience** | First-run wizard trigger. |

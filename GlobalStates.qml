@@ -54,7 +54,6 @@ Singleton {
     property string overviewMode: "default"
     property string overviewTargetOutput: ""
     property string overviewSearchPrefix: ""
-    signal pillSurfaceCommand(string command, string surface)
     property bool altSwitcherOpen: false
     signal altSwitcherCommand(string command)
     property int activeContextMenuCount: 0

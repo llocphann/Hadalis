@@ -33,6 +33,8 @@ Item {
     readonly property bool bottomCenterOccupied: root._occupied(bottomCenter)
     readonly property bool bottomEndOccupied: root._occupied(bottomEnd)
 
+    // Center slots are positional invariants. Core reports pressure/collision
+    // instead of silently sliding them away from the output center.
     readonly property real topCenterDesiredX: (width - topCenter.width) / 2
     readonly property real topCenterMinX: topStartOccupied
         ? topStart.x + topStart.width + segmentSpacing : leftInset
@@ -40,7 +42,8 @@ Item {
         ? topEnd.x - topCenter.width - segmentSpacing
         : width - rightInset - topCenter.width
     readonly property bool topCenterFits: !topCenterOccupied
-        || topCenterMinX <= topCenterMaxX
+        || (topCenterDesiredX >= topCenterMinX
+            && topCenterDesiredX <= topCenterMaxX)
     readonly property bool topEdgeSegmentsFit: !topStartOccupied || !topEndOccupied
         || topStart.x + topStart.width + segmentSpacing <= topEnd.x
     readonly property bool topCollision: !topEdgeSegmentsFit || !topCenterFits
@@ -52,7 +55,8 @@ Item {
         ? bottomEnd.x - bottomCenter.width - segmentSpacing
         : width - rightInset - bottomCenter.width
     readonly property bool bottomCenterFits: !bottomCenterOccupied
-        || bottomCenterMinX <= bottomCenterMaxX
+        || (bottomCenterDesiredX >= bottomCenterMinX
+            && bottomCenterDesiredX <= bottomCenterMaxX)
     readonly property bool bottomEdgeSegmentsFit: !bottomStartOccupied || !bottomEndOccupied
         || bottomStart.x + bottomStart.width + segmentSpacing <= bottomEnd.x
     readonly property bool bottomCollision: !bottomEdgeSegmentsFit || !bottomCenterFits
@@ -80,10 +84,6 @@ Item {
         || root._itemsOverlap(rightCenter, bottomStart)
         || root._itemsOverlap(rightCenter, bottomCenter)
         || root._itemsOverlap(rightCenter, bottomEnd)
-
-    function _clamp(value, minimum, maximum) {
-        return Math.max(minimum, Math.min(maximum, value))
-    }
 
     function _occupied(item) {
         return item !== null && item.visible && item.width > 0 && item.height > 0
@@ -130,10 +130,7 @@ Item {
         slotId: "top.center"
         hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
-        x: root.topCenterFits
-            ? root._clamp(root.topCenterDesiredX,
-                root.topCenterMinX, root.topCenterMaxX)
-            : root.topCenterDesiredX
+        x: root.topCenterDesiredX
         anchors.top: parent.top
         anchors.topMargin: root.topInset
     }
@@ -192,10 +189,7 @@ Item {
         slotId: "bottom.center"
         hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
-        x: root.bottomCenterFits
-            ? root._clamp(root.bottomCenterDesiredX,
-                root.bottomCenterMinX, root.bottomCenterMaxX)
-            : root.bottomCenterDesiredX
+        x: root.bottomCenterDesiredX
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.bottomInset
     }

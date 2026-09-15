@@ -11,10 +11,21 @@ Item {
 
     readonly property Item bodyItem: body
     readonly property Item connectorItem: connector
+    readonly property Item blurItem: blurBounds
     readonly property rect visualBounds: geometry.visualBounds
     readonly property rect blurRect: geometry.blurRect
 
     visible: geometry.valid && geometry.progress > 0
+
+    // Geometry-only proxy for compositor blur. This may be rectangular and
+    // expanded because it never participates in the input mask.
+    Item {
+        id: blurBounds
+        x: root.geometry.blurRect.x + root.geometry.offsetX
+        y: root.geometry.blurRect.y + root.geometry.offsetY
+        width: root.geometry.blurRect.width
+        height: root.geometry.blurRect.height
+    }
 
     Rectangle {
         id: body

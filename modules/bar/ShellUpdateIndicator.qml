@@ -25,11 +25,32 @@ MouseArea {
     hoverEnabled: true
     cursorShape: ShellUpdates.isUpdating ? Qt.ArrowCursor : Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton
+    activeFocusOnTab: root.visible && !ShellUpdates.isUpdating
+
+    Accessible.role: Accessible.Button
+    Accessible.name: ShellUpdates.isUpdating
+        ? Translation.tr("Updating iNiR") : Translation.tr("iNiR update available")
+    Accessible.focusable: root.visible && !ShellUpdates.isUpdating
 
     readonly property color accentColor: Appearance.angelEverywhere ? Appearance.angel.colPrimary
         : Appearance.inirEverywhere ? (Appearance.inir?.colAccent ?? Appearance.colors.colPrimary)
         : Appearance.auroraEverywhere ? (Appearance.aurora?.colAccent ?? Appearance.colors.colPrimary)
         : Appearance.colors.colPrimary
+
+    function activatePrimary(): void {
+        if (!ShellUpdates.isUpdating)
+            ShellUpdates.openOverlay()
+    }
+
+    Keys.onPressed: event => {
+        if (ShellUpdates.isUpdating || event.isAutoRepeat
+                || (event.key !== Qt.Key_Return
+                    && event.key !== Qt.Key_Enter
+                    && event.key !== Qt.Key_Space))
+            return
+        root.activatePrimary()
+        event.accepted = true
+    }
 
     onClicked: (mouse) => {
         if (ShellUpdates.isUpdating) return;
@@ -37,7 +58,7 @@ MouseArea {
         if (mouse.button === Qt.RightButton) {
             ShellUpdates.dismiss()
         } else {
-            ShellUpdates.openOverlay()
+            root.activatePrimary()
         }
     }
 

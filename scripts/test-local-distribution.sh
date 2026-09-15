@@ -18,6 +18,7 @@ step "shell syntax"
 bash -n \
     "$runtime_root/setup" \
     "$runtime_root/scripts/inir" \
+    "$runtime_root/scripts/test-thinkfan-helper.sh" \
     "$runtime_root/scripts/test-tlp-integration-lifecycle.sh" \
     "$runtime_root/scripts/test-tlp-settings-ui-guards.sh" \
     "$runtime_root/scripts/test-update-lifecycle.sh" \
@@ -30,6 +31,9 @@ sh -n \
 
 step "battery charge-limit helper"
 sh "$runtime_root/scripts/test-battery-charge-limit-helper.sh"
+
+step "ThinkFan helper"
+bash "$runtime_root/scripts/test-thinkfan-helper.sh"
 
 step "TLP integration lifecycle"
 bash "$runtime_root/scripts/test-tlp-integration-lifecycle.sh"
@@ -250,6 +254,7 @@ for forbidden in \
     scripts/qml-check.fish \
     scripts/test-local-distribution.sh \
     scripts/test-battery-charge-limit-helper.sh \
+    scripts/test-thinkfan-helper.sh \
     scripts/test-tlp-integration-lifecycle.sh \
     scripts/test-tlp-settings-ui-guards.sh \
     scripts/test-update-lifecycle.sh \

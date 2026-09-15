@@ -17,8 +17,7 @@ Item {
     readonly property string orientation: PerimeterTopology.orientationForEdge(edge)
     readonly property string inwardDirection: PerimeterTopology.inwardDirectionForEdge(edge)
     readonly property bool resolvable: instanceDescriptor !== null
-        && registration !== null
-        && String(registration?.source ?? "").length > 0
+        && ModuleRegistry.isResolvable(moduleId)
     readonly property Item loadedItem: moduleLoader.item
     property var perimeterContext: context
 

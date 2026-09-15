@@ -7,6 +7,7 @@ Item {
 
     property bool hostEnabled: true
     property real slotSpacing: 8
+    property real segmentSpacing: slotSpacing
     property real topInset: 0
     property real bottomInset: 0
     property real leftInset: 0
@@ -22,6 +23,34 @@ Item {
     readonly property Item bottomStartSlot: bottomStart
     readonly property Item bottomCenterSlot: bottomCenter
     readonly property Item bottomEndSlot: bottomEnd
+
+    readonly property real topCenterDesiredX: (width - topCenter.width) / 2
+    readonly property real topCenterMinX: topStart.visible
+        ? topStart.x + topStart.width + segmentSpacing : leftInset
+    readonly property real topCenterMaxX: topEnd.visible
+        ? topEnd.x - topCenter.width - segmentSpacing
+        : width - rightInset - topCenter.width
+    readonly property bool topCenterFits: !topCenter.visible
+        || topCenterMinX <= topCenterMaxX
+    readonly property bool topEdgeSegmentsFit: !topStart.visible || !topEnd.visible
+        || topStart.x + topStart.width + segmentSpacing <= topEnd.x
+    readonly property bool topCollision: !topEdgeSegmentsFit || !topCenterFits
+
+    readonly property real bottomCenterDesiredX: (width - bottomCenter.width) / 2
+    readonly property real bottomCenterMinX: bottomStart.visible
+        ? bottomStart.x + bottomStart.width + segmentSpacing : leftInset
+    readonly property real bottomCenterMaxX: bottomEnd.visible
+        ? bottomEnd.x - bottomCenter.width - segmentSpacing
+        : width - rightInset - bottomCenter.width
+    readonly property bool bottomCenterFits: !bottomCenter.visible
+        || bottomCenterMinX <= bottomCenterMaxX
+    readonly property bool bottomEdgeSegmentsFit: !bottomStart.visible || !bottomEnd.visible
+        || bottomStart.x + bottomStart.width + segmentSpacing <= bottomEnd.x
+    readonly property bool bottomCollision: !bottomEdgeSegmentsFit || !bottomCenterFits
+
+    function _clamp(value, minimum, maximum) {
+        return Math.max(minimum, Math.min(maximum, value))
+    }
 
     function slotHost(slotId) {
         switch (String(slotId ?? "")) {
@@ -55,8 +84,11 @@ Item {
         slotId: "top.center"
         hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
+        x: root.topCenterFits
+            ? root._clamp(root.topCenterDesiredX,
+                root.topCenterMinX, root.topCenterMaxX)
+            : root.topCenterDesiredX
         anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
         anchors.topMargin: root.topInset
     }
 
@@ -114,8 +146,11 @@ Item {
         slotId: "bottom.center"
         hostEnabled: root.hostEnabled && root.configValid
         spacing: root.slotSpacing
+        x: root.bottomCenterFits
+            ? root._clamp(root.bottomCenterDesiredX,
+                root.bottomCenterMinX, root.bottomCenterMaxX)
+            : root.bottomCenterDesiredX
         anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: root.bottomInset
     }
 

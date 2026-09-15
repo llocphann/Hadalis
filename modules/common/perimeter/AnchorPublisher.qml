@@ -11,16 +11,18 @@ Item {
 
     property string surfaceName: "default"
     property size preferredExtent: Qt.size(0, 0)
-    property string coordinateSpace: "output-local"
+    readonly property string coordinateSpace: "output-local"
     property int refreshToken: 0
 
-    // Optional coordinate bridge. When referenceItem is supplied, source geometry
-    // is mapped into that item's local space and then translated by referenceRect.
-    // Agent B can set referenceItem to the module/slot root and referenceRect to
-    // perimeterContext.slotRect to obtain true output-local anchors even when the
-    // source lives in a panel window whose local origin is not output (0, 0).
+    // Output-local provenance is explicit: source geometry is mapped into a
+    // reference item whose own output-local rectangle is referenceRect. Until
+    // both are supplied, publish() refuses to register an anchor. Do not fall
+    // back to mapToItem(null): null maps into scene/window coordinates, which
+    // are not a valid substitute for output-local coordinates.
     property Item referenceItem: null
     property rect referenceRect: Qt.rect(0, 0, 0, 0)
+    readonly property bool referenceReady: referenceItem !== null
+        && referenceRect.width > 0 && referenceRect.height > 0
 
     property string _publishedOutputName: ""
     property string _publishedInstanceId: ""
@@ -51,14 +53,15 @@ Item {
     }
 
     function _mappedSourceRect() {
-        const target = root.referenceItem
-        const p0 = root.sourceItem.mapToItem(target, 0, 0)
-        const p1 = root.sourceItem.mapToItem(target, root.sourceItem.width, 0)
-        const p2 = root.sourceItem.mapToItem(target, 0, root.sourceItem.height)
-        const p3 = root.sourceItem.mapToItem(target,
+        const p0 = root.sourceItem.mapToItem(root.referenceItem, 0, 0)
+        const p1 = root.sourceItem.mapToItem(root.referenceItem,
+            root.sourceItem.width, 0)
+        const p2 = root.sourceItem.mapToItem(root.referenceItem,
+            0, root.sourceItem.height)
+        const p3 = root.sourceItem.mapToItem(root.referenceItem,
             root.sourceItem.width, root.sourceItem.height)
-        const offsetX = target ? root.referenceRect.x : 0
-        const offsetY = target ? root.referenceRect.y : 0
+        const offsetX = root.referenceRect.x
+        const offsetY = root.referenceRect.y
         const minX = Math.min(p0.x, p1.x, p2.x, p3.x) + offsetX
         const minY = Math.min(p0.y, p1.y, p2.y, p3.y) + offsetY
         const maxX = Math.max(p0.x, p1.x, p2.x, p3.x) + offsetX
@@ -78,6 +81,7 @@ Item {
 
         if (!root.sourceItem || !root.sourceItem.visible
                 || root.sourceItem.width <= 0 || root.sourceItem.height <= 0
+                || !root.referenceReady
                 || !output || !instance || !module
                 || !PerimeterTopology.isValidSlot(root.slotId)) {
             root._unregisterPublished()
@@ -117,7 +121,6 @@ Item {
     onModuleIdChanged: publish()
     onSurfaceNameChanged: publish()
     onPreferredExtentChanged: publish()
-    onCoordinateSpaceChanged: publish()
     onReferenceItemChanged: publish()
     onReferenceRectChanged: publish()
 

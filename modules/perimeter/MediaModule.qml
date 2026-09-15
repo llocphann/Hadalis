@@ -55,12 +55,6 @@ MouseArea {
 
     onClicked: root.requestExpanded()
 
-    Component.onDestruction: {
-        const route = SurfaceRouteController.current(root.outputName)
-        if (route?.sourceInstance === root.instanceId && route?.surface === "media")
-            SurfaceRouteController.close(root.outputName, "source-hidden")
-    }
-
     AnchorPublisher {
         id: anchorPublisher
         sourceItem: root

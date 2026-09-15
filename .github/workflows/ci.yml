@@ -37,6 +37,7 @@ jobs:
           bash -n scripts/test-tlp-settings-ui-guards.sh
           bash -n scripts/test-tlp-integration-lifecycle.sh
           bash -n scripts/verify-docs.sh
+          bash -n scripts/ai/gemini-translate.sh
           sh -n assets/helpers/inir-thinkfan
           bash -n distro/arch/inir-shell/PKGBUILD
           bash -n distro/arch/inir-shell-git/PKGBUILD
@@ -58,6 +59,24 @@ jobs:
           python3 translations/tools/source-parity.py
           python3 scripts/lib/generate-ipc-registry.py --check
           make -n install PREFIX=/tmp/inir-stage-test >/dev/null
+
+      - name: Validate locale runtime pipeline
+        run: |
+          generator=scripts/ai/gemini-translate.sh
+          service=services/Translation.qml
+
+          grep -Fq 'SOURCE_FILE="${TRANSLATIONS_DIR}/en_US.json"' "$generator"
+          grep -Fq 'if [[ ! "$TARGET_LOCALE" =~ ^[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})*$ ]]; then' "$generator"
+          grep -Fq -- '--slurpfile source "$SOURCE_FILE"' "$generator"
+          grep -Fq '"translations/tools"' sdata/runtime-exclusions.json
+          if grep -Fq 'translations/tools/manage-translations.sh' "$generator"; then
+            echo 'runtime locale generator depends on source-only translation tooling' >&2
+            exit 1
+          fi
+
+          grep -Fq 'scanLanguagesProcess.running || scanGeneratedLanguagesProcess.running' "$service"
+          grep -Fq 'fallbackLanguages: []' "$service"
+          grep -Fq 'scanGeneratedLanguagesProcess.running = true' "$service"
 
       - name: Validate package source identity
         run: |

@@ -6,6 +6,7 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
 migration="$repo_root/sdata/migrations/038-tlp-profile-backend.sh"
 pkgbuild="$repo_root/sdata/dist-arch/inir-deps/PKGBUILD"
+tlp_service="$repo_root/services/TlpService.qml"
 
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT
@@ -28,10 +29,41 @@ assert_log() {
     || fail "missing systemctl action: $needle"
 }
 
+assert_file_contains() {
+  local needle=$1 file=$2 message=$3
+  grep -Fq -- "$needle" "$file" || fail "$message"
+}
+
 # The UI exposes the Radio Device Wizard, so Arch installs must include the
 # package which actually consumes those settings.
 grep -Eq '^[[:space:]]*tlp-rdw[[:space:]]*$' "$pkgbuild" \
   || fail 'inir-deps must install tlp-rdw'
+
+# Battery policy status/apply calls cross the privileged helper boundary. Keep
+# both process paths bounded so a wedged helper or pkexec prompt cannot leave
+# TLP reconciliation or Settings permanently busy.
+assert_file_contains 'detectorTimeout.restart()' "$tlp_service" \
+  'TLP battery status detection must arm its timeout'
+assert_file_contains 'id: detectorTimeout' "$tlp_service" \
+  'TLP battery status detection must define a timeout timer'
+assert_file_contains 'interval: 5000' "$tlp_service" \
+  'TLP battery status detection timeout must remain bounded'
+assert_file_contains 'detector.timedOut = true' "$tlp_service" \
+  'TLP battery status timeout must mark the process as timed out'
+assert_file_contains 'detector.running = false' "$tlp_service" \
+  'TLP battery status timeout must stop the helper process'
+assert_file_contains 'applyTimeout.restart()' "$tlp_service" \
+  'TLP battery policy apply must arm its timeout'
+assert_file_contains 'id: applyTimeout' "$tlp_service" \
+  'TLP battery policy apply must define a timeout timer'
+assert_file_contains 'interval: 60000' "$tlp_service" \
+  'TLP battery policy apply timeout must remain bounded'
+assert_file_contains 'applyProcess.timedOut = true' "$tlp_service" \
+  'TLP battery policy apply timeout must mark the process as timed out'
+assert_file_contains 'applyProcess.running = false' "$tlp_service" \
+  'TLP battery policy apply timeout must stop the helper process'
+assert_file_contains 'root.busy = false' "$tlp_service" \
+  'TLP battery policy apply exit must release the busy state'
 
 mkdir -p "$tmp/bin" "$tmp/state"
 : > "$tmp/systemctl.log"
@@ -173,4 +205,4 @@ if migration_check; then
 fi
 
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - TLP profile/radio lifecycle migration reaches an idempotent conflict-free state'
+printf '%s\n' 'ok 1 - TLP lifecycle and battery policy timeout guards are present'

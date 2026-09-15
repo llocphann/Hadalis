@@ -14,15 +14,22 @@ Item {
     readonly property string coordinateSpace: "output-local"
     property int refreshToken: 0
 
-    // Output-local provenance is explicit: source geometry is mapped into a
-    // reference item whose own output-local rectangle is referenceRect. Until
-    // both are supplied, publish() refuses to register an anchor. Do not fall
-    // back to mapToItem(null): null maps into scene/window coordinates, which
-    // are not a valid substitute for output-local coordinates.
+    // Output-local provenance is explicit. Callers may supply a reference bridge
+    // directly, or hosted perimeter modules may inherit the same trusted bridge
+    // from sourceItem.perimeterContext. We never fall back to mapToItem(null):
+    // null maps into scene/window coordinates, not output-local coordinates.
     property Item referenceItem: null
     property rect referenceRect: Qt.rect(0, 0, 0, 0)
-    readonly property bool referenceReady: referenceItem !== null
-        && referenceRect.width > 0 && referenceRect.height > 0
+    readonly property var sourceContext: root.sourceItem?.perimeterContext ?? null
+    readonly property Item effectiveReferenceItem: root.referenceItem
+        ?? root.sourceContext?.slotItem ?? null
+    readonly property rect effectiveReferenceRect: root.referenceItem !== null
+        ? root.referenceRect
+        : (root.sourceContext?.slotRect ?? Qt.rect(0, 0, 0, 0))
+    readonly property int contextLayoutRevision:
+        Number(root.sourceContext?.layoutRevision ?? 0)
+    readonly property bool referenceReady: effectiveReferenceItem !== null
+        && effectiveReferenceRect.width > 0 && effectiveReferenceRect.height > 0
 
     property string _publishedOutputName: ""
     property string _publishedInstanceId: ""
@@ -53,19 +60,19 @@ Item {
     }
 
     function _mappedSourceRect() {
-        const p0 = root.sourceItem.mapToItem(root.referenceItem, 0, 0)
-        const p1 = root.sourceItem.mapToItem(root.referenceItem,
+        const target = root.effectiveReferenceItem
+        const reference = root.effectiveReferenceRect
+        const p0 = root.sourceItem.mapToItem(target, 0, 0)
+        const p1 = root.sourceItem.mapToItem(target,
             root.sourceItem.width, 0)
-        const p2 = root.sourceItem.mapToItem(root.referenceItem,
+        const p2 = root.sourceItem.mapToItem(target,
             0, root.sourceItem.height)
-        const p3 = root.sourceItem.mapToItem(root.referenceItem,
+        const p3 = root.sourceItem.mapToItem(target,
             root.sourceItem.width, root.sourceItem.height)
-        const offsetX = root.referenceRect.x
-        const offsetY = root.referenceRect.y
-        const minX = Math.min(p0.x, p1.x, p2.x, p3.x) + offsetX
-        const minY = Math.min(p0.y, p1.y, p2.y, p3.y) + offsetY
-        const maxX = Math.max(p0.x, p1.x, p2.x, p3.x) + offsetX
-        const maxY = Math.max(p0.y, p1.y, p2.y, p3.y) + offsetY
+        const minX = Math.min(p0.x, p1.x, p2.x, p3.x) + reference.x
+        const minY = Math.min(p0.y, p1.y, p2.y, p3.y) + reference.y
+        const maxX = Math.max(p0.x, p1.x, p2.x, p3.x) + reference.x
+        const maxY = Math.max(p0.y, p1.y, p2.y, p3.y) + reference.y
         return Qt.rect(minX, minY,
             Math.max(0, maxX - minX), Math.max(0, maxY - minY))
     }
@@ -114,6 +121,7 @@ Item {
     }
 
     onRefreshTokenChanged: publish()
+    onContextLayoutRevisionChanged: publish()
     onSourceItemChanged: publish()
     onOutputNameChanged: publish()
     onSlotIdChanged: publish()
@@ -123,6 +131,8 @@ Item {
     onPreferredExtentChanged: publish()
     onReferenceItemChanged: publish()
     onReferenceRectChanged: publish()
+    onEffectiveReferenceItemChanged: publish()
+    onEffectiveReferenceRectChanged: publish()
 
     Component.onCompleted: Qt.callLater(root.publish)
     Component.onDestruction: root._unregisterPublished()

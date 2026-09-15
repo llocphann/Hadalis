@@ -31,6 +31,15 @@ QtObject {
         return root.resolve(moduleId) !== null
     }
 
+    // Registration and resolution are intentionally distinct. Core can know a
+    // module ID and its presentation metadata before Agent B supplies a concrete
+    // QML source. PerimeterModuleHost should only instantiate resolvable modules.
+    function isResolvable(moduleId) {
+        const descriptor = root.resolve(moduleId)
+        return descriptor !== null
+            && String(descriptor?.source ?? "").trim().length > 0
+    }
+
     function registerModule(moduleId, descriptor) {
         const id = String(moduleId ?? "").trim()
         if (!id)
@@ -54,9 +63,15 @@ QtObject {
         return true
     }
 
-    function validateConfiguredModules(outputName) {
+    function validateConfiguredModules(outputName, requireSources) {
+        if (!PerimeterConfig.validate(outputName))
+            return false
+
+        const needSources = Boolean(requireSources ?? false)
         for (const instance of PerimeterConfig.instancesForOutput(outputName)) {
             if (!root.isRegistered(instance?.moduleId))
+                return false
+            if (needSources && !root.isResolvable(instance?.moduleId))
                 return false
         }
         return true

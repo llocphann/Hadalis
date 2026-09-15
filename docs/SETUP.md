@@ -51,8 +51,8 @@ Use them like this:
 ## Install
 
 ```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
 ./setup install
 inir run
 ```
@@ -501,8 +501,8 @@ rm -f ~/.config/Vesktop/themes/ii-colors.css
 To reinstall iNiR after uninstalling:
 
 ```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
 ./setup install
 inir run
 ```

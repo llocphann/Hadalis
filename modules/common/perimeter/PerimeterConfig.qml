@@ -38,7 +38,7 @@ QtObject {
     // Use Config's revision-aware accessor instead of binding directly to an
     // optional QObject property. This keeps the contract reactive.
     readonly property var configured: Config.getNestedValue("perimeter", null)
-    readonly property bool persistenceReady: configured !== null
+    readonly property bool persistenceReady: Config.ready && configured !== null
     readonly property int configuredSchemaVersion:
         Number(configured?.schemaVersion ?? schemaVersion)
     readonly property bool schemaSupported:
@@ -228,7 +228,7 @@ QtObject {
     }
 
     function validate(outputName) {
-        if (!String(outputName ?? "").length
+        if (!root.persistenceReady || !String(outputName ?? "").length
                 || !root.schemaSupported || !root._configuredShapeValid())
             return false
 

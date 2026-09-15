@@ -71,9 +71,22 @@ PanelWindow {
         visible: root.routeOwned
         clip: true
 
-        WeatherPopupContent {
-            id: weatherContent
-            anchors.centerIn: parent
+        Flickable {
+            id: weatherViewport
+            anchors.fill: parent
+            clip: true
+            contentWidth: Math.max(width, weatherContent.implicitWidth)
+            contentHeight: Math.max(height, weatherContent.implicitHeight)
+            interactive: contentWidth > width + 0.5 || contentHeight > height + 0.5
+            boundsBehavior: Flickable.StopAtBounds
+
+            WeatherPopupContent {
+                id: weatherContent
+                x: Math.max(0,
+                    (weatherViewport.width - implicitWidth) / 2)
+                y: Math.max(0,
+                    (weatherViewport.height - implicitHeight) / 2)
+            }
         }
     }
 

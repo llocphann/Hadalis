@@ -154,10 +154,20 @@ async function run() {
     for (let attempt = 1; attempt <= maxBatchAttempts && !completed; attempt++) {
       try {
         const batchValues = await translate(batchKeys, { to: targetLang });
+        if (!Array.isArray(batchValues) || batchValues.length !== batchKeys.length) {
+          throw new Error(`Unexpected translation response size for ${batchKeys.length} keys`);
+        }
+
         let batchBadStrings = 0;
         for (let j = 0; j < batchKeys.length; j++) {
           const raw = batchValues[j];
+          if (typeof raw !== 'string' || raw.trim().length === 0) {
+            throw new Error(`Empty or invalid translation response for key ${batchKeys[j]}`);
+          }
           const clean = sanitizeTranslation(raw);
+          if (clean.trim().length === 0) {
+            throw new Error(`Translation became empty after sanitizing key ${batchKeys[j]}`);
+          }
           if (clean !== raw) batchBadStrings++;
           data[batchKeys[j]] = clean;
         }

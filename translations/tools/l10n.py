@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit and prepare iNiR runtime translations.
+"""Audit and prepare runtime translations.
 
 English is canonical. This tool never translates text by itself. It prepares
 contextual review batches and rejects structural, placeholder, markup, and
@@ -124,10 +124,8 @@ def suspicious(
 def source_locations(text: str, limit: int = 5) -> list[str]:
     needle_variants = {text, text.replace("\n", "\\n")}
     found: list[str] = []
-    for base in (ROOT / "modules", ROOT / "services"):
-        if not base.exists():
-            continue
-        for path in base.rglob("*.qml"):
+    for pattern in ("*.qml", "*.js"):
+        for path in sorted(ROOT.rglob(pattern)):
             try:
                 content = path.read_text(encoding="utf-8", errors="ignore")
             except OSError:

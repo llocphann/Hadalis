@@ -1,7 +1,7 @@
 {
   "ar_SA": "Modern Standard Arabic. Clear desktop terminology, concise labels, natural RTL punctuation. Preserve product names and commands.",
   "de_DE": "Natural informal German. Use du consistently. Prefer established Linux and desktop terms. Preserve product names such as Waffle and Material ii.",
-  "es_AR": "Natural Argentine Spanish with consistent voseo. Avoid slang and exaggerated regionalisms. Use established Linux terminology. Keep shell when it names the technical desktop-shell layer, and preserve product terms such as Pill, Waffle and Cookie.",
+  "es_AR": "Natural Argentine Spanish with consistent voseo. Avoid slang and exaggerated regionalisms. Use established Linux terminology. Keep shell when it names the technical desktop-shell layer, and preserve product terms such as Waffle and Cookie.",
   "fr_FR": "Natural concise French. Use vous consistently in instructions. Prefer established desktop terminology and avoid English syntax calques.",
   "he_HE": "Natural modern Hebrew. Concise RTL UI language. Preserve product names, commands and technical acronyms.",
   "hi_IN": "Natural standard Hindi suitable for a Linux desktop. Keep common technical product names and commands in Latin script when that is clearer.",

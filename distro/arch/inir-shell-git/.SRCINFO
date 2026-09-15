@@ -1,11 +1,11 @@
 pkgbase = inir-shell-git
-	pkgdesc = iNiR shell payload, launcher, and user service (git)
+	pkgdesc = Hadalis shell payload, launcher, and user service (git)
 	pkgver = 2.21.0.r0.g0000000
 	pkgrel = 1
-	url = https://github.com/snowarch/iNiR
+	url = https://github.com/llocphann/Hadalis
 	install = inir-shell-git.install
 	arch = any
-	license = MIT
+	license = GPL-3.0-only
 	makedepends = git
 	depends = bash
 	depends = brightnessctl
@@ -80,6 +80,7 @@ pkgbase = inir-shell-git
 	optdepends = socat: mpv IPC fallback helpers
 	optdepends = swappy: screenshot annotation helpers
 	optdepends = tesseract: OCR-backed screenshot tools
+	optdepends = thinkfan: managed fan-control integration
 	optdepends = translate-shell: translation helpers
 	optdepends = ttf-oxanium: angel style font
 	optdepends = upower: battery monitoring service
@@ -89,12 +90,13 @@ pkgbase = inir-shell-git
 	optdepends = ydotool: virtual keyboard and clipboard paste helper
 	optdepends = yt-dlp: YouTube media backend
 	optdepends = python-ytmusicapi: YouTube Music browsing (InnerTube engine)
+	optdepends = millennium-bin: Steam theming via Millennium (requires steam)
 	provides = inir-shell
 	conflicts = inir-shell
 	conflicts = noctalia-qs
 	conflicts = noctalia-shell
 	conflicts = cachyos-niri-noctalia
-	source = inir::git+https://github.com/snowarch/iNiR.git
+	source = inir::git+https://github.com/llocphann/Hadalis.git#branch=dev
 	sha256sums = SKIP
 
 pkgname = inir-shell-git

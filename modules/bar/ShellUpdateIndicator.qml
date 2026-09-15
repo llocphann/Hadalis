@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -60,13 +59,6 @@ MouseArea {
         } else {
             root.activatePrimary()
         }
-    }
-
-    // Easter egg: long-press instead of clicking and she takes the credit
-    onPressAndHold: {
-        if (Config.options?.mascot?.enable ?? false)
-            Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "mascot", "appearWithLine",
-                "update-ready", "top", Translation.tr("Pressed it. You're welcome.")])
     }
 
     // Background pill

@@ -17,23 +17,22 @@ python3 translations/tools/l10n.py extract es_AR /tmp/es_AR-review.json --limit 
 python3 translations/tools/l10n.py apply /tmp/es_AR-review.json
 ```
 
-`audit-all` validates key parity and placeholder structure against `en_US.json`. See `translations/l10n/README.md` for the reviewed translation workflow.
+`audit-all` validates key parity, placeholder structure, and locale-guide coverage against `en_US.json`. See `translations/l10n/README.md` for the reviewed translation workflow.
 
-### `translation-manager.py` — source extraction and missing-key updates
+### `translation-manager.py` — source extraction and catalog-wide missing-key updates
 
 The manager scans repository `*.qml` and `*.js` files for static `Translation.tr(...)` strings.
 
 ```bash
 translations/tools/translation-manager.py --extract-only
-translations/tools/translation-manager.py --language zh_CN
 translations/tools/translation-manager.py --yes
 ```
 
-The manager may add missing static keys. It **does not prune extra keys**. Extra keys are only reported so cleanup cannot diverge locale keysets one language at a time.
+Before updating, the manager requires every locale keyset to match `en_US.json`. New static keys are then added to every locale together after one confirmation. It **does not prune extra keys**. Extra keys are only reported so cleanup cannot diverge locale keysets one language at a time.
 
 ### `translation-cleaner.py` — canonical pruning and synchronization
 
-The cleaner owns deletion of unused translation keys. Both cleanup and sync always use `en_US.json` as the canonical key source.
+The cleaner owns deletion of unused translation keys.
 
 ```bash
 translations/tools/translation-cleaner.py --clean
@@ -41,7 +40,7 @@ translations/tools/translation-cleaner.py --clean --yes --no-backup
 translations/tools/translation-cleaner.py --sync
 ```
 
-Before pruning, the cleaner requires every locale keyset to match the canonical source locale. It derives one orphan set from the source locale and removes exactly that set from every locale, then verifies parity again.
+Before pruning, the cleaner requires every locale keyset to match the canonical source locale. It derives one orphan set from `en_US` and removes exactly that set from every locale, then verifies parity again.
 
 ### `manage-translations.sh` — wrapper
 
@@ -49,7 +48,6 @@ Before pruning, the cleaner requires every locale keyset to match the canonical 
 translations/tools/manage-translations.sh status
 translations/tools/manage-translations.sh extract
 translations/tools/manage-translations.sh update
-translations/tools/manage-translations.sh update -l zh_CN
 translations/tools/manage-translations.sh clean
 translations/tools/manage-translations.sh sync
 ```
@@ -89,7 +87,7 @@ translations/tools/manage-translations.sh clean
 python3 translations/tools/l10n.py audit-all
 ```
 
-Do not manually delete a key from only one generated locale. If a retired-feature key is being removed, prove it is no longer a live source string and let the source-driven cleaner apply the same deletion across all locales.
+Do not manually add or delete a key in only one locale. New keys are catalog-wide updates, and retired-feature keys must be proven absent from live source before the source-driven cleaner removes the same exact set from every locale.
 
 ## Dynamic translation keys
 
@@ -117,7 +115,7 @@ Dynamic expressions such as `Translation.tr(variable)` require explicit catalog 
 
 ## Backups and recovery
 
-The cleaner creates `*.json.bak` files by default before mutations. For a larger refactor, an explicit repository-local backup is also reasonable:
+The manager and cleaner create `*.json.bak` files before catalog mutations. For a larger refactor, an explicit repository-local backup is also reasonable:
 
 ```bash
 cp -r translations translations.backup

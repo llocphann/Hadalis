@@ -14,13 +14,12 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  extract      Extract translatable texts to temporary file"
-    echo "  update       Add missing translation keys; report extra keys"
+    echo "  update       Add missing translation keys across all locales; report extra keys"
     echo "  clean        Clean unused translation keys source-first across locales"
     echo "  sync         Sync keys across all language files"
     echo "  status       Show translation status"
     echo ""
     echo "Options:"
-    echo "  -l, --lang LANG     Specify language (e.g.: zh_CN)"
     echo "  -t, --trans-dir DIR Translation files directory (default: $TRANSLATIONS_DIR)"
     echo "  -s, --source-dir DIR Source code directory (default: $SOURCE_DIR)"
     echo "  -y, --yes           Skip all confirmation prompts (auto-confirm)"
@@ -28,17 +27,15 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 extract                    # Extract translatable texts"
-    echo "  $0 update -l zh_CN           # Update Chinese translations"
-    echo "  $0 update                    # Update all translations"
-    echo "  $0 clean                     # Clean unused keys"
-    echo "  $0 sync                      # Sync keys across all languages"
-    echo "  $0 status                    # Show translation status"
+    echo "  $0 update                     # Add missing keys to every locale"
+    echo "  $0 clean                      # Clean unused keys"
+    echo "  $0 sync                       # Sync keys across all languages"
+    echo "  $0 status                     # Show translation status"
 }
 
 show_status() {
     echo "Analyzing translation status..."
 
-    # Extract current text count
     echo "=== Current Project Status ==="
     python3 "$SCRIPT_DIR/translation-manager.py" \
         --translations-dir "$TRANSLATIONS_DIR" \
@@ -61,17 +58,11 @@ show_status() {
     fi
 }
 
-# Parse command line arguments
-LANG_CODE=""
 COMMAND=""
 YES_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -l|--lang)
-            LANG_CODE="$2"
-            shift 2
-            ;;
         -t|--trans-dir)
             TRANSLATIONS_DIR="$2"
             shift 2
@@ -110,7 +101,6 @@ if [ -z "$COMMAND" ]; then
     exit 1
 fi
 
-# Check dependencies
 if ! command -v python3 >/dev/null 2>&1; then
     echo "Error: python3 is required"
     exit 1
@@ -120,7 +110,6 @@ if [ "$COMMAND" = "status" ] && ! command -v jq >/dev/null 2>&1; then
     echo "Warning: jq is not installed, status display may be incomplete"
 fi
 
-# Build base arguments without losing spaces in custom paths.
 BASE_ARGS=(--translations-dir "$TRANSLATIONS_DIR" --source-dir "$SOURCE_DIR")
 
 case $COMMAND in
@@ -130,11 +119,7 @@ case $COMMAND in
         ;;
     update)
         echo "Updating translation files..."
-        if [ -n "$LANG_CODE" ]; then
-            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}" --language "$LANG_CODE"
-        else
-            python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}"
-        fi
+        python3 "$SCRIPT_DIR/translation-manager.py" "${BASE_ARGS[@]}" "${YES_ARGS[@]}"
         ;;
     clean)
         echo "Cleaning unused translation keys..."

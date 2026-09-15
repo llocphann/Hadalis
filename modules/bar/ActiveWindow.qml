@@ -13,7 +13,7 @@ Item {
 
     property string activeWindowAddress: CompositorService.isHyprland ? `0x${activeWindow?.HyprlandToplevel?.address}` : ""
     property bool focusingThisMonitor: CompositorService.isHyprland ? (HyprlandData.activeWorkspace?.monitor == monitor?.name) : true
-    property var biggestWindow: CompositorService.isHyprland ? HyprlandData.biggestWindowForWorkspace(HyprlandData.monitors[root.monitor?.id]?.activeWorkspace.id) : null
+    property var biggestWindow: CompositorService.isHyprland ? HyprlandData.biggestWindowForWorkspace(HyprlandData.monitors[root.monitor?.id]?.activeWorkspace?.id) : null
 
     // Ventana activa según Niri (focus global)
     property var niriFocusedWindow: {

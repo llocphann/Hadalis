@@ -2,6 +2,7 @@
 
 let
   lib = pkgs.lib;
+  packageVersion = lib.removeSuffix "\n" (builtins.readFile ../VERSION);
 
   optionalTop = name:
     lib.optional (builtins.hasAttr name pkgs) (builtins.getAttr name pkgs);
@@ -125,7 +126,7 @@ let
 in
 pkgs.stdenvNoCC.mkDerivation {
   pname = "inir";
-  version = lib.removeSuffix "\n" (builtins.readFile ../VERSION);
+  version = packageVersion;
   src = lib.cleanSource ../.;
 
   nativeBuildInputs = [ pkgs.makeWrapper pkgs.python3 pkgs.rsync ];
@@ -157,6 +158,28 @@ pkgs.stdenvNoCC.mkDerivation {
     find "$runtime/modules" "$runtime/services" "$runtime/defaults" "$runtime/scripts" \
       -type f \( -name '*.qml' -o -name '*.js' -o -name '*.sh' -o -name '*.py' \) \
       -exec sed -i '1!s#/usr/bin/##g' {} +
+
+    cat > "$runtime/version.json" <<'EOF'
+{
+  "version": "${packageVersion}",
+  "commit": "nix-package",
+  "installed_at": "nix-store",
+  "installedAt": "nix-store",
+  "source": "nix",
+  "repo_path": "",
+  "repoPath": "",
+  "install_mode": "package-managed",
+  "installMode": "package-managed",
+  "update_strategy": "package-manager",
+  "updateStrategy": "package-manager",
+  "package_manager": "nix",
+  "packageManager": "nix",
+  "package_name": "inir",
+  "packageName": "inir",
+  "package_update_hint": "update the Hadalis source/input and rebuild your NixOS or Home Manager configuration",
+  "packageUpdateHint": "update the Hadalis source/input and rebuild your NixOS or Home Manager configuration"
+}
+EOF
 
     makeWrapper "$runtime/scripts/inir" "$out/bin/inir" \
       --prefix PATH : "${lib.makeBinPath runtimeDeps}" \

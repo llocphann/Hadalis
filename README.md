@@ -4,6 +4,7 @@
 > **Updated:** 2026-09-16  
 > **Cutover:** opt-in; not yet the fresh-install default  
 > **Validation policy:** clean-clone local non-Nix validation is the primary maintainer gate during the current stabilization phase  
+> **Maintainer workflow:** the daily-use checkout may remain on `stable`; validation clones `dev` into a temporary directory and must not mutate the stable working tree  
 > **Release state:** not ready for `dev -> stable` until local validation, documentation, Arch packaging/install, and live acceptance gates are green
 
 Hadalis is evolving from the older fixed panel composition into a **configurable per-output Connected Perimeter** while preserving the project’s existing services, compositor integration, routing, lifecycle, configuration, and Niri engineering.
@@ -296,13 +297,34 @@ The test suite covers areas including:
 - runtime/registry recovery,
 - QML startup/static validation.
 
-Perimeter contracts are invoked from the full QML validation path used by both local acceptance and hosted CI.
+Perimeter contracts are invoked from the full QML validation path used by local acceptance. Hosted CI should mirror those checks where practical, but hosted status is diagnostic rather than the maintainer source of truth during this stabilization phase.
 
 ---
 
 ## Local validation policy and latest snapshot
 
 During the current stabilization phase, the maintainer release signal is a **clean clone of `dev` followed by local build/regression validation**. Hosted GitHub Actions are useful diagnostics, but they do not override a reproducible local result. Dedicated Nix validation is temporarily outside the maintainer acceptance gate because the active environment does not use Nix; this does **not** claim that Nix support is currently green.
+
+### Maintainer workflow
+
+The normal desktop can remain on the `stable` branch while development validation happens independently:
+
+```text
+daily-use checkout: stable
+        |
+        |  untouched by validation
+        v
+local validator
+        |
+        +--> mktemp directory
+        +--> clean clone of dev
+        +--> build + non-Nix tests + docs + QML guards + staged install
+        +--> log records the exact tested SHA
+```
+
+The validator must not `git switch`, `git checkout`, `git pull`, reset, or otherwise mutate the maintainer's existing `stable` working tree. Only the temporary `dev` clone is built and tested.
+
+A result applies only to the exact SHA printed in the validation log. If `dev` advances after that SHA, the new HEAD is **unvalidated** until the clean-clone local suite is rerun. Bots may fix code and contracts on `dev`, but they must not claim the newer HEAD is green before a maintainer local rerun confirms it.
 
 The latest completed clean-clone validation supplied by the maintainer was run against:
 
@@ -331,7 +353,19 @@ The same snapshot reported eight top-level failures, which reduce to four indepe
 
 QML validation on that snapshot emitted 10 advisory warnings and skipped the parser pass because the detected `qmlformat 1.0` is below the project’s supported parser threshold. Project-specific startup/architecture guards still ran and passed, but a future acceptance run on a modern Qt/QML parser should also exercise the parser pass.
 
-`dev` continues to move after any local snapshot. A commit newer than the hash above must be rerun before being called locally validated.
+### Current completion order
+
+Until a newer local validation proves otherwise, repository completion work should be prioritized in this order:
+
+1. reconcile translation catalogs/source parity and make documentation locale validation pass;
+2. repair stale or broken local test contracts without weakening their intended behavior;
+3. rerun the clean-clone local non-Nix validator and use its exact SHA as the next acceptance checkpoint;
+4. exercise full QML parsing with a supported modern Qt/QML parser when available;
+5. continue multi-output/hotplug/resume/focus/fullscreen/fractional-scale live acceptance and remaining transient-surface migration;
+6. finish namespace/product migration and release documentation;
+7. only then expand large optional presentation features.
+
+Nix remains a deferred compatibility lane, not a reason to block progress in the current maintainer environment. It should not be deleted or declared supported/green without evidence.
 
 ---
 

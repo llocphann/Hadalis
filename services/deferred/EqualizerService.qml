@@ -409,6 +409,8 @@ Singleton {
                 next.push(name)
             }
             root.presets = next
+            if (root.error === "preset-scan-failed")
+                root.error = ""
         }
     }
 
@@ -443,6 +445,8 @@ Singleton {
                 return
             }
             root.activePreset = (activePresetCollector.text ?? "").trim()
+            if (root.error === "preset-query-failed")
+                root.error = ""
         }
     }
 
@@ -501,6 +505,8 @@ Singleton {
                 const index = Number(line.slice(0, separator))
                 const values = line.slice(separator + 1).split("|")
                 if (values.length !== 4 || !isFinite(index) || Math.floor(index) !== index)
+                    continue
+                if (values.some(value => value.trim().length === 0))
                     continue
                 const leftGain = Number(values[0])
                 const rightGain = Number(values[1])

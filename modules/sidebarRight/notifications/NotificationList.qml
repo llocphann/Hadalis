@@ -111,6 +111,11 @@ Item {
             Layout.fillWidth: false
             buttonIcon: "notifications_paused"
             toggled: Notifications.silent
+            Accessible.name: Notifications.silent
+                ? Translation.tr("Unmute notifications")
+                : Translation.tr("Mute notifications")
+            Accessible.checkable: true
+            Accessible.checked: Notifications.silent
             onClicked: () => {
                 Notifications.silent = !Notifications.silent;
             }
@@ -121,8 +126,10 @@ Item {
             buttonText: Translation.tr("%1 notifications").arg(Notifications.list.length)
         }
         NotificationStatusButton {
+            enabled: Notifications.list.length > 0
             Layout.fillWidth: false
             buttonIcon: "delete_sweep"
+            Accessible.name: Translation.tr("Clear notifications")
             onClicked: () => {
                 Notifications.discardAllNotifications()
             }

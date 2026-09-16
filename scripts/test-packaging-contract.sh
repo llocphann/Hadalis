@@ -85,6 +85,7 @@ for required_path in \
   shell.qml \
   qmldir \
   sdata/lib/runtime-payload.py \
+  docs/AUDIO_MEDIA.md \
   docs/INSTALL.md \
   docs/PACKAGES.md \
   docs/RELEASING.md; do

@@ -18,6 +18,9 @@ Scope {
     property real bottomInset: 0
     property real leftInset: 0
     property real rightInset: 0
+    readonly property var runtimeOutputNames: Quickshell.screens
+        .map(screen => String(screen?.name ?? ""))
+        .filter(name => name.length > 0)
 
     function ensureFeatureRegistry(): void {
         if (!root.active) {
@@ -50,11 +53,8 @@ Scope {
         // connected outputs are eligible to present the singular sidebar state.
         const allowed = GlobalStates.connectedOutputNames(
             Config.options?.sidebar?.screenList ?? [])
-        return Quickshell.screens
-            .map(screen => String(screen?.name ?? ""))
-            .filter(name => name.length > 0
-                && allowed.includes(name)
-                && root.outputHasModule(name, moduleId))
+        return root.runtimeOutputNames.filter(name => allowed.includes(name)
+            && root.outputHasModule(name, moduleId))
     }
 
     function syncSidebarRoute(featureRole: bool): void {
@@ -107,6 +107,10 @@ Scope {
     }
     onActiveChanged: {
         root.ensureFeatureRegistry()
+        if (root.active)
+            Qt.callLater(root.syncSidebarRoutes)
+    }
+    onRuntimeOutputNamesChanged: {
         if (root.active)
             Qt.callLater(root.syncSidebarRoutes)
     }

@@ -17,8 +17,10 @@ Item {
         return ["top", "right", "bottom", "left"].includes(candidate)
             ? candidate : "bottom"
     }
+    readonly property string outputName: String(root.perimeterContext?.outputName ?? "")
     readonly property bool presented: root.enabledByConfig
-        && PerimeterPresentationPolicy.dockPresented(root.edge)
+        && PerimeterPresentationPolicy.dockPresentedForOutput(
+            root.outputName, root.edge)
     readonly property real configuredThickness: Number(
         root.instanceConfig?.thickness ?? Config.options?.dock?.height ?? 70)
     readonly property real thickness: Number.isFinite(root.configuredThickness)

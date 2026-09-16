@@ -164,6 +164,12 @@ if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
         echo "ERROR: Connected Perimeter family contract failed" >&2
         set fatal_errors (math $fatal_errors + 1)
     end
+
+    set -l perimeter_source_contract "$project_root/scripts/test-perimeter-source-contracts.sh"
+    if not bash "$perimeter_source_contract"
+        echo "ERROR: Connected Perimeter source integrity contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
 end
 
 if test -z "$parser"

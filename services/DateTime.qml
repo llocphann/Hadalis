@@ -44,8 +44,10 @@ Singleton {
         repeat: true
         onTriggered: {
             fileUptime.reload();
-            const textUptime = fileUptime.text();
-            const uptimeSeconds = Number(textUptime.split(" ")[0] ?? 0);
+            const textUptime = String(fileUptime.text() ?? "").trim();
+            const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
+            if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
+                return;
 
             // Convert seconds to days, hours, and minutes
             const days = Math.floor(uptimeSeconds / 86400);

@@ -10,6 +10,8 @@ import Quickshell
 Scope {
     id: root
 
+    readonly property bool perimeterEnabled:
+        (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
     readonly property var targetScreens: {
         const list = Config.options?.sidebar?.screenList ?? []
         const screens = Quickshell.screens
@@ -23,7 +25,7 @@ Scope {
     }
 
     Variants {
-        model: root.targetScreens
+        model: root.perimeterEnabled ? [] : root.targetScreens
 
         SidebarHost {
             required property var modelData
@@ -33,6 +35,8 @@ Scope {
     }
 
     // Detached AI chat remains process-global and is owned by one wrapper only.
+    // Keep this loader alive during perimeter migration; only the legacy sidebar
+    // windows above are replaced by SidebarModule.
     Loader {
         active: GlobalStates.aiChatDetached
         sourceComponent: FloatingWindow {

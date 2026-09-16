@@ -17,21 +17,22 @@ require() {
 
 require_started_block() {
     local process_id="$1"
+    local timeout_id="$2"
     local block
     block="$(sed -n "/id: ${process_id}$/,/^    }/p" "$service")"
     [[ -n "$block" ]] || fail "$process_id process block is missing"
     grep -Fq "${process_id}.startObserved = true" <<<"$block" \
-        || fail "${process_id} must record successful startup"
-    grep -Fq "${process_id}.startTimeout.restart()" <<<"$block" \
-        || fail "${process_id} must restart its startup timeout after spawn"
+        || fail "$process_id must record successful startup"
+    grep -Fq "${timeout_id}.restart()" <<<"$block" \
+        || fail "$process_id must restart its state-probe timeout after spawn"
 }
 
 require 'id: fetchProc' 'Hyprland state probe is missing'
-require_started_block 'fetchProc'
+require_started_block 'fetchProc' 'hyprStateProbeTimeout'
 require 'console.warn("[Hyprsunset] Hyprland state probe failed to start")' \
     'Hyprland state probe must handle spawn failure'
 require 'id: niriFetchProc' 'Niri state probe is missing'
-require_started_block 'niriFetchProc'
+require_started_block 'niriFetchProc' 'niriStateProbeTimeout'
 require 'console.warn("[Hyprsunset] Niri state probe failed to start")' \
     'Niri state probe must handle spawn failure'
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-cd "$repo_root"
+github_repo="llocphann/Hadalis"
 
 usage() {
   cat <<'EOF'
@@ -53,19 +53,19 @@ require_release_checkout() {
   local tag="$1"
   local tag_commit head_commit
 
-  [[ -z "$(git status --porcelain --untracked-files=all)" ]] \
+  [[ -z "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]] \
     || die "release checkout must be clean (including untracked files)"
 
-  tag_commit="$(git rev-parse "$tag^{commit}")"
-  head_commit="$(git rev-parse HEAD)"
+  tag_commit="$(git -C "$repo_root" rev-parse "$tag^{commit}")"
+  head_commit="$(git -C "$repo_root" rev-parse HEAD)"
   [[ "$head_commit" == "$tag_commit" ]] \
     || die "HEAD must match $tag before publishing"
 
-  git fetch --quiet origin stable \
+  git -C "$repo_root" fetch --quiet origin stable \
     || die "could not fetch origin/stable"
-  git merge-base --is-ancestor "$tag_commit" origin/stable \
+  git -C "$repo_root" merge-base --is-ancestor "$tag_commit" origin/stable \
     || die "$tag is not contained in origin/stable"
-  git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 \
+  git -C "$repo_root" ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 \
     || die "$tag is not pushed to origin"
 }
 
@@ -80,7 +80,7 @@ extract_notes() {
       if ($0 ~ /^## \[/) exit
       print
     }
-  ' CHANGELOG.md | sed '/^$/N;/^\n$/D'
+  ' "$repo_root/CHANGELOG.md" | sed '/^$/N;/^\n$/D'
 }
 
 write_notes() {
@@ -106,16 +106,16 @@ publish_release() {
   local tag="v$version"
   local notes_file
   require_release_version_consistency "$version"
-  git rev-parse --verify "$tag" >/dev/null 2>&1 || die "missing local tag $tag"
+  git -C "$repo_root" rev-parse --verify "$tag" >/dev/null 2>&1 || die "missing local tag $tag"
   require_release_checkout "$tag"
 
   notes_file="$(mktemp)"
   trap 'rm -f -- "${notes_file:-}"' EXIT
   write_notes "$version" "$notes_file"
 
-  gh release view "$tag" >/dev/null 2>&1 && die "GitHub release $tag already exists"
+  gh release view "$tag" --repo "$github_repo" >/dev/null 2>&1 && die "GitHub release $tag already exists"
   "$script_dir/wiki-sync.sh" publish "docs: sync wiki for $tag"
-  gh release create "$tag" --verify-tag --title "$tag" --notes-file "$notes_file"
+  gh release create "$tag" --repo "$github_repo" --verify-tag --title "$tag" --notes-file "$notes_file"
   rm -f "$notes_file"
   trap - EXIT
 }

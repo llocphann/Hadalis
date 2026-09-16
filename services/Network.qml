@@ -235,11 +235,7 @@ Singleton {
     }
 
     Component.onCompleted: {
-        // Kill any orphaned nmcli monitor processes from previous shell instances,
-        // then start the fresh subscriber once cleanup finishes. If the cleanup
-        // command itself cannot start, fall back to starting the subscriber.
-        _cleanupStale.attempted = true
-        _cleanupStale.running = true;
+        root._startSubscriber()
         // Prime initial state once; subsequent updates come from nmcli monitor.
         Qt.callLater(() => root.update())
     }
@@ -255,28 +251,6 @@ Singleton {
         interval: 2000
         repeat: false
         onTriggered: root._startSubscriber()
-    }
-
-    Process {
-        id: _cleanupStale
-        property bool attempted: false
-        property bool startObserved: false
-        command: ["pkill", "-f", "nmcli monitor"]
-        running: false
-        onRunningChanged: {
-            if (_cleanupStale.running)
-                return
-            if (!_cleanupStale.attempted || _cleanupStale.startObserved)
-                return
-            _cleanupStale.attempted = false
-            console.warn("[Network] Failed to start stale nmcli monitor cleanup; starting subscriber directly")
-            root._startSubscriber()
-        }
-        onStarted: _cleanupStale.startObserved = true
-        onExited: {
-            _cleanupStale.attempted = false
-            root._startSubscriber()
-        }
     }
 
     Process {

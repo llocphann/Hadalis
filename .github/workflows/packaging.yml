@@ -14,11 +14,14 @@ on:
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
+      - 'scripts/test-equalizer-boundary-contract.sh'
+      - 'scripts/test-equalizer-service-contract.sh'
       - 'scripts/test-nix-module-contract.sh'
       - 'scripts/test-optional-audio-deps-contract.sh'
       - 'services/AwwwBackend.qml'
       - 'services/deferred/EasyEffects.qml'
       - 'services/deferred/EqualizerService.qml'
+      - 'services/deferred/qmldir'
       - 'defaults/config.json'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
@@ -55,11 +58,14 @@ on:
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
+      - 'scripts/test-equalizer-boundary-contract.sh'
+      - 'scripts/test-equalizer-service-contract.sh'
       - 'scripts/test-nix-module-contract.sh'
       - 'scripts/test-optional-audio-deps-contract.sh'
       - 'services/AwwwBackend.qml'
       - 'services/deferred/EasyEffects.qml'
       - 'services/deferred/EqualizerService.qml'
+      - 'services/deferred/qmldir'
       - 'defaults/config.json'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
@@ -113,6 +119,13 @@ jobs:
         run: |
           bash -n scripts/test-doctor-dependency-routing.sh
           bash scripts/test-doctor-dependency-routing.sh
+
+      - name: Validate Equalizer Phase 1 contracts
+        run: |
+          bash -n scripts/test-equalizer-boundary-contract.sh
+          bash scripts/test-equalizer-boundary-contract.sh
+          bash -n scripts/test-equalizer-service-contract.sh
+          bash scripts/test-equalizer-service-contract.sh
 
       - name: Validate optional audio dependency contracts
         run: |

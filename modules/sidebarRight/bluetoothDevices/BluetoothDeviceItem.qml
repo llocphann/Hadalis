@@ -104,6 +104,7 @@ DialogListItem {
                 ActionButton {
                     id: connectBtn
                     property bool operationPending: false
+                    enabled: !operationPending
                     buttonText: {
                         if (operationPending) {
                             return root.device?.connected ? Translation.tr("Disconnecting…") : Translation.tr("Connecting…");

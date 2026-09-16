@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=4
+pkgrel=5
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -161,7 +161,7 @@ depends=(
 # but won't block install if missing.
 optdepends=(
   'cava: audio visualizer for bar'
-  'easyeffects: audio effects panel'
+  'easyeffects: optional audio effects and equalizer backend'
   'socat: optional EasyEffects control transport for equalizer'
   'songrec: song recognition'
   'translate-shell: translation widget'

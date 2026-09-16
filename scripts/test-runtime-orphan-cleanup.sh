@@ -60,5 +60,15 @@ grep -Fq 'cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"' "$repo_roo
 grep -Fq '"$script_dir/test-runtime-orphan-cleanup.sh"' "$repo_root/scripts/release.sh" \
     || fail 'release helper no longer requires the runtime orphan cleanup contract'
 
+# Both Arch package variants must build their shell tree through the canonical
+# full-payload helper. Bypassing it would reintroduce mixed-runtime risk even if
+# make install and repo-copy update remain correct.
+for package_recipe in \
+    "$repo_root/distro/arch/inir-shell/PKGBUILD" \
+    "$repo_root/distro/arch/inir-shell-git/PKGBUILD"; do
+    grep -Fq 'runtime-payload.py" copy --root "$srcroot" --target "$shellroot"' "$package_recipe" \
+        || fail "Arch recipe bypasses canonical runtime payload copy: ${package_recipe#$repo_root/}"
+done
+
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - repo-copy update cleanup removes retired runtime QML without deleting excluded artifacts'
+printf '%s\n' 'ok 1 - repo-copy/package cleanup removes retired runtime QML without deleting excluded artifacts'

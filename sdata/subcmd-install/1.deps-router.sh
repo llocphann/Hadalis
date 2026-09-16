@@ -16,8 +16,14 @@ case "$OS_GROUP_ID" in
     ;;
     
   fedora)
-    printf "${STY_GREEN}Using Fedora installer${STY_RST}\n"
-    source ./sdata/dist-fedora/install-deps.sh
+    if is_immutable_distro; then
+      printf "${STY_YELLOW}Fedora Atomic support requires rpm-ostree/toolbox-aware manual setup${STY_RST}\n"
+      printf "${STY_YELLOW}Using generic installer guidance instead of the dnf host installer${STY_RST}\n"
+      source ./sdata/dist-generic/install-deps.sh
+    else
+      printf "${STY_GREEN}Using Fedora installer${STY_RST}\n"
+      source ./sdata/dist-fedora/install-deps.sh
+    fi
     ;;
     
   debian|ubuntu)

@@ -30,12 +30,14 @@ Keep the package archive filename tagged as well; `scripts/release.sh publish` c
 
 ## Validate before promotion
 
-Run the repository checks that cover packaging, generated state, and QML startup:
+Run the repository checks that cover packaging, generated state, QML startup, and optional dependency boundaries:
 
 ```bash
 make test-local
 bash scripts/test-packaging-contract.sh
 bash scripts/test-nix-module-contract.sh
+bash scripts/test-doctor-dependency-routing.sh
+bash scripts/test-optional-audio-deps-contract.sh
 fish scripts/qml-check.fish --all
 python3 scripts/lib/generate-ipc-registry.py --check
 ```
@@ -69,6 +71,7 @@ Do not move the tag after publication. `scripts/release.sh publish` requires all
 - the tag exists on the remote and resolves to the same commit as the local tag
 - `distro/arch/inir-shell/PKGBUILD` defaults `_source_ref` to exactly `vX.Y.Z`
 - `distro/arch/inir-shell/.SRCINFO` points at the same tag archive
+- packaging, Nix, doctor dependency-routing, and optional-audio dependency contracts all pass
 
 ## Publish
 
@@ -80,7 +83,7 @@ scripts/release.sh publish X.Y.Z
 
 The publication sequence is:
 
-1. Validate version, checkout, remote tag, package source identity, and the packaging/Nix contract suites.
+1. Validate version, checkout, remote tag, package source identity, and all release packaging/dependency contract suites.
 2. Generate release notes.
 3. Create a GitHub draft release, or reuse an existing draft for the same tag.
 4. Sync repository docs to the GitHub Wiki.

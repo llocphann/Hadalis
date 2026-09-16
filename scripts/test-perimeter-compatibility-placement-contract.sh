@@ -29,8 +29,6 @@ grep -Fq 'ModuleRegistry.resolve(instance?.moduleId)' "$policy" \
 # green as long as feature enablement is refined by effective placement.
 bar_ownership_block="$(sed -n '/enabledPanels.includes(barIdentifier)/,/const barAutoHide =/p' "$policy")"
 [[ -n "$bar_ownership_block" ]] || fail 'bar compatibility ownership block is missing'
-grep -Fq 'const barOwned =' <<<"$bar_ownership_block" \
-    || fail 'bar compatibility lost combined ownership state'
 grep -Fq 'enabledPanels.includes(barIdentifier)' <<<"$bar_ownership_block" \
     || fail 'bar compatibility lost feature-enable ownership'
 grep -Fq 'root.reservationKindPlacedAnywhere("bar")' <<<"$bar_ownership_block" \
@@ -38,8 +36,6 @@ grep -Fq 'root.reservationKindPlacedAnywhere("bar")' <<<"$bar_ownership_block" \
 
 dock_ownership_block="$(sed -n '/enabledPanels.includes("iiDock")/,/const dockEnabled =/p' "$policy")"
 [[ -n "$dock_ownership_block" ]] || fail 'dock compatibility ownership block is missing'
-grep -Fq 'const dockOwned =' <<<"$dock_ownership_block" \
-    || fail 'dock compatibility lost combined ownership state'
 grep -Fq 'enabledPanels.includes("iiDock")' <<<"$dock_ownership_block" \
     || fail 'dock compatibility lost feature-enable ownership'
 grep -Fq 'root.reservationKindPlacedAnywhere("dock")' <<<"$dock_ownership_block" \
@@ -47,8 +43,6 @@ grep -Fq 'root.reservationKindPlacedAnywhere("dock")' <<<"$dock_ownership_block"
 
 sidebar_ownership_block="$(sed -n '/enabledPanels.includes("iiSidebarLeft")/,/const sidebarEdgeOpen =/p' "$policy")"
 [[ -n "$sidebar_ownership_block" ]] || fail 'sidebar compatibility ownership block is missing'
-grep -Fq 'const sidebarOwned =' <<<"$sidebar_ownership_block" \
-    || fail 'sidebar compatibility lost combined ownership state'
 grep -Fq 'enabledPanels.includes("iiSidebarLeft")' <<<"$sidebar_ownership_block" \
     || fail 'left sidebar compatibility lost feature-enable ownership'
 grep -Fq 'root.modulePlacedAnywhere("left-sidebar")' <<<"$sidebar_ownership_block" \

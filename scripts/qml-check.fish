@@ -152,6 +152,12 @@ if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
         echo "ERROR: Connected Perimeter route contract failed" >&2
         set fatal_errors (math $fatal_errors + 1)
     end
+
+    set -l perimeter_settings_contract "$project_root/scripts/test-perimeter-settings-contracts.sh"
+    if not bash "$perimeter_settings_contract"
+        echo "ERROR: Connected Perimeter settings contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
 end
 
 if test -z "$parser"

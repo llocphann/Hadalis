@@ -87,6 +87,10 @@ PanelWindow {
                 x: Math.max(0, (mediaViewport.width - width) / 2)
                 y: Math.max(0, (mediaViewport.height - height) / 2)
                 popupRounding: Math.max(0, geometry.outerRadius - 8)
+                screenX: popupBody.x + mediaViewport.x + mediaPopup.x
+                    - mediaViewport.contentX
+                screenY: popupBody.y + mediaViewport.y + mediaPopup.y
+                    - mediaViewport.contentY
                 onCloseRequested: SurfaceRouteController.close(root.outputName, "explicit")
             }
         }

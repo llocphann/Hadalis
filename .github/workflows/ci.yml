@@ -225,9 +225,7 @@ jobs:
           bash scripts/test-tlp-integration-lifecycle.sh
 
       - name: Run deferred service regressions
-        run: |
-          bash scripts/test-news-service-contract.sh
-          bash scripts/test-equalizer-service-contract.sh
+        run: make test-news-contract test-equalizer-contracts
 
       - name: Run perimeter regressions
         run: make test-perimeter-contracts

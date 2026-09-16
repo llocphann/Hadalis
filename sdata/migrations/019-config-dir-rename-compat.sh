@@ -11,7 +11,9 @@ migration_check() {
   local config_new="${xdg_config_home}/inir"
   local config_legacy="${xdg_config_home}/illogical-impulse"
 
-  if [[ -L "$config_legacy" ]] && [[ "$(readlink "$config_legacy" 2>/dev/null || true)" == "$config_new" ]]; then
+  if [[ -L "$config_legacy" ]] \
+    && [[ "$(readlink "$config_legacy" 2>/dev/null || true)" == "$config_new" ]] \
+    && [[ -d "$config_new" ]]; then
     return 1
   fi
 

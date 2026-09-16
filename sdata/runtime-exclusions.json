@@ -72,6 +72,7 @@
   "excludedNamePrefixes": [
     "AGENTS.",
     "GEMINI.md",
+    "test-",
     ".aider",
     ".env."
   ],

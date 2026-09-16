@@ -2,6 +2,7 @@
 """Regression coverage for translation cleanup and source-parity boundaries."""
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -10,6 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CLEANER = ROOT / "translations" / "tools" / "translation-cleaner.py"
 PARITY = ROOT / "translations" / "tools" / "source-parity.py"
+AUTO_TRANSLATE = ROOT / "translations" / "tools" / "auto-translate.js"
+TRANSLATIONS = ROOT / "translations"
 
 
 def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
@@ -54,7 +57,41 @@ def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def assert_auto_translate_contract() -> None:
+    script = AUTO_TRANSLATE.read_text(encoding="utf-8")
+    mapped_locales = set(
+        re.findall(r"'([A-Za-z0-9_-]+\.json)'\s*:\s*'[^']+'", script)
+    )
+    tracked_locales = {
+        path.name
+        for path in TRANSLATIONS.glob("*.json")
+        if path.name != "en_US.json"
+    }
+
+    if mapped_locales != tracked_locales:
+        missing = sorted(tracked_locales - mapped_locales)
+        stale = sorted(mapped_locales - tracked_locales)
+        raise AssertionError(
+            "auto-translate locale map drifted from tracked catalog: "
+            f"missing={missing}, stale={stale}"
+        )
+
+    retry_guard = "const maxBatchAttempts = 3;"
+    placeholder_guard = "if (!samePlaceholders(sourceData[key], clean)) {"
+    if retry_guard not in script:
+        raise AssertionError("auto-translate retry budget is no longer bounded at three attempts")
+    if placeholder_guard not in script:
+        raise AssertionError("auto-translate no longer validates placeholder structure")
+
+    guard_offset = script.index(placeholder_guard)
+    checkpoint_offset = script.find("writeAtomic(filePath, data);", guard_offset)
+    if checkpoint_offset < 0:
+        raise AssertionError("auto-translate placeholder validation no longer precedes a checkpoint")
+
+
 def main() -> None:
+    assert_auto_translate_contract()
+
     with tempfile.TemporaryDirectory() as tmp_name:
         tmp = Path(tmp_name)
         translations = tmp / "translations"

@@ -54,6 +54,7 @@ test-perimeter-contracts:
 	@bash scripts/test-perimeter-route-contracts.sh
 	@bash scripts/test-perimeter-settings-contracts.sh
 	@bash scripts/test-perimeter-source-contracts.sh
+	@bash scripts/test-perimeter-runtime-health-contract.sh
 
 test-docs:
 	@bash scripts/verify-docs.sh

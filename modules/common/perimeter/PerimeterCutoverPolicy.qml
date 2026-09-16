@@ -37,7 +37,17 @@ QtObject {
         const dockHoverReveal = Config.options?.dock?.hoverToReveal ?? false
         const dockPolicySupported = !dockOwned || !dockEnabled
             || (dockPinned && !dockHoverReveal)
+
+        // Legacy SidebarHost owns the edge-hover activation strip. Connected
+        // Perimeter does not implement that interaction yet, so keep legacy
+        // ownership whenever an enabled sidebar depends on edge-open behavior.
+        const sidebarOwned = enabledPanels.includes("iiSidebarLeft")
+            || enabledPanels.includes("iiSidebarRight")
+        const sidebarEdgeOpen = Config.options?.sidebar?.edgeOpen?.enable ?? false
+        const sidebarPolicySupported = !sidebarOwned || !sidebarEdgeOpen
+
         return barPolicySupported && dockPolicySupported
+            && sidebarPolicySupported
     }
     readonly property bool configurationValid: {
         Config.revision

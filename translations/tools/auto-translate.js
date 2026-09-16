@@ -84,20 +84,64 @@ async function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+function withoutUrls(text) {
+  const withoutMarkdownUrls = text.replace(/\]\([^\n)]*https?:\/\/[^\n)]*\)/g, ']()');
+  return withoutMarkdownUrls.replace(/https?:\/\/[^\s)]+/g, '');
+}
+
 // Match the structural token contract enforced by l10n.py. URL percent
 // escapes are data, not Qt placeholders, so strip URL destinations first.
+// The numeric guard prevents %100 from being misread as a %10 placeholder.
 function placeholders(text) {
   if (typeof text !== 'string') return [];
-  const withoutMarkdownUrls = text.replace(/\]\([^\n)]*https?:\/\/[^\n)]*\)/g, ']()');
-  const withoutUrls = withoutMarkdownUrls.replace(/https?:\/\/[^\s)]+/g, '');
-  return (withoutUrls.match(/%[1-9]\d?|%n|\{\d+\}|<[^<>]+>/g) ?? []).sort();
+  return (withoutUrls(text).match(/%[1-9]\d?(?!\d)|%n|\{\d+\}|<[^<>]+>/g) ?? []).sort();
+}
+
+function tokenCounts(tokens) {
+  const counts = new Map();
+  for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
+  return counts;
+}
+
+function localizedPercentLiterals(text, prefix) {
+  const counts = new Map();
+  const clean = withoutUrls(text);
+  const pattern = prefix
+    ? /(^|[^\d%])%([1-9]\d?)(?!\d)/g
+    : /(^|[^\d%])([1-9]\d?)%(?!\d)/g;
+  let match;
+  while ((match = pattern.exec(clean)) !== null) {
+    const digits = match[2];
+    counts.set(digits, (counts.get(digits) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function samePlaceholders(source, target) {
-  const sourceTokens = placeholders(source);
-  const targetTokens = placeholders(target);
-  return sourceTokens.length === targetTokens.length &&
-    sourceTokens.every((token, index) => token === targetTokens[index]);
+  const sourceCounts = tokenCounts(placeholders(source));
+  const targetCounts = tokenCounts(placeholders(target));
+  const sourcePercentLiterals = localizedPercentLiterals(source, false);
+  const targetPercentLiterals = localizedPercentLiterals(target, true);
+
+  for (const [digits, sourceLiteralCount] of sourcePercentLiterals) {
+    const targetLiteralCount = targetPercentLiterals.get(digits) ?? 0;
+    if (targetLiteralCount === 0) continue;
+    const token = `%${digits}`;
+    const sourceTokenCount = sourceCounts.get(token) ?? 0;
+    const targetTokenCount = targetCounts.get(token) ?? 0;
+    const excess = targetTokenCount - sourceTokenCount;
+    if (excess <= 0) continue;
+    const localizedCount = Math.min(excess, sourceLiteralCount, targetLiteralCount);
+    const remaining = targetTokenCount - localizedCount;
+    if (remaining > 0) targetCounts.set(token, remaining);
+    else targetCounts.delete(token);
+  }
+
+  if (sourceCounts.size !== targetCounts.size) return false;
+  for (const [token, count] of sourceCounts) {
+    if (targetCounts.get(token) !== count) return false;
+  }
+  return true;
 }
 
 // Strip lone surrogates and U+FFFD replacement chars so we never persist

@@ -21,13 +21,22 @@ Singleton {
     readonly property bool backendAvailable: root.enabled && EasyEffects.available && root._transportAvailable
     readonly property bool backendRunning: root.enabled && EasyEffects.active
     readonly property bool available: root.backendAvailable && root.backendRunning
+    readonly property bool bandControlAvailable: {
+        if (!root.available || root.bands.length === 0)
+            return false
+        for (let i = 0; i < root.bands.length; ++i) {
+            if (root.bands[i]?.synced !== true)
+                return false
+        }
+        return true
+    }
 
     property string error: ""
     property list<string> presets: []
     property string activePreset: ""
-
-    readonly property var _frequencies: [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
-    property var bands: root._defaultBands(false)
+    // Band count, frequencies and gains are discovered from the running
+    // EasyEffects equalizer. EasyEffects supports a configurable 1-32 bands.
+    property var bands: []
 
     property bool _transportChecked: false
     property bool _transportAvailable: false
@@ -37,30 +46,38 @@ Singleton {
     property int _lifecycleGeneration: 0
     readonly property bool _mutationBusy: applyPresetProc.running || setBandProc.running || resetProc.running
 
-    function _defaultBands(synced) {
-        return root._frequencies.map((frequency, index) => ({
-            index: index,
-            frequency: frequency,
-            gain: 0,
-            synced: synced === true
-        }))
-    }
-
     function _markBandsUnsynced() {
         root.bands = root.bands.map(band => Object.assign({}, band, { synced: false }))
     }
 
-    function _cancelProcesses() {
-        backendRefreshTimer.stop()
-        transportProbe.running = false
+    function _cancelReadProcesses() {
         presetScanProc.running = false
         activePresetProc.running = false
         bandRefreshProc.running = false
+    }
+
+    function _cancelBackendProcesses() {
+        backendRefreshTimer.stop()
+        root._cancelReadProcesses()
         applyPresetProc.running = false
         setBandProc.running = false
         resetProc.running = false
         root._pendingPreset = ""
         root._pendingBandIndex = -1
+    }
+
+    function _cancelProcesses() {
+        root._cancelBackendProcesses()
+        transportProbe.running = false
+    }
+
+    function _beginMutation() {
+        // Any read already in flight describes state before this mutation.
+        // Invalidate it before stopping the process so late callbacks cannot
+        // publish stale data over the mutation result.
+        root._lifecycleGeneration++
+        root._cancelReadProcesses()
+        return root._lifecycleGeneration
     }
 
     function _setProcessError(message, generation) {
@@ -88,6 +105,8 @@ Singleton {
             return
         }
         if (!EasyEffects.available) {
+            root.activePreset = ""
+            root.bands = []
             root.error = "backend-unavailable"
             return
         }
@@ -162,9 +181,11 @@ Singleton {
             return false
         }
 
+        const generation = root._beginMutation()
+        root._markBandsUnsynced()
         root._pendingPreset = preset
         root.error = ""
-        applyPresetProc.generation = root._lifecycleGeneration
+        applyPresetProc.generation = generation
         applyPresetProc.command = ["/usr/bin/env", "sh", "-c",
             "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; printf '%s\\n' \"$1\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null",
             "sh", "load_preset:output:" + preset]
@@ -177,16 +198,18 @@ Singleton {
         const requestedGain = Number(gain)
         if (!root._canMutate())
             return false
-        if (!isFinite(requestedGain) || bandIndex < 0 || bandIndex >= root._frequencies.length) {
+        if (!isFinite(requestedGain) || bandIndex < 0 || bandIndex >= root.bands.length
+                || root.bands[bandIndex]?.synced !== true) {
             root.error = "invalid-band"
             return false
         }
 
         const clampedGain = Math.max(-24, Math.min(24, requestedGain))
+        const generation = root._beginMutation()
         root._pendingBandIndex = bandIndex
         root._pendingBandGain = clampedGain
         root.error = ""
-        setBandProc.generation = root._lifecycleGeneration
+        setBandProc.generation = generation
         setBandProc.command = ["/usr/bin/env", "sh", "-c",
             "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; for side in left right; do printf 'set_property:output:equalizer:0:%s:band%sGain:%s\\n' \"$side\" \"$1\" \"$2\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null || exit $?; done",
             "sh", String(bandIndex), String(clampedGain)]
@@ -197,8 +220,10 @@ Singleton {
     function reset() {
         if (!root._canMutate())
             return false
+        const generation = root._beginMutation()
+        root._markBandsUnsynced()
         root.error = ""
-        resetProc.generation = root._lifecycleGeneration
+        resetProc.generation = generation
         resetProc.running = true
         return true
     }
@@ -214,7 +239,7 @@ Singleton {
             root.presets = []
             root._transportChecked = false
             root._transportAvailable = false
-            root.bands = root._defaultBands(false)
+            root.bands = []
         }
     }
 
@@ -223,12 +248,20 @@ Singleton {
 
         function onAvailableChanged() {
             root._lifecycleGeneration++
+            root._cancelBackendProcesses()
+            if (!EasyEffects.available) {
+                root.activePreset = ""
+                root.bands = []
+                root.error = "backend-unavailable"
+                return
+            }
             if (root._transportChecked)
                 root._refreshBackendState()
         }
 
         function onActiveChanged() {
             root._lifecycleGeneration++
+            root._cancelBackendProcesses()
             if (!root.enabled)
                 return
             if (!EasyEffects.active) {
@@ -357,7 +390,7 @@ Singleton {
         property bool startObserved: false
         property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
-            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; i=0; while [ \"$i\" -lt 10 ]; do value=\"$(printf 'get_property:output:equalizer:0:left:band%sGain\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; printf '%s=%s\\n' \"$i\" \"$value\"; i=$((i + 1)); done"]
+            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; count=\"$(printf 'get_property:output:equalizer:0:numBands\\n' | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; case \"$count\" in ''|*[!0-9]*) exit 66;; esac; [ \"$count\" -ge 1 ] && [ \"$count\" -le 32 ] || exit 66; printf 'count=%s\\n' \"$count\"; i=0; while [ \"$i\" -lt \"$count\" ]; do lg=\"$(printf 'get_property:output:equalizer:0:left:band%sGain\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; rg=\"$(printf 'get_property:output:equalizer:0:right:band%sGain\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; lf=\"$(printf 'get_property:output:equalizer:0:left:band%sFrequency\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; rf=\"$(printf 'get_property:output:equalizer:0:right:band%sFrequency\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; printf '%s=%s|%s|%s|%s\\n' \"$i\" \"$lg\" \"$rg\" \"$lf\" \"$rf\"; i=$((i + 1)); done"]
         stdout: StdioCollector { id: bandCollector }
         onRunningChanged: {
             if (running) {
@@ -377,7 +410,8 @@ Singleton {
                 return
             if (exitCode !== 0) {
                 root._markBandsUnsynced()
-                root.error = exitCode === 65 ? "backend-not-running" : "band-query-failed"
+                root.error = exitCode === 65 ? "backend-not-running"
+                    : (exitCode === 66 ? "malformed-band-response" : "band-query-failed")
                 return
             }
             if (!root.backendRunning) {
@@ -386,25 +420,58 @@ Singleton {
                 return
             }
 
-            const next = root._defaultBands(false)
-            const seenIndexes = []
-            let valid = 0
-            for (const line of (bandCollector.text ?? "").split("\n")) {
-                const match = line.trim().match(/^(\d+)=(.+)$/)
-                if (!match)
+            let count = -1
+            const rows = []
+            for (const rawLine of (bandCollector.text ?? "").split("\n")) {
+                const line = rawLine.trim()
+                if (line.startsWith("count=")) {
+                    const parsedCount = Number(line.slice(6))
+                    if (isFinite(parsedCount) && parsedCount >= 1 && parsedCount <= 32
+                            && Math.floor(parsedCount) === parsedCount)
+                        count = parsedCount
                     continue
-                const index = Number(match[1])
-                const gain = Number(match[2])
-                if (!isFinite(gain) || index < 0 || index >= next.length || seenIndexes.includes(index))
+                }
+                const separator = line.indexOf("=")
+                if (separator <= 0)
                     continue
-                seenIndexes.push(index)
-                next[index] = Object.assign({}, next[index], { gain: gain, synced: true })
-                valid++
+                const index = Number(line.slice(0, separator))
+                const values = line.slice(separator + 1).split("|")
+                if (values.length !== 4 || !isFinite(index) || Math.floor(index) !== index)
+                    continue
+                const leftGain = Number(values[0])
+                const rightGain = Number(values[1])
+                const leftFrequency = Number(values[2])
+                const rightFrequency = Number(values[3])
+                if (!isFinite(leftGain) || !isFinite(rightGain)
+                        || !isFinite(leftFrequency) || !isFinite(rightFrequency))
+                    continue
+                rows.push({
+                    index: index,
+                    frequency: leftFrequency,
+                    rightFrequency: rightFrequency,
+                    gain: leftGain,
+                    rightGain: rightGain,
+                    linked: Math.abs(leftGain - rightGain) < 0.001
+                        && Math.abs(leftFrequency - rightFrequency) < 0.001,
+                    synced: true
+                })
             }
-            root.bands = next
-            if (valid !== root._frequencies.length)
+
+            if (count < 1 || rows.length !== count) {
+                root._markBandsUnsynced()
                 root.error = "malformed-band-response"
-            else if (root.error === "band-query-failed" || root.error === "malformed-band-response")
+                return
+            }
+            rows.sort((a, b) => a.index - b.index)
+            for (let i = 0; i < rows.length; ++i) {
+                if (rows[i].index !== i) {
+                    root._markBandsUnsynced()
+                    root.error = "malformed-band-response"
+                    return
+                }
+            }
+            root.bands = rows
+            if (root.error === "band-query-failed" || root.error === "malformed-band-response")
                 root.error = ""
         }
     }
@@ -474,7 +541,12 @@ Singleton {
             }
             if (index >= 0 && index < root.bands.length) {
                 root.bands = root.bands.map((band, bandIndex) => bandIndex === index
-                    ? Object.assign({}, band, { gain: gain, synced: true }) : band)
+                    ? Object.assign({}, band, {
+                        gain: gain,
+                        rightGain: gain,
+                        linked: Math.abs((band.frequency ?? 0) - (band.rightFrequency ?? 0)) < 0.001,
+                        synced: true
+                    }) : band)
             }
             root.error = ""
         }
@@ -485,7 +557,7 @@ Singleton {
         property bool startObserved: false
         property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
-            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; i=0; while [ \"$i\" -lt 10 ]; do for side in left right; do printf 'set_property:output:equalizer:0:%s:band%sGain:0\\n' \"$side\" \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null || exit $?; done; i=$((i + 1)); done"]
+            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; count=\"$(printf 'get_property:output:equalizer:0:numBands\\n' | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; case \"$count\" in ''|*[!0-9]*) exit 66;; esac; [ \"$count\" -ge 1 ] && [ \"$count\" -le 32 ] || exit 66; i=0; while [ \"$i\" -lt \"$count\" ]; do for side in left right; do printf 'set_property:output:equalizer:0:%s:band%sGain:0\\n' \"$side\" \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null || exit $?; done; i=$((i + 1)); done"]
         onRunningChanged: {
             if (running) {
                 startObserved = false
@@ -500,15 +572,21 @@ Singleton {
             if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
-                root.error = exitCode === 65 ? "backend-not-running" : "reset-failed"
+                root.error = exitCode === 65 ? "backend-not-running"
+                    : (exitCode === 66 ? "malformed-band-response" : "reset-failed")
                 return
             }
             if (!root.backendRunning) {
                 root.error = "backend-not-running"
                 return
             }
-            root.bands = root._defaultBands(true)
+            root.bands = root.bands.map(band => Object.assign({}, band, {
+                gain: 0,
+                rightGain: 0,
+                synced: true
+            }))
             root.error = ""
+            backendRefreshTimer.restart()
         }
     }
 }

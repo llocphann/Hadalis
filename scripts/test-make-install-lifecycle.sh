@@ -8,7 +8,10 @@ stage="$(mktemp -d)"
 trap 'rm -rf -- "$stage"' EXIT
 
 source_fingerprint() {
-  git diff --no-ext-diff --binary -- scripts setup | sha256sum | awk '{print $1}'
+  {
+    git status --porcelain=v1 --untracked-files=all
+    git diff --no-ext-diff --binary -- .
+  } | sha256sum | awk '{print $1}'
 }
 
 source_before="$(source_fingerprint)"
@@ -34,8 +37,9 @@ make -s install "${make_args[@]}"
 
 source_after_install="$(source_fingerprint)"
 if [[ "$source_after_install" != "$source_before" ]]; then
-  printf 'FAIL: make install mutated tracked scripts/setup in the source checkout\n' >&2
-  git diff --summary -- scripts setup >&2 || true
+  printf 'FAIL: make install mutated the source checkout\n' >&2
+  git status --short --untracked-files=all >&2 || true
+  git diff --summary -- . >&2 || true
   exit 1
 fi
 
@@ -81,8 +85,9 @@ make -s uninstall "${make_args[@]}"
 
 source_after_uninstall="$(source_fingerprint)"
 if [[ "$source_after_uninstall" != "$source_before" ]]; then
-  printf 'FAIL: make uninstall mutated tracked scripts/setup in the source checkout\n' >&2
-  git diff --summary -- scripts setup >&2 || true
+  printf 'FAIL: make uninstall mutated the source checkout\n' >&2
+  git status --short --untracked-files=all >&2 || true
+  git diff --summary -- . >&2 || true
   exit 1
 fi
 

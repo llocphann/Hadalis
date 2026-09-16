@@ -19,6 +19,7 @@ Singleton {
     readonly property int systemPageIndex: 1
     readonly property int panelsPageIndex: 5
     property bool _legacyTlpPowerRedirectPending: false
+    property bool _legacyDockStyleMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
@@ -79,6 +80,15 @@ Singleton {
         root._legacyTlpPowerRedirectPending = true
     }
 
+    function _migrateLegacyDockStyle(): void {
+        if (root._legacyDockStyleMigrationDone || !Config.ready)
+            return
+
+        root._legacyDockStyleMigrationDone = true
+        if ((Config.options?.dock?.style ?? "panel") !== "panel")
+            Config.setNestedValue("dock.style", "panel")
+    }
+
     function consumeLegacyTlpPowerRedirect(): bool {
         if (!root._legacyTlpPowerRedirectPending)
             return false
@@ -116,13 +126,24 @@ Singleton {
             })
     }
 
-    Component.onCompleted: root._migrateLegacyPersistentPage()
+    Component.onCompleted: {
+        root._migrateLegacyPersistentPage()
+        root._migrateLegacyDockStyle()
+    }
 
     Connections {
         target: Persistent
         function onReadyChanged(): void {
             if (Persistent.ready)
                 root._migrateLegacyPersistentPage()
+        }
+    }
+
+    Connections {
+        target: Config
+        function onReadyChanged(): void {
+            if (Config.ready)
+                root._migrateLegacyDockStyle()
         }
     }
 }

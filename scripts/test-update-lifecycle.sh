@@ -110,6 +110,8 @@ dependency_meta_version="$(grep -m1 '^pkgver=' "$arch_dependency_meta" | cut -d=
     || fail "inir-deps pkgver=$dependency_meta_version does not match VERSION=$repo_version"
 grep -Fqx "url='https://github.com/llocphann/Hadalis'" "$arch_dependency_meta" \
     || fail 'inir-deps still advertises a non-Hadalis repository'
+grep -Fq 'inir-deps) continue ;;' "$arch_dependency_installer" \
+    || fail 'Arch installer can resolve aggregate tracker dependencies as an install group'
 grep -Fq '_meta_build_dir="$(mktemp -d)"' "$arch_dependency_installer" \
     || fail 'Arch installer does not stage the dependency meta-package build'
 grep -Fq 'cp -- "$_meta_dir/PKGBUILD" "$_meta_build_dir/PKGBUILD"' "$arch_dependency_installer" \

@@ -17,6 +17,8 @@ The flake does **not** run `./setup install` or `./setup update`. Nix owns the p
 
 The package and modules are ordinary expressions under `nix/`, so flakes are optional. Both flake and non-flake consumers use the same `package.nix`, NixOS module, and Home Manager module.
 
+The repository does not currently commit a `flake.lock`. A direct `nix build .#inir` or `nix flake check` from this checkout therefore resolves the `nixos-unstable` input at evaluation time rather than providing a repository-owned nixpkgs snapshot. Consumer configurations that add Hadalis as an input normally get reproducibility from their own committed lock file. For a standalone/release build that must be reproducible, pin or lock the outer Nix configuration instead of assuming this checkout has a fixed nixpkgs revision.
+
 The package also installs the iNiR Shell and iNiR Settings desktop entries plus the symbolic application icon under its Nix output. Their `Exec` commands point directly at the wrapped `$out/bin/inir` launcher, so application-menu launches receive the same runtime dependency and QML environment as terminal/service launches.
 
 The packaged README and the complete Markdown reference set from `docs/` are available under `$out/share/doc/inir/`. This keeps installation, configuration, module, troubleshooting, and maintainer references available even when the immutable package is used without a source checkout.
@@ -168,6 +170,8 @@ The current Nix package installs the shell runtime and launcher into the Nix sto
 As a result, do not assume battery charge-limit or ThinkFan privileged controls are available merely because the Nix package/module is enabled. Those integrations require separate system-level provisioning until Hadalis gains a Nix-native privileged-helper/polkit path.
 
 This limitation is specific to privileged system integration; the shell should continue to degrade gracefully when those helpers are unavailable.
+
+For ThinkFan-specific service/config prerequisites and helper behavior, see [ThinkFan Integration](THINKFAN.md).
 
 ## Updating
 

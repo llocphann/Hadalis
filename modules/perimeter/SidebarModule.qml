@@ -17,9 +17,6 @@ Item {
     readonly property string outputName: String(root.perimeterContext?.outputName ?? "")
     readonly property var targetScreen: Quickshell.screens.find(screen =>
         String(screen?.name ?? "") === root.outputName) ?? null
-    readonly property var roleConfig: root.featureRole
-        ? Config.options?.sidebar?.shellLayout?.feature
-        : Config.options?.sidebar?.shellLayout?.system
     readonly property bool compactSystem: root.systemRole
         && (Config.options?.sidebar?.layout ?? "default") === "compact"
 
@@ -32,7 +29,7 @@ Item {
     readonly property real availableHeight: Math.max(0,
         (root.targetScreen?.height ?? 0) - Appearance.sizes.hyprlandGapsOut * 2)
     readonly property real requestedWidth: root.bounded(
-        root.instanceConfig?.width ?? root.roleConfig?.width,
+        root.instanceConfig?.width,
         Appearance.sizes.sidebarWidth, 320,
         Math.max(320, (root.targetScreen?.width ?? 900)
             - Appearance.sizes.hyprlandGapsOut * 2))
@@ -41,11 +38,10 @@ Item {
     readonly property real preferredContentHeight:
         Number(contentLoader.item?.preferredContentHeight ?? -1)
     readonly property bool customHeightRequested:
-        String(root.instanceConfig?.sizeMode ?? root.roleConfig?.sizeMode ?? "fit") === "custom"
+        String(root.instanceConfig?.sizeMode ?? "fit") === "custom"
     readonly property real requestedHeight: root.customHeightRequested
         ? root.bounded(root.instanceConfig?.height
-            ?? root.instanceConfig?.customHeight
-            ?? root.roleConfig?.customHeight,
+            ?? root.instanceConfig?.customHeight,
             720, root.minimumContentHeight, root.availableHeight)
         : root.preferredContentHeight > 0
             ? root.preferredContentHeight : root.minimumContentHeight

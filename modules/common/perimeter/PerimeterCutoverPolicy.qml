@@ -121,11 +121,37 @@ QtObject {
         }
         return true
     }
+    readonly property bool runtimeHealthy: {
+        Config.revision
+        ModuleRegistry.moduleIds
+        PerimeterRuntimeHealth.failureKeys
+        // Preserve the more specific validation/source fallback reasons. Runtime
+        // health is meaningful only after the configured placement is resolvable.
+        if (!root.configurationValid || !root.sourcesReady)
+            return true
+        for (const screen of Quickshell.screens) {
+            const outputName = String(screen?.name ?? "")
+            for (const slotId of PerimeterTopology.slotIds) {
+                for (const instanceId of PerimeterConfig.slotInstanceIds(outputName, slotId)) {
+                    const instance = PerimeterConfig.instanceDescriptor(outputName, instanceId)
+                    const moduleId = String(instance?.moduleId ?? "")
+                    const registration = ModuleRegistry.resolve(moduleId)
+                    const source = String(registration?.source ?? "")
+                    if (PerimeterRuntimeHealth.hasMatchingFailure(
+                            outputName, String(instanceId ?? ""), moduleId,
+                            source, Config.revision))
+                        return false
+                }
+            }
+        }
+        return true
+    }
     readonly property bool enabled: root.requested
         && root.familyActive
         && root.compatibilityReady
         && root.configurationValid
         && root.sourcesReady
+        && root.runtimeHealthy
     readonly property bool fallbackActive: root.requested && !root.enabled
     readonly property string statusReason: {
         if (!root.requested)
@@ -142,6 +168,8 @@ QtObject {
             return "unsupported-runtime-policy"
         if (!root.sourcesReady)
             return "missing-module-source"
+        if (!root.runtimeHealthy)
+            return "module-load-failure"
         return "active"
     }
 }

@@ -135,6 +135,15 @@ for pkg in "$stable_pkg" "$git_pkg"; do
     || fail "$pkg no longer wires compositor startup to the package-owned unit"
   grep -Fq 'inir.service is owned by the pacman package' "$pkg" \
     || fail "$pkg can again uninstall package-owned service state through the launcher"
+  grep -Fq 'install_end = text.find(install_next_marker, install_start)' "$pkg" \
+    || fail "$pkg no longer replaces the complete install_user_service function"
+  grep -Fq 'text = text[:install_start] + install_guard + text[install_end:]' "$pkg" \
+    || fail "$pkg no longer slices out the legacy install_user_service body"
+  grep -Fq 'bash -n "$launcher" || return' "$pkg" \
+    || fail "$pkg no longer syntax-checks the transformed launcher"
+  if grep -Fq 'text = text.replace(install_marker, install_guard, 1)' "$pkg"; then
+    fail "$pkg again replaces only the install_user_service opening marker"
+  fi
 done
 
 # NixOS/Home Manager own inir.service declaratively. The Nix packaging patch

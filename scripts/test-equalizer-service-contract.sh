@@ -38,5 +38,41 @@ if probe.count(stale_branch) < 2:
 if "if (!root.enabled)\n                return" not in probe:
     raise SystemExit("FAIL: disabled Equalizer transport completion is not ignored")
 
-print("PASS: Equalizer transport lifecycle retries stale probes without running while disabled")
+apply_start = text.index("function applyPreset(")
+apply_end = text.index("function setBandGain(", apply_start)
+apply_block = text[apply_start:apply_end]
+
+for marker in [
+    "if (!root._canMutate())",
+    'preset.includes(":")',
+    r'preset.includes("\n")',
+    r'preset.includes("\r")',
+    '"sh", "load_preset:output:" + preset]',
+]:
+    if marker not in apply_block:
+        raise SystemExit(
+            f"FAIL: Equalizer preset protocol/input guard missing: {marker}"
+        )
+
+band_start = text.index("function setBandGain(")
+band_end = text.index("function reset(", band_start)
+band_block = text[band_start:band_end]
+
+for marker in [
+    "if (!root._canMutate())",
+    "Math.floor(bandIndex) !== bandIndex",
+    "!isFinite(requestedGain)",
+    "bandIndex < 0 || bandIndex >= root.bands.length",
+    "root.bands[bandIndex]?.synced !== true",
+    "Math.max(root.minimumBandGain, Math.min(root.maximumBandGain, requestedGain))",
+    '"sh", String(bandIndex), String(clampedGain)]',
+]:
+    if marker not in band_block:
+        raise SystemExit(
+            f"FAIL: Equalizer band protocol/input guard missing: {marker}"
+        )
+
+print(
+    "PASS: Equalizer lifecycle and protocol inputs remain gated, validated, and positional"
+)
 PY

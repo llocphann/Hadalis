@@ -369,7 +369,8 @@ Command palette / action registry. Search and execute shell actions from scripts
 
 | Function | Description |
 |----------|-------------|
-| `run <id> [args]` | Execute action by ID (e.g. `toggle-mute`, `install-package vim`) |
+| `run <id>` | Execute action by ID without arguments |
+| `runWithArgs <id> <args>` | Execute action by ID with an argument string |
 | `list [category]` | List all actions, optionally filtered by category |
 | `search <query>` | Fuzzy search actions by name/description/keywords |
 | `open` | Open the overview in action mode |
@@ -483,6 +484,8 @@ Display brightness control.
 |----------|-------------|
 | `increment` | Increase brightness |
 | `decrement` | Decrease brightness |
+| `sleepBegin` | Mark the brightness service asleep so screen changes do not rebuild monitor state |
+| `restoreAfterWake` | Resume the brightness service and restore each monitor's last-good brightness |
 
 ---
 

@@ -274,7 +274,7 @@ detect_distro(){
     echo ""
     echo -e "${STY_CYAN}For unsupported distributions:${STY_RST}"
     echo "  1. Run: ./setup install --skip-deps"
-    echo "  2. Install dependencies manually (see docs/MANUAL_INSTALL.md)"
+    echo "  2. Install dependencies manually (see docs/INSTALL.md, 'The Hard Way (Manual)')"
     echo ""
     
     # Allow continuing with generic installer

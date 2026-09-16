@@ -26,6 +26,19 @@ Singleton {
         checkTimer.start()
     }
 
+    function _ensureStorageDirectory(): void {
+        const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
+        if (parentDir.length === 0) {
+            root.saveToFile()
+            return
+        }
+        if (eventsInitDirProc.running)
+            return
+        eventsInitDirProc.command = ["/usr/bin/mkdir", "-p", parentDir]
+        eventsInitDirProc.attempted = true
+        eventsInitDirProc.running = true
+    }
+
     FileView {
         id: eventsFileView
         path: Qt.resolvedUrl(root.filePath)
@@ -62,16 +75,42 @@ Singleton {
         onLoadFailed: (error) => {
             if (error === FileViewError.FileNotFound) {
                 console.log("[Events] File not found, creating new file.")
-                const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
-                Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
                 root.list = []
                 root.nextId = 1
-                root.saveToFile()
+                root._ensureStorageDirectory()
             } else {
                 console.log("[Events] Error loading file:", error)
                 root.list = []
                 root.nextId = 1
             }
+        }
+    }
+
+    Process {
+        id: eventsInitDirProc
+        property bool attempted: false
+        property bool startObserved: false
+        running: false
+
+        onRunningChanged: {
+            if (eventsInitDirProc.running) {
+                eventsInitDirProc.startObserved = false
+                return
+            }
+            if (!eventsInitDirProc.attempted || eventsInitDirProc.startObserved)
+                return
+            eventsInitDirProc.attempted = false
+            console.warn("[Events] Failed to start storage directory creation")
+        }
+
+        onStarted: eventsInitDirProc.startObserved = true
+
+        onExited: (exitCode, exitStatus) => {
+            eventsInitDirProc.attempted = false
+            if (exitCode === 0)
+                root.saveToFile()
+            else
+                console.warn("[Events] Failed to create storage directory, exit code:", exitCode)
         }
     }
 

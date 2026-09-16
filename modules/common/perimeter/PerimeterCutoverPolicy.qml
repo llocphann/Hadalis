@@ -16,22 +16,66 @@ QtObject {
     readonly property bool familyActive:
         (Config.options?.panelFamily ?? "ii") !== "waffle"
 
+    function modulePlacedAnywhere(moduleId: string): bool {
+        const targetModule = String(moduleId ?? "")
+        if (!targetModule)
+            return false
+        for (const screen of Quickshell.screens) {
+            const outputName = String(screen?.name ?? "")
+            if (!outputName || !PerimeterConfig.validate(outputName))
+                continue
+            for (const slotId of PerimeterTopology.slotIds) {
+                for (const instanceId of PerimeterConfig.slotInstanceIds(outputName, slotId)) {
+                    const instance = PerimeterConfig.instanceDescriptor(outputName, instanceId)
+                    if (String(instance?.moduleId ?? "") === targetModule)
+                        return true
+                }
+            }
+        }
+        return false
+    }
+
+    function reservationKindPlacedAnywhere(reservationKind: string): bool {
+        const targetKind = String(reservationKind ?? "")
+        if (!targetKind)
+            return false
+        for (const screen of Quickshell.screens) {
+            const outputName = String(screen?.name ?? "")
+            if (!outputName || !PerimeterConfig.validate(outputName))
+                continue
+            for (const slotId of PerimeterTopology.slotIds) {
+                for (const instanceId of PerimeterConfig.slotInstanceIds(outputName, slotId)) {
+                    const instance = PerimeterConfig.instanceDescriptor(outputName, instanceId)
+                    const registration = ModuleRegistry.resolve(instance?.moduleId)
+                    if (String(registration?.reservationKind ?? "") === targetKind)
+                        return true
+                }
+            }
+        }
+        return false
+    }
+
     // Placement is perimeter-owned once the user opts in, but some legacy
-    // behavior policies still need dedicated adapters. Fail safe to legacy for
-    // unsupported modes only when the corresponding surface is actually owned;
-    // disabled chrome must not block an otherwise valid perimeter cutover.
+    // behavior policies still need dedicated adapters. `enabledPanels` decides
+    // whether a semantic surface is enabled; PerimeterConfig alone decides
+    // whether Connected Perimeter actually owns an instance on any output.
+    // Unsupported legacy behavior must not resurrect chrome that the perimeter
+    // layout intentionally left unplaced.
     readonly property bool compatibilityReady: {
         Config.revision
+        ModuleRegistry.moduleIds
         if (!Config.ready)
             return false
         const enabledPanels = Config.options?.enabledPanels ?? []
         const barIdentifier = (Config.options?.bar?.vertical ?? false)
             ? "iiVerticalBar" : "iiBar"
         const barOwned = enabledPanels.includes(barIdentifier)
+            && root.reservationKindPlacedAnywhere("bar")
         const barAutoHide = Config.options?.bar?.autoHide?.enable ?? false
         const barPolicySupported = !barOwned || !barAutoHide
 
         const dockOwned = enabledPanels.includes("iiDock")
+            && root.reservationKindPlacedAnywhere("dock")
         const dockEnabled = Config.options?.dock?.enable ?? true
         const dockPinned = Config.options?.dock?.pinnedOnStartup ?? true
         const dockHoverReveal = Config.options?.dock?.hoverToReveal ?? false
@@ -40,9 +84,12 @@ QtObject {
 
         // Legacy SidebarHost owns the edge-hover activation strip. Connected
         // Perimeter does not implement that interaction yet, so keep legacy
-        // ownership whenever an enabled sidebar depends on edge-open behavior.
-        const sidebarOwned = enabledPanels.includes("iiSidebarLeft")
-            || enabledPanels.includes("iiSidebarRight")
+        // ownership only when an enabled semantic sidebar is actually placed.
+        const leftSidebarOwned = enabledPanels.includes("iiSidebarLeft")
+            && root.modulePlacedAnywhere("left-sidebar")
+        const rightSidebarOwned = enabledPanels.includes("iiSidebarRight")
+            && root.modulePlacedAnywhere("right-sidebar")
+        const sidebarOwned = leftSidebarOwned || rightSidebarOwned
         const sidebarEdgeOpen = Config.options?.sidebar?.edgeOpen?.enable ?? false
         const sidebarPolicySupported = !sidebarOwned || !sidebarEdgeOpen
 

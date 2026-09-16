@@ -24,25 +24,38 @@ grep -Fq 'PerimeterConfig.instanceDescriptor(outputName, instanceId)' "$policy" 
 grep -Fq 'ModuleRegistry.resolve(instance?.moduleId)' "$policy" \
     || fail 'reservation compatibility ignores core module metadata'
 
-grep -Fq '&& root.reservationKindPlacedAnywhere("bar")' "$policy" \
-    || fail 'unplaced bar modules can still trigger compatibility fallback'
-grep -Fq '&& root.reservationKindPlacedAnywhere("dock")' "$policy" \
-    || fail 'unplaced dock can still trigger compatibility fallback'
-grep -Fq '&& root.modulePlacedAnywhere("left-sidebar")' "$policy" \
-    || fail 'unplaced left sidebar can still trigger compatibility fallback'
-grep -Fq '&& root.modulePlacedAnywhere("right-sidebar")' "$policy" \
-    || fail 'unplaced right sidebar can still trigger compatibility fallback'
-
-# enabledPanels remains the feature/presentation enable source. Placement must
-# refine that state rather than replace it, so disabled surfaces never block
-# cutover and enabled-but-unplaced surfaces never resurrect legacy chrome.
-grep -Fq 'const barOwned = enabledPanels.includes(barIdentifier)' "$policy" \
+# Assert each compatibility owner from its semantic inputs rather than the
+# exact choice of intermediate variable names. Equivalent refactors must stay
+# green as long as feature enablement is refined by effective placement.
+bar_ownership_block="$(sed -n '/enabledPanels.includes(barIdentifier)/,/const barAutoHide =/p' "$policy")"
+[[ -n "$bar_ownership_block" ]] || fail 'bar compatibility ownership block is missing'
+grep -Fq 'const barOwned =' <<<"$bar_ownership_block" \
+    || fail 'bar compatibility lost combined ownership state'
+grep -Fq 'enabledPanels.includes(barIdentifier)' <<<"$bar_ownership_block" \
     || fail 'bar compatibility lost feature-enable ownership'
-grep -Fq 'const dockOwned = enabledPanels.includes("iiDock")' "$policy" \
+grep -Fq 'root.reservationKindPlacedAnywhere("bar")' <<<"$bar_ownership_block" \
+    || fail 'unplaced bar modules can still trigger compatibility fallback'
+
+dock_ownership_block="$(sed -n '/enabledPanels.includes("iiDock")/,/const dockEnabled =/p' "$policy")"
+[[ -n "$dock_ownership_block" ]] || fail 'dock compatibility ownership block is missing'
+grep -Fq 'const dockOwned =' <<<"$dock_ownership_block" \
+    || fail 'dock compatibility lost combined ownership state'
+grep -Fq 'enabledPanels.includes("iiDock")' <<<"$dock_ownership_block" \
     || fail 'dock compatibility lost feature-enable ownership'
-grep -Fq 'const sidebarOwned = enabledPanels.includes("iiSidebarLeft")' "$policy" \
-    || fail 'sidebar compatibility lost feature-enable ownership'
-grep -Fq '|| enabledPanels.includes("iiSidebarRight")' "$policy" \
+grep -Fq 'root.reservationKindPlacedAnywhere("dock")' <<<"$dock_ownership_block" \
+    || fail 'unplaced dock can still trigger compatibility fallback'
+
+sidebar_ownership_block="$(sed -n '/enabledPanels.includes("iiSidebarLeft")/,/const sidebarEdgeOpen =/p' "$policy")"
+[[ -n "$sidebar_ownership_block" ]] || fail 'sidebar compatibility ownership block is missing'
+grep -Fq 'const sidebarOwned =' <<<"$sidebar_ownership_block" \
+    || fail 'sidebar compatibility lost combined ownership state'
+grep -Fq 'enabledPanels.includes("iiSidebarLeft")' <<<"$sidebar_ownership_block" \
+    || fail 'left sidebar compatibility lost feature-enable ownership'
+grep -Fq 'root.modulePlacedAnywhere("left-sidebar")' <<<"$sidebar_ownership_block" \
+    || fail 'unplaced left sidebar can still trigger compatibility fallback'
+grep -Fq 'enabledPanels.includes("iiSidebarRight")' <<<"$sidebar_ownership_block" \
     || fail 'right sidebar compatibility lost feature-enable ownership'
+grep -Fq 'root.modulePlacedAnywhere("right-sidebar")' <<<"$sidebar_ownership_block" \
+    || fail 'unplaced right sidebar can still trigger compatibility fallback'
 
 printf 'PASS: perimeter compatibility placement contracts\n'

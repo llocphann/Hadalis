@@ -1,0 +1,45 @@
+name: Documentation contracts
+
+on:
+  push:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - '*.qml'
+      - 'modules/**/*.qml'
+      - 'services/**/*.qml'
+      - 'translations/**'
+      - 'scripts/verify-docs.sh'
+      - 'scripts/lib/generate-ipc-registry.py'
+      - 'scripts/lib/ipc-registry.sh'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - '*.qml'
+      - 'modules/**/*.qml'
+      - 'services/**/*.qml'
+      - 'translations/**'
+      - 'scripts/verify-docs.sh'
+      - 'scripts/lib/generate-ipc-registry.py'
+      - 'scripts/lib/ipc-registry.sh'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate documentation contracts
+        run: bash scripts/verify-docs.sh

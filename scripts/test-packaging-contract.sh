@@ -32,9 +32,10 @@ nix_pkg="nix/package.nix"
 stable_hook="distro/arch/inir-shell/inir-shell.install"
 git_hook="distro/arch/inir-shell-git/inir-shell-git.install"
 release_script="scripts/release.sh"
+audio_doc="docs/AUDIO_MEDIA.md"
 uninstall_doc="docs/UNINSTALL.md"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$release_script" "$uninstall_doc"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$release_script" "$audio_doc" "$uninstall_doc"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -204,6 +205,16 @@ grep -Fq 'install|uninstall|remove|enable|disable)' "$nix_pkg" \
   || fail 'Nix service ownership guard no longer covers all mutating service commands'
 grep -Fqx '      ${materialSymbolsWrapperArg} \' "$nix_pkg" \
   || fail 'Nix optional font wrapper argument no longer preserves makeWrapper continuation when empty'
+
+# Audio/media docs must preserve the Phase 1 optional-backend boundary.
+grep -Fq 'The Equalizer Phase 1 capability is disabled by default and is separate from normal Media playback.' "$audio_doc" \
+  || fail 'audio/media docs no longer state that Equalizer Phase 1 is disabled by default'
+grep -Fq 'EasyEffects is its first optional backend, while `socat` is used only as an optional transport' "$audio_doc" \
+  || fail 'audio/media docs no longer distinguish the optional Equalizer backend and transport'
+grep -Fq 'If either the backend or transport is unavailable, the Equalizer capability remains unavailable and playback continues normally.' "$audio_doc" \
+  || fail 'audio/media docs no longer preserve graceful degradation without Equalizer backend tools'
+grep -Fq 'Package-managed installs therefore do not need to hard-depend on EasyEffects or `socat`' "$audio_doc" \
+  || fail 'audio/media docs no longer preserve the package optional-dependency contract'
 
 # Teardown docs must preserve the ownership boundary across all install modes.
 grep -Fq 'inir service disable' "$uninstall_doc" \

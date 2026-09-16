@@ -3,7 +3,8 @@
 > **Status:** implemented on `dev`, active integration/stabilization  
 > **Updated:** 2026-09-16  
 > **Cutover:** opt-in; not yet the fresh-install default  
-> **Release state:** not ready for `dev -> stable` until CI, documentation, packaging, and live acceptance gates are green
+> **Validation policy:** clean-clone local non-Nix validation is the primary maintainer gate during the current stabilization phase  
+> **Release state:** not ready for `dev -> stable` until local validation, documentation, Arch packaging/install, and live acceptance gates are green
 
 Hadalis is evolving from the older fixed panel composition into a **configurable per-output Connected Perimeter** while preserving the project’s existing services, compositor integration, routing, lifecycle, configuration, and Niri engineering.
 
@@ -295,7 +296,42 @@ The test suite covers areas including:
 - runtime/registry recovery,
 - QML startup/static validation.
 
-Perimeter contracts are also invoked from the full QML validation path used by CI.
+Perimeter contracts are invoked from the full QML validation path used by both local acceptance and hosted CI.
+
+---
+
+## Local validation policy and latest snapshot
+
+During the current stabilization phase, the maintainer release signal is a **clean clone of `dev` followed by local build/regression validation**. Hosted GitHub Actions are useful diagnostics, but they do not override a reproducible local result. Dedicated Nix validation is temporarily outside the maintainer acceptance gate because the active environment does not use Nix; this does **not** claim that Nix support is currently green.
+
+The latest completed clean-clone validation supplied by the maintainer was run against:
+
+```text
+724e06cb04b827aba89e242c029738b42334bc95
+```
+
+That snapshot passed:
+
+- `make build` and tracked Bash/Fish/Python/JavaScript/JSON syntax checks;
+- IPC registry generated-state and parser checks;
+- battery/TLP helper runtime tests except the stale Settings UI contract described below;
+- ThinkFan helper and lifecycle checks;
+- News service contract;
+- optional audio dependency and Equalizer boundary/service contracts;
+- every Connected Perimeter cutover, compatibility-placement, family, route, settings, source, and runtime-health contract;
+- full-tree QML project guards with no fatal issues;
+- staged full install/build and staged runtime sanity checks.
+
+The same snapshot reported eight top-level failures, which reduce to four independent issue groups:
+
+1. **Localization/catalog drift — real release work.** Translation audit, source parity, cleaner tests, and documentation verification are red. Most shipped locales are only a few keys behind, while `tr_TR` is substantially stale and also fails placeholder/protected-term checks. Source parity also reports a large live/catalog mismatch. Documentation verification is red primarily because it includes the failing runtime locale validation.
+2. **TLP Settings guard — stale test contract.** The test expects the old literal `category.pages.filter(index => index !== root.retiredTlpPageIndex)`, while the live registry now uses the broader `isHiddenLegacyIndex()` helper so all retired feature indexes remain filtered. The implementation preserves the intended behavior; the assertion needs to follow the current abstraction.
+3. **Make-install lifecycle fixture — test setup defect.** The test explicitly notes that package installation does not create managed TLP drop-ins, then writes synthetic drop-ins into the staged TLP directory without creating that directory first. The fixture needs to create its staging directory before writing those files.
+4. **Packaging aggregate contract — stale ordering assertion.** `make test-local` still includes optional-audio, Equalizer, News, and docs targets, but the packaging test searches for an older contiguous target sequence that no longer matches after `test-news-contract` was inserted.
+
+QML validation on that snapshot emitted 10 advisory warnings and skipped the parser pass because the detected `qmlformat 1.0` is below the project’s supported parser threshold. Project-specific startup/architecture guards still ran and passed, but a future acceptance run on a modern Qt/QML parser should also exercise the parser pass.
+
+`dev` continues to move after any local snapshot. A commit newer than the hash above must be rerun before being called locally validated.
 
 ---
 
@@ -320,7 +356,7 @@ Serpantinum is currently used only as an external interaction/design reference f
 - `EqualizerService.qml` provides the Phase 1 backend/service contract and is disabled by default.
 - EasyEffects is an optional backend, with optional transport support; absence of the backend/transport does not block normal Media playback.
 - the service boundary exposes capability/error/lifecycle state and preset/band mutation APIs without putting backend execution into Media presentation code;
-- architecture, lifecycle/protocol, packaging, Nix, and optional-dependency contracts guard this Phase 1 boundary.
+- architecture, lifecycle/protocol, packaging, and optional-dependency contracts guard this Phase 1 boundary. A Nix contract also exists in-tree but is temporarily outside the maintainer local acceptance gate.
 
 ### Stabilizing
 
@@ -356,11 +392,12 @@ The project has moved beyond architecture/prototype work. The remaining work is 
 - migrate remaining transient surfaces onto the shared anchor/routing/lifecycle model where appropriate;
 - finish feature parity needed before making Connected Perimeter the default;
 - continue multi-output, hotplug, resume, focus, fullscreen, fractional-scale, and reservation hardening;
-- stabilize CI, documentation, Nix, Arch packaging, install/uninstall, and release contracts;
+- make the clean-clone local non-Nix regression suite green, including localization/documentation, Arch packaging, install/uninstall, and release contracts;
+- keep hosted CI aligned with the local acceptance suite where useful, while treating Nix as temporarily non-blocking for the current maintainer environment;
 - complete product/namespace cutover with compatibility migration;
 - keep README and architecture/release documentation synchronized with live behavior;
 - run live acceptance on supported multi-monitor configurations;
-- freeze `dev` and merge to `stable` only after release gates are green.
+- freeze `dev` and merge to `stable` only after the active release gates are green.
 
 The Connected Perimeter should **not** be treated as release-complete merely because the core runtime exists.
 

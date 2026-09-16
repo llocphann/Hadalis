@@ -351,6 +351,8 @@ The same snapshot reported eight top-level failures, which reduce to four indepe
 3. **Make-install lifecycle fixture — test setup defect.** The test explicitly notes that package installation does not create managed TLP drop-ins, then writes synthetic drop-ins into the staged TLP directory without creating that directory first. The fixture needs to create its staging directory before writing those files.
 4. **Packaging aggregate contract — stale ordering assertion.** `make test-local` still includes optional-audio, Equalizer, News, and docs targets, but the packaging test searches for an older contiguous target sequence that no longer matches after `test-news-contract` was inserted.
 
+Several non-localization contract defects listed above have since been repaired on `dev`, but that does not retroactively change the result for `724e06cb04b827aba89e242c029738b42334bc95`. Current `dev` remains unvalidated until a maintainer clean-clone rerun records a newer exact SHA.
+
 QML validation on that snapshot emitted 10 advisory warnings and skipped the parser pass because the detected `qmlformat 1.0` is below the project’s supported parser threshold. Project-specific startup/architecture guards still ran and passed, but a future acceptance run on a modern Qt/QML parser should also exercise the parser pass.
 
 ### Current completion order
@@ -373,7 +375,7 @@ Nix remains a deferred compatibility lane, not a reason to block progress in the
 
 The conversion is being built on the cleaned Material ii / Classic baseline.
 
-Retired renderer/feature families removed from the live graph must not be reintroduced merely to satisfy old references. This includes the retired Bar M3, Pill, Orbit, Mascot, Workspace Strip, and related obsolete settings paths removed during the cleanup work.
+Retired renderer/feature families removed from the live graph must not be reintroduced merely to satisfy old references. This includes the retired Bar M3, historical Pill renderer/feature family, Orbit, Mascot, Workspace Strip, and related obsolete settings paths removed during the cleanup work. The current `modules/pill` directory is a live theme-only token module and is not a restoration of that retired Pill renderer family.
 
 Classic Bar remains part of the compatibility/fallback path while Connected Perimeter cutover is opt-in.
 

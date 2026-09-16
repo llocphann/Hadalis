@@ -73,12 +73,18 @@ install-license:
 
 install-battery-helper:
 	@install -Dm755 assets/helpers/inir-battery-charge-limit "$(DESTDIR)$(BATTERY_HELPER)"
-	@install -Dm644 assets/polkit/org.inir.battery-charge-limit.policy "$(DESTDIR)$(BATTERY_POLICY)"
+	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
+	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(BATTERY_HELPER)</annotate>|' \
+		assets/polkit/org.inir.battery-charge-limit.policy > "$(DESTDIR)$(BATTERY_POLICY)"
+	@chmod 644 "$(DESTDIR)$(BATTERY_POLICY)"
 	@install -Dm644 assets/tlp/tlp-settings-schema.json "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
 
 install-thinkfan-helper:
 	@install -Dm755 assets/helpers/inir-thinkfan "$(DESTDIR)$(THINKFAN_HELPER)"
-	@install -Dm644 assets/polkit/org.inir.thinkfan.policy "$(DESTDIR)$(THINKFAN_POLICY)"
+	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
+	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(THINKFAN_HELPER)</annotate>|' \
+		assets/polkit/org.inir.thinkfan.policy > "$(DESTDIR)$(THINKFAN_POLICY)"
+	@chmod 644 "$(DESTDIR)$(THINKFAN_POLICY)"
 
 install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper
 

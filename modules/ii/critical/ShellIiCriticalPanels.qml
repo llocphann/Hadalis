@@ -8,6 +8,7 @@ import qs.modules.dock
 import qs.modules.perimeter
 import qs.modules.verticalBar
 import qs.modules.common
+import qs.modules.common.perimeter
 
 Item {
     id: root
@@ -16,7 +17,7 @@ Item {
     // Cut over only when the user requested perimeter and every connected
     // output validates. Invalid/corrupt perimeter state therefore falls back to
     // the legacy chrome instead of leaving the shell without persistent UI.
-    readonly property bool perimeterEnabled: PerimeterRuntimePolicy.enabled
+    readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled
 
     component CriticalPanelLoader: LazyLoader {
         required property string identifier

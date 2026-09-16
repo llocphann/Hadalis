@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import qs
 import qs.modules.common
-import qs.modules.perimeter
+import qs.modules.common.perimeter
 import qs.modules.sidebar
 import qs.modules.sidebarLeft
 import QtQuick
@@ -11,7 +11,7 @@ import Quickshell
 Scope {
     id: root
 
-    readonly property bool perimeterEnabled: PerimeterRuntimePolicy.enabled
+    readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled
     readonly property var targetScreens: {
         const list = Config.options?.sidebar?.screenList ?? []
         const screens = Quickshell.screens

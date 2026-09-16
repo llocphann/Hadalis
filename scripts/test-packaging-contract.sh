@@ -120,6 +120,8 @@ for pkg in "$stable_pkg" "$git_pkg"; do
     || fail "$pkg no longer safely migrates identical legacy user units"
   grep -Fq 'custom user inir.service shadows the package unit' "$pkg" \
     || fail "$pkg no longer preserves custom user service overrides"
+  grep -Fq 'ln -sf "$package_unit" "$correct_link"' "$pkg" \
+    || fail "$pkg no longer retargets existing enabled wiring during legacy-unit migration"
   grep -Fq 'ln -sf "/usr/lib/systemd/user/inir.service"' "$pkg" \
     || fail "$pkg no longer wires compositor startup to the package-owned unit"
   grep -Fq 'inir.service is owned by the pacman package' "$pkg" \

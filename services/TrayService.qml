@@ -164,7 +164,7 @@ Singleton {
     property list<var> itemsInUserList: SystemTray.items.values.filter(i => (isValidItem(i) && _pinnedItems.includes(i.id)))
     property list<var> itemsNotInUserList: SystemTray.items.values.filter(i => (isValidItem(i) && !_pinnedItems.includes(i.id) && (!smartTray || i.status !== Status.Passive)))
 
-    property bool invertPins: Config.options?.tray?.invertPinnedItems ?? false
+    property bool invertPins: Config.options?.tray?.invertPinnedItems ?? true
     property list<var> pinnedItems: invertPins ? itemsNotInUserList : itemsInUserList
     property list<var> unpinnedItems: invertPins ? itemsInUserList : itemsNotInUserList
 

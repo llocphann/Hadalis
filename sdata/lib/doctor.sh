@@ -286,7 +286,7 @@ check_repo_checkout_state() {
 
     local branch tracked_branch update_rc=0
     branch="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
-    tracked_branch="$(get_update_tracking_branch 2>/dev/null || echo "main")"
+    tracked_branch="$(get_update_tracking_branch 2>/dev/null || echo "stable")"
 
     if [[ "$branch" == "HEAD" ]]; then
         doctor_fail "Repo checkout is detached HEAD"
@@ -319,7 +319,7 @@ check_repo_checkout_state() {
         doctor_pass "Repo remote check unavailable in this context"
     fi
 
-    if [[ "$branch" != "main" && "$branch" != "master" ]]; then
+    if [[ "$branch" != "stable" ]]; then
         tui_warn "Tracking non-release branch: ${branch}"
     fi
 }

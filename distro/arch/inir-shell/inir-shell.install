@@ -28,3 +28,14 @@ Recommended next steps:
   - Runtime migrations, when needed, are applied by Hadalis's packaged lifecycle.
 EOF
 }
+
+pre_remove() {
+  if [[ -x /usr/libexec/inir-battery-charge-limit ]]; then
+    /usr/libexec/inir-battery-charge-limit --config-reset >/dev/null 2>&1 || true
+    /usr/libexec/inir-battery-charge-limit --disable >/dev/null 2>&1 || true
+  fi
+
+  rm -f \
+    /etc/tlp.d/99-inir-battery-charge-limit.conf \
+    /etc/tlp.d/99-inir-tlp-settings.conf
+}

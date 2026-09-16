@@ -269,7 +269,22 @@ Singleton {
 
     // Force refresh a single source or all
     function refreshSource(sourceId: string): void {
-        Qt.callLater(() => root.fetchAll())
+        if (root.fetching)
+            return
+
+        const source = root.sources.find(s => s.id === sourceId && s.enabled
+            && s.url && s.url.trim() !== "")
+        if (!source)
+            return
+
+        root.fetching = true
+        root._pendingSources = [source]
+        root._fetchedEvents = root.events.filter(event => event.sourceId !== sourceId)
+        root._fetchHadError = false
+        root._fetchIndex = 0
+        root.fetchStarted()
+        _log("Fetching calendar source:", source.name)
+        root._fetchNext()
     }
 
     function forceRefreshAll(): void {

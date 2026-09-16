@@ -130,6 +130,7 @@ Item {
             RippleButton {
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
+                buttonText: Translation.tr("Back")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                     : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
@@ -178,6 +179,7 @@ Item {
             RippleButton {
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
+                buttonText: Translation.tr("Add event")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                     : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: ColorUtils.transparentize(root.colPrimary, 0.88)
@@ -301,6 +303,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 implicitWidth: addLabel.implicitWidth + 24
                 implicitHeight: 32
+                buttonText: Translation.tr("Add event")
                 buttonRadius: root.cardRadius
                 colBackground: ColorUtils.transparentize(root.colPrimary, 0.88)
                 colBackgroundHover: ColorUtils.transparentize(root.colPrimary, 0.80)

@@ -1,6 +1,6 @@
 pkgname=inir-meta
 pkgver=2.29.3
-pkgrel=3
+pkgrel=4
 pkgdesc='Full Hadalis desktop experience meta-package'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -18,7 +18,6 @@ depends=(
   cava
   darkly-bin
   ddcutil
-  easyeffects
   eza
   ffmpeg
   fontconfig
@@ -59,7 +58,6 @@ depends=(
   qt6ct
   ripgrep
   sddm
-  socat
   songrec
   starship
   swappy
@@ -86,7 +84,9 @@ depends=(
   yt-dlp
 )
 optdepends=(
+  'easyeffects: optional audio effects and equalizer backend'
   'millennium-bin: Steam theming via Millennium (requires steam)'
+  'socat: optional EasyEffects control transport for equalizer'
 )
 
 package() {

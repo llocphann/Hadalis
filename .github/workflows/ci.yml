@@ -42,7 +42,9 @@ jobs:
           bash -n scripts/ai/gemini-translate.sh
           sh -n assets/helpers/inir-thinkfan
           bash -n distro/arch/inir-shell/PKGBUILD
+          bash -n distro/arch/inir-shell/inir-shell.install
           bash -n distro/arch/inir-shell-git/PKGBUILD
+          bash -n distro/arch/inir-shell-git/inir-shell-git.install
           bash -n distro/arch/inir-meta/PKGBUILD
           bash -n translations/tools/manage-translations.sh
           node --check translations/tools/auto-translate.js
@@ -95,6 +97,8 @@ jobs:
           done
           grep -Fq 'github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz' distro/arch/inir-shell/PKGBUILD
           grep -Fq 'git+https://github.com/llocphann/Hadalis.git#branch=dev' distro/arch/inir-shell-git/PKGBUILD
+          grep -Fxq 'install=inir-shell.install' distro/arch/inir-shell/PKGBUILD
+          grep -Fxq 'install=inir-shell-git.install' distro/arch/inir-shell-git/PKGBUILD
 
           for info in distro/arch/inir-shell/.SRCINFO distro/arch/inir-shell-git/.SRCINFO distro/arch/inir-meta/.SRCINFO; do
             grep -Fq 'url = https://github.com/llocphann/Hadalis' "$info"
@@ -103,6 +107,8 @@ jobs:
               exit 1
             fi
           done
+          grep -Fq 'install = inir-shell.install' distro/arch/inir-shell/.SRCINFO
+          grep -Fq 'install = inir-shell-git.install' distro/arch/inir-shell-git/.SRCINFO
 
           for pkg in inir-shell inir-meta; do
             pkgbuild="distro/arch/$pkg/PKGBUILD"
@@ -117,13 +123,18 @@ jobs:
           grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell/.SRCINFO
           grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell-git/.SRCINFO
 
-          install_hook=distro/arch/inir-shell-git/inir-shell-git.install
-          grep -Fq 'The running QML shell currently stores user config in:' "$install_hook"
-          grep -Fq '~/.config/illogical-impulse/config.json' "$install_hook"
-          if grep -Fq 'Package-managed installs keep user config in:' "$install_hook"; then
-            echo 'Arch post-install guidance misstates the live QML config path' >&2
-            exit 1
-          fi
+          for install_hook in \
+            distro/arch/inir-shell/inir-shell.install \
+            distro/arch/inir-shell-git/inir-shell-git.install; do
+            grep -Fq 'inir service enable' "$install_hook"
+            grep -Fq 'inir service start' "$install_hook"
+            grep -Fq 'The running QML shell currently stores user config in:' "$install_hook"
+            grep -Fq '~/.config/illogical-impulse/config.json' "$install_hook"
+            if grep -Fq 'Package-managed installs keep user config in:' "$install_hook"; then
+              echo "$install_hook misstates the live QML config path" >&2
+              exit 1
+            fi
+          done
 
       - name: Validate release source identity
         run: |

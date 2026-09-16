@@ -97,6 +97,12 @@ Singleton {
         if (firstEvaluation) {
             firstEvaluation = false;
             root.ensureState();
+        } else if (root.automatic && root.manualActive === undefined
+                && root.active !== root.shouldBeOn) {
+            // State probes may reveal that a start/kill failed after the desired
+            // schedule value stopped changing. Reconcile on the next minute so
+            // automatic mode self-heals without creating a tight process loop.
+            root.ensureState();
         }
     }
 

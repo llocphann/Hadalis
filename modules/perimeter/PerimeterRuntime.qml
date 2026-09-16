@@ -151,6 +151,73 @@ Scope {
         }
     }
 
+    // Layer-shell exclusive zones require an unambiguous edge (1 or 3 anchors).
+    // Keep compositor work-area reservation in tiny click-through windows instead
+    // of applying it to the four-anchor fullscreen visual/input host.
+    component EdgeReservationWindow: PanelWindow {
+        required property ShellScreen modelData
+        required property string edge
+
+        readonly property string outputName: String(modelData?.name ?? "")
+        readonly property bool horizontal: edge === "top" || edge === "bottom"
+        readonly property int zone: PerimeterReservationPolicy.zoneForOutputEdge(
+            outputName, edge)
+        readonly property bool mapped: root.active
+            && root.featuresReady
+            && PerimeterCutoverPolicy.enabled
+            && Config.ready
+            && !GlobalStates.screenLocked
+            && !GlobalStates.widgetEditMode
+            && zone > 0
+
+        screen: modelData
+        visible: mapped
+        updatesEnabled: mapped
+        color: "transparent"
+        exclusiveZone: zone
+        implicitWidth: horizontal ? 0 : 1
+        implicitHeight: horizontal ? 1 : 0
+
+        WlrLayershell.namespace: "hadalis:perimeter-reserve-" + edge
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+        anchors {
+            top: edge === "top" || edge === "left" || edge === "right"
+            bottom: edge === "bottom" || edge === "left" || edge === "right"
+            left: edge === "left" || edge === "top" || edge === "bottom"
+            right: edge === "right" || edge === "top" || edge === "bottom"
+        }
+
+        Item {
+            id: emptyReservationInput
+            width: 0
+            height: 0
+            visible: false
+        }
+        mask: Region { item: emptyReservationInput }
+    }
+
+    Variants {
+        model: root.active && root.featuresReady ? Quickshell.screens : []
+        EdgeReservationWindow { edge: "top" }
+    }
+
+    Variants {
+        model: root.active && root.featuresReady ? Quickshell.screens : []
+        EdgeReservationWindow { edge: "bottom" }
+    }
+
+    Variants {
+        model: root.active && root.featuresReady ? Quickshell.screens : []
+        EdgeReservationWindow { edge: "left" }
+    }
+
+    Variants {
+        model: root.active && root.featuresReady ? Quickshell.screens : []
+        EdgeReservationWindow { edge: "right" }
+    }
+
     Variants {
         model: root.active && root.featuresReady ? Quickshell.screens : []
 

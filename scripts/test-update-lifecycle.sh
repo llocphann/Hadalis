@@ -17,8 +17,9 @@ robust="$repo_root/sdata/lib/robust-update.sh"
 snapshots="$repo_root/sdata/lib/snapshots.sh"
 payload_tool="$repo_root/sdata/lib/runtime-payload.py"
 updates_service="$repo_root/services/Updates.qml"
+nix_package="$repo_root/nix/package.nix"
 
-for required in "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service"; do
+for required in "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$nix_package"; do
     [[ -f "$required" ]] || fail "missing lifecycle file: ${required#$repo_root/}"
 done
 
@@ -46,6 +47,18 @@ grep -Fq 'sync_launcher_from_repo' "$setup_file" \
     || fail 'setup update does not preserve repo-link launcher topology'
 grep -Fq 'runtime-payload.py" sync-dir' "$setup_file" \
     || fail 'setup update does not use the canonical runtime payload policy'
+
+# Nix packages are immutable/package-managed. Their runtime metadata must make
+# setup/status defer payload updates to Nix, and packaged migrate must not copy
+# the raw launcher into ~/.local/bin where it would shadow the wrapped launcher.
+grep -Fq '"installMode": "package-managed"' "$nix_package" \
+    || fail 'Nix package does not emit package-managed runtime metadata'
+grep -Fq '"updateStrategy": "package-manager"' "$nix_package" \
+    || fail 'Nix package does not defer updates to the package manager'
+grep -Fq '"packageManager": "nix"' "$nix_package" \
+    || fail 'Nix package metadata does not identify Nix ownership'
+grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$nix_package" \
+    || fail 'Nix package can shadow its wrapped launcher during migrate'
 
 # Inspect the exact already-up-to-date and completion ordering rather than just
 # grepping for functions that may occur in unrelated commands.

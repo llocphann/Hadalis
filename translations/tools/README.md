@@ -19,6 +19,28 @@ python3 translations/tools/l10n.py apply /tmp/es_AR-review.json
 
 `audit-all` validates key parity, placeholder structure, and locale-guide coverage against `en_US.json`. See `translations/l10n/README.md` for the reviewed translation workflow.
 
+### `apply-reviewed-replacements.py` — exact provenance-backed locale repairs
+
+Use this when a small set of existing locale values has already been reviewed and the exact old/new values need to be applied without touching the rest of the catalog. The manifest records the locale plus an exact `from` and `to` value for each stable key.
+
+Validate a manifest against the current catalog before writing:
+
+```bash
+python3 translations/tools/apply-reviewed-replacements.py \
+  translations/l10n/tr_TR-placeholder-repairs.json --check
+```
+
+Apply the reviewed replacements after that check succeeds:
+
+```bash
+python3 translations/tools/apply-reviewed-replacements.py \
+  translations/l10n/tr_TR-placeholder-repairs.json
+```
+
+The command fails closed if the target locale has drifted from a reviewed `from` value, if a key is absent from the canonical or target catalog, or if a replacement changes the canonical placeholder/markup contract. By default it writes a `.bak` file before the atomic replacement; `--no-backup` is reserved for controlled environments where repository history is the recovery mechanism.
+
+A reviewed replacement manifest is not permission to prune unrelated historical translations or rewrite an entire locale. Keep repairs small, preserve all unrelated values, and rerun `l10n.py audit-all` after applying them.
+
 ### `translation-manager.py` — source extraction and catalog-wide missing-key updates
 
 The manager scans repository `*.qml` and `*.js` files for static `Translation.tr(...)` strings.

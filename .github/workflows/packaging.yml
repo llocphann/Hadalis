@@ -14,6 +14,8 @@ on:
       - 'scripts/colors/modules/31-zed.sh'
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
+      - 'scripts/test-battery-charge-limit-helper.sh'
+      - 'scripts/test-thinkfan-helper.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
       - 'scripts/test-equalizer-boundary-contract.sh'
       - 'scripts/test-equalizer-service-contract.sh'
@@ -59,6 +61,8 @@ on:
       - 'scripts/colors/modules/31-zed.sh'
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
+      - 'scripts/test-battery-charge-limit-helper.sh'
+      - 'scripts/test-thinkfan-helper.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
       - 'scripts/test-equalizer-boundary-contract.sh'
       - 'scripts/test-equalizer-service-contract.sh'
@@ -138,6 +142,13 @@ jobs:
         run: |
           bash -n scripts/test-make-install-lifecycle.sh
           bash scripts/test-make-install-lifecycle.sh
+
+      - name: Validate privileged helper contracts
+        run: |
+          sh -n scripts/test-battery-charge-limit-helper.sh
+          sh scripts/test-battery-charge-limit-helper.sh
+          bash -n scripts/test-thinkfan-helper.sh
+          bash scripts/test-thinkfan-helper.sh
 
       - name: Parse Arch recipes and lifecycle hooks
         run: |

@@ -115,6 +115,11 @@ Singleton {
             _installedProc.running = false
             return
         }
+        // Invalidate any visible completion from the previous query as soon as
+        // the user types, rather than waiting for the debounce timer to fire.
+        root._requestGeneration++
+        root._invalidatePendingRequests()
+        root.error = ""
         _debounceTimer.restart()
     }
 
@@ -201,7 +206,7 @@ Singleton {
         interval: root.debounceMs
         onTriggered: {
             if (root.query === "") return
-            const generation = ++root._requestGeneration
+            const generation = root._requestGeneration
             root._pendingInstalledQuery = ""
             root._pendingInstalledGeneration = 0
             root.searching = true

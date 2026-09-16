@@ -17,6 +17,24 @@ Item {
     signal editClicked(var event)
     
     implicitHeight: cardContent.implicitHeight + 16
+    activeFocusOnTab: !root.isExternal
+    Accessible.role: root.isExternal ? Accessible.StaticText : Accessible.Button
+    Accessible.name: root.event?.title ?? Translation.tr("Event")
+    Accessible.focusable: !root.isExternal
+    Accessible.onPressAction: {
+        if (!root.isExternal)
+            root.editClicked(root.event)
+    }
+
+    Keys.onPressed: event => {
+        if (root.isExternal || event.isAutoRepeat
+                || (event.key !== Qt.Key_Return
+                    && event.key !== Qt.Key_Enter
+                    && event.key !== Qt.Key_Space))
+            return
+        root.editClicked(root.event)
+        event.accepted = true
+    }
     
     // Style tokens
     readonly property color colPrimary: Appearance.angelEverywhere ? Appearance.angel.colPrimary
@@ -73,8 +91,9 @@ Item {
             if (Appearance.auroraEverywhere) return Appearance.aurora?.colSubSurface ?? Appearance.colors.colLayer2
             return Appearance.m3colors?.m3surfaceContainerHigh ?? Appearance.colors.colLayer2
         }
-        border.width: 1
-        border.color: Appearance.angelEverywhere ? Appearance.angel.colBorder
+        border.width: root.activeFocus && !root.isExternal ? 2 : 1
+        border.color: root.activeFocus && !root.isExternal ? root.colPrimary
+            : Appearance.angelEverywhere ? Appearance.angel.colBorder
             : Appearance.inirEverywhere ? Appearance.inir.colBorder
             : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.78)
             : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.72)
@@ -219,6 +238,7 @@ Item {
             RippleButton {
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
+                buttonText: Translation.tr("Remove")
                 buttonRadius: 16
                 visible: !root.isExternal
                 colBackground: "transparent"

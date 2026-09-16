@@ -95,7 +95,7 @@ test-package-metadata:
 		git_version="$$(grep -m1 '^pkgver=' distro/arch/inir-shell-git/PKGBUILD | cut -d= -f2-)"; \
 		case "$$git_version" in \
 			"$$repo_version".r*) ;; \
-			*) printf 'inir-shell-git pkgver seed %s does not follow VERSION %s\n' "$$git_version" >&2; exit 1 ;; \
+			*) printf 'inir-shell-git pkgver seed %s does not follow VERSION %s\n' "$$git_version" "$$repo_version" >&2; exit 1 ;; \
 		esac; \
 		srcinfo_version="$$(sed -n 's/^[[:space:]]*pkgver = //p' distro/arch/inir-shell-git/.SRCINFO | head -1)"; \
 		test "$$srcinfo_version" = "$$git_version"
@@ -157,7 +157,7 @@ install-icon:
 install-desktop:
 	@mkdir -p "$(DESTDIR)$(APPLICATIONS_DIR)"
 	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir|' assets/applications/inir.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop"
-	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir settings|' assets/applications/inir-settings.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
+	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir|' assets/applications/inir-settings.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
 	@chmod 644 "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop" "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
 	@if [ -z "$(DESTDIR)" ]; then update-desktop-database -q "$(APPLICATIONS_DIR)" 2>/dev/null || true; fi
 
@@ -203,7 +203,7 @@ uninstall-systemd:
 
 uninstall-icon:
 	@rm -f "$(DESTDIR)$(ICON_DIR)/inir.svg"
-	@if [ -z "$(DESTDIR)" ]; then gtk-update-icon-cache -q "$(SHAREDIR)/icons/hicolor" 2>/dev/null || true; fi
+	@if [ -z "$(DESTDIR)" ]; then gtk-update-icon-cache -q "$(SHAREDIR)$(ICON_DIR)" 2>/dev/null || true; fi
 
 uninstall-desktop:
 	@rm -f "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop" "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"

@@ -40,7 +40,7 @@ bash scripts/test-doctor-dependency-routing.sh
 bash scripts/test-equalizer-boundary-contract.sh
 bash scripts/test-equalizer-service-contract.sh
 bash scripts/test-optional-audio-deps-contract.sh
-sh scripts/test-battery-charge-limit-helper.sh
+bash scripts/test-battery-charge-limit-helper.sh
 bash scripts/test-thinkfan-helper.sh
 bash scripts/test-make-install-lifecycle.sh
 bash scripts/verify-docs.sh

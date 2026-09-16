@@ -88,7 +88,9 @@ WindowDialog {
             }
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                text: Translation.tr("No networks found")
+                text: Network.wifiEnabled
+                    ? Translation.tr("No networks found")
+                    : Translation.tr("Wi-Fi is off")
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colSubtext
             }

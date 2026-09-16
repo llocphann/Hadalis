@@ -12,6 +12,7 @@ import Quickshell.Io
 QuickToggleButton {
     id: root
 
+    accessibleName: Translation.tr("Hotspot")
     toggled: false
     buttonIcon: "wifi_tethering"
 

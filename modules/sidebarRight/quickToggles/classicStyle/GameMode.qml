@@ -5,6 +5,7 @@ import qs.services
 
 QuickToggleButton {
     id: root
+    accessibleName: Translation.tr("Game mode")
     buttonIcon: "gamepad"
     toggled: GameMode.active
 

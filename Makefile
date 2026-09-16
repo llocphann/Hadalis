@@ -162,7 +162,7 @@ install-thinkfan-helper:
 	@install -Dm755 assets/helpers/inir-thinkfan "$(DESTDIR)$(THINKFAN_HELPER)"
 	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
 	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(THINKFAN_HELPER)</annotate>|' \
-		assets/polkit/org.inir-thinkfan.policy > "$(DESTDIR)$(THINKFAN_POLICY)"
+		assets/polkit/org.inir.thinkfan.policy > "$(DESTDIR)$(THINKFAN_POLICY)"
 	@chmod 644 "$(DESTDIR)$(THINKFAN_POLICY)"
 
 install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper

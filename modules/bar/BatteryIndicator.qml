@@ -16,6 +16,11 @@ MouseArea {
 
     hoverEnabled: true
     acceptedButtons: Qt.NoButton
+    activeFocusOnTab: true
+
+    Accessible.role: Accessible.StaticText
+    Accessible.name: Translation.tr("Battery") + " " + Math.round(root.percentage * 100) + "%"
+    Accessible.focusable: true
 
     ClippedProgressBar {
         id: batteryProgress
@@ -63,8 +68,15 @@ MouseArea {
         }
     }
 
+    KeyboardFocusRing {
+        anchors.fill: batteryProgress
+        focusVisible: root.activeFocus
+        radius: batteryProgress.radius
+    }
+
     BatteryPopup {
         id: batteryPopup
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
     }
 }

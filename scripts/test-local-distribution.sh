@@ -192,21 +192,31 @@ if [[ -f "$runtime_root/Makefile" ]]; then
         privileged_stage="$(mktemp -d)"
         trap 'rm -rf -- "$privileged_stage"' EXIT
         make -s -C "$runtime_root" \
-            install-battery-helper install-thinkfan-helper \
+            install-shell install-battery-helper install-thinkfan-helper \
             DESTDIR="$privileged_stage" \
             LIBEXECDIR=/opt/inir/libexec \
             POLKIT_ACTIONS_DIR=/opt/inir/share/polkit-1/actions \
+            TLP_CONFDIR=/opt/inir/etc/tlp.d \
             INIR_SYSTEM_SHAREDIR=/opt/inir/share/inir
 
+        installed_runtime="$privileged_stage/usr/local/share/quickshell/inir"
         battery_helper="$privileged_stage/opt/inir/libexec/inir-battery-charge-limit"
         thinkfan_helper="$privileged_stage/opt/inir/libexec/inir-thinkfan"
         battery_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.battery-charge-limit.policy"
         thinkfan_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.thinkfan.policy"
         tlp_schema="$privileged_stage/opt/inir/share/inir/tlp-settings-schema.json"
+        tlp_service="$installed_runtime/services/TlpSettingsService.qml"
+        thinkfan_service="$installed_runtime/services/ThinkFanService.qml"
 
         [[ -x "$battery_helper" && -x "$thinkfan_helper" && -f "$tlp_schema" ]]
+        grep -Fq 'config_dir=/opt/inir/etc/tlp.d' "$battery_helper"
+        grep -Fq 'tlp_settings_schema=/opt/inir/share/inir/tlp-settings-schema.json' "$battery_helper"
         grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-battery-charge-limit</annotate>' "$battery_policy"
         grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-thinkfan</annotate>' "$thinkfan_policy"
+        grep -Fq 'readonly property string helperPath: "/opt/inir/libexec/inir-battery-charge-limit"' "$tlp_service"
+        grep -Fq '"/opt/inir/libexec/inir-thinkfan"' "$thinkfan_service"
+        ! grep -Fq '/usr/libexec/inir-battery-charge-limit' "$tlp_service"
+        ! grep -Fq '/usr/libexec/inir-thinkfan' "$thinkfan_service"
     )
 fi
 

@@ -247,7 +247,25 @@ Singleton {
 
     Process {
         id: xembedProxyCheckProc
+        property bool startObserved: false
         command: ["/usr/bin/pgrep", "-x", "xembedsniproxy"]
+
+        onRunningChanged: {
+            if (xembedProxyCheckProc.running) {
+                xembedProxyCheckProc.startObserved = false;
+                return;
+            }
+            if (xembedProxyCheckProc.startObserved)
+                return;
+
+            root._xembedProxyCheckedOnce = true;
+            root._log("[xembedsniproxy] pgrep could not start; attempting proxy launch")
+            xembedProxyStartProc.running = false;
+            xembedProxyStartProc.running = true;
+        }
+
+        onStarted: xembedProxyCheckProc.startObserved = true
+
         onExited: (exitCode, exitStatus) => {
             root._xembedProxyCheckedOnce = true;
             if (exitCode !== 0) {
@@ -259,6 +277,7 @@ Singleton {
 
     Process {
         id: xembedProxyStartProc
+        property bool startObserved: false
         stdout: SplitParser {
             onRead: (line) => root._log("[xembedsniproxy]", line)
         }
@@ -280,8 +299,25 @@ Singleton {
             "--setenv=QT_QPA_PLATFORM=xcb",
             "/usr/bin/xembedsniproxy"
         ]
+
+        onRunningChanged: {
+            if (xembedProxyStartProc.running) {
+                xembedProxyStartProc.startObserved = false;
+                return;
+            }
+            if (xembedProxyStartProc.startObserved)
+                return;
+
+            root._xembedProxyStartRequested = false;
+            root._log("[xembedsniproxy] systemd-run could not start")
+        }
+
+        onStarted: xembedProxyStartProc.startObserved = true
+
         onExited: (exitCode, exitStatus) => {
             root._log("[xembedsniproxy] exited", exitCode, exitStatus)
+            if (exitCode !== 0)
+                root._xembedProxyStartRequested = false;
         }
     }
 

@@ -88,7 +88,7 @@ services/                     # Runtime singletons (+ services/deferred/)
 scripts/                      # Shell/fish/python helpers
 sdata/                        # Install/update lifecycle and migrations
 defaults/                     # Shipped defaults
-translations/                 # i18n catalogs
+translations/                 # Canonical en_US shell UI catalog + validators
 assets/                       # Icons, wallpapers, systemd unit, desktop entry
 docs/                         # User documentation
 ```
@@ -129,7 +129,15 @@ Supported baseline behavior includes:
 - auto-hide, edge reveal, push-windows, and Super-key reveal (`bar.autoHide.showWhenPressingSuper`);
 - clock, module order, workspaces, tray, resources, media, notifications, and utility modules.
 
+Existing bar popups use `modules/bar/StyledPopup.qml`. That popup abstraction now composes the shared Connected Perimeter geometry/frame/mask primitives, so connected edge-attached presentation is the default popup path without a new user-facing toggle.
+
 Waffle remains a separate panel family with its own taskbar settings and is not a Classic Bar appearance.
+
+## Dock Baseline
+
+The ii Dock remains a separate application surface from Waffle's taskbar. **Panel** is the only supported user-facing Dock style. `modules/settings/DockConfig.qml` no longer exposes Pill/macOS/Island/M3 style choices, and `SettingsPageRegistry.qml` normalizes legacy persisted `dock.style` values to `panel` during startup.
+
+Waffle is a panel family, not a Dock style, and must not be folded into Dock style migration.
 
 ## Key Singletons
 
@@ -137,7 +145,7 @@ Waffle remains a separate panel family with its own taskbar settings and is not 
 |-----------|--------|
 | `Config` | Shell-wide config read/write |
 | `Appearance` | ii/shared visual tokens |
-| `Translation` | Shell-wide i18n lookup |
+| `Translation` | English-only shell UI lookup (`en_US`) |
 | `GlobalStates` | Panel visibility state |
 | `DevNavigation` | Development-only semantic navigation |
 | `Looks` | Waffle visual tokens |
@@ -158,6 +166,8 @@ These are stability boundaries: verify all dependents before reshaping them.
 ## Settings Compatibility
 
 Settings page indices can be persisted externally, so retired slots remain compatibility concerns even when their UI is gone. The registry keeps retired indices hidden and redirects legacy selections instead of exposing the old feature pages. Historical TLP page index **28** continues to redirect to **System**.
+
+The same registry owns startup compatibility normalization for retired Dock style values and legacy shell UI locale values. `dock.style` converges to `panel`; `language.ui` converges to canonical `en_US`.
 
 This compatibility layer must never revive Orbit, Mascot, Workspace Strip, or a retired Bar renderer.
 
@@ -234,7 +244,16 @@ Never run raw `qs kill -c inir` / `qs -c inir` by hand. iNiR runs under `inir.se
 
 ## Connected Perimeter Status
 
-The cleaned Classic-only shell remains the compatibility baseline. Current `dev` now contains the shared Connected Perimeter core under `modules/common/perimeter/`: topology/config, module registry/hosting, anchor publication/lookup, route coordination, and connected geometry/input primitives. Concrete module and transient-surface integration is incremental and should be assessed from the live implementation rather than assumed complete.
+Connected Perimeter has two distinct runtime roles that must not be conflated:
+
+- **Connected popup presentation is active by default** for existing bar popups through `StyledPopup.qml`. The shared `ConnectedSurfaceGeometry`, `ConnectedSurfaceFrame`, and `ConnectedSurfaceMask` path supports top/bottom/left/right attachment, edge-origin reveal, DPR-aware seam overlap, and click-through transparent regions without adding a second popup framework or an appearance toggle.
+- **Full `iiPerimeter` composition ownership remains guarded/opt-in** through `PerimeterCutoverPolicy.qml`. The configurable topology, registry/hosting, anchors, routing, reservations, and module adapters exist, but broad cutover must remain disabled whenever it would drop functionality that the legacy composition still provides.
+
+Detailed contracts and local visual acceptance steps live in `docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`.
+
+## Localization Contract
+
+Shell UI localization is English-only. `services/Translation.qml` exposes canonical `en_US`, loads `translations/en_US.json`, and does not scan or generate alternate locale catalogs. Legacy persisted `language.ui` values are normalized to `en_US` during startup. Locale/time formatting controls remain separate from shell UI language.
 
 ## Known Harmless Warnings
 

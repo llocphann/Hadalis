@@ -5,9 +5,7 @@ on:
     paths:
       - 'README.md'
       - 'docs/**'
-      - '*.qml'
-      - 'modules/**/*.qml'
-      - 'services/**/*.qml'
+      - '**/*.qml'
       - 'translations/**'
       - 'scripts/verify-docs.sh'
       - 'scripts/lib/generate-ipc-registry.py'
@@ -17,9 +15,7 @@ on:
     paths:
       - 'README.md'
       - 'docs/**'
-      - '*.qml'
-      - 'modules/**/*.qml'
-      - 'services/**/*.qml'
+      - '**/*.qml'
       - 'translations/**'
       - 'scripts/verify-docs.sh'
       - 'scripts/lib/generate-ipc-registry.py'

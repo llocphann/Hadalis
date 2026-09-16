@@ -7,6 +7,7 @@ repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
 migration="$repo_root/sdata/migrations/038-tlp-profile-backend.sh"
 pkgbuild="$repo_root/sdata/dist-arch/inir-deps/PKGBUILD"
 tlp_service="$repo_root/services/TlpService.qml"
+tlp_settings="$repo_root/services/TlpSettingsService.qml"
 power_persistence="$repo_root/services/PowerProfilePersistence.qml"
 
 tmp=$(mktemp -d)
@@ -70,6 +71,35 @@ assert_file_contains 'applyProcess.running = false' "$tlp_service" \
   'TLP battery policy apply timeout must stop the helper process'
 assert_file_contains 'root.busy = false' "$tlp_service" \
   'TLP battery policy apply exit must release the busy state'
+
+# The full TLP settings surface uses the same helper for status plus privileged
+# config mutations. Both paths must remain bounded, and a privileged spawn
+# failure must release busy state and notify the UI without discarding staged
+# edits.
+assert_file_contains 'statusTimeout.restart()' "$tlp_settings" \
+  'TLP settings status must arm its timeout'
+assert_file_contains 'id: statusTimeout' "$tlp_settings" \
+  'TLP settings status must define a timeout timer'
+assert_file_contains 'statusProcess.timedOut = true' "$tlp_settings" \
+  'TLP settings status timeout must mark the process as timed out'
+assert_file_contains 'statusProcess.running = false' "$tlp_settings" \
+  'TLP settings status timeout must stop the helper process'
+assert_file_contains 'root._clearStatus("status-timeout")' "$tlp_settings" \
+  'TLP settings status timeout must clear stale status'
+assert_file_contains 'mutationTimeout.restart()' "$tlp_settings" \
+  'TLP settings mutation must arm its timeout'
+assert_file_contains 'id: mutationTimeout' "$tlp_settings" \
+  'TLP settings mutation must define a timeout timer'
+assert_file_contains 'mutationProcess.timedOut = true' "$tlp_settings" \
+  'TLP settings mutation timeout must mark the process as timed out'
+assert_file_contains 'mutationProcess.running = false' "$tlp_settings" \
+  'TLP settings mutation timeout must stop the privileged helper'
+assert_file_contains 'const success = exitCode === 0 && !mutationProcess.timedOut' "$tlp_settings" \
+  'TLP settings timed-out mutation must not report success'
+assert_file_contains 'root.mutationFinished(kind, false)' "$tlp_settings" \
+  'TLP settings mutation startup failure must notify callers'
+assert_file_contains 'root.busy = false' "$tlp_settings" \
+  'TLP settings mutation terminal paths must release busy state'
 
 # Power profile restore must fail closed while tlp-pd ownership is unknown. A
 # Process startup failure must cancel the timeout without pretending the probe

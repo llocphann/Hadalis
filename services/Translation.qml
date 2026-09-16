@@ -4,224 +4,50 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.modules.common
 
 Singleton {
     id: root
 
+    readonly property var availableLanguages: ["en_US"]
+    readonly property var availableGeneratedLanguages: []
+    readonly property var allAvailableLanguages: ["en_US"]
+    readonly property string languageCode: "en_US"
+    readonly property bool isScanning: false
+    property bool isLoading: translationFileView.loadPending
+    readonly property string translationKeepSuffix: "/*keep*/"
     property var translations: ({})
-    property var generatedTranslations: ({})
-    property var availableLanguages: ["en_US"]
-    property var availableGeneratedLanguages: []
-    property var allAvailableLanguages: {
-        const combined = new Set([...root.availableLanguages, ...root.availableGeneratedLanguages]);
-        return Array.from(combined).sort();
-    }
-    property bool isScanning: scanLanguagesProcess.running || scanGeneratedLanguagesProcess.running
-    readonly property bool isLoading: translationFileView.loadPending || generatedTranslationFileView.loadPending
-    property string translationKeepSuffix: "/*keep*/"
-    property string translationsDir: Quickshell.shellPath("translations")
-    property string generatedTranslationsDir: Directories.shellConfig + "/translations"
-
-    property string languageCode: {
-        var configLang = Config.options?.language?.ui ?? "auto";
-
-        if (configLang !== "auto")
-            return configLang;
-
-        const systemLang = Qt.locale().name.replace("-", "_");
-        const knownLanguages = new Set([...root.availableLanguages, ...root.availableGeneratedLanguages]);
-        if (knownLanguages.has(systemLang))
-            return systemLang;
-
-        // Preserve compatibility with the shipped legacy Hebrew catalog name
-        // while preferring an exact user-generated/system locale when present.
-        const legacyAliases = { "he_IL": "he_HE" };
-        const legacyMatch = legacyAliases[systemLang] ?? "";
-        if (legacyMatch.length > 0 && knownLanguages.has(legacyMatch))
-            return legacyMatch;
-
-        return systemLang;
-    }
-
-    TranslationScanner {
-        id: scanLanguagesProcess
-        translationsDir: root.translationsDir
-        onLanguagesScanned: (languages) => {
-            root.availableLanguages = [...languages];
-        }
-    }
-
-    TranslationScanner {
-        id: scanGeneratedLanguagesProcess
-        translationsDir: root.generatedTranslationsDir
-        fallbackLanguages: []
-        onLanguagesScanned: (languages) => {
-            root.availableGeneratedLanguages = [...languages];
-        }
-    }
-
-    onLanguageCodeChanged: {
-        print("[Translation] Language changed to", root.languageCode);
-        root.translations = ({});
-        root.generatedTranslations = ({});
-        translationFileView.languageCode = root.languageCode;
-        generatedTranslationFileView.languageCode = root.languageCode;
-        if (!scanGeneratedLanguagesProcess.running)
-            scanGeneratedLanguagesProcess.running = true;
-        translationFileView.reread();
-        generatedTranslationFileView.reread();
-    }
-
-    onAvailableLanguagesChanged: {
-        translationFileView.reread();
-    }
-
-    onAvailableGeneratedLanguagesChanged: {
-        generatedTranslationFileView.reread();
-    }
-
-    TranslationReader {
-        id: translationFileView
-        translationsDir: root.translationsDir
-        languageCode: root.languageCode
-        onContentLoaded: (data) => {
-            root.translations = data;
-        }
-    }
-
-    TranslationReader {
-        id: generatedTranslationFileView
-        translationsDir: root.generatedTranslationsDir
-        languageCode: root.languageCode
-        isGenerated: true
-        onContentLoaded: (data) => {
-            root.generatedTranslations = data;
-        }
-    }
 
     function tr(text) {
-        // Special cases
-        if (!text) return "";
-        var key = text.toString();
-        if (root.isLoading || (!root?.translations?.hasOwnProperty(key) && !root?.generatedTranslations?.hasOwnProperty(key)))
-            return key;
-        
-        // User-generated locale files are explicit local overrides of the
-        // bundled catalog, including for locales that ship with the shell.
-        var translation = root.generatedTranslations[key] || root.translations[key] || key;
-        // print(key, "-> [", root.translations[key], root.generatedTranslations[key], key, "] ->", translation);
-        if (translation.endsWith(root.translationKeepSuffix)) {
+        if (!text)
+            return "";
+
+        const key = text.toString();
+        let translation = root.translations?.[key] ?? key;
+        if (translation.endsWith(root.translationKeepSuffix))
             translation = translation.substring(0, translation.length - root.translationKeepSuffix.length).trim();
-        }
         return translation;
     }
 
-    component TranslationScanner: Process {
-        id: translationScanner
-        required property string translationsDir
-        property var fallbackLanguages: ["en_US"]
-        property bool startObserved: false
-        signal languagesScanned(var languages)
-
-        command: ["/usr/bin/find", translationScanner.translationsDir, "-maxdepth", "1", "-type", "f", "-name", "*.json", "-exec", "/usr/bin/basename", "{}", ".json", ";"]
-        running: false
-
-        stdout: StdioCollector {
-            id: languagesCollector
-            onStreamFinished: {
-                const output = languagesCollector.text ?? "";
-                const files = output.trim().length > 0
-                    ? output.trim().split('\n').map(f => f.trim()).filter(f => f.length > 0)
-                    : [];
-                translationScanner.languagesScanned(files);
-            }
-        }
-
-        onRunningChanged: {
-            if (translationScanner.running) {
-                translationScanner.startObserved = false;
-                return;
-            }
-            if (translationScanner.startObserved)
-                return;
-
-            translationScanner.languagesScanned([...translationScanner.fallbackLanguages]);
-        }
-
-        onStarted: translationScanner.startObserved = true
-
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0) {
-                translationScanner.languagesScanned([...translationScanner.fallbackLanguages]);
-            }
-        }
-    }
-
-    Timer {
-        id: scanDefer
-        interval: 600
-        repeat: false
-        onTriggered: {
-            scanLanguagesProcess.running = true
-            scanGeneratedLanguagesProcess.running = true
-        }
-    }
-
-    Connections {
-        target: Config
-        function onReadyChanged() {
-            if (Config.ready) {
-                scanDefer.start()
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        if (Config.ready) {
-            scanDefer.start()
-        }
-    }
-
-    component TranslationReader: FileView {
-        id: translationReader
-        required property string translationsDir
-        property string languageCode: root.languageCode
-        property bool isGenerated: false
-        property bool loadPending: false
-        signal contentLoaded(var data)
+    FileView {
+        id: translationFileView
+        property bool loadPending: true
+        path: `${Quickshell.shellPath("translations")}/en_US.json`
         printErrors: false
 
-        function reread() { // Proper reload in case the file was incorrect before
-            translationReader.loadPending = true;
-            const langs = translationReader.isGenerated ? root.availableGeneratedLanguages : root.availableLanguages;
-            if (!(langs ?? []).includes(translationReader.languageCode)) {
-                translationReader.path = "";
-                translationReader.contentLoaded({});
-                translationReader.loadPending = false;
-                return;
-            }
-            translationReader.path = "";
-            translationReader.path = `${translationReader.translationsDir}/${translationReader.languageCode}.json`;
-            translationReader.reload();
-        }
-        path: ""
-
         onLoaded: {
-            var textContent = "";
             try {
-                textContent = text();
-                var jsonData = JSON.parse(textContent);
-                translationReader.contentLoaded(jsonData);
+                root.translations = JSON.parse(text());
             } catch (e) {
-                console.log("[Translation] Failed to load translations:", e);
-                translationReader.contentLoaded({});
+                console.warn("[Translation] Failed to load English catalog:", e);
+                root.translations = ({});
             }
-            translationReader.loadPending = false;
+            loadPending = false;
         }
+
         onLoadFailed: error => {
-            translationReader.contentLoaded({});
-            translationReader.loadPending = false;
+            console.warn("[Translation] English catalog unavailable; using source strings:", error);
+            root.translations = ({});
+            loadPending = false;
         }
     }
 }

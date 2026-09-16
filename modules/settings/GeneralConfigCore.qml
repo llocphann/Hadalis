@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Io
 import QtQuick.Layouts
 import qs.services
 import qs.modules.common
@@ -15,7 +14,7 @@ ContentPage {
     SettingsTaskNavigator {
         icon: "browse"
         title: Translation.tr("System")
-        description: Translation.tr("System settings are grouped by the thing you are trying to change, so audio controls do not compete with language, input or safety policy.")
+        description: Translation.tr("System settings are grouped by the thing you are trying to change, so audio controls do not compete with locale, input or safety policy.")
         summary: Translation.tr("Audio · power · locale · input · safety")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
@@ -26,12 +25,6 @@ ContentPage {
             { displayName: Translation.tr("Input"), icon: "keyboard", value: "input" },
             { displayName: Translation.tr("Safety"), icon: "lock", value: "safety" }
         ]
-    }
-
-    Process {
-        id: translationProc
-        property string locale: ""
-        command: [Directories.aiTranslationScriptPath, translationProc.locale]
     }
 
     SettingsCardSection {
@@ -178,69 +171,6 @@ ContentPage {
                     }
                     StyledToolTip {
                         text: Translation.tr("Notify when battery reaches this level while charging (101 = disabled)")
-                    }
-                }
-            }
-        }
-    }
-    
-    SettingsCardSection {
-        settingsTaskSection: "locale"
-        visible: root.activeSection === "locale"
-        expanded: true
-        icon: "language"
-        title: Translation.tr("Language")
-
-        SettingsGroup {
-            ContentSubsection {
-                title: Translation.tr("Interface Language")
-                tooltip: Translation.tr("Select the language for the user interface.\n\"Auto\" will use your system's locale.")
-
-                ConfigSelectionArray {
-                    id: languageSelector
-                    currentValue: Config.options?.language?.ui ?? "auto"
-                    onSelected: newValue => {
-                        Config.setNestedValue("language.ui", newValue);
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Auto (System)"),
-                            value: "auto"
-                        },
-                        ...Translation.allAvailableLanguages.map(lang => {
-                            return {
-                                displayName: lang,
-                                value: lang
-                            };
-                        })
-                    ]
-                }
-            }
-
-            SettingsDivider {}
-
-            ContentSubsection {
-                title: Translation.tr("Generate translation with Gemini")
-                tooltip: Translation.tr("Needs a Gemini API key — type /key in the sidebar.")
-                
-                ConfigRow {
-                    MaterialTextArea {
-                        id: localeInput
-                        Layout.fillWidth: true
-                        placeholderText: Translation.tr("Locale code, e.g. fr_FR, de_DE, zh_CN...")
-                        text: (Config.options?.language?.ui ?? "auto") === "auto" ? Qt.locale().name : (Config.options?.language?.ui ?? "auto")
-                    }
-                    RippleButtonWithIcon {
-                        id: generateTranslationBtn
-                        Layout.fillHeight: true
-                        nerdIcon: ""
-                        enabled: !translationProc.running || (translationProc.locale !== localeInput.text.trim())
-                        mainText: enabled ? Translation.tr("Generate\nTypically takes 2 minutes") : Translation.tr("Generating...\nDon't close this window!")
-                        onClicked: {
-                            translationProc.locale = localeInput.text.trim();
-                            translationProc.running = false;
-                            translationProc.running = true;
-                        }
                     }
                 }
             }

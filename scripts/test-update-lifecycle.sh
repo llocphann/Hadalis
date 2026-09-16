@@ -19,9 +19,18 @@ payload_tool="$repo_root/sdata/lib/runtime-payload.py"
 updates_service="$repo_root/services/Updates.qml"
 nix_package="$repo_root/nix/package.nix"
 arch_package="$repo_root/distro/arch/inir-shell/PKGBUILD"
+arch_package_srcinfo="$repo_root/distro/arch/inir-shell/.SRCINFO"
 arch_git_package="$repo_root/distro/arch/inir-shell-git/PKGBUILD"
+arch_git_srcinfo="$repo_root/distro/arch/inir-shell-git/.SRCINFO"
+arch_meta_package="$repo_root/distro/arch/inir-meta/PKGBUILD"
+arch_meta_srcinfo="$repo_root/distro/arch/inir-meta/.SRCINFO"
 
-for required in "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$nix_package" "$arch_package" "$arch_git_package"; do
+for required in \
+    "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" \
+    "$nix_package" \
+    "$arch_package" "$arch_package_srcinfo" \
+    "$arch_git_package" "$arch_git_srcinfo" \
+    "$arch_meta_package" "$arch_meta_srcinfo"; do
     [[ -f "$required" ]] || fail "missing lifecycle file: ${required#$repo_root/}"
 done
 
@@ -57,6 +66,26 @@ for package_recipe in "$arch_package" "$arch_git_package"; do
     grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$package_recipe" \
         || fail "Arch package can shadow its packaged launcher during migrate: ${package_recipe#$repo_root/}"
 done
+
+# Every committed Arch PKGBUILD must agree with its generated .SRCINFO on the
+# version tuple. A stale pkgrel/pkgver here makes AUR/package-manager metadata
+# disagree with the recipe that will actually be built.
+check_arch_srcinfo() {
+    local recipe="$1"
+    local srcinfo="$2"
+    local recipe_ver recipe_rel srcinfo_ver srcinfo_rel
+    recipe_ver="$(grep -m1 '^pkgver=' "$recipe" | cut -d= -f2-)"
+    recipe_rel="$(grep -m1 '^pkgrel=' "$recipe" | cut -d= -f2-)"
+    srcinfo_ver="$(sed -n 's/^[[:space:]]*pkgver = //p' "$srcinfo" | head -1)"
+    srcinfo_rel="$(sed -n 's/^[[:space:]]*pkgrel = //p' "$srcinfo" | head -1)"
+    [[ "$recipe_ver" == "$srcinfo_ver" ]] \
+        || fail "Arch pkgver drift: ${recipe#$repo_root/}=$recipe_ver, ${srcinfo#$repo_root/}=$srcinfo_ver"
+    [[ "$recipe_rel" == "$srcinfo_rel" ]] \
+        || fail "Arch pkgrel drift: ${recipe#$repo_root/}=$recipe_rel, ${srcinfo#$repo_root/}=$srcinfo_rel"
+}
+check_arch_srcinfo "$arch_package" "$arch_package_srcinfo"
+check_arch_srcinfo "$arch_git_package" "$arch_git_srcinfo"
+check_arch_srcinfo "$arch_meta_package" "$arch_meta_srcinfo"
 
 # Nix packages are immutable/package-managed. Their runtime metadata must make
 # setup/status defer payload updates to Nix, and packaged migrate must not copy

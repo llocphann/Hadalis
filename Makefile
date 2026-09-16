@@ -42,6 +42,7 @@ test-prefix-install:
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$stage/opt/inir/bin/inir"; \
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$runtime/scripts/inir"; \
 		grep -Fq 'RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/opt/inir/share/quickshell/inir}"' "$$runtime/sdata/lib/versioning.sh"; \
+		grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$$runtime/setup"; \
 		grep -Fq '"package_update_hint": "sudo make install PREFIX=\"/opt/inir\"' "$$runtime/version.json"; \
 		grep -Fxq 'Exec=/opt/inir/bin/inir service restart' "$$stage/opt/inir/share/applications/inir.desktop"; \
 		grep -Fxq 'Exec=/opt/inir/bin/inir settings' "$$stage/opt/inir/share/applications/inir-settings.desktop"
@@ -73,6 +74,7 @@ install-shell:
 	@sed -i \
 		's|^RUNTIME_DIR_SYSTEM_LOCAL=.*|RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-$(SHELL_INSTALL_DIR)}"|' \
 		"$(DESTDIR)$(SHELL_INSTALL_DIR)/sdata/lib/versioning.sh"
+	@python3 -c 'from pathlib import Path; p=Path("$(DESTDIR)$(SHELL_INSTALL_DIR)/setup"); t=p.read_text(); m="sync_launcher_from_repo() {\n"; assert t.count(m) == 1, "expected one sync_launcher_from_repo definition"; g=m+"    if [[ \"$$(get_installed_update_strategy 2>/dev/null || true)\" == \"package-manager\" ]]; then\n        return 0\n    fi\n"; p.write_text(t.replace(m, g, 1))'
 	@printf '{\n  "version": "%s",\n  "commit": "%s",\n  "installed_at": "%s",\n  "installedAt": "%s",\n  "source": "make-install",\n  "repo_path": "",\n  "repoPath": "",\n  "install_mode": "package-managed",\n  "installMode": "package-managed",\n  "update_strategy": "package-manager",\n  "updateStrategy": "package-manager",\n  "package_manager": "manual",\n  "packageManager": "manual",\n  "package_name": "source-install",\n  "packageName": "source-install",\n  "package_update_hint": "$(PACKAGE_UPDATE_HINT)",\n  "packageUpdateHint": "$(PACKAGE_UPDATE_HINT)"\n}\n' "$$(cat VERSION)" "$$(git rev-parse --short HEAD 2>/dev/null || printf manual)" "$$(date -Iseconds)" "$$(date -Iseconds)" > "$(DESTDIR)$(SHELL_INSTALL_DIR)/version.json"
 
 install-systemd:

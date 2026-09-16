@@ -13,7 +13,7 @@ Usage:
 
 Commands:
   notes    Extract the matching CHANGELOG section and append release footer links.
-  publish  Create the GitHub release for an existing local tag v<version> and sync the Wiki.
+  publish  Stage a draft GitHub release for an existing local tag v<version>, sync the Wiki, then publish it.
 
 EOF
 }
@@ -116,6 +116,41 @@ Full changelog: https://github.com/llocphann/Hadalis/blob/stable/CHANGELOG.md
 EOF
 }
 
+stage_release_draft() {
+  local tag="$1"
+  local notes_file="$2"
+  local release_state
+
+  release_state="$(gh release view "$tag" --repo "$github_repo" --json isDraft --jq '.isDraft' 2>/dev/null || true)"
+  case "$release_state" in
+    true)
+      # A prior attempt may have completed draft creation before Wiki sync or
+      # final publication failed. Reuse the draft so rerunning publish is safe.
+      gh release edit "$tag" \
+        --repo "$github_repo" \
+        --title "$tag" \
+        --notes-file "$notes_file"
+      ;;
+    false)
+      die "GitHub release $tag already exists and is published"
+      ;;
+    "")
+      gh release create "$tag" \
+        --repo "$github_repo" \
+        --verify-tag \
+        --draft \
+        --title "$tag" \
+        --notes-file "$notes_file"
+      ;;
+    *)
+      die "could not determine GitHub release state for $tag: $release_state"
+      ;;
+  esac
+
+  [[ "$(gh release view "$tag" --repo "$github_repo" --json isDraft --jq '.isDraft')" == "true" ]] \
+    || die "release staging for $tag did not leave a draft"
+}
+
 publish_release() {
   local version="$1"
   local tag="v$version"
@@ -129,9 +164,9 @@ publish_release() {
   trap 'rm -f -- "${notes_file:-}"' EXIT
   write_notes "$version" "$notes_file"
 
-  gh release view "$tag" --repo "$github_repo" >/dev/null 2>&1 && die "GitHub release $tag already exists"
+  stage_release_draft "$tag" "$notes_file"
   "$script_dir/wiki-sync.sh" publish "docs: sync wiki for $tag"
-  gh release create "$tag" --repo "$github_repo" --verify-tag --title "$tag" --notes-file "$notes_file"
+  gh release edit "$tag" --repo "$github_repo" --draft=false
   rm -f "$notes_file"
   trap - EXIT
 }

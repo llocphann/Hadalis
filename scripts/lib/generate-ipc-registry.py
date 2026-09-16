@@ -9,7 +9,6 @@ Usage:
     python3 scripts/lib/generate-ipc-registry.py --check    # check if output is stale
 """
 
-import hashlib
 import os
 import re
 import sys
@@ -440,22 +439,13 @@ def generate_bash(targets: list[IpcTarget], aliases: dict[str, str]) -> str:
     """Generate the bash registry file content."""
     lines: list[str] = []
 
-    # Compute source hashes for staleness check
-    qml_files = set()
-    for t in targets:
-        if t.qml_file:
-            qml_files.add(t.qml_file)
-    md_hash = ""
-    if IPC_MD.exists():
-        md_hash = hashlib.sha256(IPC_MD.read_bytes()).hexdigest()[:16]
-
     lines.append("#!/usr/bin/env bash")
     lines.append(
         "# Auto-generated from QML IpcHandler declarations + docs/IPC.md metadata."
     )
     lines.append("# Do not edit manually.")
-    lines.append(f"# Regenerate: python3 scripts/lib/generate-ipc-registry.py")
-    lines.append(f"# IPC.md hash: {md_hash}")
+    lines.append("# Regenerate: python3 scripts/lib/generate-ipc-registry.py")
+    lines.append("# IPC.md metadata: docs/IPC.md")
     lines.append(f"# Targets: {len(targets)}")
     lines.append("")
 

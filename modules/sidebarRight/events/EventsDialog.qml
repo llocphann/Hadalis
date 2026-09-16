@@ -52,7 +52,7 @@ WindowDialog {
     }
 
     function saveEvent(): bool {
-        if (root.eventTitle.trim() === "") return false
+        if (!Events.ready || root.eventTitle.trim() === "") return false
 
         const timeParts = root.eventTime.split(":")
         const hour = parseInt(timeParts[0]) || 0
@@ -62,7 +62,7 @@ WindowDialog {
         dateTime.setHours(hour, minute, 0, 0)
 
         if (root.isEditing) {
-            Events.updateEvent(root.editingEvent.id, {
+            return Events.updateEvent(root.editingEvent.id, {
                 title: root.eventTitle.trim(),
                 description: root.eventDescription.trim(),
                 dateTime: dateTime.toISOString(),
@@ -72,18 +72,17 @@ WindowDialog {
                 recurrence: root.recurrence,
                 notified: false
             })
-        } else {
-            Events.addEvent(
-                root.eventTitle.trim(),
-                root.eventDescription.trim(),
-                dateTime.toISOString(),
-                root.eventCategory,
-                root.eventPriority,
-                root.reminderMinutes,
-                root.recurrence
-            )
         }
-        return true
+
+        return Events.addEvent(
+            root.eventTitle.trim(),
+            root.eventDescription.trim(),
+            dateTime.toISOString(),
+            root.eventCategory,
+            root.eventPriority,
+            root.reminderMinutes,
+            root.recurrence
+        ) !== null
     }
 
     WindowDialogTitle {
@@ -299,11 +298,13 @@ WindowDialog {
     WindowDialogButtonRow {
         DialogButton {
             visible: root.isEditing
+            enabled: Events.ready
             buttonText: Translation.tr("Delete")
             onClicked: {
-                Events.removeEvent(root.editingEvent.id)
-                root.resetForm()
-                root.dismiss()
+                if (Events.removeEvent(root.editingEvent.id)) {
+                    root.resetForm()
+                    root.dismiss()
+                }
             }
         }
 
@@ -319,7 +320,7 @@ WindowDialog {
 
         DialogButton {
             buttonText: root.isEditing ? Translation.tr("Save") : Translation.tr("Add Event")
-            enabled: root.eventTitle.trim() !== ""
+            enabled: Events.ready && root.eventTitle.trim() !== ""
             onClicked: {
                 if (root.saveEvent()) {
                     root.resetForm()

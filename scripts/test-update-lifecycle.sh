@@ -25,13 +25,16 @@ arch_git_package="$repo_root/distro/arch/inir-shell-git/PKGBUILD"
 arch_git_srcinfo="$repo_root/distro/arch/inir-shell-git/.SRCINFO"
 arch_meta_package="$repo_root/distro/arch/inir-meta/PKGBUILD"
 arch_meta_srcinfo="$repo_root/distro/arch/inir-meta/.SRCINFO"
+arch_dependency_installer="$repo_root/sdata/dist-arch/install-deps.sh"
+arch_dependency_meta="$repo_root/sdata/dist-arch/inir-deps/PKGBUILD"
 
 for required in \
     "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$release_script" \
     "$nix_package" \
     "$arch_package" "$arch_package_srcinfo" \
     "$arch_git_package" "$arch_git_srcinfo" \
-    "$arch_meta_package" "$arch_meta_srcinfo"; do
+    "$arch_meta_package" "$arch_meta_srcinfo" \
+    "$arch_dependency_installer" "$arch_dependency_meta"; do
     [[ -f "$required" ]] || fail "missing lifecycle file: ${required#$repo_root/}"
 done
 
@@ -98,6 +101,26 @@ arch_srcinfo_source="$(sed -n 's/^[[:space:]]*source = //p' "$arch_package_srcin
     || fail 'Arch .SRCINFO source URL drifted from PKGBUILD _source_ref'
 [[ "${arch_srcinfo_source%%::*}" == *"-${arch_source_ref}.tar.gz" ]] \
     || fail 'Arch .SRCINFO archive filename drifted from PKGBUILD _source_ref'
+
+# The dependency tracker is built during setup. Version injection must happen in
+# a temporary staged recipe so installation cannot dirty a source checkout.
+repo_version="$(tr -d '[:space:]' < "$repo_root/VERSION")"
+dependency_meta_version="$(grep -m1 '^pkgver=' "$arch_dependency_meta" | cut -d= -f2-)"
+[[ "$dependency_meta_version" == "$repo_version" ]] \
+    || fail "inir-deps pkgver=$dependency_meta_version does not match VERSION=$repo_version"
+grep -Fqx "url='https://github.com/llocphann/Hadalis'" "$arch_dependency_meta" \
+    || fail 'inir-deps still advertises a non-Hadalis repository'
+grep -Fq '_meta_build_dir="$(mktemp -d)"' "$arch_dependency_installer" \
+    || fail 'Arch installer does not stage the dependency meta-package build'
+grep -Fq 'cp -- "$_meta_dir/PKGBUILD" "$_meta_build_dir/PKGBUILD"' "$arch_dependency_installer" \
+    || fail 'Arch installer does not copy the dependency meta recipe into staging'
+grep -Fq 'sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_build_dir/PKGBUILD"' "$arch_dependency_installer" \
+    || fail 'Arch installer does not patch the staged dependency meta recipe'
+grep -Fq 'rm -rf -- "$_meta_build_dir"' "$arch_dependency_installer" \
+    || fail 'Arch installer does not clean the dependency meta staging directory'
+if grep -Fq 'sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_dir/PKGBUILD"' "$arch_dependency_installer"; then
+    fail 'Arch installer still mutates the tracked dependency meta PKGBUILD'
+fi
 
 # Nix packages are immutable/package-managed. Their runtime metadata must make
 # setup/status defer payload updates to Nix, and packaged migrate must not copy

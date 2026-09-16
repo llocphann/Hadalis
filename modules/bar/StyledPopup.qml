@@ -11,6 +11,7 @@ LazyLoader {
 
     property Item hoverTarget
     property bool hoverActivates: true
+    property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
     property bool popupHovered: false
     default property Item contentItem
@@ -18,7 +19,9 @@ LazyLoader {
 
     signal requestClose()
 
-    active: root.hoverActivates && hoverTarget && (hoverTarget.containsMouse ?? hoverTarget.buttonHovered ?? false)
+    active: root.alternativeVisibleCondition
+        || (root.hoverActivates && hoverTarget
+            && (hoverTarget.containsMouse ?? hoverTarget.buttonHovered ?? false))
     onActiveChanged: {
         if (!root.active)
             root.popupHovered = false;

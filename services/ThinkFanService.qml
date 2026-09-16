@@ -79,8 +79,11 @@ Singleton {
             root.lastApplyError = "unsupported-profile"
             return false
         }
-        if (root.busy)
+        if (root.busy) {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "apply-busy"
             return false
+        }
         if (!root.serviceInstalled) {
             root.lastApplySucceeded = false
             root.lastApplyError = "service-unavailable"

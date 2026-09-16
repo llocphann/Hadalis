@@ -15,6 +15,8 @@ Singleton {
     property string filePath: Directories.eventsPath
     property var list: []
     property int nextId: 1
+    property bool _saving: false
+    property bool _saveQueued: false
     
     signal eventAdded(var event)
     signal eventRemoved(int id)
@@ -44,6 +46,15 @@ Singleton {
         path: Qt.resolvedUrl(root.filePath)
         watchChanges: true
         onLoaded: {
+            if (root._saving) {
+                root._saving = false
+                if (root._saveQueued) {
+                    root._saveQueued = false
+                    Qt.callLater(() => root.saveToFile())
+                }
+                return
+            }
+
             const fileContents = eventsFileView.text()
             if (!fileContents || fileContents.trim() === "") {
                 root.list = []
@@ -306,6 +317,11 @@ Singleton {
     }
 
     function saveToFile() {
+        if (root._saving) {
+            root._saveQueued = true
+            return
+        }
+        root._saving = true
         const data = {
             nextId: root.nextId,
             events: root.list

@@ -43,6 +43,26 @@ Item {
         return true
     }
 
+    function focusInitialControl(): bool {
+        let fallback = null
+        for (let i = 0; i < playerRepeater.count; i++) {
+            const delegate = playerRepeater.itemAt(i)
+            if (!delegate)
+                continue
+            if (!fallback)
+                fallback = delegate
+            if (delegate.isActive) {
+                delegate.focusPrimaryControl()
+                return true
+            }
+        }
+        if (fallback) {
+            fallback.focusPrimaryControl()
+            return true
+        }
+        return false
+    }
+
     onMeaningfulPlayersChanged: {
         const nextPlayers = root.meaningfulPlayers ?? []
         const count = nextPlayers.length
@@ -76,6 +96,7 @@ Item {
         spacing: 8
 
         Repeater {
+            id: playerRepeater
             model: ScriptModel {
                 values: root._visiblePlayers
             }
@@ -93,6 +114,10 @@ Item {
                     const artist = modelData?.trackArtist ?? ""
                     if (title.length > 0 && artist.length > 0) return `${title} — ${artist}`
                     return title || artist || modelData?.dbusName || Translation.tr("Unknown player")
+                }
+
+                function focusPrimaryControl(): void {
+                    playerControl.focusPrimaryControl()
                 }
                 
                 Rectangle {

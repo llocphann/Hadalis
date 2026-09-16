@@ -198,6 +198,8 @@ grep -Fq 'systemctl --user cat inir.service' "$nix_pkg" \
   || fail 'Nix package no longer validates the declarative inir.service before start/restart'
 grep -Fq 'install|uninstall|remove|enable|disable)' "$nix_pkg" \
   || fail 'Nix service ownership guard no longer covers all mutating service commands'
+grep -Fqx '      ${materialSymbolsWrapperArg} \' "$nix_pkg" \
+  || fail 'Nix optional font wrapper argument no longer preserves makeWrapper continuation when empty'
 
 # Teardown docs must preserve the ownership boundary across all install modes.
 grep -Fq 'inir service disable' "$uninstall_doc" \

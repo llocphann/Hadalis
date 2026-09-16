@@ -160,8 +160,13 @@ def main():
             parser.error('--target is required')
         if args.command == 'sync-dir' and args.subdir not in payload.dirs:
             parser.error('--subdir must name a runtime payload directory')
+        # A full installed payload is package/runtime-owned, so `copy` mirrors
+        # managed directories by default and cannot leave retired QML modules
+        # behind after an in-place reinstall. `sync-dir` remains opt-in because
+        # repo-managed update callers already choose the directories they own.
+        delete = args.delete or args.command == 'copy'
         payload.sync(args.target, subdir=args.subdir if args.command == 'sync-dir' else None,
-                     delete=args.delete, out_format=args.out_format)
+                     delete=delete, out_format=args.out_format)
     else:
         for name in sorted(set(payload.paths())):
             if args.command == 'list':

@@ -114,7 +114,7 @@ inir logs
 ```
 
 If everything went well, you should see:
-- Bar at the top (the thing with the clock)
+- Classic Bar on the configured edge (with the clock and system indicators)
 - Background/wallpaper (hopefully not a black screen)
 - `Mod+Tab` opens the Niri overview (native)
 - `Mod+Space` (`Super+Space`) toggles the ii overview

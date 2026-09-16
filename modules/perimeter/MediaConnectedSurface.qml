@@ -46,11 +46,11 @@ PanelWindow {
             return
         }
         Qt.callLater(() => {
-            if (!root.routeOwned)
-                return
-            mediaPopup.forceActiveFocus()
-            if (CompositorService.isNiri && root.active)
-                root._niriFocusSeen = true
+            if (root.routeOwned) {
+                mediaPopup.forceActiveFocus()
+                if (CompositorService.isNiri && root.active)
+                    root._niriFocusSeen = true
+            }
         })
     }
 

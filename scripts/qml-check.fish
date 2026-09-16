@@ -138,8 +138,7 @@ for file in $qml_files
     end
 end
 
-# Project-wide perimeter cutover invariants are architectural startup guards,
-# not per-file style checks. Run them only for the same full-tree mode used by CI.
+# Project-wide architectural startup guards run only in the full-tree CI mode.
 if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
     set -l perimeter_contract "$project_root/scripts/test-perimeter-contracts.sh"
     if not bash "$perimeter_contract"
@@ -168,6 +167,12 @@ if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
     set -l perimeter_source_contract "$project_root/scripts/test-perimeter-source-contracts.sh"
     if not bash "$perimeter_source_contract"
         echo "ERROR: Connected Perimeter source integrity contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l equalizer_boundary_contract "$project_root/scripts/test-equalizer-boundary-contract.sh"
+    if not bash "$equalizer_boundary_contract"
+        echo "ERROR: Equalizer architecture boundary contract failed" >&2
         set fatal_errors (math $fatal_errors + 1)
     end
 end

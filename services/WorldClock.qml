@@ -38,13 +38,22 @@ Singleton {
             }))
 
     readonly property var defaultTimezones: ["Australia/Sydney", "Asia/Tokyo", "Europe/London", "America/New_York"]
-    readonly property var timezones: Config.options?.background?.widgets?.worldClock?.timezones ?? root.defaultTimezones
+    readonly property var timezones: {
+        const configured = Config.options?.background?.widgets?.worldClock?.timezones
+        if (!Array.isArray(configured))
+            return root.defaultTimezones
+        return configured.map(tz => String(tz ?? "").trim())
+            .filter(tz => tz.length > 0)
+    }
 
     function setTimezone(index: int, tz: string): void {
         let updated = root.timezones.slice();
         if (index < 0 || index >= updated.length)
             return;
-        updated[index] = tz;
+        const normalized = String(tz ?? "").trim()
+        if (normalized.length === 0)
+            return;
+        updated[index] = normalized;
         Config.setNestedValue("background.widgets.worldClock.timezones", updated);
     }
 
@@ -76,6 +85,14 @@ Singleton {
         root._offsetIndex = 0;
         root._nextOffsets = [];
         root._runNextOffset();
+    }
+
+    function _completeOffset(offset: int): void {
+        const nextOffsets = root._nextOffsets.slice();
+        nextOffsets.push(offset);
+        root._nextOffsets = nextOffsets;
+        root._offsetIndex++;
+        Qt.callLater(root._runNextOffset);
     }
 
     function _runNextOffset(): void {
@@ -124,21 +141,29 @@ Singleton {
 
     Process {
         id: offsetProc
+        property bool startObserved: false
         stdout: StdioCollector {
             id: offsetCollector
             onStreamFinished: root._offsetText = offsetCollector.text.trim()
         }
+        onRunningChanged: {
+            if (offsetProc.running) {
+                offsetProc.startObserved = false;
+                return;
+            }
+            if (offsetProc.startObserved)
+                return;
+
+            root._completeOffset(0);
+        }
+        onStarted: offsetProc.startObserved = true
         onExited: {
             const match = root._offsetText.match(/^([+-])(\d{2})(\d{2})$/);
             const offset = match
                 ? (match[1] === "-" ? -1 : 1)
                     * (parseInt(match[2]) * 60 + parseInt(match[3]))
                 : 0;
-            const nextOffsets = root._nextOffsets.slice();
-            nextOffsets.push(offset);
-            root._nextOffsets = nextOffsets;
-            root._offsetIndex++;
-            Qt.callLater(root._runNextOffset);
+            root._completeOffset(offset);
         }
     }
 

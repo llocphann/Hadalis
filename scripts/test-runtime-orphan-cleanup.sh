@@ -28,19 +28,22 @@ fail() {
 runtime="$stage/runtime"
 manifest="$runtime/.inir-manifest"
 retired_module_dir="$runtime/modules/retired-orphan-fixture"
-mkdir -p "$retired_module_dir" "$runtime/scripts"
+live_pill_dir="$runtime/modules/pill"
+mkdir -p "$retired_module_dir" "$live_pill_dir" "$runtime/scripts"
 
 # Build the expected installed manifest from the same canonical payload policy
 # used by setup, then add files representing an older mixed runtime tree. Use a
-# deliberately nonexistent module name: modules/pill is a live theme-only module
-# and must not be treated as retired merely because the historical incident once
-# involved a dangling pill import.
+# deliberately nonexistent module name for the retired fixture: modules/pill is
+# a live theme-only module and must survive cleanup when its canonical files are
+# present in the installed tree.
 generate_manifest "$repo_root" "$manifest" \
     || fail 'could not generate runtime manifest fixture'
 printf '%s\n' 'import QtQuick' > "$runtime/RetiredRoot.qml"
 printf '%s\n' 'import QtQuick' > "$retired_module_dir/Stale.qml"
 printf '%s\n' '# retired source-only contract' > "$runtime/scripts/test-packaging-contract.sh"
 printf '%s\n' '# private excluded artifact' > "$runtime/scripts/test-local-private.sh"
+cp "$repo_root/modules/pill/PillTheme.qml" "$live_pill_dir/PillTheme.qml"
+cp "$repo_root/modules/pill/qmldir" "$live_pill_dir/qmldir"
 
 cleanup_orphans "$runtime" "$manifest" \
     || fail 'runtime orphan cleanup helper failed'
@@ -58,6 +61,10 @@ done
     || fail 'runtime orphan cleanup deleted an excluded private/test artifact'
 [[ ! -d "$retired_module_dir" ]] \
     || fail 'runtime orphan cleanup left the retired empty module directory'
+cmp -s "$repo_root/modules/pill/PillTheme.qml" "$live_pill_dir/PillTheme.qml" \
+    || fail 'runtime orphan cleanup changed or removed the live PillTheme module'
+cmp -s "$repo_root/modules/pill/qmldir" "$live_pill_dir/qmldir" \
+    || fail 'runtime orphan cleanup changed or removed the live pill qmldir'
 
 grep -Fq 'generate_manifest "$II_SOURCE" "${II_TARGET}/.inir-manifest"' "$repo_root/setup" \
     || fail 'setup update no longer generates the canonical installed manifest'
@@ -77,4 +84,4 @@ for package_recipe in \
 done
 
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - runtime cleanup removes retired managed/source-only files without deleting private excluded artifacts'
+printf '%s\n' 'ok 1 - runtime cleanup removes retired managed/source-only files without deleting live or private payloads'

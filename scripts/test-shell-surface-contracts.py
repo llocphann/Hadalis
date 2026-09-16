@@ -49,6 +49,10 @@ def main() -> None:
     check('Config.setNestedValue("language.ui", "en_US")' in settings_registry,
           "Legacy UI locales must normalize to canonical en_US")
 
+    shell = read("shell.qml")
+    check("DevNavigation.registerSettingsPages(SettingsPageRegistry.pages)" in shell,
+          "Shell startup must materialize SettingsPageRegistry so legacy config normalization runs without opening Settings")
+
     settings_sources = "\n".join(
         path.read_text(encoding="utf-8")
         for path in (ROOT / "modules/settings").glob("*.qml")

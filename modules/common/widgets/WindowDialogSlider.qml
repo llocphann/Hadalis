@@ -39,6 +39,7 @@ Column {
             leftMargin: 4
             rightMargin: 4
         }
+        Accessible.name: root.text
         configuration: StyledSlider.Configuration.S
         onMoved: root.moved()
     }

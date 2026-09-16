@@ -26,6 +26,10 @@ import re
 import sys
 
 optional = {"easyeffects", "socat"}
+optional_descriptions = {
+    "easyeffects": "optional audio effects and equalizer backend",
+    "socat": "optional EasyEffects control transport for equalizer",
+}
 
 
 def normalize_package(line: str) -> str:
@@ -69,6 +73,19 @@ def packages_in(path: Path, name: str) -> set[str]:
     return packages_in_pkgbuild(path, name)
 
 
+def require_optional_descriptions(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    for package, description in optional_descriptions.items():
+        if path.name == ".SRCINFO":
+            marker = f"optdepends = {package}: {description}"
+        else:
+            marker = f"'{package}: {description}'"
+        if marker not in text:
+            raise SystemExit(
+                f"FAIL: {path} does not describe {package} as the optional Equalizer backend/transport contract"
+            )
+
+
 for raw_path in sys.argv[1:]:
     path = Path(raw_path)
     hard = packages_in(path, "depends")
@@ -86,5 +103,7 @@ for raw_path in sys.argv[1:]:
             f"FAIL: {path} does not advertise optional Equalizer backend tools: {', '.join(missing)}"
         )
 
-print("PASS: Arch packaging keeps EasyEffects and socat optional")
+    require_optional_descriptions(path)
+
+print("PASS: Arch packaging keeps EasyEffects and socat optional with consistent Equalizer metadata")
 PY

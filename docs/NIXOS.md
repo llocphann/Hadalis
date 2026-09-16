@@ -17,6 +17,8 @@ The flake does **not** run `./setup install` or `./setup update`. Nix owns the p
 
 The package and modules are ordinary expressions under `nix/`, so flakes are optional. Both flake and non-flake consumers use the same `package.nix`, NixOS module, and Home Manager module.
 
+The package also installs the iNiR Shell and iNiR Settings desktop entries plus the symbolic application icon under its Nix output. Their `Exec` commands point directly at the wrapped `$out/bin/inir` launcher, so application-menu launches receive the same runtime dependency and QML environment as terminal/service launches.
+
 ## Without flakes
 
 Point a source variable at a Hadalis checkout or a source pinned with your preferred Nix fetcher:

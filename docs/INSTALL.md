@@ -125,6 +125,8 @@ inir migrate
 
 Migration 019 establishes `~/.config/inir` as the canonical config directory while keeping the live QML compatibility path `~/.config/illogical-impulse` linked to it. `sudo make install` deliberately does not mutate user home directories, so this per-user step is separate from the system payload installation.
 
+Migration 019 is intentionally fail-closed when the legacy path cannot be reconciled without risking user data. If both `~/.config/inir` and `~/.config/illogical-impulse` are real directories, or if the legacy path is an unexpected file or points somewhere else, the migration stops and preserves both states unchanged. Reconcile the paths manually, keep any data you still need, then rerun `inir migrate`.
+
 Then create and enable the manual-install user service state:
 
 ```bash

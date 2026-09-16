@@ -27,14 +27,18 @@ fail() {
 
 runtime="$stage/runtime"
 manifest="$runtime/.inir-manifest"
-mkdir -p "$runtime/modules/pill" "$runtime/scripts"
+retired_module_dir="$runtime/modules/retired-orphan-fixture"
+mkdir -p "$retired_module_dir" "$runtime/scripts"
 
 # Build the expected installed manifest from the same canonical payload policy
-# used by setup, then add files representing an older mixed runtime tree.
+# used by setup, then add files representing an older mixed runtime tree. Use a
+# deliberately nonexistent module name: modules/pill is a live theme-only module
+# and must not be treated as retired merely because the historical incident once
+# involved a dangling pill import.
 generate_manifest "$repo_root" "$manifest" \
     || fail 'could not generate runtime manifest fixture'
 printf '%s\n' 'import QtQuick' > "$runtime/RetiredRoot.qml"
-printf '%s\n' 'import QtQuick' > "$runtime/modules/pill/Stale.qml"
+printf '%s\n' 'import QtQuick' > "$retired_module_dir/Stale.qml"
 printf '%s\n' '# retired source-only contract' > "$runtime/scripts/test-packaging-contract.sh"
 printf '%s\n' '# private excluded artifact' > "$runtime/scripts/test-local-private.sh"
 
@@ -43,7 +47,7 @@ cleanup_orphans "$runtime" "$manifest" \
 
 for stale_path in \
     "$runtime/RetiredRoot.qml" \
-    "$runtime/modules/pill/Stale.qml" \
+    "$retired_module_dir/Stale.qml" \
     "$runtime/scripts/test-packaging-contract.sh"; do
     if [[ -e "$stale_path" || -L "$stale_path" ]]; then
         fail "runtime orphan cleanup preserved stale managed path: ${stale_path#$runtime/}"
@@ -52,7 +56,7 @@ done
 
 [[ -f "$runtime/scripts/test-local-private.sh" ]] \
     || fail 'runtime orphan cleanup deleted an excluded private/test artifact'
-[[ ! -d "$runtime/modules/pill" ]] \
+[[ ! -d "$retired_module_dir" ]] \
     || fail 'runtime orphan cleanup left the retired empty module directory'
 
 grep -Fq 'generate_manifest "$II_SOURCE" "${II_TARGET}/.inir-manifest"' "$repo_root/setup" \

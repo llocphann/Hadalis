@@ -89,13 +89,10 @@ def load_manifest(path: Path) -> tuple[str, dict[str, dict[str, str]]]:
     return locale, normalized
 
 
-def apply_manifest(
+def _inspect_manifest(
     manifest_path: Path,
     translations_dir: Path = TRANSLATIONS,
-    *,
-    backup: bool = True,
-    check_only: bool = False,
-) -> int:
+) -> tuple[str, dict[str, dict[str, str]], Path, dict[str, str], str]:
     locale, replacements = load_manifest(manifest_path)
     source_path = translations_dir / "en_US.json"
     target_path = translations_dir / f"{locale}.json"
@@ -110,20 +107,58 @@ def apply_manifest(
         raise ValueError("catalogs must be JSON objects")
 
     l10n = _load_l10n()
+    states: set[str] = set()
     for key, replacement in replacements.items():
         if key not in source:
             raise ValueError(f"reviewed replacement key absent from en_US: {key!r}")
         if key not in target:
             raise ValueError(f"reviewed replacement key absent from {locale}: {key!r}")
-        if target[key] != replacement["from"]:
-            raise ValueError(
-                f"{locale} drifted for {key!r}; expected reviewed old value "
-                f"{replacement['from']!r}, found {target[key]!r}"
-            )
         if not l10n.placeholders_match(source[key], replacement["to"]):
             raise ValueError(
                 f"reviewed replacement violates placeholder/markup contract for {key!r}"
             )
+
+        current = target[key]
+        if current == replacement["from"]:
+            states.add("pending")
+        elif current == replacement["to"]:
+            states.add("applied")
+        else:
+            raise ValueError(
+                f"{locale} drifted for {key!r}; expected reviewed from/to values "
+                f"{replacement['from']!r} or {replacement['to']!r}, found {current!r}"
+            )
+
+    if len(states) != 1:
+        raise ValueError(
+            f"{locale} reviewed replacement manifest is partially applied: {sorted(states)}"
+        )
+
+    return locale, replacements, target_path, target, states.pop()
+
+
+def reviewed_manifest_state(
+    manifest_path: Path,
+    translations_dir: Path = TRANSLATIONS,
+) -> tuple[str, str, int]:
+    locale, replacements, _target_path, _target, state = _inspect_manifest(
+        manifest_path, translations_dir
+    )
+    return locale, state, len(replacements)
+
+
+def apply_manifest(
+    manifest_path: Path,
+    translations_dir: Path = TRANSLATIONS,
+    *,
+    backup: bool = True,
+    check_only: bool = False,
+) -> int:
+    locale, replacements, target_path, target, state = _inspect_manifest(
+        manifest_path, translations_dir
+    )
+    if state != "pending":
+        raise ValueError(f"{locale}: reviewed replacements are already applied")
 
     if check_only:
         print(f"ok - {locale}: {len(replacements)} reviewed replacements are applicable")
@@ -151,9 +186,16 @@ def main() -> int:
         default=TRANSLATIONS,
         help="catalog directory (default: repository translations/)",
     )
-    parser.add_argument("--check", action="store_true", help="validate without writing")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help="validate pending replacements without writing")
+    mode.add_argument("--status", action="store_true", help="report pending/applied state without writing")
     parser.add_argument("--no-backup", action="store_true", help="do not create .bak")
     args = parser.parse_args()
+
+    if args.status:
+        locale, state, count = reviewed_manifest_state(args.manifest, args.translations_dir)
+        print(f"{locale}: {state} ({count} reviewed replacements)")
+        return 0
 
     apply_manifest(
         args.manifest,

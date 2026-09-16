@@ -80,6 +80,8 @@ def test_exact_reviewed_replacement(module) -> None:
             replacement_value=new,
         )
 
+        locale, state, count = module.reviewed_manifest_state(manifest, translations)
+        assert (locale, state, count) == ("tr_TR", "pending", 1)
         assert module.apply_manifest(
             manifest,
             translations,
@@ -97,6 +99,8 @@ def test_exact_reviewed_replacement(module) -> None:
         assert updated["Usage: install-package <package-name>"] == new
         assert updated["Unrelated"] == "İlgisiz"
         assert not (translations / "tr_TR.json.bak").exists()
+        locale, state, count = module.reviewed_manifest_state(manifest, translations)
+        assert (locale, state, count) == ("tr_TR", "applied", 1)
 
 
 def test_catalog_drift_is_rejected(module) -> None:
@@ -115,12 +119,7 @@ def test_catalog_drift_is_rejected(module) -> None:
         write_json(target, data)
 
         try:
-            module.apply_manifest(
-                manifest,
-                translations,
-                backup=False,
-                check_only=True,
-            )
+            module.reviewed_manifest_state(manifest, translations)
         except ValueError as exc:
             assert "drifted" in str(exc)
         else:
@@ -139,47 +138,64 @@ def test_placeholder_contract_is_rejected(module) -> None:
         )
 
         try:
-            module.apply_manifest(
-                manifest,
-                translations,
-                backup=False,
-                check_only=True,
-            )
+            module.reviewed_manifest_state(manifest, translations)
         except ValueError as exc:
             assert "placeholder/markup contract" in str(exc)
         else:
             raise AssertionError("reviewed replacement accepted a missing placeholder")
 
 
+def test_partial_application_is_rejected(module) -> None:
+    first_key = "Usage: install-package <package-name>"
+    second_key = "Usage: remove-package <package-name>"
+    with tempfile.TemporaryDirectory() as tmp_name:
+        root = Path(tmp_name)
+        translations = root / "translations"
+        translations.mkdir()
+        write_json(
+            translations / "en_US.json",
+            {first_key: first_key, second_key: second_key},
+        )
+        write_json(
+            translations / "tr_TR.json",
+            {
+                first_key: "Kullanım: install-package <package-name>",
+                second_key: "Kullanım: remove-package <paket-adı>",
+            },
+        )
+        manifest = root / "reviewed.json"
+        write_json(
+            manifest,
+            {
+                "locale": "tr_TR",
+                "replacements": {
+                    first_key: {
+                        "from": "Kullanım: install-package <paket-adı>",
+                        "to": "Kullanım: install-package <package-name>",
+                    },
+                    second_key: {
+                        "from": "Kullanım: remove-package <paket-adı>",
+                        "to": "Kullanım: remove-package <package-name>",
+                    },
+                },
+            },
+        )
+
+        try:
+            module.reviewed_manifest_state(manifest, translations)
+        except ValueError as exc:
+            assert "partially applied" in str(exc)
+        else:
+            raise AssertionError("reviewed replacement accepted a partially applied manifest")
+
+
 def test_live_reviewed_manifest_state(module) -> None:
     translations = TOOLS.parent
     manifest_path = translations / "l10n" / "tr_TR-placeholder-repairs.json"
-    locale, replacements = module.load_manifest(manifest_path)
-    source = json.loads((translations / "en_US.json").read_text(encoding="utf-8"))
-    target = json.loads((translations / f"{locale}.json").read_text(encoding="utf-8"))
-    l10n = module._load_l10n()
-    states: set[str] = set()
-
-    for key, replacement in replacements.items():
-        assert key in source, f"reviewed key absent from en_US: {key!r}"
-        assert key in target, f"reviewed key absent from {locale}: {key!r}"
-        assert l10n.placeholders_match(source[key], replacement["to"]), (
-            f"reviewed replacement violates placeholder/markup contract: {key!r}"
-        )
-
-        current = target[key]
-        if current == replacement["from"]:
-            states.add("pending")
-        elif current == replacement["to"]:
-            states.add("applied")
-        else:
-            raise AssertionError(
-                f"{locale} drifted outside reviewed from/to values for {key!r}: {current!r}"
-            )
-
-    assert len(states) == 1, (
-        f"{locale} reviewed replacement manifest is partially applied: {sorted(states)}"
-    )
+    locale, state, count = module.reviewed_manifest_state(manifest_path, translations)
+    assert locale == "tr_TR"
+    assert state in {"pending", "applied"}
+    assert count > 0
 
 
 def main() -> int:
@@ -187,6 +203,7 @@ def main() -> int:
     test_exact_reviewed_replacement(module)
     test_catalog_drift_is_rejected(module)
     test_placeholder_contract_is_rejected(module)
+    test_partial_application_is_rejected(module)
     test_live_reviewed_manifest_state(module)
     print("PASS: reviewed locale replacements are exact, preserving, and fail-closed")
     return 0

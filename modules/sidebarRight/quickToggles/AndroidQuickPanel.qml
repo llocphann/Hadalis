@@ -46,9 +46,14 @@ AbstractQuickPanel {
         var rows = [];
         var row = [];
         var totalSize = 0; // Total cols taken in current row
+        var seenTypes = [];
         for (var i = 0; i < togglesList.length; i++) {
             const toggle = togglesList[i];
             if (!toggle) continue;
+            const type = String(toggle.type ?? "");
+            if (availableToggleTypes.indexOf(type) === -1 || seenTypes.indexOf(type) !== -1)
+                continue;
+            seenTypes.push(type);
             const configuredSize = Number(toggle.size ?? 1);
             const size = Number.isFinite(configuredSize)
                 ? Math.max(1, Math.min(columns, Math.round(configuredSize)))

@@ -4,6 +4,8 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 shell_root="$root/shell.qml"
 policy="$root/modules/common/perimeter/PerimeterCutoverPolicy.qml"
+runtime_health="$root/modules/common/perimeter/PerimeterRuntimeHealth.qml"
+runtime="$root/modules/perimeter/PerimeterRuntime.qml"
 settings="$root/modules/settings/ShellLayoutConfig.qml"
 route_controller="$root/modules/common/perimeter/SurfaceRouteController.qml"
 critical="$root/modules/ii/critical/ShellIiCriticalPanels.qml"
@@ -14,8 +16,8 @@ fail() {
     exit 1
 }
 
-for file in "$shell_root" "$policy" "$settings" "$route_controller" \
-        "$critical" "$ii_panels"; do
+for file in "$shell_root" "$policy" "$runtime_health" "$runtime" "$settings" \
+        "$route_controller" "$critical" "$ii_panels"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
@@ -44,12 +46,31 @@ grep -Fq 'root._closePerimeterRoutesForFallback()' "$route_controller" \
     || fail 'family fallback cannot close perimeter routes'
 
 # PerimeterRuntime belongs in the critical ii tree, but presentation QML is
-# intentionally deferred behind a URL boundary. The critical root must gate the
-# loader with the same policy that disables legacy Bar/Dock ownership.
-runtime_block="$(grep -A3 -F 'active: Config.ready && root.perimeterEnabled' "$critical")"
-[[ -n "$runtime_block" ]] || fail 'critical ii tree no longer gates perimeter runtime'
+# intentionally deferred behind a URL boundary. Runtime activation must use the
+# pre-cutover eligibility gate so it can establish the root readiness handshake;
+# legacy Bar/Dock ownership remains until the final enabled gate becomes true.
+grep -Fq 'readonly property bool activationEligible:' "$policy" \
+    || fail 'cutover policy does not expose runtime activation eligibility'
+grep -Fq 'readonly property bool runtimeReady: PerimeterRuntimeHealth.runtimeHostReady' "$policy" \
+    || fail 'cutover policy does not consume the runtime-root handshake'
+grep -Fq '&& root.runtimeReady' "$policy" \
+    || fail 'final cutover does not require runtime readiness'
+grep -Fq 'property bool runtimeHostReady: false' "$runtime_health" \
+    || fail 'runtime health does not track root readiness'
+grep -Fq 'PerimeterRuntimeHealth.setRuntimeHostReady(root.active && root.featuresReady)' "$runtime" \
+    || fail 'perimeter runtime does not publish a successful root handshake'
+grep -Fq 'Component.onDestruction: PerimeterRuntimeHealth.setRuntimeHostReady(false)' "$runtime" \
+    || fail 'perimeter runtime does not clear root readiness on teardown'
+
+runtime_block="$(grep -A3 -F 'active: Config.ready && root.perimeterActivationEligible' "$critical")"
+[[ -n "$runtime_block" ]] || fail 'critical ii tree no longer gates perimeter runtime with activation eligibility'
 grep -Fq 'source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml")' <<<"$runtime_block" \
-    || fail 'critical cutover gate no longer resolves PerimeterRuntime behind a URL boundary'
+    || fail 'critical runtime gate no longer resolves PerimeterRuntime behind a URL boundary'
+grep -Fq 'extraCondition: !root.perimeterEnabled' "$critical" \
+    || fail 'legacy critical chrome no longer waits for final perimeter cutover'
+mapped_block="$(grep -A2 -F 'readonly property bool mapped: hostActive' "$runtime")"
+grep -Fq '&& PerimeterCutoverPolicy.enabled' <<<"$mapped_block" \
+    || fail 'connected perimeter chrome can map before final cutover'
 if grep -Fq 'PerimeterRuntime' "$ii_panels"; then
     fail 'PerimeterRuntime moved into deferred ii panels'
 fi

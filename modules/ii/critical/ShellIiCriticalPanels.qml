@@ -11,9 +11,12 @@ Item {
 
     readonly property bool barVertical: Config.options?.bar?.vertical ?? false
     readonly property bool perimeterRequested: PerimeterCutoverPolicy.requested
-    // Cut over only when the user requested perimeter, every connected output
-    // validates, and every placed module source is resolvable. Invalid/corrupt
-    // perimeter state therefore falls back to legacy chrome.
+    // Runtime loading and ownership cutover are deliberately separate. The URL
+    // boundary is allowed to instantiate once static/config/source preconditions
+    // are satisfied, but legacy chrome stays authoritative until the runtime root
+    // completes its readiness handshake and remains healthy.
+    readonly property bool perimeterActivationEligible:
+        PerimeterCutoverPolicy.activationEligible
     readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled
     property bool perimeterRegistrationReady: false
 
@@ -55,9 +58,11 @@ Item {
 
     // Keep presentation QML behind URL boundaries. A syntax or local-type
     // failure in an optional surface must not make this critical root unavailable
-    // before its LazyLoader activation policy can be evaluated.
+    // before its LazyLoader activation policy can be evaluated. Crucially, this
+    // loader uses activation eligibility rather than final cutover state so the
+    // runtime can establish the readiness handshake required by `enabled`.
     LazyLoader {
-        active: Config.ready && root.perimeterEnabled
+        active: Config.ready && root.perimeterActivationEligible
         source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml")
     }
 

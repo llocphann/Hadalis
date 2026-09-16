@@ -121,6 +121,16 @@ QtObject {
         }
         return true
     }
+
+    // These are the preconditions for attempting the URL-loaded runtime. Keep
+    // runtime readiness out of this gate: otherwise the runtime could never load
+    // to establish the handshake that authorizes the final cutover.
+    readonly property bool activationEligible: root.requested
+        && root.familyActive
+        && root.compatibilityReady
+        && root.configurationValid
+        && root.sourcesReady
+    readonly property bool runtimeReady: PerimeterRuntimeHealth.runtimeHostReady
     readonly property bool runtimeHealthy: {
         Config.revision
         ModuleRegistry.moduleIds
@@ -146,11 +156,8 @@ QtObject {
         }
         return true
     }
-    readonly property bool enabled: root.requested
-        && root.familyActive
-        && root.compatibilityReady
-        && root.configurationValid
-        && root.sourcesReady
+    readonly property bool enabled: root.activationEligible
+        && root.runtimeReady
         && root.runtimeHealthy
     readonly property bool fallbackActive: root.requested && !root.enabled
     readonly property string statusReason: {
@@ -168,6 +175,8 @@ QtObject {
             return "unsupported-runtime-policy"
         if (!root.sourcesReady)
             return "missing-module-source"
+        if (!root.runtimeReady)
+            return "runtime-not-ready"
         if (!root.runtimeHealthy)
             return "module-load-failure"
         return "active"

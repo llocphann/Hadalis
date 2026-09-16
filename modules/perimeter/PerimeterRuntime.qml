@@ -24,12 +24,18 @@ Scope {
         .map(screen => String(screen?.name ?? ""))
         .filter(name => name.length > 0)
 
+    function syncRuntimeHostReady(): void {
+        PerimeterRuntimeHealth.setRuntimeHostReady(root.active && root.featuresReady)
+    }
+
     function ensureFeatureRegistry(): void {
         if (!root.active) {
             root.featuresReady = false
+            root.syncRuntimeHostReady()
             return
         }
         root.featuresReady = PerimeterFeatureRegistry.registerAll()
+        root.syncRuntimeHostReady()
         if (!root.featuresReady)
             console.warn("[Perimeter] Failed to register runtime module sources")
     }
@@ -119,6 +125,7 @@ Scope {
         root.ensureFeatureRegistry()
         Qt.callLater(root.syncSidebarRoutes)
     }
+    Component.onDestruction: PerimeterRuntimeHealth.setRuntimeHostReady(false)
     onActiveChanged: {
         root.ensureFeatureRegistry()
         if (root.active)
@@ -269,7 +276,12 @@ Scope {
                 || outputHost.bottomStartOccupied
                 || outputHost.bottomCenterOccupied
                 || outputHost.bottomEndOccupied)
-            readonly property bool mapped: hostActive && hasChrome
+            // Keep module hosts alive as a health probe while fallback owns the
+            // screen, but never map Connected Perimeter chrome until the final
+            // cutover policy (including the root handshake) is active.
+            readonly property bool mapped: hostActive
+                && PerimeterCutoverPolicy.enabled
+                && hasChrome
 
             screen: modelData
             visible: mapped

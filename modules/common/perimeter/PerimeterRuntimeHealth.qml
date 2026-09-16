@@ -5,8 +5,16 @@ import QtQuick
 QtObject {
     id: root
 
+    // Root-level handshake for the URL-loaded perimeter runtime. Module failures
+    // are tracked separately below; this bit only proves that PerimeterRuntime.qml
+    // instantiated far enough to complete its own bootstrap.
+    property bool runtimeHostReady: false
     property var _moduleFailures: ({})
     readonly property var failureKeys: Object.keys(root._moduleFailures)
+
+    function setRuntimeHostReady(ready: bool): void {
+        root.runtimeHostReady = ready === true
+    }
 
     function _key(outputName: string, instanceId: string): string {
         return JSON.stringify([

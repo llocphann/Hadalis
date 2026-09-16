@@ -29,6 +29,10 @@ def main() -> None:
         "geometry.revealProgress",
         "CompositorFocusGrab",
         "WlrKeyboardFocus.OnDemand",
+        "requestedVisible",
+        "_lingerVisible",
+        "retractTimer",
+        "progress: root.revealProgress",
     ):
         check(token in styled_popup, f"StyledPopup must preserve connected-perimeter contract: {token}")
     for edge in ("top", "bottom", "left", "right"):
@@ -36,6 +40,8 @@ def main() -> None:
               f"StyledPopup must preserve {edge} attachment handling")
     check("Appearance.colors.colSurfaceContainer" not in styled_popup,
           "Connected bar popups must use the owning bar surface family, not the detached popup-card material")
+    check("active: root.requestedVisible || root._lingerVisible" in styled_popup,
+          "Connected popout loader must stay resident long enough to retract into the bar")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
     for edge in ("top", "bottom", "left", "right"):
@@ -102,6 +108,12 @@ def main() -> None:
           "Taskbar window previews must not draw a second floating card inside the connected shell")
     check("anchorItem" in taskbar_preview and "previewOpen" in taskbar_preview,
           "Taskbar preview must preserve real button anchoring and hover lifecycle")
+
+    tray = read("modules/bar/SysTray.qml")
+    check("alternativeVisibleCondition: root.trayOverflowOpen" in tray,
+          "Tray overflow must use the shared connected visibility lifecycle")
+    check("active: root.trayOverflowOpen" not in tray,
+          "Tray overflow must not bypass the retract lifecycle by overriding LazyLoader.active")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()

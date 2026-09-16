@@ -1,26 +1,46 @@
-# Hadalis Connected Perimeter — Architecture Handoff
+# Hadalis Connected Perimeter
 
-> **Status:** architecture/source-of-truth handoff  
-> **Branch:** `dev`  
-> **Date:** 2026-09-15  
-> **Functional Connected Perimeter implementation:** not started  
-> **Baseline policy:** implementation must be built on the cleaned **Material ii / Classic-only** baseline and must not reintroduce retired appearance/features removed by the concurrent cleanup work.
+> **Status:** implemented on `dev`, active integration/stabilization  
+> **Updated:** 2026-09-16  
+> **Cutover:** opt-in; not yet the fresh-install default  
+> **Release state:** not ready for `dev -> stable` until CI, documentation, packaging, and live acceptance gates are green
 
-This document supersedes the previous single-top-bar / single-bottom-host interpretation of the Connected Surfaces research.
+Hadalis is evolving from the older fixed panel composition into a **configurable per-output Connected Perimeter** while preserving the project’s existing services, compositor integration, routing, lifecycle, configuration, and Niri engineering.
 
-The target is now a **configurable per-output perimeter system** inspired by Caelestia's connected-composition model while preserving Hadalis/iNiR's services, compositor integration, routing, lifecycle and Niri engineering.
+Hadalis is **not** a source merge of Caelestia and iNiR.
 
-Hadalis is **not** a source merge of Caelestia and iNiR. The intended combination is:
+- iNiR/Hadalis supplies the runtime, services, configuration, Niri integration, window lifecycle, and output routing foundations.
+- Caelestia supplies architectural lessons around connected geometry, anchor-aware popouts, state coordination, and seamless surface composition.
+- Hadalis owns the final visual language, topology, implementation, migration policy, and release contract.
 
-- iNiR/Hadalis supplies runtime/services/configuration/Niri integration/window lifecycle/output routing.
-- Caelestia supplies architectural lessons for connected geometry, anchor-aware popouts, state coordination and seamless surface composition.
-- Hadalis owns the final visual language, topology and implementation.
+The live code on `dev` is authoritative. Detailed Connected Perimeter behavior and contributor rules are documented in [`docs/PERIMETER.md`](docs/PERIMETER.md).
 
 ---
 
-## 1. Non-negotiable target topology
+## Current implementation state
 
-Each output owns eight perimeter slots:
+The Connected Perimeter foundation is implemented on `dev` and includes:
+
+- eight configurable placement slots per output,
+- module instances resolved through a registry rather than hard-coded slot children,
+- shared/default placement plus per-output overrides,
+- output-aware routing and anchor publication,
+- reusable connected-surface geometry and masking primitives,
+- edge reservation policy,
+- cutover/fallback policy,
+- perimeter presentation policy,
+- Settings integration for placement, reordering, output overrides, and reset operations,
+- regression contracts for topology, routing, settings, reservations, presentation, and cutover behavior.
+
+The current implementation remains **opt-in**. Fresh/existing configurations continue to use the legacy composition unless `iiPerimeter` is explicitly requested and the cutover policy considers the requested composition valid.
+
+If perimeter configuration, module resolution, output validation, or legacy compatibility requirements are not satisfied, the shell falls back instead of treating a partial Connected Perimeter as valid.
+
+---
+
+## Topology
+
+Each output owns eight logical slots:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
@@ -34,677 +54,328 @@ Each output owns eight perimeter slots:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Canonical logical form:
+Canonical slot IDs:
 
 ```text
-Perimeter(output)
-├── top
-│   ├── start
-│   ├── center
-│   └── end
-├── left
-│   └── center
-├── right
-│   └── center
-└── bottom
-    ├── start
-    ├── center
-    └── end
+top.start
+top.center
+top.end
+left.center
+right.center
+bottom.start
+bottom.center
+bottom.end
 ```
 
-The low-level renderer/layout engine should prefer **edge + alignment** over eight unrelated hard-coded implementations:
+The generic model is based on **edge + alignment**, not eight independent renderer implementations.
 
 ```text
 edge: top | bottom | left | right
 alignment: start | center | end
 ```
 
-For left/right edges only `center` is part of the initial topology.
+For left/right edges, `center` is currently the supported initial alignment.
 
-### Inward directions
+Inward direction is derived from edge context:
 
 ```text
-top    -> inward = down
-bottom -> inward = up
-left   -> inward = right
-right  -> inward = left
+top    -> down
+bottom -> up
+left   -> right
+right  -> left
 ```
 
-Connected popups/drawers expand inward from their real module anchor.
+This context is used by connected surfaces so placement does not depend on hard-coded module ownership.
 
 ---
 
-## 2. Default Hadalis preset
+## Default composition
 
-The following is the **initial/default configuration only**:
+`PerimeterConfig.qml` provides the architecture preset used when no explicit placement override is present:
 
-```text
-TOP-LEFT
-- ThinkFan
-- System Monitor
+| Slot | Default module instances |
+|---|---|
+| `top.start` | ThinkFan, System Monitor |
+| `top.center` | Workspaces, Media, Weather |
+| `top.end` | empty |
+| `left.center` | Left Sidebar |
+| `right.center` | Right Sidebar |
+| `bottom.start` | empty |
+| `bottom.center` | Dock |
+| `bottom.end` | empty |
 
-TOP-CENTER
-- Workspaces
-- Media
-- Weather
-- additional user-selected modules
+These are **defaults only**.
 
-TOP-RIGHT
-- empty
+No module is permanently owned by a slot. A valid layout may leave slots empty, place multiple ordered instances in a slot, reorder instances, or move supported instances to another valid slot.
 
-LEFT-EDGE
-- Left Sidebar
-- vertically centered
-- no max-size presentation mode
-
-RIGHT-EDGE
-- Right Sidebar
-- vertically centered
-- no max-size presentation mode
-
-BOTTOM-LEFT
-- empty
-
-BOTTOM-CENTER
-- Dock
-
-BOTTOM-RIGHT
-- empty
-```
-
-This preset must never become module ownership.
-
-### Critical rule
-
-> **No module is locked to any perimeter slot.**
-
-Every perimeter slot must support:
-
-- zero modules,
-- one module,
-- multiple ordered modules,
-- add,
-- remove from layout,
-- reorder within the slot,
-- move to another slot,
-- being completely empty.
-
-The system must not contain special rules such as:
-
-```text
-ThinkFan => top-left only
-Dock => bottom-center only
-Sidebar => side edge only
-Weather => top-center only
-```
-
-Those are forbidden architectural assumptions.
-
-A module may expose presentation capabilities or preferences, but placement remains configuration-driven.
+Placement belongs to perimeter configuration, not to feature implementation.
 
 ---
 
-## 3. Module instances, not hard-coded children
+## Registered perimeter modules
 
-The perimeter should be populated from configuration through a module registry/factory.
+`modules/perimeter/PerimeterFeatureRegistry.qml` currently registers:
 
-Conceptual model:
+- `thinkfan`
+- `system-monitor`
+- `workspaces`
+- `media`
+- `weather`
+- `left-sidebar`
+- `right-sidebar`
+- `dock`
 
-```text
-config
-  -> slot definition
-     -> ordered module instance IDs
-        -> module registry
-           -> instantiate module with perimeter context
-```
+Feature adapters consume perimeter context; they do not choose their permanent edge or output.
 
-Prefer instance-aware configuration so the architecture does not unnecessarily forbid multiple instances of the same module:
-
-```yaml
-perimeter:
-  top:
-    start:
-      - instance: thinkfan-main
-        module: thinkfan
-      - instance: monitor-main
-        module: systemMonitor
-    center:
-      - instance: workspaces-main
-        module: workspaces
-      - instance: media-main
-        module: media
-      - instance: weather-main
-        module: weather
-    end: []
-
-  left:
-    center:
-      - instance: sidebar-left
-        module: leftSidebar
-
-  right:
-    center:
-      - instance: sidebar-right
-        module: rightSidebar
-
-  bottom:
-    start: []
-    center:
-      - instance: dock-main
-        module: dock
-    end: []
-```
-
-Exact schema may differ after auditing the existing Hadalis config system. Do not invent an incompatible parallel configuration stack if the current config can be extended cleanly.
-
-### Module context
-
-A module should receive presentation context rather than infer its location from global state:
-
-```text
-outputName
-instanceId
-moduleId
-edge
-alignment
-orientation
-inwardDirection
-slotRect
-```
-
-Useful derived orientation:
-
-```text
-top/bottom -> horizontal
-left/right -> vertical
-```
-
-Modules should adapt to context where reasonable. A preferred orientation is advisory, not a placement lock.
+The default preset currently places ThinkFan/System Monitor at top-left, Workspaces/Media/Weather at top-center, sidebars at the side centers, and Dock at bottom-center.
 
 ---
 
-## 4. Empty slots are first-class
+## Core architecture
 
-An empty slot must not create useless compositor state.
-
-If a slot contains no visible modules, it should have, wherever architecture permits:
-
-- no background,
-- no blur region,
-- no hit region,
-- no fake transparent visual surface,
-- no unnecessary reserved space.
-
-Do not keep invisible full-size windows merely to preserve an empty slot abstraction.
-
----
-
-## 5. Connected-composition rules inherited from Caelestia research
-
-The useful Caelestia reference is its **composition model**, not a direct QML transplant.
-
-Hadalis should preserve these principles:
-
-1. one geometry authority per output,
-2. centralized route/conflict policy for transient surfaces,
-3. anchor-aware popouts,
-4. visible geometry and input geometry derived from the same source,
-5. geometry animation rather than opacity-only animation,
-6. connector/neck treated as part of the surface,
-7. overlap/seam guards where separately composited pieces meet,
-8. deliberate conflict policy between adjacent surfaces.
-
-Do not begin by copying the native `Caelestia.Blobs` plugin. Start with QML-native geometry. Escalate to a Hadalis-native scene-graph/SDF renderer only if measured visual results require it.
-
----
-
-## 6. Module anchors and connected popups
-
-Every module capable of opening a transient surface must publish its **actual rendered anchor rectangle** in output-local coordinates.
-
-Suggested anchor record:
-
-```text
-outputName
-slotId
-instanceId
-moduleId
-sourceItem/screenRect
-edge
-alignment
-preferredPopupExtent
-surfaceName
-```
-
-Popup placement must never be derived from hard-coded module ordering.
-
-The same module should naturally invert its connected expansion according to the slot:
-
-```text
-TOP:       module -> popup grows downward
-BOTTOM:    module -> popup grows upward
-LEFT:      module -> popup grows rightward
-RIGHT:     module -> popup grows leftward
-```
-
-The popup body may clamp to screen bounds, but the connector should remain aligned to the real source module as far as geometry allows.
-
----
-
-## 7. Connected geometry primitives
-
-Create shared QML-native primitives rather than separate implementations per edge.
-
-Suggested family:
+Reusable Connected Perimeter infrastructure lives under:
 
 ```text
 modules/common/perimeter/
-  PerimeterTokens.qml
-  PerimeterContext.qml
-  ConnectedSurfaceFrame.qml
-  ConnectedSurfaceConnector.qml
-  ConnectedSurfaceMask.qml
-  AnchorRegistry.qml
-  SurfaceRouteController.qml
 ```
 
-Names are suggestions, not requirements. Reuse existing project conventions if better names/locations already exist.
-
-The geometry layer should understand:
-
-- edge,
-- alignment,
-- anchor rect,
-- body rect,
-- connector center,
-- connector/concave radius,
-- outer radius,
-- seam overlap,
-- blur expansion,
-- border geometry,
-- animation progress,
-- input region.
-
-Avoid four copies of the same renderer for top/bottom/left/right.
-
----
-
-## 8. Route/controller model
-
-Existing `GlobalStates` booleans and IPC/keybind contracts may need to remain temporarily for compatibility.
-
-Add a coordinating authority for connected transient surfaces rather than allowing every module/window to fight independently.
-
-Conceptual route:
-
-```qml
-surfaceRoute: ({
-    output: "",
-    family: "none",       // popup | sidebar | large | ...
-    surface: "",
-    page: "",
-    sourceInstance: "",
-    slot: "",
-    edge: "",
-    anchorRect: Qt.rect(0, 0, 0, 0)
-})
-```
-
-Required behavior:
-
-- per-output routing,
-- deterministic Escape/backdrop/focus-loss behavior,
-- explicit transient-surface conflicts,
-- adjacency-aware conflict policy where useful,
-- no accidental overlap caused by independent booleans,
-- compatibility with existing output resolution until migration is complete.
-
-Do not perform a big-bang rewrite of every existing state flag.
-
----
-
-## 9. Top perimeter
-
-Top is not a monolithic full-width hard-coded bar anymore. It contains three independent configurable slots:
+Important components include:
 
 ```text
-top.start   = top-left
-top.center  = top-center
-top.end     = top-right
+AnchorPublisher.qml
+AnchorRegistry.qml
+ConnectedSurfaceConnector.qml
+ConnectedSurfaceFrame.qml
+ConnectedSurfaceGeometry.qml
+ConnectedSurfaceMask.qml
+ModuleRegistry.qml
+PerimeterAnchorPublisher.qml
+PerimeterConfig.qml
+PerimeterContext.qml
+PerimeterCutoverPolicy.qml
+PerimeterModuleHost.qml
+PerimeterOutputHost.qml
+PerimeterSlotHost.qml
+PerimeterSlotModel.qml
+PerimeterTokens.qml
+PerimeterTopology.qml
+SurfaceRouteController.qml
 ```
 
-The default preset happens to populate left and center and leave right empty.
-
-Modules inside a slot form an ordered strip/cluster. Each module can independently become the anchor of a connected popup.
-
-Classic/Hadalis hug-corner language remains the visual basis. Existing Classic behavior that is still valid after cleanup should be reused rather than discarded.
-
----
-
-## 10. Side edges / Sidebar requirements
-
-Initial defaults:
+Hadalis-specific feature adapters live under:
 
 ```text
-left.center  -> Left Sidebar
-right.center -> Right Sidebar
+modules/perimeter/
 ```
 
-Both are **vertically centered** on the output.
-
-Do not top-align or bottom-align the default sidebar presentation.
-
-### No max-size presentation
-
-The Connected Perimeter version must not use the previous max-size/full-height style as its target presentation.
-
-Desired sizing model:
+The key ownership flow is:
 
 ```text
-content/config desired extent
-  -> clamp only to safe available output bounds
+module
+  -> registry/config
+     -> placement
+        -> perimeter host
+           -> rendered surface / connected route
 ```
 
 not:
 
 ```text
-available output height
-  -> expand sidebar toward maximum height
+component
+  -> hard-coded screen position
 ```
 
-Preserve valuable existing `SidebarHost` lifecycle/compositor behavior where possible:
+---
 
-- target-output handling,
-- focus policy,
-- exact masks,
-- fullscreen/direct-scanout protection,
-- resume/remap handling,
-- edge-open semantics if still desired,
-- resident/on-demand lifecycle.
+## Configuration model
 
-Change presentation and sizing without casually rewriting these proven boundaries.
+The typed configuration exposes a `perimeter` node with schema version `1`.
 
-Despite the default placement, Sidebar modules must not be permanently locked to left/right edge slots by the generic perimeter engine.
+The model supports:
+
+- shared module instance descriptors,
+- shared/default slot entries,
+- per-output slot overrides,
+- per-output instance overrides,
+- validation of slot IDs and configured sources,
+- reset to default/shared placement,
+- compatibility handling for older persisted object/map representation.
+
+An omitted slot may inherit the architecture preset. An explicitly configured empty slot remains empty.
+
+Malformed output entries, duplicate descriptors, unsupported schema versions, invalid slots, or unresolved module sources must fail validation rather than being rendered blindly.
 
 ---
 
-## 11. Bottom perimeter
+## Routing and connected surfaces
 
-Bottom mirrors top:
+Connected popups use the real rendered module anchor instead of deriving position from assumed module ordering.
 
-```text
-bottom.start  = bottom-left
-bottom.center = bottom-center
-bottom.end    = bottom-right
-```
+Routing is output-aware and coordinated through the shared route/controller layer so transient surfaces do not compete through unrelated state flags indefinitely.
 
-Default preset:
+The migration target is:
 
-```text
-bottom.start  = empty
-bottom.center = Dock
-bottom.end    = empty
-```
+- deterministic output ownership,
+- deterministic Escape/backdrop/focus-loss behavior,
+- explicit transient-surface conflicts,
+- anchor-aware popup geometry,
+- visible/input geometry derived from the same authority,
+- correct inward expansion for all supported edges,
+- click-through transparent regions,
+- no bogus reservation or hit region for empty slots.
 
-Dock is a normal configurable module instance from the perimeter engine's perspective, not a special hard-coded root surface.
-
-Moving/removing Dock must be structurally possible through configuration.
-
-Large transient surfaces such as Overview/Dashboard must not be modeled as permanent ownership of the whole bottom edge. If retained in the product, their launch/anchor/span policy must use the same route/geometry system and remain configurable rather than consuming `bottom.center` by architectural fiat.
+Media and Weather already have Connected Surface adapters. Routing and anchor infrastructure are implemented, while migration of the wider transient-surface set remains ongoing.
 
 ---
 
-## 12. ThinkFan default module
+## Sidebars and Dock
 
-Reference upstream: `https://github.com/vmatare/thinkfan`.
+Left and right sidebars are registered perimeter modules.
 
-Hadalis' default `top.start` cluster should include a ThinkFan integration intended to expose fan status/control, including the user's requested startup fan behavior/profile controls.
+Their semantic feature/system state remains global, while perimeter placement controls where their presentation is available. Output routing also respects configured sidebar screen eligibility.
 
-Implementation must audit the actual thinkfan configuration/service interfaces before choosing the write path. Do not assume a runtime API exists for every requested setting.
+The Connected Perimeter target is not a permanently full-height sidebar host. Presentation size, placement, input ownership, and edge relationship are handled by perimeter policies while preserving useful existing sidebar lifecycle/compositor behavior.
 
-Required engineering constraints:
-
-- separate read-only telemetry from privileged mutation,
-- validate configuration before applying,
-- surface service/config/fan availability states distinctly,
-- do not claim a write succeeded until verified,
-- preserve safe bounds and do not expose arbitrary unsafe raw values without validation,
-- support graceful absence of thinkfan/hwmon/compatible hardware,
-- avoid blocking the QML UI on privileged/system commands.
-
-Upstream explicitly warns that unsafe fan/temperature configuration can damage hardware or shorten component lifetime. Treat this integration as hardware control, not a cosmetic slider.
-
-ThinkFan remains movable like every other module; `top.start` is only its default placement.
+Dock is a normal perimeter module instance. `bottom.center` is its default placement, not architectural ownership.
 
 ---
 
-## 13. System Monitor default module
+## Settings / layout editing
 
-System Monitor is the second default `top.start` module.
+`modules/settings/ShellLayoutConfig.qml` contains the Connected Perimeter layout controls.
 
-It should be implemented as a normal registry module and should be portable to any perimeter slot.
+Current Settings support includes:
 
-Telemetry sources and exact compact/expanded presentation should reuse existing Hadalis services where available instead of duplicating polling daemons.
+- enabling/disabling the perimeter cutover request,
+- shared/default versus per-output placement scope,
+- selecting valid slots,
+- moving module instances,
+- reordering instances within a slot,
+- resetting per-output overrides,
+- resetting shared/default placement,
+- live shell layout editing integration.
 
----
-
-## 14. Top-center defaults
-
-Default `top.center` contains:
-
-- Workspaces,
-- Media,
-- Weather,
-- future/additional user-selected modules.
-
-These are module instances in an ordered cluster, not mandatory fixed children of one special center component.
-
-Each module that owns an expanded surface must publish its own actual anchor rect. The connector follows the clicked/active module, not the center of the overall slot.
+A future custom preset library may extend this model, but placement is already centrally editable and is not implemented as independent hard-coded `position` controls inside every module.
 
 ---
 
-## 15. Settings / configuration UX target
+## Cutover and fallback
 
-Do not add one independent `position` dropdown inside every module if the perimeter can be edited centrally.
+`PerimeterCutoverPolicy.qml` enables perimeter ownership only when the requested composition is safe to activate.
 
-Preferred model: a **Perimeter Layout editor** that exposes all eight slots and allows users to:
+The policy currently evaluates conditions including:
 
-- add module instance,
-- remove from layout,
-- reorder,
-- move between slots,
-- leave slot empty,
-- configure module-specific options.
+1. `iiPerimeter` is requested in `enabledPanels`;
+2. current legacy bar/dock policies are compatible with cutover;
+3. perimeter configuration validates for connected outputs;
+4. configured modules resolve through the registry.
 
-Removing a module from a slot does not necessarily uninstall/disable the underlying feature/service.
+If the perimeter is requested but the composition is incomplete or invalid, fallback remains active instead of leaving the shell in a partially-owned state.
 
-The exact Settings UI should follow existing Hadalis Settings architecture and should not resurrect retired appearance selectors.
+This fallback is intentional during migration and stabilization.
 
 ---
 
-## 16. Window/input/blur requirements
+## Regression contracts
 
-These constraints remain non-negotiable:
+Connected Perimeter behavior is guarded by repository tests rather than documentation alone.
 
-### Input
+The test suite covers areas including:
 
-- transparent areas stay click-through,
-- hit region follows rendered geometry,
-- no full-screen interactive mask solely because a visual host spans the screen.
+- required core/feature files,
+- module registry resolution,
+- cutover policy state,
+- output-specific placement,
+- route ownership,
+- settings placement behavior,
+- reservation metadata and edge zones,
+- click-through reservation surfaces,
+- presentation lifecycle,
+- disabled-module behavior,
+- runtime/registry recovery,
+- QML startup/static validation.
 
-### Blur/border
-
-- blur follows visible connected geometry,
-- border and fill derive from compatible geometry,
-- connector/window joins use overlap/seam guards where necessary,
-- validate fractional scales.
-
-### Focus
-
-- transient popups should not steal exclusive keyboard focus unless required,
-- sidebars preserve intentional focus semantics,
-- focused surfaces release focus deterministically on close.
-
-### Fullscreen/direct scanout
-
-- do not introduce permanently mapped transparent full-screen windows without measuring impact,
-- preserve current fullscreen protection where still applicable,
-- no invisible mapped leftovers after close, lock/resume or output changes.
+Perimeter contracts are also invoked from the full QML validation path used by CI.
 
 ---
 
-## 17. Multi-output requirements
+## Legacy cleanup
 
-The perimeter is **per output**.
+The conversion is being built on the cleaned Material ii / Classic baseline.
 
-A module action on output B must resolve its connected surface on output B unless an explicit policy says otherwise.
+Retired renderer/feature families removed from the live graph must not be reintroduced merely to satisfy old references. This includes the retired Bar M3, Pill, Orbit, Mascot, Workspace Strip, and related obsolete settings paths removed during the cleanup work.
 
-Anchor records, routes, slot layouts and input regions must all carry output identity.
+Classic Bar remains part of the compatibility/fallback path while Connected Perimeter cutover is opt-in.
 
-Do not regress the existing `GlobalStates` output resolver semantics while introducing the new system.
-
----
-
-## 18. Cleanup boundary
-
-Several agents are concurrently cleaning `dev` to produce a Classic-only baseline before Connected Perimeter implementation.
-
-Connected Perimeter work must **not** reintroduce or depend on retired systems being removed by that cleanup, including obsolete bar appearance families and retired shell features.
-
-In particular:
-
-- do not restore removed appearance selectors/branches merely because old code references them,
-- do not build the new architecture on Orbit/Mascot/Workspace Strip paths being removed,
-- refetch `dev` before mutations,
-- reconstruct changes on current HEAD if cleanup agents advanced the branch,
-- prefer small atomic commits,
-- never overwrite another agent's changes.
-
-`README.md` is the architecture handoff; the live code on current `dev` is authoritative for exact surviving file paths and APIs.
+The project is still completing product/namespace cleanup. Runtime, package, and user configuration paths currently retain historical `inir` / `illogical-impulse` naming in places, so namespace migration must preserve backward compatibility rather than being performed as an unsafe global rename.
 
 ---
 
-## 19. Recommended implementation split
+## What remains before release
 
-Two new implementation agents should work with explicit ownership.
+The project has moved beyond architecture/prototype work. The remaining work is primarily migration, hardening, and release preparation:
 
-### Agent A — Perimeter Core / Connected Geometry
+- migrate remaining transient surfaces onto the shared anchor/routing/lifecycle model where appropriate;
+- finish feature parity needed before making Connected Perimeter the default;
+- continue multi-output, hotplug, resume, focus, fullscreen, fractional-scale, and reservation hardening;
+- stabilize CI, documentation, Nix, Arch packaging, install/uninstall, and release contracts;
+- complete product/namespace cutover with compatibility migration;
+- keep README and architecture/release documentation synchronized with live behavior;
+- run live acceptance on supported multi-monitor configurations;
+- freeze `dev` and merge to `stable` only after release gates are green.
 
-Owns the shared substrate:
-
-- eight-slot topology,
-- slot configuration model,
-- module instance registry/factory contract,
-- perimeter context propagation,
-- per-output geometry authority,
-- anchor registry,
-- connected frame/connector/mask primitives,
-- route/controller infrastructure,
-- core layout/settings schema hooks where unavoidable.
-
-Agent A should not implement the full ThinkFan/System Monitor/Weather/Media/Dock/sidebar feature set.
-
-### Agent B — Module & Surface Integration
-
-Consumes Agent A's contract and integrates concrete modules/surfaces:
-
-- default preset wiring,
-- ThinkFan integration,
-- System Monitor,
-- Workspaces,
-- Media,
-- Weather,
-- Dock,
-- Left/Right Sidebar presentation migration,
-- connected popup migrations for integrated modules,
-- Settings presentation for module placement using the core contract.
-
-Agent B should not fork or duplicate the perimeter engine, anchor registry, route controller or connected geometry primitives.
-
-If Agent A's contract is not yet present on current `dev`, Agent B should perform research/preparation only or work on clearly independent adapters; it must not create a competing temporary architecture that will later need to be merged.
+The Connected Perimeter should **not** be treated as release-complete merely because the core runtime exists.
 
 ---
 
-## 20. Implementation order
+## Development rules
 
-Recommended sequence:
+When extending the perimeter:
 
-1. finish/verify Classic-only cleanup baseline,
-2. add perimeter slot/config/context substrate,
-3. add anchor registry + route controller,
-4. add orientation-agnostic connected geometry primitives,
-5. render empty/default slots correctly per output,
-6. wire the default preset,
-7. migrate one small popup end-to-end as geometry proof,
-8. integrate top-center/top-left modules incrementally,
-9. migrate sidebars to centered/no-max-size presentation,
-10. integrate Dock as normal bottom-center default module,
-11. build/edit Perimeter Layout Settings,
-12. harden multi-monitor/fractional-scale/fullscreen/resume behavior,
-13. only then evaluate whether native SDF/blob rendering is necessary.
+- add reusable composition behavior under `modules/common/perimeter/`;
+- add Hadalis-specific adapters under `modules/perimeter/`;
+- register module IDs through `PerimeterFeatureRegistry`;
+- keep feature state/functionality separate from placement;
+- preserve empty-slot and multiple-instance behavior;
+- carry output identity through anchors, routes, placement, and input regions;
+- validate per-output configuration before rendering/reserving compositor space;
+- preserve fallback behavior until cutover policy explicitly considers the requested composition ready;
+- do not restore retired renderer families or appearance selectors;
+- prefer small, atomic changes on current `dev`.
 
 ---
 
-## 21. Acceptance criteria
-
-The Connected Perimeter foundation is not complete until all of the following are true:
-
-- eight logical slots exist per output,
-- all eight slots can be empty,
-- all eight slots can receive configured modules,
-- modules are instantiated from configuration/registry rather than hard-coded into slot QML,
-- module order is configurable,
-- module movement between slots does not require source-code changes,
-- top/bottom/left/right context produces correct inward direction,
-- real module rects drive popup connectors,
-- empty slots do not reserve bogus hit/blur/visual regions,
-- default preset matches the documented mapping,
-- Left/Right Sidebar defaults are vertically centered and do not use max-size presentation,
-- Dock is the default bottom-center module but is movable/removable,
-- ThinkFan is default top-left but is movable/removable,
-- per-output routing remains correct,
-- transparent areas stay click-through,
-- connected geometry has no obvious seam at common fractional scales,
-- cleanup-removed features/appearances are not reintroduced,
-- no native Caelestia plugin dependency is introduced without an explicit later decision.
-
----
-
-## 22. References
+## References
 
 ### Hadalis
 
-- `modules/bar/Bar.qml`
-- `GlobalStates.qml`
-- `modules/sidebar/SidebarHost.qml`
-- `modules/sidebarRight/`
+- [`docs/PERIMETER.md`](docs/PERIMETER.md)
+- [`ARCHITECTURE.md`](ARCHITECTURE.md)
+- [`STRUCTURE.md`](STRUCTURE.md)
+- [`docs/INSTALL.md`](docs/INSTALL.md)
+- [`docs/PACKAGES.md`](docs/PACKAGES.md)
+- [`docs/RELEASING.md`](docs/RELEASING.md)
+- `modules/common/perimeter/`
+- `modules/perimeter/`
+- `modules/settings/ShellLayoutConfig.qml`
 - `modules/ii/ShellIiPanelsImpl.qml`
-- `ARCHITECTURE.md`
-- `STRUCTURE.md`
 
-Exact paths may change during cleanup. Always inspect current `dev` before editing.
+### Architectural reference
 
-### Caelestia architectural references
+Caelestia shell: `https://github.com/caelestia-dots/shell`
 
-- `modules/drawers/ContentWindow.qml`
-- `modules/drawers/Panels.qml`
-- `modules/drawers/Interactions.qml`
-- `modules/bar/popouts/Wrapper.qml`
-- `modules/bar/popouts/ClipWrapper.qml`
-- `modules/nexus/common/BlobPopup.qml`
-- `modules/nexus/common/ConnectedRect.qml`
-- `plugin/src/Caelestia/Blobs/`
-
-Reference repository: `https://github.com/caelestia-dots/shell`
+The useful reference is its connected-composition approach, not direct source transplantation or a native plugin dependency.
 
 ### ThinkFan
 
-- `https://github.com/vmatare/thinkfan`
+Upstream: `https://github.com/vmatare/thinkfan`
+
+ThinkFan integration is hardware control. Configuration mutation must remain validated, privileged only where necessary, non-blocking to QML, and fail-safe when compatible hardware/service state is unavailable.
 
 ---
 
-## 23. Final architecture rule
+## Architecture rule
 
 > **Hadalis is a configurable connected perimeter, not a fixed top bar plus fixed sidebars plus a fixed dock.**
 >
-> The eight perimeter slots are layout locations. Modules are movable instances. Connected surfaces derive their direction and geometry from the slot context and their real rendered anchor. The documented placements are defaults only.
+> The eight perimeter slots are layout locations. Modules are movable instances. Connected surfaces derive direction and geometry from slot context and their real rendered anchor. Documented placements are defaults only.

@@ -2,7 +2,7 @@
 # Auto-generated from QML IpcHandler declarations + docs/IPC.md metadata.
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
-# IPC.md hash: 192e0c9148fa04b4
+# IPC.md hash: 0afaec0da2dc8b7f
 # Targets: 57
 
 declare -gA IPC_TARGET_DESC=(
@@ -372,7 +372,7 @@ declare -gA IPC_FUNCTION_DESC=(
   ["sidebarLeft:attach"]="Return AI chat from the standalone window to the sidebar"
   ["sidebarRight:toggle"]="Open/close right sidebar"
   ["sidebarRight:close"]="Hide right sidebar"
-  ["sidebarRight:open"]="Show right sidebar"
+  ["sidebarRight:open"]="Open right sidebar"
   ["taskview:toggle"]="Open/close the active family's task navigator"
   ["taskview:close"]="Close the active family's task navigator"
   ["taskview:open"]="Open the active family's task navigator"

@@ -62,8 +62,8 @@ QtObject {
                 if (kind === "bar") {
                     // Legacy Bar drops its zone while coverflow owns the edge and
                     // unmaps completely when barOpen is false. Output placement is
-                    // perimeter-owned once cutover is requested, so legacy screenList
-                    // must not become a second placement source.
+                    // perimeter-owned once cutover is requested; legacy output
+                    // filters must not become a second placement source.
                     if (GlobalStates.barOpen
                             && !GlobalStates.coverflowSelectorOpen)
                         zone = Math.max(zone, root._barThickness(targetEdge))

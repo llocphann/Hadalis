@@ -8,10 +8,14 @@ import Quickshell
 AndroidQuickToggleButton {
     id: root
 
+    readonly property bool sinkAvailable: !!Audio.sink?.audio
+
     name: Translation.tr("Audio output")
-    statusText: toggled ? Translation.tr("Unmuted") : Translation.tr("Muted")
-    toggled: !Audio.sink?.audio?.muted
-    buttonIcon: Audio.sink?.audio?.muted ? "volume_off" : "volume_up"
+    statusText: !root.sinkAvailable
+        ? Translation.tr("Unavailable")
+        : toggled ? Translation.tr("Unmuted") : Translation.tr("Muted")
+    toggled: root.sinkAvailable && !Audio.sink.audio.muted
+    buttonIcon: root.toggled ? "volume_up" : "volume_off"
     mainAction: () => {
         Audio.toggleMute()
     }

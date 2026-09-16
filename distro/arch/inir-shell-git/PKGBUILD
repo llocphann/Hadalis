@@ -140,8 +140,9 @@ package() {
     "$pkgdir/usr/share/libalpm/hooks/inir-quickshell-rebuild.hook"
   install -Dm644 "$srcroot/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 "$srcroot/README.md" "$docroot/README.md"
-  install -Dm644 "$srcroot/docs/SETUP.md" "$docroot/SETUP.md"
-  install -Dm644 "$srcroot/docs/IPC.md" "$docroot/IPC.md"
+  for doc in "$srcroot"/docs/*.md; do
+    install -Dm644 "$doc" "$docroot/${doc##*/}"
+  done
 
   cat > "$shellroot/version.json" <<EOF
 {

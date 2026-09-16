@@ -29,7 +29,9 @@ build:
 	@bash -n scripts/test-local-distribution.sh
 	@bash -n setup
 
-test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper
+# test-local-distribution.sh already runs the battery, ThinkFan, updater, and TLP
+# contracts. Keep their standalone targets available without executing them twice here.
+test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
 	@bash scripts/test-local-distribution.sh
 	@bash scripts/test-packaging-contract.sh
 	@bash scripts/test-nix-module-contract.sh

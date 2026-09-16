@@ -82,6 +82,7 @@ PanelWindow {
 
             WeatherPopupContent {
                 id: weatherContent
+                compact: geometry.maximumBodyWidth < compactBreakpoint
                 x: Math.max(0,
                     (weatherViewport.width - implicitWidth) / 2)
                 y: Math.max(0,

@@ -206,11 +206,14 @@ def apply_manifest(
     if state != "pending":
         raise ValueError(f"{locale}: reviewed replacements are already applied")
 
+    # Render before honoring --check so a dry-run validates the exact serialized
+    # key/value literals that a byte-preserving apply must replace, not only the
+    # equivalent values produced by json.load().
+    updated_text = _render_reviewed_replacements(target_path, replacements)
+
     if check_only:
         print(f"ok - {locale}: {len(replacements)} reviewed replacements are applicable")
         return len(replacements)
-
-    updated_text = _render_reviewed_replacements(target_path, replacements)
 
     if backup:
         backup_path = target_path.with_suffix(target_path.suffix + ".bak")

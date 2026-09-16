@@ -145,6 +145,40 @@ def test_apply_preserves_unrelated_catalog_bytes(module) -> None:
         assert old_literal.encode("utf-8") in target.read_bytes()
 
 
+def test_check_rejects_serialization_drift(module) -> None:
+    key = "Usage: install-package <package-name>"
+    old = "Kullanım: install-package <paket-adı>"
+    new = "Kullanım: install-package <package-name>"
+    with tempfile.TemporaryDirectory() as tmp_name:
+        root = Path(tmp_name)
+        translations = root / "translations"
+        translations.mkdir()
+        write_json(translations / "en_US.json", {key: key})
+        target = translations / "tr_TR.json"
+        target.write_text(
+            json.dumps({key: old}, ensure_ascii=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        manifest = root / "reviewed.json"
+        write_json(manifest, manifest_data(old=old, new=new))
+        before = target.read_bytes()
+
+        locale, state, count = module.reviewed_manifest_state(manifest, translations)
+        assert (locale, state, count) == ("tr_TR", "pending", 1)
+        try:
+            module.apply_manifest(
+                manifest,
+                translations,
+                backup=False,
+                check_only=True,
+            )
+        except ValueError as exc:
+            assert "serialization drifted" in str(exc)
+        else:
+            raise AssertionError("--check accepted a catalog that byte-preserving apply cannot edit")
+        assert target.read_bytes() == before
+
+
 def test_catalog_drift_is_rejected(module) -> None:
     old = "Kullanım: install-package <paket-adı>"
     new = "Kullanım: install-package <package-name>"
@@ -244,6 +278,7 @@ def main() -> int:
     module = load_module()
     test_exact_reviewed_replacement(module)
     test_apply_preserves_unrelated_catalog_bytes(module)
+    test_check_rejects_serialization_drift(module)
     test_catalog_drift_is_rejected(module)
     test_placeholder_contract_is_rejected(module)
     test_partial_application_is_rejected(module)

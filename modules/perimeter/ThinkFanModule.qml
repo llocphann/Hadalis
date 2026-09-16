@@ -47,6 +47,11 @@ Item {
         sourceComponent: root.vertical ? verticalStatus : horizontalStatus
     }
 
+    KeyboardFocusRing {
+        anchors.fill: parent
+        focusVisible: root.activeFocus
+    }
+
     Component {
         id: horizontalStatus
 

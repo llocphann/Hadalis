@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression checks for docs/IPC.md metadata parsing."""
+"""Regression checks for docs/IPC.md metadata parsing and completeness."""
 
 from __future__ import annotations
 
@@ -69,4 +69,21 @@ for function_name, description in expected.items():
 if "colorpicker" in entries:
     raise SystemExit("FAIL: standalone command was misclassified as an IPC target")
 
-print("ok - IPC registry Markdown parser preserves escaped pipes and function identifiers")
+qml_targets = module.scan_qml()
+doc_entries = module.parse_ipc_md()
+merged_targets = module.merge(qml_targets, doc_entries)
+missing_descriptions = sorted(
+    f"{target.name}:{function.name}"
+    for target in merged_targets
+    for function in target.functions
+    if not function.description.strip()
+)
+if missing_descriptions:
+    raise SystemExit(
+        "FAIL: live IPC functions are missing docs/IPC.md descriptions: "
+        + ", ".join(missing_descriptions)
+    )
+
+print(
+    "ok - IPC registry parser preserves Markdown semantics and all live functions are documented"
+)

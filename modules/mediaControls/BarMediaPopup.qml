@@ -108,7 +108,7 @@ Item {
                 implicitWidth: root.widgetWidth
                 implicitHeight: root.widgetHeight + (isActive && root._visiblePlayers.length > 1 ? 4 : 0)
                 
-                readonly property bool isActive: modelData === MprisController.trackedPlayer
+                readonly property bool isActive: modelData === root.activePlayer
                 readonly property string selectorLabel: {
                     const title = StringUtils.cleanMusicTitle(modelData?.trackTitle) || ""
                     const artist = modelData?.trackArtist ?? ""

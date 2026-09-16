@@ -85,6 +85,7 @@ Singleton {
     Process {
         id: tlpPdProbe
         property bool timedOut: false
+        property bool startObserved: false
         command: [
             "/usr/bin/sh",
             "-c",
@@ -92,7 +93,21 @@ Singleton {
             "/usr/bin/systemctl is-enabled --quiet tlp-pd.service"
         ]
 
+        onRunningChanged: {
+            if (tlpPdProbe.running) {
+                tlpPdProbe.startObserved = false
+                return
+            }
+            if (tlpPdProbe.startObserved)
+                return
+
+            tlpPdTimeout.stop()
+            root._tlpProbeDone = false
+            console.warn("[PowerProfilePersistence] Failed to start tlp-pd ownership probe")
+        }
+
         onStarted: {
+            tlpPdProbe.startObserved = true
             tlpPdProbe.timedOut = false
             tlpPdTimeout.restart()
         }

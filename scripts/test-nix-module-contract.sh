@@ -14,6 +14,7 @@ nixos="nix/nixos-module.nix"
 home="nix/home-module.nix"
 package="nix/package.nix"
 nix_workflow=".github/workflows/nix.yml"
+nix_doc="docs/NIXOS.md"
 switchwall="scripts/colors/switchwall.sh"
 color_generator="scripts/colors/generate_colors_material.py"
 zed_module="scripts/colors/modules/31-zed.sh"
@@ -21,7 +22,7 @@ easyeffects_service="services/deferred/EasyEffects.qml"
 default_config="defaults/config.json"
 awww_service="services/AwwwBackend.qml"
 
-for file in "$common" "$nixos" "$home" "$package" "$nix_workflow" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
+for file in "$common" "$nixos" "$home" "$package" "$nix_workflow" "$nix_doc" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
   [[ -f "$file" ]] || fail "missing Nix/runtime contract file: $file"
 done
 
@@ -87,6 +88,14 @@ fi
 if grep -Fq '++ optionalTop "socat"' "$package"; then
   fail 'Nix runtime hard-wires optional EasyEffects transport; provide it through programs.inir.extraPackages when desired'
 fi
+grep -Fq 'EasyEffects and its `socat` control transport are intentionally **not** part of the default Nix runtime closure.' "$nix_doc" \
+  || fail 'NixOS docs no longer state that EasyEffects and socat are outside the default runtime closure'
+grep -Fq 'programs.inir.extraPackages = [' "$nix_doc" \
+  || fail 'NixOS docs no longer show the extraPackages opt-in path for optional runtime tools'
+grep -Fq '  pkgs.easyeffects' "$nix_doc" \
+  || fail 'NixOS docs no longer show how to opt into the EasyEffects backend'
+grep -Fq '  pkgs.socat' "$nix_doc" \
+  || fail 'NixOS docs no longer show how to opt into the EasyEffects control transport'
 
 python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["background"]["backend"]["provider"] == "awww"' "$default_config" \
   || fail 'fresh-install wallpaper backend is no longer awww; update the Nix runtime contract deliberately'

@@ -55,6 +55,7 @@ PanelSurface {
             RippleButton {
                 implicitWidth: 26
                 implicitHeight: 26
+                buttonText: Translation.tr("Random")
                 buttonRadius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
                 colBackgroundHover: root.inirEverywhere ? Appearance.inir.colLayer2Hover 
@@ -75,6 +76,7 @@ PanelSurface {
             RippleButton {
                 implicitWidth: 26
                 implicitHeight: 26
+                buttonText: Translation.tr("Browse")
                 buttonRadius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
                 colBackgroundHover: root.inirEverywhere ? Appearance.inir.colLayer2Hover 

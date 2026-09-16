@@ -109,6 +109,23 @@ done
 cmp -s distro/arch/inir-shell/inir-shell.install distro/arch/inir-shell-git/inir-shell-git.install \
   || fail 'stable/git Arch lifecycle hooks differ'
 
+# Pacman owns the canonical user unit under /usr/lib/systemd/user. Both Arch
+# recipes must patch their packaged launchers so compositor wiring targets that
+# unit directly, legacy identical user copies are migrated away, custom user
+# overrides are never silently deleted, and service uninstall stays package-owned.
+for pkg in "$stable_pkg" "$git_pkg"; do
+  grep -Fq 'local package_unit="/usr/lib/systemd/user/inir.service"' "$pkg" \
+    || fail "$pkg no longer binds service lifecycle to the package-owned unit"
+  grep -Fq 'cmp -s "$user_unit" "$package_unit"' "$pkg" \
+    || fail "$pkg no longer safely migrates identical legacy user units"
+  grep -Fq 'custom user inir.service shadows the package unit' "$pkg" \
+    || fail "$pkg no longer preserves custom user service overrides"
+  grep -Fq 'ln -sf "/usr/lib/systemd/user/inir.service"' "$pkg" \
+    || fail "$pkg no longer wires compositor startup to the package-owned unit"
+  grep -Fq 'inir.service is owned by the pacman package' "$pkg" \
+    || fail "$pkg can again uninstall package-owned service state through the launcher"
+done
+
 # NixOS/Home Manager own inir.service declaratively. The Nix packaging patch
 # must prevent the packaged launcher from creating/removing a competing mutable
 # user unit while keeping operational start/restart commands on the provisioned unit.

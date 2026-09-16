@@ -19,7 +19,7 @@ TLP_SETTINGS_SCHEMA = $(INIR_SYSTEM_SHAREDIR)/tlp-settings-schema.json
 THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 
-.PHONY: all build test-local test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-prefix-install test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -29,8 +29,15 @@ build:
 	@chmod +x setup
 	@find scripts -type f \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} +
 
-test-local: build
+test-local: build test-prefix-install
 	@bash scripts/test-local-distribution.sh
+
+test-prefix-install:
+	@stage="$$(mktemp -d)"; \
+		trap 'rm -rf -- "$$stage"' EXIT; \
+		$(MAKE) -s install-bin install-shell DESTDIR="$$stage" PREFIX=/opt/inir; \
+		test -f "$$stage/opt/inir/share/quickshell/inir/shell.qml"; \
+		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$stage/opt/inir/bin/inir"
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh
@@ -39,7 +46,10 @@ test-thinkfan-helper:
 	@bash scripts/test-thinkfan-helper.sh
 
 install-bin:
-	@install -Dm755 scripts/inir "$(DESTDIR)$(BINDIR)/inir"
+	@mkdir -p "$(DESTDIR)$(BINDIR)"
+	@sed 's|^system_config_dir=.*|system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-$(SHELL_INSTALL_DIR)}"|' \
+		scripts/inir > "$(DESTDIR)$(BINDIR)/inir"
+	@chmod 755 "$(DESTDIR)$(BINDIR)/inir"
 
 install-shell:
 	@python3 sdata/lib/runtime-payload.py copy --root . --target "$(DESTDIR)$(SHELL_INSTALL_DIR)"

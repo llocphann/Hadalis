@@ -13,6 +13,7 @@ LazyLoader {
     property bool hoverActivates: true
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
+    property bool keyboardFocus: false
     property bool popupHovered: false
     default property Item contentItem
     property real popupBackgroundMargin: 0
@@ -133,6 +134,7 @@ LazyLoader {
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
         visible: root.active
+        focusable: root.keyboardFocus
 
         anchors {
             top: true
@@ -143,6 +145,8 @@ LazyLoader {
 
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: root.keyboardFocus
+            ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
         Component.onCompleted: revealProgress = 1
 

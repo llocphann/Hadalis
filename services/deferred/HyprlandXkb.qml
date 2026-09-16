@@ -24,9 +24,16 @@ Singleton {
     // Update the layout code according to the layout name (Hyprland gives the name not the code)
     onCurrentLayoutNameChanged: root.updateLayoutCode()
     function updateLayoutCode() {
+        if (currentLayoutName.length === 0) {
+            root.currentLayoutCode = "";
+            return;
+        }
         if (cachedLayoutCodes.hasOwnProperty(currentLayoutName)) {
             root.currentLayoutCode = cachedLayoutCodes[currentLayoutName];
         } else {
+            // Do not display the previous layout's code while resolving a new
+            // description, or indefinitely when base.lst has no matching row.
+            root.currentLayoutCode = "";
             getLayoutProc.running = true;
         }
     }
@@ -74,6 +81,8 @@ Singleton {
                     
                     return false;
                 });
+                if (!foundLine && targetDescription === root.currentLayoutName)
+                    root.currentLayoutCode = "";
                 // console.log("[HyprlandXkb] Found line:", foundLine);
                 // console.log("[HyprlandXkb] Layout:", root.currentLayoutName, "| Code:", root.currentLayoutCode);
                 // console.log("[HyprlandXkb] Cached layout codes:", JSON.stringify(root.cachedLayoutCodes, null, 2));

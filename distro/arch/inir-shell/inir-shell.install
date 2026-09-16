@@ -1,0 +1,30 @@
+post_install() {
+  cat <<'EOF'
+Hadalis has been installed.
+
+Recommended next steps:
+  - Start the shell manually with: inir run
+  - Or wire the user service to the detected compositor and start it with:
+      inir service enable
+      inir service start
+
+The running QML shell currently stores user config in:
+  ~/.config/illogical-impulse/config.json
+
+Hadalis maintenance tooling also recognizes ~/.config/inir for migrated installs.
+
+The packaged runtime lives in:
+  /usr/share/quickshell/inir
+EOF
+}
+
+post_upgrade() {
+  cat <<'EOF'
+Hadalis has been upgraded.
+
+Recommended next steps:
+  - Restart the shell with: inir restart
+  - Package-managed installs use pacman for updates.
+  - Runtime migrations, when needed, are applied by Hadalis's packaged lifecycle.
+EOF
+}

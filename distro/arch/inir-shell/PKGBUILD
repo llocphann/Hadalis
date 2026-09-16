@@ -1,10 +1,11 @@
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=3
+pkgrel=4
 pkgdesc='Hadalis shell payload, launcher, and user service'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
 license=('GPL-3.0-only')
+install=inir-shell.install
 # Hadalis does not publish version tags/releases yet. Keep the non-VCS package
 # reproducible by pinning the reviewed source snapshot; release automation can
 # switch this to a tag once the project publishes one.

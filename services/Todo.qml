@@ -38,6 +38,7 @@ Singleton {
     property string filePath: Directories.todoPath
     property string txtFilePath: Directories.todoTxtPath
     property var list: []
+    property bool ready: false
 
     // Guard flag: when true, skip writing txt back (because we're
     // processing a txt change and the file is already up-to-date)
@@ -76,42 +77,54 @@ Singleton {
     }
 
     function addItem(item) {
+        if (!root.ready) return false
         const normalized = root._normalizeList([item])
-        if (normalized.length === 0) return
+        if (normalized.length === 0) return false
         list.push(normalized[0])
         root.list = list.slice(0)
         _persistAll()
+        return true
     }
 
     function addTask(desc) {
-        addItem({ "content": desc, "done": false })
+        return addItem({ "content": desc, "done": false })
     }
 
     function markDone(index) {
+        if (!root.ready) return false
         if (index >= 0 && index < list.length) {
             list[index].done = true
             root.list = list.slice(0)
             _persistAll()
+            return true
         }
+        return false
     }
 
     function markUnfinished(index) {
+        if (!root.ready) return false
         if (index >= 0 && index < list.length) {
             list[index].done = false
             root.list = list.slice(0)
             _persistAll()
+            return true
         }
+        return false
     }
 
     function deleteItem(index) {
+        if (!root.ready) return false
         if (index >= 0 && index < list.length) {
             list.splice(index, 1)
             root.list = list.slice(0)
             _persistAll()
+            return true
         }
+        return false
     }
 
     function refresh() {
+        root.ready = false
         todoFileView.reload()
     }
 
@@ -149,6 +162,7 @@ Singleton {
 
     function _finishMissingInitialization(): void {
         root._storageInitializing = false
+        root.ready = true
         root._persistAll()
         startupUnlock.start()
     }
@@ -247,6 +261,7 @@ Singleton {
                 console.log("[Todo] JSON parse error, resetting list:", e)
                 root.list = []
             }
+            root.ready = true
             _log("[Todo] JSON loaded,", root.list.length, "tasks")
             // Generate txt mirror from loaded JSON, then unlock after settling
             root._writeTxt()
@@ -279,6 +294,7 @@ Singleton {
                 return
             todoInitDirProc.attempted = false
             root._storageInitializing = false
+            root.ready = true
             console.warn("[Todo] Failed to start storage directory creation")
             root._persistAll()
             startupUnlock.start()
@@ -292,6 +308,7 @@ Singleton {
                 root._finishMissingInitialization()
             } else {
                 root._storageInitializing = false
+                root.ready = true
                 console.warn("[Todo] Failed to create storage directories, exit code:", exitCode)
                 root._persistAll()
                 startupUnlock.start()

@@ -15,6 +15,7 @@ Singleton {
     property string filePath: Directories.eventsPath
     property var list: []
     property int nextId: 1
+    property bool ready: false
     property bool _saving: false
     property bool _saveQueued: false
     
@@ -31,6 +32,7 @@ Singleton {
     function _ensureStorageDirectory(): void {
         const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
         if (parentDir.length === 0) {
+            root.ready = true
             root.saveToFile()
             return
         }
@@ -59,6 +61,7 @@ Singleton {
             if (!fileContents || fileContents.trim() === "") {
                 root.list = []
                 root.nextId = 1
+                root.ready = true
                 return
             }
             try {
@@ -76,11 +79,13 @@ Singleton {
                 root.list = events
                 root.nextId = Number.isInteger(storedNextId) && storedNextId > maxId
                     ? storedNextId : maxId + 1
+                root.ready = true
                 _log("[Events] Loaded", root.list.length, "events")
             } catch (e) {
                 console.warn("[Events] Failed to parse file:", e)
                 root.list = []
                 root.nextId = 1
+                root.ready = true
             }
         }
         onLoadFailed: (error) => {
@@ -111,17 +116,22 @@ Singleton {
             if (!eventsInitDirProc.attempted || eventsInitDirProc.startObserved)
                 return
             eventsInitDirProc.attempted = false
+            root.ready = true
             console.warn("[Events] Failed to start storage directory creation")
+            root.saveToFile()
         }
 
         onStarted: eventsInitDirProc.startObserved = true
 
         onExited: (exitCode, exitStatus) => {
             eventsInitDirProc.attempted = false
+            root.ready = true
             if (exitCode === 0)
                 root.saveToFile()
-            else
+            else {
                 console.warn("[Events] Failed to create storage directory, exit code:", exitCode)
+                root.saveToFile()
+            }
         }
     }
 
@@ -137,6 +147,7 @@ Singleton {
     signal reminderTriggered(var event, int minutesBefore)
 
     function checkDueEvents() {
+        if (!root.ready) return
         const now = new Date()
         const currentTime = now.getTime()
         const eventCount = root.list.length
@@ -232,6 +243,7 @@ Singleton {
     }
 
     function addEvent(title, description, dateTime, category, priority, reminderMinutes, recurrence) {
+        if (!root.ready) return null
         const event = {
             id: root.nextId++,
             title: title || "",
@@ -254,6 +266,7 @@ Singleton {
     }
 
     function removeEvent(id) {
+        if (!root.ready) return false
         const index = root.list.findIndex(e => e.id === id)
         if (index !== -1) {
             root.list.splice(index, 1)
@@ -266,6 +279,7 @@ Singleton {
     }
 
     function updateEvent(id, updates) {
+        if (!root.ready) return false
         const index = root.list.findIndex(e => e.id === id)
         if (index !== -1) {
             root.list[index] = Object.assign({}, root.list[index], updates)
@@ -330,6 +344,7 @@ Singleton {
     }
 
     function loadFromFile() {
+        root.ready = false
         eventsFileView.reload()
     }
 

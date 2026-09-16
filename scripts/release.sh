@@ -3,6 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
+cd "$repo_root"
 
 usage() {
   cat <<'EOF'
@@ -40,7 +41,9 @@ require_release_version_consistency() {
     "$repo_root/distro/arch/inir-shell/PKGBUILD" \
     "$repo_root/distro/arch/inir-meta/PKGBUILD"; do
     [[ -f "$package_file" ]] || die "missing release package metadata: ${package_file#$repo_root/}"
-    package_version="$(grep -m1 '^pkgver=' "$package_file" | cut -d= -f2-)"
+    package_version="$(grep -m1 '^pkgver=' "$package_file" | cut -d= -f2- || true)"
+    [[ -n "$package_version" ]] \
+      || die "missing pkgver in ${package_file#$repo_root/}"
     [[ "$package_version" == "$version" ]] \
       || die "${package_file#$repo_root/} pkgver=$package_version does not match release version $version"
   done

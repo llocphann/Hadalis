@@ -209,9 +209,21 @@ Singleton {
 
     property bool _destroying: false
 
+    function _startSubscriber(): void {
+        if (!root._destroying && !subscriber.running)
+            subscriber.running = true
+    }
+
+    function _scheduleSubscriberRestart(): void {
+        if (!root._destroying)
+            subscriberRestart.restart()
+    }
+
     Component.onCompleted: {
         // Kill any orphaned nmcli monitor processes from previous shell instances,
-        // then start the fresh subscriber once cleanup finishes.
+        // then start the fresh subscriber once cleanup finishes. If the cleanup
+        // command itself cannot start, fall back to starting the subscriber.
+        _cleanupStale.attempted = true
         _cleanupStale.running = true;
         // Prime initial state once; subsequent updates come from nmcli monitor.
         Qt.callLater(() => root.update())
@@ -219,22 +231,59 @@ Singleton {
 
     Component.onDestruction: {
         root._destroying = true;
+        subscriberRestart.stop()
         subscriber.running = false;
+    }
+
+    Timer {
+        id: subscriberRestart
+        interval: 2000
+        repeat: false
+        onTriggered: root._startSubscriber()
     }
 
     Process {
         id: _cleanupStale
+        property bool attempted: false
+        property bool startObserved: false
         command: ["pkill", "-f", "nmcli monitor"]
         running: false
-        onExited: subscriber.running = true
+        onRunningChanged: {
+            if (_cleanupStale.running)
+                return
+            if (!_cleanupStale.attempted || _cleanupStale.startObserved)
+                return
+            _cleanupStale.attempted = false
+            console.warn("[Network] Failed to start stale nmcli monitor cleanup; starting subscriber directly")
+            root._startSubscriber()
+        }
+        onStarted: _cleanupStale.startObserved = true
+        onExited: {
+            _cleanupStale.attempted = false
+            root._startSubscriber()
+        }
     }
 
     Process {
         id: subscriber
+        property bool startObserved: false
         running: false
         command: ["nmcli", "monitor"]
-        // Auto-restart if the monitor process dies (can happen after lockscreen/suspend)
-        onRunningChanged: if (!running && !root._destroying) running = true
+        // Restart through a delay rather than directly from runningChanged. If
+        // nmcli cannot start or NetworkManager makes the monitor exit instantly,
+        // an inline restart would otherwise turn into a process-spawn loop.
+        onRunningChanged: {
+            if (subscriber.running) {
+                subscriber.startObserved = false
+                return
+            }
+            if (root._destroying || subscriber.startObserved)
+                return
+            console.warn("[Network] Failed to start nmcli monitor; retrying")
+            root._scheduleSubscriberRestart()
+        }
+        onStarted: subscriber.startObserved = true
+        onExited: root._scheduleSubscriberRestart()
         stdout: SplitParser {
             onRead: root.update()
         }

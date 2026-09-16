@@ -151,11 +151,43 @@ def test_placeholder_contract_is_rejected(module) -> None:
             raise AssertionError("reviewed replacement accepted a missing placeholder")
 
 
+def test_live_reviewed_manifest_state(module) -> None:
+    translations = TOOLS.parent
+    manifest_path = translations / "l10n" / "tr_TR-placeholder-repairs.json"
+    locale, replacements = module.load_manifest(manifest_path)
+    source = json.loads((translations / "en_US.json").read_text(encoding="utf-8"))
+    target = json.loads((translations / f"{locale}.json").read_text(encoding="utf-8"))
+    l10n = module._load_l10n()
+    states: set[str] = set()
+
+    for key, replacement in replacements.items():
+        assert key in source, f"reviewed key absent from en_US: {key!r}"
+        assert key in target, f"reviewed key absent from {locale}: {key!r}"
+        assert l10n.placeholders_match(source[key], replacement["to"]), (
+            f"reviewed replacement violates placeholder/markup contract: {key!r}"
+        )
+
+        current = target[key]
+        if current == replacement["from"]:
+            states.add("pending")
+        elif current == replacement["to"]:
+            states.add("applied")
+        else:
+            raise AssertionError(
+                f"{locale} drifted outside reviewed from/to values for {key!r}: {current!r}"
+            )
+
+    assert len(states) == 1, (
+        f"{locale} reviewed replacement manifest is partially applied: {sorted(states)}"
+    )
+
+
 def main() -> int:
     module = load_module()
     test_exact_reviewed_replacement(module)
     test_catalog_drift_is_rejected(module)
     test_placeholder_contract_is_rejected(module)
+    test_live_reviewed_manifest_state(module)
     print("PASS: reviewed locale replacements are exact, preserving, and fail-closed")
     return 0
 

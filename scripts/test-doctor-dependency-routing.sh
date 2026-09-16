@@ -38,6 +38,14 @@ for command, _friendly in re.findall(r'^\s*"([^":]+):([^"\n]+)"\s*$', cmd_block.
 if not doctor_cmds:
     raise SystemExit("FAIL: doctor dependency command list is empty")
 
+optional_equalizer_cmds = {"easyeffects", "socat"}
+leaked_optional = sorted(optional_equalizer_cmds & set(doctor_cmds))
+if leaked_optional:
+    raise SystemExit(
+        "FAIL: doctor hard-requires optional Equalizer backend commands: "
+        + ", ".join(leaked_optional)
+    )
+
 mapping_block = re.search(r"declare -A cmd_to_pkg=\(\n(?P<body>.*?)\n\s*\)", installer, re.S)
 if not mapping_block:
     raise SystemExit("FAIL: could not find Arch doctor command mapping")

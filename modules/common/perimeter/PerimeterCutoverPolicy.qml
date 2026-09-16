@@ -9,6 +9,13 @@ QtObject {
 
     readonly property bool requested:
         (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
+    // Match shell.qml's family loader contract exactly: every non-Waffle value
+    // resolves to the ii panel tree, while Waffle unloads all ii critical/panel
+    // hosts. Keep request intent persistent across family switches, but never
+    // report the perimeter runtime active when its owning family is not loaded.
+    readonly property bool familyActive:
+        (Config.options?.panelFamily ?? "ii") !== "waffle"
+
     // Placement is perimeter-owned once the user opts in, but some legacy
     // behavior policies still need dedicated adapters. Fail safe to legacy for
     // unsupported modes only when the corresponding surface is actually owned;
@@ -59,6 +66,7 @@ QtObject {
         return true
     }
     readonly property bool enabled: root.requested
+        && root.familyActive
         && root.compatibilityReady
         && root.configurationValid
         && root.sourcesReady
@@ -68,6 +76,8 @@ QtObject {
             return "disabled"
         if (!Config.ready)
             return "config-loading"
+        if (!root.familyActive)
+            return "inactive-family"
         if (Quickshell.screens.length === 0)
             return "no-outputs"
         if (!root.configurationValid)

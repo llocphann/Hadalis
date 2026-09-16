@@ -13,6 +13,7 @@ common="nix/module-common.nix"
 nixos="nix/nixos-module.nix"
 home="nix/home-module.nix"
 package="nix/package.nix"
+nix_workflow=".github/workflows/nix.yml"
 switchwall="scripts/colors/switchwall.sh"
 color_generator="scripts/colors/generate_colors_material.py"
 zed_module="scripts/colors/modules/31-zed.sh"
@@ -20,7 +21,7 @@ easyeffects_service="services/deferred/EasyEffects.qml"
 default_config="defaults/config.json"
 awww_service="services/AwwwBackend.qml"
 
-for file in "$common" "$nixos" "$home" "$package" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
+for file in "$common" "$nixos" "$home" "$package" "$nix_workflow" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
   [[ -f "$file" ]] || fail "missing Nix/runtime contract file: $file"
 done
 
@@ -36,6 +37,20 @@ grep -Fq 'lib.optionalAttrs (cfg.extraPackages != [ ])' "$home" \
   || fail 'Home Manager no longer guards the extraPackages PATH override'
 grep -Fq 'PATH = lib.makeBinPath ([ cfg.package ] ++ cfg.extraPackages);' "$home" \
   || fail 'Home Manager service no longer exposes extraPackages on PATH'
+
+while IFS= read -r runtime_dir; do
+  [[ -n "$runtime_dir" && "$runtime_dir" != \#* ]] || continue
+  [[ "$(grep -Fxc "      - '${runtime_dir}/**'" "$nix_workflow" || true)" == "2" ]] \
+    || fail "Nix workflow does not watch canonical runtime directory: $runtime_dir"
+done < sdata/runtime-payload-dirs.txt
+
+while IFS= read -r runtime_file; do
+  [[ -n "$runtime_file" && "$runtime_file" != \#* ]] || continue
+  [[ "$(grep -Fxc "      - '${runtime_file}'" "$nix_workflow" || true)" == "2" ]] \
+    || fail "Nix workflow does not watch canonical runtime root file: $runtime_file"
+done < sdata/runtime-root-files.txt
+[[ "$(grep -Fxc "      - '*.qml'" "$nix_workflow" || true)" == "2" ]] \
+  || fail 'Nix workflow no longer watches automatically included root QML files'
 
 grep -Fq 'flock -w 5 200' "$switchwall" \
   || fail 'switchwall no longer exercises the flock runtime dependency contract'

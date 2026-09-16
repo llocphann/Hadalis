@@ -101,13 +101,18 @@ grep -Fq 'readonly property bool barPresented:' "$presentation_policy" \
 grep -Fq 'function dockPresented(edge: string): bool {' "$presentation_policy" \
     || fail 'presentation policy does not expose dock lifecycle'
 # Once Connected Perimeter is requested, PerimeterConfig is the sole placement
-# authority. Legacy bar/dock screenList values are migration inputs only and must
-# not silently re-filter output placement at runtime.
+# authority. Legacy bar/dock output filters are migration inputs only and must
+# not silently re-filter output placement at runtime. Match concrete legacy
+# access paths rather than the generic word so comments cannot trip the guard.
 for file in "$presentation_policy" "$reservation_policy" "$thinkfan_module" \
         "$system_monitor_module" "$workspaces_module" "$media_module" \
         "$weather_module" "$dock_module"; do
-    if grep -Eq 'screenList|barOutputEnabled|dockOutputEnabled|barPresentedForOutput|dockPresentedForOutput' "$file"; then
+    if grep -Eq 'barOutputEnabled|dockOutputEnabled|barPresentedForOutput|dockPresentedForOutput' "$file"; then
         fail "$(basename "$file") bypasses perimeter-owned output placement"
+    fi
+    if grep -Fq 'Config.options?.bar?.screenList' "$file" \
+            || grep -Fq 'Config.options?.dock?.screenList' "$file"; then
+        fail "$(basename "$file") reads legacy bar/dock output placement"
     fi
 done
 

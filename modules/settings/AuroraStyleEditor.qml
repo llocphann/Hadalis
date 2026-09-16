@@ -71,6 +71,8 @@ ColumnLayout {
             stepSize: sliderRowRoot.stepSize
             value: sliderRowRoot.configValue
             configuration: StyledSlider.Configuration.S
+            Accessible.name: sliderRowRoot.label
+            Accessible.description: sliderRowRoot.description
 
             onMoved: {
                 if (sliderRowRoot.configPath !== "") {
@@ -227,6 +229,8 @@ ColumnLayout {
                     required property var modelData
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
+                    buttonText: modelData.label
+                    Accessible.description: modelData.desc
                     buttonRadius: Appearance.rounding.small
                     colBackground: Appearance.aurora.colSubSurface
                     colBackgroundHover: Appearance.aurora.colSubSurfaceHover
@@ -278,6 +282,7 @@ ColumnLayout {
             RippleButton {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
+                buttonText: Translation.tr("Quick Save")
                 buttonRadius: Appearance.rounding.small
                 colBackground: Appearance.aurora.colSubSurface
                 colBackgroundHover: Appearance.aurora.colSubSurfaceHover
@@ -293,6 +298,7 @@ ColumnLayout {
             RippleButton {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
+                buttonText: Translation.tr("Quick Load")
                 buttonRadius: Appearance.rounding.small
                 colBackground: Appearance.aurora.colSubSurface
                 colBackgroundHover: Appearance.aurora.colSubSurfaceHover
@@ -310,6 +316,7 @@ ColumnLayout {
             RippleButton {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
+                buttonText: Translation.tr("Reset")
                 buttonRadius: Appearance.rounding.small
                 colBackground: Appearance.aurora.colSubSurface
                 colBackgroundHover: Appearance.aurora.colSubSurfaceHover

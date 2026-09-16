@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 core_policy="$root/modules/common/perimeter/PerimeterCutoverPolicy.qml"
 core_registry="$root/modules/common/perimeter/ModuleRegistry.qml"
+perimeter_config="$root/modules/common/perimeter/PerimeterConfig.qml"
 core_qmldir="$root/modules/common/perimeter/qmldir"
 feature_qmldir="$root/modules/perimeter/qmldir"
 reservation_policy="$root/modules/perimeter/PerimeterReservationPolicy.qml"
@@ -17,9 +18,9 @@ fail() {
     exit 1
 }
 
-for file in "$core_policy" "$core_registry" "$core_qmldir" "$feature_qmldir" \
-        "$reservation_policy" "$runtime" "$critical" "$left_sidebar" \
-        "$right_sidebar"; do
+for file in "$core_policy" "$core_registry" "$perimeter_config" "$core_qmldir" \
+        "$feature_qmldir" "$reservation_policy" "$runtime" "$critical" \
+        "$left_sidebar" "$right_sidebar"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
@@ -49,6 +50,15 @@ grep -Fq 'Config.options?.dock?.pinnedOnStartup' "$core_policy" \
     || fail 'policy does not gate unsupported unpinned dock behavior'
 grep -Fq 'Config.options?.dock?.hoverToReveal' "$core_policy" \
     || fail 'policy does not gate unsupported dock hover reveal'
+
+for reset_fn in resetDefaultSlots resetOutputSlots; do
+    reset_block="$(sed -n "/function ${reset_fn}(/,/^    }/p" "$perimeter_config")"
+    [[ -n "$reset_block" ]] || fail "perimeter config missing $reset_fn"
+    grep -Fq '!root.schemaSupported' <<<"$reset_block" \
+        || fail "$reset_fn can mutate unsupported perimeter schema"
+    grep -Fq '!root._configuredShapeValid()' <<<"$reset_block" \
+        || fail "$reset_fn can mutate malformed perimeter config"
+done
 
 for reservation in \
     '"thinkfan": { moduleId: "thinkfan", preferredOrientation: "any", compact: true, expanded: true, reservationKind: "bar"' \

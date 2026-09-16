@@ -58,6 +58,14 @@ Singleton {
     onEnabledChanged: {
         if (root.enabled && root.sources.length > 0) {
             Qt.callLater(() => root.fetchAll())
+            return
+        }
+        if (!root.enabled) {
+            if (fetchProc.running)
+                fetchProc.running = false
+            root.events = []
+            root.ready = true
+            root.eventsUpdated()
         }
     }
 
@@ -78,7 +86,7 @@ Singleton {
     property bool _fetchHadError: false
 
     function fetchAll(): void {
-        if (root.fetching) return
+        if (!root.enabled || root.fetching) return
         const enabledSources = root.sources.filter(s => s.enabled && s.url && s.url.trim() !== "")
         if (enabledSources.length === 0) {
             root.events = []
@@ -98,6 +106,18 @@ Singleton {
     }
 
     function _fetchNext(): void {
+        if (!root.enabled) {
+            root._pendingSources = []
+            root._fetchedEvents = []
+            root._fetchIndex = -1
+            root.fetching = false
+            root.ready = true
+            root.events = []
+            root.eventsUpdated()
+            root.fetchFinished(false)
+            return
+        }
+
         if (root._fetchIndex >= root._pendingSources.length) {
             // All done
             root.events = root._fetchedEvents
@@ -289,7 +309,7 @@ Singleton {
 
     // Force refresh a single source or all
     function refreshSource(sourceId: string): void {
-        if (root.fetching)
+        if (!root.enabled || root.fetching)
             return
 
         const source = root.sources.find(s => s.id === sourceId && s.enabled

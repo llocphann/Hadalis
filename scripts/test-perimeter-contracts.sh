@@ -11,6 +11,7 @@ presentation_policy="$root/modules/perimeter/PerimeterPresentationPolicy.qml"
 reservation_policy="$root/modules/perimeter/PerimeterReservationPolicy.qml"
 runtime="$root/modules/perimeter/PerimeterRuntime.qml"
 sidebar_module="$root/modules/perimeter/SidebarModule.qml"
+system_monitor_module="$root/modules/perimeter/SystemMonitorModule.qml"
 critical="$root/modules/ii/critical/ShellIiCriticalPanels.qml"
 ii_panels="$root/modules/ii/ShellIiPanelsImpl.qml"
 left_sidebar="$root/modules/sidebarLeft/SidebarLeft.qml"
@@ -23,8 +24,8 @@ fail() {
 
 for file in "$core_policy" "$core_registry" "$perimeter_config" "$core_qmldir" \
         "$feature_qmldir" "$presentation_policy" "$reservation_policy" "$runtime" \
-        "$sidebar_module" "$critical" "$ii_panels" "$left_sidebar" \
-        "$right_sidebar"; do
+        "$sidebar_module" "$system_monitor_module" "$critical" "$ii_panels" \
+        "$left_sidebar" "$right_sidebar"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
@@ -97,6 +98,16 @@ grep -Fq 'includes("iiSidebarLeft")' <<<"$backdrop_block" \
     || fail 'left sidebar backdrop ignores panel ownership'
 grep -Fq 'includes("iiSidebarRight")' <<<"$backdrop_block" \
     || fail 'right sidebar backdrop ignores panel ownership'
+
+grep -Fq 'function syncResourceUsageLifecycle(): void {' "$system_monitor_module" \
+    || fail 'system monitor no longer synchronizes resource polling with presentation'
+grep -Fq 'onPresentedChanged: root.syncResourceUsageLifecycle()' "$system_monitor_module" \
+    || fail 'system monitor does not release polling when presentation changes'
+grep -Fq 'ResourceUsage.releaseKeepAlive()' "$system_monitor_module" \
+    || fail 'system monitor cannot release its persistent resource consumer'
+if grep -Fq 'Component.onCompleted: ResourceUsage.keepAlive()' "$system_monitor_module"; then
+    fail 'hidden system monitor can keep resource polling alive unconditionally'
+fi
 
 grep -Fq 'component EdgeReservationWindow: PanelWindow {' "$runtime" \
     || fail 'runtime has no edge-specific reservation surface'

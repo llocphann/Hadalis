@@ -36,12 +36,14 @@ test-local: build test-prefix-install
 test-prefix-install:
 	@stage="$$(mktemp -d)"; \
 		trap 'rm -rf -- "$$stage"' EXIT; \
-		$(MAKE) -s install-bin install-shell DESTDIR="$$stage" PREFIX=/opt/inir; \
+		$(MAKE) -s install-bin install-shell install-desktop DESTDIR="$$stage" PREFIX=/opt/inir; \
 		runtime="$$stage/opt/inir/share/quickshell/inir"; \
 		test -f "$$runtime/shell.qml"; \
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$stage/opt/inir/bin/inir"; \
 		grep -Fq 'RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/opt/inir/share/quickshell/inir}"' "$$runtime/sdata/lib/versioning.sh"; \
-		grep -Fq '"package_update_hint": "sudo make install PREFIX=\"/opt/inir\"' "$$runtime/version.json"
+		grep -Fq '"package_update_hint": "sudo make install PREFIX=\"/opt/inir\"' "$$runtime/version.json"; \
+		grep -Fxq 'Exec=/opt/inir/bin/inir service restart' "$$stage/opt/inir/share/applications/inir.desktop"; \
+		grep -Fxq 'Exec=/opt/inir/bin/inir settings' "$$stage/opt/inir/share/applications/inir-settings.desktop"
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh
@@ -81,8 +83,10 @@ install-icon:
 	@if [ -z "$(DESTDIR)" ]; then gtk-update-icon-cache -q "$(SHAREDIR)/icons/hicolor" 2>/dev/null || true; fi
 
 install-desktop:
-	@install -Dm644 assets/applications/inir.desktop "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop"
-	@install -Dm644 assets/applications/inir-settings.desktop "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
+	@mkdir -p "$(DESTDIR)$(APPLICATIONS_DIR)"
+	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir|' assets/applications/inir.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop"
+	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir|' assets/applications/inir-settings.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
+	@chmod 644 "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop" "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
 	@if [ -z "$(DESTDIR)" ]; then update-desktop-database -q "$(APPLICATIONS_DIR)" 2>/dev/null || true; fi
 
 install-docs:

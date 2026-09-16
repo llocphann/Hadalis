@@ -311,28 +311,41 @@ The project is still completing product/namespace cleanup. Runtime, package, and
 
 ---
 
-## Future implementation scope
+## Equalizer implementation status
 
-The current future scope is intentionally narrow: **only the Media equalizer integration described below is planned from the external design references. Other Serpantinum features and other external UI references are deferred for now.**
+Serpantinum is currently used only as an external interaction/design reference for the Media equalizer direction. Other Serpantinum features and other external UI references remain deferred.
 
-### Media equalizer
+### Implemented
+
+- `EqualizerService.qml` provides the Phase 1 backend/service contract and is disabled by default.
+- EasyEffects is an optional backend, with optional transport support; absence of the backend/transport does not block normal Media playback.
+- the service boundary exposes capability/error/lifecycle state and preset/band mutation APIs without putting backend execution into Media presentation code;
+- architecture, lifecycle/protocol, packaging, Nix, and optional-dependency contracts guard this Phase 1 boundary.
+
+### Stabilizing
+
+- backend capability detection and lifecycle/error behavior across supported EasyEffects installation modes;
+- packaging/install/release behavior that keeps EasyEffects and its transport optional;
+- interaction with Connected Media routing/lifecycle without coupling Equalizer execution to shell startup.
+
+### Planned
 
 Reference: `https://github.com/ilyamiro/serpantinum`
 
-The planned change is to take the **equalizer concept and interaction model** from Serpantinum and integrate it directly **below the existing Hadalis Media content** inside the current Connected Media popup. It should extend the current Hadalis Media surface rather than replace or redesign it.
+The planned presentation work is to take the **equalizer concept and interaction model** from Serpantinum and integrate it directly **below the existing Hadalis Media content** inside the current Connected Media popup. It should extend the current Hadalis Media surface rather than replace or redesign it.
 
 Target behavior:
 
 - preserve Hadalis' existing Media/MPRIS presentation and playback controls;
 - place the equalizer below the current media content;
 - provide multi-band gain controls and useful preset/apply/reset state based on the Serpantinum equalizer interaction model;
-- use Hadalis' existing EasyEffects/service boundary where possible instead of introducing a second audio-control stack;
+- use Hadalis' existing EasyEffects/service boundary instead of introducing a second audio-control stack;
 - keep equalizer runtime/process work inactive when the Media surface is not using it;
 - make absence of EasyEffects or a compatible audio path fail gracefully without breaking Media playback controls.
 
-Serpantinum currently implements its Media equalizer around EasyEffects and an `equalizer.sh` helper. Prefer a Hadalis-native implementation integrated with the existing Media and EasyEffects boundaries rather than copying unrelated Serpantinum UI or architecture.
+Serpantinum currently implements its Media equalizer around EasyEffects and an `equalizer.sh` helper. Prefer a Hadalis-native presentation integrated with the existing Media and EasyEffects boundaries rather than copying unrelated Serpantinum UI or architecture.
 
-The Serpantinum bar design, Bluetooth popup, Dashboard, other popups, and all other external design experiments are **out of scope for now**.
+The full Equalizer UI, spectrum, preset surface, multi-band presentation redesign, Serpantinum bar design, Bluetooth popup, Dashboard, other popups, and all other external design experiments are **planned/deferred rather than current release prerequisites**.
 
 ---
 

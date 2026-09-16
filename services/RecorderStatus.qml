@@ -189,11 +189,22 @@ Singleton {
 
     Process {
         id: storedConfigProcess
+        property bool startObserved: false
         command: ["/usr/bin/cat", Config.filePath]
         stdout: StdioCollector {
             id: storedConfigCollector
         }
         stderr: StdioCollector {}
+        onRunningChanged: {
+            if (storedConfigProcess.running) {
+                storedConfigProcess.startObserved = false
+                return
+            }
+            if (storedConfigProcess.startObserved)
+                return
+            root.resetStoredAudioConfig()
+        }
+        onStarted: storedConfigProcess.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0)
                 root.parseStoredAudioConfig(storedConfigCollector.text)
@@ -204,11 +215,22 @@ Singleton {
 
     Process {
         id: metadataProcess
+        property bool startObserved: false
         command: ["/usr/bin/cat", root.recorderStatusPath]
         stdout: StdioCollector {
             id: metadataCollector
         }
         stderr: StdioCollector {}
+        onRunningChanged: {
+            if (metadataProcess.running) {
+                metadataProcess.startObserved = false
+                return
+            }
+            if (metadataProcess.startObserved)
+                return
+            root.resetAudioMetadata()
+        }
+        onStarted: metadataProcess.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 root.resetAudioMetadata()
@@ -233,10 +255,22 @@ Singleton {
 
     Process {
         id: checkProcess
+        property bool startObserved: false
         command: ["/usr/bin/pgrep", "-xo", "wf-recorder"]
         stdout: StdioCollector {
             id: recorderPidCollector
         }
+        onRunningChanged: {
+            if (checkProcess.running) {
+                checkProcess.startObserved = false
+                return
+            }
+            if (checkProcess.startObserved)
+                return
+            root.recorderPid = 0
+            root.isRecording = false
+        }
+        onStarted: checkProcess.startObserved = true
         onExited: (exitCode, exitStatus) => {
             const previousPid = root.recorderPid
             const parsedPid = parseInt(recorderPidCollector.text.trim(), 10)

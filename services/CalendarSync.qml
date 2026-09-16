@@ -14,8 +14,18 @@ Singleton {
     id: root
 
     readonly property bool enabled: Config.options?.calendar?.externalSync?.enable ?? false
-    readonly property var sources: Config.options?.calendar?.externalSync?.sources ?? []
-    readonly property int fetchIntervalMs: (Config.options?.calendar?.externalSync?.refreshMinutes ?? 15) * 60 * 1000
+    readonly property var sources: {
+        const configured = Config.options?.calendar?.externalSync?.sources
+        if (!Array.isArray(configured))
+            return []
+        return configured.filter(source => source && typeof source === "object" && !Array.isArray(source))
+    }
+    readonly property int refreshMinutes: {
+        const configured = Number(Config.options?.calendar?.externalSync?.refreshMinutes)
+        return Number.isFinite(configured) && configured > 0
+            ? Math.max(1, Math.round(configured)) : 15
+    }
+    readonly property int fetchIntervalMs: root.refreshMinutes * 60 * 1000
 
     // All external events, merged from every enabled source
     property var events: []
@@ -92,7 +102,8 @@ Singleton {
 
     function fetchAll(): void {
         if (!root.enabled || root.fetching) return
-        const enabledSources = root.sources.filter(s => s.enabled && s.url && s.url.trim() !== "")
+        const enabledSources = root.sources.filter(s => s.enabled
+            && typeof s.url === "string" && s.url.trim() !== "")
         if (enabledSources.length === 0) {
             root.events = []
             root.ready = true
@@ -293,12 +304,12 @@ Singleton {
             color: color || _nextColor(),
             enabled: true
         }
-        const updated = [...(Config.options?.calendar?.externalSync?.sources ?? []), newSource]
+        const updated = [...root.sources, newSource]
         Config.setNestedValue("calendar.externalSync.sources", updated)
     }
 
     function removeSource(sourceId: string): void {
-        const updated = (Config.options?.calendar?.externalSync?.sources ?? []).filter(s => s.id !== sourceId)
+        const updated = root.sources.filter(s => s.id !== sourceId)
         Config.setNestedValue("calendar.externalSync.sources", updated)
         // Clean cached events from this source
         root.events = root.events.filter(e => e.sourceId !== sourceId)
@@ -306,7 +317,7 @@ Singleton {
     }
 
     function updateSource(sourceId: string, updates: var): void {
-        const sources = [...(Config.options?.calendar?.externalSync?.sources ?? [])]
+        const sources = root.sources.map(source => Object.assign({}, source))
         const idx = sources.findIndex(s => s.id === sourceId)
         if (idx !== -1) {
             sources[idx] = Object.assign({}, sources[idx], updates)
@@ -330,7 +341,7 @@ Singleton {
             return
 
         const source = root.sources.find(s => s.id === sourceId && s.enabled
-            && s.url && s.url.trim() !== "")
+            && typeof s.url === "string" && s.url.trim() !== "")
         if (!source)
             return
 
@@ -375,12 +386,17 @@ Singleton {
             }
             try {
                 const data = JSON.parse(content)
-                root.events = data.events || []
-                root.sourceStatuses = data.sourceStatuses || {}
+                root.events = Array.isArray(data?.events)
+                    ? data.events.filter(event => event && typeof event === "object" && !Array.isArray(event))
+                    : []
+                root.sourceStatuses = data?.sourceStatuses && typeof data.sourceStatuses === "object"
+                    && !Array.isArray(data.sourceStatuses) ? data.sourceStatuses : {}
                 root.ready = true
                 _log("Loaded cache:", root.events.length, "events")
             } catch (e) {
                 _log("Cache parse error:", e.message)
+                root.events = []
+                root.sourceStatuses = {}
                 root.ready = true
             }
         }

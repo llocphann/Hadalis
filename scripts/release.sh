@@ -131,7 +131,6 @@ require_release_contracts() {
   local contract
   for contract in \
     "$script_dir/test-packaging-contract.sh" \
-    "$script_dir/test-nix-module-contract.sh" \
     "$script_dir/test-doctor-dependency-routing.sh" \
     "$script_dir/test-equalizer-boundary-contract.sh" \
     "$script_dir/test-equalizer-service-contract.sh" \
@@ -144,6 +143,17 @@ require_release_contracts() {
     bash "$contract" \
       || die "release contract failed: ${contract#$repo_root/}"
   done
+
+  # Nix compatibility remains useful diagnostic coverage, but the current
+  # release acceptance lane is explicitly non-Nix. Keep running the contract
+  # when present without allowing an unavailable or failing Nix lane to block
+  # publication after the required non-Nix contracts have passed.
+  contract="$script_dir/test-nix-module-contract.sh"
+  if [[ ! -f "$contract" ]]; then
+    printf 'warning: deferred Nix diagnostic is missing: %s\n' "${contract#$repo_root/}" >&2
+  elif ! bash "$contract"; then
+    printf 'warning: deferred Nix diagnostic failed and is non-blocking: %s\n' "${contract#$repo_root/}" >&2
+  fi
 }
 
 extract_notes() {

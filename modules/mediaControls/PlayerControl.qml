@@ -373,6 +373,7 @@ Item {
                     implicitHeight: 16
 
                     Loader {
+                        id: seekLoader
                         anchors.fill: parent
                         active: root.player?.canSeek ?? false
                         sourceComponent: StyledSlider {
@@ -414,6 +415,11 @@ Item {
                                 : (blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer)
                             value: root.player?.length > 0 ? root.player.position / root.player.length : 0
                         }
+                    }
+
+                    KeyboardFocusRing {
+                        anchors.fill: parent
+                        focusVisible: seekLoader.item?.visualFocus ?? false
                     }
                 }
 

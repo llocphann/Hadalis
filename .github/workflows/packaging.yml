@@ -6,94 +6,28 @@ on:
       - 'VERSION'
       - 'Makefile'
       - 'setup'
-      - 'scripts/inir'
-      - 'scripts/release.sh'
+      - 'scripts/**'
       - 'scripts/wiki-sync.sh'
-      - 'scripts/colors/generate_colors_material.py'
-      - 'scripts/colors/switchwall.sh'
-      - 'scripts/colors/modules/31-zed.sh'
-      - 'scripts/test-packaging-contract.sh'
-      - 'scripts/test-make-install-lifecycle.sh'
-      - 'scripts/test-battery-charge-limit-helper.sh'
-      - 'scripts/test-thinkfan-helper.sh'
-      - 'scripts/test-doctor-dependency-routing.sh'
-      - 'scripts/test-equalizer-boundary-contract.sh'
-      - 'scripts/test-equalizer-service-contract.sh'
-      - 'scripts/test-nix-module-contract.sh'
-      - 'scripts/test-optional-audio-deps-contract.sh'
-      - 'services/AwwwBackend.qml'
-      - 'services/deferred/EasyEffects.qml'
-      - 'services/deferred/EqualizerService.qml'
-      - 'services/deferred/qmldir'
-      - 'defaults/config.json'
+      - 'services/**'
+      - 'defaults/**'
       - 'distro/arch/**'
-      - 'sdata/dist-arch/**'
-      - 'sdata/lib/doctor.sh'
-      - 'sdata/lib/runtime-payload.py'
-      - 'sdata/runtime-root-files.txt'
-      - 'sdata/runtime-payload-dirs.txt'
-      - 'sdata/runtime-exclusions.json'
-      - 'nix/**'
-      - 'assets/systemd/**'
-      - 'assets/applications/**'
-      - 'assets/icons/desktop-symbolic.svg'
-      - 'assets/helpers/inir-*'
-      - 'assets/polkit/**'
-      - 'assets/tlp/**'
-      - 'docs/AUDIO_MEDIA.md'
-      - 'docs/INSTALL.md'
-      - 'docs/PACKAGES.md'
-      - 'docs/RELEASING.md'
-      - 'docs/THINKFAN.md'
-      - 'docs/UNINSTALL.md'
-      - '.github/workflows/nix.yml'
+      - 'sdata/**'
+      - 'assets/**'
+      - 'docs/**'
       - '.github/workflows/packaging.yml'
   pull_request:
     paths:
       - 'VERSION'
       - 'Makefile'
       - 'setup'
-      - 'scripts/inir'
-      - 'scripts/release.sh'
+      - 'scripts/**'
       - 'scripts/wiki-sync.sh'
-      - 'scripts/colors/generate_colors_material.py'
-      - 'scripts/colors/switchwall.sh'
-      - 'scripts/colors/modules/31-zed.sh'
-      - 'scripts/test-packaging-contract.sh'
-      - 'scripts/test-make-install-lifecycle.sh'
-      - 'scripts/test-battery-charge-limit-helper.sh'
-      - 'scripts/test-thinkfan-helper.sh'
-      - 'scripts/test-doctor-dependency-routing.sh'
-      - 'scripts/test-equalizer-boundary-contract.sh'
-      - 'scripts/test-equalizer-service-contract.sh'
-      - 'scripts/test-nix-module-contract.sh'
-      - 'scripts/test-optional-audio-deps-contract.sh'
-      - 'services/AwwwBackend.qml'
-      - 'services/deferred/EasyEffects.qml'
-      - 'services/deferred/EqualizerService.qml'
-      - 'services/deferred/qmldir'
-      - 'defaults/config.json'
+      - 'services/**'
+      - 'defaults/**'
       - 'distro/arch/**'
-      - 'sdata/dist-arch/**'
-      - 'sdata/lib/doctor.sh'
-      - 'sdata/lib/runtime-payload.py'
-      - 'sdata/runtime-root-files.txt'
-      - 'sdata/runtime-payload-dirs.txt'
-      - 'sdata/runtime-exclusions.json'
-      - 'nix/**'
-      - 'assets/systemd/**'
-      - 'assets/applications/**'
-      - 'assets/icons/desktop-symbolic.svg'
-      - 'assets/helpers/inir-*'
-      - 'assets/polkit/**'
-      - 'assets/tlp/**'
-      - 'docs/AUDIO_MEDIA.md'
-      - 'docs/INSTALL.md'
-      - 'docs/PACKAGES.md'
-      - 'docs/RELEASING.md'
-      - 'docs/THINKFAN.md'
-      - 'docs/UNINSTALL.md'
-      - '.github/workflows/nix.yml'
+      - 'sdata/**'
+      - 'assets/**'
+      - 'docs/**'
       - '.github/workflows/packaging.yml'
   workflow_dispatch:
 
@@ -113,56 +47,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate packaging contracts
-        run: bash scripts/test-packaging-contract.sh
-
-      - name: Validate Nix module contracts
+      - name: Install local-validation dependencies
         run: |
-          bash -n scripts/test-nix-module-contract.sh
-          bash scripts/test-nix-module-contract.sh
+          sudo apt-get update
+          sudo apt-get install -y fish jq rsync
 
-      - name: Validate doctor dependency routing
-        run: |
-          bash -n scripts/test-doctor-dependency-routing.sh
-          bash scripts/test-doctor-dependency-routing.sh
-
-      - name: Validate Equalizer Phase 1 contracts
-        run: |
-          bash -n scripts/test-equalizer-boundary-contract.sh
-          bash scripts/test-equalizer-boundary-contract.sh
-          bash -n scripts/test-equalizer-service-contract.sh
-          bash scripts/test-equalizer-service-contract.sh
-
-      - name: Validate optional audio dependency contracts
-        run: |
-          bash -n scripts/test-optional-audio-deps-contract.sh
-          bash scripts/test-optional-audio-deps-contract.sh
-
-      - name: Validate Makefile install lifecycle
-        run: |
-          bash -n scripts/test-make-install-lifecycle.sh
-          bash scripts/test-make-install-lifecycle.sh
-
-      - name: Validate privileged helper contracts
-        run: |
-          bash -n scripts/test-battery-charge-limit-helper.sh
-          bash scripts/test-battery-charge-limit-helper.sh
-          bash -n scripts/test-thinkfan-helper.sh
-          bash scripts/test-thinkfan-helper.sh
-
-      - name: Parse Arch recipes and lifecycle hooks
-        run: |
-          bash -n distro/arch/inir-shell/PKGBUILD
-          bash -n distro/arch/inir-shell-git/PKGBUILD
-          bash -n distro/arch/inir-meta/PKGBUILD
-          for recipe in sdata/dist-arch/inir-*/PKGBUILD; do
-            bash -n "$recipe"
-          done
-          repo_version="$(tr -d '[:space:]' < VERSION)"
-          deps_version="$(grep -m1 '^pkgver=' sdata/dist-arch/inir-deps/PKGBUILD | cut -d= -f2-)"
-          if [[ "$deps_version" != "$repo_version" ]]; then
-            echo "::error::inir-deps pkgver=$deps_version does not match VERSION=$repo_version"
-            exit 1
-          fi
-          bash -n distro/arch/inir-shell/inir-shell.install
-          bash -n distro/arch/inir-shell-git/inir-shell-git.install
+      - name: Run canonical local validator
+        run: bash scripts/validate-maintainer-local.sh --current-repo

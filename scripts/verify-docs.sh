@@ -126,5 +126,19 @@ if command -v python3 >/dev/null 2>&1 && [ -f scripts/lib/generate-ipc-registry.
     || note "scripts/lib/ipc-registry.sh is stale — run: python3 scripts/lib/generate-ipc-registry.py"
 fi
 
+# 8. Installation documentation must not claim Arch-only routing while setup
+#    still contains distro-specific Fedora or Debian/Ubuntu dependency routers.
+#    The router remains the source of truth; this only rejects a contradictory
+#    blanket statement when those non-Arch routes actually exist in code.
+router="sdata/subcmd-install/1.deps-router.sh"
+install_doc="docs/INSTALL.md"
+echo "[install] setup distro routing vs docs/INSTALL.md"
+if [ -f "$router" ] && [ -f "$install_doc" ] \
+    && grep -Eq 'source ./sdata/dist-(fedora|debian)/install-deps\.sh' "$router"; then
+  if grep -Fq '**Arch Linux only.**' "$install_doc"; then
+    note "docs/INSTALL.md claims Arch-only support while setup has Fedora/Debian dependency routers"
+  fi
+fi
+
 [ "$fail" -eq 0 ] && echo "OK - docs and translations match code." || echo "DRIFT FOUND (see above)."
 exit "$fail"

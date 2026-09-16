@@ -80,7 +80,6 @@ let
     ++ optionalTop "networkmanager"
     ++ optionalTop "networkmanagerapplet"
     ++ optionalTop "pavucontrol"
-    ++ optionalTop "socat"
     ++ optionalTop "songrec"
     ++ optionalTop "swappy"
     ++ optionalTop "tesseract"
@@ -169,7 +168,7 @@ pkgs.stdenvNoCC.mkDerivation {
     python3 sdata/lib/runtime-payload.py copy --root . --target "$runtime"
 
     chmod +x "$runtime/setup" "$runtime/scripts/inir"
-    find "$runtime/scripts" -type f \( -name '*.sh' -o -name '*.fish' -o -name '*.py' \) -exec chmod +x {} \;
+    find "$runtime/scripts" -type f \( -name '*.sh' -o -name '*.fish' -o -name '*.py' \) -exec chmod +x {} +
 
     # The source tree intentionally targets Arch, where helpers live under
     # /usr/bin. NixOS does not provide that layout. Patch only the packaged

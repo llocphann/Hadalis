@@ -34,11 +34,13 @@ Singleton {
     readonly property int suspendTimeout: batteryProfileActive
         ? root._nonNegativeInt(Config.options?.idle?.onBattery?.suspendTimeout, 600)
         : root._nonNegativeInt(Config.options?.idle?.suspendTimeout, 0)
+    readonly property bool lockBeforeSleep: Config.options?.idle?.lockBeforeSleep !== false
     readonly property string launcherPath: Quickshell.shellPath("scripts/inir")
 
     onScreenOffTimeoutChanged: _restartSwayidle()
     onLockTimeoutChanged: _restartSwayidle()
     onSuspendTimeoutChanged: _restartSwayidle()
+    onLockBeforeSleepChanged: _restartSwayidle()
     onInhibitChanged: _restartSwayidle()
     // Plugging in with identical timeouts on both profiles changes no timeout
     // property, so swayidle would keep the old command line without this.
@@ -73,7 +75,6 @@ Singleton {
         if (inhibit) return
 
         const cmd = ["/usr/bin/swayidle", "-w"]
-        const lockBeforeSleep = Config.options?.idle?.lockBeforeSleep !== false
 
         if (screenOffTimeout > 0 && CompositorService.isNiri) {
             const inir = StringUtils.shellSingleQuoteEscape(root.launcherPath);
@@ -85,7 +86,7 @@ Singleton {
         // Determine effective lock timeout
         // If suspend is configured and lockBeforeSleep is enabled, ensure lock happens before suspend
         let effectiveLockTimeout = lockTimeout
-        if (suspendTimeout > 0 && lockBeforeSleep) {
+        if (suspendTimeout > 0 && root.lockBeforeSleep) {
             // Lock should happen before suspend - use 5 seconds before suspend if lockTimeout is 0 or > suspendTimeout
             const lockBeforeSuspendTime = Math.max(1, suspendTimeout - 5)
             if (lockTimeout <= 0 || lockTimeout > lockBeforeSuspendTime) {
@@ -101,7 +102,7 @@ Singleton {
             cmd.push("timeout", suspendTimeout.toString(), "/usr/bin/systemctl suspend -i")
         }
 
-        if (lockBeforeSleep) {
+        if (root.lockBeforeSleep) {
             cmd.push("before-sleep", `'${StringUtils.shellSingleQuoteEscape(root.launcherPath)}' lock activate`)
         }
 

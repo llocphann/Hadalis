@@ -9,6 +9,7 @@ import QtQuick.Layouts
 TabButton {
     id: root
     property string buttonText
+    Accessible.name: root.buttonText
     property string buttonIcon
     property bool selected: false
     property int rippleDuration: 1200

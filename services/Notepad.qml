@@ -85,8 +85,13 @@ Singleton {
     // buffer and reassigns tabs/currentTab mid-edit, dropping freshly added
     // tabs or their text. Skip the reload that our own save triggers.
     property bool _saving: false
+    // Fresh-start mkdir is asynchronous. While it is running, keep edits in
+    // memory and persist the latest state once the directory is ready.
+    property bool _storageInitializing: false
 
     function _save() {
+        if (_storageInitializing)
+            return
         _saving = true
         tabsFileView.setText(JSON.stringify({ currentTab: currentTab, tabs: tabs }))
     }
@@ -145,11 +150,45 @@ Singleton {
         }
 
         onLoadFailed: {
-            // No legacy file either — fresh start
-            const parentDir = root.tabsFilePath.substring(0, root.tabsFilePath.lastIndexOf('/'))
-            Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
+            // No legacy file either — fresh start. Serialize mkdir before the
+            // first FileView write so the marker cannot race its parent directory.
             root.tabs = [{ title: "Note 1", text: "" }]
             root.currentTab = 0
+            root._storageInitializing = true
+            if (!createStorageDirProc.running)
+                createStorageDirProc.running = true
+        }
+    }
+
+    Process {
+        id: createStorageDirProc
+        running: false
+        property bool startObserved: false
+        command: [
+            "/usr/bin/mkdir",
+            "-p",
+            root.tabsFilePath.substring(0, root.tabsFilePath.lastIndexOf('/'))
+        ]
+
+        onRunningChanged: {
+            if (createStorageDirProc.running) {
+                createStorageDirProc.startObserved = false
+                return
+            }
+            if (createStorageDirProc.startObserved)
+                return
+
+            root._storageInitializing = false
+            console.warn("[Notepad] Failed to start state directory creation")
+            root._save()
+        }
+
+        onStarted: createStorageDirProc.startObserved = true
+
+        onExited: (exitCode, exitStatus) => {
+            root._storageInitializing = false
+            if (exitCode !== 0)
+                console.warn("[Notepad] Failed to create state directory", exitCode, exitStatus)
             root._save()
         }
     }

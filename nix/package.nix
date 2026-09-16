@@ -74,6 +74,7 @@ let
     ++ optionalTop "imagemagick"
     ++ optionalTop "kitty"
     ++ optionalTop "libqalculate"
+    ++ optionalTop "mission-center"
     ++ optionalTop "mpv"
     ++ optionalTop "nautilus"
     ++ optionalTop "networkmanager"

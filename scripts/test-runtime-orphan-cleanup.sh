@@ -35,6 +35,7 @@ generate_manifest "$repo_root" "$manifest" \
     || fail 'could not generate runtime manifest fixture'
 printf '%s\n' 'import QtQuick' > "$runtime/RetiredRoot.qml"
 printf '%s\n' 'import QtQuick' > "$runtime/modules/pill/Stale.qml"
+printf '%s\n' '# retired source-only contract' > "$runtime/scripts/test-packaging-contract.sh"
 printf '%s\n' '# private excluded artifact' > "$runtime/scripts/test-local-private.sh"
 
 cleanup_orphans "$runtime" "$manifest" \
@@ -42,7 +43,8 @@ cleanup_orphans "$runtime" "$manifest" \
 
 for stale_path in \
     "$runtime/RetiredRoot.qml" \
-    "$runtime/modules/pill/Stale.qml"; do
+    "$runtime/modules/pill/Stale.qml" \
+    "$runtime/scripts/test-packaging-contract.sh"; do
     if [[ -e "$stale_path" || -L "$stale_path" ]]; then
         fail "runtime orphan cleanup preserved stale managed path: ${stale_path#$runtime/}"
     fi
@@ -71,4 +73,4 @@ for package_recipe in \
 done
 
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - repo-copy/package cleanup removes retired runtime QML without deleting excluded artifacts'
+printf '%s\n' 'ok 1 - runtime cleanup removes retired managed/source-only files without deleting private excluded artifacts'

@@ -86,7 +86,7 @@ def main() -> None:
           "Translation runtime must expose only en_US")
     check('languageCode: "en_US"' in translation,
           "Translation runtime languageCode must stay canonical en_US")
-    check('translations/en_US.json' in translation,
+    check('Quickshell.shellPath("translations")' in translation and '/en_US.json' in translation,
           "Translation runtime must load the canonical en_US catalog")
     locale_files = sorted(path.name for path in (ROOT / "translations").glob("*.json"))
     check(locale_files == ["en_US.json"],

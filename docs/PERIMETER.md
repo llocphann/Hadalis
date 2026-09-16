@@ -9,9 +9,9 @@ Two related concerns must remain distinct during stabilization:
 
 ## Connected popup contract
 
-`StyledPopup.qml` keeps the established popup API and composes the shared perimeter primitives instead of introducing a second popup framework.
+`StyledPopup.qml` keeps the established popup role and composes the shared perimeter primitives instead of introducing a second popup framework.
 
-The shared geometry must support every bar edge:
+The shared geometry supports every bar edge:
 
 | Bar attachment | Popup inward direction |
 |---|---|
@@ -20,16 +20,28 @@ The shared geometry must support every bar edge:
 | left | right |
 | right | left |
 
-`ConnectedSurfaceGeometry.qml` is the geometry authority for the popup body, connector, reveal progress, output bounds and attachment edge. `ConnectedSurfaceFrame.qml` and `ConnectedSurfaceMask.qml` consume that geometry for presentation and input shape.
+`ConnectedSurfaceGeometry.qml` is the geometry authority for the popup body, connector, reveal progress, output bounds and attachment edge. `ConnectedSurfaceFrame.qml`, `ConnectedSurfaceConnector.qml`, and `ConnectedSurfaceMask.qml` consume that geometry for presentation and input shape.
 
-The seam contract is intentional:
+The visual target is a bar-owned deformation rather than a detached card:
+
+- the surface starts at approximately the real source control width and grows inward from that rendered anchor;
+- the connector flares from the source through cubic Bézier shoulders into the wider body instead of rendering as a thin rectangular stem;
+- the body expands on both its tangent and inward axes, so opening reads as one surface extruding from the bar;
+- the outer shell uses the active Classic Bar surface family instead of the old generic popup-card material;
+- close reverses the same geometry and keeps the loader resident until the body has retracted into the bar;
+- hover-triggered popouts keep their short retract tail interactive so a pointer crossing the connected shoulder can enter the popup body without collapsing it;
+- focused popouts retain layer-shell/compositor focus behavior rather than requiring a detached window implementation.
+
+The seam/input contract is equally intentional:
 
 - body and connector overlap by a device-pixel-aware amount;
 - the connector overlaps the source edge as well as the popup body so fractional scale cannot expose a transparent gap;
-- the content reveal grows from the attached screen/bar edge rather than scaling like an independent floating card;
+- the input mask approximates the Bézier flare with a tighter union rather than treating the connector's transparent bounding rectangle as clickable;
 - transparent portions of the full-output popup window remain click-through.
 
-Do not add per-feature copies of this geometry. A popup that already uses `StyledPopup.qml` should inherit the connected behavior there.
+Current bar popouts using this shared shell include the existing battery, resources, weather, clock, timer, update and tray surfaces, plus the migrated Media volume HUD, expanded bar Media controls and taskbar window previews. Context menus retain context-menu semantics instead of being forced into the connected-popout presentation.
+
+Do not add per-feature copies of this geometry. A bar popup that can use `StyledPopup.qml` should inherit the connected behavior there.
 
 ## Topology
 
@@ -140,6 +152,7 @@ The edge host is not defined as a permanently full-height sidebar. Size, placeme
 When extending the perimeter:
 
 - reuse `StyledPopup.qml` for existing bar popups instead of creating a parallel popup framework;
+- preserve the source-width morph, curved shoulder, reverse-retract, and shape-aware input contracts instead of replacing them with a floating card plus stem;
 - add reusable composition behavior under `modules/common/perimeter/`;
 - add Hadalis-specific module adapters under `modules/perimeter/`;
 - register module IDs through `PerimeterFeatureRegistry` rather than hard-coding them into a host;

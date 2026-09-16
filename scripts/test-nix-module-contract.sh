@@ -84,6 +84,9 @@ grep -Fq 'Quickshell.execDetached(["/usr/bin/env", "easyeffects", "--service-mod
 if grep -Fq '++ optionalTop "easyeffects"' "$package"; then
   fail 'Nix runtime hard-wires optional EasyEffects backend; provide it through programs.inir.extraPackages when desired'
 fi
+if grep -Fq '++ optionalTop "socat"' "$package"; then
+  fail 'Nix runtime hard-wires optional EasyEffects transport; provide it through programs.inir.extraPackages when desired'
+fi
 
 python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["background"]["backend"]["provider"] == "awww"' "$default_config" \
   || fail 'fresh-install wallpaper backend is no longer awww; update the Nix runtime contract deliberately'

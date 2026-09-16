@@ -1,18 +1,22 @@
 # Config System
 
-How configuration works in iNiR, from the user's perspective and from the code side.
+How configuration works in Hadalis/iNiR, from the user's perspective and from the code side.
 
 ## For users
 
 Everything is configurable through the graphical Settings UI. Open it with `Super+,` or `inir settings`. You should never need to edit the config file by hand.
 
-If you do want to edit it directly, the canonical file for fresh and migrated installs is:
+After required migration 019 has been applied, the canonical config file is:
 
 ```
 ~/.config/inir/config.json
 ```
 
-Pre-migration installs under `~/.config/illogical-impulse/config.json` remain supported. Migration 019 moves the legacy directory to `~/.config/inir` and leaves `~/.config/illogical-impulse` as a symlink to the canonical directory, so legacy QML/runtime paths continue to resolve.
+The live QML compatibility path is still `~/.config/illogical-impulse/config.json`. Migration 019 moves or merges legacy data into `~/.config/inir` and replaces `~/.config/illogical-impulse` with a symlink to the canonical directory, so the current QML path and maintenance tooling resolve the same data.
+
+Repo-managed `./setup install` and update flows apply required migrations automatically. Package managers and manual `make install` deliberately do not mutate arbitrary user home directories, so each affected user should run `inir migrate` before first launch (and after an upgrade when migrations are pending). Until migration 019 has run for that user, the QML compatibility path may still be a real legacy directory rather than a symlink. Do not run another user's config migration as root.
+
+This compatibility layout is part of the in-progress namespace cutover. Do not remove the legacy QML path or its migration support until the runtime itself has moved off `illogical-impulse` and that cutover has been validated.
 
 Changes you make in the file are picked up automatically within 50ms. No restart needed.
 

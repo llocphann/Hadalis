@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression coverage for translation cleanup and source-parity boundaries."""
 
+import importlib.util
 import json
 import re
 import subprocess
@@ -11,8 +12,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CLEANER = ROOT / "translations" / "tools" / "translation-cleaner.py"
 PARITY = ROOT / "translations" / "tools" / "source-parity.py"
+MANAGER = ROOT / "translations" / "tools" / "translation-manager.py"
 AUTO_TRANSLATE = ROOT / "translations" / "tools" / "auto-translate.js"
 TRANSLATIONS = ROOT / "translations"
+REVIEWED_PRUNE = ROOT / "translations" / "l10n" / "retired-shell-prune.json"
 
 
 def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
@@ -57,6 +60,15 @@ def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def load_manager_class():
+    spec = importlib.util.spec_from_file_location("translation_manager_for_cleaner_test", MANAGER)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load translation manager: {MANAGER}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.TranslationManager
+
+
 def assert_auto_translate_contract() -> None:
     script = AUTO_TRANSLATE.read_text(encoding="utf-8")
     mapped_locales = set(
@@ -89,8 +101,59 @@ def assert_auto_translate_contract() -> None:
         raise AssertionError("auto-translate placeholder validation no longer precedes a checkpoint")
 
 
+def assert_reviewed_prune_contract() -> None:
+    """Keep the pending retired-shell prune set exact until it is applied/removed."""
+    if not REVIEWED_PRUNE.exists():
+        return
+
+    reviewed = json.loads(REVIEWED_PRUNE.read_text(encoding="utf-8"))
+    if not isinstance(reviewed, list) or not reviewed:
+        raise AssertionError("retired-shell prune file must be a non-empty JSON array")
+    if not all(isinstance(key, str) and key for key in reviewed):
+        raise AssertionError("retired-shell prune file contains a non-string or empty key")
+    if len(reviewed) != len(set(reviewed)):
+        raise AssertionError("retired-shell prune file contains duplicate keys")
+
+    reviewed_keys = set(reviewed)
+    source_catalog = read_json(TRANSLATIONS / "en_US.json")
+    unknown = reviewed_keys - set(source_catalog)
+    if unknown:
+        raise AssertionError(
+            f"reviewed prune keys are absent from en_US: {sorted(unknown)!r}"
+        )
+
+    protected = {
+        key
+        for key in reviewed_keys
+        if source_catalog[key].strip().endswith("/*keep*/")
+    }
+    if protected:
+        raise AssertionError(
+            f"reviewed prune keys are protected by /*keep*/: {sorted(protected)!r}"
+        )
+
+    for locale_path in sorted(TRANSLATIONS.glob("*.json")):
+        locale_catalog = read_json(locale_path)
+        missing = reviewed_keys - set(locale_catalog)
+        if missing:
+            raise AssertionError(
+                f"{locale_path.name} is missing reviewed prune keys: {sorted(missing)!r}"
+            )
+
+    manager_class = load_manager_class()
+    manager = manager_class(str(TRANSLATIONS), str(ROOT))
+    live_static_keys = manager.extract_translatable_texts()
+    still_live = reviewed_keys & live_static_keys
+    if still_live:
+        raise AssertionError(
+            "reviewed retired-shell keys still have static Translation.tr callsites: "
+            f"{sorted(still_live)!r}"
+        )
+
+
 def main() -> None:
     assert_auto_translate_contract()
+    assert_reviewed_prune_contract()
 
     with tempfile.TemporaryDirectory() as tmp_name:
         tmp = Path(tmp_name)

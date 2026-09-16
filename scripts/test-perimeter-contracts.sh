@@ -186,6 +186,18 @@ if [[ "$(grep -Fc 'exclusiveZone: 0' "$runtime")" -lt 1 ]]; then
     fail 'fullscreen visual host no longer keeps exclusive zone at zero'
 fi
 
+# Source registration is mutable after cutover. Runtime must heal both source
+# overwrite and unregister events, not rely only on the critical bootstrap.
+grep -Fq 'target: ModuleRegistry' "$runtime" \
+    || fail 'runtime does not observe module registry drift'
+grep -Fq 'function onModuleRegistered(moduleId: string): void {' "$runtime" \
+    || fail 'runtime does not heal overwritten module sources'
+grep -Fq 'function onModuleUnregistered(moduleId: string): void {' "$runtime" \
+    || fail 'runtime does not heal removed module sources'
+if [[ "$(grep -Fc 'Qt.callLater(root.ensureFeatureRegistry)' "$runtime")" -lt 2 ]]; then
+    fail 'runtime registry self-heal is not deferred for both drift directions'
+fi
+
 grep -Fq 'readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled' \
     "$critical" || fail 'critical chrome does not gate on cutover policy'
 grep -Fq 'PerimeterFeatureRegistry.registerAll()' "$critical" \

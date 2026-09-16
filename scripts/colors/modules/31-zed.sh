@@ -98,18 +98,34 @@ run_zed_themegen() {
     "$ZED_THEMEGEN_BIN" "${args[@]}" >> "$ZED_THEMEGEN_LOG" 2>&1 && return 0
   fi
 
-  if [[ -z "$go_bin" ]]; then
-    return 1
+  # A source/package install intentionally does not require Go. Try the source
+  # runner when Go is available, then fall back to the shipped Python generator.
+  if [[ -n "$go_bin" ]]; then
+    "$go_bin" run "$ZED_THEMEGEN_SRC" "${args[@]}" >> "$ZED_THEMEGEN_LOG" 2>&1 && return 0
   fi
 
-  # Binary missing or failed — run directly so theme updates still apply.
-  "$go_bin" run "$ZED_THEMEGEN_SRC" "${args[@]}" >> "$ZED_THEMEGEN_LOG" 2>&1
+  local python_cmd
+  python_cmd="$(venv_python)"
+  "$python_cmd" "$SCRIPT_DIR/generate_terminal_configs.py" \
+    --scss "$SCSS_FILE" \
+    --colors "$colors_file" \
+    --terminal-json "$TERMINAL_FILE" \
+    --zed >> "$ZED_THEMEGEN_LOG" 2>&1
 }
 
 build_input_signature() {
   local colors_file="$1"
   {
-    for file in "$SCSS_FILE" "$colors_file" "$TERMINAL_FILE" "$ZED_TEMPLATE_FILE" "$ZED_THEMEGEN_SRC"; do
+    for file in \
+      "$SCSS_FILE" \
+      "$colors_file" \
+      "$TERMINAL_FILE" \
+      "$ZED_TEMPLATE_FILE" \
+      "$ZED_THEMEGEN_SRC" \
+      "$SCRIPT_DIR/themegencommon/common.go" \
+      "$REPO_ROOT/go.mod" \
+      "$SCRIPT_DIR/generate_terminal_configs.py" \
+      "$SCRIPT_DIR/zed/theme_generator.py"; do
       if [[ -f "$file" ]]; then
         cksum "$file"
       else

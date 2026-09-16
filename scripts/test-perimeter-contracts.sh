@@ -69,6 +69,16 @@ grep -Fq 'const dockOwned = enabledPanels.includes("iiDock")' "$core_policy" \
     || fail 'dock compatibility policy ignores surface ownership'
 grep -Fq 'const dockPolicySupported = !dockOwned || !dockEnabled' "$core_policy" \
     || fail 'disabled dock can still block perimeter cutover'
+grep -Fq 'const sidebarOwned = enabledPanels.includes("iiSidebarLeft")' "$core_policy" \
+    || fail 'sidebar compatibility policy ignores left ownership'
+grep -Fq '|| enabledPanels.includes("iiSidebarRight")' "$core_policy" \
+    || fail 'sidebar compatibility policy ignores right ownership'
+grep -Fq 'Config.options?.sidebar?.edgeOpen?.enable' "$core_policy" \
+    || fail 'policy does not gate unsupported sidebar edge-open behavior'
+grep -Fq 'const sidebarPolicySupported = !sidebarOwned || !sidebarEdgeOpen' "$core_policy" \
+    || fail 'disabled sidebars can still block perimeter cutover'
+grep -Fq '&& sidebarPolicySupported' "$core_policy" \
+    || fail 'sidebar compatibility result does not participate in cutover readiness'
 
 for reset_fn in resetDefaultSlots resetOutputSlots; do
     reset_block="$(sed -n "/function ${reset_fn}(/,/^    }/p" "$perimeter_config")"

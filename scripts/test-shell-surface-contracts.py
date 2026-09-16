@@ -47,8 +47,10 @@ def main() -> None:
               f"ConnectedSurfaceGeometry missing seam/reveal geometry contract: {token}")
 
     frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
-    check("connectorBorderWidth: 0" not in frame,
-          "ConnectedSurfaceFrame should expose connectorBorderWidth as a configurable property, not hard-code it internally")
+    check("property real connectorBorderWidth: 0" in frame,
+          "ConnectedSurfaceFrame must default the connector outline off at the seam")
+    check("strokeWidth: root.connectorBorderWidth" in frame,
+          "ConnectedSurfaceFrame must route connector outline width through its seam policy")
     check("Render after the body so seamOverlap covers the body's border" in frame,
           "ConnectedSurfaceFrame must preserve the body/connector seam-overlap rendering contract")
 

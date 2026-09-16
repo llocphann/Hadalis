@@ -24,8 +24,10 @@ ContentPage {
         Quickshell.env("INIR_STANDALONE_WINDOW") === "1"
     readonly property var surfaces: ShellLayoutController.surfacesForFamily(
         root.activeFamily)
-    readonly property bool perimeterEnabled:
-        (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
+    readonly property bool perimeterRequested: PerimeterCutoverPolicy.requested
+    readonly property bool perimeterActive: PerimeterCutoverPolicy.enabled
+    readonly property bool perimeterFallbackActive: PerimeterCutoverPolicy.fallbackActive
+    readonly property string perimeterStatusReason: PerimeterCutoverPolicy.statusReason
     readonly property var perimeterOutputOptions: [{
         displayName: Translation.tr("Shared default"),
         value: ""
@@ -51,16 +53,24 @@ ContentPage {
             root.perimeterOutputName = ""
     }
 
-    function setPerimeterEnabled(enabled: bool): void {
+    function setPerimeterRequested(requested: bool): void {
         let panels = [...(Config.options?.enabledPanels ?? [])]
-        const currentlyEnabled = panels.includes("iiPerimeter")
-        if (currentlyEnabled === enabled)
+        const currentlyRequested = panels.includes("iiPerimeter")
+        if (currentlyRequested === requested)
             return
-        if (enabled)
+        if (requested)
             panels.push("iiPerimeter")
         else
             panels = panels.filter(panel => panel !== "iiPerimeter")
         Config.setNestedValue("enabledPanels", panels)
+    }
+
+    function perimeterRuntimeStatus(): string {
+        if (!root.perimeterRequested)
+            return "disabled"
+        return root.perimeterActive
+            ? "active"
+            : "fallback · " + root.perimeterStatusReason
     }
 
     function perimeterModuleLabel(moduleId: string): string {
@@ -179,9 +189,20 @@ ContentPage {
             SettingsSwitch {
                 buttonIcon: "view_quilt"
                 text: Translation.tr("Use Connected Perimeter runtime")
-                checked: root.perimeterEnabled
+                checked: root.perimeterRequested
                 enabled: root.activeFamily === "ii"
-                onCheckedChanged: root.setPerimeterEnabled(checked)
+                onCheckedChanged: root.setPerimeterRequested(checked)
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.perimeterRequested
+                text: Translation.tr("Connected Perimeter") + " · "
+                    + root.perimeterRuntimeStatus()
+                color: root.perimeterFallbackActive
+                    ? Appearance.colors.colError : Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.Wrap
             }
 
             StyledText {
@@ -196,7 +217,7 @@ ContentPage {
         }
 
         SettingsGroup {
-            visible: root.perimeterEnabled
+            visible: root.perimeterRequested
 
             RowLayout {
                 Layout.fillWidth: true

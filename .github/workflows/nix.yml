@@ -2,7 +2,43 @@ name: Nix package
 
 on:
   push:
+    paths:
+      - '.github/workflows/nix.yml'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'VERSION'
+      - 'README.md'
+      - 'LICENSE'
+      - 'docs/**'
+      - 'setup'
+      - 'scripts/inir'
+      - 'scripts/lib/**'
+      - 'sdata/lib/runtime-payload.py'
+      - 'sdata/lib/versioning.sh'
+      - 'sdata/runtime-*.txt'
+      - 'sdata/runtime-exclusions.json'
+      - 'assets/applications/**'
+      - 'assets/icons/**'
   pull_request:
+    paths:
+      - '.github/workflows/nix.yml'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'VERSION'
+      - 'README.md'
+      - 'LICENSE'
+      - 'docs/**'
+      - 'setup'
+      - 'scripts/inir'
+      - 'scripts/lib/**'
+      - 'sdata/lib/runtime-payload.py'
+      - 'sdata/lib/versioning.sh'
+      - 'sdata/runtime-*.txt'
+      - 'sdata/runtime-exclusions.json'
+      - 'assets/applications/**'
+      - 'assets/icons/**'
   workflow_dispatch:
 
 permissions:

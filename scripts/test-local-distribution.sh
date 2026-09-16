@@ -69,29 +69,7 @@ step "update lifecycle regression"
 bash "$runtime_root/scripts/test-update-lifecycle.sh"
 
 step "network lifecycle regression"
-network_service="$runtime_root/services/Network.qml"
-subscriber_timer_block="$(sed -n '/id: subscriberRestart$/,/^    }/p' "$network_service")"
-subscriber_block="$(sed -n '/id: subscriber$/,/^    }/p' "$network_service")"
-cleanup_block="$(sed -n '/id: _cleanupStale$/,/^    }/p' "$network_service")"
-rescan_block="$(sed -n '/id: rescanProcess$/,/^    }/p' "$network_service")"
-name_block="$(sed -n '/id: updateNetworkName$/,/^    }/p' "$network_service")"
-[[ -n "$subscriber_timer_block" && -n "$subscriber_block" && -n "$cleanup_block" \
-    && -n "$rescan_block" && -n "$name_block" ]] \
-    || { printf 'FAIL: Network lifecycle process blocks are missing\n' >&2; exit 1; }
-grep -Fq 'interval: 2000' <<<"$subscriber_timer_block" \
-    || { printf 'FAIL: nmcli monitor restart no longer backs off\n' >&2; exit 1; }
-grep -Fq 'onExited: root._scheduleSubscriberRestart()' <<<"$subscriber_block" \
-    || { printf 'FAIL: nmcli monitor exit can bypass delayed restart\n' >&2; exit 1; }
-grep -Fq 'root._startSubscriber()' <<<"$cleanup_block" \
-    || { printf 'FAIL: stale-monitor cleanup start failure can strand Network subscriber\n' >&2; exit 1; }
-grep -Fq 'root.wifiScanning = false' <<<"$rescan_block" \
-    || { printf 'FAIL: Wi-Fi rescan can leave scanning state stale\n' >&2; exit 1; }
-grep -Fq 'onExited: (exitCode)' <<<"$rescan_block" \
-    || { printf 'FAIL: Wi-Fi rescan no longer settles state on process exit\n' >&2; exit 1; }
-grep -Fq 'stdout: StdioCollector' <<<"$name_block" \
-    || { printf 'FAIL: active network name cannot observe empty output\n' >&2; exit 1; }
-grep -Fq 'root.networkName = text.trim()' <<<"$name_block" \
-    || { printf 'FAIL: disconnected network name can remain stale\n' >&2; exit 1; }
+bash "$runtime_root/scripts/test-network-service-lifecycle.sh"
 
 step "session tray ordering"
 service_unit="$runtime_root/assets/systemd/inir.service"

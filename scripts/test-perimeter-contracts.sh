@@ -73,6 +73,14 @@ for reservation in \
     grep -Fq "$reservation" "$core_registry" \
         || fail 'module reservation metadata drifted'
 done
+register_block="$(sed -n '/function registerModule(/,/^    }/p' "$core_registry")"
+[[ -n "$register_block" ]] || fail 'module registry missing registerModule'
+grep -Fq 'const immutableMetadata = Object.assign({}, builtin)' <<<"$register_block" \
+    || fail 'builtin module metadata can be replaced during feature registration'
+grep -Fq 'delete immutableMetadata.source' <<<"$register_block" \
+    || fail 'builtin source cannot be supplied by feature registration'
+grep -Fq 'next[id] = Object.assign({}, merged, immutableMetadata' <<<"$register_block" \
+    || fail 'builtin metadata is not reapplied after descriptor merge'
 grep -Fq 'function zoneForOutputEdge(outputName: string, edge: string): real {' \
     "$reservation_policy" || fail 'reservation policy does not derive zones per output edge'
 grep -Fq 'GlobalStates.barOpen' "$reservation_policy" \

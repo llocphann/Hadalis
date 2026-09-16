@@ -31,6 +31,7 @@ GroupButton {
     baseHeight: root.baseCellHeight
 
     property bool editMode: false
+    altActionEnabled: !root.editMode
     readonly property color colDarkSurface: Appearance.angelEverywhere
         ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.76)
         : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colLayer1, 0.22)
@@ -74,17 +75,7 @@ GroupButton {
         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
     }
 
-
-
     signal openMenu()
-
-    // TapHandler for right-click - needs to be here because contentItem has MouseAreas
-    TapHandler {
-        acceptedButtons: Qt.RightButton
-        onTapped: {
-            if (root.altAction) root.altAction();
-        }
-    }
 
     padding: 6
     horizontalPadding: padding

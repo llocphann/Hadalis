@@ -52,9 +52,9 @@ $notes
 
 ---
 
-Update: https://github.com/snowarch/iNiR?tab=readme-ov-file#update
-Fresh install: https://github.com/snowarch/iNiR?tab=readme-ov-file#install
-Full changelog: https://github.com/snowarch/iNiR/blob/main/CHANGELOG.md
+Update: https://github.com/llocphann/Hadalis?tab=readme-ov-file#update
+Fresh install: https://github.com/llocphann/Hadalis?tab=readme-ov-file#install
+Full changelog: https://github.com/llocphann/Hadalis/blob/stable/CHANGELOG.md
 EOF
 }
 

@@ -159,6 +159,16 @@ LazyLoader {
             }
         }
 
+        // Hyprland still needs an explicit grab for keyboard-driven popouts;
+        // Niri uses the layer-shell focus mode above. Keep the behavior inside
+        // the shared popup so focused surfaces (notably Media) do not fall back
+        // to a detached-window implementation just to own keyboard focus.
+        CompositorFocusGrab {
+            active: root.keyboardFocus && root.active
+            windows: [popupWindow]
+            onCleared: root.requestClose()
+        }
+
         ConnectedSurfaceGeometry {
             id: geometry
             edge: root._attachmentEdge

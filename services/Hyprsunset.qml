@@ -47,6 +47,13 @@ Singleton {
         }
     }
 
+    Timer {
+        id: stateVerifyTimer
+        interval: 800
+        repeat: false
+        onTriggered: root.fetchState()
+    }
+
     onClockMinuteChanged: reEvaluate()
     onAutomaticChanged: {
         root.manualActive = undefined;
@@ -108,6 +115,7 @@ Singleton {
         } else {
             hyprsunsetStartProc.running = true;
         }
+        stateVerifyTimer.restart();
     }
 
     function enable() {
@@ -127,6 +135,7 @@ Singleton {
         } else {
             hyprsunsetKillProc.running = true;
         }
+        stateVerifyTimer.restart();
     }
 
     function fetchState() {
@@ -219,6 +228,7 @@ Singleton {
                 restartDebounce.restart();
             } else {
                 Quickshell.execDetached(["/usr/bin/hyprctl", "hyprsunset", "temperature", `${temp}`]);
+                stateVerifyTimer.restart();
             }
         }
     }

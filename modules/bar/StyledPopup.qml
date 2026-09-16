@@ -27,6 +27,14 @@ LazyLoader {
     readonly property bool _barFloatingSurface: root._barCornerStyle === 1 || root._barCornerStyle === 3
     readonly property real _contentPadding: 14
 
+    // Keep the loader resident for the reverse morph. `requestedVisible` is the
+    // semantic popup state; `active` includes only the short retract tail.
+    readonly property bool requestedVisible: root.alternativeVisibleCondition
+        || (root.hoverActivates && root.hoverTarget
+            && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
+    property bool _lingerVisible: false
+    property real revealProgress: 0
+
     // Caelestia's popouts read as deformations of the owning shell surface, not
     // as a separate card material. Match the Classic Bar's surface family here
     // so the flared connector and body visually continue the bar.
@@ -62,12 +70,61 @@ LazyLoader {
 
     signal requestClose()
 
-    active: root.alternativeVisibleCondition
-        || (root.hoverActivates && hoverTarget
-            && (hoverTarget.containsMouse ?? hoverTarget.buttonHovered ?? false))
-    onActiveChanged: {
-        if (!root.active)
-            root.popupHovered = false
+    active: root.requestedVisible || root._lingerVisible
+
+    function _syncRequestedVisibility(): void {
+        if (root.requestedVisible) {
+            const alreadyResident = root._lingerVisible
+            retractTimer.stop()
+            root._lingerVisible = true
+            if (!Appearance.animationsEnabled) {
+                root.revealProgress = 1
+                return
+            }
+            if (alreadyResident) {
+                // Reverse an in-flight close from its current geometry rather than
+                // snapping to zero and replaying the opening animation.
+                root.revealProgress = 1
+                return
+            }
+            root.revealProgress = 0
+            Qt.callLater(() => {
+                if (root.requestedVisible)
+                    root.revealProgress = 1
+            })
+            return
+        }
+
+        root.popupHovered = false
+        if (!root._lingerVisible)
+            return
+        root.revealProgress = 0
+        if (Appearance.animationsEnabled)
+            retractTimer.restart()
+        else
+            root._lingerVisible = false
+    }
+
+    onRequestedVisibleChanged: root._syncRequestedVisibility()
+    Component.onCompleted: root._syncRequestedVisibility()
+
+    Behavior on revealProgress {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: Appearance.animation.elementMoveEnter.duration
+            easing.type: Appearance.animation.elementMoveEnter.type
+            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+        }
+    }
+
+    Timer {
+        id: retractTimer
+        interval: Math.max(1, Appearance.animation.elementMoveEnter.duration + 16)
+        repeat: false
+        onTriggered: {
+            if (!root.requestedVisible && root.revealProgress <= 0.001)
+                root._lingerVisible = false
+        }
     }
 
     function _anchorRect(outputWidth, outputHeight) {
@@ -105,11 +162,11 @@ LazyLoader {
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside
-    // (same pattern as ContextMenu / SysTrayMenu). The connected popup itself
-    // remains click-through outside its body+connector mask.
+    // (same pattern as ContextMenu / SysTrayMenu). It disappears as soon as the
+    // semantic popup closes while the visual surface is allowed to retract.
     PanelWindow {
         id: clickOutsideBackdrop
-        visible: root.active && root.closeOnOutsideClick
+        visible: root.requestedVisible && root.closeOnOutsideClick
         screen: root.QsWindow.window?.screen ?? null
         color: Qt.rgba(0, 0, 0, 1/255)
         exclusiveZone: 0
@@ -127,14 +184,12 @@ LazyLoader {
     component: PanelWindow {
         id: popupWindow
 
-        property real revealProgress: 0
-
         screen: root.QsWindow.window?.screen ?? null
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
         visible: root.active
-        focusable: root.keyboardFocus
+        focusable: root.keyboardFocus && root.requestedVisible
 
         anchors {
             top: true
@@ -145,26 +200,15 @@ LazyLoader {
 
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.keyboardFocus
+        WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-
-        Component.onCompleted: revealProgress = 1
-
-        Behavior on revealProgress {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation {
-                duration: Appearance.animation.elementMoveEnter.duration
-                easing.type: Appearance.animation.elementMoveEnter.type
-                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
-            }
-        }
 
         // Hyprland still needs an explicit grab for keyboard-driven popouts;
         // Niri uses the layer-shell focus mode above. Keep the behavior inside
         // the shared popup so focused surfaces (notably Media) do not fall back
         // to a detached-window implementation just to own keyboard focus.
         CompositorFocusGrab {
-            active: root.keyboardFocus && root.active
+            active: root.keyboardFocus && root.requestedVisible
             windows: [popupWindow]
             onCleared: root.requestClose()
         }
@@ -181,7 +225,7 @@ LazyLoader {
                 Math.max(1, (root.contentItem?.implicitHeight ?? 0)
                     + root._contentPadding * 2 + Math.max(0, root.popupBackgroundMargin)))
             outerRadius: root._surfaceRadius
-            progress: popupWindow.revealProgress
+            progress: root.revealProgress
             devicePixelRatio: popupWindow.screen?.devicePixelRatio ?? 1
         }
 
@@ -213,6 +257,7 @@ LazyLoader {
 
             HoverHandler {
                 id: popupHoverHandler
+                enabled: root.requestedVisible
                 onHoveredChanged: root.popupHovered = hovered
             }
         }

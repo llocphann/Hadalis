@@ -52,6 +52,7 @@ IconThemeSelector 1.0 IconThemeSelector.qml
 IconToolbarButton 1.0 IconToolbarButton.qml
 InputChip 1.0 InputChip.qml
 FilterChip 1.0 FilterChip.qml
+KeyboardFocusRing 1.0 KeyboardFocusRing.qml
 KeyboardKey 1.0 KeyboardKey.qml
 LightDarkPreferenceButton 1.0 LightDarkPreferenceButton.qml
 ArrangeChip 1.0 ArrangeChip.qml

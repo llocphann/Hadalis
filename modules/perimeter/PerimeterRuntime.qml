@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
 import qs.modules.common.perimeter
+import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import Quickshell

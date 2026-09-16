@@ -3,8 +3,11 @@ set -euo pipefail
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 core_policy="$root/modules/common/perimeter/PerimeterCutoverPolicy.qml"
+core_registry="$root/modules/common/perimeter/ModuleRegistry.qml"
 core_qmldir="$root/modules/common/perimeter/qmldir"
 feature_qmldir="$root/modules/perimeter/qmldir"
+reservation_policy="$root/modules/perimeter/PerimeterReservationPolicy.qml"
+runtime="$root/modules/perimeter/PerimeterRuntime.qml"
 critical="$root/modules/ii/critical/ShellIiCriticalPanels.qml"
 left_sidebar="$root/modules/sidebarLeft/SidebarLeft.qml"
 right_sidebar="$root/modules/sidebarRight/SidebarRight.qml"
@@ -14,13 +17,16 @@ fail() {
     exit 1
 }
 
-for file in "$core_policy" "$core_qmldir" "$feature_qmldir" \
-        "$critical" "$left_sidebar" "$right_sidebar"; do
+for file in "$core_policy" "$core_registry" "$core_qmldir" "$feature_qmldir" \
+        "$reservation_policy" "$runtime" "$critical" "$left_sidebar" \
+        "$right_sidebar"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
 grep -Fxq 'singleton PerimeterCutoverPolicy 1.0 PerimeterCutoverPolicy.qml' \
     "$core_qmldir" || fail 'core cutover policy is not exported'
+grep -Fxq 'singleton PerimeterReservationPolicy 1.0 PerimeterReservationPolicy.qml' \
+    "$feature_qmldir" || fail 'feature reservation policy is not exported'
 if grep -Fq 'PerimeterRuntimePolicy' "$feature_qmldir"; then
     fail 'feature package owns obsolete cutover policy'
 fi
@@ -43,6 +49,41 @@ grep -Fq 'Config.options?.dock?.pinnedOnStartup' "$core_policy" \
     || fail 'policy does not gate unsupported unpinned dock behavior'
 grep -Fq 'Config.options?.dock?.hoverToReveal' "$core_policy" \
     || fail 'policy does not gate unsupported dock hover reveal'
+
+for reservation in \
+    '"thinkfan": { moduleId: "thinkfan", preferredOrientation: "any", compact: true, expanded: true, reservationKind: "bar"' \
+    '"left-sidebar": { moduleId: "left-sidebar", preferredOrientation: "vertical", compact: true, expanded: true, reservationKind: "overlay"' \
+    '"right-sidebar": { moduleId: "right-sidebar", preferredOrientation: "vertical", compact: true, expanded: true, reservationKind: "overlay"' \
+    '"dock": { moduleId: "dock", preferredOrientation: "horizontal", compact: true, expanded: true, reservationKind: "dock"'; do
+    grep -Fq "$reservation" "$core_registry" \
+        || fail 'module reservation metadata drifted'
+done
+grep -Fq 'function zoneForOutputEdge(outputName: string, edge: string): real {' \
+    "$reservation_policy" || fail 'reservation policy does not derive zones per output edge'
+grep -Fq 'GlobalStates.barOpen' "$reservation_policy" \
+    || fail 'bar reservation no longer tracks bar semantic visibility'
+grep -Fq 'GlobalStates.coverflowSelectorOpen' "$reservation_policy" \
+    || fail 'bar reservation no longer releases for coverflow'
+
+grep -Fq 'component EdgeReservationWindow: PanelWindow {' "$runtime" \
+    || fail 'runtime has no edge-specific reservation surface'
+grep -Fq 'PerimeterReservationPolicy.zoneForOutputEdge(' "$runtime" \
+    || fail 'runtime reservation surfaces bypass reservation policy'
+grep -Fq 'WlrLayershell.keyboardFocus: WlrKeyboardFocus.None' "$runtime" \
+    || fail 'reservation/runtime chrome may request keyboard focus unexpectedly'
+grep -Fq 'mask: Region { item: emptyReservationInput }' "$runtime" \
+    || fail 'reservation surfaces are not explicitly click-through'
+for edge in top bottom left right; do
+    grep -Fq "EdgeReservationWindow { edge: \"$edge\" }" "$runtime" \
+        || fail "runtime missing $edge reservation surface"
+done
+# The visual host must stay non-exclusive. Reservation belongs only to the
+# three-anchor edge surfaces because a four-anchor layer surface is ambiguous.
+grep -Fq 'exclusionMode: ExclusionMode.Ignore' "$runtime" \
+    || fail 'fullscreen visual host no longer ignores exclusion'
+if [[ "$(grep -Fc 'exclusiveZone: 0' "$runtime")" -lt 1 ]]; then
+    fail 'fullscreen visual host no longer keeps exclusive zone at zero'
+fi
 
 grep -Fq 'readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled' \
     "$critical" || fail 'critical chrome does not gate on cutover policy'

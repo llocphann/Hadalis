@@ -88,27 +88,23 @@ grep -Fq 'delete immutableMetadata.source' <<<"$register_block" \
 grep -Fq 'next[id] = Object.assign({}, merged, immutableMetadata' <<<"$register_block" \
     || fail 'builtin metadata is not reapplied after descriptor merge'
 
-for token in \
-    'function barOutputEnabled(outputName: string): bool {' \
-    'function dockOutputEnabled(outputName: string): bool {' \
-    'function barPresentedForOutput(outputName: string): bool {' \
-    'function dockPresentedForOutput(outputName: string, edge: string): bool {'; do
-    grep -Fq "$token" "$presentation_policy" \
-        || fail "presentation policy missing output-aware contract: $token"
+grep -Fq 'readonly property bool barPresented:' "$presentation_policy" \
+    || fail 'presentation policy does not expose shared bar lifecycle'
+grep -Fq 'function dockPresented(edge: string): bool {' "$presentation_policy" \
+    || fail 'presentation policy does not expose dock lifecycle'
+# Once Connected Perimeter is requested, PerimeterConfig is the sole placement
+# authority. Legacy bar/dock screenList values are migration inputs only and must
+# not silently re-filter output placement at runtime.
+for file in "$presentation_policy" "$reservation_policy" "$thinkfan_module" \
+        "$system_monitor_module" "$workspaces_module" "$media_module" \
+        "$weather_module" "$dock_module"; do
+    if grep -Eq 'screenList|barOutputEnabled|dockOutputEnabled|barPresentedForOutput|dockPresentedForOutput' "$file"; then
+        fail "$(basename "$file") bypasses perimeter-owned output placement"
+    fi
 done
-grep -Fq 'matchedScreens.length === 0 || list.includes(name)' "$presentation_policy" \
-    || fail 'screen-list handling no longer preserves stale-name fallback safety'
-grep -Fq 'Config.options?.bar?.screenList' "$presentation_policy" \
-    || fail 'bar screenList no longer participates in perimeter presentation'
-grep -Fq 'Config.options?.dock?.screenList' "$presentation_policy" \
-    || fail 'dock screenList no longer participates in perimeter presentation'
 
 grep -Fq 'function zoneForOutputEdge(outputName: string, edge: string): real {' \
     "$reservation_policy" || fail 'reservation policy does not derive zones per output edge'
-grep -Fq 'PerimeterPresentationPolicy.barOutputEnabled(name)' "$reservation_policy" \
-    || fail 'bar reservation ignores output screenList ownership'
-grep -Fq 'PerimeterPresentationPolicy.dockOutputEnabled(name)' "$reservation_policy" \
-    || fail 'dock reservation ignores output screenList ownership'
 grep -Fq 'GlobalStates.barOpen' "$reservation_policy" \
     || fail 'bar reservation no longer tracks bar semantic visibility'
 grep -Fq 'GlobalStates.coverflowSelectorOpen' "$reservation_policy" \
@@ -116,11 +112,11 @@ grep -Fq 'GlobalStates.coverflowSelectorOpen' "$reservation_policy" \
 
 for bar_module in "$thinkfan_module" "$system_monitor_module" \
         "$workspaces_module" "$media_module" "$weather_module"; do
-    grep -Fq 'PerimeterPresentationPolicy.barPresentedForOutput(' "$bar_module" \
-        || fail "$(basename "$bar_module") ignores bar output ownership"
+    grep -Fq 'PerimeterPresentationPolicy.barPresented' "$bar_module" \
+        || fail "$(basename "$bar_module") bypasses shared bar presentation policy"
 done
-grep -Fq 'PerimeterPresentationPolicy.dockPresentedForOutput(' "$dock_module" \
-    || fail 'DockModule ignores dock output ownership'
+grep -Fq 'PerimeterPresentationPolicy.dockPresented(root.edge)' "$dock_module" \
+    || fail 'DockModule bypasses shared dock presentation policy'
 
 grep -Fq 'function sidebarSurfaceEnabled(featureRole: bool): bool {' \
     "$presentation_policy" || fail 'presentation policy does not expose sidebar ownership'

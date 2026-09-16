@@ -94,7 +94,54 @@ for marker in [
             f"FAIL: Equalizer band protocol/input guard missing: {marker}"
         )
 
+apply_proc_start = text.index("id: applyPresetProc")
+set_proc_start = text.index("id: setBandProc", apply_proc_start)
+reset_proc_start = text.index("id: resetProc", set_proc_start)
+apply_proc = text[apply_proc_start:set_proc_start]
+set_proc = text[set_proc_start:reset_proc_start]
+reset_proc = text[reset_proc_start:]
+
+apply_start_failure = apply_proc[apply_proc.index("onRunningChanged:"):apply_proc.index("onStarted:")]
+for marker in [
+    'root._setProcessError("preset-apply-failed", generation)',
+    "if (root.enabled && generation === root._lifecycleGeneration)",
+    "root._scheduleReconcile()",
+]:
+    if marker not in apply_start_failure:
+        raise SystemExit(
+            f"FAIL: Equalizer preset process-start recovery missing: {marker}"
+        )
+if apply_proc.count("root._scheduleReconcile()") < 3:
+    raise SystemExit("FAIL: Equalizer preset mutation no longer reconciles all completion paths")
+
+set_failure_start = set_proc.index("if (exitCode !== 0)")
+set_failure_end = set_proc.index("if (!root.backendRunning)", set_failure_start)
+set_failure = set_proc[set_failure_start:set_failure_end]
+for marker in [
+    "root._equalizerAvailable = false",
+    "root._markBandsUnsynced()",
+    'root._errorForExit(exitCode, "band-apply-failed")',
+    "root._scheduleReconcile()",
+]:
+    if marker not in set_failure:
+        raise SystemExit(
+            f"FAIL: Equalizer band mutation failure is not fail-closed/reconciled: {marker}"
+        )
+
+reset_start_failure = reset_proc[reset_proc.index("onRunningChanged:"):reset_proc.index("onStarted:")]
+for marker in [
+    'root._setProcessError("reset-failed", generation)',
+    "if (root.enabled && generation === root._lifecycleGeneration)",
+    "root._scheduleReconcile()",
+]:
+    if marker not in reset_start_failure:
+        raise SystemExit(
+            f"FAIL: Equalizer reset process-start recovery missing: {marker}"
+        )
+if reset_proc.count("root._scheduleReconcile()") < 3:
+    raise SystemExit("FAIL: Equalizer reset no longer reconciles all completion paths")
+
 print(
-    "PASS: Equalizer lifecycle, recovery, parsing, and protocol inputs remain guarded"
+    "PASS: Equalizer lifecycle, recovery, mutation, parsing, and protocol inputs remain guarded"
 )
 PY

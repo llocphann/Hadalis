@@ -26,13 +26,15 @@ Item {
         return Math.max(minimum, Math.min(maximum, resolved))
     }
 
+    readonly property real availableWidth: Math.max(0,
+        (root.targetScreen?.width ?? 0) - Appearance.sizes.hyprlandGapsOut * 2)
     readonly property real availableHeight: Math.max(0,
         (root.targetScreen?.height ?? 0) - Appearance.sizes.hyprlandGapsOut * 2)
-    readonly property real requestedWidth: root.bounded(
-        root.instanceConfig?.width,
-        Appearance.sizes.sidebarWidth, 320,
-        Math.max(320, (root.targetScreen?.width ?? 900)
-            - Appearance.sizes.hyprlandGapsOut * 2))
+    readonly property real requestedWidth: root.availableWidth > 0
+        ? root.bounded(root.instanceConfig?.width,
+            Appearance.sizes.sidebarWidth,
+            Math.min(320, root.availableWidth), root.availableWidth)
+        : 0
     readonly property real minimumContentHeight: Math.min(root.availableHeight,
         Math.max(0, Number(contentLoader.item?.minimumUsefulHeight ?? 320)))
     readonly property real preferredContentHeight:

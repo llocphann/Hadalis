@@ -118,7 +118,9 @@ At `0245958a35f68c409ddb59c033f6cbe99ad17ba7`:
 
 ### Bot 1 — architecture/core
 
-Verify that critical shell startup cannot be taken down by retired/optional presentation modules. Trace the `ShellIiCriticalPanels`/`ShellIiPanelsImpl` dependency chain and ensure optional presentation imports do not become mandatory startup dependencies. Reconcile against the current theme-only `modules/pill` implementation instead of assuming the module is retired.
+**FIXED-IN-SOURCE at `8ce1f65c79b53d7cb6d64e5a1109e9bfca4a2055` / NEEDS-MAINTAINER-RERUN.** The startup dependency trace confirms `ShellIiPanelsImpl.qml` remains behind deferred URL loaders and is not a mandatory critical-startup dependency. `ShellIiCriticalPanels.qml` now separates runtime activation eligibility from final cutover ownership: the perimeter runtime may attempt instantiation only after config/source prerequisites pass, while legacy Bar/Dock remain authoritative until `PerimeterRuntime.qml` publishes a successful root readiness handshake. `PerimeterCutoverPolicy.enabled` now requires that handshake, and Connected Perimeter chrome itself cannot map when final cutover is false. `scripts/test-perimeter-family-contracts.sh` contains source guards for this contract.
+
+Do not duplicate this source fix without new current-HEAD evidence. Required acceptance remains an exact-SHA local contract/parser run plus a Niri runtime rerun demonstrating that a missing/invalid optional perimeter presentation cannot remove critical fallback chrome.
 
 ### Bot 2 — QML/perimeter UI
 

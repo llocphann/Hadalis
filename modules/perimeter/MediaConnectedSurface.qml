@@ -68,6 +68,11 @@ PanelWindow {
         }
     }
 
+    onActiveFocusItemChanged: {
+        if (root.routeOwned)
+            mediaViewport.ensureFocusVisible(root.activeFocusItem)
+    }
+
     ConnectedSurfaceGeometry {
         id: geometry
         edge: root.route?.edge ?? "top"
@@ -108,6 +113,35 @@ PanelWindow {
             contentHeight: Math.max(height, mediaPopup.implicitHeight)
             interactive: contentWidth > width + 0.5 || contentHeight > height + 0.5
             boundsBehavior: Flickable.StopAtBounds
+
+            function ensureFocusVisible(item): void {
+                if (!item || width <= 0 || height <= 0)
+                    return
+
+                const position = item.mapToItem(contentItem, 0, 0)
+                const margin = 8
+                const maxX = Math.max(0, contentWidth - width)
+                const maxY = Math.max(0, contentHeight - height)
+                let nextX = contentX
+                let nextY = contentY
+
+                if (position.x - margin < nextX)
+                    nextX = Math.max(0, position.x - margin)
+                else if (position.x + item.width + margin > nextX + width)
+                    nextX = Math.min(maxX,
+                        position.x + item.width + margin - width)
+
+                if (position.y - margin < nextY)
+                    nextY = Math.max(0, position.y - margin)
+                else if (position.y + item.height + margin > nextY + height)
+                    nextY = Math.min(maxY,
+                        position.y + item.height + margin - height)
+
+                if (nextX !== contentX)
+                    contentX = nextX
+                if (nextY !== contentY)
+                    contentY = nextY
+            }
 
             BarMediaPopup {
                 id: mediaPopup

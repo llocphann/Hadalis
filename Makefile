@@ -40,6 +40,7 @@ test-prefix-install:
 		runtime="$$stage/opt/inir/share/quickshell/inir"; \
 		test -f "$$runtime/shell.qml"; \
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$stage/opt/inir/bin/inir"; \
+		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$runtime/scripts/inir"; \
 		grep -Fq 'RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/opt/inir/share/quickshell/inir}"' "$$runtime/sdata/lib/versioning.sh"; \
 		grep -Fq '"package_update_hint": "sudo make install PREFIX=\"/opt/inir\"' "$$runtime/version.json"; \
 		grep -Fxq 'Exec=/opt/inir/bin/inir service restart' "$$stage/opt/inir/share/applications/inir.desktop"; \
@@ -66,6 +67,9 @@ install-shell:
 		-e 's|/usr/libexec/inir-thinkfan|$(THINKFAN_HELPER)|g' \
 		"$(DESTDIR)$(SHELL_INSTALL_DIR)/services/TlpSettingsService.qml" \
 		"$(DESTDIR)$(SHELL_INSTALL_DIR)/services/ThinkFanService.qml"
+	@sed -i \
+		's|^system_config_dir=.*|system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-$(SHELL_INSTALL_DIR)}"|' \
+		"$(DESTDIR)$(SHELL_INSTALL_DIR)/scripts/inir"
 	@sed -i \
 		's|^RUNTIME_DIR_SYSTEM_LOCAL=.*|RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-$(SHELL_INSTALL_DIR)}"|' \
 		"$(DESTDIR)$(SHELL_INSTALL_DIR)/sdata/lib/versioning.sh"

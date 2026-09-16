@@ -65,13 +65,13 @@ If you want a packaging-style local install surface instead of the repo-sync ins
 sudo make install
 ```
 
-That installs:
+With the default Makefile paths, that installs:
 
-- `inir` launcher into your install prefix `bin/`
-- shell payload into `/usr/local/share/quickshell/inir` by default
-- user service asset
-- desktop entry
-- runtime metadata so `status` / `doctor` can detect package-managed style installs
+- the `inir` launcher, Quickshell runtime payload, generated package-managed runtime metadata, user service unit, both desktop entries, desktop icon, docs, and license under `/usr/local`;
+- the battery/TLP and ThinkFan privileged helpers under `/usr/libexec`;
+- their polkit policies, plus the TLP settings schema, under `/usr/share`.
+
+Those system locations can be changed through the Makefile install variables when packaging. `make install` does **not** install distro dependencies, install ThinkFan/TLP themselves, or enable the iNiR user service for you.
 
 ## Update
 
@@ -282,8 +282,8 @@ inir test-local --with-runtime
 
 These checks cover:
 
-- shell syntax for `setup`, `doctor`, `versioning`, `package-installers`, and `scripts/inir`
-- PKGBUILD syntax for the new Arch package roots
+- shell syntax for setup/launcher, release/docs/wiki/translation tooling, installer libraries/migrations, and helper regression scripts
+- PKGBUILD syntax for the Arch package roots
 - local `make install` dry-run
 - launcher path and status resolution
 - optional runtime restart and filtered log/error smoke test
@@ -302,6 +302,8 @@ These checks cover:
 | Launcher                                  | `inir` in the install prefix                                         |
 | Super daemon                              | `~/.local/bin/inir_super_overview_daemon.py`                         |
 | Daemon service                            | `~/.config/systemd/user/inir-super-overview.service`                 |
+
+For `make install`, the package-style system payload also includes the user service unit, desktop entries/icon, docs/license, battery/TLP and ThinkFan helpers, matching polkit policies, and the TLP settings schema. See [Installation](INSTALL.md#3-install-the-packaged-runtime-assets) for the default paths and packaging overrides.
 
 ### Compositor & Themes
 

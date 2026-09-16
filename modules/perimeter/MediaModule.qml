@@ -14,11 +14,12 @@ MouseArea {
     property var perimeterContext: null
     property var instanceConfig: ({})
 
-    readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
     readonly property string outputName: root.perimeterContext?.outputName ?? ""
+    readonly property bool presented:
+        PerimeterPresentationPolicy.barPresentedForOutput(root.outputName)
     readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
     readonly property string slotId: root.perimeterContext?.slotId ?? ""
     readonly property string cleanedTitle:

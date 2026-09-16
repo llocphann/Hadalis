@@ -61,6 +61,18 @@ QtObject {
         return container?.[id]
     }
 
+    function _explicitSlotEntries(container) {
+        const entries = []
+        if (container === undefined || container === null)
+            return entries
+        for (const slotId of PerimeterTopology.slotIds) {
+            const value = root._slotValue(container, slotId)
+            if (Array.isArray(value))
+                entries.push({ slotId: slotId, instanceIds: value.slice() })
+        }
+        return entries
+    }
+
     function _slotContainerValid(container) {
         if (container === undefined || container === null)
             return true
@@ -98,6 +110,16 @@ QtObject {
                 String(entry?.outputName ?? entry?.output ?? "") === name) ?? null
         }
         return outputs?.[name] ?? null
+    }
+
+    function _outputsAsList() {
+        const outputs = root.configured?.outputs
+        if (Array.isArray(outputs))
+            return outputs.map(entry => Object.assign({}, entry))
+        if (!outputs || typeof outputs !== "object")
+            return []
+        return Object.keys(outputs).map(name =>
+            Object.assign({}, outputs[name] ?? ({}), { outputName: name }))
     }
 
     function _sharedInstances() {
@@ -298,6 +320,135 @@ QtObject {
         if (!root.persistenceReady)
             return false
         Config.setNestedValue("perimeter.defaultSlots", [])
+        return true
+    }
+
+    // Effective output placement including fallback to shared/default slots.
+    function outputSlotEntries(outputName) {
+        const name = String(outputName ?? "")
+        if (!name)
+            return root.defaultSlotEntries()
+        return PerimeterTopology.slotIds.map(slotId => ({
+            slotId: slotId,
+            instanceIds: root.slotInstanceIds(name, slotId)
+        }))
+    }
+
+    function outputPlacementForInstance(outputName, instanceId) {
+        const name = String(outputName ?? "")
+        const id = String(instanceId ?? "")
+        if (!name || !id)
+            return ({ slotId: "", index: -1 })
+        const entries = root.outputSlotEntries(name)
+        for (const entry of entries) {
+            const index = entry.instanceIds.findIndex(candidate =>
+                String(candidate ?? "") === id)
+            if (index >= 0)
+                return ({ slotId: entry.slotId, index: index })
+        }
+        return ({ slotId: "", index: -1 })
+    }
+
+    function _writeOutputSlots(outputName, slotEntries) {
+        const name = String(outputName ?? "")
+        if (!name || !Array.isArray(slotEntries))
+            return false
+        const outputs = root._outputsAsList()
+        const index = outputs.findIndex(entry =>
+            String(entry?.outputName ?? entry?.output ?? "") === name)
+        const existing = index >= 0 ? outputs[index] : ({})
+        const nextEntry = Object.assign({}, existing, {
+            outputName: name,
+            slots: slotEntries
+        })
+        delete nextEntry.output
+        if (index >= 0)
+            outputs[index] = nextEntry
+        else
+            outputs.push(nextEntry)
+        Config.setNestedValue("perimeter.outputs", outputs)
+        return true
+    }
+
+    // Move/reorder/disable one instance only on a specific output. Persist only
+    // touched source/target slots so untouched slots continue inheriting shared
+    // defaults instead of being frozen into an output snapshot.
+    function moveOutputInstance(outputName, instanceId, targetSlotId, targetIndex) {
+        const name = String(outputName ?? "")
+        const id = String(instanceId ?? "")
+        const target = String(targetSlotId ?? "")
+        if (!name || !id
+                || (target.length > 0 && !PerimeterTopology.isValidSlot(target))
+                || !root.validate(name))
+            return false
+        if (!root.instanceDescriptor(name, id))
+            return false
+
+        const before = root.outputSlotEntries(name)
+        const sourcePlacement = root.outputPlacementForInstance(name, id)
+        const next = before.map(entry => ({
+            slotId: entry.slotId,
+            instanceIds: entry.instanceIds.filter(candidate =>
+                String(candidate ?? "") !== id)
+        }))
+        if (target.length > 0) {
+            const targetEntry = next.find(entry => entry.slotId === target)
+            if (!targetEntry)
+                return false
+            const requestedIndex = Number(targetIndex)
+            const insertionIndex = Number.isFinite(requestedIndex)
+                ? Math.max(0, Math.min(targetEntry.instanceIds.length,
+                    Math.floor(requestedIndex)))
+                : targetEntry.instanceIds.length
+            targetEntry.instanceIds.splice(insertionIndex, 0, id)
+        }
+        if (JSON.stringify(before) === JSON.stringify(next))
+            return true
+
+        const currentOutput = root._outputConfig(name)
+        const explicit = root._explicitSlotEntries(currentOutput?.slots)
+        const touched = ({})
+        if ((sourcePlacement?.slotId ?? "").length > 0)
+            touched[sourcePlacement.slotId] = true
+        if (target.length > 0)
+            touched[target] = true
+        const explicitBySlot = ({})
+        for (const entry of explicit)
+            explicitBySlot[entry.slotId] = entry.instanceIds.slice()
+        for (const slotId of Object.keys(touched)) {
+            const effectiveEntry = next.find(entry => entry.slotId === slotId)
+            if (effectiveEntry)
+                explicitBySlot[slotId] = effectiveEntry.instanceIds.slice()
+        }
+        const nextExplicit = PerimeterTopology.slotIds
+            .filter(slotId => explicitBySlot[slotId] !== undefined)
+            .map(slotId => ({
+                slotId: slotId,
+                instanceIds: explicitBySlot[slotId]
+            }))
+        return root._writeOutputSlots(name, nextExplicit)
+    }
+
+    function resetOutputSlots(outputName) {
+        const name = String(outputName ?? "")
+        if (!name || !root.persistenceReady)
+            return false
+        const outputs = root._outputsAsList()
+        const index = outputs.findIndex(entry =>
+            String(entry?.outputName ?? entry?.output ?? "") === name)
+        if (index < 0)
+            return true
+
+        const nextEntry = Object.assign({}, outputs[index], { outputName: name })
+        delete nextEntry.output
+        delete nextEntry.slots
+        const payloadKeys = Object.keys(nextEntry).filter(key =>
+            key !== "outputName")
+        if (payloadKeys.length === 0)
+            outputs.splice(index, 1)
+        else
+            outputs[index] = nextEntry
+        Config.setNestedValue("perimeter.outputs", outputs)
         return true
     }
 

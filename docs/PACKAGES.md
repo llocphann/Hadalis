@@ -250,4 +250,8 @@ The package recipes under `distro/arch/` distribute Hadalis itself rather than s
 
 `inir-shell` and `inir-shell-git` install the runtime payload, `inir` launcher, user service, desktop entries, icon, privileged helper/polkit assets, docs, and package-managed version metadata. Their packaged `setup migrate` path preserves package-manager launcher ownership rather than materializing a stale user-local launcher.
 
+For pacman installs, `/usr/lib/systemd/user/inir.service` remains the authoritative unit. The packaged launcher does not copy that unit into `~/.config/systemd/user`; `inir service enable` creates only the compositor-specific wants link and points it directly at the package unit. On upgrade, a legacy user unit is removed automatically only when it is byte-identical to the package unit. A different user unit is treated as an intentional override and causes the package-managed service command to stop with a warning instead of overwriting it.
+
+Run `inir service disable` as each affected user before removing `inir-shell` or `inir-shell-git`. Pacman package hooks deliberately do not mutate users' home directories. If a package is removed while compositor wiring is still enabled, the removal message explains how to delete the resulting dangling `*.wants/inir.service` symlink and reload the user systemd manager.
+
 For release-specific version/source invariants, see [RELEASING.md](RELEASING.md).

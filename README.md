@@ -313,46 +313,26 @@ The project is still completing product/namespace cleanup. Runtime, package, and
 
 ## Future implementation scope
 
-The current future scope is intentionally narrow. Bluetooth, Dashboard, and other Serpantinum-inspired popup work are **deferred** and are not part of the present plan.
+The current future scope is intentionally narrow: **only the Media equalizer integration described below is planned from the external design references. Other Serpantinum features and other external UI references are deferred for now.**
 
 ### Media equalizer
 
 Reference: `https://github.com/ilyamiro/serpantinum`
 
-The only Serpantinum-derived feature currently planned is the **equalizer section**. It should be integrated directly **below the existing Hadalis Media content** inside the current Connected Media popup rather than replacing or redesigning the Media surface.
+The planned change is to take the **equalizer concept and interaction model** from Serpantinum and integrate it directly **below the existing Hadalis Media content** inside the current Connected Media popup. It should extend the current Hadalis Media surface rather than replace or redesign it.
 
 Target behavior:
 
-- preserve Hadalis' existing Media/MPRIS presentation;
-- add an equalizer section below the current media controls/content;
-- use the Serpantinum equalizer interaction model as the reference for multi-band gain controls, presets, apply/save/reset behavior, and useful state feedback;
-- integrate through Hadalis' existing EasyEffects/service boundary where possible instead of introducing a second audio-control stack;
+- preserve Hadalis' existing Media/MPRIS presentation and playback controls;
+- place the equalizer below the current media content;
+- provide multi-band gain controls and useful preset/apply/reset state based on the Serpantinum equalizer interaction model;
+- use Hadalis' existing EasyEffects/service boundary where possible instead of introducing a second audio-control stack;
 - keep equalizer runtime/process work inactive when the Media surface is not using it;
 - make absence of EasyEffects or a compatible audio path fail gracefully without breaking Media playback controls.
 
-Serpantinum currently implements its Media equalizer around EasyEffects and an `equalizer.sh` helper. Hadalis is GPL-3.0 while Serpantinum is AGPL-3.0-or-later, so copying AGPL source directly into the Hadalis codebase should not be the default approach. Prefer an independent Hadalis-native implementation of the same equalizer behavior and layout using Hadalis' existing EasyEffects integration unless the project explicitly decides to accept the licensing consequences of direct source reuse.
+Serpantinum currently implements its Media equalizer around EasyEffects and an `equalizer.sh` helper. Prefer a Hadalis-native implementation integrated with the existing Media and EasyEffects boundaries rather than copying unrelated Serpantinum UI or architecture.
 
-The Serpantinum bar design, Bluetooth popup, Dashboard, and other Serpantinum UI are **out of scope for now**.
-
-### Breezy Weather tab for the right sidebar
-
-Reference: `https://github.com/breezy-weather/breezy-weather`
-
-A dedicated **Weather tab** is planned inside the Connected popup/presentation of the **right sidebar**. Breezy Weather should be used more directly than a visual reference where doing so is technically useful and license-compliant, to avoid re-designing already solved weather presentation patterns.
-
-The preferred approach is:
-
-- reuse portable Breezy Weather logic, data presentation rules, calculations, or assets when they can be cleanly separated and their LGPL-3.0 requirements are preserved;
-- adapt the relevant weather presentation into QML for Hadalis rather than attempting to embed Android UI code;
-- keep Hadalis' existing weather service/data contract as the shell-side source of truth unless a specific Breezy component provides a clear reason to extend it;
-- expose the result as one dedicated tab within the connected right-sidebar popup, not as a separate standalone application window;
-- adapt sizing, typography, spacing, navigation, animation, and information density to the right-sidebar connected-surface constraints.
-
-Useful content for that tab may include current conditions, feels-like temperature, hourly/daily forecasts, precipitation, alerts, wind, humidity, pressure, visibility, UV, air quality/pollen where available, sunrise/sunset, moon information, and compact charts when supported by Hadalis' selected data source.
-
-Breezy Weather's current UI is implemented in Android/Kotlin/Compose, so its UI source cannot be dropped directly into Hadalis' QML runtime. Direct reuse is therefore most practical for portable logic/assets/data conventions; the visual layer still requires adaptation to QML. Breezy Weather is LGPL-3.0, so any copied or modified code/assets must retain the required provenance, notices, and source obligations.
-
-No other future feature expansion is planned from these reference projects at this time.
+The Serpantinum bar design, Bluetooth popup, Dashboard, other popups, and all other external design experiments are **out of scope for now**.
 
 ---
 
@@ -409,9 +389,8 @@ When extending the perimeter:
 
 - Caelestia shell: `https://github.com/caelestia-dots/shell`
 - Serpantinum: `https://github.com/ilyamiro/serpantinum`
-- Breezy Weather: `https://github.com/breezy-weather/breezy-weather`
 
-Caelestia remains the connected-composition architecture reference. Serpantinum is currently referenced only for the Media equalizer behavior/design, not for its bar, Bluetooth, Dashboard, or other popup surfaces. Breezy Weather is the implementation/design reference for a dedicated Weather tab in the connected right sidebar, with reusable pieces adopted only where technically portable and license-compliant. None of these references changes Hadalis' ownership of its final topology, routing, lifecycle, service boundaries, and QML integration.
+Caelestia remains the connected-composition architecture reference. Serpantinum is currently referenced only for the **Media equalizer behavior/design**. No Serpantinum bar, Bluetooth, Dashboard, or other popup work is planned at this time. These references do not change Hadalis' ownership of its final topology, routing, lifecycle, service boundaries, and QML integration.
 
 ### ThinkFan
 

@@ -89,9 +89,10 @@ Singleton {
     function checkDueEvents() {
         const now = new Date()
         const currentTime = now.getTime()
+        const eventCount = root.list.length
         let needsSave = false
         
-        for (let i = 0; i < root.list.length; i++) {
+        for (let i = 0; i < eventCount; i++) {
             const event = root.list[i]
             if (!event.dateTime) continue
             
@@ -114,7 +115,7 @@ Singleton {
                 
                 // Handle recurrence - create next occurrence
                 if (event.recurrence && event.recurrence !== "none") {
-                    root.createNextRecurrence(event)
+                    root.createNextRecurrence(event, currentTime)
                 }
             }
         }
@@ -122,28 +123,53 @@ Singleton {
         if (needsSave) root.saveToFile()
     }
 
-    function createNextRecurrence(event) {
+    function createNextRecurrence(event, afterTime) {
         const eventDate = new Date(event.dateTime)
-        let nextDate = new Date(eventDate)
+        const eventTime = eventDate.getTime()
+        const targetTime = Number.isFinite(Number(afterTime)) ? Number(afterTime) : Date.now()
+        if (!Number.isFinite(eventTime))
+            return
+
+        const nextDate = new Date(eventDate)
         
         switch (event.recurrence) {
-            case "daily":
-                nextDate.setDate(nextDate.getDate() + 1)
+            case "daily": {
+                const daysBehind = Math.max(0, Math.floor((targetTime - eventTime) / 86400000))
+                nextDate.setDate(nextDate.getDate() + daysBehind + 1)
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setDate(nextDate.getDate() + 1)
                 break
-            case "weekly":
-                nextDate.setDate(nextDate.getDate() + 7)
+            }
+            case "weekly": {
+                const weeksBehind = Math.max(0, Math.floor((targetTime - eventTime) / (7 * 86400000)))
+                nextDate.setDate(nextDate.getDate() + (weeksBehind + 1) * 7)
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setDate(nextDate.getDate() + 7)
                 break
-            case "monthly":
-                nextDate.setMonth(nextDate.getMonth() + 1)
+            }
+            case "monthly": {
+                const targetDate = new Date(targetTime)
+                const monthsBehind = Math.max(0,
+                    (targetDate.getFullYear() - eventDate.getFullYear()) * 12
+                    + targetDate.getMonth() - eventDate.getMonth())
+                nextDate.setMonth(nextDate.getMonth() + Math.max(1, monthsBehind))
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setMonth(nextDate.getMonth() + 1)
                 break
-            case "yearly":
-                nextDate.setFullYear(nextDate.getFullYear() + 1)
+            }
+            case "yearly": {
+                const targetDate = new Date(targetTime)
+                const yearsBehind = Math.max(1, targetDate.getFullYear() - eventDate.getFullYear())
+                nextDate.setFullYear(nextDate.getFullYear() + yearsBehind)
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setFullYear(nextDate.getFullYear() + 1)
                 break
+            }
             default:
                 return
         }
         
-        // Create recurring event
+        // Create the first recurring occurrence after the current check time.
         root.addEvent(
             event.title,
             event.description,

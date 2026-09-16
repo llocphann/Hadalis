@@ -66,6 +66,7 @@ Singleton {
 
     function rescanWifi(): void {
         wifiScanning = true;
+        rescanProcess.attempted = true;
         rescanProcess.running = true;
     }
 
@@ -177,12 +178,26 @@ Singleton {
 
     Process {
         id: rescanProcess
+        property bool attempted: false
+        property bool startObserved: false
         command: ["nmcli", "dev", "wifi", "list", "--rescan", "yes"]
-        stdout: SplitParser {
-            onRead: {
-                wifiScanning = false;
-                getNetworks.running = true;
+        onRunningChanged: {
+            if (rescanProcess.running) {
+                rescanProcess.startObserved = false
+                return
             }
+            if (!rescanProcess.attempted || rescanProcess.startObserved)
+                return
+            rescanProcess.attempted = false
+            root.wifiScanning = false
+            console.warn("[Network] Failed to start Wi-Fi rescan")
+        }
+        onStarted: rescanProcess.startObserved = true
+        onExited: (exitCode) => {
+            rescanProcess.attempted = false
+            root.wifiScanning = false
+            if (exitCode === 0)
+                getNetworks.running = true
         }
     }
 
@@ -355,10 +370,8 @@ Singleton {
         id: updateNetworkName
         command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
         running: false
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkName = data;
-            }
+        stdout: StdioCollector {
+            onStreamFinished: root.networkName = text.trim()
         }
     }
 

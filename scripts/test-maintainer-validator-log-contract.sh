@@ -15,7 +15,10 @@ fail() {
 mkdir -p "$tmp/caller" "$tmp/workspace"
 
 # Execute the real validator initialization prefix, stopping before clone/log I/O.
-# This tests path behavior without recursively running the full validation suite.
+# Fail closed if that boundary changes so this test can never recurse into the
+# full validator accidentally.
+grep -Fq 'cleanup() {' "$validator" \
+    || fail 'validator initialization boundary changed; refusing prefix execution'
 prefix="$tmp/validator-prefix.sh"
 sed '/^cleanup()/,$d' "$validator" > "$prefix"
 cat >> "$prefix" <<'SH'

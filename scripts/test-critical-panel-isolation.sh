@@ -16,15 +16,12 @@ fail() {
 # Critical composition may depend on perimeter policy/registry authority, but it
 # must not import concrete presentation packages whose local type failures would
 # make the entire critical root unavailable before LazyLoader activation runs.
-for module_import in \
-    'import qs.modules.background' \
-    'import qs.modules.bar' \
-    'import qs.modules.dock' \
-    'import qs.modules.verticalBar'; do
-    if grep -Fxq "$module_import" "$critical"; then
-        fail "critical root still imports optional presentation module: $module_import"
-    fi
-done
+# Match the import semantically rather than pinning exact line spelling so aliases,
+# optional semicolons, or harmless whitespace cannot bypass this startup guard.
+optional_import_re='^[[:space:]]*import[[:space:]]+qs\.modules\.(background|bar|dock|verticalBar)([[:space:];]|$)'
+if offending_import="$(grep -En -m1 "$optional_import_re" "$critical" || true)"; [[ -n "$offending_import" ]]; then
+    fail "critical root still imports optional presentation module: $offending_import"
+fi
 
 if grep -Eq 'component:[[:space:]]*(Background|Bar|VerticalBar|Dock|PerimeterRuntime)[[:space:]]*\{' "$critical"; then
     fail 'critical root still embeds a concrete presentation component'

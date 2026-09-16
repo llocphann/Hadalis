@@ -36,6 +36,13 @@ Item {
 
     Connections {
         target: ModuleRegistry
+        function onModuleRegistered(moduleId: string): void {
+            // A later registration may replace a perimeter source with a stale
+            // or foreign URL. Re-run the registry health check after the current
+            // registration completes; registerAll() is idempotent when healthy.
+            if (root.perimeterRequested)
+                Qt.callLater(root.ensurePerimeterFeatures)
+        }
         function onModuleUnregistered(moduleId: string): void {
             if (root.perimeterRequested)
                 Qt.callLater(root.ensurePerimeterFeatures)

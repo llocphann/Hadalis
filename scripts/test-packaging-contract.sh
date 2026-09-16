@@ -130,6 +130,10 @@ grep -Fq '"$script_dir/test-doctor-dependency-routing.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the doctor dependency contract'
 grep -Fq '"$script_dir/test-optional-audio-deps-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the optional audio dependency contract'
+grep -Fq '"$script_dir/test-make-install-lifecycle.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the make install lifecycle contract'
+grep -Fq '"$script_dir/verify-docs.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes documentation verification'
 grep -Fq '  require_release_contracts' "$release_script" \
   || fail 'release publish path no longer executes release packaging contracts'
 
@@ -152,7 +156,7 @@ meta_required=(
 )
 for package in "${meta_required[@]}"; do
   grep -Eq "^[[:space:]]+${package}$" "$meta_pkg" \
-    || fail "inir-meta is missing default full-experience dependency: $package"
+    || fail "$meta_pkg is missing default full-experience dependency: $package"
   grep -Fqx $'\tdepends = '"$package" "$meta_srcinfo" \
     || fail "$meta_srcinfo is missing dependency: $package"
 done

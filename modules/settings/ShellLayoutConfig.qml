@@ -18,6 +18,7 @@ ContentPage {
     property string liftedSurfaceId: ""
     property string confirmationSurfaceId: ""
     property string confirmationSlot: ""
+    property string perimeterOutputName: ""
     readonly property string activeFamily: ShellLayoutController.activeFamily
     readonly property bool standaloneSettings:
         Quickshell.env("INIR_STANDALONE_WINDOW") === "1"
@@ -25,9 +26,16 @@ ContentPage {
         root.activeFamily)
     readonly property bool perimeterEnabled:
         (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
+    readonly property var perimeterOutputOptions: [{
+        displayName: Translation.tr("Shared default"),
+        value: ""
+    }].concat(Quickshell.screens.map(screen => ({
+        displayName: String(screen?.name ?? Translation.tr("Output")),
+        value: String(screen?.name ?? "")
+    })).filter(option => option.value.length > 0))
     readonly property var perimeterInstances: {
         Config.revision
-        return PerimeterConfig.instancesForOutput("")
+        return PerimeterConfig.instancesForOutput(root.perimeterOutputName)
     }
     readonly property var perimeterSlotOptions: [{
         displayName: Translation.tr("Disabled"),
@@ -36,6 +44,12 @@ ContentPage {
         displayName: Translation.tr(slotId),
         value: slotId
     })))
+
+    onPerimeterOutputOptionsChanged: {
+        if (!root.perimeterOutputOptions.some(option =>
+                option.value === root.perimeterOutputName))
+            root.perimeterOutputName = ""
+    }
 
     function setPerimeterEnabled(enabled: bool): void {
         let panels = [...(Config.options?.enabledPanels ?? [])]
@@ -61,6 +75,39 @@ ContentPage {
         case "dock": return Translation.tr("Dock")
         default: return String(moduleId ?? "")
         }
+    }
+
+    function perimeterPlacement(instanceId: string): var {
+        Config.revision
+        return root.perimeterOutputName.length > 0
+            ? PerimeterConfig.outputPlacementForInstance(
+                root.perimeterOutputName, instanceId)
+            : PerimeterConfig.defaultPlacementForInstance(instanceId)
+    }
+
+    function perimeterSlotEntries(): var {
+        Config.revision
+        return root.perimeterOutputName.length > 0
+            ? PerimeterConfig.outputSlotEntries(root.perimeterOutputName)
+            : PerimeterConfig.defaultSlotEntries()
+    }
+
+    function movePerimeterInstance(instanceId: string, slotId: string,
+            index): void {
+        if (root.perimeterOutputName.length > 0) {
+            PerimeterConfig.moveOutputInstance(root.perimeterOutputName,
+                instanceId, slotId, index)
+            return
+        }
+        PerimeterConfig.moveDefaultInstance(instanceId, slotId, index)
+    }
+
+    function resetPerimeterSlots(): void {
+        if (root.perimeterOutputName.length > 0) {
+            PerimeterConfig.resetOutputSlots(root.perimeterOutputName)
+            return
+        }
+        PerimeterConfig.resetDefaultSlots()
     }
 
     function toggleLiveEditor(): void {
@@ -156,17 +203,42 @@ ContentPage {
                 spacing: 8
 
                 StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Default perimeter modules")
+                    Layout.preferredWidth: 120
+                    text: Translation.tr("Scope")
                     color: Appearance.colors.colOnLayer1
-                    font.weight: Font.Medium
+                }
+
+                StyledComboBox {
+                    Layout.fillWidth: true
+                    model: root.perimeterOutputOptions
+                    textRole: "displayName"
+                    currentIndex: Math.max(0,
+                        root.perimeterOutputOptions.findIndex(option =>
+                            option.value === root.perimeterOutputName))
+                    onActivated: index => {
+                        if (index >= 0 && index < root.perimeterOutputOptions.length)
+                            root.perimeterOutputName =
+                                root.perimeterOutputOptions[index].value
+                    }
                 }
 
                 RippleButtonWithIcon {
                     materialIcon: "restart_alt"
-                    mainText: Translation.tr("Reset preset")
-                    onClicked: PerimeterConfig.resetDefaultSlots()
+                    mainText: root.perimeterOutputName.length > 0
+                        ? Translation.tr("Reset override")
+                        : Translation.tr("Reset preset")
+                    onClicked: root.resetPerimeterSlots()
                 }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.perimeterOutputName.length > 0
+                    ? Translation.tr("This output inherits shared placement until a module is moved here. Reset removes only this output's slot overrides.")
+                    : Translation.tr("Shared placement applies to every output that does not override the affected slot.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                wrapMode: Text.Wrap
             }
 
             Repeater {
@@ -182,8 +254,7 @@ ContentPage {
                         String(modelData?.moduleId ?? "")
                     readonly property var placement: {
                         perimeterRow.configRevision
-                        return PerimeterConfig.defaultPlacementForInstance(
-                            perimeterRow.instanceId)
+                        return root.perimeterPlacement(perimeterRow.instanceId)
                     }
                     readonly property int slotOptionIndex: Math.max(0,
                         root.perimeterSlotOptions.findIndex(option =>
@@ -222,9 +293,10 @@ ContentPage {
                         onActivated: index => {
                             if (index < 0 || index >= root.perimeterSlotOptions.length)
                                 return
-                            PerimeterConfig.moveDefaultInstance(
+                            root.movePerimeterInstance(
                                 perimeterRow.instanceId,
-                                root.perimeterSlotOptions[index].value)
+                                root.perimeterSlotOptions[index].value,
+                                undefined)
                         }
                     }
 
@@ -233,25 +305,27 @@ ContentPage {
                         enabled: (perimeterRow.placement?.index ?? -1) > 0
                         materialIcon: "arrow_upward"
                         mainText: Translation.tr("Up")
-                        onClicked: PerimeterConfig.moveDefaultInstance(
+                        onClicked: root.movePerimeterInstance(
                             perimeterRow.instanceId,
                             perimeterRow.placement.slotId,
                             perimeterRow.placement.index - 1)
                     }
 
                     RippleButtonWithIcon {
-                        readonly property int slotCount:
-                            (perimeterRow.placement?.slotId ?? "").length > 0
-                            ? PerimeterConfig.defaultSlotEntries()
-                                .find(entry => entry.slotId === perimeterRow.placement.slotId)
-                                ?.instanceIds?.length ?? 0
-                            : 0
+                        readonly property int slotCount: {
+                            const slotId = perimeterRow.placement?.slotId ?? ""
+                            if (slotId.length === 0)
+                                return 0
+                            const entry = root.perimeterSlotEntries()
+                                .find(candidate => candidate.slotId === slotId)
+                            return entry?.instanceIds?.length ?? 0
+                        }
                         visible: (perimeterRow.placement?.slotId ?? "").length > 0
                         enabled: (perimeterRow.placement?.index ?? -1) >= 0
                             && perimeterRow.placement.index < slotCount - 1
                         materialIcon: "arrow_downward"
                         mainText: Translation.tr("Down")
-                        onClicked: PerimeterConfig.moveDefaultInstance(
+                        onClicked: root.movePerimeterInstance(
                             perimeterRow.instanceId,
                             perimeterRow.placement.slotId,
                             perimeterRow.placement.index + 1)

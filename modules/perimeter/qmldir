@@ -6,5 +6,6 @@ WeatherModule 1.0 WeatherModule.qml
 WeatherConnectedSurface 1.0 WeatherConnectedSurface.qml
 MediaModule 1.0 MediaModule.qml
 MediaConnectedSurface 1.0 MediaConnectedSurface.qml
+SidebarModule 1.0 SidebarModule.qml
 DockModule 1.0 DockModule.qml
 ThinkFanModule 1.0 ThinkFanModule.qml

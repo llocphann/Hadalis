@@ -102,9 +102,6 @@ Button {
         const dist = (ox,oy) => ox*ox + oy*oy
         const stateEndY = stateY + buttonBackground.height
         rippleAnim.radius = Math.sqrt(Math.max(dist(0, stateY), dist(0, stateEndY), dist(width, stateY), dist(width, stateEndY)))
-
-        rippleFadeAnim.complete();
-        rippleAnim.restart();
     }
 
     component RippleAnim: NumberAnimation {
@@ -208,13 +205,18 @@ Button {
         color: (Appearance.cookieEverywhere && root.cookieMorphing) || Appearance.regaliaEverywhere
             ? "transparent" : root.buttonColor
         radius: Appearance.cookieEverywhere ? root._cookieRadius : root.buttonEffectiveRadius
-        // Cookie has no rectangular chrome: a pill focus ring fights the organic
-        // silhouette. cookieMorphing surfaces still show focus through CookieFace.
+        // Cookie and Regalia draw focus on their own semantic faces. Other
+        // themes use the background border so keyboard focus stays visible.
         border.width: Appearance.cookieEverywhere || Appearance.regaliaEverywhere ? 0
-            : (Appearance.angelEverywhere ? 1 : 0)
-        border.color: Appearance.angelEverywhere
-            ? (root.buttonHovered ? Appearance.angel.colBorderHover : "transparent")
-            : "transparent"
+            : (root.visualFocus || Appearance.angelEverywhere ? 1 : 0)
+        border.color: root.visualFocus
+            ? (Appearance.zzzEverywhere ? Appearance.zzz.accent
+                : Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                : Appearance.inirEverywhere ? Appearance.inir.colPrimary
+                : Appearance.colors.colPrimary)
+            : (Appearance.angelEverywhere
+                ? (root.buttonHovered ? Appearance.angel.colBorderHover : "transparent")
+                : "transparent")
         Behavior on border.color {
             enabled: Appearance.animationsEnabled && root.stateTransitionsEnabled
             animation: ColorAnimation { duration: Appearance.animation.stateChange.duration; easing.type: Appearance.animation.stateChange.type; easing.bezierCurve: Appearance.animation.stateChange.bezierCurve }

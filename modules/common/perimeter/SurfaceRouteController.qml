@@ -44,10 +44,15 @@ QtObject {
         const sourceInstance = String(route?.sourceInstance ?? "")
         const slot = String(route?.slot ?? route?.slotId ?? "")
         const surface = AnchorRegistry.surfaceName(route?.surface)
+        const family = String(route?.family ?? "default")
         if (!outputName || !sourceInstance || !PerimeterTopology.isValidSlot(slot)
                 || !PerimeterConfig.validate(outputName)) {
             return null
         }
+        // Connected perimeter surfaces must never open while the shell is using
+        // the legacy fallback runtime, including transient fail-safe cutovers.
+        if (family === "perimeter" && !PerimeterCutoverPolicy.enabled)
+            return null
 
         const expectedEdge = PerimeterTopology.edgeForSlot(slot)
         const edge = String(route?.edge ?? expectedEdge)
@@ -79,7 +84,7 @@ QtObject {
 
         return {
             output: outputName,
-            family: String(route?.family ?? "default"),
+            family: family,
             surface: surface,
             page: String(route?.page ?? ""),
             sourceInstance: sourceInstance,
@@ -226,6 +231,17 @@ QtObject {
         }
     }
 
+    function _closePerimeterRoutesForFallback() {
+        if (PerimeterCutoverPolicy.enabled)
+            return
+        // Copy keys before close() replaces the routes object on each removal.
+        for (const outputName of Object.keys(root.routes)) {
+            const active = root.current(outputName)
+            if (String(active?.family ?? "") === "perimeter")
+                root.close(outputName, "source-hidden")
+        }
+    }
+
     function open(route) {
         const normalized = root._normalize(route)
         if (!normalized)
@@ -306,6 +322,13 @@ QtObject {
         target: Config
         function onRevisionChanged() {
             root._onConfigRevisionChanged()
+        }
+    }
+
+    property var _cutoverConnections: Connections {
+        target: PerimeterCutoverPolicy
+        function onEnabledChanged() {
+            root._closePerimeterRoutesForFallback()
         }
     }
 }

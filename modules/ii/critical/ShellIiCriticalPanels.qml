@@ -13,11 +13,10 @@ Item {
     id: root
 
     readonly property bool barVertical: Config.options?.bar?.vertical ?? false
-    // Opt-in migration seam. This identifier is intentionally absent from the
-    // default ii panel family, so existing users stay on legacy chrome until the
-    // Connected Perimeter runtime is explicitly enabled.
-    readonly property bool perimeterEnabled:
-        (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
+    // Cut over only when the user requested perimeter and every connected
+    // output validates. Invalid/corrupt perimeter state therefore falls back to
+    // the legacy chrome instead of leaving the shell without persistent UI.
+    readonly property bool perimeterEnabled: PerimeterRuntimePolicy.enabled
 
     component CriticalPanelLoader: LazyLoader {
         required property string identifier

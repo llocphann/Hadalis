@@ -55,6 +55,23 @@ Item {
             item.instanceConfig = root.instanceDescriptor?.config ?? ({})
     }
 
+    function _syncLoaderHealth() {
+        if (!root.resolvable)
+            return
+        const source = String(root.registration?.source ?? "")
+        if (!source)
+            return
+        if (moduleLoader.status === Loader.Error) {
+            PerimeterRuntimeHealth.reportModuleFailure(
+                root.outputName, root.instanceId, root.moduleId,
+                source, root.configRevision)
+        } else if (moduleLoader.status === Loader.Ready) {
+            PerimeterRuntimeHealth.clearModuleFailure(
+                root.outputName, root.instanceId, root.moduleId,
+                source, root.configRevision)
+        }
+    }
+
     function _bumpAnchorLayoutRevision() {
         root.anchorLayoutRevision = (root.anchorLayoutRevision + 1) % 2147483647
     }
@@ -88,5 +105,6 @@ Item {
         source: active ? String(root.registration?.source ?? "") : ""
 
         onLoaded: root._syncLoadedItem()
+        onStatusChanged: root._syncLoaderHealth()
     }
 }

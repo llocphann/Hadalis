@@ -27,7 +27,9 @@ Singleton {
     readonly property var pages: SettingsPageRegistryData.pages.map((page, index) => {
         if (root.isRetiredFeaturePage(index)) {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
-            return Object.assign({}, panelsPage)
+            return Object.assign({}, panelsPage, {
+                devNavigationHidden: true
+            })
         }
         if (index !== root.retiredTlpPageIndex)
             return page
@@ -37,7 +39,8 @@ Singleton {
             icon: systemPage.icon,
             desc: systemPage.desc,
             essential: systemPage.essential,
-            component: systemPage.component
+            component: systemPage.component,
+            devNavigationHidden: true
         })
     })
 

@@ -101,8 +101,8 @@ grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$nix_package" \
     || fail 'Nix package can shadow its wrapped launcher during migrate'
 
 # Release tooling must be location-independent: callers commonly invoke the
-# script by absolute path from outside the checkout. Also keep publish fail-closed
-# by checking repository/package versions before any tag/checkout publication work.
+# script by absolute path from outside the checkout. Publishing is fail-closed:
+# validate first, stage/reuse a draft, sync the Wiki, then make the release public.
 release_version="$(tr -d '[:space:]' < "$repo_root/VERSION")"
 release_notes="$tmp/release-notes.md"
 (
@@ -118,12 +118,30 @@ from pathlib import Path
 import sys
 
 text = Path(sys.argv[1]).read_text()
+stage = text.split('stage_release_draft() {', 1)[1].split('\n}\n\npublish_release() {', 1)[0]
+state_probe = stage.find('gh release view "$tag"')
+reuse = stage.find('gh release edit "$tag"')
+create = stage.find('gh release create "$tag"')
+draft_flag = stage.find('--draft', create)
+verify = stage.rfind('gh release view "$tag"')
+if min(state_probe, reuse, create, draft_flag, verify) < 0:
+    raise SystemExit('release draft staging must probe state, reuse drafts, create drafts, and verify draft state')
+if state_probe >= verify:
+    raise SystemExit('release draft state must be verified after staging')
+if 'already exists and is published' not in stage:
+    raise SystemExit('release draft staging must refuse to overwrite a published release')
+
 publish = text.split('publish_release() {', 1)[1].split('\n}\n\nmain() {', 1)[0]
 preflight = publish.find('require_release_version_consistency "$version"')
 tag_check = publish.find('rev-parse --verify "$tag"')
 checkout = publish.find('require_release_checkout "$tag"')
-if preflight < 0 or tag_check < 0 or checkout < 0 or not (preflight < tag_check < checkout):
-    raise SystemExit('release publish must run version preflight before tag/checkout validation')
+source_pin = publish.find('require_release_source_pin "$tag"')
+stage_call = publish.find('stage_release_draft "$tag" "$notes_file"')
+wiki = publish.find('"$script_dir/wiki-sync.sh" publish')
+make_public = publish.find('gh release edit "$tag" --repo "$github_repo" --draft=false')
+positions = (preflight, tag_check, checkout, source_pin, stage_call, wiki, make_public)
+if min(positions) < 0 or list(positions) != sorted(positions):
+    raise SystemExit('release publish ordering must be preflight -> tag -> checkout -> source pin -> draft -> Wiki -> public release')
 PY
 
 # Inspect the exact already-up-to-date and completion ordering rather than just

@@ -11,7 +11,12 @@ presentation_policy="$root/modules/perimeter/PerimeterPresentationPolicy.qml"
 reservation_policy="$root/modules/perimeter/PerimeterReservationPolicy.qml"
 runtime="$root/modules/perimeter/PerimeterRuntime.qml"
 sidebar_module="$root/modules/perimeter/SidebarModule.qml"
+thinkfan_module="$root/modules/perimeter/ThinkFanModule.qml"
 system_monitor_module="$root/modules/perimeter/SystemMonitorModule.qml"
+workspaces_module="$root/modules/perimeter/WorkspacesModule.qml"
+media_module="$root/modules/perimeter/MediaModule.qml"
+weather_module="$root/modules/perimeter/WeatherModule.qml"
+dock_module="$root/modules/perimeter/DockModule.qml"
 critical="$root/modules/ii/critical/ShellIiCriticalPanels.qml"
 ii_panels="$root/modules/ii/ShellIiPanelsImpl.qml"
 left_sidebar="$root/modules/sidebarLeft/SidebarLeft.qml"
@@ -24,8 +29,9 @@ fail() {
 
 for file in "$core_policy" "$core_registry" "$perimeter_config" "$core_qmldir" \
         "$feature_qmldir" "$presentation_policy" "$reservation_policy" "$runtime" \
-        "$sidebar_module" "$system_monitor_module" "$critical" "$ii_panels" \
-        "$left_sidebar" "$right_sidebar"; do
+        "$sidebar_module" "$thinkfan_module" "$system_monitor_module" \
+        "$workspaces_module" "$media_module" "$weather_module" "$dock_module" \
+        "$critical" "$ii_panels" "$left_sidebar" "$right_sidebar"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
@@ -78,15 +84,43 @@ register_block="$(sed -n '/function registerModule(/,/^    }/p' "$core_registry"
 grep -Fq 'const immutableMetadata = Object.assign({}, builtin)' <<<"$register_block" \
     || fail 'builtin module metadata can be replaced during feature registration'
 grep -Fq 'delete immutableMetadata.source' <<<"$register_block" \
-    || fail 'builtin source cannot be supplied by feature registration'
+    || fail 'builtin source is accidentally treated as immutable metadata'
 grep -Fq 'next[id] = Object.assign({}, merged, immutableMetadata' <<<"$register_block" \
     || fail 'builtin metadata is not reapplied after descriptor merge'
+
+for token in \
+    'function barOutputEnabled(outputName: string): bool {' \
+    'function dockOutputEnabled(outputName: string): bool {' \
+    'function barPresentedForOutput(outputName: string): bool {' \
+    'function dockPresentedForOutput(outputName: string, edge: string): bool {'; do
+    grep -Fq "$token" "$presentation_policy" \
+        || fail "presentation policy missing output-aware contract: $token"
+done
+grep -Fq 'matchedScreens.length === 0 || list.includes(name)' "$presentation_policy" \
+    || fail 'screen-list handling no longer preserves stale-name fallback safety'
+grep -Fq 'Config.options?.bar?.screenList' "$presentation_policy" \
+    || fail 'bar screenList no longer participates in perimeter presentation'
+grep -Fq 'Config.options?.dock?.screenList' "$presentation_policy" \
+    || fail 'dock screenList no longer participates in perimeter presentation'
+
 grep -Fq 'function zoneForOutputEdge(outputName: string, edge: string): real {' \
     "$reservation_policy" || fail 'reservation policy does not derive zones per output edge'
+grep -Fq 'PerimeterPresentationPolicy.barOutputEnabled(name)' "$reservation_policy" \
+    || fail 'bar reservation ignores output screenList ownership'
+grep -Fq 'PerimeterPresentationPolicy.dockOutputEnabled(name)' "$reservation_policy" \
+    || fail 'dock reservation ignores output screenList ownership'
 grep -Fq 'GlobalStates.barOpen' "$reservation_policy" \
     || fail 'bar reservation no longer tracks bar semantic visibility'
 grep -Fq 'GlobalStates.coverflowSelectorOpen' "$reservation_policy" \
     || fail 'bar reservation no longer releases for coverflow'
+
+for bar_module in "$thinkfan_module" "$system_monitor_module" \
+        "$workspaces_module" "$media_module" "$weather_module"; do
+    grep -Fq 'PerimeterPresentationPolicy.barPresentedForOutput(' "$bar_module" \
+        || fail "$(basename "$bar_module") ignores bar output ownership"
+done
+grep -Fq 'PerimeterPresentationPolicy.dockPresentedForOutput(' "$dock_module" \
+    || fail 'DockModule ignores dock output ownership'
 
 grep -Fq 'function sidebarSurfaceEnabled(featureRole: bool): bool {' \
     "$presentation_policy" || fail 'presentation policy does not expose sidebar ownership'

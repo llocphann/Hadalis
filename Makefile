@@ -203,7 +203,7 @@ uninstall-systemd:
 
 uninstall-icon:
 	@rm -f "$(DESTDIR)$(ICON_DIR)/inir.svg"
-	@if [ -z "$(DESTDIR)" ]; then gtk-update-icon-cache -q "$(SHAREDIR)$(ICON_DIR)" 2>/dev/null || true; fi
+	@if [ -z "$(DESTDIR)" ]; then gtk-update-icon-cache -q "$(SHAREDIR)/icons/hicolor" 2>/dev/null || true; fi
 
 uninstall-desktop:
 	@rm -f "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop" "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"

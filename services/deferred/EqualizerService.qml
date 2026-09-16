@@ -93,6 +93,15 @@ Singleton {
         transportProbe.running = true
     }
 
+    function _retryStaleTransportProbe(generation) {
+        if (!root.enabled || generation === root._lifecycleGeneration || root._transportChecked)
+            return
+        Qt.callLater(() => {
+            if (root.enabled && !root._transportChecked)
+                root._startTransportProbe()
+        })
+    }
+
     function _refreshBackendState() {
         if (!root.enabled)
             return
@@ -294,16 +303,22 @@ Singleton {
             }
             if (startObserved)
                 return
-            if (generation !== root._lifecycleGeneration)
+            if (generation !== root._lifecycleGeneration) {
+                root._retryStaleTransportProbe(generation)
                 return
+            }
             root._transportChecked = true
             root._transportAvailable = false
             root._setProcessError("transport-probe-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled || generation !== root._lifecycleGeneration)
+            if (!root.enabled)
                 return
+            if (generation !== root._lifecycleGeneration) {
+                root._retryStaleTransportProbe(generation)
+                return
+            }
             root._transportChecked = true
             root._transportAvailable = (exitCode === 0)
             if (!root._transportAvailable) {

@@ -1,20 +1,37 @@
-# Hadalis multi-bot agent routing
+# Hadalis agent workflow
 
-This repository is developed concurrently by BOT 1 through BOT 5.
+Hadalis uses a single-agent development workflow on `dev`.
 
-When the user sends the generic continuation prompt (for example: `tiếp tục thực hiện nhiệm vụ`), every bot must:
+## Working rules
 
-1. Identify its existing BOT number from the conversation/project context.
-2. Fetch the latest `dev` HEAD before doing anything else. Never assume a previously seen HEAD is current.
-3. Read `docs/BOT_TASKS.md` and take the current task assigned to that BOT number.
-4. Re-verify that the task is still unresolved on the latest `dev`. Another bot may already have fixed it.
-5. If the assigned task is already resolved, run its targeted verification and then pivot to the next highest-value unresolved item inside that bot's normal role. Do not idle.
-6. Mutate `dev` only. Never mutate `stable`.
-7. Keep commits atomic. Immediately before every write/ref update, re-fetch `dev` and avoid overwriting concurrent work.
-8. Do not revert or rewrite another bot's valid concurrent changes merely to make a stale test pass. Prefer updating stale contracts when runtime behavior is intentionally newer.
-9. Validate with repository scripts and report the exact commit SHA plus PASS/FAIL evidence.
-10. Do not require or request Work mode for repository work.
+1. Fetch/refetch the current `dev` HEAD before every audit and immediately before every write or ref update. Never assume a previously seen HEAD is current.
+2. Work directly on `dev`. Do not create a PR unless the maintainer explicitly asks for one. Never mutate `stable`.
+3. Re-read every file you intend to edit from the current HEAD and avoid overwriting valid concurrent work. Fix forward; do not rewrite shared history.
+4. Keep commits atomic and technical-purpose focused.
+5. Use repository regression tests and the canonical local validator as the primary acceptance path. Do not infer product quality from GitHub Actions state.
+6. Nix support stays in-tree but dedicated Nix validation is deferred/non-blocking for the maintainer workflow.
+7. Waffle is a separate supported shell family. Never classify Waffle as legacy or remove it as ii/Connected Perimeter cleanup.
+8. Prefer behavior/contract tests over implementation-spelling grep assertions. Do not change runtime behavior merely to make a stale test green.
+9. Do not create task-board, bot-number, ownership, collision-boundary, or handoff bureaucracy. Continue the highest-value unresolved work in one agent context.
 
-Important project rule: Waffle is a separate supported panel family. Never classify Waffle as legacy code to remove.
+## Current product priorities
 
-The detailed stabilization assignments and ownership boundaries live in `docs/BOT_TASKS.md`.
+Until the maintainer changes them, prioritize:
+
+1. Caelestia-like UI/UX using the existing iNiR surfaces: existing popups should visually connect to their bar/screen edge instead of introducing a second popup system.
+2. Connected Perimeter as the default ii runtime with safe fallback on real runtime/configuration failure, not an opt-in presentation toggle.
+3. Keep Dock presentation simple: Panel is the canonical ii dock style; historical style values must degrade safely to Panel.
+4. English-only localization. `translations/en_US.json` is the only shipped locale catalog; multilingual translation generation/auditing is not an active product requirement.
+5. Runtime correctness, local regression coverage, install/update lifecycle, and source/package identity.
+
+Documentation/wiki polish and release prose are lower priority and must not block the product/UI loop unless a change directly invalidates a required runtime or packaging contract.
+
+## Validation
+
+Canonical maintainer validation entry point:
+
+```bash
+bash scripts/validate-maintainer-local.sh
+```
+
+A PASS applies only to the exact SHA printed by that run. Environment-only desktop acceptance (live Niri/Quickshell interaction, multi-output/hotplug/suspend/fractional scaling) remains separate from static/local contract validation.

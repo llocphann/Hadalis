@@ -138,8 +138,8 @@ jobs:
 
       - name: Validate release source identity
         run: |
-          grep -Fq 'https://github.com/llocphann/Hadalis?tab=readme-ov-file#update' scripts/release.sh
-          grep -Fq 'https://github.com/llocphann/Hadalis?tab=readme-ov-file#install' scripts/release.sh
+          grep -Fq 'https://github.com/llocphann/Hadalis/blob/stable/docs/SETUP.md#update' scripts/release.sh
+          grep -Fq 'https://github.com/llocphann/Hadalis/blob/stable/docs/INSTALL.md' scripts/release.sh
           grep -Fq 'https://github.com/llocphann/Hadalis/blob/stable/CHANGELOG.md' scripts/release.sh
           grep -Fq 'wiki_url="https://github.com/llocphann/Hadalis.wiki.git"' scripts/wiki-sync.sh
           if grep -Fqi 'github.com/snowarch/inir' scripts/release.sh scripts/wiki-sync.sh; then

@@ -72,8 +72,8 @@ $notes
 
 ---
 
-Update: https://github.com/llocphann/Hadalis?tab=readme-ov-file#update
-Fresh install: https://github.com/llocphann/Hadalis?tab=readme-ov-file#install
+Update: https://github.com/llocphann/Hadalis/blob/stable/docs/SETUP.md#update
+Fresh install: https://github.com/llocphann/Hadalis/blob/stable/docs/INSTALL.md
 Full changelog: https://github.com/llocphann/Hadalis/blob/stable/CHANGELOG.md
 EOF
 }

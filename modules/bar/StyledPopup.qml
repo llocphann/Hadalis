@@ -1,8 +1,8 @@
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.common.perimeter
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -17,6 +17,28 @@ LazyLoader {
     default property Item contentItem
     property real popupBackgroundMargin: 0
 
+    readonly property bool _barVertical: Config.options?.bar?.vertical ?? false
+    readonly property bool _trailingEdge: Config.options?.bar?.bottom ?? false
+    readonly property string _attachmentEdge: root._barVertical
+        ? (root._trailingEdge ? "right" : "left")
+        : (root._trailingEdge ? "bottom" : "top")
+    readonly property real _contentPadding: 10
+    readonly property color _surfaceColor: Appearance.regaliaEverywhere
+        ? Appearance.regalia.bg2
+        : Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
+        : Appearance.inirEverywhere ? Appearance.inir.colLayer2
+        : Appearance.colors.colSurfaceContainer
+    readonly property color _borderColor: Appearance.angelEverywhere
+        ? Appearance.angel.colBorder
+        : Appearance.inirEverywhere ? Appearance.inir.colBorder
+        : Appearance.colors.colLayer0Border
+    readonly property real _borderWidth: Appearance.regaliaEverywhere ? 0 : 1
+    readonly property real _surfaceRadius: Appearance.regaliaEverywhere
+        ? Appearance.regalia.roundNormal
+        : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+        : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
+        : Appearance.rounding.small
+
     signal requestClose()
 
     active: root.alternativeVisibleCondition
@@ -24,16 +46,50 @@ LazyLoader {
             && (hoverTarget.containsMouse ?? hoverTarget.buttonHovered ?? false))
     onActiveChanged: {
         if (!root.active)
-            root.popupHovered = false;
+            root.popupHovered = false
+    }
+
+    function _anchorRect(outputWidth, outputHeight) {
+        const target = root.hoverTarget
+        const host = root.QsWindow
+        const hostWindow = host?.window ?? null
+        if (!target || !host || !hostWindow
+                || target.width <= 0 || target.height <= 0
+                || outputWidth <= 0 || outputHeight <= 0)
+            return Qt.rect(0, 0, 0, 0)
+
+        // Explicitly touch the target geometry so this binding is refreshed when
+        // bar modules are rearranged or resized. mapFromItem() then supplies the
+        // precise tangent coordinate inside the owning bar window.
+        target.x
+        target.y
+        target.width
+        target.height
+        const mapped = host.mapFromItem(target, 0, 0)
+        let x = mapped.x
+        let y = mapped.y
+
+        // Horizontal bars already span the output width, while vertical bars
+        // span its height. Translate the cross-axis coordinate for bottom/right
+        // placement so ConnectedSurfaceGeometry always receives output-local
+        // coordinates, independent of the layer-shell window's anchored edge.
+        if (root._barVertical) {
+            if (root._trailingEdge)
+                x += Math.max(0, outputWidth - Number(hostWindow.width ?? 0))
+        } else if (root._trailingEdge) {
+            y += Math.max(0, outputHeight - Number(hostWindow.height ?? 0))
+        }
+
+        return Qt.rect(x, y, target.width, target.height)
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside
-    // (same pattern as ContextMenu / SysTrayMenu)
-    // Color must be non-zero alpha so the compositor registers it as a surface,
-    // but visually invisible — do not use "transparent" (alpha=0 breaks input)
+    // (same pattern as ContextMenu / SysTrayMenu). The connected popup itself
+    // remains click-through outside its body+connector mask.
     PanelWindow {
         id: clickOutsideBackdrop
         visible: root.active && root.closeOnOutsideClick
+        screen: root.QsWindow.window?.screen ?? null
         color: Qt.rgba(0, 0, 0, 1/255)
         exclusiveZone: 0
         WlrLayershell.layer: WlrLayer.Overlay
@@ -49,100 +105,88 @@ LazyLoader {
 
     component: PanelWindow {
         id: popupWindow
+
+        property real revealProgress: 0
+
+        screen: root.QsWindow.window?.screen ?? null
         color: "transparent"
-
-        HoverHandler {
-            id: popupHoverHandler
-            onHoveredChanged: root.popupHovered = hovered
-        }
-
-        anchors.left: !(Config.options?.bar?.vertical ?? false) || ((Config.options?.bar?.vertical ?? false) && !(Config.options?.bar?.bottom ?? false))
-        anchors.right: (Config.options?.bar?.vertical ?? false) && (Config.options?.bar?.bottom ?? false)
-        anchors.top: (Config.options?.bar?.vertical ?? false) || (!(Config.options?.bar?.vertical ?? false) && !(Config.options?.bar?.bottom ?? false))
-        anchors.bottom: !(Config.options?.bar?.vertical ?? false) && (Config.options?.bar?.bottom ?? false)
-
-        implicitWidth: popupBackground.implicitWidth + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
-        implicitHeight: popupBackground.implicitHeight + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
-
-        mask: Region {
-            item: popupBackground
-        }
-
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
-        margins {
-            left: {
-                if (!(Config.options?.bar?.vertical ?? false) && root.QsWindow && root.hoverTarget && root.hoverTarget.width > 0) {
-                    return root.QsWindow.mapFromItem(
-                        root.hoverTarget,
-                        (root.hoverTarget.width - popupBackground.implicitWidth) / 2, 0
-                    ).x;
-                }
-                return Appearance.sizes.verticalBarWidth
-            }
-            top: {
-                if (!(Config.options?.bar?.vertical ?? false)) return Appearance.sizes.barHeight;
-                if (root.QsWindow && root.hoverTarget && root.hoverTarget.height > 0) {
-                    return root.QsWindow.mapFromItem(
-                        root.hoverTarget,
-                        0, (root.hoverTarget.height - popupBackground.implicitHeight) / 2
-                    ).y;
-                }
-                return Appearance.sizes.barHeight;
-            }
-            right: Appearance.sizes.verticalBarWidth
-            bottom: Appearance.sizes.barHeight
+        visible: root.active
+
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
         }
+
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
 
-        StyledRectangularShadow {
-            target: popupBackground
+        Component.onCompleted: revealProgress = 1
+
+        Behavior on revealProgress {
+            enabled: Appearance.animationsEnabled
+            NumberAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            }
         }
 
-        Rectangle {
-            id: popupBackground
-            readonly property real margin: 10
+        ConnectedSurfaceGeometry {
+            id: geometry
+            edge: root._attachmentEdge
+            alignment: "center"
+            outputRect: Qt.rect(0, 0, popupWindow.width, popupWindow.height)
+            anchorRect: root._anchorRect(popupWindow.width, popupWindow.height)
+            bodySize: Qt.size(
+                Math.max(1, (root.contentItem?.implicitWidth ?? 0)
+                    + root._contentPadding * 2 + Math.max(0, root.popupBackgroundMargin)),
+                Math.max(1, (root.contentItem?.implicitHeight ?? 0)
+                    + root._contentPadding * 2 + Math.max(0, root.popupBackgroundMargin)))
+            outerRadius: root._surfaceRadius
+            progress: popupWindow.revealProgress
+            devicePixelRatio: popupWindow.screen?.devicePixelRatio ?? 1
+        }
 
-            property bool _shown: false
-            Component.onCompleted: _shown = true
+        ConnectedSurfaceFrame {
+            id: frame
+            anchors.fill: parent
+            geometry: geometry
+            fillColor: root._surfaceColor
+            borderColor: root._borderColor
+            borderWidth: root._borderWidth
+            // The connector intentionally owns the seam without a second
+            // outline, preventing a double border where the popup joins the bar.
+            connectorBorderWidth: 0
+        }
 
-            opacity: _shown ? 1 : 0
-            scale: _shown ? 1.0 : 0.88
-            transformOrigin: (Config.options?.bar?.bottom ?? false) ? Item.Bottom : Item.Top
-
-            Behavior on opacity {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            Behavior on scale {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            anchors {
-                fill: parent
-                leftMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.left)
-                rightMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.right)
-                topMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.top)
-                bottomMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.bottom)
-            }
-            implicitWidth: root.contentItem.implicitWidth + margin * 2
-            implicitHeight: root.contentItem.implicitHeight + margin * 2
-            color: Appearance.regaliaEverywhere ? Appearance.regalia.bg2
-                : Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-                : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                : Appearance.colors.colSurfaceContainer
-            radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundNormal
-                : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.small
+        Item {
+            id: popupContentHost
+            x: geometry.animatedBodyRect.x + root._contentPadding
+            y: geometry.animatedBodyRect.y + root._contentPadding
+            width: Math.max(0, geometry.animatedBodyRect.width - root._contentPadding * 2)
+            height: Math.max(0, geometry.animatedBodyRect.height - root._contentPadding * 2)
+            visible: geometry.valid && geometry.progress > 0
+            opacity: geometry.progress
+            clip: true
             children: [root.contentItem]
 
-            border.width: Appearance.regaliaEverywhere ? 0 : 1
-            border.color: Appearance.angelEverywhere ? Appearance.angel.colBorder
-                : Appearance.inirEverywhere ? Appearance.inir.colBorder 
-                : Appearance.colors.colLayer0Border
+            HoverHandler {
+                id: popupHoverHandler
+                onHoveredChanged: root.popupHovered = hovered
+            }
         }
 
-        
+        ConnectedSurfaceMask {
+            id: connectedMask
+            geometry: geometry
+            bodyItem: frame.bodyItem
+            connectorItem: frame.connectorItem
+        }
+
+        mask: connectedMask
     }
 }

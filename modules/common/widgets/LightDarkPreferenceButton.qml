@@ -14,6 +14,9 @@ RippleButton {
     property color previewFg: dark ? Qt.lighter(previewBg, 2.2) : ColorUtils.mix(previewBg, "#292929", 0.85)
     padding: 5
     Layout.fillWidth: true
+    buttonText: dark ? Translation.tr("Dark") : Translation.tr("Light")
+    Accessible.checkable: true
+    Accessible.checked: lightDarkButtonRoot.toggled
     colBackground: Appearance.colors.colLayer2
     toggled: Appearance.m3colors.darkmode === dark
     onClicked: {
@@ -113,7 +116,7 @@ RippleButton {
             }
             StyledText {
                 Layout.fillWidth: true
-                text: dark ? Translation.tr("Dark") : Translation.tr("Light")
+                text: lightDarkButtonRoot.buttonText
                 color: lightDarkButtonRoot.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
                 horizontalAlignment: Text.AlignHCenter
             }

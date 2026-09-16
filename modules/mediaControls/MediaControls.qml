@@ -153,7 +153,10 @@ Scope {
                     // poster frame behind a media card read as cluttered. The card
                     // itself now carries the clean ZZZ plate (see PlayerControl).
                     readonly property real zzzFrameInset: 0
-                    width: root.widgetWidth + zzzFrameInset * 2
+                    readonly property real availableContentWidth: Math.max(0,
+                        mediaControlsRoot.width - root.dockMargin * 2 - zzzFrameInset * 2)
+                    readonly property real responsiveContentWidth: Math.min(root.widgetWidth, availableContentWidth)
+                    width: responsiveContentWidth + zzzFrameInset * 2
                     height: playerColumnLayout.implicitHeight + zzzFrameInset * 2
                     anchors.horizontalCenter: parent.horizontalCenter
 
@@ -215,8 +218,10 @@ Scope {
 
                                 player: modelData
                                 visualizerPoints: root.visualizerPoints
-                                implicitWidth: root.widgetWidth
-                                implicitHeight: root.widgetHeight
+                                implicitWidth: cardArea.responsiveContentWidth
+                                implicitHeight: root.widgetWidth > 0
+                                    ? root.widgetHeight * (cardArea.responsiveContentWidth / root.widgetWidth)
+                                    : root.widgetHeight
                                 radius: root.popupRounding
                                 screenX: cardArea.x + (mediaControlsRoot.width - cardArea.width) / 2 + cardArea.zzzFrameInset
                                 screenY: cardArea.y + cardArea.zzzFrameInset + index * (root.widgetHeight - Appearance.sizes.elevationMargin)
@@ -237,6 +242,8 @@ Scope {
                             Rectangle {
                                 id: placeholderBackground
                                 anchors.centerIn: parent
+                                width: Math.min(implicitWidth,
+                                    Math.max(0, parent.width - Appearance.sizes.elevationMargin))
                                 color: Appearance.zzzEverywhere ? Appearance.zzz.paper
                                      : Appearance.inirEverywhere ? Appearance.inir.colLayer1
                                      : Appearance.auroraEverywhere ? Appearance.aurora.colPopupSurface
@@ -269,17 +276,21 @@ Scope {
                                 ColumnLayout {
                                     id: placeholderLayout
                                     anchors.centerIn: parent
+                                    width: Math.max(0, parent.width - parent.padding * 2)
 
                                     MascotImage {
                                         Layout.alignment: Qt.AlignHCenter
-                                        Layout.preferredWidth: 112
-                                        Layout.preferredHeight: 132
+                                        Layout.preferredWidth: Math.min(112, placeholderLayout.width)
+                                        Layout.preferredHeight: Layout.preferredWidth * 132 / 112
                                         surface: "mediaControls"
                                         fallbackSurface: "emptyStates"
                                         pose: "headphone-groove-full-loop"
                                     }
 
                                     StyledText {
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignHCenter
+                                        wrapMode: Text.Wrap
                                         text: Translation.tr("No active player")
                                         font.pixelSize: Appearance.font.pixelSize.large
                                         font.weight: Appearance.zzzEverywhere ? Font.Black : Font.Normal
@@ -291,6 +302,9 @@ Scope {
                                         }
                                     }
                                     StyledText {
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignHCenter
+                                        wrapMode: Text.Wrap
                                         color: Appearance.zzzEverywhere ? Appearance.zzz.inkMuted
                                             : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
                                         Behavior on color {

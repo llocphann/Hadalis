@@ -495,47 +495,71 @@ Singleton {
         path: ""
     }
 
-    Process {
-        id: startupReadProc
-        command: ["/usr/bin/bash", "-c", ""]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root._dirty = false
-                if (text.trim() === "__NOFILE__" || text.trim().length === 0) {
-                    root._todayData = root._emptyDay(root._currentDate)
-                } else {
-                    try {
-                        root._todayData = JSON.parse(text.trim())
-                        if (root._todayData.apps) {
-                            const keys = Object.keys(root._todayData.apps)
-                            for (let i = 0; i < keys.length; i++) {
-                                const app = root._todayData.apps[keys[i]]
-                                if (!app.originalId) {
-                                    const entry = AppSearch.lookupDesktopEntry(app.name || keys[i])
-                                    if (entry?.id) {
-                                        app.originalId = entry.id.replace(/\.desktop$/, "")
-                                        root._dirty = true
-                                    }
-                                }
+    function _finishStartupRead(rawText: string): void {
+        if (!root._loadingToday)
+            return
+
+        root._dirty = false
+        const text = String(rawText ?? "")
+        if (text.trim() === "__NOFILE__" || text.trim().length === 0) {
+            root._todayData = root._emptyDay(root._currentDate)
+        } else {
+            try {
+                root._todayData = JSON.parse(text.trim())
+                if (root._todayData.apps) {
+                    const keys = Object.keys(root._todayData.apps)
+                    for (let i = 0; i < keys.length; i++) {
+                        const app = root._todayData.apps[keys[i]]
+                        if (!app.originalId) {
+                            const entry = AppSearch.lookupDesktopEntry(app.name || keys[i])
+                            if (entry?.id) {
+                                app.originalId = entry.id.replace(/\.desktop$/, "")
+                                root._dirty = true
                             }
                         }
-                    } catch (e) {
-                        root._todayData = root._emptyDay(root._currentDate)
                     }
                 }
-                root._lastTickTime = Date.now()
-                root._lastPersistMs = Date.now()
-                root._initialized = true
-                root._loadingToday = false
-                root.ready = true
-                root._pruneHistory()
-                if (root._dirty) {
-                    root._persistToday()
-                    root._dirty = false
-                }
-                root.dataChanged()
+            } catch (e) {
+                root._todayData = root._emptyDay(root._currentDate)
             }
         }
+        root._lastTickTime = Date.now()
+        root._lastPersistMs = Date.now()
+        root._initialized = true
+        root._loadingToday = false
+        root.ready = true
+        root._pruneHistory()
+        if (root._dirty) {
+            root._persistToday()
+            root._dirty = false
+        }
+        root.dataChanged()
+    }
+
+    FileView {
+        id: todayFileView
+        path: ""
+    }
+
+    Process {
+        id: startupReadProc
+        property bool startObserved: false
+        command: ["/usr/bin/bash", "-c", ""]
+        stdout: StdioCollector {
+            onStreamFinished: root._finishStartupRead(text)
+        }
+        onRunningChanged: {
+            if (startupReadProc.running) {
+                startupReadProc.startObserved = false
+                return
+            }
+            if (startupReadProc.startObserved)
+                return
+
+            console.warn("[ScreenTime] startup history reader failed to start")
+            root._finishStartupRead("__NOFILE__")
+        }
+        onStarted: startupReadProc.startObserved = true
     }
 
     Process {
@@ -543,6 +567,7 @@ Singleton {
         property int _requestedDays: 1
         property int _generation: 0
         property bool _completed: false
+        property bool startObserved: false
         command: ["/usr/bin/bash", "-c", ""]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -559,6 +584,20 @@ Singleton {
                 root._activeRangeDays = 0
             }
         }
+        onRunningChanged: {
+            if (rangeReadProc.running) {
+                rangeReadProc.startObserved = false
+                return
+            }
+            if (rangeReadProc.startObserved)
+                return
+
+            console.warn("[ScreenTime] range history reader failed to start")
+            root._activeRangeDays = 0
+            rangeReadProc._completed = false
+            Qt.callLater(root._startNextRangeRead)
+        }
+        onStarted: rangeReadProc.startObserved = true
         onExited: {
             if (!rangeReadProc._completed)
                 root._activeRangeDays = 0

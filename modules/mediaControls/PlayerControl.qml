@@ -53,6 +53,13 @@ Item {
     // Screen position for aurora glass effect
     property real screenX: 0
     property real screenY: 0
+    readonly property var surfaceScreen: root.QsWindow.window?.screen ?? Quickshell.screens[0] ?? null
+    readonly property string surfaceWallpaperUrl: {
+        const _dep1 = WallpaperListener.multiMonitorEnabled
+        const _dep2 = WallpaperListener.effectivePerMonitor
+        const _dep3 = Wallpapers.effectiveWallpaperUrl
+        return WallpaperListener.wallpaperUrlForScreen(root.surfaceScreen)
+    }
 
     readonly property string effectiveArtUrl: isYtMusicPlayer ? YtMusic.currentThumbnail : MprisController.effectiveArtUrl(player)
     readonly property string effectiveTitle: isYtMusicPlayer ? YtMusic.currentTitle : (player?.trackTitle ?? "")
@@ -199,14 +206,14 @@ Item {
             id: auroraWallpaper
             x: -root.screenX - (card.x + (root.width - card.width) / 2)
             y: -root.screenY - (card.y + (root.height - card.height) / 2)
-            width: Quickshell.screens[0]?.width ?? 1920
-            height: Quickshell.screens[0]?.height ?? 1080
+            width: root.surfaceScreen?.width ?? 1920
+            height: root.surfaceScreen?.height ?? 1080
             visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
-            source: visible ? Wallpapers.effectiveWallpaperUrl : ""
+            source: visible ? root.surfaceWallpaperUrl : ""
             fillMode: Image.PreserveAspectCrop
             cache: true
-            sourceSize.width: Quickshell.screens[0]?.width ?? 1920
-            sourceSize.height: Quickshell.screens[0]?.height ?? 1080
+            sourceSize.width: root.surfaceScreen?.width ?? 1920
+            sourceSize.height: root.surfaceScreen?.height ?? 1080
             smooth: true
             mipmap: true
             asynchronous: true

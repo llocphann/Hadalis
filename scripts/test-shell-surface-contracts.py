@@ -24,11 +24,16 @@ def main() -> None:
         "ConnectedSurfaceMask",
         "mask: connectedMask",
         "ExclusionMode.Ignore",
+        "Appearance.colors.colLayer0",
+        "Appearance.rounding.large",
+        "geometry.revealProgress",
     ):
         check(token in styled_popup, f"StyledPopup must preserve connected-perimeter contract: {token}")
     for edge in ("top", "bottom", "left", "right"):
         check(f'"{edge}"' in styled_popup,
               f"StyledPopup must preserve {edge} attachment handling")
+    check("Appearance.colors.colSurfaceContainer" not in styled_popup,
+          "Connected bar popups must use the owning bar surface family, not the detached popup-card material")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
     for edge in ("top", "bottom", "left", "right"):
@@ -40,19 +45,34 @@ def main() -> None:
         "devicePixelRatio",
         "function pixelScale()",
         "function snap(",
+        "connectorSourceExtent",
+        "connectorBodyExtent",
+        "animatedTangentExtent",
+        "animatedCrossExtent",
+        "revealProgress",
         "connectorRectForBody",
         "animatedBodyRect",
     ):
         check(token in geometry,
-              f"ConnectedSurfaceGeometry missing seam/reveal geometry contract: {token}")
+              f"ConnectedSurfaceGeometry missing seam/morph geometry contract: {token}")
+
+    connector = read("modules/common/perimeter/ConnectedSurfaceConnector.qml")
+    check("Canvas {" in connector,
+          "ConnectedSurfaceConnector must render a shaped shoulder rather than a rectangular stem")
+    check("bezierCurveTo" in connector,
+          "ConnectedSurfaceConnector must retain curved shoulder transitions")
+    check("connectorSourceExtent" in connector,
+          "ConnectedSurfaceConnector must narrow toward the real bar anchor")
 
     frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
     check("property real connectorBorderWidth: 0" in frame,
           "ConnectedSurfaceFrame must default the connector outline off at the seam")
     check("strokeWidth: root.connectorBorderWidth" in frame,
           "ConnectedSurfaceFrame must route connector outline width through its seam policy")
-    check("Render after the body so seamOverlap covers the body's border" in frame,
-          "ConnectedSurfaceFrame must preserve the body/connector seam-overlap rendering contract")
+    check("flared connector" in frame,
+          "ConnectedSurfaceFrame must preserve the flared body/connector seam contract")
+    check("opacity: root.geometry.progress" not in frame,
+          "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()

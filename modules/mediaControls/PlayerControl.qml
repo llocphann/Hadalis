@@ -430,6 +430,7 @@ Item {
 
                     RippleButton {
                         implicitWidth: 32; implicitHeight: 32
+                        buttonText: Translation.tr("Previous")
                         enabled: root.effectiveCanGoPrevious
                         buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
                             : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
@@ -463,6 +464,7 @@ Item {
                     RippleButton {
                         id: playPauseButton
                         implicitWidth: 40; implicitHeight: 40
+                        buttonText: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
                         buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
                             : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                         colBackground: "transparent"
@@ -496,6 +498,7 @@ Item {
 
                     RippleButton {
                         implicitWidth: 32; implicitHeight: 32
+                        buttonText: Translation.tr("Next")
                         enabled: root.effectiveCanGoNext
                         buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
                             : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full

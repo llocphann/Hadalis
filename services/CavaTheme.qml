@@ -14,8 +14,12 @@ Singleton {
     readonly property bool enabled: Config.options?.appearance?.wallpaperTheming?.enableCava ?? false
     readonly property string colorSource: Config.options?.appearance?.cava?.colorSource ?? "theme"
     readonly property bool useCoverSource: root.colorSource === "cover"
-    readonly property int gradientCount: Math.max(1,
-        Math.min(8, Config.options?.appearance?.cava?.gradientCount ?? 8))
+    readonly property int gradientCount: {
+        const configured = Number(Config.options?.appearance?.cava?.gradientCount ?? 8)
+        if (!Number.isFinite(configured))
+            return 8
+        return Math.max(1, Math.min(8, Math.round(configured)))
+    }
 
     function _clamp01(value): real {
         return Math.max(0, Math.min(1, value))

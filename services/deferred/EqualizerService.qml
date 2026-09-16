@@ -20,7 +20,9 @@ Singleton {
     readonly property string backendName: "EasyEffects"
     readonly property bool backendAvailable: root.enabled && EasyEffects.available && root._transportAvailable
     readonly property bool backendRunning: root.enabled && EasyEffects.active
-    readonly property bool available: root.backendAvailable && root.backendRunning
+    readonly property bool available: root.backendAvailable && root.backendRunning && root._equalizerAvailable
+    readonly property real minimumBandGain: -36
+    readonly property real maximumBandGain: 36
     readonly property bool bandControlAvailable: {
         if (!root.available || root.bands.length === 0)
             return false
@@ -40,6 +42,7 @@ Singleton {
 
     property bool _transportChecked: false
     property bool _transportAvailable: false
+    property bool _equalizerAvailable: false
     property string _pendingPreset: ""
     property int _pendingBandIndex: -1
     property real _pendingBandGain: 0
@@ -86,9 +89,42 @@ Singleton {
         root.error = message
     }
 
+    function _errorForExit(exitCode, fallback) {
+        if (exitCode === 65)
+            return "backend-not-running"
+        if (exitCode === 127) {
+            root._transportAvailable = false
+            root._equalizerAvailable = false
+            return "transport-unavailable"
+        }
+        return fallback
+    }
+
+    function _clearRecoveredBackendError() {
+        switch (root.error) {
+        case "transport-probe-failed":
+        case "transport-unavailable":
+        case "backend-unavailable":
+        case "backend-not-running":
+        case "equalizer-unavailable":
+        case "band-query-failed":
+        case "malformed-band-response":
+            root.error = ""
+            break
+        default:
+            break
+        }
+    }
+
+    function _scheduleReconcile() {
+        if (root.enabled && root.backendAvailable && root.backendRunning)
+            backendRefreshTimer.restart()
+    }
+
     function _startTransportProbe() {
         if (transportProbe.running)
             return
+        root._transportChecked = false
         transportProbe.generation = root._lifecycleGeneration
         transportProbe.running = true
     }
@@ -105,15 +141,12 @@ Singleton {
     function _refreshBackendState() {
         if (!root.enabled)
             return
-        if (!root._transportChecked) {
+        if (!root._transportChecked || !root._transportAvailable) {
             root._startTransportProbe()
             return
         }
-        if (!root._transportAvailable) {
-            root.error = "transport-unavailable"
-            return
-        }
         if (!EasyEffects.available) {
+            root._equalizerAvailable = false
             root.activePreset = ""
             root.bands = []
             root.error = "backend-unavailable"
@@ -122,18 +155,18 @@ Singleton {
 
         EasyEffects.fetchActiveState()
         if (!EasyEffects.active) {
+            root._equalizerAvailable = false
             root.activePreset = ""
             root._markBandsUnsynced()
             root.error = "backend-not-running"
             return
         }
 
-        root.error = ""
         root._refreshData()
     }
 
     function _refreshData() {
-        if (!root.available || root._mutationBusy)
+        if (!root.backendAvailable || !root.backendRunning || root._mutationBusy)
             return
         const generation = root._lifecycleGeneration
         if (!presetScanProc.running) {
@@ -154,7 +187,7 @@ Singleton {
         if (!root.enabled)
             return
         EasyEffects.fetchAvailability()
-        if (!root._transportChecked) {
+        if (!root._transportChecked || !root._transportAvailable) {
             root._startTransportProbe()
             return
         }
@@ -166,8 +199,12 @@ Singleton {
             root.error = "feature-disabled"
             return false
         }
-        if (!root.backendAvailable) {
-            root.error = root._transportAvailable ? "backend-unavailable" : "transport-unavailable"
+        if (!root._transportAvailable) {
+            root.error = "transport-unavailable"
+            return false
+        }
+        if (!EasyEffects.available) {
+            root.error = "backend-unavailable"
             return false
         }
         if (!root.backendRunning) {
@@ -191,6 +228,7 @@ Singleton {
         }
 
         const generation = root._beginMutation()
+        root._equalizerAvailable = false
         root._markBandsUnsynced()
         root._pendingPreset = preset
         root.error = ""
@@ -203,17 +241,18 @@ Singleton {
     }
 
     function setBandGain(index, gain) {
-        const bandIndex = Math.round(Number(index))
+        const bandIndex = Number(index)
         const requestedGain = Number(gain)
         if (!root._canMutate())
             return false
-        if (!isFinite(requestedGain) || bandIndex < 0 || bandIndex >= root.bands.length
+        if (!isFinite(bandIndex) || Math.floor(bandIndex) !== bandIndex
+                || !isFinite(requestedGain) || bandIndex < 0 || bandIndex >= root.bands.length
                 || root.bands[bandIndex]?.synced !== true) {
             root.error = "invalid-band"
             return false
         }
 
-        const clampedGain = Math.max(-24, Math.min(24, requestedGain))
+        const clampedGain = Math.max(root.minimumBandGain, Math.min(root.maximumBandGain, requestedGain))
         const generation = root._beginMutation()
         root._pendingBandIndex = bandIndex
         root._pendingBandGain = clampedGain
@@ -230,6 +269,7 @@ Singleton {
         if (!root._canMutate())
             return false
         const generation = root._beginMutation()
+        root._equalizerAvailable = false
         root._markBandsUnsynced()
         root.error = ""
         resetProc.generation = generation
@@ -248,6 +288,7 @@ Singleton {
             root.presets = []
             root._transportChecked = false
             root._transportAvailable = false
+            root._equalizerAvailable = false
             root.bands = []
         }
     }
@@ -259,6 +300,7 @@ Singleton {
             root._lifecycleGeneration++
             root._cancelBackendProcesses()
             if (!EasyEffects.available) {
+                root._equalizerAvailable = false
                 root.activePreset = ""
                 root.bands = []
                 root.error = "backend-unavailable"
@@ -274,12 +316,14 @@ Singleton {
             if (!root.enabled)
                 return
             if (!EasyEffects.active) {
+                root._equalizerAvailable = false
                 root.activePreset = ""
                 root._markBandsUnsynced()
                 if (root.backendAvailable)
                     root.error = "backend-not-running"
                 return
             }
+            root._equalizerAvailable = false
             backendRefreshTimer.restart()
         }
     }
@@ -309,6 +353,7 @@ Singleton {
             }
             root._transportChecked = true
             root._transportAvailable = false
+            root._equalizerAvailable = false
             root._setProcessError("transport-probe-failed", generation)
         }
         onStarted: startObserved = true
@@ -322,6 +367,7 @@ Singleton {
             root._transportChecked = true
             root._transportAvailable = (exitCode === 0)
             if (!root._transportAvailable) {
+                root._equalizerAvailable = false
                 root.error = "transport-unavailable"
                 return
             }
@@ -388,7 +434,7 @@ Singleton {
                 return
             if (exitCode !== 0) {
                 root.activePreset = ""
-                root.error = exitCode === 65 ? "backend-not-running" : "preset-query-failed"
+                root.error = root._errorForExit(exitCode, "preset-query-failed")
                 return
             }
             if (!root.backendRunning) {
@@ -416,6 +462,7 @@ Singleton {
                 return
             if (generation !== root._lifecycleGeneration)
                 return
+            root._equalizerAvailable = false
             root._markBandsUnsynced()
             root._setProcessError("band-query-failed", generation)
         }
@@ -424,12 +471,14 @@ Singleton {
             if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
+                root._equalizerAvailable = false
                 root._markBandsUnsynced()
-                root.error = exitCode === 65 ? "backend-not-running"
-                    : (exitCode === 66 ? "malformed-band-response" : "band-query-failed")
+                root.error = exitCode === 66 ? "malformed-band-response"
+                    : root._errorForExit(exitCode, "equalizer-unavailable")
                 return
             }
             if (!root.backendRunning) {
+                root._equalizerAvailable = false
                 root._markBandsUnsynced()
                 root.error = "backend-not-running"
                 return
@@ -473,6 +522,7 @@ Singleton {
             }
 
             if (count < 1 || rows.length !== count) {
+                root._equalizerAvailable = false
                 root._markBandsUnsynced()
                 root.error = "malformed-band-response"
                 return
@@ -480,14 +530,15 @@ Singleton {
             rows.sort((a, b) => a.index - b.index)
             for (let i = 0; i < rows.length; ++i) {
                 if (rows[i].index !== i) {
+                    root._equalizerAvailable = false
                     root._markBandsUnsynced()
                     root.error = "malformed-band-response"
                     return
                 }
             }
             root.bands = rows
-            if (root.error === "band-query-failed" || root.error === "malformed-band-response")
-                root.error = ""
+            root._equalizerAvailable = true
+            root._clearRecoveredBackendError()
         }
     }
 
@@ -504,6 +555,8 @@ Singleton {
                 return
             root._pendingPreset = ""
             root._setProcessError("preset-apply-failed", generation)
+            if (root.enabled && generation === root._lifecycleGeneration)
+                root._scheduleReconcile()
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
@@ -512,7 +565,8 @@ Singleton {
             const preset = root._pendingPreset
             root._pendingPreset = ""
             if (exitCode !== 0) {
-                root.error = exitCode === 65 ? "backend-not-running" : "preset-apply-failed"
+                root.error = root._errorForExit(exitCode, "preset-apply-failed")
+                root._scheduleReconcile()
                 return
             }
             if (!root.backendRunning) {
@@ -521,7 +575,7 @@ Singleton {
             }
             root.activePreset = preset
             root.error = ""
-            backendRefreshTimer.restart()
+            root._scheduleReconcile()
         }
     }
 
@@ -547,13 +601,18 @@ Singleton {
             const gain = root._pendingBandGain
             root._pendingBandIndex = -1
             if (exitCode !== 0) {
-                root.error = exitCode === 65 ? "backend-not-running" : "band-apply-failed"
+                root._equalizerAvailable = false
+                root._markBandsUnsynced()
+                root.error = root._errorForExit(exitCode, "band-apply-failed")
+                root._scheduleReconcile()
                 return
             }
             if (!root.backendRunning) {
+                root._equalizerAvailable = false
                 root.error = "backend-not-running"
                 return
             }
+            root._equalizerAvailable = true
             if (index >= 0 && index < root.bands.length) {
                 root.bands = root.bands.map((band, bandIndex) => bandIndex === index
                     ? Object.assign({}, band, {
@@ -581,27 +640,33 @@ Singleton {
             if (startObserved)
                 return
             root._setProcessError("reset-failed", generation)
+            if (root.enabled && generation === root._lifecycleGeneration)
+                root._scheduleReconcile()
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
-                root.error = exitCode === 65 ? "backend-not-running"
-                    : (exitCode === 66 ? "malformed-band-response" : "reset-failed")
+                root._equalizerAvailable = false
+                root.error = exitCode === 66 ? "malformed-band-response"
+                    : root._errorForExit(exitCode, "reset-failed")
+                root._scheduleReconcile()
                 return
             }
             if (!root.backendRunning) {
+                root._equalizerAvailable = false
                 root.error = "backend-not-running"
                 return
             }
+            root._equalizerAvailable = true
             root.bands = root.bands.map(band => Object.assign({}, band, {
                 gain: 0,
                 rightGain: 0,
                 synced: true
             }))
             root.error = ""
-            backendRefreshTimer.restart()
+            root._scheduleReconcile()
         }
     }
 }

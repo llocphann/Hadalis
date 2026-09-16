@@ -29,7 +29,7 @@ build:
 	@bash -n scripts/test-local-distribution.sh
 	@bash -n setup
 
-test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
+test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper
 	@bash scripts/test-local-distribution.sh
 	@bash scripts/test-packaging-contract.sh
 	@bash scripts/test-nix-module-contract.sh
@@ -176,26 +176,16 @@ install-license:
 	@install -Dm644 LICENSE "$(DESTDIR)$(LICENSE_DIR)/LICENSE"
 
 install-battery-helper:
-	@mkdir -p "$(DESTDIR)$(LIBEXECDIR)"
-	@sed \
-		-e 's|^config_dir=.*|config_dir=$(TLP_CONFDIR)|' \
-		-e 's|^tlp_settings_schema=.*|tlp_settings_schema=$(TLP_SETTINGS_SCHEMA)|' \
-		assets/helpers/inir-battery-charge-limit > "$(DESTDIR)$(BATTERY_HELPER)"
-	@chmod 755 "$(DESTDIR)$(BATTERY_HELPER)"
-	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
-	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(BATTERY_HELPER)</annotate>|' \
-		assets/polkit/org.inir.battery-charge-limit.policy > "$(DESTDIR)$(BATTERY_POLICY)"
-	@chmod 644 "$(DESTDIR)$(BATTERY_POLICY)"
-	@install -Dm644 assets/tlp/tlp-settings-schema.json "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
+	@install -Dm755 assets/helpers/inir-battery-charge-limit "$(DESTDIR)$(BATTERY_HELPER)"
+	@install -Dm644 assets/polkit/org.inir.battery-charge-limit.policy "$(DESTDIR)$(BATTERY_POLICY)"
+	@mkdir -p "$(DESTDIR)$(TLP_CONFDIR)"
 
 install-thinkfan-helper:
 	@install -Dm755 assets/helpers/inir-thinkfan "$(DESTDIR)$(THINKFAN_HELPER)"
-	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
-	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(THINKFAN_HELPER)</annotate>|' \
-		assets/polkit/org.inir.thinkfan.policy > "$(DESTDIR)$(THINKFAN_POLICY)"
-	@chmod 644 "$(DESTDIR)$(THINKFAN_POLICY)"
+	@install -Dm644 assets/polkit/org.inir.thinkfan.policy "$(DESTDIR)$(THINKFAN_POLICY)"
+	@install -Dm644 assets/tlp/tlp-settings-schema.json "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
 
-install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper
+install: install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper
 
 uninstall-bin:
 	@rm -f "$(DESTDIR)$(BINDIR)/inir"
@@ -205,6 +195,7 @@ uninstall-shell:
 
 uninstall-systemd:
 	@rm -f "$(DESTDIR)$(SYSTEMD_USER_DIR)/inir.service"
+	@if [ -z "$(DESTDIR)" ]; then systemctl --user daemon-reload 2>/dev/null || true; fi
 
 uninstall-icon:
 	@rm -f "$(DESTDIR)$(ICON_DIR)/inir.svg"
@@ -221,15 +212,10 @@ uninstall-license:
 	@rm -rf "$(DESTDIR)$(LICENSE_DIR)"
 
 uninstall-battery-helper:
-	@if [ -z "$(DESTDIR)" ] && [ -x "$(BATTERY_HELPER)" ]; then \
-		"$(BATTERY_HELPER)" --config-reset >/dev/null 2>&1 || true; \
-		"$(BATTERY_HELPER)" --disable >/dev/null 2>&1 || true; \
-	fi
-	@rm -f "$(DESTDIR)$(BATTERY_DROPIN)"
-	@rm -f "$(DESTDIR)$(TLP_SETTINGS_DROPIN)"
-	@rm -f "$(DESTDIR)$(BATTERY_HELPER)" "$(DESTDIR)$(BATTERY_POLICY)" "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
+	@rm -f "$(DESTDIR)$(BATTERY_HELPER)" "$(DESTDIR)$(BATTERY_POLICY)"
 
 uninstall-thinkfan-helper:
 	@rm -f "$(DESTDIR)$(THINKFAN_HELPER)" "$(DESTDIR)$(THINKFAN_POLICY)"
+	@rm -f "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
 
 uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-license uninstall-shell uninstall-bin uninstall-battery-helper uninstall-thinkfan-helper

@@ -38,6 +38,28 @@ if probe.count(stale_branch) < 2:
 if "if (!root.enabled)\n                return" not in probe:
     raise SystemExit("FAIL: disabled Equalizer transport completion is not ignored")
 
+preset_scan_start = text.index("id: presetScanProc")
+preset_scan_end = text.index("id: activePresetProc", preset_scan_start)
+preset_scan_block = text[preset_scan_start:preset_scan_end]
+if 'if (root.error === "preset-scan-failed")\n                root.error = ""' not in preset_scan_block:
+    raise SystemExit("FAIL: successful preset scan does not clear its recovered error")
+
+preset_query_start = text.index("id: activePresetProc")
+preset_query_end = text.index("id: bandRefreshProc", preset_query_start)
+preset_query_block = text[preset_query_start:preset_query_end]
+if 'if (root.error === "preset-query-failed")\n                root.error = ""' not in preset_query_block:
+    raise SystemExit("FAIL: successful preset query does not clear its recovered error")
+
+band_refresh_start = text.index("id: bandRefreshProc")
+band_refresh_end = text.index("id: applyPresetProc", band_refresh_start)
+band_refresh_block = text[band_refresh_start:band_refresh_end]
+empty_value_guard = "if (values.some(value => value.trim().length === 0))"
+value_parse = "const leftGain = Number(values[0])"
+if empty_value_guard not in band_refresh_block:
+    raise SystemExit("FAIL: empty Equalizer band fields can still coerce to numeric zero")
+if band_refresh_block.index(empty_value_guard) > band_refresh_block.index(value_parse):
+    raise SystemExit("FAIL: Equalizer band fields are validated only after numeric coercion")
+
 apply_start = text.index("function applyPreset(")
 apply_end = text.index("function setBandGain(", apply_start)
 apply_block = text[apply_start:apply_end]
@@ -73,6 +95,6 @@ for marker in [
         )
 
 print(
-    "PASS: Equalizer lifecycle and protocol inputs remain gated, validated, and positional"
+    "PASS: Equalizer lifecycle, recovery, parsing, and protocol inputs remain guarded"
 )
 PY

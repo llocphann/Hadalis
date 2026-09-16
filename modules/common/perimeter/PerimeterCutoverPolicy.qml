@@ -85,11 +85,10 @@ QtObject {
         // Legacy SidebarHost owns the edge-hover activation strip. Connected
         // Perimeter does not implement that interaction yet, so keep legacy
         // ownership only when an enabled semantic sidebar is actually placed.
-        const leftSidebarOwned = enabledPanels.includes("iiSidebarLeft")
+        const sidebarOwned = enabledPanels.includes("iiSidebarLeft")
             && root.modulePlacedAnywhere("left-sidebar")
-        const rightSidebarOwned = enabledPanels.includes("iiSidebarRight")
+            || enabledPanels.includes("iiSidebarRight")
             && root.modulePlacedAnywhere("right-sidebar")
-        const sidebarOwned = leftSidebarOwned || rightSidebarOwned
         const sidebarEdgeOpen = Config.options?.sidebar?.edgeOpen?.enable ?? false
         const sidebarPolicySupported = !sidebarOwned || !sidebarEdgeOpen
 

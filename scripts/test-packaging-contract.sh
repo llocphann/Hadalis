@@ -170,6 +170,8 @@ grep -Fq 'NixOS/Home Manager modules own `inir.service` declaratively' "$uninsta
   || fail 'uninstall docs no longer preserve declarative Nix service ownership'
 grep -Fq 'Run it as the user whose iNiR service was configured' "$uninstall_doc" \
   || fail 'uninstall docs no longer warn against root cross-home cleanup'
+grep -Fq "-type l -path '*.wants/inir.service' -delete" "$uninstall_doc" \
+  || fail 'uninstall docs no longer use the working stale wants-link cleanup glob'
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - packaging metadata and distribution contracts are coherent'

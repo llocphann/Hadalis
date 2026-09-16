@@ -111,7 +111,9 @@ require_release_contracts() {
     "$script_dir/test-packaging-contract.sh" \
     "$script_dir/test-nix-module-contract.sh" \
     "$script_dir/test-doctor-dependency-routing.sh" \
-    "$script_dir/test-optional-audio-deps-contract.sh"; do
+    "$script_dir/test-optional-audio-deps-contract.sh" \
+    "$script_dir/test-make-install-lifecycle.sh" \
+    "$script_dir/verify-docs.sh"; do
     [[ -f "$contract" ]] || die "missing release contract: ${contract#$repo_root/}"
     bash "$contract" \
       || die "release contract failed: ${contract#$repo_root/}"

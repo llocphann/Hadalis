@@ -28,10 +28,14 @@ LazyLoader {
     readonly property real _contentPadding: 14
 
     // Keep the loader resident for the reverse morph. `requestedVisible` is the
-    // semantic popup state; `active` includes only the short retract tail.
+    // semantic popup state; `active` includes only the short retract tail. While
+    // hover-activated, the body itself also counts as the request so the pointer
+    // can travel from the bar through the connected shoulder without collapse.
     readonly property bool requestedVisible: root.alternativeVisibleCondition
-        || (root.hoverActivates && root.hoverTarget
-            && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
+        || (root.hoverActivates && (
+            (root.hoverTarget
+                && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
+            || root.popupHovered))
     property bool _lingerVisible: false
     property real revealProgress: 0
 
@@ -257,7 +261,7 @@ LazyLoader {
 
             HoverHandler {
                 id: popupHoverHandler
-                enabled: root.requestedVisible
+                enabled: root.active
                 onHoveredChanged: root.popupHovered = hovered
             }
         }

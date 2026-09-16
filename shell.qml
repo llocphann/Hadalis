@@ -246,18 +246,14 @@ ShellRoot {
         _migrationDone = true;
 
         const family = Config.options?.panelFamily ?? "ii";
-        const retiredPanels = ["iiMascotCompanion"];
-        let panels = [...(Config.options?.enabledPanels ?? [])].filter(panel => !retiredPanels.includes(panel));
-        let changed = panels.length !== (Config.options?.enabledPanels ?? []).length;
+        let panels = [...(Config.options?.enabledPanels ?? [])];
+        let changed = false;
 
         // Only add genuinely NEW panels (from updates), not panels the user deliberately disabled.
         // knownPanels tracks what the user has seen. If a panel is in knownPanels but not in
         // enabledPanels, the user removed it — don't re-add.
         const basePanels = root.panelFamilies[family] ?? [];
-        let known = [...(Config.options?.knownPanels ?? [])].filter(panel => !retiredPanels.includes(panel));
-        const rawKnown = Config.options?.knownPanels ?? [];
-        if (known.length !== rawKnown.length)
-            Config.setNestedValue("knownPanels", known);
+        let known = [...(Config.options?.knownPanels ?? [])];
         const isFirstRun = known.length === 0;
 
         if (isFirstRun) {

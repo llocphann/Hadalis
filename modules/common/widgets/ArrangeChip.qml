@@ -28,14 +28,24 @@ Rectangle {
     color: lifted ? Appearance.colors.colPrimaryContainer
          : chipHover.hovered ? Appearance.colors.colLayer2Hover
          : Appearance.colors.colLayer2
-    border.width: lifted ? 2 : 1
-    border.color: lifted ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+    border.width: lifted || activeFocus ? 2 : 1
+    border.color: lifted || activeFocus ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+    activeFocusOnTab: true
 
     Accessible.role: Accessible.Button
     Accessible.name: root.accessibleName
     Accessible.checkable: true
     Accessible.checked: root.lifted
     Accessible.onPressAction: root.tapped()
+
+    Keys.onPressed: event => {
+        if (event.isAutoRepeat)
+            return
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+            root.tapped()
+            event.accepted = true
+        }
+    }
 
     Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: 120 } }
     Behavior on scale {

@@ -22,10 +22,24 @@ Singleton {
     property bool firstEvaluation: true
     property bool active: false
 
-    property int fromHour: Number(from.split(":")[0])
-    property int fromMinute: Number(from.split(":")[1])
-    property int toHour: Number(to.split(":")[0])
-    property int toMinute: Number(to.split(":")[1])
+    function _timeParts(value, fallbackHour: int, fallbackMinute: int): var {
+        const match = String(value ?? "").trim().match(/^(\d{1,2}):(\d{2})$/)
+        if (!match)
+            return ({ hour: fallbackHour, minute: fallbackMinute })
+        const hour = Number(match[1])
+        const minute = Number(match[2])
+        if (!Number.isInteger(hour) || !Number.isInteger(minute)
+                || hour < 0 || hour > 23 || minute < 0 || minute > 59)
+            return ({ hour: fallbackHour, minute: fallbackMinute })
+        return ({ hour: hour, minute: minute })
+    }
+
+    readonly property var fromParts: root._timeParts(root.from, 19, 0)
+    readonly property var toParts: root._timeParts(root.to, 6, 30)
+    readonly property int fromHour: root.fromParts.hour
+    readonly property int fromMinute: root.fromParts.minute
+    readonly property int toHour: root.toParts.hour
+    readonly property int toMinute: root.toParts.minute
 
     property int clockHour: DateTime.clock.hours
     property int clockMinute: DateTime.clock.minutes

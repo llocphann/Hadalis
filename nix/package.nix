@@ -59,6 +59,7 @@ let
     ]
     ++ optionalTop "util-linux"
     ++ optionalTop "awww"
+    ++ optionalTop "blueman"
     ++ optionalTop "brightnessctl"
     ++ optionalTop "cava"
     ++ optionalTop "ddcutil"
@@ -78,6 +79,7 @@ let
     ++ optionalTop "mpv"
     ++ optionalTop "nautilus"
     ++ optionalTop "networkmanager"
+    ++ optionalTop "networkmanagerapplet"
     ++ optionalTop "pavucontrol"
     ++ optionalTop "socat"
     ++ optionalTop "songrec"

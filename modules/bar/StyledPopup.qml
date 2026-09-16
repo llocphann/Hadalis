@@ -22,22 +22,42 @@ LazyLoader {
     readonly property string _attachmentEdge: root._barVertical
         ? (root._trailingEdge ? "right" : "left")
         : (root._trailingEdge ? "bottom" : "top")
-    readonly property real _contentPadding: 10
-    readonly property color _surfaceColor: Appearance.regaliaEverywhere
-        ? Appearance.regalia.bg2
-        : Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-        : Appearance.colors.colSurfaceContainer
-    readonly property color _borderColor: Appearance.angelEverywhere
-        ? Appearance.angel.colBorder
+    readonly property int _barCornerStyle: Config.options?.bar?.cornerStyle ?? 0
+    readonly property bool _barFloatingSurface: root._barCornerStyle === 1 || root._barCornerStyle === 3
+    readonly property real _contentPadding: 14
+
+    // Caelestia's popouts read as deformations of the owning shell surface, not
+    // as a separate card material. Match the Classic Bar's surface family here
+    // so the flared connector and body visually continue the bar.
+    readonly property color _surfaceColor: Appearance.zzzEverywhere
+        ? (root._barCornerStyle === 3 ? Appearance.zzz.chromeAlt : Appearance.zzz.chrome)
+        : Appearance.regaliaEverywhere
+            ? (root._barFloatingSurface
+                ? Appearance.regalia.barSurfaceFloating
+                : Appearance.regalia.barSurface)
+        : Appearance.angelEverywhere
+            ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
+        : Appearance.inirEverywhere ? Appearance.inir.colLayer0
+        : Appearance.auroraEverywhere
+            ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
+        : root._barCornerStyle === 3 ? Appearance.colors.colLayer1
+        : Appearance.colors.colLayer0
+    readonly property color _borderColor: Appearance.zzzEverywhere
+        ? Appearance.zzz.hairline
+        : Appearance.regaliaEverywhere ? "transparent"
+        : Appearance.angelEverywhere ? Appearance.angel.colPanelBorder
         : Appearance.inirEverywhere ? Appearance.inir.colBorder
+        : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder
         : Appearance.colors.colLayer0Border
-    readonly property real _borderWidth: Appearance.regaliaEverywhere ? 0 : 1
-    readonly property real _surfaceRadius: Appearance.regaliaEverywhere
-        ? Appearance.regalia.roundNormal
+    readonly property real _borderWidth: Appearance.zzzEverywhere ? 1
+        : Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
+        : 0
+    readonly property real _surfaceRadius: Appearance.zzzEverywhere
+        ? Appearance.zzz.panelRadius
+        : Appearance.regaliaEverywhere ? Appearance.regalia.roundLarge
         : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
         : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-        : Appearance.rounding.small
+        : Appearance.rounding.large
 
     signal requestClose()
 
@@ -129,9 +149,9 @@ LazyLoader {
         Behavior on revealProgress {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Appearance.animation.elementMoveFast.type
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                duration: Appearance.animation.elementMoveEnter.duration
+                easing.type: Appearance.animation.elementMoveEnter.type
+                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
             }
         }
 
@@ -158,8 +178,8 @@ LazyLoader {
             fillColor: root._surfaceColor
             borderColor: root._borderColor
             borderWidth: root._borderWidth
-            // The connector intentionally owns the seam without a second
-            // outline, preventing a double border where the popup joins the bar.
+            // The connector owns the join. Leaving its outline off lets the
+            // shoulder merge into both bar and body instead of drawing a stem.
             connectorBorderWidth: 0
         }
 
@@ -170,7 +190,10 @@ LazyLoader {
             width: Math.max(0, geometry.animatedBodyRect.width - root._contentPadding * 2)
             height: Math.max(0, geometry.animatedBodyRect.height - root._contentPadding * 2)
             visible: geometry.valid && geometry.progress > 0
-            opacity: geometry.progress
+            // Let the surface deform first, then bring content in as the body has
+            // enough area. This keeps the enter motion from reading as card fade.
+            opacity: Math.max(0, Math.min(1,
+                (geometry.revealProgress - 0.18) / 0.82))
             clip: true
             children: [root.contentItem]
 

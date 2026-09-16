@@ -172,7 +172,7 @@ draft_line="$(grep -nF '  stage_release_draft "$tag" "$notes_file"' "$release_sc
     && "$host_line" -lt "$contract_line" && "$contract_line" -lt "$draft_line" ]] \
   || fail 'release publish path no longer completes host/contracts preflight before draft creation'
 
-wiki_trigger_count="$(grep -Fc "- 'scripts/wiki-sync.sh'" "$packaging_workflow")"
+wiki_trigger_count="$(grep -F -c -e "- 'scripts/wiki-sync.sh'" "$packaging_workflow")"
 [[ "$wiki_trigger_count" -eq 2 ]] \
   || fail 'Packaging workflow must watch scripts/wiki-sync.sh for both push and pull_request'
 

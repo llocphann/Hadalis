@@ -75,7 +75,7 @@ require_release_source_pin() {
 
 require_release_checkout() {
   local tag="$1"
-  local tag_commit head_commit
+  local tag_commit head_commit remote_tag_refs remote_tag_commit
 
   [[ -z "$(git -C "$repo_root" status --porcelain --untracked-files=all)" ]] \
     || die "release checkout must be clean (including untracked files)"
@@ -89,8 +89,19 @@ require_release_checkout() {
     || die "could not fetch origin/stable"
   git -C "$repo_root" merge-base --is-ancestor "$tag_commit" origin/stable \
     || die "$tag is not contained in origin/stable"
-  git -C "$repo_root" ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 \
-    || die "$tag is not pushed to origin"
+
+  remote_tag_refs="$(git -C "$repo_root" ls-remote --tags origin \
+    "refs/tags/$tag" "refs/tags/$tag^{}")" \
+    || die "could not read $tag from origin"
+  [[ -n "$remote_tag_refs" ]] || die "$tag is not pushed to origin"
+  remote_tag_commit="$(printf '%s\n' "$remote_tag_refs" | awk -v tag="$tag" '
+    $2 == "refs/tags/" tag "^{}" { peeled = $1 }
+    $2 == "refs/tags/" tag { direct = $1 }
+    END { if (peeled != "") print peeled; else print direct }
+  ')"
+  [[ -n "$remote_tag_commit" ]] || die "could not resolve remote commit for $tag"
+  [[ "$remote_tag_commit" == "$tag_commit" ]] \
+    || die "$tag on origin does not match local tag commit $tag_commit"
 }
 
 extract_notes() {

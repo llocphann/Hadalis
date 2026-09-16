@@ -39,6 +39,15 @@ PanelWindow {
         right: true
     }
 
+    onRouteOwnedChanged: {
+        if (!root.routeOwned)
+            return
+        Qt.callLater(() => {
+            if (root.routeOwned)
+                mediaPopup.forceActiveFocus()
+        })
+    }
+
     ConnectedSurfaceGeometry {
         id: geometry
         edge: root.route?.edge ?? "top"

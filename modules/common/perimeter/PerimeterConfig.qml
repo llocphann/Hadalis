@@ -317,7 +317,8 @@ QtObject {
     }
 
     function resetDefaultSlots() {
-        if (!root.persistenceReady)
+        if (!root.persistenceReady || !root.schemaSupported
+                || !root._configuredShapeValid())
             return false
         Config.setNestedValue("perimeter.defaultSlots", [])
         return true
@@ -431,7 +432,8 @@ QtObject {
 
     function resetOutputSlots(outputName) {
         const name = String(outputName ?? "")
-        if (!name || !root.persistenceReady)
+        if (!name || !root.persistenceReady || !root.schemaSupported
+                || !root._configuredShapeValid())
             return false
         const outputs = root._outputsAsList()
         const index = outputs.findIndex(entry =>

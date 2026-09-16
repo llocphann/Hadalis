@@ -34,15 +34,16 @@ Singleton {
     // Discharging-based, not !isPluggedIn: FullyCharged on AC must not count as "on battery"
     readonly property bool onBattery: available && (chargeState == UPowerDeviceState.Discharging || chargeState == UPowerDeviceState.PendingDischarge)
     property real percentage: UPower.displayDevice?.percentage ?? 1
-    readonly property bool allowAutomaticSuspend: Config.options?.battery?.automaticSuspend ?? false
+    readonly property bool allowAutomaticSuspend: Config.options?.battery?.automaticSuspend ?? true
+    readonly property bool notifyFull: Config.options?.battery?.notifyFull ?? true
     readonly property bool soundEnabled: Config.options?.sounds?.battery ?? true
 
     readonly property real lowThreshold: root._thresholdPercent(Config.options?.battery?.low, 20)
     readonly property real criticalThreshold: Math.min(root.lowThreshold,
-        root._thresholdPercent(Config.options?.battery?.critical, 10))
+        root._thresholdPercent(Config.options?.battery?.critical, 5))
     readonly property real suspendThreshold: Math.min(root.criticalThreshold,
-        root._thresholdPercent(Config.options?.battery?.suspend, 5))
-    readonly property real fullThreshold: root._fullThresholdPercent(Config.options?.battery?.full, 95)
+        root._thresholdPercent(Config.options?.battery?.suspend, 3))
+    readonly property real fullThreshold: root._fullThresholdPercent(Config.options?.battery?.full, 101)
 
     property bool isLow: available && (percentage <= (root.lowThreshold / 100))
     property bool isCritical: available && (percentage <= (root.criticalThreshold / 100))
@@ -120,7 +121,7 @@ Singleton {
     }
 
     onIsFullAndChargingChanged: {
-        if (!root.available || !isFullAndCharging) return;
+        if (!root.available || !root.notifyFull || !isFullAndCharging) return;
         Quickshell.execDetached([
             "/usr/bin/notify-send",
             Translation.tr("Battery full"),

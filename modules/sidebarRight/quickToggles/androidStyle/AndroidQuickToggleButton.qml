@@ -188,6 +188,7 @@ GroupButton {
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         acceptedButtons: Qt.AllButtons
+        property bool longPressHandled: false
 
         function toggleEnabled() {
             // Identify the entry by type: buttonIndex is positional and goes
@@ -227,13 +228,16 @@ GroupButton {
         }
 
         onReleased: (event) => {
-            if (event.button === Qt.LeftButton)
+            if (event.button === Qt.LeftButton && !longPressHandled)
                 toggleEnabled();
+            longPressHandled = false;
         }
         onPressed: (event) => {
+            if (event.button === Qt.LeftButton) longPressHandled = false;
             if (event.button === Qt.RightButton) toggleSize();
         }
-        onPressAndHold: (event) => { // Also toggle size
+        onPressAndHold: (event) => {
+            longPressHandled = true;
             toggleSize();
         }
         onWheel: (event) => {

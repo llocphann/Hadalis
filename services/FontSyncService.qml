@@ -100,6 +100,7 @@ Singleton {
         id: fontSyncProc
         running: false
         property bool startObserved: false
+        property bool timedOut: false
         command: [
             Quickshell.shellPath("scripts/colors/sync-system-fonts.sh"),
             root.mainFont,
@@ -114,12 +115,20 @@ Singleton {
             if (fontSyncProc.startObserved)
                 return
 
+            fontSyncTimeout.stop()
             root._rerunAfterExit = false
             console.warn("[FontSyncService] Failed to start system font sync helper")
         }
-        onStarted: fontSyncProc.startObserved = true
+        onStarted: {
+            fontSyncProc.startObserved = true
+            fontSyncProc.timedOut = false
+            fontSyncTimeout.restart()
+        }
         onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0) {
+            fontSyncTimeout.stop()
+            if (fontSyncProc.timedOut) {
+                console.warn("[FontSyncService] Timed out while syncing system fonts")
+            } else if (exitCode === 0) {
                 root._log("[FontSyncService] GTK/KDE fonts updated:", root.gtkFontString)
             } else {
                 console.warn("[FontSyncService] System font sync failed, exit code:", exitCode)
@@ -129,6 +138,18 @@ Singleton {
                 if (root.syncEnabled)
                     Qt.callLater(() => root._doSync())
             }
+        }
+    }
+
+    Timer {
+        id: fontSyncTimeout
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!fontSyncProc.running)
+                return
+            fontSyncProc.timedOut = true
+            fontSyncProc.running = false
         }
     }
 

@@ -156,18 +156,63 @@ Singleton {
         restartDelay.restart()
     }
 
+    function _startKdeGlobalsSync(themeName: string, skipRestart: bool): void {
+        kdeGlobalsUpdateProc.themeName = themeName
+        kdeGlobalsUpdateProc.skipRestart = skipRestart
+        kdeGlobalsUpdateProc.running = false
+        kdeGlobalsUpdateProc.running = true
+    }
+
+    function _continueAfterKdeGlobals(themeName: string, skipRestart: bool): void {
+        // kwriteconfig6 improves Plasma integration but is optional. Whether it
+        // exists or not must not prevent qt5ct/qt6ct/GTK synchronization.
+        kwriteconfigProc.themeName = themeName
+        kwriteconfigProc.skipRestart = skipRestart
+        kwriteconfigProc.running = false
+        kwriteconfigProc.running = true
+
+        // Restart shell if user actively changed theme. This intentionally does
+        // not depend on any optional KDE integration helper succeeding.
+        if (!skipRestart)
+            root.queueRestart()
+    }
+
+    function _startQtSync(themeName: string): void {
+        qt5ctProc.themeName = themeName
+        qt5ctProc.running = false
+        qt5ctProc.running = true
+        qt6ctProc.themeName = themeName
+        qt6ctProc.running = false
+        qt6ctProc.running = true
+    }
+
+    function _startGtkSync(themeName: string): void {
+        gtkSettingsProc.themeName = themeName
+        gtkSettingsProc.running = false
+        gtkSettingsProc.running = true
+    }
+
     Process {
         id: gsettingsSetProc
         property string themeName: ""
         property bool skipRestart: false
+        property bool startObserved: false
         command: ["/usr/bin/gsettings", "set", "org.gnome.desktop.interface", "icon-theme", gsettingsSetProc.themeName]
+        onRunningChanged: {
+            if (gsettingsSetProc.running) {
+                gsettingsSetProc.startObserved = false
+                return
+            }
+            if (gsettingsSetProc.startObserved)
+                return
+
+            console.warn("[IconThemeService] gsettings failed to start; continuing icon theme sync")
+            root._startKdeGlobalsSync(gsettingsSetProc.themeName, gsettingsSetProc.skipRestart)
+        }
+        onStarted: gsettingsSetProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             _log("[IconThemeService] gsettings set exited:", exitCode, "theme:", gsettingsSetProc.themeName)
-            // Sync to KDE/Qt apps via kdeglobals
-            kdeGlobalsUpdateProc.themeName = gsettingsSetProc.themeName
-            kdeGlobalsUpdateProc.skipRestart = gsettingsSetProc.skipRestart
-            kdeGlobalsUpdateProc.running = false
-            kdeGlobalsUpdateProc.running = true
+            root._startKdeGlobalsSync(gsettingsSetProc.themeName, gsettingsSetProc.skipRestart)
         }
     }
 
@@ -176,6 +221,7 @@ Singleton {
         id: kdeGlobalsUpdateProc
         property string themeName: ""
         property bool skipRestart: false
+        property bool startObserved: false
         command: [
             "/usr/bin/python3",
             "-c",
@@ -201,19 +247,20 @@ with open(config_path, "w") as f:
     config.write(f, space_around_delimiters=False)
 `
         ]
-        onExited: (exitCode, exitStatus) => {
-            // Also update plasma icon theme via kwriteconfig if available
-            kwriteconfigProc.themeName = kdeGlobalsUpdateProc.themeName
-            kwriteconfigProc.skipRestart = kdeGlobalsUpdateProc.skipRestart
-
-            kwriteconfigProc.running = false
-            kwriteconfigProc.running = true
-
-            // Restart shell if user actively changed theme.
-            // Do not depend on kwriteconfig6 succeeding.
-            if (!kdeGlobalsUpdateProc.skipRestart) {
-                root.queueRestart()
+        onRunningChanged: {
+            if (kdeGlobalsUpdateProc.running) {
+                kdeGlobalsUpdateProc.startObserved = false
+                return
             }
+            if (kdeGlobalsUpdateProc.startObserved)
+                return
+
+            console.warn("[IconThemeService] kdeglobals updater failed to start; continuing icon theme sync")
+            root._continueAfterKdeGlobals(kdeGlobalsUpdateProc.themeName, kdeGlobalsUpdateProc.skipRestart)
+        }
+        onStarted: kdeGlobalsUpdateProc.startObserved = true
+        onExited: (exitCode, exitStatus) => {
+            root._continueAfterKdeGlobals(kdeGlobalsUpdateProc.themeName, kdeGlobalsUpdateProc.skipRestart)
         }
     }
 
@@ -222,6 +269,7 @@ with open(config_path, "w") as f:
         id: kwriteconfigProc
         property string themeName: ""
         property bool skipRestart: false
+        property bool startObserved: false
         command: [
             "/usr/bin/kwriteconfig6",
             "--file", "kdeglobals",
@@ -229,15 +277,21 @@ with open(config_path, "w") as f:
             "--key", "Theme",
             kwriteconfigProc.themeName
         ]
+        onRunningChanged: {
+            if (kwriteconfigProc.running) {
+                kwriteconfigProc.startObserved = false
+                return
+            }
+            if (kwriteconfigProc.startObserved)
+                return
+
+            _log("[IconThemeService] kwriteconfig6 unavailable; continuing with Qt/GTK sync")
+            root._startQtSync(kwriteconfigProc.themeName)
+        }
+        onStarted: kwriteconfigProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             _log("[IconThemeService] kwriteconfig exited:", exitCode, "theme:", kwriteconfigProc.themeName)
-            // Also sync to qt5ct and qt6ct
-            qt5ctProc.themeName = kwriteconfigProc.themeName
-            qt5ctProc.running = false
-            qt5ctProc.running = true
-            qt6ctProc.themeName = kwriteconfigProc.themeName
-            qt6ctProc.running = false
-            qt6ctProc.running = true
+            root._startQtSync(kwriteconfigProc.themeName)
         }
     }
 
@@ -279,6 +333,7 @@ else:
     Process {
         id: qt6ctProc
         property string themeName: ""
+        property bool startObserved: false
         command: [
             "/usr/bin/python3",
             "-c",
@@ -304,12 +359,21 @@ else:
         config.write(f, space_around_delimiters=False)
 `
         ]
+        onRunningChanged: {
+            if (qt6ctProc.running) {
+                qt6ctProc.startObserved = false
+                return
+            }
+            if (qt6ctProc.startObserved)
+                return
+
+            console.warn("[IconThemeService] qt6ct updater failed to start; continuing with GTK sync")
+            root._startGtkSync(qt6ctProc.themeName)
+        }
+        onStarted: qt6ctProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             _log("[IconThemeService] qt6ct updated:", exitCode === 0 ? "success" : "failed")
-            // Also sync to GTK settings.ini files
-            gtkSettingsProc.themeName = qt6ctProc.themeName
-            gtkSettingsProc.running = false
-            gtkSettingsProc.running = true
+            root._startGtkSync(qt6ctProc.themeName)
         }
     }
 

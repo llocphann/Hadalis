@@ -33,7 +33,7 @@ If the system payload was already removed first, clean only the affected user's 
 ```bash
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/inir.service"
 find "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" -maxdepth 2 \
-  -type l -path '*/\*.wants/inir.service' -delete
+  -type l -path '*.wants/inir.service' -delete
 systemctl --user daemon-reload
 ```
 

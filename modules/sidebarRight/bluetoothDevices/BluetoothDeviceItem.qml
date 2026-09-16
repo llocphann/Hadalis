@@ -8,11 +8,48 @@ DialogListItem {
     id: root
     required property var device
     property bool expanded: false
+    property bool actionPending: false
+    property string pendingAction: ""
     pointingHandCursor: !expanded
     buttonText: root.device?.name || Translation.tr("Unknown device")
 
+    function beginAction(action: string): bool {
+        if (root.actionPending)
+            return false
+        root.actionPending = true
+        root.pendingAction = action
+        actionTimeout.restart()
+        return true
+    }
+
+    function finishAction(): void {
+        root.actionPending = false
+        root.pendingAction = ""
+        actionTimeout.stop()
+    }
+
+    onDeviceChanged: root.finishAction()
     onClicked: expanded = !expanded
     altAction: () => expanded = !expanded
+
+    Connections {
+        target: root.device
+        function onConnectedChanged() {
+            if (root.pendingAction === "connect" || root.pendingAction === "disconnect")
+                root.finishAction()
+        }
+        function onPairedChanged() {
+            if (root.pendingAction === "forget" && !(root.device?.paired ?? false))
+                root.finishAction()
+        }
+    }
+
+    Timer {
+        id: actionTimeout
+        interval: 15000
+        repeat: false
+        onTriggered: root.finishAction()
+    }
     
     component ActionButton: DialogButton {
         colBackground: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
@@ -103,49 +140,39 @@ DialogListItem {
                 Item { Layout.fillWidth: true }
                 ActionButton {
                     id: connectBtn
-                    property bool operationPending: false
-                    enabled: !operationPending
+                    enabled: !root.actionPending
                     buttonText: {
-                        if (operationPending) {
-                            return root.device?.connected ? Translation.tr("Disconnecting…") : Translation.tr("Connecting…");
-                        }
+                        if (root.pendingAction === "connect") return Translation.tr("Connecting…")
+                        if (root.pendingAction === "disconnect") return Translation.tr("Disconnecting…")
                         return root.device?.connected ? Translation.tr("Disconnect") : Translation.tr("Connect")
                     }
 
                     onClicked: {
-                        operationPending = true;
-                        pendingTimeout.start();
-                        if (root.device?.connected) {
+                        const disconnecting = root.device?.connected ?? false
+                        if (!root.beginAction(disconnecting ? "disconnect" : "connect"))
+                            return
+                        if (disconnecting) {
                             root.device.disconnect();
                         } else {
                             root.device.trusted = true;
                             root.device.connect();
                         }
                     }
-
-                    Connections {
-                        target: root.device
-                        function onConnectedChanged() {
-                            connectBtn.operationPending = false;
-                            pendingTimeout.stop();
-                        }
-                    }
-
-                    Timer {
-                        id: pendingTimeout
-                        interval: 15000
-                        onTriggered: connectBtn.operationPending = false
-                    }
                 }
                 Revealer {
                     reveal: root.device?.paired ?? false
                     ActionButton {
+                        enabled: !root.actionPending
                         colBackground: Appearance.colors.colError
                         colBackgroundHover: Appearance.colors.colErrorHover
                         colRipple: Appearance.colors.colErrorActive
                         colText: Appearance.colors.colOnError
-                        buttonText: Translation.tr("Forget")
-                        onClicked: root.device?.forget()
+                        buttonText: root.pendingAction === "forget"
+                            ? Translation.tr("Forgetting…") : Translation.tr("Forget")
+                        onClicked: {
+                            if (root.beginAction("forget"))
+                                root.device?.forget()
+                        }
                     }
                 }
             }

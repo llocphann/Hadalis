@@ -111,6 +111,8 @@ require_release_contracts() {
     "$script_dir/test-packaging-contract.sh" \
     "$script_dir/test-nix-module-contract.sh" \
     "$script_dir/test-doctor-dependency-routing.sh" \
+    "$script_dir/test-equalizer-boundary-contract.sh" \
+    "$script_dir/test-equalizer-service-contract.sh" \
     "$script_dir/test-optional-audio-deps-contract.sh" \
     "$script_dir/test-make-install-lifecycle.sh" \
     "$script_dir/verify-docs.sh"; do

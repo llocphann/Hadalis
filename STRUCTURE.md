@@ -39,7 +39,7 @@ inir/
 ├── scripts/                      # Shell/fish/python helpers
 ├── sdata/                        # Install/update lifecycle and migrations
 ├── defaults/                     # Shipped default configuration/templates
-├── translations/                 # i18n catalogs and maintenance tools
+├── translations/                 # Canonical en_US UI catalog + validators
 ├── distro/                       # Packaging/distribution data
 ├── assets/                       # Icons, wallpapers, systemd unit, desktop entry
 └── docs/                         # User documentation
@@ -53,11 +53,13 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **modules/common/:** shared config, visual infrastructure, perimeter infrastructure, and reusable widgets. `Config.qml` owns the typed runtime schema and the custom-widget persistence workaround.
 
-**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Core presence does not mean every shell module or popup has already migrated to it; feature integration remains incremental.
+**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Existing bar popups consume this substrate through `modules/bar/StyledPopup.qml`; full `iiPerimeter` composition ownership remains a separate broader cutover.
 
-**modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement and Classic geometry modes (Hug, Float, Rectangle, Card). There is no Bar appearance-family selector.
+**modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement and Classic geometry modes (Hug, Float, Rectangle, Card). Existing bar popups use `StyledPopup.qml`, which provides the connected-surface presentation path without introducing a second popup framework.
 
-**modules/waffle/:** Windows 11-style panel family with its own bottom taskbar, Start menu, action center, notification center, visual tokens, and settings. Waffle is a separate family rather than a Classic Bar appearance.
+**modules/dock/:** the ii-family application Dock. Panel is the canonical supported Dock surface style; legacy persisted style values are normalized to `panel` during startup.
+
+**modules/waffle/:** Windows 11-style panel family with its own bottom taskbar, Start menu, action center, notification center, visual tokens, and settings. Waffle is a separate family rather than a Dock or Classic Bar style.
 
 **modules/ii/:** ii-family-specific overlay/sidebar components.
 
@@ -73,7 +75,7 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **defaults/:** curated shipped defaults and platform/application templates.
 
-**translations/:** JSON locale catalogs plus extraction/cleanup tooling. Translation keys come from live `Translation.tr(...)` call sites; retired-feature strings should not be kept merely for historical UI.
+**translations/:** the canonical English shell UI catalog `en_US.json` plus English-only validation tooling. The runtime does not ship or generate alternate shell UI locale catalogs.
 
 **assets/:** static icons, images, wallpapers, systemd units, desktop entries, and related packaged data.
 
@@ -99,11 +101,18 @@ Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specif
 
 ### Classic Bar
 - `modules/bar/` — Classic Bar runtime.
+- `modules/bar/StyledPopup.qml` — existing popup abstraction with connected perimeter geometry/frame/mask integration.
 - `modules/settings/BarConfig.qml` — Classic Bar settings.
 - `bar.bottom` + `bar.vertical` — placement.
 - `bar.cornerStyle` — Hug/Float/Rectangle/Card geometry.
 - `bar.blurBackground` — native compositor blur controls.
 - `bar.autoHide.showWhenPressingSuper` — Super-key reveal behavior.
+
+### Dock
+- `modules/dock/Dock.qml` — ii Dock runtime.
+- `modules/settings/DockConfig.qml` — Dock settings; no legacy style selector.
+- `dock.style` — compatibility key normalized to `panel` during startup.
+- `SettingsPageRegistry.qml` — startup compatibility migration for legacy Dock styles and UI locale values.
 
 ### Connected Perimeter core
 - `modules/common/perimeter/PerimeterTopology.qml` — canonical edge/alignment slot topology.
@@ -113,7 +122,7 @@ Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specif
 - `modules/common/perimeter/SurfaceRouteController.qml` — transient-surface route coordination.
 - `modules/common/perimeter/ConnectedSurfaceGeometry.qml`, `ConnectedSurfaceFrame.qml`, `ConnectedSurfaceConnector.qml`, and `ConnectedSurfaceMask.qml` — shared connected geometry/render/input primitives.
 
-These files are the shared substrate. Concrete Bar/Dock/Sidebar/module migration is allowed to remain incremental while the core contract stabilizes.
+Connected popup presentation is already active through `StyledPopup.qml` for existing bar popups. The broad `iiPerimeter` composition cutover remains independently guarded by `PerimeterCutoverPolicy.qml` so connected popup geometry cannot accidentally drop legacy-only functionality.
 
 ### Overview and task view
 - `modules/overview/Overview.qml` — workspace/window overview and navigation.
@@ -122,20 +131,22 @@ These files are the shared substrate. Concrete Bar/Dock/Sidebar/module migration
 
 ### Settings
 - `modules/settings/SettingsPageRegistryData.qml` — page metadata/search data.
-- `modules/settings/SettingsPageRegistry.qml` — page compatibility routing.
+- `modules/settings/SettingsPageRegistry.qml` — page compatibility routing plus startup normalization of legacy `dock.style` and `language.ui` values.
 - Historical retired page indices remain hidden compatibility slots; TLP index 28 still redirects to System.
 
 ### Core services
 - `modules/common/Appearance.qml` — ii visual tokens/style dispatch.
 - `modules/waffle/looks/Looks.qml` — Waffle visual tokens.
+- `services/Translation.qml` — English-only shell UI lookup using `translations/en_US.json`.
 - `services/DevNavigation.qml` — semantic dev navigation/IPC.
 - `services/GlobalActions.qml` — global actions.
 - `services/CompositorService.qml` — Niri/Hyprland detection.
 
 ### Tests/checks
-- `.github/workflows/ci.yml` — repository CI definition.
+- `scripts/test-shell-surface-contracts.py` — focused Connected Popup/Dock/Waffle/en_US contract guard.
+- `scripts/validate-maintainer-local.sh` — canonical maintainer local validation entry point.
 - `scripts/test-local-distribution.sh` — local distribution test script.
-- Translation tooling lives in `translations/tools/`.
+- Translation validators live in `translations/tools/`.
 
 ## Naming Conventions
 
@@ -144,7 +155,7 @@ These files are the shared substrate. Concrete Bar/Dock/Sidebar/module migration
 - Services: `PascalCase.qml`.
 - Scripts: existing shell/python naming conventions in their owning directory.
 - Config JSON: `config.json`.
-- Translation files: `ll_CC.json`.
+- Shell UI translation catalog: `en_US.json`.
 
 **Directories**
 - Keep the established module names (`sidebarLeft/`, `sidebarRight/`, `actionCenter/`, etc.).
@@ -165,12 +176,12 @@ These files are the shared substrate. Concrete Bar/Dock/Sidebar/module migration
 
 **New config key:** update `modules/common/Config.qml`, every live consumer, and the owning Settings UI together; use `defaults/config.json` only for curated fresh-install differences.
 
-**New translation:** wrap the live literal in `Translation.tr(...)`, then synchronize/audit locale catalogs.
+**New shell UI text:** wrap the live literal in `Translation.tr(...)` and update the canonical `translations/en_US.json` catalog; do not create alternate shell UI locale catalogs or translation-generation flows.
 
-**New Waffle component:** place it under `modules/waffle/` and keep its taskbar/settings contract separate from Classic Bar.
+**New Waffle component:** place it under `modules/waffle/` and keep its taskbar/settings contract separate from Classic Bar and Dock style compatibility.
 
 **New Classic Bar component:** place it under `modules/bar/`; do not introduce a renderer-family selector as part of ordinary Bar changes.
 
 ## Connected Perimeter Status
 
-The live shell currently supports both the ii and Waffle panel families, while `dev` also contains the shared Connected Perimeter substrate under `modules/common/perimeter/`. Topology/config, module hosting, anchor routing and connected geometry/input primitives exist; migration of concrete modules and surfaces is incremental and must be judged from the live code rather than assumed complete.
+The live shell supports ii and Waffle as separate panel families. Existing bar popups already use the shared connected geometry/render/input primitives through `StyledPopup.qml`, including top/bottom/left/right attachment and edge-origin reveal. The full configurable `iiPerimeter` composition runtime also exists under `modules/common/perimeter/` and `modules/perimeter/`, but its broad ownership cutover remains guarded until it can replace the legacy composition without dropping functionality.

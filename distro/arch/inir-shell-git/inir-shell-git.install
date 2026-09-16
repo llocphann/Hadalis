@@ -8,11 +8,10 @@ Recommended next steps:
       inir service enable
       inir service start
 
-Package-managed installs keep user config in:
-  ~/.config/inir/config.json
+The running QML shell currently stores user config in:
+  ~/.config/illogical-impulse/config.json
 
-Legacy installs may continue using ~/.config/illogical-impulse/config.json
-until their configuration is migrated.
+Hadalis maintenance tooling also recognizes ~/.config/inir for migrated installs.
 
 The packaged runtime lives in:
   /usr/share/quickshell/inir

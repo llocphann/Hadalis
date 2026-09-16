@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +37,33 @@ def load_json(path: Path) -> dict[str, str]:
     ):
         raise ValueError(f"{path} must contain a string-to-string JSON object")
     return data
+
+
+def write_json_atomic(path: Path, data: dict[str, str]) -> None:
+    """Persist a locale without exposing a partially-written JSON catalog."""
+    target_mode = (path.stat().st_mode & 0o777) if path.exists() else 0o644
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            dir=path.parent,
+            prefix=f".{path.stem}.",
+            suffix=".tmp",
+            delete=False,
+            encoding="utf-8",
+            newline="",
+        ) as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+            temp_path = Path(handle.name)
+
+        os.chmod(temp_path, target_mode)
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None and temp_path.exists():
+            temp_path.unlink()
 
 
 def locale_path(locale: str) -> Path:
@@ -323,10 +352,7 @@ def apply_batch(batch_path: Path) -> int:
         return 0
 
     target.update(updates)
-    target_path.write_text(
-        json.dumps(target, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(target_path, target)
     print(f"Applied {len(updates)} translations to {target_path}")
     return 0
 

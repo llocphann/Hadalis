@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
 import qs.modules.common.perimeter
+import qs.services
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -68,7 +69,12 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
 
             WlrLayershell.namespace: "hadalis:perimeter"
-            WlrLayershell.layer: WlrLayer.Top
+            // ShellIiPanelsImpl already owns the full-screen Top-layer sidebar
+            // backdrop. Elevate only while a perimeter sidebar is presented so
+            // sidebar content stays above that backdrop without moving ordinary
+            // perimeter chrome to Overlay for the rest of the session.
+            WlrLayershell.layer: sidebarPresented
+                ? WlrLayer.Overlay : WlrLayer.Top
             // Base perimeter chrome must never steal keyboard focus. A presented
             // sidebar, however, contains text fields and other focusable controls;
             // allow those controls to request focus only on the owning output.
@@ -107,6 +113,19 @@ Scope {
             }
 
             mask: perimeterWindow.hostActive ? perimeterInputRegion : emptyInputRegion
+
+            CompositorFocusGrab {
+                windows: [perimeterWindow]
+                active: perimeterWindow.sidebarPresented
+                    && CompositorService.isHyprland
+                onCleared: () => {
+                    if (perimeterWindow.leftSidebarPresented
+                            && !GlobalStates.sidebarLeftHoldOpen)
+                        GlobalStates.closeSidebarLeft()
+                    if (perimeterWindow.rightSidebarPresented)
+                        GlobalStates.closeSidebarRight()
+                }
+            }
 
             PerimeterOutputHost {
                 id: outputHost

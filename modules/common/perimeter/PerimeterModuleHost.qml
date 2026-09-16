@@ -28,12 +28,18 @@ Item {
         && instanceDescriptor !== null
         && ModuleRegistry.isResolvable(moduleId)
     readonly property Item loadedItem: moduleLoader.item
+    readonly property bool contentVisible:
+        moduleLoader.item !== null && moduleLoader.item.visible
     property int anchorLayoutRevision: 0
     property var perimeterContext: context
 
     implicitWidth: moduleLoader.item?.implicitWidth ?? 0
     implicitHeight: moduleLoader.item?.implicitHeight ?? 0
-    visible: hostEnabled && resolvable
+    // Keep loading independent from wrapper visibility: feature content must be
+    // able to initialize before it can report whether it is currently presented.
+    // Once loaded, mirror its visibility so zero/collapsed modules do not remain
+    // visible Row/Column children and leave phantom spacing or mask geometry.
+    visible: hostEnabled && resolvable && contentVisible
     enabled: visible
 
     function _syncLoadedItem() {

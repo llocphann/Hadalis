@@ -44,10 +44,9 @@ WindowDialog {
             iconSize: Appearance.font.pixelSize.larger
             buttonIcon: "lightbulb"
             text: Translation.tr("Enable now")
+            autoToggle: false
             checked: Hyprsunset.active
-            onCheckedChanged: {
-                Hyprsunset.toggle(checked)
-            }
+            onToggledByUser: checked => Hyprsunset.toggle(checked)
         }
 
         ConfigSwitch {
@@ -58,10 +57,9 @@ WindowDialog {
             iconSize: Appearance.font.pixelSize.larger
             buttonIcon: "night_sight_auto"
             text: Translation.tr("Automatic")
+            autoToggle: false
             checked: Config.options?.light?.night?.automatic ?? false
-            onCheckedChanged: {
-                Config.setNestedValue("light.night.automatic", checked);
-            }
+            onToggledByUser: checked => Config.setNestedValue("light.night.automatic", checked)
         }
 
         // Schedule settings (only visible when automatic is enabled)
@@ -146,10 +144,9 @@ WindowDialog {
             iconSize: Appearance.font.pixelSize.larger
             buttonIcon: "flash_off"
             text: Translation.tr("Enable")
+            autoToggle: false
             checked: Config.options?.light?.antiFlashbang?.enable ?? false
-            onCheckedChanged: {
-                Config.setNestedValue("light.antiFlashbang.enable", checked);
-            }
+            onToggledByUser: checked => Config.setNestedValue("light.antiFlashbang.enable", checked)
             StyledToolTip {
                 text: Translation.tr("Example use case: eroge on one workspace, dark Discord window on another")
             }

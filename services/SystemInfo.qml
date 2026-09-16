@@ -30,6 +30,25 @@ Singleton {
     property string desktopEnvironment: String(Quickshell.env("XDG_CURRENT_DESKTOP") ?? "").trim()
     property string windowingSystem: String(Quickshell.env("WAYLAND_DISPLAY") ?? "").trim().length > 0 ? "Wayland" : "X11"
 
+    function _osReleaseValue(text: string, key: string): string {
+        const prefix = key + "="
+        const lines = String(text ?? "").split("\n")
+        for (let i = 0; i < lines.length; ++i) {
+            const line = lines[i]
+            if (!line.startsWith(prefix))
+                continue
+
+            let value = line.slice(prefix.length).trim()
+            if (value.length >= 2) {
+                const quote = value[0]
+                if ((quote === "\"" || quote === "'") && value[value.length - 1] === quote)
+                    value = value.slice(1, -1)
+            }
+            return value
+        }
+        return ""
+    }
+
     function refreshIdentity(): void {
         if (getUsername.running || getDisplayName.running)
             return
@@ -49,28 +68,24 @@ Singleton {
             fileOsRelease.reload()
             const textOsRelease = fileOsRelease.text()
 
-            // Extract the friendly name (PRETTY_NAME field, fallback to NAME)
-            const prettyNameMatch = textOsRelease.match(/^PRETTY_NAME="(.+?)"/m)
-            const nameMatch = textOsRelease.match(/^NAME="(.+?)"/m)
-            distroName = prettyNameMatch ? prettyNameMatch[1] : (nameMatch ? nameMatch[1].replace(/Linux/i, "").trim() : "Unknown")
+            // os-release permits both quoted and unquoted values. Parse the
+            // assignment first so valid entries such as NAME=Arch Linux do not
+            // silently fall back to Unknown.
+            const prettyName = root._osReleaseValue(textOsRelease, "PRETTY_NAME")
+            const name = root._osReleaseValue(textOsRelease, "NAME")
+            distroName = prettyName.length > 0
+                ? prettyName
+                : (name.length > 0 ? name.replace(/Linux/i, "").trim() : "Unknown")
 
-            // Extract the ID
-            const idMatch = textOsRelease.match(/^ID="?(.+?)"?$/m)
-            distroId = idMatch ? idMatch[1] : "unknown"
+            const parsedId = root._osReleaseValue(textOsRelease, "ID")
+            distroId = parsedId.length > 0 ? parsedId : "unknown"
 
-            // Extract additional URLs and logo
-            const homeUrlMatch = textOsRelease.match(/^HOME_URL="(.+?)"/m)
-            homeUrl = homeUrlMatch ? homeUrlMatch[1] : ""
-            const documentationUrlMatch = textOsRelease.match(/^DOCUMENTATION_URL="(.+?)"/m)
-            documentationUrl = documentationUrlMatch ? documentationUrlMatch[1] : ""
-            const supportUrlMatch = textOsRelease.match(/^SUPPORT_URL="(.+?)"/m)
-            supportUrl = supportUrlMatch ? supportUrlMatch[1] : ""
-            const bugReportUrlMatch = textOsRelease.match(/^BUG_REPORT_URL="(.+?)"/m)
-            bugReportUrl = bugReportUrlMatch ? bugReportUrlMatch[1] : ""
-            const privacyPolicyUrlMatch = textOsRelease.match(/^PRIVACY_POLICY_URL="(.+?)"/m)
-            privacyPolicyUrl = privacyPolicyUrlMatch ? privacyPolicyUrlMatch[1] : ""
-            const logoFieldMatch = textOsRelease.match(/^LOGO="?(.+?)"?$/m)
-            logo = logoFieldMatch ? logoFieldMatch[1] : ""
+            homeUrl = root._osReleaseValue(textOsRelease, "HOME_URL")
+            documentationUrl = root._osReleaseValue(textOsRelease, "DOCUMENTATION_URL")
+            supportUrl = root._osReleaseValue(textOsRelease, "SUPPORT_URL")
+            bugReportUrl = root._osReleaseValue(textOsRelease, "BUG_REPORT_URL")
+            privacyPolicyUrl = root._osReleaseValue(textOsRelease, "PRIVACY_POLICY_URL")
+            logo = root._osReleaseValue(textOsRelease, "LOGO")
 
             // Update the distroIcon property based on distroId
             switch (distroId) {

@@ -9,6 +9,7 @@ Item {
     property var perimeterContext: null
     property var instanceConfig: ({})
 
+    readonly property bool enabledByConfig: Config.options?.dock?.enable ?? true
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
     readonly property string edge: {
@@ -21,19 +22,24 @@ Item {
     readonly property real thickness: Number.isFinite(root.configuredThickness)
         ? Math.max(40, Math.min(200, root.configuredThickness)) : 70
     readonly property real outerPadding: Appearance.sizes.elevationMargin
-
-    implicitWidth: root.vertical
+    readonly property real naturalWidth: root.vertical
         ? Math.max(root.thickness,
             dockApps.implicitWidth + root.outerPadding * 2)
         : dockApps.implicitWidth + root.outerPadding * 2
-    implicitHeight: root.vertical
+    readonly property real naturalHeight: root.vertical
         ? dockApps.implicitHeight + root.outerPadding * 2
         : Math.max(root.thickness,
             dockApps.implicitHeight + root.outerPadding * 2)
 
+    implicitWidth: root.enabledByConfig ? root.naturalWidth : 0
+    implicitHeight: root.enabledByConfig ? root.naturalHeight : 0
+    visible: root.enabledByConfig
+    enabled: root.enabledByConfig
+
     DockApps {
         id: dockApps
         anchors.centerIn: parent
+        visible: root.enabledByConfig
         vertical: root.vertical
         dockPosition: root.edge
         parentWindow: root.QsWindow.window

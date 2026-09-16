@@ -20,7 +20,7 @@ THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"$(SYSTEMD_USER_DIR)\" LIBEXECDIR=\"$(LIBEXECDIR)\" POLKIT_ACTIONS_DIR=\"$(POLKIT_ACTIONS_DIR)\" TLP_CONFDIR=\"$(TLP_CONFDIR)\" INIR_SYSTEM_SHAREDIR=\"$(INIR_SYSTEM_SHAREDIR)\"
 
-.PHONY: all build test-local test-prefix-install test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-prefix-install test-package-docs test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -30,7 +30,7 @@ build:
 	@chmod +x setup
 	@find scripts -type f \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} +
 
-test-local: build test-prefix-install
+test-local: build test-prefix-install test-package-docs
 	@bash scripts/test-local-distribution.sh
 
 test-prefix-install:
@@ -51,6 +51,12 @@ test-prefix-install:
 		python3 -c 'import json, pathlib, sys; data=json.loads(pathlib.Path(sys.argv[1]).read_text()); assert data["version"] == pathlib.Path("VERSION").read_text().strip(); assert data["installMode"] == "package-managed"; assert data["updateStrategy"] == "package-manager"; assert data["packageManager"] == "manual"; assert "PREFIX=\"/opt/inir\"" in data["packageUpdateHint"]' "$$runtime/version.json"; \
 		grep -Fxq 'Exec=/opt/inir/bin/inir service restart' "$$stage/opt/inir/share/applications/inir.desktop"; \
 		grep -Fxq 'Exec=/opt/inir/bin/inir settings' "$$stage/opt/inir/share/applications/inir-settings.desktop"
+
+test-package-docs:
+	@grep -Fq 'for doc in docs/*.md; do' Makefile
+	@grep -Fq 'for doc in "$$srcroot"/docs/*.md; do' distro/arch/inir-shell/PKGBUILD
+	@grep -Fq 'for doc in "$$srcroot"/docs/*.md; do' distro/arch/inir-shell-git/PKGBUILD
+	@grep -Fq 'for doc in docs/*.md; do' nix/package.nix
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh

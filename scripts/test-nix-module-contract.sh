@@ -98,6 +98,11 @@ python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")
 grep -Fq '++ optionalTop "pavucontrol"' "$package" \
   || fail 'Nix runtime no longer provides the fresh-install volume mixer'
 
+python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["apps"]["taskManager"] == "missioncenter"' "$default_config" \
+  || fail 'fresh-install task manager is no longer missioncenter; update the Nix runtime contract deliberately'
+grep -Fq '++ optionalTop "mission-center"' "$package" \
+  || fail 'Nix runtime no longer provides the fresh-install task manager'
+
 bash -n "$zed_module" || fail 'Zed theming module has invalid Bash syntax'
 grep -Fq 'python_cmd="$(venv_python)"' "$zed_module" \
   || fail 'packaged Zed theming no longer resolves the managed/package Python runtime'

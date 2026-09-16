@@ -16,12 +16,13 @@ GroupButton {
     required property var mainAction
     property var altAction: null
     property string statusText: toggled ? Translation.tr("Active") : Translation.tr("Inactive")
+    property bool accessibilityCheckable: true
 
     Accessible.role: Accessible.Button
     Accessible.name: root.name
     Accessible.description: root.statusText
-    Accessible.checkable: true
-    Accessible.checked: root.toggled
+    Accessible.checkable: root.accessibilityCheckable
+    Accessible.checked: root.accessibilityCheckable && root.toggled
 
     required property real baseCellWidth
     required property real baseCellHeight

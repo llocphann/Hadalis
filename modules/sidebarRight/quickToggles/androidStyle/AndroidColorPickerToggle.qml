@@ -11,6 +11,7 @@ AndroidQuickToggleButton {
 
     name: Translation.tr("Color picker")
     statusText: ""
+    accessibilityCheckable: false
     toggled: false
     buttonIcon: "colorize"
 

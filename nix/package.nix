@@ -77,6 +77,7 @@ let
     ++ optionalTop "mpv"
     ++ optionalTop "nautilus"
     ++ optionalTop "networkmanager"
+    ++ optionalTop "pavucontrol"
     ++ optionalTop "socat"
     ++ optionalTop "songrec"
     ++ optionalTop "swappy"

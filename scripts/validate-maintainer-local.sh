@@ -30,6 +30,9 @@ done
 workspace="$(mktemp -d "${TMPDIR:-/tmp}/hadalis-validation.XXXXXX")"
 checkout="$workspace/Hadalis"
 log_path="${HADALIS_VALIDATION_LOG:-${TMPDIR:-/tmp}/hadalis-maintainer-validation-$(date +%Y%m%d-%H%M%S).log}"
+if [[ "$log_path" != /* ]]; then
+    log_path="$PWD/$log_path"
+fi
 cleanup() { rm -rf -- "$workspace"; }
 trap cleanup EXIT
 mkdir -p "$(dirname -- "$log_path")"

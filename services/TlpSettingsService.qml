@@ -676,6 +676,8 @@ Singleton {
 
     Process {
         id: statusProcess
+        property bool timedOut: false
+        property bool startObserved: false
         command: [root.helperPath, "--config-status"]
 
         stdout: StdioCollector {
@@ -686,10 +688,37 @@ Singleton {
             id: statusError
         }
 
+        onRunningChanged: {
+            if (statusProcess.running) {
+                statusProcess.startObserved = false
+                return
+            }
+            if (statusProcess.startObserved)
+                return
+
+            statusTimeout.stop()
+            root._clearStatus("helper-unavailable")
+            root.lastError = "TLP settings status helper failed to start"
+            console.warn("[TLP Settings]", root.lastError)
+            if (root._refreshPending)
+                Qt.callLater(() => root.refresh())
+        }
+
+        onStarted: {
+            statusProcess.startObserved = true
+            statusProcess.timedOut = false
+            statusTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0)
+            statusTimeout.stop()
+            if (statusProcess.timedOut) {
+                root._clearStatus("status-timeout")
+                root.lastError = "TLP settings status helper timed out"
+                console.warn("[TLP Settings]", root.lastError)
+            } else if (exitCode === 0) {
                 root._parseStatus(statusOutput.text)
-            else {
+            } else {
                 root._clearStatus("status-failed")
                 root.lastError = statusError.text.trim()
             }
@@ -699,8 +728,22 @@ Singleton {
         }
     }
 
+    Timer {
+        id: statusTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!statusProcess.running)
+                return
+            statusProcess.timedOut = true
+            statusProcess.running = false
+        }
+    }
+
     Process {
         id: mutationProcess
+        property bool timedOut: false
+        property bool startObserved: false
 
         stdout: StdioCollector {
             id: mutationOutput
@@ -710,9 +753,34 @@ Singleton {
             id: mutationError
         }
 
-        onExited: (exitCode, exitStatus) => {
+        onRunningChanged: {
+            if (mutationProcess.running) {
+                mutationProcess.startObserved = false
+                return
+            }
+            if (mutationProcess.startObserved || !root.busy)
+                return
+
+            mutationTimeout.stop()
             const kind = root._mutationKind
-            const success = exitCode === 0
+            root.busy = false
+            root.lastError = "TLP settings operation failed to start"
+            root._mutationKind = ""
+            console.warn("[TLP Settings]", root.lastError)
+            root.refresh()
+            root.mutationFinished(kind, false)
+        }
+
+        onStarted: {
+            mutationProcess.startObserved = true
+            mutationProcess.timedOut = false
+            mutationTimeout.restart()
+        }
+
+        onExited: (exitCode, exitStatus) => {
+            mutationTimeout.stop()
+            const kind = root._mutationKind
+            const success = exitCode === 0 && !mutationProcess.timedOut
             const appliedChargePolicy = root.pendingChargePolicy === null
                 ? null : root._clone(root.pendingChargePolicy)
             root.busy = false
@@ -730,6 +798,9 @@ Singleton {
                     }
                 }
                 root.lastError = ""
+            } else if (mutationProcess.timedOut) {
+                root.lastError = "TLP settings operation timed out"
+                console.warn("[TLP Settings]", root.lastError)
             } else {
                 const detail = mutationError.text.trim() || mutationOutput.text.trim()
                 root.lastError = detail || "TLP settings operation failed (exit code " + exitCode + ")"
@@ -738,6 +809,18 @@ Singleton {
             root._mutationKind = ""
             root.refresh()
             root.mutationFinished(kind, success)
+        }
+    }
+
+    Timer {
+        id: mutationTimeout
+        interval: 60000
+        repeat: false
+        onTriggered: {
+            if (!mutationProcess.running)
+                return
+            mutationProcess.timedOut = true
+            mutationProcess.running = false
         }
     }
 

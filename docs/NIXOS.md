@@ -103,6 +103,8 @@ Import the NixOS module together with niri-flake:
 
 This ordering mirrors the canonical packaged user service and avoids the cold-login tray ownership race.
 
+When the NixOS or Home Manager module owns `inir.service`, keep service installation and enablement declarative. Do **not** run `inir service install` or `inir service enable`: those launcher commands are intended for source/manual installs and materialize a mutable unit/wants link under the user's XDG systemd directory, which can shadow the module-generated unit. Change `programs.inir.service.*` options and rebuild instead. For ad-hoc start/stop/restart operations, use `systemctl --user <action> inir.service` so the declarative unit remains authoritative.
+
 For Hyprland/UWSM:
 
 ```nix

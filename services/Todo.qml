@@ -124,6 +124,32 @@ Singleton {
         txtFileView.setText(lines.join("\n") + "\n")
     }
 
+    function _finishMissingInitialization(): void {
+        root.list = []
+        todoFileView.setText(JSON.stringify(root.list))
+        root._writeTxt()
+        startupUnlock.start()
+    }
+
+    function _ensureStorageDirectories(): void {
+        const jsonParent = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
+        const txtParent = root.txtFilePath.substring(0, root.txtFilePath.lastIndexOf('/'))
+        const dirs = []
+        if (jsonParent.length > 0)
+            dirs.push(jsonParent)
+        if (txtParent.length > 0 && txtParent !== jsonParent)
+            dirs.push(txtParent)
+        if (dirs.length === 0) {
+            root._finishMissingInitialization()
+            return
+        }
+        if (todoInitDirProc.running)
+            return
+        todoInitDirProc.command = ["/usr/bin/mkdir", "-p"].concat(dirs)
+        todoInitDirProc.attempted = true
+        todoInitDirProc.running = true
+    }
+
     // --- Text file parsing ---
 
     function _parseTxt(text) {
@@ -198,14 +224,41 @@ Singleton {
         onLoadFailed: (error) => {
             if (error == FileViewError.FileNotFound) {
                 console.log("[Todo] JSON not found, creating new file.")
-                const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
-                Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
                 root.list = []
-                todoFileView.setText(JSON.stringify(root.list))
-                root._writeTxt()
-                startupUnlock.start()
+                root._ensureStorageDirectories()
             } else {
                 console.log("[Todo] Error loading JSON:", error)
+            }
+        }
+    }
+
+    Process {
+        id: todoInitDirProc
+        property bool attempted: false
+        property bool startObserved: false
+        running: false
+
+        onRunningChanged: {
+            if (todoInitDirProc.running) {
+                todoInitDirProc.startObserved = false
+                return
+            }
+            if (!todoInitDirProc.attempted || todoInitDirProc.startObserved)
+                return
+            todoInitDirProc.attempted = false
+            console.warn("[Todo] Failed to start storage directory creation")
+            startupUnlock.start()
+        }
+
+        onStarted: todoInitDirProc.startObserved = true
+
+        onExited: (exitCode, exitStatus) => {
+            todoInitDirProc.attempted = false
+            if (exitCode === 0) {
+                root._finishMissingInitialization()
+            } else {
+                console.warn("[Todo] Failed to create storage directories, exit code:", exitCode)
+                startupUnlock.start()
             }
         }
     }

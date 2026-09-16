@@ -15,6 +15,7 @@ on:
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
       - 'scripts/test-nix-module-contract.sh'
+      - 'scripts/test-optional-audio-deps-contract.sh'
       - 'services/AwwwBackend.qml'
       - 'services/deferred/EasyEffects.qml'
       - 'services/deferred/EqualizerService.qml'
@@ -54,6 +55,7 @@ on:
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
       - 'scripts/test-nix-module-contract.sh'
+      - 'scripts/test-optional-audio-deps-contract.sh'
       - 'services/AwwwBackend.qml'
       - 'services/deferred/EasyEffects.qml'
       - 'services/deferred/EqualizerService.qml'
@@ -109,6 +111,11 @@ jobs:
         run: |
           bash -n scripts/test-doctor-dependency-routing.sh
           bash scripts/test-doctor-dependency-routing.sh
+
+      - name: Validate optional audio dependency contracts
+        run: |
+          bash -n scripts/test-optional-audio-deps-contract.sh
+          bash scripts/test-optional-audio-deps-contract.sh
 
       - name: Validate Makefile install lifecycle
         run: |

@@ -536,11 +536,6 @@ Singleton {
         root.dataChanged()
     }
 
-    FileView {
-        id: todayFileView
-        path: ""
-    }
-
     Process {
         id: startupReadProc
         property bool startObserved: false

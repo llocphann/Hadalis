@@ -123,8 +123,13 @@ Item {
         let targetMonth = month
         let targetYear = year
         if (cellData.today === -1) {
-            if (month === 0) { targetMonth = 11; targetYear = year - 1 }
-            else targetMonth = month - 1
+            if (weekRow === 0) {
+                if (month === 0) { targetMonth = 11; targetYear = year - 1 }
+                else targetMonth = month - 1
+            } else {
+                if (month === 11) { targetMonth = 0; targetYear = year + 1 }
+                else targetMonth = month + 1
+            }
         }
         return new Date(targetYear, targetMonth, day)
     }

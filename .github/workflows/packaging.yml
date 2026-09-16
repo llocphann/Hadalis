@@ -116,7 +116,7 @@ jobs:
       - name: Parse Arch recipes and lifecycle hooks
         run: |
           bash -n distro/arch/inir-shell/PKGBUILD
-          bash -n distro/arch/inir-shell/inir-shell.install
           bash -n distro/arch/inir-shell-git/PKGBUILD
-          bash -n distro/arch/inir-shell-git/inir-shell-git.install
           bash -n distro/arch/inir-meta/PKGBUILD
+          bash -n distro/arch/inir-shell/inir-shell.install
+          bash -n distro/arch/inir-shell-git/inir-shell-git.install

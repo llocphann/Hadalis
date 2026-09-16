@@ -53,7 +53,13 @@ Singleton {
     onMonoFontChanged: _queueSync()
     onSizeScaleChanged: _queueSync()
     onSyncEnabledChanged: {
-        if (syncEnabled) _queueSync()
+        if (syncEnabled) {
+            _queueSync()
+            return
+        }
+        _pendingSync = false
+        _rerunAfterExit = false
+        syncDebounce.stop()
     }
 
     Connections {
@@ -72,6 +78,10 @@ Singleton {
     }
 
     function _doSync(): void {
+        if (!Config.ready || !syncEnabled) {
+            _rerunAfterExit = false
+            return
+        }
         _log("[FontSyncService] Syncing font:", gtkFontString)
         if (fontSyncProc.running) {
             _rerunAfterExit = true
@@ -89,12 +99,25 @@ Singleton {
     Process {
         id: fontSyncProc
         running: false
+        property bool startObserved: false
         command: [
             Quickshell.shellPath("scripts/colors/sync-system-fonts.sh"),
             root.mainFont,
             root.monoFont,
             String(root.fontSize)
         ]
+        onRunningChanged: {
+            if (fontSyncProc.running) {
+                fontSyncProc.startObserved = false
+                return
+            }
+            if (fontSyncProc.startObserved)
+                return
+
+            root._rerunAfterExit = false
+            console.warn("[FontSyncService] Failed to start system font sync helper")
+        }
+        onStarted: fontSyncProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
                 root._log("[FontSyncService] GTK/KDE fonts updated:", root.gtkFontString)
@@ -103,7 +126,8 @@ Singleton {
             }
             if (root._rerunAfterExit) {
                 root._rerunAfterExit = false
-                Qt.callLater(() => root._doSync())
+                if (root.syncEnabled)
+                    Qt.callLater(() => root._doSync())
             }
         }
     }

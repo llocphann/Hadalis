@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=1
+pkgrel=2
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -120,6 +120,7 @@ depends=(
   polkit
   polkit-gnome
   networkmanager
+  nm-connection-editor
   gnome-keyring
   nautilus
   kitty

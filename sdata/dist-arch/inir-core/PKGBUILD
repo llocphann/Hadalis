@@ -1,6 +1,6 @@
 pkgname=inir-core
 pkgver=1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='iNiR - core dependency bundle'
 arch=(any)
 license=('GPL-3.0-only')
@@ -40,6 +40,7 @@ depends=(
   
   # Network
   networkmanager
+  nm-connection-editor
   gnome-keyring
   
   # File manager

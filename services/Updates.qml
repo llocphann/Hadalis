@@ -35,8 +35,12 @@ Singleton {
         repeat: true
         running: Config.ready
         onTriggered: {
-            print("[Updates] Periodic update check due")
-            root.refresh();
+            if (root.available) {
+                print("[Updates] Periodic update check due")
+                root.refresh();
+            } else if (!checkAvailabilityProc.running) {
+                checkAvailabilityProc.running = true;
+            }
         }
     }
 

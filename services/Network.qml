@@ -180,6 +180,7 @@ Singleton {
         id: rescanProcess
         property bool attempted: false
         property bool startObserved: false
+        property bool timedOut: false
         command: ["nmcli", "dev", "wifi", "list", "--rescan", "yes"]
         onRunningChanged: {
             if (rescanProcess.running) {
@@ -188,16 +189,38 @@ Singleton {
             }
             if (!rescanProcess.attempted || rescanProcess.startObserved)
                 return
+            rescanTimeout.stop()
             rescanProcess.attempted = false
             root.wifiScanning = false
             console.warn("[Network] Failed to start Wi-Fi rescan")
         }
-        onStarted: rescanProcess.startObserved = true
+        onStarted: {
+            rescanProcess.startObserved = true
+            rescanProcess.timedOut = false
+            rescanTimeout.restart()
+        }
         onExited: (exitCode) => {
+            rescanTimeout.stop()
             rescanProcess.attempted = false
             root.wifiScanning = false
+            if (rescanProcess.timedOut) {
+                console.warn("[Network] Timed out while rescanning Wi-Fi")
+                return
+            }
             if (exitCode === 0)
                 getNetworks.running = true
+        }
+    }
+
+    Timer {
+        id: rescanTimeout
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!rescanProcess.running)
+                return
+            rescanProcess.timedOut = true
+            rescanProcess.running = false
         }
     }
 

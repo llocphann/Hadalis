@@ -4,6 +4,24 @@
 
 set -euo pipefail
 
+# Bound the entire capture lifecycle. Several Wayland/IPC helpers below can
+# legitimately block while a compositor or clipboard owner is unhealthy; if
+# that happens Quickshell would otherwise keep WindowPreviewService.capturing
+# and Cliphist.suppressRefresh set forever because the Process never exits.
+timeout_bin="/usr/bin/timeout"
+capture_timeout_seconds="${INIR_WINDOW_PREVIEW_CAPTURE_TIMEOUT_SECONDS:-90}"
+if [[ ! "$capture_timeout_seconds" =~ ^[1-9][0-9]*$ ]]; then
+  capture_timeout_seconds=90
+fi
+if [[ "${INIR_CAPTURE_WINDOWS_TIMEOUT_ACTIVE:-0}" != "1" ]]; then
+  if [[ ! -x "$timeout_bin" ]]; then
+    echo "[capture-windows] missing binary: $timeout_bin" >&2
+    exit 127
+  fi
+  export INIR_CAPTURE_WINDOWS_TIMEOUT_ACTIVE=1
+  exec "$timeout_bin" --signal=TERM --kill-after=5s "${capture_timeout_seconds}s" "$0" "$@"
+fi
+
 preview_dir="$HOME/.cache/inir/window-previews"
 mkdir -p "$preview_dir"
 

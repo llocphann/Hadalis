@@ -224,7 +224,7 @@ Scope {
                                     : root.widgetHeight
                                 radius: root.popupRounding
                                 screenX: cardArea.x + (mediaControlsRoot.width - cardArea.width) / 2 + cardArea.zzzFrameInset
-                                screenY: cardArea.y + cardArea.zzzFrameInset + index * (root.widgetHeight - Appearance.sizes.elevationMargin)
+                                screenY: cardArea.y + cardArea.zzzFrameInset + playerDelegate.y
                             }
                         }
 
@@ -281,7 +281,7 @@ Scope {
                                     MascotImage {
                                         Layout.alignment: Qt.AlignHCenter
                                         Layout.preferredWidth: Math.min(112, placeholderLayout.width)
-                                        Layout.preferredHeight: Layout.preferredWidth * 132 / 112
+                                        Layout.preferredHeight: Math.min(112, placeholderLayout.width) * 132 / 112
                                         surface: "mediaControls"
                                         fallbackSurface: "emptyStates"
                                         pose: "headphone-groove-full-loop"

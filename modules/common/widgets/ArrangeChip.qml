@@ -15,6 +15,7 @@ Rectangle {
 
     property string icon: ""
     property string label: ""
+    property string accessibleName: root.label
     property bool lifted: false
     property bool dimmed: false // something else is lifted
     signal tapped()
@@ -29,6 +30,12 @@ Rectangle {
          : Appearance.colors.colLayer2
     border.width: lifted ? 2 : 1
     border.color: lifted ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.accessibleName
+    Accessible.checkable: true
+    Accessible.checked: root.lifted
+    Accessible.onPressAction: root.tapped()
 
     Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: 120 } }
     Behavior on scale {

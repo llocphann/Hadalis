@@ -78,13 +78,17 @@ fi
   || fail 'migration changed an unexpected legacy file'
 
 # Keep the safety contract wired into release publication and user-facing
-# installation guidance so behavior and lifecycle documentation cannot drift.
+# lifecycle/configuration guidance so behavior and documentation cannot drift.
 grep -Fq '"$script_dir/test-config-namespace-migration.sh"' "$repo_root/scripts/release.sh" \
   || fail 'release helper no longer runs the config namespace migration contract'
 grep -Fq 'Migration 019 is intentionally fail-closed' "$repo_root/docs/INSTALL.md" \
   || fail 'install docs no longer explain fail-closed config migration behavior'
 grep -Fq 'the migration stops and preserves both states unchanged' "$repo_root/docs/INSTALL.md" \
   || fail 'install docs no longer state that conflicting config trees are preserved'
+grep -Fq 'the migration fails closed and preserves the existing state' "$repo_root/docs/CONFIG_SYSTEM.md" \
+  || fail 'config docs no longer explain fail-closed namespace conflict handling'
+grep -Fq 'before rerunning `inir migrate`' "$repo_root/docs/CONFIG_SYSTEM.md" \
+  || fail 'config docs no longer require manual reconciliation before migration rerun'
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - config namespace migration preserves data and repairs compatibility layout'

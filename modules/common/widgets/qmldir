@@ -55,6 +55,7 @@ FilterChip 1.0 FilterChip.qml
 KeyboardFocusRing 1.0 KeyboardFocusRing.qml
 KeyboardKey 1.0 KeyboardKey.qml
 LightDarkPreferenceButton 1.0 LightDarkPreferenceButton.qml
+MascotImage 1.0 MascotImage.qml
 ArrangeChip 1.0 ArrangeChip.qml
 ArrangeDropSlot 1.0 ArrangeDropSlot.qml
 MaterialCookie 1.0 MaterialCookie.qml

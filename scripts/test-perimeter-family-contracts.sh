@@ -93,7 +93,7 @@ text = re.sub(r"//[^\n]*", "", text)
 def compact(value: str) -> str:
     return " ".join(value.split())
 
-runtime_blocks = re.findall(r"(?ms)^[ \t]*LazyLoader[ \t]*\{(.*?)[ \t]*^\}", text)
+runtime_blocks = re.findall(r"(?ms)^[ \t]*LazyLoader[ \t]*\{(.*?)^[ \t]*\}", text)
 runtime_matches = [
     block for block in runtime_blocks
     if '../../perimeter/PerimeterRuntime.qml' in block
@@ -106,7 +106,7 @@ if 'active: Config.ready && root.perimeterActivationEligible' not in runtime_blo
 if 'source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml")' not in runtime_block:
     raise SystemExit("FAIL: critical runtime loader lost URL source boundary")
 
-blocks = re.findall(r"(?ms)^[ \t]*CriticalPanelLoader[ \t]*\{(.*?)[ \t]*^\}", text)
+blocks = re.findall(r"(?ms)^[ \t]*CriticalPanelLoader[ \t]*\{(.*?)^[ \t]*\}", text)
 by_id = {}
 for block in blocks:
     match = re.search(r'identifier\s*:\s*"([^"]+)"', block)

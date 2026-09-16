@@ -23,7 +23,13 @@ if offending_import="$(grep -En -m1 "$optional_import_re" "$critical" || true)";
     fail "critical root still imports optional presentation module: $offending_import"
 fi
 
-if grep -Eq 'component:[[:space:]]*(Background|Bar|VerticalBar|Dock|PerimeterRuntime)[[:space:]]*\{' "$critical"; then
+# qs.modules.perimeter is intentionally imported for registry authority and also
+# exports PerimeterRuntime. Guard the actual QML object/inline-component syntax,
+# not the invalid historical spelling `component: Type {`, so a direct runtime
+# dependency cannot silently bypass the URL isolation boundary.
+concrete_type_re='(Background|Bar|VerticalBar|Dock|PerimeterRuntime)'
+if grep -Eq "^[[:space:]]*${concrete_type_re}[[:space:]]*\\{" "$critical" \
+        || grep -Eq "^[[:space:]]*component[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[[:space:]]*${concrete_type_re}[[:space:]]*\\{" "$critical"; then
     fail 'critical root still embeds a concrete presentation component'
 fi
 
@@ -41,9 +47,9 @@ done
 
 grep -Fq 'component CriticalPanelLoader: LazyLoader {' "$critical" \
     || fail 'critical presentation loader no longer inherits LazyLoader'
-grep -Fxq 'import qs.modules.perimeter' "$critical" \
+grep -Eq '^[[:space:]]*import[[:space:]]+qs\.modules\.perimeter[[:space:]]*;?[[:space:]]*$' "$critical" \
     || fail 'critical perimeter feature registry authority import is missing'
-grep -Fxq 'import qs.modules.common.perimeter' "$critical" \
+grep -Eq '^[[:space:]]*import[[:space:]]+qs\.modules\.common\.perimeter[[:space:]]*;?[[:space:]]*$' "$critical" \
     || fail 'critical perimeter cutover authority import is missing'
 
 # The broader ii presentation subtree is deferred as a source URL as well. This

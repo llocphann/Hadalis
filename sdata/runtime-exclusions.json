@@ -91,6 +91,7 @@
     "scripts/verify-docs.sh",
     "scripts/qml-check.fish",
     "scripts/test-local-distribution.sh",
+    "scripts/test-nix-module-contract.sh",
     "scripts/test-battery-charge-limit-helper.sh",
     "scripts/test-thinkfan-helper.sh",
     "scripts/test-tlp-integration-lifecycle.sh",

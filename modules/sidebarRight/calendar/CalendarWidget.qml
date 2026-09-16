@@ -384,10 +384,28 @@ Item {
 
         implicitWidth: 32
         implicitHeight: 32
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: navBtn.tooltipText.length > 0
+            ? navBtn.tooltipText : navBtn.icon.replace(/_/g, " ")
+        Accessible.focusable: true
+        Accessible.onPressAction: navBtn.clicked()
+
+        Keys.onPressed: event => {
+            if (event.isAutoRepeat
+                    || (event.key !== Qt.Key_Return
+                        && event.key !== Qt.Key_Enter
+                        && event.key !== Qt.Key_Space))
+                return
+            navBtn.clicked()
+            event.accepted = true
+        }
 
         Rectangle {
             anchors.fill: parent
             radius: root.radius
+            border.width: navBtn.activeFocus ? 1 : 0
+            border.color: root.colPrimary
             color: {
                 if (navBtnMA.containsPress)
                     return Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
@@ -417,7 +435,7 @@ Item {
             }
 
             StyledToolTip {
-                visible: navBtnMA.containsMouse && navBtn.tooltipText !== ""
+                visible: (navBtnMA.containsMouse || navBtn.activeFocus) && navBtn.tooltipText !== ""
                 text: navBtn.tooltipText
             }
         }

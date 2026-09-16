@@ -24,12 +24,24 @@ Rectangle {
     radius: compact ? height / 2 : 6
     color: slotHover.hovered ? Appearance.colors.colPrimaryContainer
          : ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.10)
-    border.width: 1
-    border.color: ColorUtils.applyAlpha(Appearance.colors.colPrimary, slotHover.hovered ? 0.9 : pulse.alpha)
+    border.width: activeFocus ? 2 : 1
+    border.color: activeFocus
+        ? Appearance.colors.colPrimary
+        : ColorUtils.applyAlpha(Appearance.colors.colPrimary, slotHover.hovered ? 0.9 : pulse.alpha)
+    activeFocusOnTab: root.active
 
     Accessible.role: Accessible.Button
     Accessible.name: root.accessibleName
     Accessible.onPressAction: root.placed()
+
+    Keys.onPressed: event => {
+        if (event.isAutoRepeat)
+            return
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+            root.placed()
+            event.accepted = true
+        }
+    }
 
     Behavior on implicitHeight {
         enabled: Appearance.animationsEnabled

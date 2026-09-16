@@ -4,7 +4,9 @@ let
   common = import ./module-common.nix { inherit lib pkgs; };
   cfg = config.programs.inir;
   wantedUnit = common.compositorUnit cfg.service.compositor;
-  env = common.serviceEnvironment cfg;
+  env = common.serviceEnvironment cfg // lib.optionalAttrs (cfg.extraPackages != [ ]) {
+    PATH = lib.makeBinPath ([ cfg.package ] ++ cfg.extraPackages);
+  };
 in
 {
   imports = [ common.optionsModule ];

@@ -70,6 +70,7 @@ Singleton {
     property var now: new Date()
     property var offsetsMinutes: [0, 0, 0, 0]
     property int _offsetIndex: -1
+    property var _offsetTimezones: []
     property var _nextOffsets: []
     property bool _refreshQueued: false
     property string _offsetText: ""
@@ -83,6 +84,7 @@ Singleton {
         }
         root._refreshQueued = false;
         root._offsetIndex = 0;
+        root._offsetTimezones = root.timezones.slice();
         root._nextOffsets = [];
         root._runNextOffset();
     }
@@ -98,21 +100,26 @@ Singleton {
     function _runNextOffset(): void {
         if (!root.enabled) {
             root._offsetIndex = -1;
+            root._offsetTimezones = [];
             root._nextOffsets = [];
+            root._refreshQueued = false;
             return;
         }
-        if (root._offsetIndex >= root.timezones.length) {
-            root.offsetsMinutes = root._nextOffsets;
+        if (root._offsetIndex >= root._offsetTimezones.length) {
             root._offsetIndex = -1;
-            if (root._refreshQueued)
+            if (root._refreshQueued) {
                 root.refreshOffsets();
+                return;
+            }
+            root.offsetsMinutes = root._nextOffsets;
+            root._offsetTimezones = [];
             return;
         }
 
         root._offsetText = "";
         offsetProc.exec({
             command: ["date", "+%z"],
-            environment: ({ TZ: String(root.timezones[root._offsetIndex] ?? "UTC") })
+            environment: ({ TZ: String(root._offsetTimezones[root._offsetIndex] ?? "UTC") })
         });
     }
 

@@ -17,6 +17,7 @@ Button {
     property bool toggled
     property bool buttonHovered: buttonMouseArea.containsMouse
     property string buttonText
+    Accessible.name: root.buttonText
     property bool pointingHandCursor: true
     property real buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
         : Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius

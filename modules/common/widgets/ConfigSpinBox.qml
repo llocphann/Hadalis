@@ -125,6 +125,5 @@ RowLayout {
         Layout.fillWidth: false
         Accessible.name: root.text
         Accessible.description: root.description
-        value: root.value
     }
 }

@@ -15,6 +15,12 @@ Item {
     id: root
     signal closeRequested()
 
+    Keys.onPressed: event => {
+        if (event.key !== Qt.Key_Escape) return
+        root.closeRequested()
+        event.accepted = true
+    }
+
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     // Use MprisController.displayPlayers - centralized filtering
     readonly property var meaningfulPlayers: MprisController.displayPlayers

@@ -7,7 +7,6 @@
 MIGRATION_ID="040-niri-inir-keybind-path"
 MIGRATION_TITLE="Repair iNiR Niri keybind launcher lookup"
 MIGRATION_DESCRIPTION="Makes iNiR Niri keybinds find the launcher in both developer and package-managed installs, even when the compositor PATH omits ~/.local/bin."
-MIGRATION_TARGET_FILE="~/.config/niri/config.d/70-binds.kdl"
 MIGRATION_REQUIRED=true
 
 migration_bind_file() {
@@ -18,6 +17,11 @@ migration_bind_file() {
     printf '%s' "$niri_dir/config.kdl"
   fi
 }
+
+# The migration framework backs up MIGRATION_TARGET_FILE before applying. Resolve
+# it at load time so both modular and older monolithic configs get the right file
+# backed up instead of assuming config.d/70-binds.kdl always exists.
+MIGRATION_TARGET_FILE="$(migration_bind_file)"
 
 migration_check() {
   local config

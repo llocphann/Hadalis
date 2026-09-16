@@ -39,8 +39,19 @@ Singleton {
             }
             try {
                 const data = JSON.parse(fileContents)
-                root.list = data.events || []
-                root.nextId = data.nextId || 1
+                const events = Array.isArray(data?.events)
+                    ? data.events.filter(event => event && typeof event === "object" && !Array.isArray(event))
+                    : []
+                let maxId = 0
+                for (const event of events) {
+                    const id = Number(event.id)
+                    if (Number.isInteger(id) && id > maxId)
+                        maxId = id
+                }
+                const storedNextId = Number(data?.nextId)
+                root.list = events
+                root.nextId = Number.isInteger(storedNextId) && storedNextId > maxId
+                    ? storedNextId : maxId + 1
                 _log("[Events] Loaded", root.list.length, "events")
             } catch (e) {
                 console.warn("[Events] Failed to parse file:", e)

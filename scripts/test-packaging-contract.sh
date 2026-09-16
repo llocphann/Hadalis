@@ -81,6 +81,7 @@ source_version="$(git show "$source_ref:VERSION" | tr -d '[:space:]')"
   || fail "inir-shell source snapshot VERSION=$source_version, repository VERSION=$repo_version"
 for required_path in \
   shell.qml \
+  qmldir \
   sdata/lib/runtime-payload.py \
   docs/INSTALL.md \
   docs/PACKAGES.md \
@@ -88,6 +89,12 @@ for required_path in \
   git cat-file -e "$source_ref:$required_path" 2>/dev/null \
     || fail "inir-shell source snapshot lacks $required_path"
 done
+
+source_root_manifest="$(git show "$source_ref:sdata/runtime-root-files.txt")"
+if ! grep -Fxq 'qmldir' <<<"$source_root_manifest"; then
+  grep -Fq 'install -Dm644 "$srcroot/qmldir" "$shellroot/qmldir"' "$stable_pkg" \
+    || fail 'inir-shell pinned snapshot omits qmldir and the package compatibility copy is missing'
+fi
 
 srcinfo_source="$(srcinfo_value "$stable_srcinfo" source)"
 [[ "$srcinfo_source" == *"/archive/${source_ref}.tar.gz" ]] \

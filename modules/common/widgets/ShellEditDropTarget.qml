@@ -41,6 +41,7 @@ Item {
         : root.occupied ? qsTr("Occupied placement target")
         : qsTr("Available placement target")
     Accessible.focusable: enabled
+    Accessible.onPressAction: root.placementRequested(root.slot)
 
     Rectangle {
         id: stripFill

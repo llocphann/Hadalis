@@ -14,7 +14,9 @@ QuickToggleButton {
     toggled: BluetoothStatus.enabled
     buttonIcon: BluetoothStatus.activeIcon
     onClicked: {
-        Bluetooth.defaultAdapter.enabled = !Bluetooth.defaultAdapter?.enabled
+        const adapter = Bluetooth.defaultAdapter
+        if (adapter)
+            adapter.enabled = !adapter.enabled
     }
     // altAction is set by parent (ClassicQuickPanel opens dialog, others may open external app)
     StyledToolTip {

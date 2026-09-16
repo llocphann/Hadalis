@@ -29,12 +29,18 @@ Item {
         onConnectionStateChanged: {
             root.connectionStateChanged()
             if (connected) {
+                reconnectTimer.stop()
                 root._reconnectAttempt = 0
                 return
             }
             if (root.connected) {
                 root._scheduleReconnect()
             }
+        }
+
+        onError: {
+            if (root.connected && !connected)
+                root._scheduleReconnect()
         }
     }
 
@@ -61,6 +67,9 @@ Item {
     }
 
     function _scheduleReconnect() {
+        if (!root.connected || reconnectTimer.running)
+            return
+
         const pow = Math.min(_reconnectAttempt, 10)
         const base = Math.min(reconnectBaseMs * Math.pow(2, pow), reconnectMaxMs)
         const jitter = Math.floor(Math.random() * Math.floor(base / 4))

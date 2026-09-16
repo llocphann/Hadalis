@@ -199,5 +199,26 @@ if [ -f "$equalizer_service" ] && [ -f "$readme" ]; then
     || note "README no longer keeps the future Equalizer presentation outside current release prerequisites"
 fi
 
+# 10. Release documentation must mirror release.sh when privileged helper
+#     simulations are part of the fail-closed publication preflight.
+release_script="scripts/release.sh"
+release_doc="docs/RELEASING.md"
+echo "[release] privileged helper gates vs docs/RELEASING.md"
+if [ -f "$release_script" ] && [ -f "$release_doc" ]; then
+  if grep -Fq '"$script_dir/test-battery-charge-limit-helper.sh"' "$release_script"; then
+    grep -Fq 'sh scripts/test-battery-charge-limit-helper.sh' "$release_doc" \
+      || note "docs/RELEASING.md omits the battery-charge-limit helper release gate"
+  fi
+  if grep -Fq '"$script_dir/test-thinkfan-helper.sh"' "$release_script"; then
+    grep -Fq 'bash scripts/test-thinkfan-helper.sh' "$release_doc" \
+      || note "docs/RELEASING.md omits the ThinkFan helper release gate"
+  fi
+  if grep -Fq '"$script_dir/test-battery-charge-limit-helper.sh"' "$release_script" \
+      || grep -Fq '"$script_dir/test-thinkfan-helper.sh"' "$release_script"; then
+    grep -Fq 'simulated command/hardware boundaries' "$release_doc" \
+      || note "docs/RELEASING.md no longer explains that privileged helper release checks are simulated by default"
+  fi
+fi
+
 [ "$fail" -eq 0 ] && echo "OK - docs and translations match code." || echo "DRIFT FOUND (see above)."
 exit "$fail"

@@ -45,12 +45,16 @@ Singleton {
 
     // React to config changes — re-fetch when sources change
     property string _lastSourcesHash: ""
+    property bool _sourcesRefreshPending: false
     onSourcesChanged: {
         const hash = JSON.stringify(root.sources)
         if (hash !== root._lastSourcesHash) {
             root._lastSourcesHash = hash
             if (root.enabled) {
-                Qt.callLater(() => root.fetchAll())
+                if (root.fetching)
+                    root._sourcesRefreshPending = true
+                else
+                    Qt.callLater(() => root.fetchAll())
             }
         }
     }
@@ -61,6 +65,7 @@ Singleton {
             return
         }
         if (!root.enabled) {
+            root._sourcesRefreshPending = false
             if (fetchProc.running)
                 fetchProc.running = false
             root.events = []
@@ -107,6 +112,7 @@ Singleton {
 
     function _fetchNext(): void {
         if (!root.enabled) {
+            root._sourcesRefreshPending = false
             root._pendingSources = []
             root._fetchedEvents = []
             root._fetchIndex = -1
@@ -119,6 +125,17 @@ Singleton {
         }
 
         if (root._fetchIndex >= root._pendingSources.length) {
+            if (root._sourcesRefreshPending) {
+                root._sourcesRefreshPending = false
+                root._pendingSources = []
+                root._fetchedEvents = []
+                root._fetchIndex = -1
+                root.fetching = false
+                root.fetchFinished(false)
+                Qt.callLater(() => root.fetchAll())
+                return
+            }
+
             // All done
             root.events = root._fetchedEvents
             root.fetching = false

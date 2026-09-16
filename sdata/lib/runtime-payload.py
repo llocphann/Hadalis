@@ -116,6 +116,22 @@ class Payload:
         target = Path(target).absolute()
         if target.is_symlink() or target.resolve() == source.resolve() or source.resolve().is_relative_to(target.resolve()) or target.resolve().is_relative_to(source.resolve()):
             raise ValueError('destination must be a separate installed directory')
+        if delete and subdir is None and target.exists():
+            # The root rsync filter includes only QML files that still exist in
+            # source, so rsync considers a retired root QML excluded and would
+            # otherwise preserve it even with --delete. Remove only obsolete,
+            # non-excluded root QML here; other private/excluded artifacts stay
+            # outside installer ownership.
+            source_root_qml = {
+                path.name
+                for path in self.root.glob('*.qml')
+                if path.is_file() and not self.excluded(path.name)
+            }
+            for installed in target.glob('*.qml'):
+                if installed.name in source_root_qml or self.excluded(installed.name):
+                    continue
+                if installed.is_file() or installed.is_symlink():
+                    installed.unlink()
         args = ['rsync', '-a', *self.filters(subdir or '')]
         if delete:
             args += ['--delete']

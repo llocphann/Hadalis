@@ -73,6 +73,31 @@ for path in "${expected_files[@]}"; do
   }
 done
 
+battery_helper="$stage$libexecdir/inir-battery-charge-limit"
+battery_policy="$stage$polkit_actions_dir/org.inir.battery-charge-limit.policy"
+thinkfan_policy="$stage$polkit_actions_dir/org.inir.thinkfan.policy"
+grep -Fxq "config_dir=$tlp_confdir" "$battery_helper" || {
+  printf 'FAIL: staged battery helper does not use configured TLP directory\n' >&2
+  exit 1
+}
+grep -Fxq "tlp_settings_schema=$system_share/tlp-settings-schema.json" "$battery_helper" || {
+  printf 'FAIL: staged battery helper does not use configured TLP schema path\n' >&2
+  exit 1
+}
+grep -Fq ">${libexecdir}/inir-battery-charge-limit</annotate>" "$battery_policy" || {
+  printf 'FAIL: staged battery polkit policy does not use configured helper path\n' >&2
+  exit 1
+}
+grep -Fq ">${libexecdir}/inir-thinkfan</annotate>" "$thinkfan_policy" || {
+  printf 'FAIL: staged ThinkFan polkit policy does not use configured helper path\n' >&2
+  exit 1
+}
+
+# Exercise teardown of managed TLP drop-ins inside the staging root. Package
+# installation does not create them, but a live source install can own them.
+printf '%s\n' '# staged battery lifecycle contract' > "$stage$tlp_confdir/99-inir-battery-charge-limit.conf"
+printf '%s\n' '# staged TLP settings lifecycle contract' > "$stage$tlp_confdir/99-inir-tlp-settings.conf"
+
 # The staged install must remain entirely inside DESTDIR. This catches install
 # targets that accidentally write to the host when packagers use a staging root.
 if find "$stage" -mindepth 1 -maxdepth 1 ! -name opt -print -quit | grep -q .; then
@@ -94,6 +119,15 @@ fi
 for path in "${expected_files[@]}"; do
   if [[ -e "$path" || -L "$path" ]]; then
     printf 'FAIL: staged uninstall left %s\n' "$path" >&2
+    exit 1
+  fi
+done
+
+for dropin in \
+  "$stage$tlp_confdir/99-inir-battery-charge-limit.conf" \
+  "$stage$tlp_confdir/99-inir-tlp-settings.conf"; do
+  if [[ -e "$dropin" || -L "$dropin" ]]; then
+    printf 'FAIL: staged uninstall left managed TLP drop-in %s\n' "$dropin" >&2
     exit 1
   fi
 done

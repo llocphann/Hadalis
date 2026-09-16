@@ -85,13 +85,19 @@ git clone https://github.com/llocphann/Hadalis.git ~/Hadalis
 cd ~/Hadalis
 ```
 
-### 3. Install the launcher and shell payload
+### 3. Install the packaged runtime assets
 
 ```bash
 sudo make install
 ```
 
-This installs the `inir` launcher and a packaging-style shell payload under `/usr/local` by default. It does not install distro dependencies for you.
+With the default Makefile paths, this installs:
+
+- the `inir` launcher, Quickshell runtime payload, generated runtime metadata, user service unit, desktop entries/icon, docs, and license under `/usr/local`;
+- the battery/TLP and ThinkFan privileged helpers under `/usr/libexec`;
+- their polkit policies, plus the TLP settings schema, under `/usr/share`.
+
+Those system locations can be changed through the Makefile install variables when packaging. The target does **not** install distro dependencies, install ThinkFan/TLP themselves, or enable the iNiR user service for you.
 
 ### 4. Copy the configs
 

@@ -27,6 +27,7 @@ RippleButton {
 
     Accessible.name: root.text
     Accessible.role: Accessible.Button
+    Accessible.checkable: true
     Accessible.checked: root.selected
 
     readonly property bool _zzz: Appearance.zzzEverywhere

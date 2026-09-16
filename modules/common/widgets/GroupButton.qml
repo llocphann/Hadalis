@@ -15,6 +15,7 @@ Button {
     id: root
     property bool toggled
     property string buttonText
+    Accessible.name: root.buttonText.length > 0 ? root.buttonText : root.text
     property real buttonRadius: Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius
         : (Appearance?.rounding?.small ?? 8)
     property real buttonRadiusPressed: Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius

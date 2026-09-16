@@ -76,6 +76,7 @@ Singleton {
         id: checkAvailabilityProc
         running: false
         property bool startObserved: false
+        property bool timedOut: false
         command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]
 
         onRunningChanged: {
@@ -86,14 +87,26 @@ Singleton {
             if (checkAvailabilityProc.startObserved)
                 return
 
+            availabilityTimeout.stop()
             root.available = false
             root.count = 0
             console.warn("[Updates] Failed to start update availability probe")
         }
 
-        onStarted: checkAvailabilityProc.startObserved = true
+        onStarted: {
+            checkAvailabilityProc.startObserved = true
+            checkAvailabilityProc.timedOut = false
+            availabilityTimeout.restart()
+        }
 
         onExited: (exitCode, exitStatus) => {
+            availabilityTimeout.stop()
+            if (checkAvailabilityProc.timedOut) {
+                root.available = false
+                root.count = 0
+                console.warn("[Updates] Timed out probing checkupdates availability")
+                return
+            }
             root.available = (exitCode === 0);
             if (!root.available)
                 root.count = 0;
@@ -101,9 +114,22 @@ Singleton {
         }
     }
 
+    Timer {
+        id: availabilityTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!checkAvailabilityProc.running)
+                return
+            checkAvailabilityProc.timedOut = true
+            checkAvailabilityProc.running = false
+        }
+    }
+
     Process {
         id: checkUpdatesProc
         property bool startObserved: false
+        property bool timedOut: false
         command: ["checkupdates"]
 
         onRunningChanged: {
@@ -114,12 +140,17 @@ Singleton {
             if (checkUpdatesProc.startObserved)
                 return
 
+            updateCheckTimeout.stop()
             root.count = 0
             root.available = false
             console.warn("[Updates] Failed to start checkupdates")
         }
 
-        onStarted: checkUpdatesProc.startObserved = true
+        onStarted: {
+            checkUpdatesProc.startObserved = true
+            checkUpdatesProc.timedOut = false
+            updateCheckTimeout.restart()
+        }
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -128,6 +159,12 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
+            updateCheckTimeout.stop()
+            if (checkUpdatesProc.timedOut) {
+                root.count = 0
+                console.warn("[Updates] Timed out checking for system updates")
+                return
+            }
             // pacman-contrib checkupdates uses exit 2 for the normal
             // "no updates available" state. Clear any stale previous count and
             // reserve error logging for genuine failures.
@@ -139,6 +176,18 @@ Singleton {
                 root.count = 0;
                 console.error("[Updates] checkupdates failed", exitCode, exitStatus)
             }
+        }
+    }
+
+    Timer {
+        id: updateCheckTimeout
+        interval: 120000
+        repeat: false
+        onTriggered: {
+            if (!checkUpdatesProc.running)
+                return
+            checkUpdatesProc.timedOut = true
+            checkUpdatesProc.running = false
         }
     }
 }

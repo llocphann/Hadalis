@@ -75,12 +75,15 @@ Singleton {
     property bool stopwatchPaused: Persistent.states?.timer?.stopwatch?.paused ?? false
     property int stopwatchTime: 0
     property int stopwatchStart: Persistent.states?.timer?.stopwatch?.start ?? 0
-    property var stopwatchLaps: Persistent.states?.timer?.stopwatch?.laps ?? []
+    property var stopwatchLaps: {
+        const stored = Persistent.states?.timer?.stopwatch?.laps
+        return Array.isArray(stored) ? stored : []
+    }
 
     // Countdown Timer
     property bool countdownRunning: Persistent.states?.timer?.countdown?.running ?? false
     property bool countdownPaused: Persistent.states?.timer?.countdown?.paused ?? false
-    property int countdownDuration: Persistent.states?.timer?.countdown?.duration ?? 300
+    property int countdownDuration: root._positiveInt(Persistent.states?.timer?.countdown?.duration, 300)
     property int countdownSecondsLeft: countdownDuration
 
     // Initialize when Persistent is ready
@@ -224,7 +227,10 @@ Singleton {
     }
 
     function stopwatchRecordLap() {
-        Persistent.states.timer.stopwatch.laps.push(stopwatchTime);
+        const stored = Persistent.states?.timer?.stopwatch?.laps
+        const laps = Array.isArray(stored) ? stored.slice() : []
+        laps.push(stopwatchTime)
+        Persistent.states.timer.stopwatch.laps = laps
     }
 
     // Countdown Timer
@@ -276,10 +282,10 @@ Singleton {
     }
 
     function setCountdownDuration(seconds: int): void {
-        Persistent.states.timer.countdown.duration = seconds;
-        countdownDuration = seconds;
+        const normalized = root._positiveInt(seconds, 300)
+        Persistent.states.timer.countdown.duration = normalized;
         if (!countdownRunning) {
-            countdownSecondsLeft = seconds;
+            countdownSecondsLeft = normalized;
         }
     }
 }

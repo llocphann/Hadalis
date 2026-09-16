@@ -21,6 +21,24 @@ Item {
 
     implicitHeight: eventRow.implicitHeight + 10
     implicitWidth: parent?.width ?? 200
+    activeFocusOnTab: root.interactive
+    Accessible.role: root.interactive ? Accessible.Button : Accessible.StaticText
+    Accessible.name: root.event?.title ?? Translation.tr("Event")
+    Accessible.focusable: root.interactive
+    Accessible.onPressAction: {
+        if (root.interactive)
+            root.clicked()
+    }
+
+    Keys.onPressed: event => {
+        if (!root.interactive || event.isAutoRepeat
+                || (event.key !== Qt.Key_Return
+                    && event.key !== Qt.Key_Enter
+                    && event.key !== Qt.Key_Space))
+            return
+        root.clicked()
+        event.accepted = true
+    }
 
     readonly property bool isExternal: (root.event?.source ?? "local") === "external"
     readonly property bool isAllDay: root.event?.allDay ?? false
@@ -61,6 +79,8 @@ Item {
         id: bg
         anchors.fill: parent
         radius: root.cardRadius
+        border.width: root.activeFocus && root.interactive ? 1 : 0
+        border.color: root.colPrimary
         color: eventMA.containsMouse && root.interactive ? root.colCardHover : "transparent"
 
         Behavior on color {

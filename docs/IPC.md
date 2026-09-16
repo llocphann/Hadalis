@@ -76,27 +76,6 @@ bind "Mod+Space" { spawn "inir" "overview" "toggle"; }
 
 ---
 
-### orbit
-
-Niri-only Material session navigator for the ii family. Orbit presents nearby workspaces and readable window previews, with MRU Trail navigation and temporary Stash parking.
-
-| Function | Description |
-|----------|-------------|
-| `toggle` | Open/close Orbit |
-| `open` | Open Orbit on the focused output |
-| `close` | Close Orbit if it is active |
-| `pocket` | Open Orbit directly into Pocket |
-| `studio` | Open Orbit directly into the live Studio editor |
-| `find` | Open Orbit Focus Lens and filter session windows by app or title |
-| `stage` | Open Orbit in the classic Stage view for this session |
-| `orbital` | Open Orbit in the Orbital workspace view for this session |
-| `next` | Switch Niri to the next workspace while Orbit stays open |
-| `previous` | Switch Niri to the previous workspace while Orbit stays open |
-| `status` | Print the effective Orbit runtime state used by diagnostics and visual audits |
-| `toggleView` | Switch the open Orbit session between Stage and Orbital |
-
----
-
 ### taskview
 
 Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on ii/Niri it routes to Orbit.
@@ -106,23 +85,6 @@ Compatibility entry point for task navigation. On Waffle it opens the Waffle Tas
 | `toggle` | Open/close the active family's task navigator |
 | `open` | Open the active family's task navigator |
 | `close` | Close the active family's task navigator |
-
----
-
-### workspaceStrip
-
-Workspace edge strip. Shows a compact per-workspace rail and expands it for switching without opening the full overview.
-
-| Function | Description |
-|----------|-------------|
-| `open` | Keep the strip expanded |
-| `close` | Return the strip to hover/peek mode |
-| `toggle` | Toggle forced expansion |
-| `status` | Return strip state (`open` or `auto`) |
-
-```kdl
-bind "Super+Tab" { spawn "inir" "workspaceStrip" "toggle"; }
-```
 
 ---
 
@@ -136,23 +98,6 @@ Floating tools (Super+G): notes, images, crosshair, recorder, resources and othe
 
 ```kdl
 bind "Super+G" { spawn "inir" "overlay" "toggle"; }
-```
-
----
-
-### pill
-
-The pill bar's morphing surfaces (only registered while Bar appearance is set to Pill). Valid surface names: `power`, `media`, `battery`, `calendar`, `link`, `mixer`, `sysmon`, `clipboard`, `glance`, `launcher`, `recorder`.
-
-| Function | Description |
-|----------|-------------|
-| `open` | Open a surface by name on the focused monitor |
-| `close` | Close the open surface |
-| `toggle` | Open a surface, or close it if already open |
-| `state` | Print the open surface name, or `closed` |
-
-```kdl
-bind "Super+V" repeat=false { spawn "inir" "pill" "toggle" "clipboard"; }
 ```
 
 ---
@@ -374,37 +319,6 @@ Centered welcome hub panel (ii family): greeting, clock, notifications, media, w
 | `toggle` | Open/close dashboard |
 | `open` | Open dashboard |
 | `close` | Close dashboard |
-
----
-
-### mascot
-
-Playful mascot companion (needs `mascot.enable` and the companion switch in Settings › Mascot). She peeks from screen edges and reacts to events; every reaction and its pose is configurable in the dedicated Mascot settings page. Never appears over fullscreen apps, game mode, the lock screen or the session screen.
-
-| Function | Description |
-|----------|-------------|
-| `poke` | Ask her to peek from a random edge with a random pose |
-| `status` | Return JSON diagnostics for mood, configured/effective voice, companion state and non-sensitive Screen Time counters |
-| `setVoice <mode>` | Set the idle voice register to `adaptive`, `casual`, `dry`, `composed` or `chaotic` |
-| `appear <pose> <edge>` | Show a specific catalog pose from `left`, `right`, `top` or `bottom` |
-| `appearContextual <pose> <sourceWidget>` | Show near the triggering widget (`battery`, `media`, `update`, `network`, `dnd`). Requires `mascot.companion.contextualPlacement` to be enabled for event reactions; this IPC call bypasses that check for testing. |
-| `appearWithLine <pose> <edge> <line>` | Show a specific pose saying an exact line (used by the bar widget easter eggs) |
-| `romp` | Chaos mode: she runs across the desktop and bonks a widget, wrecks one onto the floor, hurls one to a new spot, rampages through several, kicks the bar/dock, or ground-slams so everything rattles. Needs `mascot.chaos.enable`; widgets only keep new positions with `mascot.chaos.allowRearrange` |
-| `chase` | Chase game: she hunts your mouse, every click is a spot she pounces on; click *her* to catch her and win |
-| `hideSeek` | Hide-and-seek: she tucks into a spot on the desktop. Click her before the 20s timeout to find her, otherwise she wins by default |
-| `tidy` | Undo the chaos: every displaced widget returns to its pre-chaos position |
-| `hide` | Send her away immediately |
-
----
-
-### mascotMood
-
-Session-long mood state that flavors the mascot's idle lines (needs `mascot.personality.enabled`). The mood re-rolls on a jittered interval and starts from the time of day.
-
-| Function | Description |
-|----------|-------------|
-| `set <mood>` | Force a mood: `neutral`, `sleepy`, `hyper`, `snarky` or `contemplative` |
-| `current` | Print the current mood |
 
 ---
 

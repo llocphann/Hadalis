@@ -7,6 +7,7 @@ repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
 migration="$repo_root/sdata/migrations/038-tlp-profile-backend.sh"
 pkgbuild="$repo_root/sdata/dist-arch/inir-deps/PKGBUILD"
 tlp_service="$repo_root/services/TlpService.qml"
+power_persistence="$repo_root/services/PowerProfilePersistence.qml"
 
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT
@@ -32,6 +33,11 @@ assert_log() {
 assert_file_contains() {
   local needle=$1 file=$2 message=$3
   grep -Fq -- "$needle" "$file" || fail "$message"
+}
+
+assert_text_contains() {
+  local needle=$1 text=$2 message=$3
+  grep -Fq -- "$needle" <<<"$text" || fail "$message"
 }
 
 # The UI exposes the Radio Device Wizard, so Arch installs must include the
@@ -64,6 +70,35 @@ assert_file_contains 'applyProcess.running = false' "$tlp_service" \
   'TLP battery policy apply timeout must stop the helper process'
 assert_file_contains 'root.busy = false' "$tlp_service" \
   'TLP battery policy apply exit must release the busy state'
+
+# Power profile restore must fail closed while tlp-pd ownership is unknown. A
+# Process startup failure must cancel the timeout without pretending the probe
+# completed; a real start arms the timeout, and the timeout must not stop an
+# already-failed/not-running process.
+tlp_probe_running_block="$(sed -n '/^[[:space:]]*onRunningChanged: {/,/^[[:space:]]*onStarted: {/p' "$power_persistence")"
+tlp_probe_started_block="$(sed -n '/^[[:space:]]*onStarted: {/,/^[[:space:]]*onExited:/p' "$power_persistence")"
+tlp_probe_timeout_block="$(sed -n '/^[[:space:]]*id: tlpPdTimeout$/,/^[[:space:]]*\/\/ Re-probe/p' "$power_persistence")"
+[[ -n "$tlp_probe_running_block" && -n "$tlp_probe_started_block" && -n "$tlp_probe_timeout_block" ]] \
+  || fail 'PowerProfilePersistence tlp-pd lifecycle blocks are missing'
+assert_text_contains 'tlpPdProbe.startObserved = false' "$tlp_probe_running_block" \
+  'tlp-pd startup attempt must begin unobserved'
+assert_text_contains 'if (tlpPdProbe.startObserved)' "$tlp_probe_running_block" \
+  'tlp-pd startup-failure handling must distinguish a real process start'
+assert_text_contains 'tlpPdTimeout.stop()' "$tlp_probe_running_block" \
+  'tlp-pd startup failure must cancel its timeout'
+assert_text_contains 'root._tlpProbeDone = false' "$tlp_probe_running_block" \
+  'tlp-pd startup failure must keep ownership unknown'
+if grep -Fq 'root._tlpProbeDone = true' <<<"$tlp_probe_running_block"; then
+  fail 'tlp-pd startup failure must not mark ownership probing complete'
+fi
+assert_text_contains 'tlpPdProbe.startObserved = true' "$tlp_probe_started_block" \
+  'tlp-pd process start must be observed before timeout handling'
+assert_text_contains 'tlpPdTimeout.restart()' "$tlp_probe_started_block" \
+  'tlp-pd process start must arm its timeout'
+assert_text_contains 'if (!tlpPdProbe.running)' "$tlp_probe_timeout_block" \
+  'tlp-pd timeout must ignore an already-stopped process'
+assert_text_contains 'tlpPdProbe.timedOut = true' "$tlp_probe_timeout_block" \
+  'tlp-pd timeout must mark an actually running probe as timed out'
 
 mkdir -p "$tmp/bin" "$tmp/state"
 : > "$tmp/systemctl.log"
@@ -205,4 +240,4 @@ if migration_check; then
 fi
 
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - TLP lifecycle and battery policy timeout guards are present'
+printf '%s\n' 'ok 1 - TLP lifecycle and power-profile probe guards are present'

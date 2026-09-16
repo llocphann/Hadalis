@@ -9,6 +9,7 @@ DialogListItem {
     required property var device
     property bool expanded: false
     pointingHandCursor: !expanded
+    buttonText: root.device?.name || Translation.tr("Unknown device")
 
     onClicked: expanded = !expanded
     altAction: () => expanded = !expanded

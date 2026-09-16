@@ -122,4 +122,36 @@ printf '%s\n' 'binds {' '  Mod+Q repeat=false { spawn "inir" "close-window"; }' 
 grep -Fq "$wrapper" "$fixture" \
     || fail 'migration did not install the robust launcher wrapper'
 
+# Older Niri installs can keep bindings directly in config.kdl. Exercise the
+# migration through the real framework rather than calling migration_apply
+# directly: the framework must back up the same monolithic file it mutates.
+monolithic_root="$tmp/monolithic-config"
+monolithic_fixture="$monolithic_root/niri/config.kdl"
+mkdir -p "$(dirname -- "$monolithic_fixture")"
+printf '%s\n' 'binds {' '  Mod+Q repeat=false { spawn "inir" "close-window"; }' '}' > "$monolithic_fixture"
+(
+    export HOME="$tmp/home"
+    export XDG_CONFIG_HOME="$monolithic_root"
+    export REPO_ROOT="$repo_root"
+    export STY_RED='' STY_GREEN='' STY_RST=''
+    tui_dim() { :; }
+    tui_check_ok() { :; }
+    tui_check_fail() { :; }
+    tui_info() { :; }
+    # shellcheck source=/dev/null
+    source "$repo_root/sdata/lib/migrations.sh"
+    apply_migration '040-niri-inir-keybind-path' true
+)
+
+backup_file="$(find "$monolithic_root/inir/backups" -type f -name config.kdl -print -quit 2>/dev/null || true)"
+[[ -n "$backup_file" && -f "$backup_file" ]] \
+    || fail 'monolithic keybind migration did not back up config.kdl'
+grep -Fq 'spawn "inir" "close-window"' "$backup_file" \
+    || fail 'monolithic migration backup does not preserve the pre-migration bind'
+if grep -Fq "$wrapper" "$backup_file"; then
+    fail 'monolithic migration backup was captured after mutation'
+fi
+grep -Fq "$wrapper" "$monolithic_fixture" \
+    || fail 'full migration framework did not repair monolithic config.kdl'
+
 printf 'PASS: Niri keybind launcher lookup contracts\n'

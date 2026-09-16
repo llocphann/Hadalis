@@ -18,6 +18,10 @@ step "shell syntax"
 bash -n \
     "$runtime_root/setup" \
     "$runtime_root/scripts/inir" \
+    "$runtime_root/scripts/release.sh" \
+    "$runtime_root/scripts/verify-docs.sh" \
+    "$runtime_root/scripts/wiki-sync.sh" \
+    "$runtime_root/scripts/ai/gemini-translate.sh" \
     "$runtime_root/scripts/test-thinkfan-helper.sh" \
     "$runtime_root/scripts/test-tlp-integration-lifecycle.sh" \
     "$runtime_root/scripts/test-tlp-settings-ui-guards.sh" \

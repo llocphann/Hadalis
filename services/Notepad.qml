@@ -80,11 +80,11 @@ Singleton {
         _save()
     }
 
-    // Guard: FileView fires onLoaded after our own setText() write (it watches
-    // the file). Without this, a self-write reload re-parses a stale/cached
-    // buffer and reassigns tabs/currentTab mid-edit, dropping freshly added
-    // tabs or their text. Skip the reload that our own save triggers.
+    // FileView fires onLoaded after our own setText() write. Keep at most one
+    // self-write in flight so a later callback cannot fall through into the
+    // disk parser while newer in-memory edits are waiting to be persisted.
     property bool _saving: false
+    property bool _saveQueued: false
     // Fresh-start mkdir is asynchronous. While it is running, keep edits in
     // memory and persist the latest state once the directory is ready.
     property bool _storageInitializing: false
@@ -92,6 +92,10 @@ Singleton {
     function _save() {
         if (_storageInitializing)
             return
+        if (_saving) {
+            _saveQueued = true
+            return
+        }
         _saving = true
         tabsFileView.setText(JSON.stringify({ currentTab: currentTab, tabs: tabs }))
     }
@@ -108,7 +112,14 @@ Singleton {
         path: Qt.resolvedUrl(root.tabsFilePath)
 
         onLoaded: {
-            if (root._saving) { root._saving = false; return }
+            if (root._saving) {
+                root._saving = false
+                if (root._saveQueued) {
+                    root._saveQueued = false
+                    Qt.callLater(() => root._save())
+                }
+                return
+            }
             try {
                 const data = JSON.parse(tabsFileView.text())
                 const loadedTabs = root._normalizeTabs(data?.tabs)

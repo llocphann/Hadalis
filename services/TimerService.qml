@@ -25,6 +25,19 @@ Singleton {
         return Number.isFinite(parsed) && parsed > 0 ? Math.max(1, Math.round(parsed)) : fallback
     }
 
+    function _stopwatchTick(value): int {
+        const parsed = Number(value)
+        if (!Number.isFinite(parsed)) return 0
+
+        // Keep 10 ms wall-clock ticks inside the signed 32-bit range used by
+        // Persistent.states.timer.stopwatch.start and stopwatchTime. Elapsed
+        // values use the same modulus, so wraparound remains monotonic for the
+        // full duration an int stopwatch can represent (~248 days).
+        const modulus = 2147483648
+        const tick = Math.floor(parsed)
+        return ((tick % modulus) + modulus) % modulus
+    }
+
     // Helper to sync all pomodoro values from Config
     function _syncPomodoroConfig() {
         root.focusTime = root._positiveInt(Config.options?.time?.pomodoro?.focus, 1500)
@@ -44,6 +57,7 @@ Singleton {
 
     Component.onCompleted: {
         if (Config.ready) root._syncPomodoroConfig()
+        if (Persistent.ready && root.stopwatchRunning) root.refreshStopwatch()
     }
 
     property bool pomodoroRunning: Persistent.states?.timer?.pomodoro?.running ?? false
@@ -74,7 +88,7 @@ Singleton {
     property bool stopwatchRunning: Persistent.states?.timer?.stopwatch?.running ?? false
     property bool stopwatchPaused: Persistent.states?.timer?.stopwatch?.paused ?? false
     property int stopwatchTime: 0
-    property int stopwatchStart: Persistent.states?.timer?.stopwatch?.start ?? 0
+    property int stopwatchStart: root._stopwatchTick(Persistent.states?.timer?.stopwatch?.start ?? 0)
     property var stopwatchLaps: {
         const stored = Persistent.states?.timer?.stopwatch?.laps
         return Array.isArray(stored) ? stored : []
@@ -94,6 +108,10 @@ Singleton {
                 // Reset local state if not running (don't write to Persistent, just sync local vars)
                 if (!root.stopwatchRunning) {
                     root.stopwatchTime = 0
+                } else {
+                    // Paused stopwatches do not run their refresh timer, so restore
+                    // the elapsed value explicitly when persisted state becomes ready.
+                    root.refreshStopwatch()
                 }
                 if (!root.countdownRunning) {
                     root.countdownSecondsLeft = root.countdownDuration
@@ -106,8 +124,8 @@ Singleton {
         return Math.floor(Date.now() / 1000);
     }
 
-    function getCurrentTimeIn10ms() {  // Stopwatch uses 10ms
-        return Math.floor(Date.now() / 10);
+    function getCurrentTimeIn10ms() {  // Stopwatch uses 10ms ticks kept in int range
+        return root._stopwatchTick(Date.now() / 10);
     }
 
     // Pomodoro
@@ -177,8 +195,8 @@ Singleton {
     }
 
     // Stopwatch
-    function refreshStopwatch() {  // Stopwatch stores time in 10ms
-        stopwatchTime = getCurrentTimeIn10ms() - stopwatchStart;
+    function refreshStopwatch() {  // Stopwatch stores elapsed time in 10ms ticks
+        stopwatchTime = root._stopwatchTick(getCurrentTimeIn10ms() - stopwatchStart);
     }
 
     Timer {
@@ -194,13 +212,13 @@ Singleton {
             Persistent.states.timer.stopwatch.paused = !stopwatchPaused;
             if (!stopwatchPaused) {
                 // Resuming - adjust start time
-                Persistent.states.timer.stopwatch.start = getCurrentTimeIn10ms() - stopwatchTime;
+                Persistent.states.timer.stopwatch.start = root._stopwatchTick(getCurrentTimeIn10ms() - stopwatchTime);
             }
         } else {
             if (stopwatchTime === 0) Persistent.states.timer.stopwatch.laps = [];
             Persistent.states.timer.stopwatch.running = true;
             Persistent.states.timer.stopwatch.paused = false;
-            Persistent.states.timer.stopwatch.start = getCurrentTimeIn10ms() - stopwatchTime;
+            Persistent.states.timer.stopwatch.start = root._stopwatchTick(getCurrentTimeIn10ms() - stopwatchTime);
         }
     }
 
@@ -215,7 +233,7 @@ Singleton {
     function stopwatchResume() {
         if (stopwatchTime === 0) Persistent.states.timer.stopwatch.laps = [];
         Persistent.states.timer.stopwatch.paused = false;
-        Persistent.states.timer.stopwatch.start = getCurrentTimeIn10ms() - stopwatchTime;
+        Persistent.states.timer.stopwatch.start = root._stopwatchTick(getCurrentTimeIn10ms() - stopwatchTime);
         if (!stopwatchRunning) Persistent.states.timer.stopwatch.running = true;
     }
 

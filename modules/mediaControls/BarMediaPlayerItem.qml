@@ -330,7 +330,7 @@ Item { // Player instance - Old style design
                                     handleColor: Appearance.inirEverywhere ? Appearance.inir.colPrimary
                                         : Appearance.auroraEverywhere ? Appearance.colors.colPrimary
                                         : blendedColors.colPrimary
-                                    value: root.player?.position / root.player?.length
+                                    value: root.player?.length > 0 ? root.player.position / root.player.length : 0
                                     onMoved: {
                                         root.player.position = value * root.player.length;
                                     }
@@ -353,7 +353,7 @@ Item { // Player instance - Old style design
                                     trackColor: Appearance.inirEverywhere ? Appearance.inir.colLayer2
                                         : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
                                         : blendedColors.colSecondaryContainer
-                                    value: root.player?.position / root.player?.length
+                                    value: root.player?.length > 0 ? root.player.position / root.player.length : 0
                                 }
                             }
                         }

@@ -33,6 +33,8 @@ def main() -> None:
         "_lingerVisible",
         "retractTimer",
         "progress: root.revealProgress",
+        "|| root.popupHovered",
+        "enabled: root.active",
     ):
         check(token in styled_popup, f"StyledPopup must preserve connected-perimeter contract: {token}")
     for edge in ("top", "bottom", "left", "right"):

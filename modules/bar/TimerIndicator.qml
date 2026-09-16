@@ -275,6 +275,7 @@ MouseArea {
     // Tooltip
     TimerIndicatorTooltip {
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
         pomodoroActive: root.pomodoroActive
         countdownActive: root.countdownActive
         stopwatchActive: root.stopwatchActive

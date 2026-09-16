@@ -107,7 +107,7 @@ release_version="$(tr -d '[:space:]' < "$repo_root/VERSION")"
 release_notes="$tmp/release-notes.md"
 (
     cd "$tmp"
-    bash "$release_script" notes "$release_version" "$release_notes"
+    bash "$release_script" notes "$release_version" release-notes.md
 )
 grep -Fq 'Update: https://github.com/llocphann/Hadalis/blob/stable/docs/SETUP.md#update' "$release_notes" \
     || fail 'release notes generation lost the update documentation link'
@@ -120,7 +120,7 @@ import sys
 text = Path(sys.argv[1]).read_text()
 publish = text.split('publish_release() {', 1)[1].split('\n}\n\nmain() {', 1)[0]
 preflight = publish.find('require_release_version_consistency "$version"')
-tag_check = publish.find('git rev-parse --verify "$tag"')
+tag_check = publish.find('rev-parse --verify "$tag"')
 checkout = publish.find('require_release_checkout "$tag"')
 if preflight < 0 or tag_check < 0 or checkout < 0 or not (preflight < tag_check < checkout):
     raise SystemExit('release publish must run version preflight before tag/checkout validation')

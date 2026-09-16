@@ -48,6 +48,10 @@ Singleton {
     // from the initial setText() and destroy the list.
     property bool _startupLock: true
 
+    // Fresh-start directory creation is asynchronous. Keep UI edits in memory
+    // until storage is ready, then persist the latest list once.
+    property bool _storageInitializing: false
+
     // --- Public API ---
 
     function _normalizeList(value) {
@@ -108,6 +112,8 @@ Singleton {
     // --- Persistence helpers ---
 
     function _persistAll() {
+        if (root._storageInitializing)
+            return
         todoFileView.setText(JSON.stringify(root.list))
         if (!root._suppressTxtWrite) {
             _writeTxt()
@@ -125,9 +131,8 @@ Singleton {
     }
 
     function _finishMissingInitialization(): void {
-        root.list = []
-        todoFileView.setText(JSON.stringify(root.list))
-        root._writeTxt()
+        root._storageInitializing = false
+        root._persistAll()
         startupUnlock.start()
     }
 
@@ -225,6 +230,7 @@ Singleton {
             if (error == FileViewError.FileNotFound) {
                 console.log("[Todo] JSON not found, creating new file.")
                 root.list = []
+                root._storageInitializing = true
                 root._ensureStorageDirectories()
             } else {
                 console.log("[Todo] Error loading JSON:", error)
@@ -246,7 +252,9 @@ Singleton {
             if (!todoInitDirProc.attempted || todoInitDirProc.startObserved)
                 return
             todoInitDirProc.attempted = false
+            root._storageInitializing = false
             console.warn("[Todo] Failed to start storage directory creation")
+            root._persistAll()
             startupUnlock.start()
         }
 
@@ -257,7 +265,9 @@ Singleton {
             if (exitCode === 0) {
                 root._finishMissingInitialization()
             } else {
+                root._storageInitializing = false
                 console.warn("[Todo] Failed to create storage directories, exit code:", exitCode)
+                root._persistAll()
                 startupUnlock.start()
             }
         }

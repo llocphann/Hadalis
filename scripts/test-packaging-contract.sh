@@ -31,8 +31,9 @@ meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
 nix_pkg="nix/package.nix"
 stable_hook="distro/arch/inir-shell/inir-shell.install"
 git_hook="distro/arch/inir-shell-git/inir-shell-git.install"
+uninstall_doc="docs/UNINSTALL.md"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$uninstall_doc"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -155,6 +156,20 @@ grep -Fq 'systemctl --user cat inir.service' "$nix_pkg" \
   || fail 'Nix package no longer validates the declarative inir.service before start/restart'
 grep -Fq 'install|uninstall|remove|enable|disable)' "$nix_pkg" \
   || fail 'Nix service ownership guard no longer covers all mutating service commands'
+
+# Teardown docs must preserve the ownership boundary across all install modes.
+grep -Fq 'inir service disable' "$uninstall_doc" \
+  || fail 'uninstall docs no longer remove per-user service wiring before manual/package removal'
+grep -Fq 'inir service uninstall' "$uninstall_doc" \
+  || fail 'uninstall docs no longer remove the manual make-install user unit before launcher removal'
+grep -Fq 'sudo make uninstall' "$uninstall_doc" \
+  || fail 'uninstall docs no longer document Makefile teardown'
+grep -Fq '/usr/lib/systemd/user/inir.service' "$uninstall_doc" \
+  || fail 'uninstall docs no longer identify pacman service ownership'
+grep -Fq 'NixOS/Home Manager modules own `inir.service` declaratively' "$uninstall_doc" \
+  || fail 'uninstall docs no longer preserve declarative Nix service ownership'
+grep -Fq 'Run it as the user whose iNiR service was configured' "$uninstall_doc" \
+  || fail 'uninstall docs no longer warn against root cross-home cleanup'
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - packaging metadata and distribution contracts are coherent'

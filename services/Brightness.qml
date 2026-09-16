@@ -191,11 +191,18 @@ Singleton {
             if (running)
                 root._ddcNext = []
         }
-        onExited: {
-            if (root._ddcNext.length > 0)
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0) {
+                // A successful empty probe means all DDC displays disappeared.
+                // Replace the snapshot even when no blocks were parsed so stale
+                // model/bus mappings cannot survive a hot-unplug.
                 root.ddcMonitors = root._ddcNext
+                root.ddcMonitorsChanged()
+            } else {
+                // Preserve the last known-good mapping on transient probe errors.
+                console.warn("[Brightness] ddcutil detect failed; keeping previous monitor snapshot", exitCode, exitStatus)
+            }
             root._ddcNext = []
-            root.ddcMonitorsChanged()
         }
     }
 

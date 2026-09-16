@@ -17,8 +17,10 @@ switchwall="scripts/colors/switchwall.sh"
 color_generator="scripts/colors/generate_colors_material.py"
 zed_module="scripts/colors/modules/31-zed.sh"
 easyeffects_service="services/deferred/EasyEffects.qml"
+default_config="defaults/config.json"
+awww_service="services/AwwwBackend.qml"
 
-for file in "$common" "$nixos" "$home" "$package" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service"; do
+for file in "$common" "$nixos" "$home" "$package" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
   [[ -f "$file" ]] || fail "missing Nix/runtime contract file: $file"
 done
 
@@ -66,6 +68,15 @@ grep -Fq 'Quickshell.execDetached(["/usr/bin/env", "easyeffects", "--service-mod
   || fail 'EasyEffects service no longer exercises the PATH-resolved native runtime contract'
 grep -Fq '++ optionalTop "easyeffects"' "$package" \
   || fail 'Nix runtime no longer provides EasyEffects for the default audio integration'
+
+python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["background"]["backend"]["provider"] == "awww"' "$default_config" \
+  || fail 'fresh-install wallpaper backend is no longer awww; update the Nix runtime contract deliberately'
+grep -Fq 'readonly property string provider: "awww"' "$awww_service" \
+  || fail 'Awww backend no longer exposes the expected provider identity'
+grep -Fq 'let command = "awww img"' "$awww_service" \
+  || fail 'Awww backend no longer exercises the awww client runtime contract'
+grep -Fq '++ optionalTop "awww"' "$package" \
+  || fail 'Nix runtime no longer provides the fresh-install awww wallpaper backend'
 
 bash -n "$zed_module" || fail 'Zed theming module has invalid Bash syntax'
 grep -Fq 'python_cmd="$(venv_python)"' "$zed_module" \

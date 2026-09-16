@@ -191,7 +191,7 @@ Item {
                     }
                     onClicked: MprisController.setActivePlayer(modelData)
                     cursorShape: Qt.PointingHandCursor
-                    z: -1
+                    z: 3
                 }
             }
         }

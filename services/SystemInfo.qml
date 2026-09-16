@@ -104,7 +104,26 @@ Singleton {
 
     Process {
         id: getUsername
+        property bool startObserved: false
         command: ["/usr/bin/id", "-un"]
+
+        onRunningChanged: {
+            if (getUsername.running) {
+                getUsername.startObserved = false
+                return
+            }
+            if (getUsername.startObserved)
+                return
+
+            const name = Quickshell.env("USER") || root.username || "user"
+            root.username = name
+            getDisplayName.command = ["/usr/bin/getent", "passwd", name]
+            getDisplayName.running = true
+            console.warn("[SystemInfo] Failed to start username lookup; using environment fallback")
+        }
+
+        onStarted: getUsername.startObserved = true
+
         stdout: StdioCollector {
             id: usernameCollector
             onStreamFinished: {
@@ -119,7 +138,23 @@ Singleton {
     Process {
         id: getDisplayName
         running: false
+        property bool startObserved: false
         command: ["/usr/bin/getent", "passwd", root.username]
+
+        onRunningChanged: {
+            if (getDisplayName.running) {
+                getDisplayName.startObserved = false
+                return
+            }
+            if (getDisplayName.startObserved)
+                return
+
+            root.displayName = root.username
+            console.warn("[SystemInfo] Failed to start display-name lookup; using username fallback")
+        }
+
+        onStarted: getDisplayName.startObserved = true
+
         stdout: StdioCollector {
             id: displayNameCollector
             onStreamFinished: {

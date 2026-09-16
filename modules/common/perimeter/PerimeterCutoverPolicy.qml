@@ -11,18 +11,26 @@ QtObject {
         (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
     // Placement is perimeter-owned once the user opts in, but some legacy
     // behavior policies still need dedicated adapters. Fail safe to legacy for
-    // those unsupported modes instead of silently changing interaction semantics.
+    // unsupported modes only when the corresponding surface is actually owned;
+    // disabled chrome must not block an otherwise valid perimeter cutover.
     readonly property bool compatibilityReady: {
         Config.revision
         if (!Config.ready)
             return false
+        const enabledPanels = Config.options?.enabledPanels ?? []
+        const barIdentifier = (Config.options?.bar?.vertical ?? false)
+            ? "iiVerticalBar" : "iiBar"
+        const barOwned = enabledPanels.includes(barIdentifier)
         const barAutoHide = Config.options?.bar?.autoHide?.enable ?? false
+        const barPolicySupported = !barOwned || !barAutoHide
+
+        const dockOwned = enabledPanels.includes("iiDock")
         const dockEnabled = Config.options?.dock?.enable ?? true
         const dockPinned = Config.options?.dock?.pinnedOnStartup ?? true
         const dockHoverReveal = Config.options?.dock?.hoverToReveal ?? false
-        const dockPolicySupported = !dockEnabled
+        const dockPolicySupported = !dockOwned || !dockEnabled
             || (dockPinned && !dockHoverReveal)
-        return !barAutoHide && dockPolicySupported
+        return barPolicySupported && dockPolicySupported
     }
     readonly property bool configurationValid: {
         Config.revision

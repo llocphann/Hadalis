@@ -1,9 +1,9 @@
 # HADALIS — BOT HANDOFF
 
-Updated: 2026-09-16 22:59 +07:00
+Updated: 2026-09-17 00:48 +07:00
 Branch: `dev`
 Observed user runtime commit: `799b52c3`
-Current `dev` HEAD when this handoff policy was updated: `0245958a35f68c409ddb59c033f6cbe99ad17ba7`
+Current `dev` HEAD when this handoff policy was updated: `b34ffc174237ba2bec28944064d0b3319276f91d`
 
 All bots: read this after `docs/BOT_PROTOCOL.md`, then fetch current `dev` before changing anything. This file is a handoff, not proof that an item is still open. Reconcile every item against live source first and avoid duplicate/reversion work.
 
@@ -104,21 +104,23 @@ Niri itself was healthy: shell config loaded, shellEntryReady fired, Niri socket
 
 ## CURRENT-HEAD RECONCILIATION
 
-At `0245958a35f68c409ddb59c033f6cbe99ad17ba7`:
+At `b34ffc174237ba2bec28944064d0b3319276f91d`:
 
 - `modules/perimeter/PerimeterRuntime.qml` no longer instantiates `CompositorFocusGrab`; commit `4e124b29` uses `HyprlandFocusGrab` directly with `Quickshell.Hyprland` imported and `CompositorService.isHyprland` in the active condition. The compatibility `CompositorFocusGrab.qml` implementation and its `qmldir` export still exist, so do not treat the old `799b52c3` missing-type signature as a current live consumer without new runtime evidence.
 - `modules/bootGreeting/BootGreeting.qml` no longer contains the failing `MascotAnimation`/`MascotImage` block seen in the maintainer runtime.
 - `modules/closeConfirm/CloseConfirmContent.qml` no longer contains the failing `MascotImage` usage seen in the maintainer runtime.
 - `modules/pill` is no longer absent. Commit `d82660cc` restored a **theme-only** local module (`PillTheme.qml` + `qmldir`) because live consumers still use its theme tokens. `qs.modules.pill` is therefore not a dangling import on current source; do not delete it merely to mirror the old runtime incident.
 - Bot 4 source guards are fixed in source: `a6fa3d0a` added local `qs.*` module/type resolution checks, `4eb92eb6` wired them into `qml-check --all`, `9cf567a8` catches all code-level retired-type references, and `5aa22342` provides negative/positive fixtures reproducing the `799b52c3` failure classes.
-- Bot 4 staged-install coverage is also fixed in source: `b690c88e` runs `qml-check --all --root` against both fresh staged payload and in-place reinstall payload, so packaging omissions or mixed QML/module trees become a required local regression failure.
+- Bot 4 staged-install coverage is fixed in source: `b690c88e` runs `qml-check --all --root` against both fresh staged payload and in-place reinstall payload, so packaging omissions or mixed QML/module trees become a required local regression failure.
+- Bot 4 hardened critical-panel isolation in `c43e1e04` and `c8d3bd6f`: optional presentation imports can no longer bypass the guard via alias/semicolon spelling, and direct `PerimeterRuntime`/Bar/Dock/etc. object embedding is caught using real QML object/inline-component syntax.
+- Recovery-style install orphan cleanup is fixed in source by `1753cbc5`, and `b34ffc17` adds a sandboxed behavioral regression that executes the real Quickshell install-stage path with `IS_UPDATE=false`, proving managed retired root QML is removed while excluded/private runtime artifacts survive. This still requires an exact-SHA maintainer validator rerun before acceptance is closed.
 - No maintainer clean-clone/fresh-install runtime log exists yet for the current HEAD family. Source fixes and contracts must therefore remain `NEEDS-MAINTAINER-RERUN`, not `CLOSED`.
 
 ## BOT OWNERSHIP / NEXT ACTIONS
 
 ### Bot 1 — architecture/core
 
-**FIXED-IN-SOURCE at `8ce1f65c79b53d7cb6d64e5a1109e9bfca4a2055` / NEEDS-MAINTAINER-RERUN.** The startup dependency trace confirms `ShellIiPanelsImpl.qml` remains behind deferred URL loaders and is not a mandatory critical-startup dependency. `ShellIiCriticalPanels.qml` now separates runtime activation eligibility from final cutover ownership: the perimeter runtime may attempt instantiation only after config/source prerequisites pass, while legacy Bar/Dock remain authoritative until `PerimeterRuntime.qml` publishes a successful root readiness handshake. `PerimeterCutoverPolicy.enabled` now requires that handshake, and Connected Perimeter chrome itself cannot map when final cutover is false. `scripts/test-perimeter-family-contracts.sh` contains source guards for this contract.
+**FIXED-IN-SOURCE at `8ce1f65c79b53d7cb6d64e5a1109e9bfca4a2055` / NEEDS-MAINTAINER-RERUN.** The startup dependency trace confirms `ShellIiPanelsImpl.qml` remains behind deferred URL loaders and is not a mandatory critical-startup dependency. `ShellIiCriticalPanels.qml` separates runtime activation eligibility from final cutover ownership: the perimeter runtime may attempt instantiation only after config/source prerequisites pass, while legacy Bar/Dock remain authoritative until `PerimeterRuntime.qml` publishes a successful root readiness handshake. `PerimeterCutoverPolicy.enabled` requires that handshake, and Connected Perimeter chrome itself cannot map when final cutover is false. `scripts/test-perimeter-family-contracts.sh` contains source guards for this contract.
 
 Do not duplicate this source fix without new current-HEAD evidence. Required acceptance remains an exact-SHA local contract/parser run plus a Niri runtime rerun demonstrating that a missing/invalid optional perimeter presentation cannot remove critical fallback chrome.
 
@@ -132,11 +134,37 @@ The original missing-type/import signatures are fixed in current source. Continu
 
 ### Bot 3 — services/settings
 
-No primary service fault is indicated by this incident. Only act if tracing shows a service-controlled loader or setting can activate an invalid QML path. Do not spend time on Weather, Niri detection, or unrelated backend services for this incident.
+The original Niri/QML incident does not indicate a primary service fault, but Bot 4 lifecycle audit found two independent `ShellUpdates.qml` service gaps that should be reconciled against current HEAD before editing:
+
+```text
+ID: LOCAL-shell-updates-detail-start
+Priority: P2
+Status: OPEN
+Observed SHA: b34ffc174237ba2bec28944064d0b3319276f91d
+Observed by: Bot 4 source lifecycle audit
+Failure: a detail-fetch helper spawn failure can leave isFetchingDetails=true indefinitely
+Root-cause lane: Bot 3
+Primary owner: Bot 3
+Evidence: fetchDetails() sets isFetchingDetails=true and starts commitLogProc; commitLogProc -> remoteVersionProc -> localVersionProc -> remoteChangelogProc -> localModsProc only advances through onExited handlers, none of those five detail processes has failed-spawn recovery, and isFetchingDetails=false exists only in localModsProc.onExited.
+Required fix: every detail-fetch process startup failure must either continue a safe fallback chain or settle the detail request, clear the busy state, and leave a future fetch retryable.
+Acceptance: regression coverage proves failed startup at each detail stage cannot strand isFetchingDetails and does not publish stale detail data as current.
+
+ID: LOCAL-shell-updates-fetch-timeout
+Priority: P2
+Status: OPEN
+Observed SHA: b34ffc174237ba2bec28944064d0b3319276f91d
+Observed by: Bot 4 source lifecycle audit
+Failure: a successfully spawned but hung git fetch can leave the update checker permanently busy
+Root-cause lane: Bot 3
+Primary owner: Bot 3
+Evidence: fetchProc has failed-spawn recovery but runs `git fetch origin --quiet --no-tags` without a watchdog/timeout; check() sets isChecking=true and subsequent checks refuse to start while that state remains true.
+Required fix: bound the fetch/check lifecycle so a hung remote operation is terminated or abandoned deterministically, publishes a useful failure state, releases isChecking, and remains retryable without creating a restart loop.
+Acceptance: regression coverage demonstrates the timeout path settles isChecking, records a diagnostic failure, and a later check can start again.
+```
 
 ### Bot 4 — QA/regression
 
-**Incident guard work is FIXED-IN-SOURCE / NEEDS-MAINTAINER-RERUN.** Do not duplicate the local-module guard or fixture. Continue QA work on:
+**Incident guard work is FIXED-IN-SOURCE / NEEDS-MAINTAINER-RERUN.** Do not duplicate the local-module guard, critical-panel isolation hardening, staged QML fixture, or recovery-install orphan fixture. Continue QA work on:
 
 - canonical validator false-red/false-green defects;
 - staged install/runtime regression coverage;
@@ -147,25 +175,26 @@ The current guard must continue to fail on source equivalent to `799b52c3` while
 
 ### Bot 5 — install/package/docs/release
 
-Source regression coverage now checks fresh staged and reinstall QML/module resolution via `b690c88e`. Continue verifying `./setup install`, packaged installs, and real update/uninstall behavior so an older installed tree cannot remain mixed with current QML. Do not claim criterion 5 closed until a maintainer/current-HEAD staging or clean-clone acceptance run supplies the required evidence.
+Source regression coverage checks fresh staged/reinstall QML/module resolution via `b690c88e`. Continue verifying packaged installs and real update/uninstall behavior so an older installed tree cannot remain mixed with current QML. Do not claim criterion 5 closed until a maintainer/current-HEAD staging or clean-clone acceptance run supplies the required evidence.
 
-Bot 5 fixes already landed in the current `dev` family include fail-closed config namespace migration, runtime-payload mirror cleanup for Make/Arch staging, byte-preserving reviewed localization repair tooling, release-gated localization provenance, and uninstall path literalization. `b66087ce` removes unsafe `eval` re-expansion from managed uninstall paths, `d41246fc` makes uninstall path safety release-required, and `030f012d` makes every `translations/l10n/*-repairs.json` provenance state release-required without applying or pruning translations.
+Bot 5 fixes already landed in the current `dev` family include fail-closed config namespace migration, runtime-payload mirror cleanup for Make/Arch staging, byte-preserving reviewed localization repair tooling, release-gated localization provenance, uninstall path literalization, and recovery-install orphan cleanup. `b66087ce` removes unsafe `eval` re-expansion from managed uninstall paths, `d41246fc` makes uninstall path safety release-required, `030f012d` makes every `translations/l10n/*-repairs.json` provenance state release-required without applying or pruning translations, and `1753cbc5` makes managed orphan cleanup run after every source-install runtime refresh rather than only explicit updates.
 
-Still-open Bot 5 queue after source audit:
+Current Bot 5 queue:
 
 ```text
 ID: LOCAL-setup-recovery-orphans
 Priority: P1
-Status: OPEN
+Status: NEEDS-MAINTAINER-RERUN
 Observed SHA: f24da74ecf333b14ed1a70fa77cfdaadbe2d6ab7
 Observed by: Bot 5 source/install lifecycle audit
-Failure: recovery-style ./setup install can preserve retired root-level QML when IS_UPDATE=false
+Failure: recovery-style ./setup install could preserve retired root-level QML when IS_UPDATE=false
 Root-cause lane: Bot 5
 Primary owner: Bot 5
-Evidence: sdata/subcmd-install/3.files.sh finalizes the canonical .inir-manifest but calls cleanup_orphans only inside an IS_UPDATE=true guard; managed subdirectories use rsync --delete while root QML is copied file-by-file.
-Required fix: every managed runtime refresh must remove manifest-orphaned root QML/source-only files while preserving runtime-exclusion/private artifacts; update backup/runtime verification semantics may remain update-only.
-Acceptance: a regression exercises an existing/partial runtime through the install path with IS_UPDATE=false and proves retired managed root QML is removed while excluded/private artifacts survive.
-Notes: do not move cleanup side effects into generate_manifest merely to avoid editing the installer; that helper is intentionally manifest-only.
+Supporting owner(s): Bot 4 regression coverage
+Evidence: `1753cbc5` moves cleanup_orphans outside the IS_UPDATE guard after manifest finalization. `b34ffc17` behaviorally executes the real Quickshell install-stage prefix in an isolated XDG tree with IS_UPDATE=false and asserts retired managed root QML is removed, excluded/private test artifacts survive, and neither fixture leaks into the canonical manifest.
+Required fix: fixed in source; retain orphan cleanup for every managed runtime refresh while keeping update backup/runtime verification semantics update-only.
+Acceptance: canonical maintainer validator on the exact current SHA runs `scripts/test-setup-recovery-runtime-refresh.sh` successfully; environment-specific install smoke remains Bot 5 evidence where required.
+Notes: do not move cleanup side effects into generate_manifest; that helper is intentionally manifest-only.
 
 ID: LOCAL-uninstall-dangling-owned-link
 Priority: P2
@@ -187,7 +216,7 @@ Observed by: Bot 5 localization/catalog audit
 Failure: three reviewed Turkish usage placeholders remain pending in translations/tr_TR.json
 Root-cause lane: Bot 5
 Primary owner: Bot 5
-Evidence: translations/l10n/tr_TR-placeholder-repairs.json records three exact reviewed from/to repairs; live tr_TR catalog blob remains c8b36d43888e85bfde60b9c0f300b81d18fc064f. The helper can validate/apply them byte-preservingly in a checkout, while the GitHub connector currently offers only whole-file replacement for the 272 KB catalog.
+Evidence: translations/l10n/tr_TR-placeholder-repairs.json records three exact reviewed from/to repairs; the helper can validate/apply them byte-preservingly in a checkout.
 Required fix: apply exactly the reviewed replacements without bulk rewriting or pruning historical translations, then run locale audit/source parity.
 Acceptance: reviewed-replacement --status reports applied and the canonical localization/docs/source-parity gates pass on the exact tested SHA.
 ```
@@ -200,6 +229,6 @@ Do not mark this incident closed until a current-HEAD/fresh-install test demonst
 2. No `quickshell.qmlscanner: Ignoring unresolvable import ".../modules/pill"` remains from always-loaded shell files.
 3. On Niri, `Configuration Loaded` and `shellEntryReady` are followed by visible bar/critical shell panels.
 4. A repo guard/test detects missing local QML-module imports or dangling retired-type references on critical startup paths. **FIXED-IN-SOURCE** by the Bot 4 guard/fixture commits above; still requires inclusion in an exact-SHA maintainer rerun.
-5. Install/update staging does not leave a mixed old/new QML payload. **CONTRACT COVERED IN SOURCE** by staged fresh/reinstall checks in `b690c88e`; still requires exact-SHA maintainer rerun and any environment-specific install verification owned by Bot 5.
+5. Install/update staging does not leave a mixed old/new QML payload. **CONTRACT COVERED IN SOURCE** by staged fresh/reinstall checks in `b690c88e` plus recovery-install behavioral coverage in `b34ffc17`; still requires exact-SHA maintainer rerun and any environment-specific install verification owned by Bot 5.
 
 When an item is fixed by another commit before your turn, record the evidence and move to the next still-open item instead of recreating the same patch.

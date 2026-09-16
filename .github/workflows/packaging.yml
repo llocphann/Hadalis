@@ -15,6 +15,9 @@ on:
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
       - 'scripts/test-nix-module-contract.sh'
+      - 'services/AwwwBackend.qml'
+      - 'services/deferred/EasyEffects.qml'
+      - 'defaults/config.json'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
       - 'sdata/lib/doctor.sh'
@@ -34,6 +37,7 @@ on:
       - 'docs/RELEASING.md'
       - 'docs/THINKFAN.md'
       - 'docs/UNINSTALL.md'
+      - '.github/workflows/nix.yml'
       - '.github/workflows/packaging.yml'
   pull_request:
     paths:
@@ -49,6 +53,9 @@ on:
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
       - 'scripts/test-nix-module-contract.sh'
+      - 'services/AwwwBackend.qml'
+      - 'services/deferred/EasyEffects.qml'
+      - 'defaults/config.json'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
       - 'sdata/lib/doctor.sh'
@@ -68,6 +75,7 @@ on:
       - 'docs/RELEASING.md'
       - 'docs/THINKFAN.md'
       - 'docs/UNINSTALL.md'
+      - '.github/workflows/nix.yml'
       - '.github/workflows/packaging.yml'
   workflow_dispatch:
 
@@ -108,7 +116,7 @@ jobs:
       - name: Parse Arch recipes and lifecycle hooks
         run: |
           bash -n distro/arch/inir-shell/PKGBUILD
-          bash -n distro/arch/inir-shell-git/PKGBUILD
-          bash -n distro/arch/inir-meta/PKGBUILD
           bash -n distro/arch/inir-shell/inir-shell.install
+          bash -n distro/arch/inir-shell-git/PKGBUILD
           bash -n distro/arch/inir-shell-git/inir-shell-git.install
+          bash -n distro/arch/inir-meta/PKGBUILD

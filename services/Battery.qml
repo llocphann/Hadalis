@@ -15,20 +15,32 @@ Singleton {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
+    function _thresholdPercent(value, fallback: real): real {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : fallback
+    }
+
     property bool available: UPower.displayDevice.isLaptopBattery
     property var chargeState: UPower.displayDevice.state
     property bool isCharging: chargeState == UPowerDeviceState.Charging
-    property bool isPluggedIn: isCharging || chargeState == UPowerDeviceState.PendingCharge
+    property bool isPluggedIn: isCharging
+        || chargeState == UPowerDeviceState.PendingCharge
+        || chargeState == UPowerDeviceState.FullyCharged
     // Discharging-based, not !isPluggedIn: FullyCharged on AC must not count as "on battery"
     readonly property bool onBattery: available && (chargeState == UPowerDeviceState.Discharging || chargeState == UPowerDeviceState.PendingDischarge)
     property real percentage: UPower.displayDevice?.percentage ?? 1
     readonly property bool allowAutomaticSuspend: Config.options?.battery?.automaticSuspend ?? false
     readonly property bool soundEnabled: Config.options?.sounds?.battery ?? true
 
-    property bool isLow: available && (percentage <= ((Config.options?.battery?.low ?? 20) / 100))
-    property bool isCritical: available && (percentage <= ((Config.options?.battery?.critical ?? 10) / 100))
-    property bool isSuspending: available && (percentage <= ((Config.options?.battery?.suspend ?? 5) / 100))
-    property bool isFull: available && (percentage >= ((Config.options?.battery?.full ?? 95) / 100))
+    readonly property real lowThreshold: root._thresholdPercent(Config.options?.battery?.low, 20)
+    readonly property real criticalThreshold: root._thresholdPercent(Config.options?.battery?.critical, 10)
+    readonly property real suspendThreshold: root._thresholdPercent(Config.options?.battery?.suspend, 5)
+    readonly property real fullThreshold: root._thresholdPercent(Config.options?.battery?.full, 95)
+
+    property bool isLow: available && (percentage <= (root.lowThreshold / 100))
+    property bool isCritical: available && (percentage <= (root.criticalThreshold / 100))
+    property bool isSuspending: available && (percentage <= (root.suspendThreshold / 100))
+    property bool isFull: available && (percentage >= (root.fullThreshold / 100))
 
     property bool isLowAndNotCharging: isLow && onBattery
     property bool isCriticalAndNotCharging: isCritical && onBattery
@@ -85,7 +97,7 @@ Singleton {
         Quickshell.execDetached([
             "/usr/bin/notify-send", 
             Translation.tr("Critically low battery"), 
-            Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(Config.options?.battery?.suspend ?? 5), 
+            Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(root.suspendThreshold), 
             "-u", "critical",
             "-a", "Shell",
             "--hint=int:transient:1",

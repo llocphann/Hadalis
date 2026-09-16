@@ -163,7 +163,7 @@ Singleton {
     Process {
         id: pkillProc
         running: false
-        command: ["/usr/bin/env", "pkill", "easyeffects"]
+        command: ["/usr/bin/env", "pkill", "-x", "easyeffects"]
         onExited: (_exitCode, _exitStatus) => refreshStateTimer.restart()
     }
 

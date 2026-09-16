@@ -2,11 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import qs.modules.background
-import qs.modules.bar
-import qs.modules.dock
 import qs.modules.perimeter
-import qs.modules.verticalBar
 import qs.modules.common
 import qs.modules.common.perimeter
 
@@ -57,13 +53,31 @@ Item {
             && extraCondition
     }
 
+    // Keep presentation QML behind URL boundaries. A syntax or local-type
+    // failure in an optional surface must not make this critical root unavailable
+    // before its LazyLoader activation policy can be evaluated.
     LazyLoader {
         active: Config.ready && root.perimeterEnabled
-        component: PerimeterRuntime {}
+        source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml")
     }
 
-    CriticalPanelLoader { identifier: "iiBackground"; component: Background {} }
-    CriticalPanelLoader { identifier: "iiBar"; extraCondition: !root.perimeterEnabled && !root.barVertical; component: Bar {} }
-    CriticalPanelLoader { identifier: "iiVerticalBar"; extraCondition: !root.perimeterEnabled && root.barVertical; component: VerticalBar {} }
-    CriticalPanelLoader { identifier: "iiDock"; extraCondition: !root.perimeterEnabled && (Config.options?.dock?.enable ?? true); component: Dock {} }
+    CriticalPanelLoader {
+        identifier: "iiBackground"
+        source: Qt.resolvedUrl("../../background/Background.qml")
+    }
+    CriticalPanelLoader {
+        identifier: "iiBar"
+        extraCondition: !root.perimeterEnabled && !root.barVertical
+        source: Qt.resolvedUrl("../../bar/Bar.qml")
+    }
+    CriticalPanelLoader {
+        identifier: "iiVerticalBar"
+        extraCondition: !root.perimeterEnabled && root.barVertical
+        source: Qt.resolvedUrl("../../verticalBar/VerticalBar.qml")
+    }
+    CriticalPanelLoader {
+        identifier: "iiDock"
+        extraCondition: !root.perimeterEnabled && (Config.options?.dock?.enable ?? true)
+        source: Qt.resolvedUrl("../../dock/Dock.qml")
+    }
 }

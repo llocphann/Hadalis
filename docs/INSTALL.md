@@ -1,12 +1,12 @@
 # Installation
 
-> **Arch Linux only.** The installer only supports Arch-based distros. If you're on something else, you're on your own - check the manual section below and figure out the equivalent packages for your distro.
+> **Primary path: Arch Linux.** `./setup install` also has distro-specific dependency routing for mutable Fedora systems and Debian/Ubuntu. Fedora Atomic/immutable systems and other distributions fall back to generic/manual guidance, so expect more manual intervention outside the primary Arch path.
 >
 > **NixOS:** there is an experimental flake path. See [NixOS](NIXOS.md).
 
 ---
 
-## The Easy Way (Arch)
+## The Easy Way
 
 ```bash
 git clone https://github.com/llocphann/Hadalis.git
@@ -32,7 +32,7 @@ Log out and back in, or just restart Niri. Done.
 
 ## The Hard Way (Manual)
 
-For when you're not on Arch, or you enjoy pain.
+Use this for unsupported distributions, packaging-style source installs, or when a distro-specific dependency installer needs manual recovery.
 
 ### 1. Get dependencies
 
@@ -68,8 +68,10 @@ For everything else, check [PACKAGES.md](PACKAGES.md). It's organized by categor
 > **Note on quickshell package:** iNiR intentionally uses `quickshell` from official repos to avoid long AUR compile times and update-time build failures.
 >
 > **Runtime extras used by features:**
-> - `socat` for YTMusic IPC fallback control
+> - `socat` for YTMusic IPC fallback control and, when available, optional EasyEffects Equalizer transport
 > - `fprintd` for fingerprint lockscreen support
+>
+> EasyEffects itself is optional. The Equalizer capability stays unavailable when its backend/transport is absent; normal Media playback and volume controls continue to work.
 >
 > **Optional content packs** (`./setup` → Extras): the iNiR-Walls wallpaper
 > pack, the ii-pixel-sddm login theme, and YAMIS icons.

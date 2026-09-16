@@ -27,6 +27,8 @@ Item {
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
     property real popupRounding: Appearance.rounding.normal
+    property real screenX: 0
+    property real screenY: 0
     
     // Cache to prevent flickering during track transitions
     property var _playerCache: []
@@ -78,6 +80,7 @@ Item {
                 values: root._visiblePlayers
             }
             delegate: Item {
+                id: playerDelegate
                 required property MprisPlayer modelData
                 required property int index
                 Layout.fillWidth: true
@@ -117,12 +120,15 @@ Item {
                 }
                 
                 PlayerControl {
+                    id: playerControl
                     anchors.fill: parent
                     anchors.leftMargin: root._visiblePlayers.length > 1
                         ? Appearance.sizes.elevationMargin : 0
                     player: modelData
                     visualizerPoints: []
                     radius: root.popupRounding
+                    screenX: root.screenX + playerDelegate.x + playerControl.x
+                    screenY: root.screenY + playerDelegate.y + playerControl.y
                 }
 
                 Rectangle {

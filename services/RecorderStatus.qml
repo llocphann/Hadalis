@@ -158,18 +158,20 @@ Singleton {
 
     // Quick recheck after a recording action (start/stop) to catch state change fast
     function scheduleQuickCheck(): void {
+        quickCheckTimer.initialRecordingState = root.isRecording
         quickCheckTimer.attemptsRemaining = 6
         quickCheckTimer.restart()
     }
     Timer {
         id: quickCheckTimer
+        property bool initialRecordingState: false
         property int attemptsRemaining: 0
         interval: 350
         repeat: true
         onTriggered: {
             root.refreshStatus()
             attemptsRemaining = Math.max(0, attemptsRemaining - 1)
-            if (root.isRecording || attemptsRemaining <= 0)
+            if (root.isRecording !== initialRecordingState || attemptsRemaining <= 0)
                 stop()
         }
     }

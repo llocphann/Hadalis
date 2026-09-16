@@ -180,6 +180,27 @@ Item {
             id: barMediaPopup
             visible: true
             color: "transparent"
+            grabFocus: CompositorService.isNiri && root.barMediaPopupVisible
+
+            Component.onCompleted: Qt.callLater(() => popupKeyHandler.forceActiveFocus())
+
+            Item {
+                id: popupKeyHandler
+                anchors.fill: parent
+                focus: true
+                Keys.onPressed: event => {
+                    if (event.key !== Qt.Key_Escape) return
+                    root.barMediaPopupVisible = false
+                    event.accepted = true
+                }
+            }
+
+            CompositorFocusGrab {
+                active: CompositorService.isHyprland && root.barMediaPopupVisible
+                windows: [barMediaPopup]
+                onCleared: root.barMediaPopupVisible = false
+            }
+
             anchor {
                 window: root.QsWindow.window
                 item: root

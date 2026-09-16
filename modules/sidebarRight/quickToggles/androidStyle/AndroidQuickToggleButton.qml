@@ -210,7 +210,10 @@ GroupButton {
             const toggleList = [...(Config.options?.sidebar?.quickToggles?.android?.toggles ?? [])];
             const existingIndex = toggleList.findIndex(toggle => toggle && toggle.type === buttonType);
             if (existingIndex === -1) return;
-            toggleList[existingIndex].size = 3 - toggleList[existingIndex].size; // Alternate between 1 and 2
+            const toggle = toggleList[existingIndex];
+            const configuredSize = Number(toggle?.size ?? 1);
+            const normalizedSize = Number.isFinite(configuredSize) && Math.round(configuredSize) === 2 ? 2 : 1;
+            toggleList[existingIndex] = Object.assign({}, toggle, { size: normalizedSize === 1 ? 2 : 1 });
             Config.setNestedValue("sidebar.quickToggles.android.toggles", toggleList);
         }
 

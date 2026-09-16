@@ -50,6 +50,7 @@ let
       pulseaudio
       wireplumber
     ]
+    ++ optionalTop "util-linux"
     ++ optionalTop "brightnessctl"
     ++ optionalTop "cava"
     ++ optionalTop "ddcutil"

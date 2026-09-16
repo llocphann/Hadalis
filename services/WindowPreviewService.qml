@@ -118,14 +118,41 @@ Singleton {
     
     Process {
         id: ensureDirProcess
+        property bool startObserved: false
         command: ["/usr/bin/mkdir", "-p", root.previewDir]
+        onRunningChanged: {
+            if (ensureDirProcess.running) {
+                ensureDirProcess.startObserved = false
+                return
+            }
+            if (ensureDirProcess.startObserved)
+                return
+
+            console.warn("[WindowPreviewService] preview directory helper failed to start")
+            sessionReadProcess.running = true
+        }
+        onStarted: ensureDirProcess.startObserved = true
         onExited: sessionReadProcess.running = true
     }
 
     Process {
         id: sessionReadProcess
+        property bool startObserved: false
         command: ["/usr/bin/cat", root.sessionMarkerPath]
         stdout: StdioCollector { id: sessionReadOutput }
+        onRunningChanged: {
+            if (sessionReadProcess.running) {
+                sessionReadProcess.startObserved = false
+                return
+            }
+            if (sessionReadProcess.startObserved)
+                return
+
+            console.warn("[WindowPreviewService] session marker reader failed to start")
+            if (root.initialized && !root.sessionReady)
+                root._resetForCurrentSession()
+        }
+        onStarted: sessionReadProcess.startObserved = true
         onExited: exitCode => {
             if (!root.initialized || root.sessionReady) return
             const previousKey = exitCode === 0 ? sessionReadOutput.text.trim() : ""
@@ -146,11 +173,29 @@ Singleton {
 
     Process {
         id: sessionResetProcess
+        property bool startObserved: false
         command: [
             "/usr/bin/find", root.previewDir,
             "-maxdepth", "1", "-type", "f",
             "-name", "window-*.png", "-delete"
         ]
+        onRunningChanged: {
+            if (sessionResetProcess.running) {
+                sessionResetProcess.startObserved = false
+                return
+            }
+            if (sessionResetProcess.startObserved)
+                return
+
+            console.warn("[WindowPreviewService] session reset helper failed to start")
+            root.previewCache = ({})
+            root.sessionReady = true
+            if (root.sessionKey.length > 0)
+                sessionFileView.setText(root.sessionKey + "\n")
+            root.captureComplete()
+            root._resumeRequestedCapture()
+        }
+        onStarted: sessionResetProcess.startObserved = true
         onExited: {
             root.previewCache = ({})
             root.sessionReady = true
@@ -163,6 +208,7 @@ Singleton {
     
     Process {
         id: scanProcess
+        property bool startObserved: false
         command: ["/usr/bin/ls", "-1", root.previewDir]
         stdout: SplitParser {
             onRead: data => {
@@ -177,6 +223,22 @@ Singleton {
                 }
             }
         }
+        onRunningChanged: {
+            if (scanProcess.running) {
+                scanProcess.startObserved = false
+                return
+            }
+            if (scanProcess.startObserved)
+                return
+
+            console.warn("[WindowPreviewService] preview cache scan failed to start")
+            root.cleanupOrphans()
+            root.previewCache = Object.assign({}, root.previewCache)
+            root.sessionReady = true
+            root.captureComplete()
+            root._resumeRequestedCapture()
+        }
+        onStarted: scanProcess.startObserved = true
         onExited: {
             _log("[WindowPreviewService] Loaded", Object.keys(root.previewCache).length, "cached previews")
             root.cleanupOrphans()
@@ -315,6 +377,7 @@ Singleton {
     Process {
         id: captureProcess
         property var idsToCapture: []
+        property bool startObserved: false
 
         stdout: SplitParser {
             onRead: (line) => _log("[WindowPreviewService:capture]", line)
@@ -322,6 +385,26 @@ Singleton {
         stderr: SplitParser {
             onRead: (line) => _log("[WindowPreviewService:capture][err]", line)
         }
+
+        onRunningChanged: {
+            if (captureProcess.running) {
+                captureProcess.startObserved = false
+                return
+            }
+            if (captureProcess.startObserved)
+                return
+
+            console.warn("[WindowPreviewService] capture process failed to start")
+            root.capturing = false
+            root._lastCaptureEndTime = Date.now()
+            idsToCapture = []
+            Cliphist.suppressRefresh = false
+            Cliphist.refresh()
+            root.captureComplete()
+            if (root._hasPendingCaptureRequest())
+                captureDebounceTimer.restart()
+        }
+        onStarted: captureProcess.startObserved = true
         
         onExited: (exitCode, exitStatus) => {
             root.capturing = false

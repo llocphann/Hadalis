@@ -84,7 +84,12 @@ Singleton {
     Process {
         id: tlpPdProbe
         property bool timedOut: false
-        command: ["/usr/bin/systemctl", "is-enabled", "--quiet", "tlp-pd.service"]
+        command: [
+            "/usr/bin/sh",
+            "-c",
+            "/usr/bin/systemctl is-active --quiet tlp-pd.service || " +
+            "/usr/bin/systemctl is-enabled --quiet tlp-pd.service"
+        ]
 
         onStarted: {
             tlpPdProbe.timedOut = false

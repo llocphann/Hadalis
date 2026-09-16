@@ -17,7 +17,11 @@ Singleton {
     // ── Config ────────────────────────────────────────────────────────────
     readonly property bool enabled: Config.options?.performance?.memoryMonitoring ?? true
     readonly property bool notifyEnabled: Config.options?.performance?.memoryWarningNotification ?? false
-    readonly property int deletedMappingsThreshold: Config.options?.performance?.jsgcThreshold ?? 300
+    readonly property int deletedMappingsThreshold: {
+        const configured = Number(Config.options?.performance?.jsgcThreshold)
+        return Number.isFinite(configured) && configured > 0
+            ? Math.max(1, Math.round(configured)) : 300
+    }
     readonly property int checkIntervalMs: 300000  // check every 5 min
 
     // ── State ─────────────────────────────────────────────────────────────
@@ -78,7 +82,7 @@ Singleton {
     }
 
     function _checkMemoryPressure(): void {
-        if (!root.enabled) return
+        if (!root.enabled || _mapsReader.running) return
         _mapsReader.running = true
     }
 
@@ -111,6 +115,7 @@ Singleton {
     // ── Maps reader ───────────────────────────────────────────────────────
     Process {
         id: _mapsReader
+        property bool startObserved: false
         // /proc/$PPID, not /proc/self: this runs in an sh child of the shell, so
         // /proc/self is that sh process (zero JSGCHeap mappings) and the counter
         // always read 0 — the threshold could never trip. $PPID is the shell.
@@ -127,6 +132,21 @@ Singleton {
                 lineNum++
             }
         }
+        onRunningChanged: {
+            if (_mapsReader.running) {
+                _mapsReader.startObserved = false
+                _mapsReader.stdout.lineNum = 0
+                return
+            }
+            if (_mapsReader.startObserved)
+                return
+
+            _mapsReader.stdout.lineNum = 0
+            root.currentDeletedMappings = 0
+            root.currentTotalMappings = 0
+            root._log("maps reader failed to start")
+        }
+        onStarted: _mapsReader.startObserved = true
         onExited: (code, status) => {
             _mapsReader.stdout.lineNum = 0
             

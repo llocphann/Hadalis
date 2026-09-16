@@ -49,6 +49,10 @@ Item {
         root.slideDirection = 1
         MprisController.nextForPlayer(root.player)
     }
+
+    function focusPrimaryControl(): void {
+        playPauseButton.forceActiveFocus()
+    }
     
     // Screen position for aurora glass effect
     property real screenX: 0

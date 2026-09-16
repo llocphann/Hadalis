@@ -117,10 +117,11 @@ Singleton {
 
     MediaArtworkResolver {
         id: coverArt
-        sourceUrl: root.coverSourceUrl
-        title: root.coverTitle
-        artist: root.coverArtist
-        album: root.coverAlbum
+        readonly property bool active: root.enabled && root.useCoverSource
+        sourceUrl: active ? root.coverSourceUrl : ""
+        title: active ? root.coverTitle : ""
+        artist: active ? root.coverArtist : ""
+        album: active ? root.coverAlbum : ""
         cacheDirectory: Directories.coverArt
 
         onReadyChanged: if (coverArt.ready) root._scheduleCoverRefresh()

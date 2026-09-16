@@ -74,10 +74,10 @@ Singleton {
                 return
             }
             const parsed = root._parseRss(xhr.responseText)
-            root._cache[url] = parsed
-            root._cacheTimestamps[url] = Date.now()
             if (generation !== root._requestGeneration)
                 return
+            root._cache[url] = parsed
+            root._cacheTimestamps[url] = Date.now()
             root.loading = false
             root.lastError = ""
             root.articles = parsed

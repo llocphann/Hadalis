@@ -1,6 +1,7 @@
 module qs.modules.perimeter
 singleton PerimeterFeatureRegistry 1.0 PerimeterFeatureRegistry.qml
 singleton PerimeterReservationPolicy 1.0 PerimeterReservationPolicy.qml
+singleton PerimeterPresentationPolicy 1.0 PerimeterPresentationPolicy.qml
 PerimeterRuntime 1.0 PerimeterRuntime.qml
 WorkspacesModule 1.0 WorkspacesModule.qml
 SystemMonitorModule 1.0 SystemMonitorModule.qml

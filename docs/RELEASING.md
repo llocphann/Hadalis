@@ -30,10 +30,17 @@ Keep the package archive filename tagged as well; `scripts/release.sh publish` c
 
 ## Validate before promotion
 
-Run the repository checks that cover packaging, generated state, install lifecycle, privileged package helpers, documentation, QML startup, the Equalizer Phase 1 service boundary, and optional dependency boundaries:
+The maintainer acceptance command is the clean-clone validator:
 
 ```bash
-make test-local
+bash scripts/validate-maintainer-local.sh
+```
+
+It clones `dev` into a temporary directory, records the exact tested SHA, runs the required build/syntax, translation, IPC, documentation, QML/startup, non-Nix regression, packaging, and staged install/uninstall checks without stopping at the first failure, and leaves the maintainer's daily-use checkout untouched. Dedicated Nix validation is intentionally skipped by this acceptance path.
+
+For targeted diagnosis inside a development checkout, the release-relevant non-Nix contracts can also be run directly:
+
+```bash
 bash scripts/test-packaging-contract.sh
 bash scripts/test-doctor-dependency-routing.sh
 bash scripts/test-equalizer-boundary-contract.sh

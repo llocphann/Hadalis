@@ -9,6 +9,21 @@ QtObject {
 
     readonly property bool requested:
         (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
+    // Placement is perimeter-owned once the user opts in, but some legacy
+    // behavior policies still need dedicated adapters. Fail safe to legacy for
+    // those unsupported modes instead of silently changing interaction semantics.
+    readonly property bool compatibilityReady: {
+        Config.revision
+        if (!Config.ready)
+            return false
+        const barAutoHide = Config.options?.bar?.autoHide?.enable ?? false
+        const dockEnabled = Config.options?.dock?.enable ?? true
+        const dockPinned = Config.options?.dock?.pinnedOnStartup ?? true
+        const dockHoverReveal = Config.options?.dock?.hoverToReveal ?? false
+        const dockPolicySupported = !dockEnabled
+            || (dockPinned && !dockHoverReveal)
+        return !barAutoHide && dockPolicySupported
+    }
     readonly property bool configurationValid: {
         Config.revision
         if (!Config.ready || Quickshell.screens.length === 0)
@@ -36,6 +51,7 @@ QtObject {
         return true
     }
     readonly property bool enabled: root.requested
+        && root.compatibilityReady
         && root.configurationValid
         && root.sourcesReady
     readonly property bool fallbackActive: root.requested && !root.enabled
@@ -48,6 +64,8 @@ QtObject {
             return "no-outputs"
         if (!root.configurationValid)
             return "invalid-config"
+        if (!root.compatibilityReady)
+            return "unsupported-runtime-policy"
         if (!root.sourcesReady)
             return "missing-module-source"
         return "active"

@@ -9,8 +9,10 @@ on:
       - 'scripts/inir'
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
+      - 'scripts/test-doctor-dependency-routing.sh'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
+      - 'sdata/lib/doctor.sh'
       - 'sdata/lib/runtime-payload.py'
       - 'sdata/runtime-root-files.txt'
       - 'sdata/runtime-payload-dirs.txt'
@@ -35,8 +37,10 @@ on:
       - 'scripts/inir'
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
+      - 'scripts/test-doctor-dependency-routing.sh'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
+      - 'sdata/lib/doctor.sh'
       - 'sdata/lib/runtime-payload.py'
       - 'sdata/runtime-root-files.txt'
       - 'sdata/runtime-payload-dirs.txt'
@@ -73,6 +77,11 @@ jobs:
 
       - name: Validate packaging contracts
         run: bash scripts/test-packaging-contract.sh
+
+      - name: Validate doctor dependency routing
+        run: |
+          bash -n scripts/test-doctor-dependency-routing.sh
+          bash scripts/test-doctor-dependency-routing.sh
 
       - name: Validate Makefile install lifecycle
         run: |

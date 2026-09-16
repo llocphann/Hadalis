@@ -158,6 +158,8 @@ grep -Fq '&& PerimeterPresentationPolicy.sidebarSurfaceEnabled(true)' "$runtime"
     || fail 'runtime can focus a disabled left sidebar'
 grep -Fq '&& PerimeterPresentationPolicy.sidebarSurfaceEnabled(false)' "$runtime" \
     || fail 'runtime can focus a disabled right sidebar'
+grep -Fxq 'import qs.modules.common.widgets' "$runtime" \
+    || fail 'runtime does not import common widgets for CompositorFocusGrab'
 grep -Fq 'PerimeterPresentationPolicy.sidebarSurfaceEnabled(root.featureRole)' \
     "$sidebar_module" || fail 'sidebar module ignores panel ownership'
 backdrop_block="$(sed -n '/id: dualSidebarBackdrop/,/^        }/p' "$ii_panels")"

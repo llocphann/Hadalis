@@ -144,9 +144,19 @@ else
   note "python3 and translations/tools/l10n.py are required for locale validation"
 fi
 
-# 7. Generated IPC CLI registry must be in sync with docs/IPC.md + QML targets.
-#    A stale scripts/lib/ipc-registry.sh breaks the `inir <target> <fn>` shorthand
-#    even though the IPC itself works — the bug that hid the dashboard target.
+# 7a. The IPC metadata parser must preserve escaped Markdown table pipes and
+#     normalize documented function signatures to their QML function names.
+if command -v python3 >/dev/null 2>&1 && [ -f scripts/test-ipc-registry-generator.py ]; then
+  echo "[IPC] registry Markdown parser"
+  python3 scripts/test-ipc-registry-generator.py \
+    || note "IPC registry Markdown parser regression failed"
+else
+  note "python3 and scripts/test-ipc-registry-generator.py are required for IPC registry parser validation"
+fi
+
+# 7b. Generated IPC CLI registry must be in sync with docs/IPC.md + QML targets.
+#     A stale scripts/lib/ipc-registry.sh breaks the `inir <target> <fn>` shorthand
+#     even though the IPC itself works — the bug that hid the dashboard target.
 if command -v python3 >/dev/null 2>&1 && [ -f scripts/lib/generate-ipc-registry.py ]; then
   echo "[IPC] generated CLI registry freshness"
   python3 scripts/lib/generate-ipc-registry.py --check >/dev/null 2>&1 \

@@ -73,12 +73,17 @@ for path in "${expected_files[@]}"; do
   }
 done
 
+runtime_dir="$stage$prefix/share/quickshell/inir"
+if ! fish "$repo_root/scripts/qml-check.fish" --all --root "$runtime_dir"; then
+  printf 'FAIL: fresh staged runtime QML/module resolution is invalid\n' >&2
+  exit 1
+fi
+
 # An in-place reinstall must mirror the managed runtime tree. Seed the exact
 # class of retired module that caused the mixed-runtime startup incident, a
 # retired root-level QML file, plus an excluded private/test artifact that the
 # payload policy intentionally does not own. Reinstalling must prune managed
 # stale QML without deleting the excluded artifact.
-runtime_dir="$stage$prefix/share/quickshell/inir"
 stale_module="$runtime_dir/modules/pill/Stale.qml"
 stale_root_qml="$runtime_dir/RetiredRoot.qml"
 preserved_excluded="$runtime_dir/scripts/test-local-private.sh"
@@ -95,6 +100,10 @@ for stale_path in "$stale_module" "$stale_root_qml"; do
 done
 if [[ ! -f "$preserved_excluded" ]]; then
   printf 'FAIL: make reinstall deleted an excluded private/test runtime artifact\n' >&2
+  exit 1
+fi
+if ! fish "$repo_root/scripts/qml-check.fish" --all --root "$runtime_dir"; then
+  printf 'FAIL: reinstalled staged runtime QML/module resolution is invalid\n' >&2
   exit 1
 fi
 

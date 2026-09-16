@@ -10,6 +10,7 @@ import Quickshell.Io
 
 QuickToggleButton {
     id: root
+    accessibleName: Translation.tr("Wi-Fi")
     toggled: Network.wifiEnabled
     buttonIcon: Network.materialSymbol
     onClicked: Network.toggleWifi()

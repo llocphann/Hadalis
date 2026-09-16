@@ -146,11 +146,10 @@ case "${SKIP_QUICKSHELL}" in
     # Finalize manifest
     mv "${II_TARGET}/.inir-manifest.new" "${II_TARGET}/.inir-manifest"
 
-    # Cleanup orphan files (files that no longer exist in repo)
-    if [[ "${IS_UPDATE}" == "true" ]]; then
-      log_info "Cleaning up orphan files..."
-      cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"
-    fi
+    # Cleanup orphan files after every managed runtime refresh. A recovery-style
+    # install can target an existing/partial runtime just like update can.
+    log_info "Cleaning up orphan files..."
+    cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"
 
     # Fix script permissions
     log_info "Setting script permissions..."

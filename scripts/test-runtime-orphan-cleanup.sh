@@ -66,6 +66,31 @@ cmp -s "$repo_root/modules/pill/PillTheme.qml" "$live_pill_dir/PillTheme.qml" \
 cmp -s "$repo_root/modules/pill/qmldir" "$live_pill_dir/qmldir" \
     || fail 'runtime orphan cleanup changed or removed the live pill qmldir'
 
+# The source-install refresh path must run the same managed-orphan cleanup even
+# when setup is recovering an existing/partial runtime through `install` rather
+# than entering the explicit update branch. Backup and runtime verification may
+# remain update-only, but cleanup after manifest finalization must not be gated.
+python3 - "$repo_root/sdata/subcmd-install/3.files.sh" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+start_marker = '    # Finalize manifest\n'
+end_marker = '    # Fix script permissions\n'
+cleanup_call = '    cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"\n'
+
+if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+    raise SystemExit("install stage lost the manifest-finalization/permission markers")
+start = text.index(start_marker)
+end = text.index(end_marker, start)
+segment = text[start:end]
+if segment.count(cleanup_call) != 1:
+    raise SystemExit("install stage must run exactly one orphan cleanup after manifest finalization")
+if 'IS_UPDATE' in segment:
+    raise SystemExit("install-stage orphan cleanup is still gated by IS_UPDATE")
+PY
+
 grep -Fq 'generate_manifest "$II_SOURCE" "${II_TARGET}/.inir-manifest"' "$repo_root/setup" \
     || fail 'setup update no longer generates the canonical installed manifest'
 grep -Fq 'cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"' "$repo_root/setup" \

@@ -19,6 +19,8 @@ The package and modules are ordinary expressions under `nix/`, so flakes are opt
 
 The package also installs the iNiR Shell and iNiR Settings desktop entries plus the symbolic application icon under its Nix output. Their `Exec` commands point directly at the wrapped `$out/bin/inir` launcher, so application-menu launches receive the same runtime dependency and QML environment as terminal/service launches.
 
+The packaged README and the complete Markdown reference set from `docs/` are available under `$out/share/doc/inir/`. This keeps installation, configuration, module, troubleshooting, and maintainer references available even when the immutable package is used without a source checkout.
+
 ## Without flakes
 
 Point a source variable at a Hadalis checkout or a source pinned with your preferred Nix fetcher:

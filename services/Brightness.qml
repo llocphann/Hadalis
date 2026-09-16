@@ -121,7 +121,24 @@ Singleton {
 
     Process {
         id: backlightDetectProc
+        property bool startObserved: false
         command: ["brightnessctl", "-l", "-m", "-c", "backlight"]
+        onRunningChanged: {
+            if (backlightDetectProc.running) {
+                backlightDetectProc.startObserved = false
+                return
+            }
+            if (backlightDetectProc.startObserved)
+                return
+
+            root.backlightDetectionReady = true
+            root.monitors.forEach(monitor => {
+                if (!monitor.isDdc)
+                    monitor.initialize()
+            })
+            console.warn("[Brightness] Failed to start brightnessctl backlight detection")
+        }
+        onStarted: backlightDetectProc.startObserved = true
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {
@@ -153,6 +170,8 @@ Singleton {
 
     Process {
         id: ddcProc
+        property bool timedOut: false
+        property bool startObserved: false
 
         command: ["ddcutil", "detect", "--brief"]
         stdout: SplitParser {
@@ -188,11 +207,28 @@ Singleton {
             }
         }
         onRunningChanged: {
-            if (running)
+            if (ddcProc.running) {
+                ddcProc.startObserved = false
                 root._ddcNext = []
+                return
+            }
+            if (ddcProc.startObserved)
+                return
+
+            ddcTimeout.stop()
+            root._ddcNext = []
+            console.warn("[Brightness] Failed to start ddcutil detection; keeping previous monitor snapshot")
+        }
+        onStarted: {
+            ddcProc.startObserved = true
+            ddcProc.timedOut = false
+            ddcTimeout.restart()
         }
         onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0) {
+            ddcTimeout.stop()
+            if (ddcProc.timedOut) {
+                console.warn("[Brightness] ddcutil detection timed out; keeping previous monitor snapshot")
+            } else if (exitCode === 0) {
                 // A successful empty probe means all DDC displays disappeared.
                 // Replace the snapshot even when no blocks were parsed so stale
                 // model/bus mappings cannot survive a hot-unplug.
@@ -203,6 +239,18 @@ Singleton {
                 console.warn("[Brightness] ddcutil detect failed; keeping previous monitor snapshot", exitCode, exitStatus)
             }
             root._ddcNext = []
+        }
+    }
+
+    Timer {
+        id: ddcTimeout
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!ddcProc.running)
+                return
+            ddcProc.timedOut = true
+            ddcProc.running = false
         }
     }
 

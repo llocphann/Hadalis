@@ -37,6 +37,8 @@ done
 
 grep -Fxq 'singleton PerimeterCutoverPolicy 1.0 PerimeterCutoverPolicy.qml' \
     "$core_qmldir" || fail 'core cutover policy is not exported'
+grep -Fxq 'singleton PerimeterRuntimeHealth 1.0 PerimeterRuntimeHealth.qml' \
+    "$core_qmldir" || fail 'runtime health registry is not exported'
 grep -Fxq 'singleton PerimeterReservationPolicy 1.0 PerimeterReservationPolicy.qml' \
     "$feature_qmldir" || fail 'feature reservation policy is not exported'
 if grep -Fq 'PerimeterRuntimePolicy' "$feature_qmldir"; then

@@ -1,0 +1,17 @@
+{
+  "locale": "tr_TR",
+  "replacements": {
+    "Usage: install-package <package-name>": {
+      "from": "Kullanım: install-package <paket-adı>",
+      "to": "Kullanım: install-package <package-name>"
+    },
+    "Usage: remove-package <package-name>": {
+      "from": "Kullanım: remove-package <paket-adı>",
+      "to": "Kullanım: remove-package <package-name>"
+    },
+    "Usage: todo <task description>": {
+      "from": "Kullanım: todo <görev açıklaması>",
+      "to": "Kullanım: todo <task description>"
+    }
+  }
+}

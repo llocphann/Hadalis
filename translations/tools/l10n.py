@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import tempfile
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +26,15 @@ SOURCE = TRANSLATIONS / "en_US.json"
 LOCALE_RE = re.compile(r"^[A-Za-z]{2,3}_[A-Za-z]{2,3}$")
 MARKDOWN_URL_RE = re.compile(r"\]\([^\n)]*https?://[^\n)]*\)")
 URL_RE = re.compile(r"https?://[^\s)]+")
-TOKEN_RE = re.compile(r"%[1-9]\d?|%n|\{\d+\}|<[^<>]+>")
+# Qt placeholders are %1..%99. Do not accept a prefix of a longer numeric
+# percentage such as %100 or %153 as %10/%15.
+TOKEN_RE = re.compile(r"%[1-9]\d?(?!\d)|%n|\{\d+\}|<[^<>]+>")
+# Some locales conventionally render a literal English percentage such as
+# "50%" as "%50". That text is not a Qt %50 placeholder. Pair-aware
+# validation below discounts only target prefix percentages that correspond to
+# a suffix percentage literal in the canonical source string.
+SOURCE_PERCENT_RE = re.compile(r"(?<![\d%])([1-9]\d?)%(?!\d)")
+TARGET_PERCENT_RE = re.compile(r"(?<![\d%])%([1-9]\d?)(?!\d)")
 WORD_RE = re.compile(r"[A-Za-z]{3,}")
 
 
@@ -83,13 +92,49 @@ def available_locales() -> list[str]:
     )
 
 
-def placeholders(text: str) -> list[str]:
+def _without_urls(text: str) -> str:
     # URL percent escapes such as %20 and %2C are data, not Qt placeholders.
     # Remove complete Markdown destinations first because malformed historical
     # translations may contain literal spaces inside an otherwise encoded URL.
     without_urls = MARKDOWN_URL_RE.sub("]()", text)
-    without_urls = URL_RE.sub("", without_urls)
-    return sorted(TOKEN_RE.findall(without_urls))
+    return URL_RE.sub("", without_urls)
+
+
+def placeholders(text: str) -> list[str]:
+    return sorted(TOKEN_RE.findall(_without_urls(text)))
+
+
+def placeholders_match(source: str, target: str) -> bool:
+    """Compare structural tokens while allowing localized percent placement.
+
+    A target ``%50`` is ignored as a literal percentage only when the source
+    contains a corresponding ``50%`` literal and the target has more ``%50``
+    tokens than the source does. This preserves real Qt placeholders, including
+    the uncommon two-digit forms, while avoiding false positives for locales
+    that place the percent sign before the number.
+    """
+    source_text = _without_urls(source)
+    target_text = _without_urls(target)
+    source_tokens = Counter(TOKEN_RE.findall(source_text))
+    target_tokens = Counter(TOKEN_RE.findall(target_text))
+    source_percent_literals = Counter(SOURCE_PERCENT_RE.findall(source_text))
+    target_percent_literals = Counter(TARGET_PERCENT_RE.findall(target_text))
+
+    for digits in source_percent_literals.keys() & target_percent_literals.keys():
+        token = f"%{digits}"
+        excess = target_tokens[token] - source_tokens[token]
+        if excess <= 0:
+            continue
+        localized_count = min(
+            excess,
+            source_percent_literals[digits],
+            target_percent_literals[digits],
+        )
+        target_tokens[token] -= localized_count
+        if target_tokens[token] <= 0:
+            target_tokens.pop(token, None)
+
+    return source_tokens == target_tokens
 
 
 def load_config() -> tuple[set[str], list[re.Pattern[str]]]:
@@ -201,7 +246,7 @@ def build_report(locale: str) -> dict[str, Any]:
 
     placeholder_errors = [
         key for key in common_keys
-        if placeholders(source[key]) != placeholders(target[key])
+        if not placeholders_match(source[key], target[key])
     ]
     protected_errors = {
         key: missing
@@ -338,7 +383,7 @@ def apply_batch(batch_path: Path) -> int:
             raise ValueError(f"source changed for {key!r}; regenerate the batch")
         if not isinstance(translated, str) or not translated.strip():
             continue
-        if placeholders(source) != placeholders(translated):
+        if not placeholders_match(source, translated):
             raise ValueError(f"placeholder or markup mismatch for {key!r}")
         missing_terms = protected_term_errors(source, translated, protected_terms)
         if missing_terms:

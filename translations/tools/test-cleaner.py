@@ -13,9 +13,12 @@ ROOT = Path(__file__).resolve().parents[2]
 CLEANER = ROOT / "translations" / "tools" / "translation-cleaner.py"
 PARITY = ROOT / "translations" / "tools" / "source-parity.py"
 MANAGER = ROOT / "translations" / "tools" / "translation-manager.py"
+L10N_TOOL = ROOT / "translations" / "tools" / "l10n.py"
+REPLACEMENTS_TOOL = ROOT / "translations" / "tools" / "apply-reviewed-replacements.py"
 AUTO_TRANSLATE = ROOT / "translations" / "tools" / "auto-translate.js"
 TRANSLATIONS = ROOT / "translations"
 REVIEWED_PRUNE = ROOT / "translations" / "l10n" / "retired-shell-prune.json"
+TURKISH_PLACEHOLDER_REPAIRS = ROOT / "translations" / "l10n" / "tr_TR-placeholder-repairs.json"
 
 
 def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
@@ -52,6 +55,23 @@ def run_parity(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
     return result
 
 
+def run_replacements(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
+    result = subprocess.run(
+        [sys.executable, str(REPLACEMENTS_TOOL), *args],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != expect:
+        raise AssertionError(
+            f"reviewed replacement command returned {result.returncode}, expected {expect}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+    return result
+
+
 def write_json(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -60,13 +80,58 @@ def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def load_manager_class():
-    spec = importlib.util.spec_from_file_location("translation_manager_for_cleaner_test", MANAGER)
+def load_python_module(path: Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load translation manager: {MANAGER}")
+        raise RuntimeError(f"cannot load Python module: {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.TranslationManager
+    return module
+
+
+def load_manager_class():
+    return load_python_module(
+        MANAGER, "translation_manager_for_cleaner_test"
+    ).TranslationManager
+
+
+def assert_placeholder_contract() -> None:
+    l10n = load_python_module(L10N_TOOL, "l10n_for_cleaner_test")
+
+    accepted = [
+        (
+            "Matches shell surfaces at 50%.",
+            "Kabuk yüzeyleriyle %50'de eşleşir.",
+        ),
+        (
+            "100% default; scale 80% - 150%; pavucontrol allows 153%.",
+            "%100 varsayılan; ölçek %80 - %150; pavucontrol %153'e izin verir.",
+        ),
+        (
+            "Qt slot %50 at 50%.",
+            "Qt yuvası %50, yüzde %50.",
+        ),
+        (
+            "Use <tt>%1superpaste</tt>.",
+            "<tt>%1superpaste</tt> kullanın.",
+        ),
+    ]
+    for source, target in accepted:
+        if not l10n.placeholders_match(source, target):
+            raise AssertionError(
+                f"valid localized placeholder/percentage structure was rejected: {source!r} -> {target!r}"
+            )
+
+    rejected = [
+        ("Usage: install-package <package-name>", "Kullanım: install-package <paket-adı>"),
+        ("Qt slot %50", "Qt yuvası %51"),
+        ("Value %1", "Değer %2"),
+    ]
+    for source, target in rejected:
+        if l10n.placeholders_match(source, target):
+            raise AssertionError(
+                f"placeholder mutation was accepted: {source!r} -> {target!r}"
+            )
 
 
 def assert_auto_translate_contract() -> None:
@@ -90,10 +155,20 @@ def assert_auto_translate_contract() -> None:
 
     retry_guard = "const maxBatchAttempts = 3;"
     placeholder_guard = "if (!samePlaceholders(sourceData[key], clean)) {"
+    percent_contract = [
+        "localizedPercentLiterals(source, false)",
+        "localizedPercentLiterals(target, true)",
+        r"%[1-9]\d?(?!\d)",
+    ]
     if retry_guard not in script:
         raise AssertionError("auto-translate retry budget is no longer bounded at three attempts")
     if placeholder_guard not in script:
         raise AssertionError("auto-translate no longer validates placeholder structure")
+    for marker in percent_contract:
+        if marker not in script:
+            raise AssertionError(
+                f"auto-translate localized-percentage placeholder contract missing: {marker}"
+            )
 
     guard_offset = script.index(placeholder_guard)
     checkpoint_offset = script.find("writeAtomic(filePath, data);", guard_offset)
@@ -151,9 +226,62 @@ def assert_reviewed_prune_contract() -> None:
         )
 
 
+def assert_reviewed_replacement_contract() -> None:
+    checked = run_replacements(
+        str(TURKISH_PLACEHOLDER_REPAIRS),
+        "--translations-dir",
+        str(TRANSLATIONS),
+        "--check",
+    )
+    if "3 reviewed replacements are applicable" not in checked.stdout:
+        raise AssertionError("Turkish reviewed replacement manifest did not validate")
+
+    with tempfile.TemporaryDirectory() as tmp_name:
+        tmp = Path(tmp_name)
+        translations = tmp / "translations"
+        translations.mkdir()
+        source_value = "Usage: install-package <package-name>"
+        old_value = "Kullanım: install-package <paket-adı>"
+        new_value = "Kullanım: install-package <package-name>"
+        write_json(translations / "en_US.json", {source_value: source_value, "Keep": "Keep"})
+        write_json(translations / "tr_TR.json", {source_value: old_value, "Keep": "Koru"})
+        manifest = tmp / "repairs.json"
+        write_json(
+            manifest,
+            {
+                "locale": "tr_TR",
+                "replacements": {
+                    source_value: {"from": old_value, "to": new_value},
+                },
+            },
+        )
+
+        run_replacements(
+            str(manifest),
+            "--translations-dir",
+            str(translations),
+            "--no-backup",
+        )
+        repaired = read_json(translations / "tr_TR.json")
+        if repaired != {source_value: new_value, "Keep": "Koru"}:
+            raise AssertionError(f"reviewed replacement changed unrelated data: {repaired!r}")
+
+        stale = run_replacements(
+            str(manifest),
+            "--translations-dir",
+            str(translations),
+            "--no-backup",
+            expect=2,
+        )
+        if "drifted" not in stale.stderr:
+            raise AssertionError("stale reviewed replacement did not fail closed")
+
+
 def main() -> None:
+    assert_placeholder_contract()
     assert_auto_translate_contract()
     assert_reviewed_prune_contract()
+    assert_reviewed_replacement_contract()
 
     with tempfile.TemporaryDirectory() as tmp_name:
         tmp = Path(tmp_name)
@@ -269,6 +397,37 @@ def main() -> None:
         for locale, original in protected_before.items():
             if (translations / f"{locale}.json").read_bytes() != original:
                 raise AssertionError(f"rejected protected prune mutated {locale}")
+
+        sync_translations = tmp / "sync-translations"
+        sync_translations.mkdir()
+        write_json(
+            sync_translations / "en_US.json",
+            {"Existing": "Existing", "Missing": "Missing"},
+        )
+        write_json(
+            sync_translations / "fr_FR.json",
+            {"Existing": "Existant", "Locale only": "Spécifique"},
+        )
+        sync = run(
+            "--translations-dir", str(sync_translations),
+            "--source-dir", str(source),
+            "--sync",
+            "--yes",
+            "--no-backup",
+        )
+        synced_fr = read_json(sync_translations / "fr_FR.json")
+        if synced_fr != {
+            "Existing": "Existant",
+            "Locale only": "Spécifique",
+            "Missing": "Missing",
+        }:
+            raise AssertionError(
+                f"additive sync changed existing/extra translations: {synced_fr!r}"
+            )
+        if "Preserving 1 locale-specific extra keys" not in sync.stdout:
+            raise AssertionError("additive sync did not report preserved locale extras")
+        if "Structural audit will continue to report them" not in sync.stdout:
+            raise AssertionError("additive sync did not explain the remaining audit drift")
 
     print("ok - translation cleanup and source parity preserve reviewed boundaries")
 

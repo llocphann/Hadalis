@@ -230,9 +230,16 @@ def sync_translations(
     source_dir: str = DEFAULT_SOURCE_DIR,
     backup: bool = True,
 ):
-    """Sync every target locale to the canonical English keyset."""
+    """Add missing canonical keys without deleting locale-specific entries.
+
+    Locale-only keys can contain legitimate translations or values awaiting an
+    explicit rename/migration review. ``--sync`` therefore never removes them,
+    including in ``--yes`` mode. Exact deletion remains a separate reviewed
+    operation.
+    """
+    del yes_mode
     print(
-        "Starting translation key sync using "
+        "Starting additive translation key sync using "
         f"{CANONICAL_SOURCE_LANG} as canonical source..."
     )
 
@@ -262,6 +269,7 @@ def sync_translations(
 
     print(f"Target languages: {', '.join(target_langs)}")
 
+    preserved_extra_total = 0
     for target_lang in target_langs:
         print(f"\nSyncing language: {target_lang}")
 
@@ -274,23 +282,15 @@ def sync_translations(
 
         print(f"  Missing keys: {len(missing_keys)}")
         print(f"  Extra keys: {len(extra_keys)}")
-
-        delete_extra = False
         if extra_keys:
-            if yes_mode:
-                response = "y"
-                print(
-                    f"  Delete {len(extra_keys)} extra keys? "
-                    "(auto-confirmed by --yes)"
-                )
-            else:
-                response = input(
-                    f"  Delete {len(extra_keys)} extra keys? (y/n): "
-                )
-            delete_extra = response.lower().strip() in ["y", "yes"]
+            preserved_extra_total += len(extra_keys)
+            print(
+                f"  Preserving {len(extra_keys)} locale-specific extra keys; "
+                "review and migrate them explicitly before deletion"
+            )
 
-        if not missing_keys and not delete_extra:
-            print("  No changes needed")
+        if not missing_keys:
+            print("  No additive changes needed")
             continue
 
         if backup and target_file.exists():
@@ -298,17 +298,18 @@ def sync_translations(
             _write_backup(backup_file, target_translations)
             print(f"  Created backup: {backup_file}")
 
-        if missing_keys:
-            for key in missing_keys:
-                target_translations[key] = source_translations[key]
-            print(f"  Added {len(missing_keys)} missing keys")
-
-        if delete_extra:
-            for key in extra_keys:
-                del target_translations[key]
-            print(f"  Deleted {len(extra_keys)} extra keys")
+        for key in missing_keys:
+            target_translations[key] = source_translations[key]
+        print(f"  Added {len(missing_keys)} missing keys")
 
         manager.save_translation_file(target_lang, target_translations)
+
+    if preserved_extra_total:
+        print(
+            "\nSync preserved locale-specific extras by design. "
+            "Structural audit will continue to report them until an explicit "
+            "reviewed migration or deletion is applied."
+        )
 
 
 def main():
@@ -336,7 +337,7 @@ def main():
     parser.add_argument(
         "--sync",
         action="store_true",
-        help="Sync translation keys",
+        help="Add missing canonical keys while preserving locale-specific extras",
     )
     parser.add_argument(
         "--prune-file",
@@ -361,7 +362,7 @@ def main():
         "-y",
         "--yes",
         action="store_true",
-        help="Skip confirmation prompts for mutating operations",
+        help="Skip confirmation prompts for explicitly destructive operations",
     )
 
     args = parser.parse_args()
@@ -401,7 +402,7 @@ def main():
     else:
         print("Please specify an operation:")
         print("  --clean: Report static-orphan candidates (read-only)")
-        print("  --sync: Sync keys across locale files")
+        print("  --sync: Add missing keys while preserving locale-specific extras")
         print("  --prune-file PATH / --prune-key KEY: Prune exact reviewed keys")
 
 

@@ -1,5 +1,6 @@
 module qs.modules.perimeter
 singleton PerimeterFeatureRegistry 1.0 PerimeterFeatureRegistry.qml
+PerimeterRuntime 1.0 PerimeterRuntime.qml
 WorkspacesModule 1.0 WorkspacesModule.qml
 SystemMonitorModule 1.0 SystemMonitorModule.qml
 WeatherModule 1.0 WeatherModule.qml

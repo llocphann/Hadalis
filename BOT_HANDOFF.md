@@ -1,9 +1,9 @@
 # HADALIS — BOT HANDOFF
 
-Updated: 2026-09-17 00:48 +07:00
+Updated: 2026-09-17 01:05 +07:00
 Branch: `dev`
 Observed user runtime commit: `799b52c3`
-Current `dev` HEAD when this handoff policy was updated: `b34ffc174237ba2bec28944064d0b3319276f91d`
+Current `dev` HEAD when this handoff policy was updated: `203f614ede98b8248f4f543b42239395c558daa0`
 
 All bots: read this after `docs/BOT_PROTOCOL.md`, then fetch current `dev` before changing anything. This file is a handoff, not proof that an item is still open. Reconcile every item against live source first and avoid duplicate/reversion work.
 
@@ -104,15 +104,15 @@ Niri itself was healthy: shell config loaded, shellEntryReady fired, Niri socket
 
 ## CURRENT-HEAD RECONCILIATION
 
-At `b34ffc174237ba2bec28944064d0b3319276f91d`:
+At `203f614ede98b8248f4f543b42239395c558daa0`:
 
 - `modules/perimeter/PerimeterRuntime.qml` no longer instantiates `CompositorFocusGrab`; commit `4e124b29` uses `HyprlandFocusGrab` directly with `Quickshell.Hyprland` imported and `CompositorService.isHyprland` in the active condition. The compatibility `CompositorFocusGrab.qml` implementation and its `qmldir` export still exist, so do not treat the old `799b52c3` missing-type signature as a current live consumer without new runtime evidence.
-- `modules/bootGreeting/BootGreeting.qml` no longer contains the failing `MascotAnimation`/`MascotImage` block seen in the maintainer runtime.
-- `modules/closeConfirm/CloseConfirmContent.qml` no longer contains the failing `MascotImage` usage seen in the maintainer runtime.
+- `modules/bootGreeting/BootGreeting.qml` no longer contains the failing `MascotAnimation` block seen in the maintainer runtime. `MascotAnimation.qml` remains absent and must still be treated as retired unless live architecture intentionally restores it.
+- `modules/closeConfirm/CloseConfirmContent.qml` no longer contains the failing `MascotImage` usage seen in the maintainer runtime. However, commit `33520420` intentionally restored `modules/common/widgets/MascotImage.qml` as a fail-closed compatibility type and its `qmldir` export is live. Do not classify `MascotImage` itself as retired on current source. External consumers must import the owning `qs.modules.common.widgets` module.
 - `modules/pill` is no longer absent. Commit `d82660cc` restored a **theme-only** local module (`PillTheme.qml` + `qmldir`) because live consumers still use its theme tokens. `qs.modules.pill` is therefore not a dangling import on current source; do not delete it merely to mirror the old runtime incident.
-- Bot 4 source guards are fixed in source: `a6fa3d0a` added local `qs.*` module/type resolution checks, `4eb92eb6` wired them into `qml-check --all`, `9cf567a8` catches all code-level retired-type references, and `5aa22342` provides negative/positive fixtures reproducing the `799b52c3` failure classes.
+- Bot 4 source guards are fixed in source: `a6fa3d0a` added local `qs.*` module/type resolution checks, `4eb92eb6` wired them into `qml-check --all`, `9cf567a8` catches code-level references when historical types are actually absent, and `5aa22342` provides negative/positive fixtures reproducing the original `799b52c3` failure classes. `26f1e43b` extends owner-module import checking to restored `MascotImage` as well as `CompositorFocusGrab`, and `203f614e` proves a restored mascot consumer without the owner import fails while an aliased owner import passes.
 - Bot 4 staged-install coverage is fixed in source: `b690c88e` runs `qml-check --all --root` against both fresh staged payload and in-place reinstall payload, so packaging omissions or mixed QML/module trees become a required local regression failure.
-- Bot 4 hardened critical-panel isolation in `c43e1e04` and `c8d3bd6f`: optional presentation imports can no longer bypass the guard via alias/semicolon spelling, and direct `PerimeterRuntime`/Bar/Dock/etc. object embedding is caught using real QML object/inline-component syntax.
+- Bot 4 hardened critical-panel isolation in `c43e1e04` and `c8d3bd6f`; `9eb67e9c`/`82c4870c` add isolated negative fixtures proving alias imports, direct `PerimeterRuntime {}`, and inline presentation component embedding cannot bypass the guard. `8d6d38d6` scopes the Connected Perimeter family contract to the actual activation/final-cutover expressions and each Bar/VerticalBar/Dock fallback loader instead of allowing matching tokens elsewhere to create false-green results.
 - Recovery-style install orphan cleanup is fixed in source by `1753cbc5`, and `b34ffc17` adds a sandboxed behavioral regression that executes the real Quickshell install-stage path with `IS_UPDATE=false`, proving managed retired root QML is removed while excluded/private runtime artifacts survive. This still requires an exact-SHA maintainer validator rerun before acceptance is closed.
 - No maintainer clean-clone/fresh-install runtime log exists yet for the current HEAD family. Source fixes and contracts must therefore remain `NEEDS-MAINTAINER-RERUN`, not `CLOSED`.
 
@@ -120,7 +120,7 @@ At `b34ffc174237ba2bec28944064d0b3319276f91d`:
 
 ### Bot 1 — architecture/core
 
-**FIXED-IN-SOURCE at `8ce1f65c79b53d7cb6d64e5a1109e9bfca4a2055` / NEEDS-MAINTAINER-RERUN.** The startup dependency trace confirms `ShellIiPanelsImpl.qml` remains behind deferred URL loaders and is not a mandatory critical-startup dependency. `ShellIiCriticalPanels.qml` separates runtime activation eligibility from final cutover ownership: the perimeter runtime may attempt instantiation only after config/source prerequisites pass, while legacy Bar/Dock remain authoritative until `PerimeterRuntime.qml` publishes a successful root readiness handshake. `PerimeterCutoverPolicy.enabled` requires that handshake, and Connected Perimeter chrome itself cannot map when final cutover is false. `scripts/test-perimeter-family-contracts.sh` contains source guards for this contract.
+**FIXED-IN-SOURCE at `8ce1f65c79b53d7cb6d64e5a1109e9bfca4a2055` / NEEDS-MAINTAINER-RERUN.** The startup dependency trace confirms `ShellIiPanelsImpl.qml` remains behind deferred URL loaders and is not a mandatory critical-startup dependency. `ShellIiCriticalPanels.qml` separates runtime activation eligibility from final cutover ownership: the perimeter runtime may attempt instantiation only after config/source prerequisites pass, while legacy Bar/Dock remain authoritative until `PerimeterRuntime.qml` publishes a successful root readiness handshake. `PerimeterCutoverPolicy.enabled` requires that handshake, and Connected Perimeter chrome itself cannot map when final cutover is false. `scripts/test-perimeter-family-contracts.sh` contains scoped source guards for this contract.
 
 Do not duplicate this source fix without new current-HEAD evidence. Required acceptance remains an exact-SHA local contract/parser run plus a Niri runtime rerun demonstrating that a missing/invalid optional perimeter presentation cannot remove critical fallback chrome.
 
@@ -129,7 +129,7 @@ Do not duplicate this source fix without new current-HEAD evidence. Required acc
 The original missing-type/import signatures are fixed in current source. Continue only if live source or a new parser/runtime log shows a current QML resolution failure. In particular:
 
 - do not remove `qs.modules.pill` solely because the old handoff called it dangling; a live theme-only implementation now exists;
-- keep `MascotImage`/`MascotAnimation` retired references out unless a live implementation is intentionally restored;
+- `MascotImage` is now a live, fail-closed compatibility type restored by `33520420`; any external consumer must import `qs.modules.common.widgets`. `MascotAnimation` remains retired/absent and code-level references must not return unless a live implementation is intentionally restored;
 - verify compositor-specific focus behavior from current `PerimeterRuntime` rather than restoring the old `CompositorFocusGrab` call just to match historical code.
 
 ### Bot 3 — services/settings
@@ -164,14 +164,14 @@ Acceptance: regression coverage demonstrates the timeout path settles isChecking
 
 ### Bot 4 — QA/regression
 
-**Incident guard work is FIXED-IN-SOURCE / NEEDS-MAINTAINER-RERUN.** Do not duplicate the local-module guard, critical-panel isolation hardening, staged QML fixture, or recovery-install orphan fixture. Continue QA work on:
+**Incident guard work is FIXED-IN-SOURCE / NEEDS-MAINTAINER-RERUN.** Do not duplicate the local-module guard, restored-type owner-import guard, critical-panel isolation hardening, scoped perimeter family contract, staged QML fixture, or recovery-install orphan fixture. Continue QA work on:
 
 - canonical validator false-red/false-green defects;
 - staged install/runtime regression coverage;
 - lifecycle/resource/performance regressions;
 - stale or brittle contracts introduced by concurrent changes.
 
-The current guard must continue to fail on source equivalent to `799b52c3` while accepting live implementations such as the restored theme-only `modules/pill` contract.
+The current guard must continue to fail on source equivalent to `799b52c3`, fail restored critical-type consumers that omit their owner import, and accept intentional live implementations such as the theme-only `modules/pill` module and fail-closed `MascotImage` compatibility type when imported correctly.
 
 ### Bot 5 — install/package/docs/release
 
@@ -228,7 +228,7 @@ Do not mark this incident closed until a current-HEAD/fresh-install test demonst
 1. `inir logs` no longer reports `PerimeterRuntime unavailable`, `CloseConfirmContent unavailable`, or `BootGreeting unavailable` for the signatures above.
 2. No `quickshell.qmlscanner: Ignoring unresolvable import ".../modules/pill"` remains from always-loaded shell files.
 3. On Niri, `Configuration Loaded` and `shellEntryReady` are followed by visible bar/critical shell panels.
-4. A repo guard/test detects missing local QML-module imports or dangling retired-type references on critical startup paths. **FIXED-IN-SOURCE** by the Bot 4 guard/fixture commits above; still requires inclusion in an exact-SHA maintainer rerun.
+4. A repo guard/test detects missing local QML-module imports, dangling absent-type references, and missing owner imports for restored critical compatibility types on startup-sensitive paths. **FIXED-IN-SOURCE** by the Bot 4 guard/fixture commits above, including `26f1e43b`/`203f614e`; still requires inclusion in an exact-SHA maintainer rerun.
 5. Install/update staging does not leave a mixed old/new QML payload. **CONTRACT COVERED IN SOURCE** by staged fresh/reinstall checks in `b690c88e` plus recovery-install behavioral coverage in `b34ffc17`; still requires exact-SHA maintainer rerun and any environment-specific install verification owned by Bot 5.
 
 When an item is fixed by another commit before your turn, record the evidence and move to the next still-open item instead of recreating the same patch.

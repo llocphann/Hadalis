@@ -73,6 +73,26 @@ for path in "${expected_files[@]}"; do
   }
 done
 
+# An in-place reinstall must mirror the managed runtime tree. Seed the exact
+# class of retired module that caused the mixed-runtime startup incident, plus
+# an excluded private/test artifact that the payload policy intentionally does
+# not own. Reinstalling must prune the former without deleting the latter.
+runtime_dir="$stage$prefix/share/quickshell/inir"
+stale_module="$runtime_dir/modules/pill/Stale.qml"
+preserved_excluded="$runtime_dir/scripts/test-local-private.sh"
+mkdir -p "$(dirname "$stale_module")" "$(dirname "$preserved_excluded")"
+printf '%s\n' 'import QtQuick' > "$stale_module"
+printf '%s\n' '# private excluded artifact' > "$preserved_excluded"
+make -s install "${make_args[@]}"
+if [[ -e "$stale_module" || -L "$stale_module" ]]; then
+  printf 'FAIL: make reinstall left stale managed QML module %s\n' "$stale_module" >&2
+  exit 1
+fi
+if [[ ! -f "$preserved_excluded" ]]; then
+  printf 'FAIL: make reinstall deleted an excluded private/test runtime artifact\n' >&2
+  exit 1
+fi
+
 battery_helper="$stage$libexecdir/inir-battery-charge-limit"
 battery_policy="$stage$polkit_actions_dir/org.inir.battery-charge-limit.policy"
 thinkfan_policy="$stage$polkit_actions_dir/org.inir.thinkfan.policy"
@@ -134,11 +154,12 @@ for dropin in \
 done
 
 # Empty parent directories are harmless, but no managed payload file may remain.
-if find "$stage$prefix" -type f -o -type l 2>/dev/null | grep -q .; then
+# Excluded/private artifacts are intentionally outside installer ownership.
+if find "$stage$prefix" \( -type f -o -type l \) ! -path "$preserved_excluded" 2>/dev/null | grep -q .; then
   printf 'FAIL: staged uninstall left managed files behind\n' >&2
-  find "$stage$prefix" \( -type f -o -type l \) -print >&2
+  find "$stage$prefix" \( -type f -o -type l \) ! -path "$preserved_excluded" -print >&2
   exit 1
 fi
 
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - make install/uninstall staging lifecycle is coherent'
+printf '%s\n' 'ok 1 - make install/reinstall/uninstall staging lifecycle is coherent'

@@ -20,12 +20,17 @@ Singleton {
     property int longBreakTime: 900
     property int cyclesBeforeLongBreak: 4
 
+    function _positiveInt(value, fallback: int): int {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) && parsed > 0 ? Math.max(1, Math.round(parsed)) : fallback
+    }
+
     // Helper to sync all pomodoro values from Config
     function _syncPomodoroConfig() {
-        root.focusTime = Config.options?.time?.pomodoro?.focus ?? 1500
-        root.breakTime = Config.options?.time?.pomodoro?.breakTime ?? 300
-        root.longBreakTime = Config.options?.time?.pomodoro?.longBreak ?? 900
-        root.cyclesBeforeLongBreak = Config.options?.time?.pomodoro?.cyclesBeforeLongBreak ?? 4
+        root.focusTime = root._positiveInt(Config.options?.time?.pomodoro?.focus, 1500)
+        root.breakTime = root._positiveInt(Config.options?.time?.pomodoro?.breakTime, 300)
+        root.longBreakTime = root._positiveInt(Config.options?.time?.pomodoro?.longBreak, 900)
+        root.cyclesBeforeLongBreak = root._positiveInt(Config.options?.time?.pomodoro?.cyclesBeforeLongBreak, 4)
     }
 
     // Sync pomodoro config on ANY config change (reliable - survives object recreation after file reload)

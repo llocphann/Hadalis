@@ -16,8 +16,9 @@ package="nix/package.nix"
 switchwall="scripts/colors/switchwall.sh"
 color_generator="scripts/colors/generate_colors_material.py"
 zed_module="scripts/colors/modules/31-zed.sh"
+easyeffects_service="services/deferred/EasyEffects.qml"
 
-for file in "$common" "$nixos" "$home" "$package" "$switchwall" "$color_generator" "$zed_module"; do
+for file in "$common" "$nixos" "$home" "$package" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service"; do
   [[ -f "$file" ]] || fail "missing Nix/runtime contract file: $file"
 done
 
@@ -60,6 +61,11 @@ grep -Eq '^[[:space:]]+colorPython$' "$package" \
   || fail 'Nix package no longer pins switchwall to the packaged color Python interpreter'
 grep -Fq '_ii_python="{color_python}"' "$package" \
   || fail 'Nix package no longer rewrites switchwall to the pinned color Python interpreter'
+
+grep -Fq 'Quickshell.execDetached(["/usr/bin/env", "easyeffects", "--service-mode"])' "$easyeffects_service" \
+  || fail 'EasyEffects service no longer exercises the PATH-resolved native runtime contract'
+grep -Fq '++ optionalTop "easyeffects"' "$package" \
+  || fail 'Nix runtime no longer provides EasyEffects for the default audio integration'
 
 bash -n "$zed_module" || fail 'Zed theming module has invalid Bash syntax'
 grep -Fq 'python_cmd="$(venv_python)"' "$zed_module" \

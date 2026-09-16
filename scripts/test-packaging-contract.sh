@@ -31,11 +31,12 @@ meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
 nix_pkg="nix/package.nix"
 stable_hook="distro/arch/inir-shell/inir-shell.install"
 git_hook="distro/arch/inir-shell-git/inir-shell-git.install"
+makefile="Makefile"
 release_script="scripts/release.sh"
 audio_doc="docs/AUDIO_MEDIA.md"
 uninstall_doc="docs/UNINSTALL.md"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$release_script" "$audio_doc" "$uninstall_doc"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$makefile" "$release_script" "$audio_doc" "$uninstall_doc"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -120,8 +121,26 @@ for pair in \
   done
 done
 
+# The primary local aggregate should exercise the same fast release-boundary
+# contracts even when hosted CI cannot start a runner.
+grep -Fq 'test-optional-audio-deps test-equalizer-contracts test-docs' "$makefile" \
+  || fail 'make test-local no longer includes optional-audio, Equalizer, and docs gates'
+grep -Fq '@bash scripts/test-equalizer-boundary-contract.sh' "$makefile" \
+  || fail 'make test-local no longer runs the Equalizer architecture boundary contract'
+grep -Fq '@bash scripts/test-equalizer-service-contract.sh' "$makefile" \
+  || fail 'make test-local no longer runs the Equalizer lifecycle/protocol contract'
+grep -Fq '@bash scripts/verify-docs.sh' "$makefile" \
+  || fail 'make test-local no longer runs documentation verification'
+
 # Release publication is fail-closed: after tag/source identity checks and
-# before draft creation, the helper must run all packaging/dependency contracts.
+# before draft creation, the helper must verify hosted publication prerequisites
+# and run all packaging/dependency contracts.
+grep -Fq 'require_release_host_features() {' "$release_script" \
+  || fail 'release helper no longer defines hosted publication preflight'
+grep -Fq '.has_wiki' "$release_script" \
+  || fail 'release hosted preflight no longer verifies GitHub Wiki availability'
+grep -Fq 'GitHub Wiki is disabled' "$release_script" \
+  || fail 'release hosted preflight no longer fails clearly when Wiki is disabled'
 grep -Fq '"$script_dir/test-packaging-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the packaging contract'
 grep -Fq '"$script_dir/test-nix-module-contract.sh"' "$release_script" \
@@ -138,8 +157,13 @@ grep -Fq '"$script_dir/test-make-install-lifecycle.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the make install lifecycle contract'
 grep -Fq '"$script_dir/verify-docs.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes documentation verification'
-grep -Fq '  require_release_contracts' "$release_script" \
-  || fail 'release publish path no longer executes release packaging contracts'
+
+host_line="$(grep -nF '  require_release_host_features' "$release_script" | tail -1 | cut -d: -f1)"
+contract_line="$(grep -nF '  require_release_contracts' "$release_script" | tail -1 | cut -d: -f1)"
+draft_line="$(grep -nF '  stage_release_draft "$tag" "$notes_file"' "$release_script" | tail -1 | cut -d: -f1)"
+[[ -n "$host_line" && -n "$contract_line" && -n "$draft_line" \
+    && "$host_line" -lt "$contract_line" && "$contract_line" -lt "$draft_line" ]] \
+  || fail 'release publish path no longer completes host/contracts preflight before draft creation'
 
 # inir-meta promises the full desktop experience. These packages represent
 # default source-installer supplements across shell utilities, visuals, login,

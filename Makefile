@@ -18,7 +18,7 @@ TLP_SETTINGS_DROPIN = $(TLP_CONFDIR)/99-inir-tlp-settings.conf
 TLP_SETTINGS_SCHEMA = $(INIR_SYSTEM_SHAREDIR)/tlp-settings-schema.json
 THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
-PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"$(SYSTEMD_USER_DIR)\" LIBEXECDIR=\"$(LIBEXECDIR)\" POLKIT_ACTIONS_DIR=\"$(POLKIT_ACTIONS_DIR)\" TLP_CONFDIR=\"$(TLP_CONFDIR)\" INIR_SYSTEM_SHAREDIR=\"$(INIR_SYSTEM_SHAREDIR)\"
+PACKAGE_UPDATE_HINT = sudo make install PREFIX="$(PREFIX)" SYSTEMD_USER_DIR="$(SYSTEMD_USER_DIR)" LIBEXECDIR="$(LIBEXECDIR)" POLKIT_ACTIONS_DIR="$(POLKIT_ACTIONS_DIR)" TLP_CONFDIR="$(TLP_CONFDIR)" INIR_SYSTEM_SHAREDIR="$(INIR_SYSTEM_SHAREDIR)"
 
 .PHONY: all build test-local test-doctor-routing test-optional-audio-deps test-update-tlp-contracts test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
@@ -148,7 +148,15 @@ install-shell:
 		's|^RUNTIME_DIR_SYSTEM_LOCAL=.*|RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-$(SHELL_INSTALL_DIR)}"|' \
 		"$(DESTDIR)$(SHELL_INSTALL_DIR)/sdata/lib/versioning.sh"
 	@python3 -c 'from pathlib import Path; p=Path("$(DESTDIR)$(SHELL_INSTALL_DIR)/setup"); t=p.read_text(); m="sync_launcher_from_repo() {\n"; assert t.count(m) == 1, "expected one sync_launcher_from_repo definition"; g=m+"    if [[ \"$$(get_installed_update_strategy 2>/dev/null || true)\" == \"package-manager\" ]]; then\n        return 0\n    fi\n"; p.write_text(t.replace(m, g, 1))'
-	@printf '{\n  "version": "%s",\n  "commit": "%s",\n  "installed_at": "%s",\n  "installedAt": "%s",\n  "source": "make-install",\n  "repo_path": "",\n  "repoPath": "",\n  "install_mode": "package-managed",\n  "installMode": "package-managed",\n  "update_strategy": "package-manager",\n  "updateStrategy": "package-manager",\n  "package_manager": "manual",\n  "packageManager": "manual",\n  "package_name": "source-install",\n  "packageName": "source-install",\n  "package_update_hint": "$(PACKAGE_UPDATE_HINT)",\n  "packageUpdateHint": "$(PACKAGE_UPDATE_HINT)"\n}\n' "$$(cat VERSION)" "$$(git rev-parse --short HEAD 2>/dev/null || printf manual)" "$$(date -Iseconds)" "$$(date -Iseconds)" > "$(DESTDIR)$(SHELL_INSTALL_DIR)/version.json"
+	@version="$$(cat VERSION)"; \
+		commit="$$(git rev-parse --short HEAD 2>/dev/null || printf manual)"; \
+		installed_at="$$(date -Iseconds)"; \
+		python3 scripts/write-version-json.py \
+			--output "$(DESTDIR)$(SHELL_INSTALL_DIR)/version.json" \
+			--version "$$version" \
+			--commit "$$commit" \
+			--installed-at "$$installed_at" \
+			--update-hint '$(PACKAGE_UPDATE_HINT)'
 
 install-systemd:
 	@mkdir -p "$(DESTDIR)$(SYSTEMD_USER_DIR)"

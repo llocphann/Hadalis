@@ -66,8 +66,9 @@ WindowDialog {
             iconSize: Appearance.font.pixelSize.larger
             buttonIcon: "wifi_tethering"
             text: Translation.tr("Use 5 GHz band")
+            autoToggle: false
             checked: (Config.options?.hotspot?.band ?? "bg") === "a"
-            onCheckedChanged: Config.setNestedValue("hotspot.band", checked ? "a" : "bg")
+            onToggledByUser: checked => Config.setNestedValue("hotspot.band", checked ? "a" : "bg")
             StyledToolTip {
                 text: Translation.tr("Requires adapter with AP mode support (802.11a)")
             }

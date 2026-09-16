@@ -8,6 +8,9 @@ RippleButton {
     id: button
     required property bool input
 
+    buttonText: input ? Translation.tr("Input device") : Translation.tr("Output device")
+    Accessible.description: (input ? Audio.source?.description : Audio.defaultSink?.description) ?? Translation.tr("Unknown")
+
     buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.small
     colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
         : Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colLayer2

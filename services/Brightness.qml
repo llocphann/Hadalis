@@ -364,7 +364,28 @@ Singleton {
             initProc.running = true;
         }
 
+        function _finishInitialization(): void {
+            if (monitor.ready)
+                return
+            const screenName = monitor.screen?.name ?? ""
+            const value = BrightnessPolicy.pickRestoreValue(
+                root.lastValidBrightness[screenName],
+                monitor.brightness
+            )
+            if (Number.isFinite(value)) {
+                if (screenName)
+                    root.lastValidBrightness[screenName] = value
+                monitor.brightness = value
+                monitor.ready = true
+                syncBrightness()
+                return
+            }
+            monitor.ready = true
+        }
+
         readonly property Process initProc: Process {
+            property bool startObserved: false
+            property bool timedOut: false
             stdout: SplitParser {
                 onRead: data => {
                     const parts = data.trim().split(/\s+/)
@@ -385,23 +406,39 @@ Singleton {
                         monitor.syncBrightness()
                 }
             }
-            onExited: {
-                if (monitor.ready)
-                    return
-                const screenName = monitor.screen?.name ?? ""
-                const value = BrightnessPolicy.pickRestoreValue(
-                    root.lastValidBrightness[screenName],
-                    monitor.brightness
-                )
-                if (Number.isFinite(value)) {
-                    if (screenName)
-                        root.lastValidBrightness[screenName] = value
-                    monitor.brightness = value
-                    monitor.ready = true
-                    syncBrightness()
+            onRunningChanged: {
+                if (initProc.running) {
+                    initProc.startObserved = false
                     return
                 }
-                monitor.ready = true
+                if (initProc.startObserved)
+                    return
+
+                initTimeout.stop()
+                console.warn("[Brightness] Failed to start monitor brightness initialization")
+                monitor._finishInitialization()
+            }
+            onStarted: {
+                initProc.startObserved = true
+                initProc.timedOut = false
+                initTimeout.restart()
+            }
+            onExited: {
+                initTimeout.stop()
+                if (initProc.timedOut)
+                    console.warn("[Brightness] Monitor brightness initialization timed out")
+                monitor._finishInitialization()
+            }
+        }
+
+        property var initTimeout: Timer {
+            interval: 30000
+            repeat: false
+            onTriggered: {
+                if (!initProc.running)
+                    return
+                initProc.timedOut = true
+                initProc.running = false
             }
         }
 

@@ -138,6 +138,16 @@ for file in $qml_files
     end
 end
 
+# Project-wide perimeter cutover invariants are architectural startup guards,
+# not per-file style checks. Run them only for the same full-tree mode used by CI.
+if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
+    set -l perimeter_contract "$project_root/scripts/test-perimeter-contracts.sh"
+    if not bash "$perimeter_contract"
+        echo "ERROR: Connected Perimeter cutover contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+end
+
 if test -z "$parser"
     if test -n "$parser_skip_reason"
         echo "qml-check: $parser_skip_reason; parser pass skipped" >&2

@@ -204,7 +204,7 @@ cmp -s "$stable_hook" "$git_hook" || fail 'stable/git Arch lifecycle hooks diffe
 for hook in "$stable_hook" "$git_hook"; do
   grep -Fq 'post_remove() {' "$hook" \
     || fail "$hook no longer explains per-user service cleanup after package removal"
-  grep -Fq "-path '*.wants/inir.service' -type l -delete" "$hook" \
+  grep -Fq -- "-path '*.wants/inir.service' -type l -delete" "$hook" \
     || fail "$hook no longer provides dangling service-link cleanup"
   grep -Fq "run 'inir service disable' as each affected user" "$hook" \
     || fail "$hook no longer documents the safe pre-removal service step"
@@ -273,7 +273,7 @@ grep -Fq 'NixOS/Home Manager modules own `inir.service` declaratively' "$uninsta
   || fail 'uninstall docs no longer preserve declarative Nix service ownership'
 grep -Fq 'Run it as the user whose iNiR service was configured' "$uninstall_doc" \
   || fail 'uninstall docs no longer warn against root cross-home cleanup'
-grep -Fq "-type l -path '*.wants/inir.service' -delete" "$uninstall_doc" \
+grep -Fq -- "-type l -path '*.wants/inir.service' -delete" "$uninstall_doc" \
   || fail 'uninstall docs no longer use the working stale wants-link cleanup glob'
 
 printf '%s\n' '1..1'

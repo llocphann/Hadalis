@@ -140,6 +140,7 @@ Singleton {
 
     Process {
         id: getClients
+        property bool startObserved: false
         command: ["/usr/bin/hyprctl", "clients", "-j"]
         stdout: StdioCollector {
             id: clientsCollector
@@ -159,11 +160,22 @@ Singleton {
                 root.addresses = root.windowList.map(win => win.address);
             }
         }
+        onRunningChanged: {
+            if (getClients.running) {
+                getClients.startObserved = false
+                return
+            }
+            if (getClients.startObserved)
+                return
+            root._finishClientsRefresh()
+        }
+        onStarted: getClients.startObserved = true
         onExited: root._finishClientsRefresh()
     }
 
     Process {
         id: getMonitors
+        property bool startObserved: false
         command: ["/usr/bin/hyprctl", "monitors", "-j"]
         stdout: StdioCollector {
             id: monitorsCollector
@@ -176,11 +188,22 @@ Singleton {
                 }
             }
         }
+        onRunningChanged: {
+            if (getMonitors.running) {
+                getMonitors.startObserved = false
+                return
+            }
+            if (getMonitors.startObserved)
+                return
+            root._finishMonitorsRefresh()
+        }
+        onStarted: getMonitors.startObserved = true
         onExited: root._finishMonitorsRefresh()
     }
 
     Process {
         id: getLayers
+        property bool startObserved: false
         command: ["/usr/bin/hyprctl", "layers", "-j"]
         stdout: StdioCollector {
             id: layersCollector
@@ -193,11 +216,22 @@ Singleton {
                 }
             }
         }
+        onRunningChanged: {
+            if (getLayers.running) {
+                getLayers.startObserved = false
+                return
+            }
+            if (getLayers.startObserved)
+                return
+            root._finishLayersRefresh()
+        }
+        onStarted: getLayers.startObserved = true
         onExited: root._finishLayersRefresh()
     }
 
     Process {
         id: getWorkspaces
+        property bool startObserved: false
         command: ["/usr/bin/hyprctl", "workspaces", "-j"]
         stdout: StdioCollector {
             id: workspacesCollector
@@ -217,11 +251,22 @@ Singleton {
                 root.workspaceIds = root.workspaces.map(ws => ws.id);
             }
         }
+        onRunningChanged: {
+            if (getWorkspaces.running) {
+                getWorkspaces.startObserved = false
+                return
+            }
+            if (getWorkspaces.startObserved)
+                return
+            root._finishWorkspacesRefresh()
+        }
+        onStarted: getWorkspaces.startObserved = true
         onExited: root._finishWorkspacesRefresh()
     }
 
     Process {
         id: getActiveWorkspace
+        property bool startObserved: false
         command: ["/usr/bin/hyprctl", "activeworkspace", "-j"]
         stdout: StdioCollector {
             id: activeWorkspaceCollector
@@ -234,6 +279,16 @@ Singleton {
                 }
             }
         }
+        onRunningChanged: {
+            if (getActiveWorkspace.running) {
+                getActiveWorkspace.startObserved = false
+                return
+            }
+            if (getActiveWorkspace.startObserved)
+                return
+            root._finishWorkspacesRefresh()
+        }
+        onStarted: getActiveWorkspace.startObserved = true
         onExited: root._finishWorkspacesRefresh()
     }
 }

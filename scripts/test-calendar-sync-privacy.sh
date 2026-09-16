@@ -9,7 +9,10 @@ fail() {
     exit 1
 }
 
-if grep -Eq '_log\([^\n]*source\.url' "$service"; then
+# grep evaluates one input line at a time, so `.*` cannot cross a newline. Do
+# not use a `[^\n]` ERE class here: POSIX grep does not interpret `\n` there as
+# a newline escape, which can turn the privacy check into a false negative.
+if grep -Eq '_log\(.*source\.url' "$service"; then
     fail 'calendar subscription URL is written to debug logs'
 fi
 

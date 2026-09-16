@@ -37,6 +37,14 @@ for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
+payload_list="$(python3 sdata/lib/runtime-payload.py list --root .)"
+for test_script in scripts/test-*.sh; do
+  [[ -e "$test_script" ]] || continue
+  if grep -Fqx "$test_script" <<<"$payload_list"; then
+    fail "runtime payload includes repository test script: $test_script"
+  fi
+done
+
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
   "$git_pkg:$git_srcinfo" \

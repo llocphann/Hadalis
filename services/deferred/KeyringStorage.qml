@@ -18,6 +18,7 @@ Singleton {
 
     property bool loaded: false
     property var keyringData: ({})
+    property bool _savePending: false
     
     property var properties: {
         "application": "illogical-impulse",
@@ -69,6 +70,11 @@ Singleton {
     }
 
     function saveKeyringData() {
+        if (saveData.running) {
+            root._savePending = true;
+            return;
+        }
+        root._savePending = false;
         saveData.stdinEnabled = true;
         saveData.running = true;
     }
@@ -85,6 +91,10 @@ Singleton {
                 saveData.write(JSON.stringify(root.keyringData));
                 stdinEnabled = false // End input stream
             }
+        }
+        onExited: (_exitCode, _exitStatus) => {
+            if (root._savePending)
+                Qt.callLater(() => root.saveKeyringData())
         }
     }
 

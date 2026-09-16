@@ -13,6 +13,7 @@ Singleton {
     property bool _initialized: false
     property bool _tlpProbeDone: false
     property bool _tlpPdManaged: false
+    property string _pendingProfile: ""
 
     function _profileToString(profile): string {
         switch (profile) {
@@ -106,6 +107,15 @@ Singleton {
 
             root._tlpPdManaged = exitCode === 0
             root._tlpProbeDone = true
+
+            if (root._tlpPdManaged) {
+                root._pendingProfile = ""
+            } else if (root._initialized && root._pendingProfile.length > 0) {
+                const pending = root._pendingProfile
+                root._pendingProfile = ""
+                Config.setNestedValue("powerProfiles.preferredProfile", pending)
+            }
+
             if (Config.ready)
                 Qt.callLater(() => root._applyPreferredProfile())
         }
@@ -134,14 +144,25 @@ Singleton {
     Connections {
         target: PowerProfiles
         function onProfileChanged(): void {
-            // Ownership is unknown until the tlp-pd probe succeeds. Persisting
-            // before then can capture tlp-pd's automatic startup profile.
-            if (!root._tlpProbeDone || root._tlpPdManaged)
-                return
-
             const s = root._profileToString(PowerProfiles.profile)
             if (s.length === 0)
                 return
+
+            // Ownership is unknown while tlp-pd is being probed. Preserve only
+            // post-startup changes so the initial automatic profile still cannot
+            // overwrite the user's persisted preference.
+            if (!root._tlpProbeDone) {
+                if (root._initialized)
+                    root._pendingProfile = s
+                return
+            }
+
+            if (root._tlpPdManaged) {
+                root._pendingProfile = ""
+                return
+            }
+
+            root._pendingProfile = ""
             Config.setNestedValue("powerProfiles.preferredProfile", s)
         }
     }

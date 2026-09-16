@@ -326,6 +326,7 @@ Item {
                     RippleButton {
                         implicitWidth: root.controlButtonSize
                         implicitHeight: root.controlButtonSize
+                        buttonText: Translation.tr("Previous")
                         enabled: MprisController.canGoPrevious
                         buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
@@ -354,6 +355,7 @@ Item {
                         id: playPauseButton
                         implicitWidth: root.primaryControlButtonSize
                         implicitHeight: root.primaryControlButtonSize
+                        buttonText: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
                         buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                         colBackground: "transparent"
@@ -395,6 +397,7 @@ Item {
                     RippleButton {
                         implicitWidth: root.controlButtonSize
                         implicitHeight: root.controlButtonSize
+                        buttonText: Translation.tr("Next")
                         enabled: MprisController.canGoNext
                         buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full

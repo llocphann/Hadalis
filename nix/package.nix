@@ -58,6 +58,7 @@ let
       wireplumber
     ]
     ++ optionalTop "util-linux"
+    ++ optionalTop "awww"
     ++ optionalTop "brightnessctl"
     ++ optionalTop "cava"
     ++ optionalTop "ddcutil"

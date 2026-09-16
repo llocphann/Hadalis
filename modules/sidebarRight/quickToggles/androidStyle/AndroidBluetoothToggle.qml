@@ -10,7 +10,10 @@ AndroidQuickToggleButton {
     id: root
     
     name: Translation.tr("Bluetooth")
-    statusText: BluetoothStatus.firstActiveDevice?.name ?? Translation.tr("No device")
+    statusText: BluetoothStatus.available
+        ? (BluetoothStatus.firstActiveDevice?.name ?? Translation.tr("No device"))
+        : Translation.tr("Unavailable")
+    visible: root.editMode || BluetoothStatus.available
 
     toggled: BluetoothStatus.enabled
     buttonIcon: BluetoothStatus.activeIcon

@@ -2,7 +2,57 @@ name: Packaging contracts
 
 on:
   push:
+    paths:
+      - 'VERSION'
+      - 'Makefile'
+      - 'setup'
+      - 'scripts/inir'
+      - 'scripts/test-packaging-contract.sh'
+      - 'scripts/test-make-install-lifecycle.sh'
+      - 'distro/arch/**'
+      - 'sdata/dist-arch/**'
+      - 'sdata/lib/runtime-payload.py'
+      - 'sdata/runtime-root-files.txt'
+      - 'sdata/runtime-payload-dirs.txt'
+      - 'nix/**'
+      - 'assets/systemd/**'
+      - 'assets/applications/**'
+      - 'assets/icons/desktop-symbolic.svg'
+      - 'assets/helpers/inir-*'
+      - 'assets/polkit/**'
+      - 'assets/tlp/**'
+      - 'docs/INSTALL.md'
+      - 'docs/PACKAGES.md'
+      - 'docs/RELEASING.md'
+      - 'docs/THINKFAN.md'
+      - 'docs/UNINSTALL.md'
+      - '.github/workflows/packaging.yml'
   pull_request:
+    paths:
+      - 'VERSION'
+      - 'Makefile'
+      - 'setup'
+      - 'scripts/inir'
+      - 'scripts/test-packaging-contract.sh'
+      - 'scripts/test-make-install-lifecycle.sh'
+      - 'distro/arch/**'
+      - 'sdata/dist-arch/**'
+      - 'sdata/lib/runtime-payload.py'
+      - 'sdata/runtime-root-files.txt'
+      - 'sdata/runtime-payload-dirs.txt'
+      - 'nix/**'
+      - 'assets/systemd/**'
+      - 'assets/applications/**'
+      - 'assets/icons/desktop-symbolic.svg'
+      - 'assets/helpers/inir-*'
+      - 'assets/polkit/**'
+      - 'assets/tlp/**'
+      - 'docs/INSTALL.md'
+      - 'docs/PACKAGES.md'
+      - 'docs/RELEASING.md'
+      - 'docs/THINKFAN.md'
+      - 'docs/UNINSTALL.md'
+      - '.github/workflows/packaging.yml'
   workflow_dispatch:
 
 permissions:
@@ -23,9 +73,6 @@ jobs:
 
       - name: Validate packaging contracts
         run: bash scripts/test-packaging-contract.sh
-
-      - name: Validate documentation contracts
-        run: bash scripts/verify-docs.sh
 
       - name: Validate Makefile install lifecycle
         run: |

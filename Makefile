@@ -29,7 +29,7 @@ build:
 	@bash -n scripts/test-local-distribution.sh
 	@bash -n setup
 
-test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
+test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper
 	@bash scripts/test-local-distribution.sh
 	@bash scripts/test-packaging-contract.sh
 	@bash scripts/test-nix-module-contract.sh
@@ -95,7 +95,7 @@ test-package-metadata:
 		git_version="$$(grep -m1 '^pkgver=' distro/arch/inir-shell-git/PKGBUILD | cut -d= -f2-)"; \
 		case "$$git_version" in \
 			"$$repo_version".r*) ;; \
-			*) printf 'inir-shell-git pkgver seed %s does not follow VERSION %s\n' "$$git_version" "$$repo_version" >&2; exit 1 ;; \
+			*) printf 'inir-shell-git pkgver seed %s does not follow VERSION %s\n' "$$git_version" >&2; exit 1 ;; \
 		esac; \
 		srcinfo_version="$$(sed -n 's/^[[:space:]]*pkgver = //p' distro/arch/inir-shell-git/.SRCINFO | head -1)"; \
 		test "$$srcinfo_version" = "$$git_version"
@@ -157,7 +157,7 @@ install-icon:
 install-desktop:
 	@mkdir -p "$(DESTDIR)$(APPLICATIONS_DIR)"
 	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir|' assets/applications/inir.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop"
-	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir|' assets/applications/inir-settings.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
+	@sed 's|^Exec=inir|Exec=$(BINDIR)/inir settings|' assets/applications/inir-settings.desktop > "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
 	@chmod 644 "$(DESTDIR)$(APPLICATIONS_DIR)/inir.desktop" "$(DESTDIR)$(APPLICATIONS_DIR)/inir-settings.desktop"
 	@if [ -z "$(DESTDIR)" ]; then update-desktop-database -q "$(APPLICATIONS_DIR)" 2>/dev/null || true; fi
 

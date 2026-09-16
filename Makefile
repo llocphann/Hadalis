@@ -20,7 +20,7 @@ THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"$(SYSTEMD_USER_DIR)\" LIBEXECDIR=\"$(LIBEXECDIR)\" POLKIT_ACTIONS_DIR=\"$(POLKIT_ACTIONS_DIR)\" TLP_CONFDIR=\"$(TLP_CONFDIR)\" INIR_SYSTEM_SHAREDIR=\"$(INIR_SYSTEM_SHAREDIR)\"
 
-.PHONY: all build test-local test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-doctor-routing test-optional-audio-deps test-update-tlp-contracts test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -29,7 +29,7 @@ build:
 	@bash -n scripts/test-local-distribution.sh
 	@bash -n setup
 
-test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper
+test-local: build test-doctor-routing test-optional-audio-deps test-update-tlp-contracts test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper
 	@bash scripts/test-local-distribution.sh
 	@bash scripts/test-packaging-contract.sh
 	@bash scripts/test-nix-module-contract.sh
@@ -39,6 +39,11 @@ test-doctor-routing:
 
 test-optional-audio-deps:
 	@bash scripts/test-optional-audio-deps-contract.sh
+
+test-update-tlp-contracts:
+	@bash scripts/test-update-lifecycle.sh
+	@bash scripts/test-tlp-settings-ui-guards.sh
+	@bash scripts/test-tlp-integration-lifecycle.sh
 
 test-news-contract:
 	@bash scripts/test-news-service-contract.sh

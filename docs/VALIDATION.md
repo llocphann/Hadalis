@@ -6,15 +6,27 @@ The canonical daily maintainer gate is local, clean-clone validation of `dev`:
 bash scripts/validate-maintainer-local.sh
 ```
 
-The command creates a temporary clone, records the exact tested SHA, runs the required non-Nix validation matrix, and writes one combined log. By default the log is outside the working tree at:
+The command creates a temporary clone, records the exact tested SHA, runs the required non-Nix validation matrix, and writes **one canonical diagnostic log**. By default the log is outside the working tree at:
 
 ```text
 /tmp/hadalis-maintainer-validation-YYYYMMDD-HHMMSS.log
 ```
 
-The exact log path is printed at startup and in the final summary. Set `HADALIS_VALIDATION_LOG=/path/to/file.log` only when a different destination is needed.
+The exact log path is printed at startup and again as `FINAL LOG:` in the terminal summary. Set `HADALIS_VALIDATION_LOG=/path/to/file.log` only when a different destination is needed.
+
+That single log is the only artifact a maintainer should need to send for review. The validator may use temporary per-check capture files internally, but they are removed with the temporary validation workspace and are not separate deliverables.
 
 A PASS applies only to the exact SHA printed in that log. If `dev` advances, the new HEAD is unvalidated until this command is run again.
+
+## Single-log contract
+
+The terminal is intentionally concise: one progress line per check plus the final result, SHA, counts, and `FINAL LOG:` path. Detailed successful-test stdout is not repeated into the log unless it is needed for a skip reason. For a failed check, the log includes the command, working directory, exit code, and complete captured failure output between `BEGIN FAILURE` / `END FAILURE` markers.
+
+The log also records host/OS context, important tool versions, the clean-clone git status, QML parser state, deferred Nix state, grouped failure areas, and environment/release-only checks that were not executed. This makes the log self-contained enough for diagnosis without asking the maintainer to paste terminal output or collect side logs.
+
+QML JavaScript files using `.pragma` or `.import` are not passed to `node --check`; they belong to the QML JavaScript dialect and are delegated to the QML project guards. Plain/Node JavaScript continues to use `node --check`.
+
+The validator invokes Make-only contracts with fail-fast Bash shell flags so a failing command inside a multi-command recipe cannot be followed by a later successful command and incorrectly surface as a PASS.
 
 ## Validation matrix
 
@@ -44,7 +56,7 @@ The validator collects independent failures instead of stopping at the first fai
 
 ### OPTIONAL / ENVIRONMENT DEPENDENT
 
-`qmlformat` parsing is optional in the normal daily command because old or missing Qt tooling must not turn a project-guard result into a false parser result. The summary always reports one of `QML parser: PASS`, `QML parser: FAIL`, or `QML parser: SKIPPED`, including the detected version when available.
+`qmlformat` parsing is optional in the normal daily command because old or missing Qt tooling must not turn a project-guard result into a false parser result. The summary always reports one of `QML parser: PASS`, `QML parser: FAIL`, or `QML parser: SKIPPED`, including the detected version when available. A parser skip is counted as a skip, not a PASS.
 
 For an environment that has a suitable parser, the stricter form is:
 
@@ -63,6 +75,7 @@ These checks remain outside daily static/local-contract validation because they 
 - multi-monitor and hotplug behavior;
 - suspend/resume behavior;
 - fractional-scaling and live focus/fullscreen acceptance;
+- live audio/hardware behavior that requires the real desktop session;
 - GitHub release publication, Wiki remote access, credentials, and hosted permissions.
 
 They must be completed before release when relevant; a daily local PASS does not claim these acceptance checks passed.
@@ -75,7 +88,7 @@ This is a validation-policy choice, not removal of Nix support and not a claim t
 
 ### REDUNDANT / COMPATIBILITY AGGREGATES
 
-Some standalone aggregates intentionally re-use lower-level contracts so they remain useful when run by themselves. The canonical validator still discovers the tracked test files directly, so no REQUIRED LOCAL gate depends on a GitHub Actions-only assertion set or on `make test-local` being the entry point.
+Some standalone aggregates intentionally re-use lower-level contracts so they remain useful when run by themselves. The canonical validator still discovers tracked test files directly. Successful output is summarized rather than copied wholesale into the canonical log, which keeps repeated aggregate output from dominating the artifact while preserving full diagnostics for failures.
 
 ### STALE / NEEDS FIX
 
@@ -84,7 +97,7 @@ The 2026-09-16 validation audit removed two stale orchestration hazards from the
 - the canonical daily validator no longer makes dedicated Nix validation blocking;
 - assertions that previously existed only inline in GitHub Actions are represented by repository regression contracts and are exercised locally.
 
-Future stale tests should be fixed or reclassified rather than weakening product/runtime behavior merely to obtain a green aggregate.
+Future stale tests should be fixed or reclassified rather than weakening product/runtime behavior merely to obtain a green aggregate. Waffle is an active product family and must not be treated as a legacy cleanup target.
 
 ## CI relationship
 

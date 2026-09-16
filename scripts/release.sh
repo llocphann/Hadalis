@@ -26,6 +26,24 @@ require_clean_version() {
   [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must look like X.Y.Z"
 }
 
+require_release_checkout() {
+  local tag="$1"
+  local tag_commit head_commit
+
+  [[ -z "$(git status --porcelain --untracked-files=all)" ]] \
+    || die "release checkout must be clean (including untracked files)"
+
+  tag_commit="$(git rev-parse "$tag^{commit}")"
+  head_commit="$(git rev-parse HEAD)"
+  [[ "$head_commit" == "$tag_commit" ]] \
+    || die "HEAD must match $tag before publishing"
+
+  git fetch --quiet origin stable \
+    || die "could not fetch origin/stable"
+  git merge-base --is-ancestor "$tag_commit" origin/stable \
+    || die "$tag is not contained in origin/stable"
+}
+
 extract_notes() {
   local version="$1"
   awk -v version="$version" '
@@ -63,6 +81,7 @@ publish_release() {
   local tag="v$version"
   local notes_file
   git rev-parse --verify "$tag" >/dev/null 2>&1 || die "missing local tag $tag"
+  require_release_checkout "$tag"
 
   notes_file="$(mktemp)"
   write_notes "$version" "$notes_file"

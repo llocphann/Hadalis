@@ -28,6 +28,20 @@ run_with_config_home "$case_root" >/dev/null
 [[ "$(readlink "$case_root/illogical-impulse")" == "$case_root/inir" ]] \
   || fail 'legacy-only compatibility symlink points at the wrong target'
 
+# A compatibility link can survive while its canonical directory is removed.
+# The check must keep this migration pending so apply can recreate the target.
+case_root="$stage/dangling-compat-link"
+mkdir -p "$case_root"
+ln -s "$case_root/inir" "$case_root/illogical-impulse"
+if ! XDG_CONFIG_HOME="$case_root" migration_check; then
+  fail 'migration check skipped a dangling compatibility symlink'
+fi
+run_with_config_home "$case_root" >/dev/null
+[[ -d "$case_root/inir" ]] || fail 'migration did not recreate the canonical config directory'
+if XDG_CONFIG_HOME="$case_root" migration_check; then
+  fail 'migration check still reports a repaired compatibility layout as pending'
+fi
+
 # Two real config trees are ambiguous. The migration must fail closed and leave
 # both trees untouched instead of merging and deleting the legacy directory.
 case_root="$stage/conflicting-directories"
@@ -64,4 +78,4 @@ fi
   || fail 'migration changed an unexpected legacy file'
 
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - config namespace migration preserves ambiguous legacy data'
+printf '%s\n' 'ok 1 - config namespace migration preserves data and repairs compatibility layout'

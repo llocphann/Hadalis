@@ -54,12 +54,8 @@ InputChip 1.0 InputChip.qml
 FilterChip 1.0 FilterChip.qml
 KeyboardKey 1.0 KeyboardKey.qml
 LightDarkPreferenceButton 1.0 LightDarkPreferenceButton.qml
-MascotAnimation 1.0 MascotAnimation.qml
 ArrangeChip 1.0 ArrangeChip.qml
 ArrangeDropSlot 1.0 ArrangeDropSlot.qml
-MascotImage 1.0 MascotImage.qml
-MascotCollection 1.0 MascotCollection.qml
-MascotPoseGallery 1.0 MascotPoseGallery.qml
 MaterialCookie 1.0 MaterialCookie.qml
 CookieFace 1.0 CookieFace.qml
 CookiePlate 1.0 CookiePlate.qml

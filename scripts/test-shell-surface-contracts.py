@@ -22,18 +22,35 @@ def main() -> None:
         "ConnectedSurfaceGeometry",
         "ConnectedSurfaceFrame",
         "ConnectedSurfaceMask",
-        "EdgeTop",
-        "EdgeBottom",
-        "EdgeLeft",
-        "EdgeRight",
+        "mask: connectedMask",
+        "ExclusionMode.Ignore",
     ):
         check(token in styled_popup, f"StyledPopup must preserve connected-perimeter contract: {token}")
+    for edge in ("top", "bottom", "left", "right"):
+        check(f'"{edge}"' in styled_popup,
+              f"StyledPopup must preserve {edge} attachment handling")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
-    for token in ("EdgeTop", "EdgeBottom", "EdgeLeft", "EdgeRight", "seamOverlap"):
-        check(token in geometry, f"ConnectedSurfaceGeometry missing required edge/seam token: {token}")
-    check("1 / root.dpr" in geometry or "1 / dpr" in geometry,
-          "ConnectedSurfaceGeometry must retain DPR-aware seam overlap")
+    for edge in ("top", "bottom", "left", "right"):
+        check(f'edge === "{edge}"' in geometry,
+              f"ConnectedSurfaceGeometry missing {edge} edge handling")
+    for token in (
+        "seamOverlap",
+        "effectiveSeamOverlap",
+        "devicePixelRatio",
+        "function pixelScale()",
+        "function snap(",
+        "connectorRectForBody",
+        "animatedBodyRect",
+    ):
+        check(token in geometry,
+              f"ConnectedSurfaceGeometry missing seam/reveal geometry contract: {token}")
+
+    frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
+    check("connectorBorderWidth: 0" not in frame,
+          "ConnectedSurfaceFrame should expose connectorBorderWidth as a configurable property, not hard-code it internally")
+    check("Render after the body so seamOverlap covers the body's border" in frame,
+          "ConnectedSurfaceFrame must preserve the body/connector seam-overlap rendering contract")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()
@@ -42,6 +59,8 @@ def main() -> None:
               f"Dock settings must not expose legacy style option {legacy_style}")
     check('panelFamily !== "waffle"' in dock_config,
           "Waffle must remain a separate panel family rather than a Dock style")
+    check("Dock uses the Panel surface style." in dock_config,
+          "Dock settings must describe Panel as the canonical surface style")
 
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,
@@ -65,6 +84,8 @@ def main() -> None:
           "Translation runtime must expose only en_US")
     check('languageCode: "en_US"' in translation,
           "Translation runtime languageCode must stay canonical en_US")
+    check('translations/en_US.json' in translation,
+          "Translation runtime must load the canonical en_US catalog")
     locale_files = sorted(path.name for path in (ROOT / "translations").glob("*.json"))
     check(locale_files == ["en_US.json"],
           f"Only translations/en_US.json is allowed; found {locale_files}")

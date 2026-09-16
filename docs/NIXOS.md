@@ -160,15 +160,16 @@ Do not enable it when that path is already occupied by a repo-managed checkout.
 
 The Nix package wraps `inir` with the runtime dependencies declared in `nix/package.nix`. Core tools include Quickshell, clipboard/screenshot/audio tooling, systemd utilities, and the shell's command-line dependencies. Optional packages are added when they exist in the selected nixpkgs set.
 
-EasyEffects is intentionally **not** part of the default Nix runtime closure. The Equalizer Phase 1 backend is optional and degrades to an unavailable capability when EasyEffects is absent; Media playback does not depend on it. To opt into the native EasyEffects backend, add it explicitly to the module service `PATH`:
+EasyEffects and its `socat` control transport are intentionally **not** part of the default Nix runtime closure. The Equalizer Phase 1 backend is optional and degrades to an unavailable capability when these tools are absent; Media playback does not depend on them. To opt into the native EasyEffects backend and its control transport, add both explicitly to the module service `PATH`:
 
 ```nix
 programs.inir.extraPackages = [
   pkgs.easyeffects
+  pkgs.socat
 ];
 ```
 
-This can be combined with other entries already supplied through `extraPackages`. The existing EasyEffects service also detects a Flatpak installation at runtime, so the Hadalis package itself does not need to make the native package a hard dependency.
+This can be combined with other entries already supplied through `extraPackages`. The existing EasyEffects service also detects a Flatpak installation at runtime, so the Hadalis package itself does not need to make the native package or its control transport hard dependencies.
 
 The package also sets the runtime location through `INIR_SYSTEM_RUNTIME_DIR` / `INIR_FALLBACK_SYSTEM_RUNTIME_DIR`, so package-managed runs do not depend on a mutable source checkout.
 

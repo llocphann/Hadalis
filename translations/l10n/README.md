@@ -43,7 +43,16 @@ The apply command refuses unknown or duplicate keys, changed English source text
 
 For a small correction to existing locale values that has already been reviewed, use a provenance-backed replacement manifest instead of regenerating or rewriting the locale. Each manifest records the target locale and an exact `from`/`to` pair for every stable key, so applying it fails closed if the catalog changed after review.
 
-The currently reviewed Turkish placeholder repair can be checked without writing first:
+Inspect the manifest state before writing:
+
+```bash
+python3 translations/tools/apply-reviewed-replacements.py \
+  translations/l10n/tr_TR-placeholder-repairs.json --status
+```
+
+`pending` means every catalog value still matches its reviewed `from` value. `applied` means every entry already matches its reviewed `to` value. A mixed, partially applied, or otherwise drifted manifest exits non-zero instead of guessing which values are safe to change.
+
+When the state is `pending`, the currently reviewed Turkish placeholder repair can be checked without writing first:
 
 ```bash
 python3 translations/tools/apply-reviewed-replacements.py \
@@ -57,11 +66,13 @@ python3 translations/tools/apply-reviewed-replacements.py \
   translations/l10n/tr_TR-placeholder-repairs.json
 ```
 
-The replacement tool preserves unrelated translations and rejects missing keys, changed reviewed source values, or replacements that violate the canonical placeholder/markup contract. A manifest is not permission to prune historical translations or bulk-rewrite a locale.
+The replacement tool preserves unrelated translations and rejects missing keys, changed reviewed source values, partially applied manifests, or replacements that violate the canonical placeholder/markup contract. A manifest is not permission to prune historical translations or bulk-rewrite a locale.
 
-After an exact repair, rerun both catalog and source-boundary checks:
+After an exact repair, confirm the manifest reports `applied`, then rerun both catalog and source-boundary checks:
 
 ```bash
+python3 translations/tools/apply-reviewed-replacements.py \
+  translations/l10n/tr_TR-placeholder-repairs.json --status
 python3 translations/tools/l10n.py audit-all
 python3 translations/tools/source-parity.py
 ```

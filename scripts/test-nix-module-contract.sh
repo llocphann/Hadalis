@@ -93,6 +93,11 @@ grep -Fq 'let command = "awww img"' "$awww_service" \
 grep -Fq '++ optionalTop "awww"' "$package" \
   || fail 'Nix runtime no longer provides the fresh-install awww wallpaper backend'
 
+python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["apps"]["volumeMixer"] == "pavucontrol"' "$default_config" \
+  || fail 'fresh-install volume mixer is no longer pavucontrol; update the Nix runtime contract deliberately'
+grep -Fq '++ optionalTop "pavucontrol"' "$package" \
+  || fail 'Nix runtime no longer provides the fresh-install volume mixer'
+
 bash -n "$zed_module" || fail 'Zed theming module has invalid Bash syntax'
 grep -Fq 'python_cmd="$(venv_python)"' "$zed_module" \
   || fail 'packaged Zed theming no longer resolves the managed/package Python runtime'

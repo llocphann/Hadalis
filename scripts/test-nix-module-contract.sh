@@ -52,6 +52,15 @@ for python_package in materialyoucolor numpy pillow; do
     || fail "Nix runtime Python environment is missing ${python_package}"
 done
 
+grep -Fq 'colorPython = with pkgs;' "$package" \
+  || fail 'Nix runtime no longer names the packaged color Python environment'
+grep -Eq '^[[:space:]]+colorPython$' "$package" \
+  || fail 'Nix runtime no longer exposes colorPython on the wrapped runtime PATH'
+[[ "$(grep -Fc '${colorPython}/bin/python3' "$package")" -ge 2 ]] \
+  || fail 'Nix package no longer pins switchwall to the packaged color Python interpreter'
+grep -Fq '_ii_python="{color_python}"' "$package" \
+  || fail 'Nix package no longer rewrites switchwall to the pinned color Python interpreter'
+
 bash -n "$zed_module" || fail 'Zed theming module has invalid Bash syntax'
 grep -Fq 'python_cmd="$(venv_python)"' "$zed_module" \
   || fail 'packaged Zed theming no longer resolves the managed/package Python runtime'

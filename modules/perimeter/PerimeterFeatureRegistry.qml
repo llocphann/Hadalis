@@ -9,9 +9,6 @@ QtObject {
     property bool registered: false
 
     function registerAll() {
-        if (root.registered)
-            return true
-
         const registrations = [
             { moduleId: "workspaces", source: Qt.resolvedUrl("WorkspacesModule.qml") },
             { moduleId: "system-monitor", source: Qt.resolvedUrl("SystemMonitorModule.qml") },
@@ -21,11 +18,27 @@ QtObject {
             { moduleId: "thinkfan", source: Qt.resolvedUrl("ThinkFanModule.qml") }
         ]
 
+        if (root.registered) {
+            let registrationsHealthy = true
+            for (const registration of registrations) {
+                const current = PerimeterCore.ModuleRegistry.resolve(registration.moduleId)
+                if (String(current?.source ?? "") !== String(registration.source)) {
+                    registrationsHealthy = false
+                    break
+                }
+            }
+            if (registrationsHealthy)
+                return true
+            root.registered = false
+        }
+
         for (const registration of registrations) {
             if (!PerimeterCore.ModuleRegistry.registerModule(registration.moduleId, {
                 source: registration.source
-            }))
+            })) {
+                root.registered = false
                 return false
+            }
         }
 
         root.registered = true

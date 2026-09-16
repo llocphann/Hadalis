@@ -41,7 +41,7 @@ Singleton {
         interval: 300
         onTriggered: {
             if (root._pendingRestart && root.active) {
-                root._doEnable()
+                wlsunsetKillProc.running = true;
             }
             root._pendingRestart = false
         }

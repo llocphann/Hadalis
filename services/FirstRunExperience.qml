@@ -35,9 +35,24 @@ Singleton {
         Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "welcome"])
     }
 
+    function _completeFirstRun(): void {
+        if (listWallpapersProc._candidates.length > 0) {
+            const sorted = [...listWallpapersProc._candidates].sort()
+            root.defaultWallpaperPath = sorted.find(path => path.endsWith("/qs-niri.jpg"))
+                ?? sorted[0]
+        }
+        if (root._pendingFirstRun) {
+            root.disableNextTime()
+            root.handleFirstRun()
+            root._pendingFirstRun = false
+        }
+    }
+
     Process {
         id: listWallpapersProc
         property string wallDir: FileUtils.trimFileProtocol(`${Directories.assetsPath}/wallpapers`)
+        property var _candidates: []
+        property bool startObserved: false
         command: ["/bin/sh", "-c", `find "${wallDir}" -maxdepth 1 -type f \\( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \\) 2>/dev/null`]
         stdout: SplitParser {
             onRead: (line) => {
@@ -46,24 +61,39 @@ Singleton {
                     listWallpapersProc._candidates.push(trimmed)
             }
         }
-        property var _candidates: []
-        onExited: (exitCode) => {
-            if (_candidates.length > 0) {
-                const sorted = [..._candidates].sort()
-                root.defaultWallpaperPath = sorted.find(path => path.endsWith("/qs-niri.jpg"))
-                    ?? sorted[0]
+        onRunningChanged: {
+            if (listWallpapersProc.running) {
+                listWallpapersProc.startObserved = false
+                listWallpapersProc._candidates = []
+                root.defaultWallpaperPath = ""
+                return
             }
-            if (root._pendingFirstRun) {
-                root.disableNextTime()
-                root.handleFirstRun()
-                root._pendingFirstRun = false
-            }
+            if (listWallpapersProc.startObserved)
+                return
+
+            console.warn("[FirstRunExperience] Failed to start wallpaper discovery")
+            root._completeFirstRun()
         }
+        onStarted: listWallpapersProc.startObserved = true
+        onExited: (exitCode) => root._completeFirstRun()
     }
 
     Process {
         id: checkFirstRunProc
+        property bool startObserved: false
         command: ["/usr/bin/test", "-f", root.firstRunFilePath]
+        onRunningChanged: {
+            if (checkFirstRunProc.running) {
+                checkFirstRunProc.startObserved = false
+                return
+            }
+            if (checkFirstRunProc.startObserved)
+                return
+
+            root._pendingFirstRun = false
+            console.warn("[FirstRunExperience] Failed to start first-run marker probe")
+        }
+        onStarted: checkFirstRunProc.startObserved = true
         onExited: (exitCode) => {
             if (exitCode !== 0) {
                 root._pendingFirstRun = true

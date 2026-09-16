@@ -109,6 +109,7 @@ Singleton {
         id: detector
         property bool statusSeen: false
         property bool timedOut: false
+        property bool startObserved: false
         command: ["/usr/libexec/inir-thinkfan", "--status"]
 
         stdout: SplitParser {
@@ -118,7 +119,23 @@ Singleton {
             }
         }
 
+        onRunningChanged: {
+            if (detector.running) {
+                detector.startObserved = false
+                return
+            }
+            if (detector.startObserved)
+                return
+
+            detectorTimeout.stop()
+            root._clearStatus("helper-unavailable")
+            if (root._refreshQueued) {
+                root._refreshQueued = false
+                Qt.callLater(() => root.refresh())
+            }
+        }
         onStarted: {
+            detector.startObserved = true
             detector.statusSeen = false
             detector.timedOut = false
             detectorTimeout.restart()
@@ -152,12 +169,29 @@ Singleton {
     Process {
         id: applyProcess
         property bool timedOut: false
+        property bool startObserved: false
 
         stdout: SplitParser {
             onRead: data => root._parseStatus(data)
         }
 
+        onRunningChanged: {
+            if (applyProcess.running) {
+                applyProcess.startObserved = false
+                return
+            }
+            if (applyProcess.startObserved || !root.busy)
+                return
+
+            applyTimeout.stop()
+            root.busy = false
+            root.lastApplySucceeded = false
+            root.lastApplyError = "apply-start-failed"
+            console.warn("[ThinkFan] Failed to start privileged profile helper")
+            Qt.callLater(() => root.refresh())
+        }
         onStarted: {
+            applyProcess.startObserved = true
             applyProcess.timedOut = false
             applyTimeout.restart()
         }

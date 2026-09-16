@@ -187,6 +187,7 @@ Item {
                             return
                         event.accepted = true
                         MprisController.setActivePlayer(modelData)
+                        playerControl.focusPrimaryControl()
                     }
                     onClicked: MprisController.setActivePlayer(modelData)
                     cursorShape: Qt.PointingHandCursor

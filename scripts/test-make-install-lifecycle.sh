@@ -95,6 +95,7 @@ grep -Fq ">${libexecdir}/inir-thinkfan</annotate>" "$thinkfan_policy" || {
 
 # Exercise teardown of managed TLP drop-ins inside the staging root. Package
 # installation does not create them, but a live source install can own them.
+mkdir -p "$stage$tlp_confdir"
 printf '%s\n' '# staged battery lifecycle contract' > "$stage$tlp_confdir/99-inir-battery-charge-limit.conf"
 printf '%s\n' '# staged TLP settings lifecycle contract' > "$stage$tlp_confdir/99-inir-tlp-settings.conf"
 

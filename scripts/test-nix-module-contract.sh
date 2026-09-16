@@ -81,8 +81,9 @@ grep -Fq '_ii_python="{color_python}"' "$package" \
 
 grep -Fq 'Quickshell.execDetached(["/usr/bin/env", "easyeffects", "--service-mode"])' "$easyeffects_service" \
   || fail 'EasyEffects service no longer exercises the PATH-resolved native runtime contract'
-grep -Fq '++ optionalTop "easyeffects"' "$package" \
-  || fail 'Nix runtime no longer provides EasyEffects for the default audio integration'
+if grep -Fq '++ optionalTop "easyeffects"' "$package"; then
+  fail 'Nix runtime hard-wires optional EasyEffects backend; provide it through programs.inir.extraPackages when desired'
+fi
 
 python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["background"]["backend"]["provider"] == "awww"' "$default_config" \
   || fail 'fresh-install wallpaper backend is no longer awww; update the Nix runtime contract deliberately'

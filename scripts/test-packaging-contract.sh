@@ -29,8 +29,10 @@ git_srcinfo="distro/arch/inir-shell-git/.SRCINFO"
 meta_pkg="distro/arch/inir-meta/PKGBUILD"
 meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
 nix_pkg="nix/package.nix"
+stable_hook="distro/arch/inir-shell/inir-shell.install"
+git_hook="distro/arch/inir-shell-git/inir-shell-git.install"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -106,8 +108,15 @@ for package in "${meta_required[@]}"; do
     || fail "inir-meta .SRCINFO is missing dependency: $package"
 done
 
-cmp -s distro/arch/inir-shell/inir-shell.install distro/arch/inir-shell-git/inir-shell-git.install \
-  || fail 'stable/git Arch lifecycle hooks differ'
+cmp -s "$stable_hook" "$git_hook" || fail 'stable/git Arch lifecycle hooks differ'
+for hook in "$stable_hook" "$git_hook"; do
+  grep -Fq 'post_remove() {' "$hook" \
+    || fail "$hook no longer explains per-user service cleanup after package removal"
+  grep -Fq "-path '*.wants/inir.service' -type l -delete" "$hook" \
+    || fail "$hook no longer provides dangling service-link cleanup"
+  grep -Fq "run 'inir service disable' as each affected user" "$hook" \
+    || fail "$hook no longer documents the safe pre-removal service step"
+done
 
 # Pacman owns the canonical user unit under /usr/lib/systemd/user. Both Arch
 # recipes must patch their packaged launchers so compositor wiring targets that

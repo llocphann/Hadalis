@@ -88,6 +88,17 @@ check_arch_srcinfo "$arch_package" "$arch_package_srcinfo"
 check_arch_srcinfo "$arch_git_package" "$arch_git_srcinfo"
 check_arch_srcinfo "$arch_meta_package" "$arch_meta_srcinfo"
 
+# The non-VCS Arch package's generated metadata must use the same immutable
+# source ref as the PKGBUILD. This catches source URL drift even between releases.
+arch_source_ref="$(sed -n 's/^_source_ref="${INIR_SOURCE_REF:-\([^}]*\)}"$/\1/p' "$arch_package")"
+arch_srcinfo_source="$(sed -n 's/^[[:space:]]*source = //p' "$arch_package_srcinfo" | head -1)"
+[[ -n "$arch_source_ref" && -n "$arch_srcinfo_source" ]] \
+    || fail 'could not resolve Arch non-VCS package source metadata'
+[[ "$arch_srcinfo_source" == *"/archive/${arch_source_ref}.tar.gz" ]] \
+    || fail 'Arch .SRCINFO source URL drifted from PKGBUILD _source_ref'
+[[ "${arch_srcinfo_source%%::*}" == *"-${arch_source_ref}.tar.gz" ]] \
+    || fail 'Arch .SRCINFO archive filename drifted from PKGBUILD _source_ref'
+
 # Nix packages are immutable/package-managed. Their runtime metadata must make
 # setup/status defer payload updates to Nix, and packaged migrate must not copy
 # the raw launcher into ~/.local/bin where it would shadow the wrapped launcher.
@@ -118,6 +129,12 @@ from pathlib import Path
 import sys
 
 text = Path(sys.argv[1]).read_text()
+source_pin = text.split('require_release_source_pin() {', 1)[1].split('\n}\n\nrequire_release_checkout() {', 1)[0]
+if '[[ "$source_ref" == "$tag" ]]' not in source_pin:
+    raise SystemExit('release package source pin must equal the immutable release tag')
+if '.SRCINFO' not in source_pin or '/archive/${tag}.tar.gz' not in source_pin:
+    raise SystemExit('release source preflight must verify tagged .SRCINFO archive metadata')
+
 stage = text.split('stage_release_draft() {', 1)[1].split('\n}\n\npublish_release() {', 1)[0]
 state_probe = stage.find('gh release view "$tag"')
 reuse = stage.find('gh release edit "$tag"')
@@ -135,11 +152,11 @@ publish = text.split('publish_release() {', 1)[1].split('\n}\n\nmain() {', 1)[0]
 preflight = publish.find('require_release_version_consistency "$version"')
 tag_check = publish.find('rev-parse --verify "$tag"')
 checkout = publish.find('require_release_checkout "$tag"')
-source_pin = publish.find('require_release_source_pin "$tag"')
+source_pin_call = publish.find('require_release_source_pin "$tag"')
 stage_call = publish.find('stage_release_draft "$tag" "$notes_file"')
 wiki = publish.find('"$script_dir/wiki-sync.sh" publish')
 make_public = publish.find('gh release edit "$tag" --repo "$github_repo" --draft=false')
-positions = (preflight, tag_check, checkout, source_pin, stage_call, wiki, make_public)
+positions = (preflight, tag_check, checkout, source_pin_call, stage_call, wiki, make_public)
 if min(positions) < 0 or list(positions) != sorted(positions):
     raise SystemExit('release publish ordering must be preflight -> tag -> checkout -> source pin -> draft -> Wiki -> public release')
 PY

@@ -80,7 +80,7 @@ scripts/release.sh publish X.Y.Z
 
 The publication sequence is:
 
-1. Validate version, checkout, remote tag, and package source identity.
+1. Validate version, checkout, remote tag, package source identity, and the packaging/Nix contract suites.
 2. Generate release notes.
 3. Create a GitHub draft release, or reuse an existing draft for the same tag.
 4. Sync repository docs to the GitHub Wiki.

@@ -6,6 +6,7 @@ anchor_publisher="$root/modules/common/perimeter/AnchorPublisher.qml"
 route_controller="$root/modules/common/perimeter/SurfaceRouteController.qml"
 module_host="$root/modules/common/perimeter/PerimeterModuleHost.qml"
 media_module="$root/modules/perimeter/MediaModule.qml"
+media_surface="$root/modules/perimeter/MediaConnectedSurface.qml"
 weather_module="$root/modules/perimeter/WeatherModule.qml"
 
 fail() {
@@ -14,7 +15,7 @@ fail() {
 }
 
 for file in "$anchor_publisher" "$route_controller" "$module_host" \
-        "$media_module" "$weather_module"; do
+        "$media_module" "$media_surface" "$weather_module"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
@@ -84,5 +85,21 @@ for route_module in "$media_module" "$weather_module"; do
         fail "$(basename "$route_module") passes caller-owned geometry into route ownership"
     fi
 done
+
+# Media keyboard focus belongs to the connected surface only while it owns the
+# active route. The deferred handoff must re-check ownership so a close/route
+# replacement between the signal and Qt.callLater cannot steal focus.
+grep -Fq 'WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand' "$media_surface" \
+    || fail 'media connected surface no longer uses on-demand keyboard focus'
+media_focus_block="$(sed -n '/onRouteOwnedChanged: {/,/ConnectedSurfaceGeometry {/p' "$media_surface")"
+[[ -n "$media_focus_block" ]] || fail 'media connected surface is missing route-owned focus handoff'
+grep -Fq 'if (!root.routeOwned)' <<<"$media_focus_block" \
+    || fail 'media connected surface can request focus after losing route ownership'
+grep -Fq 'Qt.callLater(() => {' <<<"$media_focus_block" \
+    || fail 'media connected surface focus handoff is not deferred until route activation settles'
+grep -Fq 'if (root.routeOwned)' <<<"$media_focus_block" \
+    || fail 'deferred media focus handoff does not re-check route ownership'
+grep -Fq 'mediaPopup.forceActiveFocus()' <<<"$media_focus_block" \
+    || fail 'owned media connected surface no longer hands keyboard focus to the popup'
 
 printf 'PASS: perimeter route contracts\n'

@@ -36,9 +36,14 @@ test-local: build test-prefix-install
 test-prefix-install:
 	@stage="$$(mktemp -d)"; \
 		trap 'rm -rf -- "$$stage"' EXIT; \
-		$(MAKE) -s install-bin install-shell install-desktop DESTDIR="$$stage" PREFIX=/opt/inir; \
+		$(MAKE) -s install-bin install-shell install-desktop install-docs DESTDIR="$$stage" PREFIX=/opt/inir; \
 		runtime="$$stage/opt/inir/share/quickshell/inir"; \
+		docs="$$stage/opt/inir/share/doc/inir-shell"; \
 		test -f "$$runtime/shell.qml"; \
+		test -f "$$docs/README.md"; \
+		test -f "$$docs/INSTALL.md"; \
+		test -f "$$docs/PACKAGES.md"; \
+		test -f "$$docs/RELEASING.md"; \
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$stage/opt/inir/bin/inir"; \
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$runtime/scripts/inir"; \
 		grep -Fq 'RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/opt/inir/share/quickshell/inir}"' "$$runtime/sdata/lib/versioning.sh"; \
@@ -97,8 +102,9 @@ install-desktop:
 
 install-docs:
 	@install -Dm644 README.md "$(DESTDIR)$(DOC_DIR)/README.md"
-	@install -Dm644 docs/SETUP.md "$(DESTDIR)$(DOC_DIR)/SETUP.md"
-	@install -Dm644 docs/IPC.md "$(DESTDIR)$(DOC_DIR)/IPC.md"
+	@for doc in docs/*.md; do \
+		install -Dm644 "$$doc" "$(DESTDIR)$(DOC_DIR)/$$(basename "$$doc")"; \
+	done
 
 install-license:
 	@install -Dm644 LICENSE "$(DESTDIR)$(LICENSE_DIR)/LICENSE"

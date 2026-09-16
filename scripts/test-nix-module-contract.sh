@@ -103,6 +103,16 @@ python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")
 grep -Fq '++ optionalTop "mission-center"' "$package" \
   || fail 'Nix runtime no longer provides the fresh-install task manager'
 
+python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["apps"]["bluetooth"] == "blueman-manager"' "$default_config" \
+  || fail 'fresh-install Bluetooth manager is no longer blueman-manager; update the Nix runtime contract deliberately'
+grep -Fq '++ optionalTop "blueman"' "$package" \
+  || fail 'Nix runtime no longer provides the fresh-install Bluetooth manager'
+
+python3 -c 'import json, sys; data=json.load(open(sys.argv[1], encoding="utf-8")); assert data["apps"]["network"] == "nm-connection-editor" and data["apps"]["networkEthernet"] == "nm-connection-editor"' "$default_config" \
+  || fail 'fresh-install network settings no longer use nm-connection-editor; update the Nix runtime contract deliberately'
+grep -Fq '++ optionalTop "networkmanagerapplet"' "$package" \
+  || fail 'Nix runtime no longer provides the fresh-install network settings editor'
+
 bash -n "$zed_module" || fail 'Zed theming module has invalid Bash syntax'
 grep -Fq 'python_cmd="$(venv_python)"' "$zed_module" \
   || fail 'packaged Zed theming no longer resolves the managed/package Python runtime'

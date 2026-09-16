@@ -374,6 +374,14 @@ Singleton {
 
     function setNiriAnimations(enabled) {
         if (!controlNiriAnimations && !enabled) return
+        if (niriAnimProcess.running) {
+            niriAnimProcess.pendingEnabled = enabled
+            niriAnimProcess.rerunAfterExit = true
+            return
+        }
+
+        niriAnimProcess.pendingEnabled = enabled
+        niriAnimProcess.rerunAfterExit = false
 
         // Try modular file first, fall back to root config.kdl
         const targetFile = niriAnimationsPath
@@ -394,11 +402,18 @@ Singleton {
 
     Process {
         id: niriAnimProcess
+        property bool pendingEnabled: true
+        property bool rerunAfterExit: false
         onExited: (code, status) => {
             if (code === 0) {
                 root._log("[GameMode] Niri animations updated")
             }
             suppressClearTimer.restart()
+            if (niriAnimProcess.rerunAfterExit) {
+                const pending = niriAnimProcess.pendingEnabled
+                niriAnimProcess.rerunAfterExit = false
+                Qt.callLater(() => root.setNiriAnimations(pending))
+            }
         }
     }
 

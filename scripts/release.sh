@@ -42,6 +42,8 @@ require_release_checkout() {
     || die "could not fetch origin/stable"
   git merge-base --is-ancestor "$tag_commit" origin/stable \
     || die "$tag is not contained in origin/stable"
+  git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 \
+    || die "$tag is not pushed to origin"
 }
 
 extract_notes() {

@@ -304,7 +304,23 @@ Singleton {
 
     Process {
         id: rdwBinaryProbe
+        property bool startObserved: false
         command: ["/usr/bin/test", "-x", "/usr/bin/tlp-rdw"]
+
+        onRunningChanged: {
+            if (rdwBinaryProbe.running) {
+                rdwBinaryProbe.startObserved = false
+                return
+            }
+            if (rdwBinaryProbe.startObserved)
+                return
+
+            root.rdwAvailable = false
+            root.rdwProbeDone = false
+            console.warn("[TLP] Failed to start RDW binary probe")
+        }
+
+        onStarted: rdwBinaryProbe.startObserved = true
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
@@ -318,11 +334,52 @@ Singleton {
 
     Process {
         id: rdwDispatcherProbe
+        property bool timedOut: false
+        property bool startObserved: false
         command: ["/usr/bin/systemctl", "is-enabled", "--quiet", "NetworkManager-dispatcher.service"]
 
+        onRunningChanged: {
+            if (rdwDispatcherProbe.running) {
+                rdwDispatcherProbe.startObserved = false
+                return
+            }
+            if (rdwDispatcherProbe.startObserved)
+                return
+
+            rdwDispatcherTimeout.stop()
+            root.rdwAvailable = false
+            root.rdwProbeDone = false
+            console.warn("[TLP] Failed to start NetworkManager dispatcher probe")
+        }
+
+        onStarted: {
+            rdwDispatcherProbe.startObserved = true
+            rdwDispatcherProbe.timedOut = false
+            rdwDispatcherTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
+            rdwDispatcherTimeout.stop()
+            if (rdwDispatcherProbe.timedOut) {
+                root.rdwAvailable = false
+                root.rdwProbeDone = false
+                console.warn("[TLP] Timed out while probing NetworkManager dispatcher")
+                return
+            }
             root.rdwAvailable = exitCode === 0
             root.rdwProbeDone = true
+        }
+    }
+
+    Timer {
+        id: rdwDispatcherTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!rdwDispatcherProbe.running)
+                return
+            rdwDispatcherProbe.timedOut = true
+            rdwDispatcherProbe.running = false
         }
     }
 

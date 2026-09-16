@@ -27,6 +27,7 @@ fi
 
 for token in \
     'readonly property bool requested:' \
+    'readonly property bool compatibilityReady:' \
     'readonly property bool configurationValid:' \
     'readonly property bool sourcesReady:' \
     'readonly property bool enabled:' \
@@ -36,6 +37,12 @@ for token in \
 done
 grep -Fq 'ModuleRegistry.validateConfiguredModules(' "$core_policy" \
     || fail 'policy does not require resolvable placed modules'
+grep -Fq 'Config.options?.bar?.autoHide?.enable' "$core_policy" \
+    || fail 'policy does not gate unsupported bar auto-hide'
+grep -Fq 'Config.options?.dock?.pinnedOnStartup' "$core_policy" \
+    || fail 'policy does not gate unsupported unpinned dock behavior'
+grep -Fq 'Config.options?.dock?.hoverToReveal' "$core_policy" \
+    || fail 'policy does not gate unsupported dock hover reveal'
 
 grep -Fq 'readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled' \
     "$critical" || fail 'critical chrome does not gate on cutover policy'

@@ -15,6 +15,13 @@ ColumnLayout {
     readonly property list<var> devices: isSink ? Audio.outputDevices : Audio.inputDevices
     readonly property bool hasApps: appPwNodes.length > 0
     readonly property var currentDevice: isSink ? Audio.defaultSink : Audio.source
+    readonly property string deviceLabel: root.isSink
+        ? Translation.tr("Output device") : Translation.tr("Input device")
+    readonly property string currentDeviceName: root.currentDevice
+        ? Audio.friendlyDeviceName(root.currentDevice)
+        : root.devices.length > 0
+            ? (root.isSink ? Translation.tr("Select output...") : Translation.tr("Select input..."))
+            : (root.isSink ? Translation.tr("No output devices") : Translation.tr("No input devices"))
     spacing: 16
 
     onDialogShownChanged: {
@@ -28,6 +35,9 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: 8
         implicitHeight: 48
+        enabled: root.devices.length > 0
+        buttonText: root.deviceLabel
+        Accessible.description: root.currentDeviceName
         
         colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
             : Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colLayer2
@@ -53,7 +63,7 @@ ColumnLayout {
 
             StyledText {
                 Layout.fillWidth: true
-                text: Audio.friendlyDeviceName(root.currentDevice) || (root.isSink ? Translation.tr("Select output...") : Translation.tr("Select input..."))
+                text: root.currentDeviceName
                 font.pixelSize: Appearance.font.pixelSize.normal
                 elide: Text.ElideRight
             }
@@ -99,6 +109,7 @@ ColumnLayout {
                 implicitHeight: 44
 
                 property bool isSelected: modelData.id === root.currentDevice?.id
+                buttonText: Audio.friendlyDeviceName(modelData)
 
                 colBackground: isSelected ? Appearance.colors.colPrimaryContainer : "transparent"
                 colBackgroundHover: Appearance.colors.colLayer2Hover

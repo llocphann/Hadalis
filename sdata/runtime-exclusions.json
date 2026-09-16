@@ -96,6 +96,7 @@
     "scripts/test-nix-module-contract.sh",
     "scripts/test-packaging-contract.sh",
     "scripts/test-perimeter-contracts.sh",
+    "scripts/test-perimeter-family-contracts.sh",
     "scripts/test-perimeter-route-contracts.sh",
     "scripts/test-perimeter-settings-contracts.sh",
     "scripts/test-battery-charge-limit-helper.sh",

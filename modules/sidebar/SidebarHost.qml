@@ -704,7 +704,8 @@ Scope {
         CompositorFocusGrab {
             windows: [sidebarRoot]
             active: !ShellEditSession.active && CompositorService.isHyprland
-                && sidebarRoot.visible && !root.roleHoldOpen && !root.otherRoleOpen
+                && root.roleOpen && sidebarRoot.visible
+                && !root.roleHoldOpen && !root.otherRoleOpen
             onCleared: () => {
                 if (!active && !root.roleHoldOpen)
                     sidebarRoot.hide()

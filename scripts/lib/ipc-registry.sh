@@ -2,7 +2,7 @@
 # Auto-generated from QML IpcHandler declarations + docs/IPC.md metadata.
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
-# IPC.md hash: 0afaec0da2dc8b7f
+# IPC.md metadata: docs/IPC.md
 # Targets: 57
 
 declare -gA IPC_TARGET_DESC=(
@@ -230,8 +230,8 @@ declare -gA IPC_FUNCTION_DESC=(
   ["bar:open"]="Show bar"
   ["brightness:increment"]="Increase brightness"
   ["brightness:decrement"]="Decrease brightness"
-  ["brightness:sleepBegin"]=""
-  ["brightness:restoreAfterWake"]=""
+  ["brightness:sleepBegin"]="Mark the brightness service asleep so screen changes do not rebuild monitor state"
+  ["brightness:restoreAfterWake"]="Resume the brightness service and restore each monitor's last-good brightness"
   ["cheatsheet:toggle"]="Open/close cheatsheet"
   ["cheatsheet:close"]="Hide cheatsheet overlay"
   ["cheatsheet:open"]="Show cheatsheet overlay"
@@ -263,8 +263,8 @@ declare -gA IPC_FUNCTION_DESC=(
   ["gamemode:activate"]="Force enable gamemode"
   ["gamemode:deactivate"]="Force disable gamemode"
   ["gamemode:status"]="Print current gamemode state (e.g. \`active (manual)\`, \`inactive (off)\`)"
-  ["globalActions:run"]="Execute action by ID (e.g. \`toggle-mute\`, \`install-package vim\`)"
-  ["globalActions:runWithArgs"]=""
+  ["globalActions:run"]="Execute action by ID without arguments"
+  ["globalActions:runWithArgs"]="Execute action by ID with an argument string"
   ["globalActions:list"]="List all actions, optionally filtered by category"
   ["globalActions:search"]="Fuzzy search actions by name/description/keywords"
   ["globalActions:open"]="Open the overview in action mode"

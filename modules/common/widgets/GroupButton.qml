@@ -87,11 +87,12 @@ Button {
             colBackground)) : colBackground
 
     onDownChanged: {
-        if (root.down) {
-            if (root.parent.clickIndex !== undefined) {
-                root.parent.clickIndex = root.indexInParent
-            }
-        }
+        if (root.parent.clickIndex === undefined)
+            return
+        if (root.down)
+            root.parent.clickIndex = root.indexInParent
+        else if (root.parent.clickIndex === root.indexInParent)
+            root.parent.clickIndex = -1
     }
 
     Behavior on implicitWidth {

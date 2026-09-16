@@ -57,6 +57,8 @@ grep -Fq 'generate_manifest "$II_SOURCE" "${II_TARGET}/.inir-manifest"' "$repo_r
     || fail 'setup update no longer generates the canonical installed manifest'
 grep -Fq 'cleanup_orphans "$II_TARGET" "${II_TARGET}/.inir-manifest"' "$repo_root/setup" \
     || fail 'setup update no longer invokes runtime orphan cleanup'
+grep -Fq '"$script_dir/test-runtime-orphan-cleanup.sh"' "$repo_root/scripts/release.sh" \
+    || fail 'release helper no longer requires the runtime orphan cleanup contract'
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - repo-copy update cleanup removes retired runtime QML without deleting excluded artifacts'

@@ -322,6 +322,10 @@ Item {
                                 required property int index
                                 required property int modelData
                                 day: root.calendarLayout[modelData][index].day
+                                buttonText: {
+                                    const targetDate = root._getDateForCell(root.calendarLayout[modelData][index].day, modelData, index)
+                                    return targetDate ? root.locale.toString(targetDate, "d MMMM yyyy") : day
+                                }
                                 isToday: root.calendarLayout[modelData][index].today
                                 eventCount: root.getEventCountForDay(root.calendarLayout[modelData][index].day, modelData, index)
                                 sourceColors: root.getSourceColorsForDay(root.calendarLayout[modelData][index].day, modelData, index)

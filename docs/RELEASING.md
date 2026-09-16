@@ -34,6 +34,8 @@ Run the repository checks that cover packaging, generated state, and QML startup
 
 ```bash
 make test-local
+bash scripts/test-packaging-contract.sh
+bash scripts/test-nix-module-contract.sh
 fish scripts/qml-check.fish --all
 python3 scripts/lib/generate-ipc-registry.py --check
 ```

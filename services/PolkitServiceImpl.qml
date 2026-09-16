@@ -17,6 +17,7 @@ Scope {
         if (!root.flow)
             return
         root.flow.cancelAuthenticationRequest()
+        root.interactionAvailable = false
     }
 
     function submit(string) {

@@ -63,7 +63,6 @@ let
     ++ optionalTop "brightnessctl"
     ++ optionalTop "cava"
     ++ optionalTop "ddcutil"
-    ++ optionalTop "easyeffects"
     ++ optionalTop "ffmpeg"
     ++ optionalTop "fish"
     ++ optionalTop "foot"

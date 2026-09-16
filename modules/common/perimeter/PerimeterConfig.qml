@@ -227,6 +227,80 @@ QtObject {
         return ""
     }
 
+    // Materialize the effective shared/default placement into the list shape
+    // accepted by Config's JsonAdapter. Output-local overrides are intentionally
+    // excluded: this API owns only the shared default layout.
+    function defaultSlotEntries() {
+        const sharedSlots = root.configured?.defaultSlots ?? root.configured?.slots
+        return PerimeterTopology.slotIds.map(slotId => ({
+            slotId: slotId,
+            instanceIds: root._array(root._slotValue(sharedSlots, slotId),
+                root.defaultPreset.defaultSlots[slotId] ?? [])
+        }))
+    }
+
+    function defaultPlacementForInstance(instanceId) {
+        const id = String(instanceId ?? "")
+        if (!id)
+            return ({ slotId: "", index: -1 })
+        const entries = root.defaultSlotEntries()
+        for (const entry of entries) {
+            const index = entry.instanceIds.findIndex(candidate =>
+                String(candidate ?? "") === id)
+            if (index >= 0)
+                return ({ slotId: entry.slotId, index: index })
+        }
+        return ({ slotId: "", index: -1 })
+    }
+
+    // Move, reorder, or disable one shared module instance. targetSlotId=""
+    // means intentionally unplaced/disabled. The descriptor catalog remains
+    // intact so the instance can be restored without reconstructing metadata.
+    function moveDefaultInstance(instanceId, targetSlotId, targetIndex) {
+        if (!root.persistenceReady || !root.schemaSupported
+                || !root._configuredShapeValid())
+            return false
+
+        const id = String(instanceId ?? "")
+        const target = String(targetSlotId ?? "")
+        if (!id || (target.length > 0 && !PerimeterTopology.isValidSlot(target)))
+            return false
+        if (!root._sharedInstances().some(descriptor =>
+                String(descriptor?.instanceId ?? "") === id))
+            return false
+
+        const before = root.defaultSlotEntries()
+        const next = before.map(entry => ({
+            slotId: entry.slotId,
+            instanceIds: entry.instanceIds.filter(candidate =>
+                String(candidate ?? "") !== id)
+        }))
+
+        if (target.length > 0) {
+            const targetEntry = next.find(entry => entry.slotId === target)
+            if (!targetEntry)
+                return false
+            const requestedIndex = Number(targetIndex)
+            const insertionIndex = Number.isFinite(requestedIndex)
+                ? Math.max(0, Math.min(targetEntry.instanceIds.length,
+                    Math.floor(requestedIndex)))
+                : targetEntry.instanceIds.length
+            targetEntry.instanceIds.splice(insertionIndex, 0, id)
+        }
+
+        if (JSON.stringify(before) === JSON.stringify(next))
+            return true
+        Config.setNestedValue("perimeter.defaultSlots", next)
+        return true
+    }
+
+    function resetDefaultSlots() {
+        if (!root.persistenceReady)
+            return false
+        Config.setNestedValue("perimeter.defaultSlots", [])
+        return true
+    }
+
     function validate(outputName) {
         if (!root.persistenceReady || !String(outputName ?? "").length
                 || !root.schemaSupported || !root._configuredShapeValid())

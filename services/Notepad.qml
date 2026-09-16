@@ -49,6 +49,7 @@ Singleton {
     }
 
     function removeTab(index) {
+        if (index < 0 || index >= tabs.length) return
         if (tabs.length <= 1) return // Keep at least one tab
         const t = tabs.slice()
         t.splice(index, 1)

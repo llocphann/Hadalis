@@ -59,7 +59,13 @@ Item {
     readonly property bool angelEverywhere: Appearance.angelEverywhere
     readonly property bool auroraEverywhere: Appearance.auroraEverywhere
     
-    readonly property string wallpaperUrl: Wallpapers.effectiveWallpaperUrl
+    readonly property var surfaceScreen: root.QsWindow?.window?.screen ?? null
+    readonly property string wallpaperUrl: {
+        const _multiMonitor = WallpaperListener.multiMonitorEnabled
+        const _perMonitor = WallpaperListener.effectivePerMonitor
+        const _global = Wallpapers.effectiveWallpaperUrl
+        return WallpaperListener.wallpaperUrlForScreen(root.surfaceScreen)
+    }
     readonly property bool useWallpaperBackdrop: !root.islandStyle && root.auroraEverywhere && !root.inirEverywhere && !Appearance.gameModeMinimal && root.wallpaperUrl.length > 0
     
     ColorQuantizer {

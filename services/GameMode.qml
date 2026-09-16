@@ -438,8 +438,10 @@ Singleton {
         }
     }
 
-    // Track last applied state for discover-overlay control
+    // Track the service state we actually changed. GameMode must not kill a
+    // manually launched process or start a service that was already inactive.
     property bool _lastDiscoverOverlayGameState: false
+    property bool _discoverOverlayWasActive: false
 
     Timer {
         id: discoverOverlayDebounce
@@ -455,11 +457,14 @@ Singleton {
             root._lastDiscoverOverlayGameState = shouldStop
 
             if (shouldStop) {
-                root._log("[GameMode] Stopping", root._discoverOverlayServiceName)
-                discoverOverlayStopProc.running = true
-            } else {
-                root._log("[GameMode] Starting", root._discoverOverlayServiceName)
-                discoverOverlayStartProc.running = true
+                root._log("[GameMode] Stopping managed", root._discoverOverlayServiceName)
+                if (!discoverOverlayStopProc.running)
+                    discoverOverlayStopProc.running = true
+            } else if (root._discoverOverlayWasActive) {
+                root._discoverOverlayWasActive = false
+                root._log("[GameMode] Restoring", root._discoverOverlayServiceName)
+                if (!discoverOverlayStartProc.running)
+                    discoverOverlayStartProc.running = true
             }
         }
     }
@@ -469,11 +474,20 @@ Singleton {
         command: [
             "/usr/bin/bash",
             "-c",
-            "systemctl --user stop " + root._discoverOverlayServiceName + " 2>/dev/null; " +
-            "pkill -x discover-overlay 2>/dev/null; true"
+            "if /usr/bin/systemctl --user is-active --quiet " + root._discoverOverlayServiceName + "; then " +
+            "/usr/bin/systemctl --user stop " + root._discoverOverlayServiceName + "; else exit 3; fi"
         ]
         onExited: (code, status) => {
-            root._log("[GameMode] discover-overlay stop exited:", code)
+            const stoppedManagedService = code === 0
+            root._discoverOverlayWasActive = stoppedManagedService
+            root._log("[GameMode] managed discover-overlay stop exited:", code)
+            // If GameMode ended while systemctl was still stopping the unit,
+            // restore it now rather than leaving a previously-active service off.
+            if (stoppedManagedService && !root.active) {
+                root._discoverOverlayWasActive = false
+                if (!discoverOverlayStartProc.running)
+                    discoverOverlayStartProc.running = true
+            }
         }
     }
 

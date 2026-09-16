@@ -15,7 +15,7 @@ Singleton {
     id: root
     property string from: Config.options?.light?.night?.from ?? "19:00" 
     property string to: Config.options?.light?.night?.to ?? "06:30"
-    property bool automatic: Config.options?.light?.night?.automatic && (Config?.ready ?? true)
+    property bool automatic: (Config.options?.light?.night?.automatic ?? true) && (Config?.ready ?? true)
     property bool manualEnabled: Config.options?.light?.night?.enabled ?? false
     property int colorTemperature: Config.options?.light?.night?.colorTemperature ?? 5000
     property bool shouldBeOn

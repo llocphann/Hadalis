@@ -97,6 +97,7 @@ Singleton {
 
     Process {
         id: _detectPmProc
+        property bool startObserved: false
         command: ["/usr/bin/bash", "-c",
             "pm=unknown; " +
             "command -v pacman &>/dev/null && pm=pacman; " +
@@ -110,6 +111,23 @@ Singleton {
             splitMarker: ""
             onRead: data => { root._detectPmRaw += data }
         }
+        onRunningChanged: {
+            if (_detectPmProc.running) {
+                _detectPmProc.startObserved = false
+                root._detectPmRaw = ""
+                return
+            }
+            if (_detectPmProc.startObserved)
+                return
+
+            console.warn("[AppCatalog] Package manager detection failed to start")
+            root._detectedPm = "unknown"
+            root._flatpakAvailable = false
+            root._aurHelperAvailable = false
+            root._detectedAurHelper = ""
+            root.checkingInstalled = false
+        }
+        onStarted: _detectPmProc.startObserved = true
         onExited: {
             const lines = root._detectPmRaw.trim().split("\n")
             if (lines.length >= 1) root._detectedPm = lines[0].trim()
@@ -155,10 +173,24 @@ Singleton {
 
     Process {
         id: _installedProc
+        property bool startObserved: false
         stdout: SplitParser {
             splitMarker: ""
             onRead: data => { root._installedRaw += data }
         }
+        onRunningChanged: {
+            if (_installedProc.running) {
+                _installedProc.startObserved = false
+                return
+            }
+            if (_installedProc.startObserved)
+                return
+
+            console.warn("[AppCatalog] Installed package check failed to start")
+            root._installedRaw = ""
+            root.checkingInstalled = false
+        }
+        onStarted: _installedProc.startObserved = true
         onExited: {
             root.checkingInstalled = false
             const raw = root._installedRaw

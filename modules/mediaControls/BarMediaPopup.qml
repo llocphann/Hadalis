@@ -79,6 +79,12 @@ Item {
                 implicitHeight: root.widgetHeight + (isActive && root._visiblePlayers.length > 1 ? 4 : 0)
                 
                 readonly property bool isActive: modelData === MprisController.trackedPlayer
+                readonly property string selectorLabel: {
+                    const title = StringUtils.cleanMusicTitle(modelData?.trackTitle) || ""
+                    const artist = modelData?.trackArtist ?? ""
+                    if (title.length > 0 && artist.length > 0) return `${title} — ${artist}`
+                    return title || artist || modelData?.dbusName || Translation.tr("Unknown player")
+                }
                 
                 Rectangle {
                     visible: root._visiblePlayers.length > 1
@@ -112,10 +118,39 @@ Item {
                     visualizerPoints: []
                     radius: root.popupRounding
                 }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.leftMargin: root._visiblePlayers.length > 1
+                        ? Appearance.sizes.elevationMargin : 0
+                    visible: playerSelector.activeFocus
+                    color: "transparent"
+                    radius: root.popupRounding
+                    border.width: 2
+                    border.color: Appearance.zzzEverywhere ? Appearance.zzz.accent
+                        : Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                        : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colPrimary
+                        : Appearance.colors.colPrimary
+                    z: 2
+                }
                 
                 MouseArea {
+                    id: playerSelector
                     anchors.fill: parent
                     visible: !isActive && root._visiblePlayers.length > 1
+                    activeFocusOnTab: visible
+                    Accessible.role: Accessible.Button
+                    Accessible.name: Translation.tr("Switch media player") + ": " + selectorLabel
+                    Accessible.focusable: visible
+                    Keys.onPressed: event => {
+                        if (event.isAutoRepeat
+                                || (event.key !== Qt.Key_Return
+                                    && event.key !== Qt.Key_Enter
+                                    && event.key !== Qt.Key_Space))
+                            return
+                        event.accepted = true
+                        MprisController.setActivePlayer(modelData)
+                    }
                     onClicked: MprisController.setActivePlayer(modelData)
                     cursorShape: Qt.PointingHandCursor
                     z: -1

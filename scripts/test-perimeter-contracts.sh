@@ -61,6 +61,14 @@ grep -Fq 'Config.options?.dock?.pinnedOnStartup' "$core_policy" \
     || fail 'policy does not gate unsupported unpinned dock behavior'
 grep -Fq 'Config.options?.dock?.hoverToReveal' "$core_policy" \
     || fail 'policy does not gate unsupported dock hover reveal'
+grep -Fq 'const barOwned = enabledPanels.includes(barIdentifier)' "$core_policy" \
+    || fail 'bar compatibility policy ignores surface ownership'
+grep -Fq 'const barPolicySupported = !barOwned || !barAutoHide' "$core_policy" \
+    || fail 'disabled bar can still block perimeter cutover'
+grep -Fq 'const dockOwned = enabledPanels.includes("iiDock")' "$core_policy" \
+    || fail 'dock compatibility policy ignores surface ownership'
+grep -Fq 'const dockPolicySupported = !dockOwned || !dockEnabled' "$core_policy" \
+    || fail 'disabled dock can still block perimeter cutover'
 
 for reset_fn in resetDefaultSlots resetOutputSlots; do
     reset_block="$(sed -n "/function ${reset_fn}(/,/^    }/p" "$perimeter_config")"

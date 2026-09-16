@@ -19,6 +19,15 @@ Item {
         String(screen?.name ?? "") === root.outputName) ?? null
     readonly property bool compactSystem: root.systemRole
         && (Config.options?.sidebar?.layout ?? "default") === "compact"
+    readonly property bool presented: root.featureRole
+        ? GlobalStates.sidebarLeftOpen
+            && GlobalStates.sidebarLeftPresentationOutput === root.outputName
+        : root.systemRole
+            ? GlobalStates.sidebarRightOpen
+                && GlobalStates.sidebarRightPresentationOutput === root.outputName
+            : false
+    readonly property bool activeOnOutput: root.targetScreen !== null
+        && root.presented
 
     function bounded(value, fallback, minimum, maximum) {
         const number = Number(value)
@@ -51,9 +60,12 @@ Item {
         ? Math.max(root.minimumContentHeight,
             Math.min(root.availableHeight, root.requestedHeight)) : 0
 
-    implicitWidth: root.targetScreen !== null ? root.requestedWidth : 0
-    implicitHeight: root.targetScreen !== null ? root.resolvedHeight : 0
-    visible: root.targetScreen !== null && (root.featureRole || root.systemRole)
+    // Sidebars are singular presentation surfaces even though default perimeter
+    // placement is evaluated independently for every output. Collapse non-owning
+    // instances so they reserve no slot geometry or future input-mask area.
+    implicitWidth: root.activeOnOutput ? root.requestedWidth : 0
+    implicitHeight: root.activeOnOutput ? root.resolvedHeight : 0
+    visible: root.activeOnOutput
 
     Loader {
         id: contentLoader

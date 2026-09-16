@@ -61,8 +61,10 @@ Singleton {
     }
 
     function _probeTlpPd(): void {
-        if (!tlpPdProbe.running)
+        if (!tlpPdProbe.running) {
+            root._tlpProbeDone = false
             tlpPdProbe.running = true
+        }
     }
 
     Connections {

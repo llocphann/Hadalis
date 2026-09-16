@@ -18,9 +18,9 @@ Singleton {
 
     property bool enabled: false
     readonly property string backendName: "EasyEffects"
-    readonly property bool backendAvailable: EasyEffects.available && root._transportAvailable
-    readonly property bool backendRunning: EasyEffects.active
-    readonly property bool available: root.enabled && root.backendAvailable && root.backendRunning
+    readonly property bool backendAvailable: root.enabled && EasyEffects.available && root._transportAvailable
+    readonly property bool backendRunning: root.enabled && EasyEffects.active
+    readonly property bool available: root.backendAvailable && root.backendRunning
 
     property string error: ""
     property list<string> presets: []
@@ -34,6 +34,7 @@ Singleton {
     property string _pendingPreset: ""
     property int _pendingBandIndex: -1
     property real _pendingBandGain: 0
+    property int _lifecycleGeneration: 0
     readonly property bool _mutationBusy: applyPresetProc.running || setBandProc.running || resetProc.running
 
     function _defaultBands(synced) {
@@ -62,18 +63,24 @@ Singleton {
         root._pendingBandIndex = -1
     }
 
-    function _setProcessError(message) {
-        if (!root.enabled)
+    function _setProcessError(message, generation) {
+        if (!root.enabled || generation !== root._lifecycleGeneration)
             return
         root.error = message
+    }
+
+    function _startTransportProbe() {
+        if (transportProbe.running)
+            return
+        transportProbe.generation = root._lifecycleGeneration
+        transportProbe.running = true
     }
 
     function _refreshBackendState() {
         if (!root.enabled)
             return
         if (!root._transportChecked) {
-            if (!transportProbe.running)
-                transportProbe.running = true
+            root._startTransportProbe()
             return
         }
         if (!root._transportAvailable) {
@@ -100,12 +107,19 @@ Singleton {
     function _refreshData() {
         if (!root.available || root._mutationBusy)
             return
-        if (!presetScanProc.running)
+        const generation = root._lifecycleGeneration
+        if (!presetScanProc.running) {
+            presetScanProc.generation = generation
             presetScanProc.running = true
-        if (!activePresetProc.running)
+        }
+        if (!activePresetProc.running) {
+            activePresetProc.generation = generation
             activePresetProc.running = true
-        if (!bandRefreshProc.running)
+        }
+        if (!bandRefreshProc.running) {
+            bandRefreshProc.generation = generation
             bandRefreshProc.running = true
+        }
     }
 
     function refresh() {
@@ -113,8 +127,7 @@ Singleton {
             return
         EasyEffects.fetchAvailability()
         if (!root._transportChecked) {
-            if (!transportProbe.running)
-                transportProbe.running = true
+            root._startTransportProbe()
             return
         }
         root._refreshBackendState()
@@ -151,6 +164,7 @@ Singleton {
 
         root._pendingPreset = preset
         root.error = ""
+        applyPresetProc.generation = root._lifecycleGeneration
         applyPresetProc.command = ["/usr/bin/env", "sh", "-c",
             "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; printf '%s\\n' \"$1\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null",
             "sh", "load_preset:output:" + preset]
@@ -163,7 +177,7 @@ Singleton {
         const requestedGain = Number(gain)
         if (!root._canMutate())
             return false
-        if (!Number.isFinite(requestedGain) || bandIndex < 0 || bandIndex >= root._frequencies.length) {
+        if (!isFinite(requestedGain) || bandIndex < 0 || bandIndex >= root._frequencies.length) {
             root.error = "invalid-band"
             return false
         }
@@ -172,6 +186,7 @@ Singleton {
         root._pendingBandIndex = bandIndex
         root._pendingBandGain = clampedGain
         root.error = ""
+        setBandProc.generation = root._lifecycleGeneration
         setBandProc.command = ["/usr/bin/env", "sh", "-c",
             "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; for side in left right; do printf 'set_property:output:equalizer:0:%s:band%sGain:%s\\n' \"$side\" \"$1\" \"$2\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null || exit $?; done",
             "sh", String(bandIndex), String(clampedGain)]
@@ -183,11 +198,13 @@ Singleton {
         if (!root._canMutate())
             return false
         root.error = ""
+        resetProc.generation = root._lifecycleGeneration
         resetProc.running = true
         return true
     }
 
     onEnabledChanged: {
+        root._lifecycleGeneration++
         if (root.enabled) {
             root.refresh()
         } else {
@@ -202,15 +219,16 @@ Singleton {
     }
 
     Connections {
-        target: EasyEffects
-        enabled: root.enabled
+        target: root.enabled ? EasyEffects : null
 
         function onAvailableChanged() {
+            root._lifecycleGeneration++
             if (root._transportChecked)
                 root._refreshBackendState()
         }
 
         function onActiveChanged() {
+            root._lifecycleGeneration++
             if (!root.enabled)
                 return
             if (!EasyEffects.active) {
@@ -234,6 +252,7 @@ Singleton {
     Process {
         id: transportProbe
         property bool startObserved: false
+        property int generation: 0
         command: ["/usr/bin/env", "sh", "-c", "command -v socat >/dev/null 2>&1"]
         onRunningChanged: {
             if (running) {
@@ -242,13 +261,15 @@ Singleton {
             }
             if (startObserved)
                 return
+            if (generation !== root._lifecycleGeneration)
+                return
             root._transportChecked = true
             root._transportAvailable = false
-            root._setProcessError("transport-probe-failed")
+            root._setProcessError("transport-probe-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             root._transportChecked = true
             root._transportAvailable = (exitCode === 0)
@@ -263,6 +284,7 @@ Singleton {
     Process {
         id: presetScanProc
         property bool startObserved: false
+        property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
             "for d in \"${XDG_DATA_HOME:-$HOME/.local/share}/easyeffects/output\" \"$HOME/.config/easyeffects/output\" \"$HOME/.var/app/com.github.wwmm.easyeffects/data/easyeffects/output\" \"$HOME/.var/app/com.github.wwmm.easyeffects/config/easyeffects/output\"; do [ -d \"$d\" ] || continue; for f in \"$d\"/*.json \"$d\"/*/*.json; do [ -f \"$f\" ] || continue; n=\"${f##*/}\"; n=\"${n%.json}\"; printf '%s\\n' \"$n\"; done; done | sort -u"]
         stdout: StdioCollector { id: presetCollector }
@@ -273,23 +295,23 @@ Singleton {
             }
             if (startObserved)
                 return
-            root._setProcessError("preset-scan-failed")
+            root._setProcessError("preset-scan-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
                 root.error = "preset-scan-failed"
                 return
             }
-            const seen = new Set()
+            const seen = []
             const next = []
             for (const line of (presetCollector.text ?? "").split("\n")) {
                 const name = line.trim()
-                if (name.length === 0 || seen.has(name))
+                if (name.length === 0 || seen.includes(name))
                     continue
-                seen.add(name)
+                seen.push(name)
                 next.push(name)
             }
             root.presets = next
@@ -299,6 +321,7 @@ Singleton {
     Process {
         id: activePresetProc
         property bool startObserved: false
+        property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
             "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; printf 'get_last_loaded_preset:output\\n' | socat -T 2 - UNIX-CONNECT:\"$sock\""]
         stdout: StdioCollector { id: activePresetCollector }
@@ -309,15 +332,20 @@ Singleton {
             }
             if (startObserved)
                 return
-            root._setProcessError("preset-query-failed")
+            root._setProcessError("preset-query-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
                 root.activePreset = ""
                 root.error = exitCode === 65 ? "backend-not-running" : "preset-query-failed"
+                return
+            }
+            if (!root.backendRunning) {
+                root.activePreset = ""
+                root.error = "backend-not-running"
                 return
             }
             root.activePreset = (activePresetCollector.text ?? "").trim()
@@ -327,6 +355,7 @@ Singleton {
     Process {
         id: bandRefreshProc
         property bool startObserved: false
+        property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
             "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; i=0; while [ \"$i\" -lt 10 ]; do value=\"$(printf 'get_property:output:equalizer:0:left:band%sGain\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; printf '%s=%s\\n' \"$i\" \"$value\"; i=$((i + 1)); done"]
         stdout: StdioCollector { id: bandCollector }
@@ -337,20 +366,28 @@ Singleton {
             }
             if (startObserved)
                 return
+            if (generation !== root._lifecycleGeneration)
+                return
             root._markBandsUnsynced()
-            root._setProcessError("band-query-failed")
+            root._setProcessError("band-query-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
                 root._markBandsUnsynced()
                 root.error = exitCode === 65 ? "backend-not-running" : "band-query-failed"
                 return
             }
+            if (!root.backendRunning) {
+                root._markBandsUnsynced()
+                root.error = "backend-not-running"
+                return
+            }
 
             const next = root._defaultBands(false)
+            const seenIndexes = []
             let valid = 0
             for (const line of (bandCollector.text ?? "").split("\n")) {
                 const match = line.trim().match(/^(\d+)=(.+)$/)
@@ -358,8 +395,9 @@ Singleton {
                     continue
                 const index = Number(match[1])
                 const gain = Number(match[2])
-                if (!Number.isFinite(gain) || index < 0 || index >= next.length)
+                if (!isFinite(gain) || index < 0 || index >= next.length || seenIndexes.includes(index))
                     continue
+                seenIndexes.push(index)
                 next[index] = Object.assign({}, next[index], { gain: gain, synced: true })
                 valid++
             }
@@ -374,6 +412,7 @@ Singleton {
     Process {
         id: applyPresetProc
         property bool startObserved: false
+        property int generation: 0
         onRunningChanged: {
             if (running) {
                 startObserved = false
@@ -382,16 +421,20 @@ Singleton {
             if (startObserved)
                 return
             root._pendingPreset = ""
-            root._setProcessError("preset-apply-failed")
+            root._setProcessError("preset-apply-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             const preset = root._pendingPreset
             root._pendingPreset = ""
             if (exitCode !== 0) {
                 root.error = exitCode === 65 ? "backend-not-running" : "preset-apply-failed"
+                return
+            }
+            if (!root.backendRunning) {
+                root.error = "backend-not-running"
                 return
             }
             root.activePreset = preset
@@ -403,6 +446,7 @@ Singleton {
     Process {
         id: setBandProc
         property bool startObserved: false
+        property int generation: 0
         onRunningChanged: {
             if (running) {
                 startObserved = false
@@ -411,17 +455,21 @@ Singleton {
             if (startObserved)
                 return
             root._pendingBandIndex = -1
-            root._setProcessError("band-apply-failed")
+            root._setProcessError("band-apply-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             const index = root._pendingBandIndex
             const gain = root._pendingBandGain
             root._pendingBandIndex = -1
             if (exitCode !== 0) {
                 root.error = exitCode === 65 ? "backend-not-running" : "band-apply-failed"
+                return
+            }
+            if (!root.backendRunning) {
+                root.error = "backend-not-running"
                 return
             }
             if (index >= 0 && index < root.bands.length) {
@@ -435,6 +483,7 @@ Singleton {
     Process {
         id: resetProc
         property bool startObserved: false
+        property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
             "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; i=0; while [ \"$i\" -lt 10 ]; do for side in left right; do printf 'set_property:output:equalizer:0:%s:band%sGain:0\\n' \"$side\" \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null || exit $?; done; i=$((i + 1)); done"]
         onRunningChanged: {
@@ -444,14 +493,18 @@ Singleton {
             }
             if (startObserved)
                 return
-            root._setProcessError("reset-failed")
+            root._setProcessError("reset-failed", generation)
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
                 root.error = exitCode === 65 ? "backend-not-running" : "reset-failed"
+                return
+            }
+            if (!root.backendRunning) {
+                root.error = "backend-not-running"
                 return
             }
             root.bands = root._defaultBands(true)

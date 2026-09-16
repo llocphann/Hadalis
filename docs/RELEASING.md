@@ -79,9 +79,11 @@ Do not move the tag after publication. `scripts/release.sh publish` requires all
 - `distro/arch/inir-shell/.SRCINFO` points at the same tag archive
 - GitHub CLI (`gh`) is available and authenticated for the repository
 - the GitHub Wiki feature is enabled so repository docs can be synchronized
+- the Wiki repository has been initialized with at least one page and is reachable with non-interactive Git credentials
+- local Git `user.name` and `user.email` are configured so Wiki sync can create a commit when docs differ
 - packaging, Nix, doctor dependency-routing, Equalizer Phase 1 boundary/service, optional-audio dependency, Makefile install/uninstall lifecycle, and documentation contracts all pass
 
-The helper queries repository metadata before running the release contracts. If the Wiki feature is disabled or its state cannot be verified, publication stops before a draft release is created. Enable the repository Wiki first rather than bypassing the sync step.
+The helper queries repository metadata and probes the Wiki Git remote before running the release contracts. If the Wiki feature is disabled, its repository is not initialized/accesssible, credentials cannot reach it, or Git author identity is missing, publication stops before a draft release is created. Resolve the host prerequisite rather than bypassing the sync step.
 
 ## Publish
 
@@ -111,7 +113,7 @@ scripts/release.sh publish X.Y.Z
 
 The existing draft is refreshed with the current generated title/notes and reused. The helper verifies that staging still leaves a draft before Wiki publication begins.
 
-A disabled Wiki is detected during preflight and does not create a draft. If Wiki sync becomes unavailable after preflight, the GitHub release remains a draft rather than becoming public with unsynchronized docs. If the final GitHub publish call fails after Wiki sync has completed, the draft remains available for the next retry; rerunning the same command completes the normal sequence.
+Disabled/uninitialized/inaccessible Wiki state and missing Git author identity are detected during preflight and do not create a draft. If Wiki sync becomes unavailable after preflight, the GitHub release remains a draft rather than becoming public with unsynchronized docs. If the final GitHub publish call fails after Wiki sync has completed, the draft remains available for the next retry; rerunning the same command completes the normal sequence.
 
 If the release is already public, the helper stops instead of editing or replacing it. Corrections after publication should therefore follow a deliberate follow-up release or other maintainer-approved recovery path rather than mutating published release history ad hoc.
 

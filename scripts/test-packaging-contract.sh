@@ -33,10 +33,11 @@ stable_hook="distro/arch/inir-shell/inir-shell.install"
 git_hook="distro/arch/inir-shell-git/inir-shell-git.install"
 makefile="Makefile"
 release_script="scripts/release.sh"
+packaging_workflow=".github/workflows/packaging.yml"
 audio_doc="docs/AUDIO_MEDIA.md"
 uninstall_doc="docs/UNINSTALL.md"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$makefile" "$release_script" "$audio_doc" "$uninstall_doc"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$makefile" "$release_script" "$packaging_workflow" "$audio_doc" "$uninstall_doc"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -141,6 +142,12 @@ grep -Fq '.has_wiki' "$release_script" \
   || fail 'release hosted preflight no longer verifies GitHub Wiki availability'
 grep -Fq 'GitHub Wiki is disabled' "$release_script" \
   || fail 'release hosted preflight no longer fails clearly when Wiki is disabled'
+grep -Fq 'GIT_TERMINAL_PROMPT=0 git ls-remote "$wiki_url" HEAD' "$release_script" \
+  || fail 'release hosted preflight no longer verifies non-interactive Wiki Git access'
+grep -Fq 'GitHub Wiki repository is not initialized' "$release_script" \
+  || fail 'release hosted preflight no longer detects an uninitialized Wiki repository'
+grep -Fq 'git user.name and user.email must be configured' "$release_script" \
+  || fail 'release hosted preflight no longer verifies Wiki commit author identity'
 grep -Fq '"$script_dir/test-packaging-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the packaging contract'
 grep -Fq '"$script_dir/test-nix-module-contract.sh"' "$release_script" \
@@ -164,6 +171,10 @@ draft_line="$(grep -nF '  stage_release_draft "$tag" "$notes_file"' "$release_sc
 [[ -n "$host_line" && -n "$contract_line" && -n "$draft_line" \
     && "$host_line" -lt "$contract_line" && "$contract_line" -lt "$draft_line" ]] \
   || fail 'release publish path no longer completes host/contracts preflight before draft creation'
+
+wiki_trigger_count="$(grep -Fc "- 'scripts/wiki-sync.sh'" "$packaging_workflow")"
+[[ "$wiki_trigger_count" -eq 2 ]] \
+  || fail 'Packaging workflow must watch scripts/wiki-sync.sh for both push and pull_request'
 
 # inir-meta promises the full desktop experience. These packages represent
 # default source-installer supplements across shell utilities, visuals, login,

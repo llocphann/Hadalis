@@ -146,6 +146,12 @@ if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
         echo "ERROR: Connected Perimeter cutover contract failed" >&2
         set fatal_errors (math $fatal_errors + 1)
     end
+
+    set -l perimeter_route_contract "$project_root/scripts/test-perimeter-route-contracts.sh"
+    if not bash "$perimeter_route_contract"
+        echo "ERROR: Connected Perimeter route contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
 end
 
 if test -z "$parser"

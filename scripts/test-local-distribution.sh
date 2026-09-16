@@ -290,6 +290,9 @@ if ! grep -Fq 'vars_to_import+=("DISPLAY=$DISPLAY")' "$inir_launcher" \
 fi
 
 if command -v python3 &>/dev/null && [[ -f "$runtime_root/scripts/lib/generate-ipc-registry.py" ]]; then
+    step "IPC registry generator regression"
+    python3 "$runtime_root/scripts/test-ipc-registry-generator.py"
+
     step "IPC registry freshness"
     python3 "$runtime_root/scripts/lib/generate-ipc-registry.py" --check
 fi
@@ -328,6 +331,10 @@ for name in "${agent_dirs[@]}"; do
         exit 1
     fi
 done
+if grep -Eq '^scripts/test-' "$payload_list"; then
+    printf 'FAIL: canonical payload leaks regression test tooling\n' >&2
+    exit 1
+fi
 for forbidden in \
     scripts/release.sh \
     scripts/wiki-sync.sh \

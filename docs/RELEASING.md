@@ -1,6 +1,6 @@
 # Releasing Hadalis
 
-Hadalis develops on `dev` and publishes stable releases from `stable`. Release publication is intentionally fail-closed: the release helper validates repository/package state, stages or reuses a GitHub draft release, syncs the Wiki, and only then makes the GitHub release public.
+Hadalis develops on `dev` and publishes stable releases from `stable`. Release publication is intentionally fail-closed for the required non-Nix release lane: the release helper validates repository/package state, stages or reuses a GitHub draft release, syncs the Wiki, and only then makes the GitHub release public. Nix compatibility is currently a deferred diagnostic lane and does not block this publication path.
 
 ## Release preparation
 
@@ -35,7 +35,6 @@ Run the repository checks that cover packaging, generated state, install lifecyc
 ```bash
 make test-local
 bash scripts/test-packaging-contract.sh
-bash scripts/test-nix-module-contract.sh
 bash scripts/test-doctor-dependency-routing.sh
 bash scripts/test-equalizer-boundary-contract.sh
 bash scripts/test-equalizer-service-contract.sh
@@ -47,6 +46,14 @@ bash scripts/verify-docs.sh
 fish scripts/qml-check.fish --all
 python3 scripts/lib/generate-ipc-registry.py --check
 ```
+
+The current acceptance source of truth is the maintainer's clean-clone, local, non-Nix validation on the exact SHA being promoted. Nix compatibility remains useful coverage and can still be checked separately:
+
+```bash
+bash scripts/test-nix-module-contract.sh
+```
+
+A failure or unavailable Nix lane is diagnostic during this phase; it does not override a clean required non-Nix validation result or block release publication. Do not hide the diagnostic result—record it separately and fix it in the deferred compatibility lane.
 
 The battery-charge-limit and ThinkFan helper checks use simulated command/hardware boundaries in their default mode, so they are safe for normal CI and release preflight. Explicit battery lifecycle modes such as `--live-restart`, `--live-display`, and `--live-suspend` are manual machine checks and are not invoked by release publication.
 
@@ -85,7 +92,9 @@ Do not move the tag after publication. `scripts/release.sh publish` requires all
 - the GitHub Wiki feature is enabled so repository docs can be synchronized
 - the Wiki repository has been initialized with at least one page and is reachable with non-interactive Git credentials
 - local Git `user.name` and `user.email` are configured so Wiki sync can create a commit when docs differ
-- packaging, Nix, doctor dependency-routing, Equalizer Phase 1 boundary/service, optional-audio dependency, battery-charge-limit helper, ThinkFan helper, Makefile install/uninstall lifecycle, and documentation contracts all pass
+- packaging, doctor dependency-routing, Equalizer Phase 1 boundary/service, optional-audio dependency, battery-charge-limit helper, ThinkFan helper, Makefile install/uninstall lifecycle, and documentation contracts all pass
+
+After those required contracts pass, the release helper attempts `scripts/test-nix-module-contract.sh` as a deferred compatibility diagnostic when the script is present. Missing or failing Nix diagnostics are reported as warnings and do not block the current non-Nix release lane.
 
 The helper queries repository metadata and probes the Wiki Git remote before running the release contracts. If the Wiki feature is disabled, its repository is not initialized/accessible, credentials cannot reach it, or Git author identity is missing, publication stops before a draft release is created. Resolve the host prerequisite rather than bypassing the sync step.
 
@@ -99,7 +108,7 @@ scripts/release.sh publish X.Y.Z
 
 The publication sequence is:
 
-1. Validate version, checkout, remote tag, package source identity, GitHub/Wiki publication prerequisites, packaging/dependency contracts, privileged helper contracts, Equalizer Phase 1 backend/service boundaries, staged install/uninstall lifecycle, and documentation consistency.
+1. Validate version, checkout, remote tag, package source identity, GitHub/Wiki publication prerequisites, required non-Nix packaging/dependency contracts, privileged helper contracts, Equalizer Phase 1 backend/service boundaries, staged install/uninstall lifecycle, and documentation consistency; report the deferred Nix compatibility diagnostic without making it blocking.
 2. Generate release notes.
 3. Create a GitHub draft release, or reuse an existing draft for the same tag.
 4. Sync repository docs to the GitHub Wiki.

@@ -6,13 +6,13 @@ How configuration works in iNiR, from the user's perspective and from the code s
 
 Everything is configurable through the graphical Settings UI. Open it with `Super+,` or `inir settings`. You should never need to edit the config file by hand.
 
-If you do want to edit it directly, it lives at:
+If you do want to edit it directly, the canonical file for fresh and migrated installs is:
 
 ```
-~/.config/illogical-impulse/config.json
+~/.config/inir/config.json
 ```
 
-(The directory name is a legacy artifact from when iNiR was called illogical-impulse. `~/.config/inir` is symlinked to it.)
+Pre-migration installs under `~/.config/illogical-impulse/config.json` remain supported. Migration 019 moves the legacy directory to `~/.config/inir` and leaves `~/.config/illogical-impulse` as a symlink to the canonical directory, so legacy QML/runtime paths continue to resolve.
 
 Changes you make in the file are picked up automatically within 50ms. No restart needed.
 

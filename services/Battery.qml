@@ -20,6 +20,11 @@ Singleton {
         return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : fallback
     }
 
+    function _fullThresholdPercent(value, fallback: real): real {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? Math.max(0, Math.min(101, parsed)) : fallback
+    }
+
     property bool available: UPower.displayDevice.isLaptopBattery
     property var chargeState: UPower.displayDevice.state
     property bool isCharging: chargeState == UPowerDeviceState.Charging
@@ -33,9 +38,11 @@ Singleton {
     readonly property bool soundEnabled: Config.options?.sounds?.battery ?? true
 
     readonly property real lowThreshold: root._thresholdPercent(Config.options?.battery?.low, 20)
-    readonly property real criticalThreshold: root._thresholdPercent(Config.options?.battery?.critical, 10)
-    readonly property real suspendThreshold: root._thresholdPercent(Config.options?.battery?.suspend, 5)
-    readonly property real fullThreshold: root._thresholdPercent(Config.options?.battery?.full, 95)
+    readonly property real criticalThreshold: Math.min(root.lowThreshold,
+        root._thresholdPercent(Config.options?.battery?.critical, 10))
+    readonly property real suspendThreshold: Math.min(root.criticalThreshold,
+        root._thresholdPercent(Config.options?.battery?.suspend, 5))
+    readonly property real fullThreshold: root._fullThresholdPercent(Config.options?.battery?.full, 95)
 
     property bool isLow: available && (percentage <= (root.lowThreshold / 100))
     property bool isCritical: available && (percentage <= (root.criticalThreshold / 100))

@@ -155,7 +155,7 @@ Singleton {
             id: flatpakPsCollector
             onStreamFinished: {
                 const t = (flatpakPsCollector.text ?? "")
-                root.active = t.split("\n").some(l => l.trim().includes("com.github.wwmm.easyeffects"))
+                root.active = t.split("\n").some(l => l.trim() === "com.github.wwmm.easyeffects")
             }
         }
     }

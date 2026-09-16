@@ -4,12 +4,14 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 runtime_root="$(cd -- "$script_dir/.." && pwd)"
 service="$runtime_root/services/deferred/EqualizerService.qml"
+easyeffects="$runtime_root/services/deferred/EasyEffects.qml"
 
-python3 - "$service" <<'PY'
+python3 - "$service" "$easyeffects" <<'PY'
 import pathlib
 import sys
 
 service = pathlib.Path(sys.argv[1])
+easyeffects = pathlib.Path(sys.argv[2])
 text = service.read_text(encoding="utf-8")
 
 required = [
@@ -141,7 +143,22 @@ for marker in [
 if reset_proc.count("root._scheduleReconcile()") < 3:
     raise SystemExit("FAIL: Equalizer reset no longer reconciles all completion paths")
 
+easyeffects_text = easyeffects.read_text(encoding="utf-8")
+flatpak_start = easyeffects_text.index("id: flatpakPsProc")
+flatpak_end = easyeffects_text.index("id: pkillProc", flatpak_start)
+flatpak_block = easyeffects_text[flatpak_start:flatpak_end]
+for marker in [
+    'command: ["/usr/bin/env", "flatpak", "ps", "--columns=application"]',
+    'l.trim() === "com.github.wwmm.easyeffects"',
+]:
+    if marker not in flatpak_block:
+        raise SystemExit(
+            f"FAIL: EasyEffects Flatpak identity contract missing: {marker}"
+        )
+if '.includes("com.github.wwmm.easyeffects")' in flatpak_block:
+    raise SystemExit("FAIL: EasyEffects Flatpak status still accepts substring app IDs")
+
 print(
-    "PASS: Equalizer lifecycle, recovery, mutation, parsing, and protocol inputs remain guarded"
+    "PASS: Equalizer lifecycle, recovery, mutation, parsing, protocol inputs, and backend identity remain guarded"
 )
 PY

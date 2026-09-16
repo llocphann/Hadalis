@@ -89,6 +89,7 @@ def code_only(text: str) -> str:
 
 import_re = re.compile(r'^\s*import\s+(qs(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\b')
 object_use = lambda name: re.compile(rf'\b{re.escape(name)}\s*\{{')
+symbol_use = lambda name: re.compile(rf'\b{re.escape(name)}\b')
 files = list(qml_files())
 parsed = {}
 errors = []
@@ -115,19 +116,22 @@ for path in files:
                 f'maps to missing directory {module_dir.relative_to(root)}'
             )
 
-# Types retired from the source tree must not remain as object usages. If a
-# future implementation is intentionally restored, this guard automatically
-# stops treating the type as retired.
+# A retired type has no valid code-level reference once its implementation is
+# absent. Scan all code tokens, not only object construction, so typed
+# properties/functions and other symbol references cannot survive while an old
+# parser is skipped. Comments and strings were removed above to avoid stale-doc
+# false positives. If a type is intentionally restored, its implementation
+# automatically disables the retired-type check.
 for type_name in ('MascotImage', 'MascotAnimation', 'CompositorFocusGrab'):
     implementations = [path for path in files if path.name == f'{type_name}.qml']
     if implementations:
         continue
-    pattern = object_use(type_name)
+    pattern = symbol_use(type_name)
     for path, code in parsed.items():
         for lineno, line in enumerate(code.splitlines(), 1):
             if pattern.search(line):
                 errors.append(
-                    f'{path.relative_to(root)}:{lineno}: {type_name} is used but '
+                    f'{path.relative_to(root)}:{lineno}: {type_name} is referenced but '
                     f'{type_name}.qml is absent from the scanned tree'
                 )
 

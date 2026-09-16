@@ -10,6 +10,7 @@ import Quickshell.Io
 
 QuickToggleButton {
     id: root
+    accessibleName: Translation.tr("Bluetooth")
     visible: BluetoothStatus.available
     toggled: BluetoothStatus.enabled
     buttonIcon: BluetoothStatus.activeIcon

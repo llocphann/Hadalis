@@ -138,6 +138,17 @@ for file in $qml_files
     end
 end
 
+# Resolve local qs.* imports even when qmlformat is unavailable or too old.
+# This also runs against staged payload roots, catching mixed installs that keep
+# QML consumers after the module they import has been retired.
+if test $scan_all -eq 1
+    set -l qml_local_module_contract "$project_root/scripts/test-qml-local-module-contract.sh"
+    if not bash "$qml_local_module_contract" "$scan_root"
+        echo "ERROR: local QML module/type resolution contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+end
+
 # Project-wide architectural startup guards run only in the full-tree CI mode.
 if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
     set -l perimeter_contract "$project_root/scripts/test-perimeter-contracts.sh"

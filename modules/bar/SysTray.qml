@@ -164,7 +164,7 @@ Item {
                 id: overflowPopup
                 hoverTarget: trayOverflowButton
                 hoverActivates: false
-                active: root.trayOverflowOpen && root.unpinnedItems.length > 0
+                alternativeVisibleCondition: root.trayOverflowOpen && root.unpinnedItems.length > 0
                 popupBackgroundMargin: 0
                 closeOnOutsideClick: false
                 onRequestClose: root.trayOverflowOpen = false

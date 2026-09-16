@@ -1,6 +1,6 @@
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=9
+pkgrel=10
 pkgdesc='Hadalis shell payload, launcher, and user service'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -32,6 +32,9 @@ depends=(
   playerctl
   polkit-gnome
   python
+  python-materialyoucolor
+  python-numpy
+  python-pillow
   qt6-5compat
   qt6-imageformats
   qt6-multimedia

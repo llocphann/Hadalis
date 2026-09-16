@@ -1,6 +1,6 @@
 pkgname=inir-shell-git
 pkgver=2.29.3.r0.g0000000
-pkgrel=5
+pkgrel=6
 pkgdesc='Hadalis shell payload, launcher, and user service (git)'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -57,7 +57,7 @@ optdepends=(
   'breeze-icons: fallback icon theme'
   'cava: audio visualizer'
   'ddcutil: external monitor brightness control'
-  'easyeffects: audio effects integration'
+  'easyeffects: optional audio effects and equalizer backend'
   'ffmpeg: recording and video wallpaper helpers'
   'fprintd: fingerprint authentication integration'
   'geoclue: GPS-backed weather location detection'
@@ -83,7 +83,7 @@ optdepends=(
   'plasma-integration: Qt platform theme integration'
   'qt6ct: Qt theme configuration'
   'songrec: music recognition support'
-  'socat: mpv IPC fallback helpers'
+  'socat: optional EasyEffects control transport for equalizer'
   'swappy: screenshot annotation helpers'
   'tesseract: OCR-backed screenshot tools'
   'thinkfan: managed fan-control integration'

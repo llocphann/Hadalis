@@ -38,9 +38,27 @@ Button {
     property real clickedWidth: baseWidth + (isAtSide ? 10 : 20)
     property real clickedHeight: baseHeight
     property var parentGroup: root.parent
-    property int indexInParent: parentGroup?.children.indexOf(root) ?? -1
+    property int indexInParent: {
+        if (!parentGroup?.children) return -1
+        let visibleIndex = 0
+        for (let i = 0; i < parentGroup.children.length; ++i) {
+            const child = parentGroup.children[i]
+            if (!child.visible) continue
+            if (child === root) return visibleIndex
+            visibleIndex += 1
+        }
+        return -1
+    }
+    property int visibleChildrenCount: {
+        if (!parentGroup?.children) return 0
+        let count = 0
+        for (let i = 0; i < parentGroup.children.length; ++i) {
+            if (parentGroup.children[i].visible) count += 1
+        }
+        return count
+    }
     property int clickIndex: parentGroup?.clickIndex ?? -1
-    property bool isAtSide: indexInParent === 0 || indexInParent === (parentGroup?.childrenCount - 1)
+    property bool isAtSide: indexInParent === 0 || indexInParent === (visibleChildrenCount - 1)
 
     Layout.fillWidth: (clickIndex - 1 <= indexInParent && indexInParent <= clickIndex + 1)
     Layout.fillHeight: (clickIndex - 1 <= indexInParent && indexInParent <= clickIndex + 1)
@@ -70,7 +88,7 @@ Button {
     onDownChanged: {
         if (root.down) {
             if (root.parent.clickIndex !== undefined) {
-                root.parent.clickIndex = parent.children.indexOf(root)
+                root.parent.clickIndex = root.indexInParent
             }
         }
     }
@@ -91,7 +109,7 @@ Button {
     }
     Behavior on rightRadius {
         enabled: Appearance.animationsEnabled
-        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.easing?.bezierCurve ?? Appearance.animation.elementMoveFast.bezierCurve }
     }
 
     // TapHandler for right-click (altAction) - works better with Button control

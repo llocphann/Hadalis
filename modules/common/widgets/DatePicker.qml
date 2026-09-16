@@ -101,6 +101,12 @@ Item {
         return days
     }
 
+    function selectCell(cellData: var): void {
+        const newDate = new Date(cellData.year, cellData.month - 1, cellData.day)
+        root.selectedDate = newDate
+        root.dateSelected(newDate)
+    }
+
     // Style tokens
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
         : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
@@ -152,11 +158,29 @@ Item {
 
                 // Today button
                 Rectangle {
+                    id: todayAction
                     visible: root.monthShift !== 0
                     implicitWidth: todayBtn.implicitWidth + 8
                     implicitHeight: 28
                     radius: root.radius
-                    color: todayBtnMA.containsMouse ? root.colLayer2 : "transparent"
+                    color: (todayBtnMA.containsMouse || todayAction.activeFocus) ? root.colLayer2 : "transparent"
+                    border.width: todayAction.activeFocus ? 1 : 0
+                    border.color: root.colPrimary
+                    activeFocusOnTab: todayAction.visible
+                    Accessible.role: Accessible.Button
+                    Accessible.name: Translation.tr("Today")
+                    Accessible.focusable: todayAction.visible
+                    Accessible.onPressAction: root.monthShift = 0
+
+                    Keys.onPressed: event => {
+                        if (event.isAutoRepeat
+                                || (event.key !== Qt.Key_Return
+                                    && event.key !== Qt.Key_Enter
+                                    && event.key !== Qt.Key_Space))
+                            return
+                        root.monthShift = 0
+                        event.accepted = true
+                    }
 
                     StyledText {
                         id: todayBtn
@@ -185,7 +209,25 @@ Item {
                         implicitWidth: 28
                         implicitHeight: 28
                         radius: root.radius
-                        color: navMA.containsMouse ? root.colLayer2 : "transparent"
+                        color: (navMA.containsMouse || navButton.activeFocus) ? root.colLayer2 : "transparent"
+                        border.width: navButton.activeFocus ? 1 : 0
+                        border.color: root.colPrimary
+                        activeFocusOnTab: true
+                        Accessible.role: Accessible.Button
+                        Accessible.name: navButton.modelData.action < 0
+                            ? Translation.tr("Previous month") : Translation.tr("Next month")
+                        Accessible.focusable: true
+                        Accessible.onPressAction: root.monthShift += navButton.modelData.action
+
+                        Keys.onPressed: event => {
+                            if (event.isAutoRepeat
+                                    || (event.key !== Qt.Key_Return
+                                        && event.key !== Qt.Key_Enter
+                                        && event.key !== Qt.Key_Space))
+                                return
+                            root.monthShift += navButton.modelData.action
+                            event.accepted = true
+                        }
 
                         MaterialSymbol {
                             anchors.centerIn: parent
@@ -243,12 +285,31 @@ Item {
                         model: 7
 
                         delegate: Rectangle {
+                            id: dayCell
                             required property int index
                             property var cellData: root.calendarLayout?.[parent.weekRow]?.[index] ?? {}
 
                             implicitWidth: 32
                             implicitHeight: 32
                             radius: 16
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: root.locale.toString(
+                                new Date(dayCell.cellData.year, dayCell.cellData.month - 1, dayCell.cellData.day),
+                                "d MMMM yyyy")
+                            Accessible.focusable: true
+                            Accessible.selected: dayCell.cellData.isSelected ?? false
+                            Accessible.onPressAction: root.selectCell(dayCell.cellData)
+
+                            Keys.onPressed: event => {
+                                if (event.isAutoRepeat
+                                        || (event.key !== Qt.Key_Return
+                                            && event.key !== Qt.Key_Enter
+                                            && event.key !== Qt.Key_Space))
+                                    return
+                                root.selectCell(dayCell.cellData)
+                                event.accepted = true
+                            }
 
                             color: {
                                 if (cellData.isSelected) return root.colPrimary
@@ -256,7 +317,8 @@ Item {
                                 return "transparent"
                             }
 
-                            border.width: cellData.isToday && !cellData.isSelected ? 1 : 0
+                            border.width: dayCell.activeFocus ? 2
+                                : (cellData.isToday && !cellData.isSelected ? 1 : 0)
                             border.color: root.colPrimary
 
                             StyledText {
@@ -276,12 +338,7 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-
-                                onClicked: {
-                                    const newDate = new Date(cellData.year, cellData.month - 1, cellData.day)
-                                    root.selectedDate = newDate
-                                    root.dateSelected(newDate)
-                                }
+                                onClicked: root.selectCell(dayCell.cellData)
                             }
                         }
                     }

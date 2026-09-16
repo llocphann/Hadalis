@@ -39,7 +39,8 @@ require_release_version_consistency() {
 
   for package_file in \
     "$repo_root/distro/arch/inir-shell/PKGBUILD" \
-    "$repo_root/distro/arch/inir-meta/PKGBUILD"; do
+    "$repo_root/distro/arch/inir-meta/PKGBUILD" \
+    "$repo_root/sdata/dist-arch/inir-deps/PKGBUILD"; do
     [[ -f "$package_file" ]] || die "missing release package metadata: ${package_file#$repo_root/}"
     package_version="$(grep -m1 '^pkgver=' "$package_file" | cut -d= -f2- || true)"
     [[ -n "$package_version" ]] \

@@ -36,7 +36,16 @@ For when you're not on Arch, or you enjoy pain.
 
 ### 1. Get dependencies
 
-The bare minimum to not crash immediately:
+The manual source-install path itself needs these tools before `sudo make install` can work:
+
+| Package | Why |
+|---------|-----|
+| `git` | Clones the Hadalis source tree. |
+| `make` | Runs the source install targets. |
+| `python3` | Executes the runtime-payload installer. |
+| `rsync` | Copies the filtered shell runtime payload into the install prefix. |
+
+The bare minimum runtime packages to not crash immediately:
 
 | Package | Why |
 |---------|-----|

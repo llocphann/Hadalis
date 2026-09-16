@@ -10,6 +10,8 @@ GroupButton {
     Accessible.name: button.accessibleName.length > 0
         ? button.accessibleName
         : button.buttonIcon.replace(/_/g, " ")
+    Accessible.checkable: true
+    Accessible.checked: button.toggled
     baseWidth: 40
     baseHeight: 40
     clickedWidth: baseWidth + 20

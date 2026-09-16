@@ -400,21 +400,41 @@ Singleton {
         niriAnimProcess.running = true
     }
 
+    function _finishNiriAnimationMutation(code: int, spawnFailed: bool): void {
+        if (spawnFailed)
+            root._log("[GameMode] Niri animation update failed to start")
+        else if (code === 0)
+            root._log("[GameMode] Niri animations updated")
+
+        // Toast suppression is a temporary UI gate, not process ownership.
+        // Release it even when the helper cannot be spawned so a failed update
+        // cannot mute later compositor reload notifications indefinitely.
+        suppressClearTimer.restart()
+
+        if (niriAnimProcess.rerunAfterExit) {
+            const pending = niriAnimProcess.pendingEnabled
+            niriAnimProcess.rerunAfterExit = false
+            Qt.callLater(() => root.setNiriAnimations(pending))
+        }
+    }
+
     Process {
         id: niriAnimProcess
         property bool pendingEnabled: true
         property bool rerunAfterExit: false
-        onExited: (code, status) => {
-            if (code === 0) {
-                root._log("[GameMode] Niri animations updated")
+        property bool startObserved: false
+        onRunningChanged: {
+            if (niriAnimProcess.running) {
+                niriAnimProcess.startObserved = false
+                return
             }
-            suppressClearTimer.restart()
-            if (niriAnimProcess.rerunAfterExit) {
-                const pending = niriAnimProcess.pendingEnabled
-                niriAnimProcess.rerunAfterExit = false
-                Qt.callLater(() => root.setNiriAnimations(pending))
-            }
+            if (niriAnimProcess.startObserved)
+                return
+
+            root._finishNiriAnimationMutation(-1, true)
         }
+        onStarted: niriAnimProcess.startObserved = true
+        onExited: (code, status) => root._finishNiriAnimationMutation(code, false)
     }
 
     Timer {

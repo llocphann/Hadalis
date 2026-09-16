@@ -80,6 +80,11 @@ MouseArea {
         preferredExtent: Qt.size(360, 520)
     }
 
+    KeyboardFocusRing {
+        anchors.fill: parent
+        focusVisible: root.activeFocus
+    }
+
     RowLayout {
         id: content
         anchors.centerIn: parent

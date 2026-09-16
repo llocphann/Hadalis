@@ -155,7 +155,7 @@ PanelWindow {
                     - mediaViewport.contentX
                 screenY: popupBody.y + mediaViewport.y + mediaPopup.y
                     - mediaViewport.contentY
-                onCloseRequested: SurfaceRouteController.close(root.outputName, "explicit")
+                onCloseRequested: SurfaceRouteController.dismiss(root.outputName, "escape")
             }
         }
     }

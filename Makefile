@@ -20,7 +20,7 @@ THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"$(SYSTEMD_USER_DIR)\" LIBEXECDIR=\"$(LIBEXECDIR)\" POLKIT_ACTIONS_DIR=\"$(POLKIT_ACTIONS_DIR)\" TLP_CONFDIR=\"$(TLP_CONFDIR)\" INIR_SYSTEM_SHAREDIR=\"$(INIR_SYSTEM_SHAREDIR)\"
 
-.PHONY: all build test-local test-doctor-routing test-optional-audio-deps test-equalizer-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-doctor-routing test-optional-audio-deps test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -29,7 +29,7 @@ build:
 	@bash -n scripts/test-local-distribution.sh
 	@bash -n setup
 
-test-local: build test-doctor-routing test-optional-audio-deps test-equalizer-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
+test-local: build test-doctor-routing test-optional-audio-deps test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
 	@bash scripts/test-local-distribution.sh
 	@bash scripts/test-packaging-contract.sh
 	@bash scripts/test-nix-module-contract.sh
@@ -43,6 +43,10 @@ test-optional-audio-deps:
 test-equalizer-contracts:
 	@bash scripts/test-equalizer-boundary-contract.sh
 	@bash scripts/test-equalizer-service-contract.sh
+
+test-perimeter-contracts:
+	@bash scripts/test-perimeter-contracts.sh
+	@bash scripts/test-perimeter-compatibility-placement-contract.sh
 
 test-docs:
 	@bash scripts/verify-docs.sh

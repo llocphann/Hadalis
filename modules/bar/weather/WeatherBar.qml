@@ -82,5 +82,6 @@ MouseArea {
     WeatherPopup {
         id: weatherPopup
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
     }
 }

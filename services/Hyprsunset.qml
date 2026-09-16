@@ -21,6 +21,11 @@ Singleton {
     property bool shouldBeOn
     property bool firstEvaluation: true
     property bool active: false
+    property bool stateKnown: false
+    property bool _pendingEnable: false
+    property bool _pendingRestart: false
+    property bool _restartOwnedAfterExit: false
+    property bool _destroying: false
 
     function _timeParts(value, fallbackHour: int, fallbackMinute: int): var {
         const match = String(value ?? "").trim().match(/^(\d{1,2}):(\d{2})$/)
@@ -48,16 +53,16 @@ Singleton {
     property int manualActiveHour
     property int manualActiveMinute
 
-    // Debounce timer for wlsunset restarts
-    property bool _pendingRestart: false
+    // Debounce temperature-driven restarts of the process Hadalis owns. An
+    // externally started night-light process is observed but never restarted.
     Timer {
         id: restartDebounce
         interval: 300
         onTriggered: {
-            if (root._pendingRestart && root.active) {
-                wlsunsetKillProc.running = true;
-            }
+            if (!root._pendingRestart)
+                return
             root._pendingRestart = false
+            root._restartOwnedProcess()
         }
     }
 
@@ -99,7 +104,7 @@ Singleton {
             root.ensureState();
         } else if (root.automatic && root.manualActive === undefined
                 && root.active !== root.shouldBeOn) {
-            // State probes may reveal that a start/kill failed after the desired
+            // State probes may reveal that a start/stop failed after the desired
             // schedule value stopped changing. Reconcile on the next minute so
             // automatic mode self-heals without creating a tight process loop.
             root.ensureState();
@@ -126,55 +131,134 @@ Singleton {
 
     function load() { } // Dummy to force init
 
-    function _doEnable() {
+    function _ownedProcessRunning(): bool {
+        return CompositorService.isNiri ? wlsunsetProc.running : hyprsunsetProc.running
+    }
+
+    function _startOwnedProcess(): void {
+        if (root._destroying || root._ownedProcessRunning())
+            return
+        root._pendingEnable = false
+        if (CompositorService.isNiri)
+            wlsunsetProc.running = true
+        else
+            hyprsunsetProc.running = true
+    }
+
+    function _stopOwnedProcess(restart: bool): void {
+        root._restartOwnedAfterExit = restart
         if (CompositorService.isNiri) {
-            // wlsunset: -T high temp (day), -t low temp (night)
-            // Force "always night" mode: sunset at 00:00, sunrise at 23:59
-            // Must use execDetached so wlsunset keeps running after Process ends
-            Quickshell.execDetached(["/usr/bin/wlsunset", "-T", "6500", "-t", root.colorTemperature.toString(), "-s", "00:00", "-S", "23:59"]);
-        } else {
-            hyprsunsetStartProc.running = true;
+            if (wlsunsetProc.running) {
+                wlsunsetProc.running = false
+                return
+            }
+        } else if (hyprsunsetProc.running) {
+            hyprsunsetProc.running = false
+            return
         }
-        stateVerifyTimer.restart();
+
+        if (restart) {
+            root._restartOwnedAfterExit = false
+            root._startOwnedProcess()
+        }
+    }
+
+    function _restartOwnedProcess(): void {
+        // Do not mutate an externally-owned process merely because Hadalis can
+        // detect it. Only the child launched by this singleton is restartable.
+        if (root._ownedProcessRunning())
+            root._stopOwnedProcess(true)
+    }
+
+    function _ownedProcessStopped(): void {
+        if (root._destroying)
+            return
+        if (root._restartOwnedAfterExit) {
+            root._restartOwnedAfterExit = false
+            Qt.callLater(() => root._startOwnedProcess())
+            return
+        }
+        stateVerifyTimer.restart()
+    }
+
+    function _finishStateProbe(detectedActive: bool): void {
+        root.active = detectedActive || root._ownedProcessRunning()
+        root.stateKnown = true
+        if (root._pendingEnable) {
+            root._pendingEnable = false
+            if (!root.active)
+                root._startOwnedProcess()
+        }
     }
 
     function enable() {
-        root.active = true;
-        if (CompositorService.isNiri) {
-            // Kill first, then start after kill completes
-            wlsunsetKillProc.running = true;
-        } else {
-            root._doEnable();
+        if (root._ownedProcessRunning()) {
+            root.active = true
+            return
         }
+        if (!root.stateKnown) {
+            root._pendingEnable = true
+            root.fetchState()
+            return
+        }
+        // A process that Hadalis did not launch is not ours to replace or kill.
+        if (root.active)
+            return
+        root._startOwnedProcess()
     }
 
     function disable() {
-        root.active = false;
-        if (CompositorService.isNiri) {
-            wlsunsetKillProc.running = true;
-        } else {
-            hyprsunsetKillProc.running = true;
+        root._pendingEnable = false
+        root._pendingRestart = false
+        root._restartOwnedAfterExit = false
+        restartDebounce.stop()
+
+        if (root._ownedProcessRunning()) {
+            root.active = false
+            root._stopOwnedProcess(false)
+            stateVerifyTimer.restart()
+            return
         }
-        stateVerifyTimer.restart();
+
+        // Re-check externally-owned state, but never use kill-by-name here.
+        if (!root.stateKnown || root.active)
+            root.fetchState()
+        else
+            root.active = false
     }
 
     function fetchState() {
         if (CompositorService.isNiri) {
-            niriFetchProc.running = true;
-        } else {
+            if (!niriFetchProc.running)
+                niriFetchProc.running = true;
+        } else if (!fetchProc.running) {
             fetchProc.running = true;
         }
     }
 
     // === Hyprland processes ===
     Process {
-        id: hyprsunsetStartProc
-        command: ["/usr/bin/bash", "-c", `pidof hyprsunset || /usr/bin/hyprsunset --temperature ${root.colorTemperature}`]
-    }
+        id: hyprsunsetProc
+        property bool startObserved: false
+        running: false
+        command: ["/usr/bin/hyprsunset", "--temperature", root.colorTemperature.toString()]
 
-    Process {
-        id: hyprsunsetKillProc
-        command: ["/usr/bin/pkill", "-x", "hyprsunset"]
+        onRunningChanged: {
+            if (hyprsunsetProc.running) {
+                hyprsunsetProc.startObserved = false
+                return
+            }
+            if (hyprsunsetProc.startObserved)
+                return
+            root.active = false
+            root._ownedProcessStopped()
+        }
+        onStarted: {
+            hyprsunsetProc.startObserved = true
+            root.stateKnown = true
+            root.active = true
+        }
+        onExited: root._ownedProcessStopped()
     }
 
     Process {
@@ -183,38 +267,53 @@ Singleton {
         command: ["/usr/bin/bash", "-c", "hyprctl hyprsunset temperature"]
         stdout: StdioCollector {
             id: stateCollector
-            onStreamFinished: {
-                const output = stateCollector.text.trim();
-                if (output.length == 0 || output.startsWith("Couldn't"))
-                    root.active = false;
-                else
-                    root.active = (output != "6500"); // 6500 is the default when off
-            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            const output = stateCollector.text.trim()
+            root._finishStateProbe(exitCode === 0
+                && output.length > 0
+                && !output.startsWith("Couldn't")
+                && output !== "6500")
         }
     }
 
     // === Niri processes (wlsunset) ===
     Process {
-        id: wlsunsetKillProc
-        command: ["/usr/bin/pkill", "-x", "wlsunset"]
-        onExited: {
-            // If we're enabling, start wlsunset after kill completes
-            if (root.active) {
-                root._doEnable();
-            }
-        }
-    }
+        id: wlsunsetProc
+        property bool startObserved: false
+        running: false
+        // Force "always night" mode: sunset at 00:00, sunrise at 23:59.
+        command: [
+            "/usr/bin/wlsunset",
+            "-T", "6500",
+            "-t", root.colorTemperature.toString(),
+            "-s", "00:00",
+            "-S", "23:59"
+        ]
 
-    // wlsunsetStartProc removed - using Quickshell.execDetached instead
-    // because Process terminates the child when it's destroyed/restarted
+        onRunningChanged: {
+            if (wlsunsetProc.running) {
+                wlsunsetProc.startObserved = false
+                return
+            }
+            if (wlsunsetProc.startObserved)
+                return
+            root.active = false
+            root._ownedProcessStopped()
+        }
+        onStarted: {
+            wlsunsetProc.startObserved = true
+            root.stateKnown = true
+            root.active = true
+        }
+        onExited: root._ownedProcessStopped()
+    }
 
     Process {
         id: niriFetchProc
         running: CompositorService.isNiri
         command: ["/usr/bin/pidof", "wlsunset"]
-        onExited: (exitCode, exitStatus) => {
-            root.active = (exitCode === 0);
-        }
+        onExited: (exitCode, exitStatus) => root._finishStateProbe(exitCode === 0)
     }
 
     function toggle(active = undefined) {
@@ -233,23 +332,17 @@ Singleton {
         }
     }
 
-    // React to temperature changes while active
+    // React to temperature changes while active. Restart only the process that
+    // this singleton owns; an external night-light process is left untouched.
     Connections {
         target: Config.options?.light?.night ?? null
         enabled: !!(Config.options?.light?.night)
         
         function onColorTemperatureChanged() {
-            if (!root.active) return;
-            const temp = Config.options?.light?.night?.colorTemperature ?? root.colorTemperature;
-            
-            if (CompositorService.isNiri) {
-                // Queue restart with debounce
-                root._pendingRestart = true;
-                restartDebounce.restart();
-            } else {
-                Quickshell.execDetached(["/usr/bin/hyprctl", "hyprsunset", "temperature", `${temp}`]);
-                stateVerifyTimer.restart();
-            }
+            if (!root.active || !root._ownedProcessRunning())
+                return
+            root._pendingRestart = true
+            restartDebounce.restart()
         }
     }
 
@@ -267,5 +360,14 @@ Singleton {
             root.firstEvaluation = true;
             root.reEvaluate();
         }
+    }
+
+    Component.onDestruction: {
+        root._destroying = true
+        restartDebounce.stop()
+        stateVerifyTimer.stop()
+        root._restartOwnedAfterExit = false
+        hyprsunsetProc.running = false
+        wlsunsetProc.running = false
     }
 }

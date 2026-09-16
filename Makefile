@@ -5,6 +5,7 @@ APPLICATIONS_DIR = $(SHAREDIR)/applications
 ICON_DIR = $(SHAREDIR)/icons/hicolor/scalable/apps
 SHELL_INSTALL_DIR = $(SHAREDIR)/quickshell/inir
 DOC_DIR = $(SHAREDIR)/doc/inir-shell
+LICENSE_DIR = $(SHAREDIR)/licenses/inir-shell
 SYSTEMD_USER_DIR ?= $(PREFIX)/lib/systemd/user
 LIBEXECDIR ?= /usr/libexec
 POLKIT_ACTIONS_DIR ?= /usr/share/polkit-1/actions
@@ -18,7 +19,7 @@ TLP_SETTINGS_SCHEMA = $(INIR_SYSTEM_SHAREDIR)/tlp-settings-schema.json
 THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 
-.PHONY: all build test-local test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -67,6 +68,9 @@ install-docs:
 	@install -Dm644 docs/SETUP.md "$(DESTDIR)$(DOC_DIR)/SETUP.md"
 	@install -Dm644 docs/IPC.md "$(DESTDIR)$(DOC_DIR)/IPC.md"
 
+install-license:
+	@install -Dm644 LICENSE "$(DESTDIR)$(LICENSE_DIR)/LICENSE"
+
 install-battery-helper:
 	@install -Dm755 assets/helpers/inir-battery-charge-limit "$(DESTDIR)$(BATTERY_HELPER)"
 	@install -Dm644 assets/polkit/org.inir.battery-charge-limit.policy "$(DESTDIR)$(BATTERY_POLICY)"
@@ -76,7 +80,7 @@ install-thinkfan-helper:
 	@install -Dm755 assets/helpers/inir-thinkfan "$(DESTDIR)$(THINKFAN_HELPER)"
 	@install -Dm644 assets/polkit/org.inir.thinkfan.policy "$(DESTDIR)$(THINKFAN_POLICY)"
 
-install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-battery-helper install-thinkfan-helper
+install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper
 
 uninstall-bin:
 	@rm -f "$(DESTDIR)$(BINDIR)/inir"
@@ -98,6 +102,9 @@ uninstall-desktop:
 uninstall-docs:
 	@rm -rf "$(DESTDIR)$(DOC_DIR)"
 
+uninstall-license:
+	@rm -rf "$(DESTDIR)$(LICENSE_DIR)"
+
 uninstall-battery-helper:
 	@if [ -z "$(DESTDIR)" ] && [ -x "$(BATTERY_HELPER)" ]; then \
 		"$(BATTERY_HELPER)" --config-reset >/dev/null 2>&1 || true; \
@@ -110,4 +117,4 @@ uninstall-battery-helper:
 uninstall-thinkfan-helper:
 	@rm -f "$(DESTDIR)$(THINKFAN_HELPER)" "$(DESTDIR)$(THINKFAN_POLICY)"
 
-uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-shell uninstall-bin uninstall-battery-helper uninstall-thinkfan-helper
+uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-license uninstall-shell uninstall-bin uninstall-battery-helper uninstall-thinkfan-helper

@@ -275,7 +275,8 @@ Singleton {
     }
 
     function _pollSensors(): void {
-        autoStopTimer.restart();
+        if (root._persistentConsumers === 0)
+            autoStopTimer.restart();
 
         // Determine whether GPU polling should be skipped this cycle.
         // On hybrid (iGPU+dGPU) systems, querying GPU data via nvidia-smi or hwmon

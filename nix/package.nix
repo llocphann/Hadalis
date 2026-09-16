@@ -17,6 +17,13 @@ let
       (builtins.hasAttr "qt6" pkgs && builtins.hasAttr name pkgs.qt6)
       (builtins.getAttr name pkgs.qt6);
 
+  colorPython = with pkgs;
+    (python3.withPackages (pythonPackages: with pythonPackages; [
+      materialyoucolor
+      numpy
+      pillow
+    ]));
+
   runtimeDeps =
     with pkgs; [
       bash
@@ -30,11 +37,7 @@ let
       gnused
       jq
       procps
-      (python3.withPackages (pythonPackages: with pythonPackages; [
-        materialyoucolor
-        numpy
-        pillow
-      ]))
+      colorPython
       ripgrep
       rsync
       systemd
@@ -180,14 +183,18 @@ pkgs.stdenvNoCC.mkDerivation {
       "$runtime/setup" \
       "$runtime/scripts/inir" \
       "$runtime/sdata/lib/versioning.sh" \
-      "$runtime" <<'PY'
+      "$runtime/scripts/colors/switchwall.sh" \
+      "$runtime" \
+      "${colorPython}/bin/python3" <<'PY'
 from pathlib import Path
 import sys
 
 setup_path = Path(sys.argv[1])
 launcher_path = Path(sys.argv[2])
 versioning_path = Path(sys.argv[3])
-runtime = sys.argv[4]
+switchwall_path = Path(sys.argv[4])
+runtime = sys.argv[5]
+color_python = sys.argv[6]
 
 setup = setup_path.read_text()
 marker = "sync_launcher_from_repo() {\n"
@@ -255,12 +262,29 @@ count = versioning.count(versioning_default)
 if count != 1:
     raise SystemExit("expected exactly one versioning runtime default")
 versioning_path.write_text(versioning.replace(versioning_default, versioning_value, 1))
+
+switchwall = switchwall_path.read_text()
+python_marker = "    # Generate colors and render templates in one unified Python pass\n"
+scss_marker = '    _scss_tmp="$STATE_DIR/user/generated/material_colors.scss.tmp"\n'
+start = switchwall.find(python_marker)
+if start == -1:
+    raise SystemExit("expected switchwall Python selection marker")
+start += len(python_marker)
+end = switchwall.find(scss_marker, start)
+if end == -1:
+    raise SystemExit("expected switchwall SCSS marker")
+python_block = switchwall[start:end]
+if "INIR_VENV" not in python_block or "_ii_python" not in python_block:
+    raise SystemExit("unexpected switchwall Python selection block")
+switchwall = switchwall[:start] + f'    _ii_python="{color_python}"\n\n' + switchwall[end:]
+switchwall_path.write_text(switchwall)
 PY
     grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$runtime/setup"
     grep -Fq "$runtime" "$runtime/scripts/inir"
     grep -Fq 'Nix-managed installations keep inir.service declarative' "$runtime/scripts/inir"
     grep -Fq 'systemctl --user cat inir.service' "$runtime/scripts/inir"
     grep -Fq "$runtime" "$runtime/sdata/lib/versioning.sh"
+    grep -Fq '_ii_python="${colorPython}/bin/python3"' "$runtime/scripts/colors/switchwall.sh"
 
     cat > "$runtime/version.json" <<'EOF'
 {

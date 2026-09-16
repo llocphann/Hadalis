@@ -111,6 +111,12 @@ for file in "$presentation_policy" "$reservation_policy" "$thinkfan_module" \
     fi
 done
 
+grep -Fq 'function _barThickness(edge: string): real {' "$reservation_policy" \
+    || fail 'bar reservation thickness is not edge-aware'
+grep -Fq 'Appearance.sizes.baseVerticalBarWidth' "$reservation_policy" \
+    || fail 'vertical bar reservation no longer matches vertical-bar width semantics'
+grep -Fq 'root._barThickness(targetEdge)' "$reservation_policy" \
+    || fail 'edge-aware bar thickness is not used by reservation routing'
 grep -Fq 'function zoneForOutputEdge(outputName: string, edge: string): real {' \
     "$reservation_policy" || fail 'reservation policy does not derive zones per output edge'
 grep -Fq 'GlobalStates.barOpen' "$reservation_policy" \

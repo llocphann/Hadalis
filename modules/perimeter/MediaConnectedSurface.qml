@@ -48,6 +48,7 @@ PanelWindow {
         Qt.callLater(() => {
             if (root.routeOwned) {
                 mediaPopup.forceActiveFocus()
+                mediaPopup.focusInitialControl()
                 if (CompositorService.isNiri && root.active)
                     root._niriFocusSeen = true
             }

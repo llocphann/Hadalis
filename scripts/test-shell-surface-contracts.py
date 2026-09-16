@@ -46,6 +46,8 @@ def main() -> None:
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,
           "Legacy Dock styles must normalize to Panel")
+    check('Config.setNestedValue("language.ui", "en_US")' in settings_registry,
+          "Legacy UI locales must normalize to canonical en_US")
 
     settings_sources = "\n".join(
         path.read_text(encoding="utf-8")

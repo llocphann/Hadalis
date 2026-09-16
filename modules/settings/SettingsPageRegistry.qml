@@ -20,6 +20,7 @@ Singleton {
     readonly property int panelsPageIndex: 5
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
+    property bool _legacyUiLocaleMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
@@ -89,6 +90,15 @@ Singleton {
             Config.setNestedValue("dock.style", "panel")
     }
 
+    function _migrateLegacyUiLocale(): void {
+        if (root._legacyUiLocaleMigrationDone || !Config.ready)
+            return
+
+        root._legacyUiLocaleMigrationDone = true
+        if ((Config.options?.language?.ui ?? "en_US") !== "en_US")
+            Config.setNestedValue("language.ui", "en_US")
+    }
+
     function consumeLegacyTlpPowerRedirect(): bool {
         if (!root._legacyTlpPowerRedirectPending)
             return false
@@ -129,6 +139,7 @@ Singleton {
     Component.onCompleted: {
         root._migrateLegacyPersistentPage()
         root._migrateLegacyDockStyle()
+        root._migrateLegacyUiLocale()
     }
 
     Connections {
@@ -142,8 +153,10 @@ Singleton {
     Connections {
         target: Config
         function onReadyChanged(): void {
-            if (Config.ready)
+            if (Config.ready) {
                 root._migrateLegacyDockStyle()
+                root._migrateLegacyUiLocale()
+            }
         }
     }
 }

@@ -81,6 +81,7 @@ Singleton {
     property string _head: ""
     property string _tail: ""
     property bool _hasMarkers: false
+    property string _pendingWriteText: ""
 
     // ── Lifecycle ────────────────────────────────────────────────────────
 
@@ -265,13 +266,10 @@ Singleton {
             root.status = isNiri ? "missing" : "notniri"
             return
         }
-        const text = _serialize()
-        // Ensure the directory exists (defensive — the file ships with iNiR).
-        Quickshell.execDetached(["/usr/bin/mkdir", "-p",
-            (Directories.homePath ?? "") + "/.config/niri/config.d"])
-        startupFileView.path = Qt.resolvedUrl(startupFilePath)
-        startupFileView.setText(text)
-        _log("[Autostart] Wrote", root.entries.length, "entries to", startupFilePath)
+        root._pendingWriteText = _serialize()
+        root.status = "write"
+        if (!ensureDirectoryProc.running)
+            ensureDirectoryProc.running = true
     }
 
     // ── Public mutations ─────────────────────────────────────────────────
@@ -402,10 +400,36 @@ Singleton {
 
     // ── File I/O ─────────────────────────────────────────────────────────
 
+    Process {
+        id: ensureDirectoryProc
+        command: ["/usr/bin/mkdir", "-p", (Directories.homePath ?? "") + "/.config/niri/config.d"]
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) {
+                root.status = "write"
+                _log("[Autostart] failed to create startup directory:", exitCode, exitStatus)
+                return
+            }
+            const text = root._pendingWriteText
+            root._pendingWriteText = ""
+            if (text.length === 0)
+                return
+            startupFileView.path = Qt.resolvedUrl(root.startupFilePath)
+            startupFileView.setText(text)
+        }
+    }
+
     FileView {
         id: startupFileView
         watchChanges: true
         printErrors: false
+        onSaved: {
+            root.status = "read"
+            _log("[Autostart] Wrote", root.entries.length, "entries to", root.startupFilePath)
+        }
+        onSaveFailed: error => {
+            root.status = "write"
+            _log("[Autostart] write failed:", error)
+        }
         onFileChanged: {
             // External edit (user touched the file by hand) — re-read.
             _log("[Autostart] file changed externally, reloading")

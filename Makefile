@@ -45,6 +45,11 @@ install-shell:
 	@python3 sdata/lib/runtime-payload.py copy --root . --target "$(DESTDIR)$(SHELL_INSTALL_DIR)"
 	@chmod +x "$(DESTDIR)$(SHELL_INSTALL_DIR)/setup" "$(DESTDIR)$(SHELL_INSTALL_DIR)/scripts/inir"
 	@find "$(DESTDIR)$(SHELL_INSTALL_DIR)/scripts" -type f \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} +
+	@sed -i \
+		-e 's|/usr/libexec/inir-battery-charge-limit|$(BATTERY_HELPER)|g' \
+		-e 's|/usr/libexec/inir-thinkfan|$(THINKFAN_HELPER)|g' \
+		"$(DESTDIR)$(SHELL_INSTALL_DIR)/services/TlpSettingsService.qml" \
+		"$(DESTDIR)$(SHELL_INSTALL_DIR)/services/ThinkFanService.qml"
 	@printf '{\n  "version": "%s",\n  "commit": "%s",\n  "installed_at": "%s",\n  "installedAt": "%s",\n  "source": "make-install",\n  "repo_path": "",\n  "repoPath": "",\n  "install_mode": "package-managed",\n  "installMode": "package-managed",\n  "update_strategy": "package-manager",\n  "updateStrategy": "package-manager",\n  "package_manager": "manual",\n  "packageManager": "manual",\n  "package_name": "source-install",\n  "packageName": "source-install",\n  "package_update_hint": "sudo make install",\n  "packageUpdateHint": "sudo make install"\n}\n' "$$(cat VERSION)" "$$(git rev-parse --short HEAD 2>/dev/null || printf manual)" "$$(date -Iseconds)" "$$(date -Iseconds)" > "$(DESTDIR)$(SHELL_INSTALL_DIR)/version.json"
 
 install-systemd:
@@ -72,7 +77,12 @@ install-license:
 	@install -Dm644 LICENSE "$(DESTDIR)$(LICENSE_DIR)/LICENSE"
 
 install-battery-helper:
-	@install -Dm755 assets/helpers/inir-battery-charge-limit "$(DESTDIR)$(BATTERY_HELPER)"
+	@mkdir -p "$(DESTDIR)$(LIBEXECDIR)"
+	@sed \
+		-e 's|^config_dir=.*|config_dir=$(TLP_CONFDIR)|' \
+		-e 's|^tlp_settings_schema=.*|tlp_settings_schema=$(TLP_SETTINGS_SCHEMA)|' \
+		assets/helpers/inir-battery-charge-limit > "$(DESTDIR)$(BATTERY_HELPER)"
+	@chmod 755 "$(DESTDIR)$(BATTERY_HELPER)"
 	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
 	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(BATTERY_HELPER)</annotate>|' \
 		assets/polkit/org.inir.battery-charge-limit.policy > "$(DESTDIR)$(BATTERY_POLICY)"

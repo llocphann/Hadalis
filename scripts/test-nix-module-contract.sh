@@ -53,6 +53,21 @@ done < sdata/runtime-root-files.txt
 [[ "$(grep -Fxc "      - '*.qml'" "$nix_workflow" || true)" == "2" ]] \
   || fail 'Nix workflow no longer watches automatically included root QML files'
 
+# Nix-specific packaging/install ownership belongs in this deferred lane rather
+# than the required non-Nix packaging contract.
+grep -Fq 'for doc in docs/*.md; do' "$package" \
+  || fail 'Nix package no longer installs repository documentation'
+grep -Fq 'install -Dm644 LICENSE "$out/share/licenses/inir/LICENSE"' "$package" \
+  || fail 'Nix package no longer installs the project license'
+grep -Fq 'Nix-managed installations keep inir.service declarative' "$package" \
+  || fail 'Nix package no longer blocks mutable service ownership commands'
+grep -Fq 'systemctl --user cat inir.service' "$package" \
+  || fail 'Nix package no longer validates the declarative inir.service before start/restart'
+grep -Fq 'install|uninstall|remove|enable|disable)' "$package" \
+  || fail 'Nix service ownership guard no longer covers all mutating service commands'
+grep -Fqx '      ${materialSymbolsWrapperArg} \' "$package" \
+  || fail 'Nix optional font wrapper argument no longer preserves makeWrapper continuation when empty'
+
 grep -Fq 'flock -w 5 200' "$switchwall" \
   || fail 'switchwall no longer exercises the flock runtime dependency contract'
 grep -Fq '++ optionalTop "util-linux"' "$package" \

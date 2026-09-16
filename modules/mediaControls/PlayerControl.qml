@@ -369,6 +369,7 @@ Item {
                         anchors.fill: parent
                         active: root.player?.canSeek ?? false
                         sourceComponent: StyledSlider {
+                            Accessible.name: Translation.tr("Playback position")
                             configuration: StyledSlider.Configuration.Wavy
                             wavy: root.player?.isPlaying ?? false
                             animateWave: root.player?.isPlaying ?? false

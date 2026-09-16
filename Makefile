@@ -43,7 +43,7 @@ test-prefix-install:
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$runtime/scripts/inir"; \
 		grep -Fq 'RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/opt/inir/share/quickshell/inir}"' "$$runtime/sdata/lib/versioning.sh"; \
 		grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$$runtime/setup"; \
-		grep -Fq '"package_update_hint": "sudo make install PREFIX=\"/opt/inir\"' "$$runtime/version.json"; \
+		python3 -c 'import json, pathlib, sys; data=json.loads(pathlib.Path(sys.argv[1]).read_text()); assert data["version"] == pathlib.Path("VERSION").read_text().strip(); assert data["installMode"] == "package-managed"; assert data["updateStrategy"] == "package-manager"; assert data["packageManager"] == "manual"; assert "PREFIX=\"/opt/inir\"" in data["packageUpdateHint"]' "$$runtime/version.json"; \
 		grep -Fxq 'Exec=/opt/inir/bin/inir service restart' "$$stage/opt/inir/share/applications/inir.desktop"; \
 		grep -Fxq 'Exec=/opt/inir/bin/inir settings' "$$stage/opt/inir/share/applications/inir-settings.desktop"
 

@@ -75,6 +75,8 @@ ColumnLayout {
             stepSize: sliderRowRoot.stepSize
             value: sliderRowRoot.configValue
             configuration: StyledSlider.Configuration.S
+            Accessible.name: sliderRowRoot.label
+            Accessible.description: sliderRowRoot.description
             onMoved: {
                 if (sliderRowRoot.configPath !== "")
                     Config.setNestedValue(sliderRowRoot.configPath, Math.round(value * 100) / 100)

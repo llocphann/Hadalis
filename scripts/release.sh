@@ -2,6 +2,7 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
 
 usage() {
   cat <<'EOF'
@@ -24,6 +25,25 @@ die() {
 require_clean_version() {
   [[ $# -ge 1 ]] || die "missing version"
   [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must look like X.Y.Z"
+}
+
+require_release_version_consistency() {
+  local version="$1"
+  local repo_version package_file package_version
+
+  [[ -f "$repo_root/VERSION" ]] || die "missing VERSION file"
+  repo_version="$(tr -d '[:space:]' < "$repo_root/VERSION")"
+  [[ "$repo_version" == "$version" ]] \
+    || die "VERSION=$repo_version does not match release version $version"
+
+  for package_file in \
+    "$repo_root/distro/arch/inir-shell/PKGBUILD" \
+    "$repo_root/distro/arch/inir-meta/PKGBUILD"; do
+    [[ -f "$package_file" ]] || die "missing release package metadata: ${package_file#$repo_root/}"
+    package_version="$(grep -m1 '^pkgver=' "$package_file" | cut -d= -f2-)"
+    [[ "$package_version" == "$version" ]] \
+      || die "${package_file#$repo_root/} pkgver=$package_version does not match release version $version"
+  done
 }
 
 require_release_checkout() {
@@ -82,6 +102,7 @@ publish_release() {
   local version="$1"
   local tag="v$version"
   local notes_file
+  require_release_version_consistency "$version"
   git rev-parse --verify "$tag" >/dev/null 2>&1 || die "missing local tag $tag"
   require_release_checkout "$tag"
 

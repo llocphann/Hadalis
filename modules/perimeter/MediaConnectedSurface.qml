@@ -68,14 +68,26 @@ PanelWindow {
         width: Math.max(0, geometry.bodyRect.width - 24)
         height: Math.max(0, geometry.bodyRect.height - 24)
         visible: root.routeOwned
+        clip: true
 
-        BarMediaPopup {
-            id: mediaPopup
-            anchors.centerIn: parent
-            width: Math.min(implicitWidth, parent.width)
-            height: Math.min(implicitHeight, parent.height)
-            popupRounding: Math.max(0, geometry.outerRadius - 8)
-            onCloseRequested: SurfaceRouteController.close(root.outputName, "explicit")
+        Flickable {
+            id: mediaViewport
+            anchors.fill: parent
+            clip: true
+            contentWidth: Math.max(width, mediaPopup.implicitWidth)
+            contentHeight: Math.max(height, mediaPopup.implicitHeight)
+            interactive: contentWidth > width + 0.5 || contentHeight > height + 0.5
+            boundsBehavior: Flickable.StopAtBounds
+
+            BarMediaPopup {
+                id: mediaPopup
+                width: implicitWidth
+                height: implicitHeight
+                x: Math.max(0, (mediaViewport.width - width) / 2)
+                y: Math.max(0, (mediaViewport.height - height) / 2)
+                popupRounding: Math.max(0, geometry.outerRadius - 8)
+                onCloseRequested: SurfaceRouteController.close(root.outputName, "explicit")
+            }
         }
     }
 

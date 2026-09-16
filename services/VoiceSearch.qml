@@ -38,6 +38,7 @@ Singleton {
     property string _transcriptionOutput: ""
     property string _transcriptionError: ""
     property bool _pendingStart: false
+    property bool _probeQueued: false
     property bool _cancelRequested: false
     // "search" opens the browser; "dictate" emits transcriptionReady only.
     property string mode: "search"
@@ -98,7 +99,12 @@ Singleton {
     }
 
     function refreshBackends(): void {
-        if (!localProbe.running) localProbe.running = true
+        if (localProbe.running)
+            root._probeQueued = true
+        else {
+            root._probeQueued = false
+            localProbe.running = true
+        }
         if (!KeyringStorage.loaded) KeyringStorage.fetchKeyringData()
     }
 
@@ -220,6 +226,15 @@ Singleton {
                     root.detectedLocalModel = ""
                 }
             }
+        }
+        onExited: {
+            if (!root._probeQueued)
+                return
+            root._probeQueued = false
+            Qt.callLater(() => {
+                if (!localProbe.running)
+                    localProbe.running = true
+            })
         }
     }
 

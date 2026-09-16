@@ -14,6 +14,21 @@ Item {
 
     signal clicked()
 
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: root.preset.name
+    Accessible.description: root.preset.description ?? ""
+    Accessible.checkable: true
+    Accessible.checked: root.isActive
+    Accessible.onPressAction: root.clicked()
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+            root.clicked()
+            event.accepted = true
+        }
+    }
+
     // Helper to safely get color from preset
     function getColor(key, fallback) {
         if (!preset.colors) return Appearance.m3colors[key] ?? fallback
@@ -42,11 +57,11 @@ Item {
         // Get primary color from THIS preset (not current theme)
         readonly property color presetPrimary: root.getColor("m3primary", "#6366f1")
 
-        color: cardMouseArea.containsMouse
+        color: cardMouseArea.containsMouse || root.activeFocus
             ? Appearance.colors.colLayer2Hover
             : Appearance.colors.colLayer2
 
-        border.width: root.isActive ? 1.5 : 0
+        border.width: root.isActive ? 1.5 : root.activeFocus ? 1 : 0
         border.color: cardBg.presetPrimary
 
         Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: 100 } }
@@ -115,7 +130,10 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.clicked()
+                onClicked: {
+                    root.forceActiveFocus()
+                    root.clicked()
+                }
             }
         }
 
@@ -125,10 +143,23 @@ Item {
             width: 28
             height: 28
             radius: 14
-            color: starMouseArea.containsMouse
+            activeFocusOnTab: root.favoriteEnabled
+            Accessible.role: Accessible.Button
+            Accessible.name: root.isFavorite ? Translation.tr("Remove from favorites") : Translation.tr("Add to favorites")
+            Accessible.checkable: true
+            Accessible.checked: root.isFavorite
+            Accessible.onPressAction: root.toggleFavorite()
+            color: starMouseArea.containsMouse || starButton.activeFocus
                 ? (root.isFavorite ? Appearance.colors.colLayer1Hover : Appearance.colors.colTertiaryContainer)
                 : "transparent"
-            visible: root.favoriteEnabled && (root.isFavorite || cardMouseArea.containsMouse || starMouseArea.containsMouse)
+            visible: root.favoriteEnabled && (root.isFavorite || root.activeFocus || starButton.activeFocus || cardMouseArea.containsMouse || starMouseArea.containsMouse)
+
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                    root.toggleFavorite()
+                    event.accepted = true
+                }
+            }
 
             Behavior on color {
                 enabled: Appearance.animationsEnabled
@@ -142,7 +173,7 @@ Item {
                 iconSize: 16
                 color: root.isFavorite
                     ? Appearance.colors.colTertiary
-                    : starMouseArea.containsMouse
+                    : starMouseArea.containsMouse || starButton.activeFocus
                         ? Appearance.colors.colOnTertiaryContainer
                         : Appearance.colors.colSubtext
             }
@@ -152,12 +183,15 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.toggleFavorite()
+                onClicked: {
+                    starButton.forceActiveFocus()
+                    root.toggleFavorite()
+                }
             }
 
             StyledToolTip {
                 text: root.isFavorite ? Translation.tr("Remove from favorites") : Translation.tr("Add to favorites")
-                visible: starMouseArea.containsMouse
+                visible: starMouseArea.containsMouse || starButton.activeFocus
             }
         }
 

@@ -24,13 +24,13 @@ Each output owns eight perimeter slots:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│ TOP-LEFT              TOP-CENTER                    TOP-RIGHT   │
+│ TOP-LEFT                 TOP-CENTER                   TOP-RIGHT │
 │                                                                 │
 │                                                                 │
-│ LEFT-EDGE                                         RIGHT-EDGE    │
+│ LEFT-EDGE                                            RIGHT-EDGE │
 │                                                                 │
 │                                                                 │
-│ BOTTOM-LEFT          BOTTOM-CENTER                BOTTOM-RIGHT  │
+│ BOTTOM-LEFT             BOTTOM-CENTER              BOTTOM-RIGHT │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

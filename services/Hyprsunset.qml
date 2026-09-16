@@ -264,6 +264,7 @@ Singleton {
     Process {
         id: fetchProc
         property bool startObserved: false
+        property bool timedOut: false
         running: !CompositorService.isNiri
         command: ["/usr/bin/bash", "-c", "hyprctl hyprsunset temperature"]
         stdout: StdioCollector {
@@ -277,16 +278,37 @@ Singleton {
             if (fetchProc.startObserved)
                 return
 
+            hyprStateProbeTimeout.stop()
             console.warn("[Hyprsunset] Hyprland state probe failed to start")
             root._finishStateProbe(false)
         }
-        onStarted: fetchProc.startObserved = true
+        onStarted: {
+            fetchProc.startObserved = true
+            fetchProc.timedOut = false
+            hyprStateProbeTimeout.restart()
+        }
         onExited: (exitCode, exitStatus) => {
+            hyprStateProbeTimeout.stop()
+            if (fetchProc.timedOut)
+                console.warn("[Hyprsunset] Hyprland state probe timed out")
             const output = stateCollector.text.trim()
-            root._finishStateProbe(exitCode === 0
+            root._finishStateProbe(!fetchProc.timedOut
+                && exitCode === 0
                 && output.length > 0
                 && !output.startsWith("Couldn't")
                 && output !== "6500")
+        }
+    }
+
+    Timer {
+        id: hyprStateProbeTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!fetchProc.running)
+                return
+            fetchProc.timedOut = true
+            fetchProc.running = false
         }
     }
 
@@ -325,6 +347,7 @@ Singleton {
     Process {
         id: niriFetchProc
         property bool startObserved: false
+        property bool timedOut: false
         running: CompositorService.isNiri
         command: ["/usr/bin/pidof", "wlsunset"]
         onRunningChanged: {
@@ -335,11 +358,33 @@ Singleton {
             if (niriFetchProc.startObserved)
                 return
 
+            niriStateProbeTimeout.stop()
             console.warn("[Hyprsunset] Niri state probe failed to start")
             root._finishStateProbe(false)
         }
-        onStarted: niriFetchProc.startObserved = true
-        onExited: (exitCode, exitStatus) => root._finishStateProbe(exitCode === 0)
+        onStarted: {
+            niriFetchProc.startObserved = true
+            niriFetchProc.timedOut = false
+            niriStateProbeTimeout.restart()
+        }
+        onExited: (exitCode, exitStatus) => {
+            niriStateProbeTimeout.stop()
+            if (niriFetchProc.timedOut)
+                console.warn("[Hyprsunset] Niri state probe timed out")
+            root._finishStateProbe(!niriFetchProc.timedOut && exitCode === 0)
+        }
+    }
+
+    Timer {
+        id: niriStateProbeTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!niriFetchProc.running)
+                return
+            niriFetchProc.timedOut = true
+            niriFetchProc.running = false
+        }
     }
 
     function toggle(active = undefined) {
@@ -392,6 +437,8 @@ Singleton {
         root._destroying = true
         restartDebounce.stop()
         stateVerifyTimer.stop()
+        hyprStateProbeTimeout.stop()
+        niriStateProbeTimeout.stop()
         root._restartOwnedAfterExit = false
         hyprsunsetProc.running = false
         wlsunsetProc.running = false

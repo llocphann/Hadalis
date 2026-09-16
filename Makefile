@@ -18,7 +18,7 @@ TLP_SETTINGS_DROPIN = $(TLP_CONFDIR)/99-inir-tlp-settings.conf
 TLP_SETTINGS_SCHEMA = $(INIR_SYSTEM_SHAREDIR)/tlp-settings-schema.json
 THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
-PACKAGE_UPDATE_HINT = sudo make install PREFIX='$(PREFIX)' SYSTEMD_USER_DIR='$(SYSTEMD_USER_DIR)' LIBEXECDIR='$(LIBEXECDIR)' POLKIT_ACTIONS_DIR='$(POLKIT_ACTIONS_DIR)' TLP_CONFDIR='$(TLP_CONFDIR)' INIR_SYSTEM_SHAREDIR='$(INIR_SYSTEM_SHAREDIR)'
+PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"$(SYSTEMD_USER_DIR)\" LIBEXECDIR=\"$(LIBEXECDIR)\" POLKIT_ACTIONS_DIR=\"$(POLKIT_ACTIONS_DIR)\" TLP_CONFDIR=\"$(TLP_CONFDIR)\" INIR_SYSTEM_SHAREDIR=\"$(INIR_SYSTEM_SHAREDIR)\"
 
 .PHONY: all build test-local test-prefix-install test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
@@ -41,7 +41,7 @@ test-prefix-install:
 		test -f "$$runtime/shell.qml"; \
 		grep -Fq 'system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-/opt/inir/share/quickshell/inir}"' "$$stage/opt/inir/bin/inir"; \
 		grep -Fq 'RUNTIME_DIR_SYSTEM_LOCAL="$${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/opt/inir/share/quickshell/inir}"' "$$runtime/sdata/lib/versioning.sh"; \
-		grep -Fq '"package_update_hint": "sudo make install PREFIX='\''/opt/inir'\''' "$$runtime/version.json"
+		grep -Fq '"package_update_hint": "sudo make install PREFIX=\"/opt/inir\"' "$$runtime/version.json"
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh

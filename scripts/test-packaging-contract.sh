@@ -100,6 +100,23 @@ srcinfo_source="$(srcinfo_value "$stable_srcinfo" source)"
 [[ "$srcinfo_source" == *"/archive/${source_ref}.tar.gz" ]] \
   || fail 'inir-shell .SRCINFO source archive drifted from _source_ref'
 
+# The packaged color pipeline runs without the source installer's managed venv.
+# Both direct Arch shell packages therefore need the generator's Python imports
+# as package dependencies, with committed .SRCINFO kept in lockstep.
+arch_python_required=(python-materialyoucolor python-numpy python-pillow)
+for pair in \
+  "$stable_pkg:$stable_srcinfo" \
+  "$git_pkg:$git_srcinfo"; do
+  recipe="${pair%%:*}"
+  srcinfo="${pair#*:}"
+  for package in "${arch_python_required[@]}"; do
+    grep -Eq "^[[:space:]]+${package}$" "$recipe" \
+      || fail "$recipe is missing color generator Python dependency: $package"
+    grep -Fqx $'\tdepends = '"$package" "$srcinfo" \
+      || fail "$srcinfo is missing color generator Python dependency: $package"
+  done
+done
+
 # inir-meta promises the full desktop experience. These packages represent
 # default source-installer supplements across shell utilities, visuals, login,
 # wallpaper tooling, task management, and critical fonts.

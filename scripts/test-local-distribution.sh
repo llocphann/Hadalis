@@ -29,6 +29,10 @@ bash -n \
     "$runtime_root/sdata/lib/"*.sh \
     "$runtime_root/sdata/subcmd-install/"*.sh \
     "$runtime_root/sdata/migrations/"*.sh
+for dist_installer in "$runtime_root"/sdata/dist-*/install-deps.sh; do
+    [[ -f "$dist_installer" ]] || continue
+    bash -n "$dist_installer"
+done
 sh -n \
     "$runtime_root/assets/helpers/inir-battery-charge-limit" \
     "$runtime_root/scripts/test-battery-charge-limit-helper.sh"

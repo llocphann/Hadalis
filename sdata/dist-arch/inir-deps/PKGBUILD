@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=3
+pkgrel=4
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -106,7 +106,6 @@ depends=(
   mpv-mpris
   yt-dlp
   python-ytmusicapi
-  socat
 
   #--- Theming ---
   noto-fonts-emoji
@@ -163,6 +162,7 @@ depends=(
 optdepends=(
   'cava: audio visualizer for bar'
   'easyeffects: audio effects panel'
+  'socat: optional EasyEffects control transport for equalizer'
   'songrec: song recognition'
   'translate-shell: translation widget'
   'hyprpicker: color picker'

@@ -44,6 +44,7 @@ PanelWindow {
         edge: root.route?.edge ?? "top"
         alignment: PerimeterTopology.alignmentForSlot(root.route?.slot ?? "top.center")
         outputRect: Qt.rect(0, 0, root.width, root.height)
+        devicePixelRatio: root.sourceScreen?.devicePixelRatio ?? 1
         anchorRect: root.route?.anchorRect ?? Qt.rect(0, 0, 0, 0)
         bodySize: Qt.size(
             Math.max(360, mediaPopup.implicitWidth + 24),

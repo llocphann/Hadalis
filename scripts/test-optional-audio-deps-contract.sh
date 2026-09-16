@@ -7,6 +7,10 @@ cd "$repo_root"
 python3 - \
   sdata/dist-arch/inir-audio/PKGBUILD \
   sdata/dist-arch/inir-deps/PKGBUILD \
+  distro/arch/inir-shell/PKGBUILD \
+  distro/arch/inir-shell/.SRCINFO \
+  distro/arch/inir-shell-git/PKGBUILD \
+  distro/arch/inir-shell-git/.SRCINFO \
   distro/arch/inir-meta/PKGBUILD \
   distro/arch/inir-meta/.SRCINFO <<'PY'
 from pathlib import Path

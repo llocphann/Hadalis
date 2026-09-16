@@ -29,7 +29,19 @@ Singleton {
         if (configLang !== "auto")
             return configLang;
 
-        return Qt.locale().name;
+        const systemLang = Qt.locale().name.replace("-", "_");
+        const knownLanguages = new Set([...root.availableLanguages, ...root.availableGeneratedLanguages]);
+        if (knownLanguages.has(systemLang))
+            return systemLang;
+
+        // Preserve compatibility with the shipped legacy Hebrew catalog name
+        // while preferring an exact user-generated/system locale when present.
+        const legacyAliases = { "he_IL": "he_HE" };
+        const legacyMatch = legacyAliases[systemLang] ?? "";
+        if (legacyMatch.length > 0 && knownLanguages.has(legacyMatch))
+            return legacyMatch;
+
+        return systemLang;
     }
 
     TranslationScanner {

@@ -159,7 +159,8 @@ Singleton {
         }
 
         const source = root._pendingSources[root._fetchIndex]
-        _log("Fetching source:", source.name, "from", source.url)
+        // ICS subscription URLs can contain bearer tokens; never persist them in logs.
+        _log("Fetching source:", source.name, "(URL redacted)")
         _currentFetchSource = source
         fetchProc.command = ["/usr/bin/curl", "-sL", "--max-time", "30",
             "--compressed", "-H", "Accept: text/calendar", source.url]

@@ -57,40 +57,29 @@ for token in \
 done
 grep -Fq 'ModuleRegistry.validateConfiguredModules(' "$core_policy" \
     || fail 'policy does not require resolvable placed modules'
-grep -Fq 'Config.options?.bar?.autoHide?.enable' "$core_policy" \
-    || fail 'policy does not gate unsupported bar auto-hide'
-grep -Fq 'Config.options?.dock?.pinnedOnStartup' "$core_policy" \
-    || fail 'policy does not gate unsupported unpinned dock behavior'
-grep -Fq 'Config.options?.dock?.hoverToReveal' "$core_policy" \
-    || fail 'policy does not gate unsupported dock hover reveal'
-grep -Fq 'const barOwned = enabledPanels.includes(barIdentifier)' "$core_policy" \
-    || fail 'bar compatibility policy ignores surface ownership'
-grep -Fq 'const barPolicySupported = !barOwned || !barAutoHide' "$core_policy" \
-    || fail 'disabled bar can still block perimeter cutover'
-grep -Fq 'const dockOwned = enabledPanels.includes("iiDock")' "$core_policy" \
-    || fail 'dock compatibility policy ignores surface ownership'
-grep -Fq 'const dockPolicySupported = !dockOwned || !dockEnabled' "$core_policy" \
-    || fail 'disabled dock can still block perimeter cutover'
 compatibility_block="$(sed -n '/readonly property bool compatibilityReady: {/,/^    }/p' "$core_policy")"
 [[ -n "$compatibility_block" ]] || fail 'policy is missing compatibility readiness block'
-sidebar_ownership_block="$(sed -n '/enabledPanels.includes("iiSidebarLeft")/,/const sidebarEdgeOpen =/p' "$core_policy")"
-[[ -n "$sidebar_ownership_block" ]] || fail 'sidebar compatibility policy is missing semantic ownership'
-grep -Fq 'enabledPanels.includes("iiSidebarLeft")' <<<"$sidebar_ownership_block" \
-    || fail 'sidebar compatibility policy ignores left semantic enablement'
-grep -Fq 'root.modulePlacedAnywhere("left-sidebar")' <<<"$sidebar_ownership_block" \
-    || fail 'unplaced left sidebar can still block perimeter cutover'
-grep -Fq 'enabledPanels.includes("iiSidebarRight")' <<<"$sidebar_ownership_block" \
-    || fail 'sidebar compatibility policy ignores right semantic enablement'
-grep -Fq 'root.modulePlacedAnywhere("right-sidebar")' <<<"$sidebar_ownership_block" \
-    || fail 'unplaced right sidebar can still block perimeter cutover'
-grep -Fq 'const sidebarOwned =' <<<"$sidebar_ownership_block" \
-    || fail 'sidebar compatibility policy does not combine semantic ownership'
-grep -Fq 'Config.options?.sidebar?.edgeOpen?.enable' <<<"$compatibility_block" \
-    || fail 'policy does not gate unsupported sidebar edge-open behavior'
-grep -Fq 'const sidebarPolicySupported = !sidebarOwned || !sidebarEdgeOpen' <<<"$compatibility_block" \
-    || fail 'disabled or unplaced sidebars can still block perimeter cutover'
-grep -Fq '&& sidebarPolicySupported' <<<"$compatibility_block" \
-    || fail 'sidebar compatibility result does not participate in cutover readiness'
+enabled_block="$(sed -n '/readonly property bool enabled:/,/readonly property bool fallbackActive:/p' "$core_policy")"
+[[ -n "$enabled_block" ]] || fail 'policy is missing cutover enablement block'
+grep -Fq 'root.compatibilityReady' <<<"$enabled_block" \
+    || fail 'cutover enablement ignores compatibility readiness'
+for token in \
+    'enabledPanels.includes(barIdentifier)' \
+    'root.reservationKindPlacedAnywhere("bar")' \
+    'Config.options?.bar?.autoHide?.enable' \
+    'enabledPanels.includes("iiDock")' \
+    'root.reservationKindPlacedAnywhere("dock")' \
+    'Config.options?.dock?.enable' \
+    'Config.options?.dock?.pinnedOnStartup' \
+    'Config.options?.dock?.hoverToReveal' \
+    'enabledPanels.includes("iiSidebarLeft")' \
+    'root.modulePlacedAnywhere("left-sidebar")' \
+    'enabledPanels.includes("iiSidebarRight")' \
+    'root.modulePlacedAnywhere("right-sidebar")' \
+    'Config.options?.sidebar?.edgeOpen?.enable'; do
+    grep -Fq "$token" <<<"$compatibility_block" \
+        || fail "compatibility readiness missing semantic input: $token"
+done
 
 for reset_fn in resetDefaultSlots resetOutputSlots; do
     reset_block="$(sed -n "/function ${reset_fn}(/,/^    }/p" "$perimeter_config")"

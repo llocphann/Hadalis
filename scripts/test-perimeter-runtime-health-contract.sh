@@ -49,8 +49,8 @@ for fingerprint in root.outputName root.instanceId root.moduleId root.configRevi
     grep -Fq "$fingerprint" <<<"$health_block" \
         || fail "module host health updates omit ${fingerprint#root.}"
 done
-grep -Fq 'onStatusChanged:' "$host" \
-    || fail 'module host does not observe loader status transitions'
+grep -Eq 'onStatusChanged:[[:space:]].*_syncLoaderHealth\(' "$host" \
+    || fail 'module host status transitions do not synchronize loader health'
 if grep -Eq 'Component\.onDestruction:.*clearModuleFailure|onActiveChanged:.*clearModuleFailure' "$host"; then
     fail 'fallback teardown can clear loader failure and create an enable/error loop'
 fi

@@ -83,7 +83,7 @@ Do not move the tag after publication. `scripts/release.sh publish` requires all
 - local Git `user.name` and `user.email` are configured so Wiki sync can create a commit when docs differ
 - packaging, Nix, doctor dependency-routing, Equalizer Phase 1 boundary/service, optional-audio dependency, Makefile install/uninstall lifecycle, and documentation contracts all pass
 
-The helper queries repository metadata and probes the Wiki Git remote before running the release contracts. If the Wiki feature is disabled, its repository is not initialized/accesssible, credentials cannot reach it, or Git author identity is missing, publication stops before a draft release is created. Resolve the host prerequisite rather than bypassing the sync step.
+The helper queries repository metadata and probes the Wiki Git remote before running the release contracts. If the Wiki feature is disabled, its repository is not initialized/accessible, credentials cannot reach it, or Git author identity is missing, publication stops before a draft release is created. Resolve the host prerequisite rather than bypassing the sync step.
 
 ## Publish
 

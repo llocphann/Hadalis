@@ -119,11 +119,15 @@ for pair in \
 done
 
 # Release publication is fail-closed: after tag/source identity checks and
-# before draft creation, the helper must run both packaging contract suites.
+# before draft creation, the helper must run all packaging/dependency contracts.
 grep -Fq '"$script_dir/test-packaging-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the packaging contract'
 grep -Fq '"$script_dir/test-nix-module-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the Nix module contract'
+grep -Fq '"$script_dir/test-doctor-dependency-routing.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the doctor dependency contract'
+grep -Fq '"$script_dir/test-optional-audio-deps-contract.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the optional audio dependency contract'
 grep -Fq '  require_release_contracts' "$release_script" \
   || fail 'release publish path no longer executes release packaging contracts'
 
@@ -148,7 +152,7 @@ for package in "${meta_required[@]}"; do
   grep -Eq "^[[:space:]]+${package}$" "$meta_pkg" \
     || fail "inir-meta is missing default full-experience dependency: $package"
   grep -Fqx $'\tdepends = '"$package" "$meta_srcinfo" \
-    || fail "inir-meta .SRCINFO is missing dependency: $package"
+    || fail "$meta_srcinfo is missing dependency: $package"
 done
 
 cmp -s "$stable_hook" "$git_hook" || fail 'stable/git Arch lifecycle hooks differ'

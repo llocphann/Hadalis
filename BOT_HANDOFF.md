@@ -1,9 +1,9 @@
 # HADALIS — BOT HANDOFF
 
-Updated: 2026-09-16 22:30 +07:00
+Updated: 2026-09-16 22:59 +07:00
 Branch: `dev`
 Observed user runtime commit: `799b52c3`
-Current `dev` HEAD when this handoff policy was updated: `c16050a8ef51dc17f0cd2e26454cd699fdbb95ab`
+Current `dev` HEAD when this handoff policy was updated: `0245958a35f68c409ddb59c033f6cbe99ad17ba7`
 
 All bots: read this after `docs/BOT_PROTOCOL.md`, then fetch current `dev` before changing anything. This file is a handoff, not proof that an item is still open. Reconcile every item against live source first and avoid duplicate/reversion work.
 
@@ -104,56 +104,48 @@ Niri itself was healthy: shell config loaded, shellEntryReady fired, Niri socket
 
 ## CURRENT-HEAD RECONCILIATION
 
-At `55cd0a730a9c90448ecbbc65f8fb66ec0e4464b0`:
+At `0245958a35f68c409ddb59c033f6cbe99ad17ba7`:
 
-- `modules/perimeter/PerimeterRuntime.qml` now imports `qs.modules.common.widgets`; therefore the specific missing `CompositorFocusGrab` import observed on `799b52c3` appears fixed in live source. Do not re-add or duplicate it.
+- `modules/perimeter/PerimeterRuntime.qml` no longer instantiates `CompositorFocusGrab`; commit `4e124b29` uses `HyprlandFocusGrab` directly with `Quickshell.Hyprland` imported and `CompositorService.isHyprland` in the active condition. The compatibility `CompositorFocusGrab.qml` implementation and its `qmldir` export still exist, so do not treat the old `799b52c3` missing-type signature as a current live consumer without new runtime evidence.
 - `modules/bootGreeting/BootGreeting.qml` no longer contains the failing `MascotAnimation`/`MascotImage` block seen in the maintainer runtime.
 - `modules/closeConfirm/CloseConfirmContent.qml` no longer contains the failing `MascotImage` usage seen in the maintainer runtime.
-- `modules/pill` is absent on current `dev`, but stale imports remain, including at least:
-  - `modules/dock/Dock.qml`
-  - `modules/dock/DockAppButton.qml`
-  - `modules/sidebarLeft/SidebarLeftContent.qml`
-  - `modules/sidebarRight/SidebarRightContent.qml`
-
-The `qs.modules.pill` references are therefore an active dangling-module cleanup target until live source proves otherwise.
+- `modules/pill` is no longer absent. Commit `d82660cc` restored a **theme-only** local module (`PillTheme.qml` + `qmldir`) because live consumers still use its theme tokens. `qs.modules.pill` is therefore not a dangling import on current source; do not delete it merely to mirror the old runtime incident.
+- Bot 4 source guards are fixed in source: `a6fa3d0a` added local `qs.*` module/type resolution checks, `4eb92eb6` wired them into `qml-check --all`, `9cf567a8` catches all code-level retired-type references, and `5aa22342` provides negative/positive fixtures reproducing the `799b52c3` failure classes.
+- Bot 4 staged-install coverage is also fixed in source: `b690c88e` runs `qml-check --all --root` against both fresh staged payload and in-place reinstall payload, so packaging omissions or mixed QML/module trees become a required local regression failure.
+- No maintainer clean-clone/fresh-install runtime log exists yet for the current HEAD family. Source fixes and contracts must therefore remain `NEEDS-MAINTAINER-RERUN`, not `CLOSED`.
 
 ## BOT OWNERSHIP / NEXT ACTIONS
 
 ### Bot 1 — architecture/core
 
-Verify that critical shell startup cannot be taken down by retired/optional presentation modules. Trace the `ShellIiCriticalPanels`/`ShellIiPanelsImpl` dependency chain and ensure retired compatibility imports do not remain on the mandatory startup path. Prefer fix-forward cleanup; do not restore retired modules merely to satisfy stale imports.
+Verify that critical shell startup cannot be taken down by retired/optional presentation modules. Trace the `ShellIiCriticalPanels`/`ShellIiPanelsImpl` dependency chain and ensure optional presentation imports do not become mandatory startup dependencies. Reconcile against the current theme-only `modules/pill` implementation instead of assuming the module is retired.
 
 ### Bot 2 — QML/perimeter UI
 
-Primary owner for this incident. Repo-wide audit on current HEAD for:
+The original missing-type/import signatures are fixed in current source. Continue only if live source or a new parser/runtime log shows a current QML resolution failure. In particular:
 
-```text
-import qs.modules.pill
-MascotImage
-MascotAnimation
-CompositorFocusGrab
-```
-
-Remove or migrate stale retired-module references while preserving current visual behavior. Confirm every `CompositorFocusGrab` consumer imports the module that exports it. Treat qmlscanner/parser warnings for missing local modules as real startup-risk signals when they sit on always-loaded files.
+- do not remove `qs.modules.pill` solely because the old handoff called it dangling; a live theme-only implementation now exists;
+- keep `MascotImage`/`MascotAnimation` retired references out unless a live implementation is intentionally restored;
+- verify compositor-specific focus behavior from current `PerimeterRuntime` rather than restoring the old `CompositorFocusGrab` call just to match historical code.
 
 ### Bot 3 — services/settings
 
-No primary service fault is indicated by this incident. Only act if tracing shows a service-controlled loader or setting can activate an invalid retired QML path. Do not spend time on Weather, Niri detection, or unrelated backend services for this incident.
+No primary service fault is indicated by this incident. Only act if tracing shows a service-controlled loader or setting can activate an invalid QML path. Do not spend time on Weather, Niri detection, or unrelated backend services for this incident.
 
 ### Bot 4 — QA/regression
 
-Add/strengthen a regression guard that catches this class before runtime:
+**Incident guard work is FIXED-IN-SOURCE / NEEDS-MAINTAINER-RERUN.** Do not duplicate the local-module guard or fixture. Continue QA work on:
 
-- always-loaded QML must not import nonexistent local modules;
-- exported local types used by critical panels must resolve through the correct module import;
-- retired types/modules (`MascotImage`, `MascotAnimation`, removed `modules/pill`) must not remain as dangling references unless a live implementation exists;
-- the guard should fail on source state equivalent to the `799b52c3` incident.
+- canonical validator false-red/false-green defects;
+- staged install/runtime regression coverage;
+- lifecycle/resource/performance regressions;
+- stale or brittle contracts introduced by concurrent changes.
 
-Prefer behavior/module-resolution checks over brittle line-number assertions.
+The current guard must continue to fail on source equivalent to `799b52c3` while accepting live implementations such as the restored theme-only `modules/pill` contract.
 
 ### Bot 5 — install/package/docs/release
 
-Verify `./setup install` and packaged/staged installs copy the same QML tree as current `dev`, and that an update from an older `dev` checkout cannot leave a mixed runtime tree containing removed QML modules/types. Check whether stale installed files need explicit cleanup during install/update/uninstall. Document only if user action is actually required.
+Source regression coverage now checks fresh staged and reinstall QML/module resolution via `b690c88e`. Continue verifying `./setup install`, packaged installs, and real update/uninstall behavior so an older installed tree cannot remain mixed with current QML. Do not claim criterion 5 closed until a maintainer/current-HEAD staging or clean-clone acceptance run supplies the required evidence.
 
 ## ACCEPTANCE CRITERIA
 
@@ -162,7 +154,7 @@ Do not mark this incident closed until a current-HEAD/fresh-install test demonst
 1. `inir logs` no longer reports `PerimeterRuntime unavailable`, `CloseConfirmContent unavailable`, or `BootGreeting unavailable` for the signatures above.
 2. No `quickshell.qmlscanner: Ignoring unresolvable import ".../modules/pill"` remains from always-loaded shell files.
 3. On Niri, `Configuration Loaded` and `shellEntryReady` are followed by visible bar/critical shell panels.
-4. A repo guard/test detects missing local QML-module imports or dangling retired-type references on critical startup paths.
-5. Install/update staging does not leave a mixed old/new QML payload.
+4. A repo guard/test detects missing local QML-module imports or dangling retired-type references on critical startup paths. **FIXED-IN-SOURCE** by the Bot 4 guard/fixture commits above; still requires inclusion in an exact-SHA maintainer rerun.
+5. Install/update staging does not leave a mixed old/new QML payload. **CONTRACT COVERED IN SOURCE** by staged fresh/reinstall checks in `b690c88e`; still requires exact-SHA maintainer rerun and any environment-specific install verification owned by Bot 5.
 
 When an item is fixed by another commit before your turn, record the evidence and move to the next still-open item instead of recreating the same patch.

@@ -8,6 +8,9 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
 
+    property bool compact: false
+    readonly property real compactBreakpoint: 360
+
     implicitWidth: Math.max(header.implicitWidth, gridLayout.implicitWidth)
     spacing: 8
 
@@ -49,7 +52,7 @@ ColumnLayout {
 
     GridLayout {
         id: gridLayout
-        columns: 2
+        columns: root.compact ? 1 : 2
         rowSpacing: 5
         columnSpacing: 5
         uniformCellWidths: true

@@ -14,6 +14,11 @@ Singleton {
 
     property bool available: false
     property int count: 0
+    readonly property int checkIntervalMinutes: {
+        const configured = Number(Config.options?.updates?.checkInterval)
+        return Number.isFinite(configured) && configured > 0
+            ? Math.max(1, Math.round(configured)) : 120
+    }
     
     readonly property bool updateAdvised: available && count > (Config.options?.updates?.adviseUpdateThreshold ?? 75)
     readonly property bool updateStronglyAdvised: available && count > (Config.options?.updates?.stronglyAdviseUpdateThreshold ?? 200)
@@ -26,7 +31,7 @@ Singleton {
     }
 
     Timer {
-        interval: (Config.options?.updates?.checkInterval ?? 120) * 60 * 1000
+        interval: root.checkIntervalMinutes * 60 * 1000
         repeat: true
         running: Config.ready
         onTriggered: {

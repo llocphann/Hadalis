@@ -4,6 +4,14 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+payload_list="$(python3 sdata/lib/runtime-payload.py list --root .)"
+for runtime_path in \
+  services/deferred/EasyEffects.qml \
+  services/deferred/EqualizerService.qml; do
+  grep -Fqx "$runtime_path" <<<"$payload_list" \
+    || { printf 'FAIL: runtime payload omits optional Equalizer service boundary: %s\n' "$runtime_path" >&2; exit 1; }
+done
+
 python3 - \
   sdata/dist-arch/inir-audio/PKGBUILD \
   sdata/dist-arch/inir-deps/PKGBUILD \

@@ -7,15 +7,17 @@ QtObject {
 
     // Core registration is metadata-only. Feature implementations register a
     // source URL when they are ready to be hosted; placement is never encoded here.
+    // reservationKind describes compositor work-area semantics, not placement:
+    // "bar" and "dock" can reserve their host edge, while "overlay" never does.
     readonly property var _builtinRegistry: ({
-        "thinkfan": { moduleId: "thinkfan", preferredOrientation: "any", compact: true, expanded: true, source: "" },
-        "system-monitor": { moduleId: "system-monitor", preferredOrientation: "any", compact: true, expanded: true, source: "" },
-        "workspaces": { moduleId: "workspaces", preferredOrientation: "horizontal", compact: true, expanded: false, source: "" },
-        "media": { moduleId: "media", preferredOrientation: "any", compact: true, expanded: true, source: "" },
-        "weather": { moduleId: "weather", preferredOrientation: "any", compact: true, expanded: true, source: "" },
-        "left-sidebar": { moduleId: "left-sidebar", preferredOrientation: "vertical", compact: true, expanded: true, source: "" },
-        "right-sidebar": { moduleId: "right-sidebar", preferredOrientation: "vertical", compact: true, expanded: true, source: "" },
-        "dock": { moduleId: "dock", preferredOrientation: "horizontal", compact: true, expanded: true, source: "" }
+        "thinkfan": { moduleId: "thinkfan", preferredOrientation: "any", compact: true, expanded: true, reservationKind: "bar", source: "" },
+        "system-monitor": { moduleId: "system-monitor", preferredOrientation: "any", compact: true, expanded: true, reservationKind: "bar", source: "" },
+        "workspaces": { moduleId: "workspaces", preferredOrientation: "horizontal", compact: true, expanded: false, reservationKind: "bar", source: "" },
+        "media": { moduleId: "media", preferredOrientation: "any", compact: true, expanded: true, reservationKind: "bar", source: "" },
+        "weather": { moduleId: "weather", preferredOrientation: "any", compact: true, expanded: true, reservationKind: "bar", source: "" },
+        "left-sidebar": { moduleId: "left-sidebar", preferredOrientation: "vertical", compact: true, expanded: true, reservationKind: "overlay", source: "" },
+        "right-sidebar": { moduleId: "right-sidebar", preferredOrientation: "vertical", compact: true, expanded: true, reservationKind: "overlay", source: "" },
+        "dock": { moduleId: "dock", preferredOrientation: "horizontal", compact: true, expanded: true, reservationKind: "dock", source: "" }
     })
     property var _registry: Object.assign({}, _builtinRegistry)
 

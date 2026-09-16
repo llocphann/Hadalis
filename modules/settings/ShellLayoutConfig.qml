@@ -6,6 +6,7 @@ import Quickshell
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.widgets
 
 ContentPage {
@@ -24,6 +25,17 @@ ContentPage {
         root.activeFamily)
     readonly property bool perimeterEnabled:
         (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
+    readonly property var perimeterInstances: {
+        Config.revision
+        return PerimeterConfig.instancesForOutput("")
+    }
+    readonly property var perimeterSlotOptions: [{
+        displayName: Translation.tr("Disabled"),
+        value: ""
+    }].concat(PerimeterTopology.slotIds.map(slotId => ({
+        displayName: Translation.tr(slotId),
+        value: slotId
+    })))
 
     function setPerimeterEnabled(enabled: bool): void {
         let panels = [...(Config.options?.enabledPanels ?? [])]
@@ -35,6 +47,20 @@ ContentPage {
         else
             panels = panels.filter(panel => panel !== "iiPerimeter")
         Config.setNestedValue("enabledPanels", panels)
+    }
+
+    function perimeterModuleLabel(moduleId: string): string {
+        switch (String(moduleId ?? "")) {
+        case "thinkfan": return "ThinkFan"
+        case "system-monitor": return Translation.tr("System monitor")
+        case "workspaces": return Translation.tr("Workspaces")
+        case "media": return Translation.tr("Media")
+        case "weather": return Translation.tr("Weather")
+        case "left-sidebar": return Translation.tr("Left sidebar")
+        case "right-sidebar": return Translation.tr("Right sidebar")
+        case "dock": return Translation.tr("Dock")
+        default: return String(moduleId ?? "")
+        }
     }
 
     function toggleLiveEditor(): void {
@@ -114,11 +140,123 @@ ContentPage {
             StyledText {
                 Layout.fillWidth: true
                 text: root.activeFamily === "ii"
-                    ? Translation.tr("Perimeter module placement is controlled by the perimeter configuration. The legacy layout controls below remain available for fallback and migration.")
+                    ? Translation.tr("Perimeter module placement is controlled here. The legacy layout controls below remain available for fallback and migration.")
                     : Translation.tr("Connected Perimeter is available for the ii family. Switch panel family to ii before enabling it.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 wrapMode: Text.Wrap
+            }
+        }
+
+        SettingsGroup {
+            visible: root.perimeterEnabled
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Default perimeter modules")
+                    color: Appearance.colors.colOnLayer1
+                    font.weight: Font.Medium
+                }
+
+                RippleButtonWithIcon {
+                    materialIcon: "restart_alt"
+                    mainText: Translation.tr("Reset preset")
+                    onClicked: PerimeterConfig.resetDefaultSlots()
+                }
+            }
+
+            Repeater {
+                model: root.perimeterInstances
+
+                delegate: RowLayout {
+                    id: perimeterRow
+                    required property var modelData
+                    readonly property int configRevision: Config.revision
+                    readonly property string instanceId:
+                        String(modelData?.instanceId ?? "")
+                    readonly property string moduleId:
+                        String(modelData?.moduleId ?? "")
+                    readonly property var placement: {
+                        perimeterRow.configRevision
+                        return PerimeterConfig.defaultPlacementForInstance(
+                            perimeterRow.instanceId)
+                    }
+                    readonly property int slotOptionIndex: Math.max(0,
+                        root.perimeterSlotOptions.findIndex(option =>
+                            option.value === (placement?.slotId ?? "")))
+
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 120
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.perimeterModuleLabel(perimeterRow.moduleId)
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: perimeterRow.instanceId
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    StyledComboBox {
+                        Layout.preferredWidth: 190
+                        model: root.perimeterSlotOptions
+                        textRole: "displayName"
+                        currentIndex: perimeterRow.slotOptionIndex
+                        onActivated: index => {
+                            if (index < 0 || index >= root.perimeterSlotOptions.length)
+                                return
+                            PerimeterConfig.moveDefaultInstance(
+                                perimeterRow.instanceId,
+                                root.perimeterSlotOptions[index].value)
+                        }
+                    }
+
+                    RippleButtonWithIcon {
+                        visible: (perimeterRow.placement?.slotId ?? "").length > 0
+                        enabled: (perimeterRow.placement?.index ?? -1) > 0
+                        materialIcon: "arrow_upward"
+                        mainText: Translation.tr("Up")
+                        onClicked: PerimeterConfig.moveDefaultInstance(
+                            perimeterRow.instanceId,
+                            perimeterRow.placement.slotId,
+                            perimeterRow.placement.index - 1)
+                    }
+
+                    RippleButtonWithIcon {
+                        readonly property int slotCount:
+                            (perimeterRow.placement?.slotId ?? "").length > 0
+                            ? PerimeterConfig.defaultSlotEntries()
+                                .find(entry => entry.slotId === perimeterRow.placement.slotId)
+                                ?.instanceIds?.length ?? 0
+                            : 0
+                        visible: (perimeterRow.placement?.slotId ?? "").length > 0
+                        enabled: (perimeterRow.placement?.index ?? -1) >= 0
+                            && perimeterRow.placement.index < slotCount - 1
+                        materialIcon: "arrow_downward"
+                        mainText: Translation.tr("Down")
+                        onClicked: PerimeterConfig.moveDefaultInstance(
+                            perimeterRow.instanceId,
+                            perimeterRow.placement.slotId,
+                            perimeterRow.placement.index + 1)
+                    }
+                }
             }
         }
     }

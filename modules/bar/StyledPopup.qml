@@ -23,8 +23,6 @@ LazyLoader {
     readonly property string _attachmentEdge: root._barVertical
         ? (root._trailingEdge ? "right" : "left")
         : (root._trailingEdge ? "bottom" : "top")
-    readonly property int _barCornerStyle: Config.options?.bar?.cornerStyle ?? 0
-    readonly property bool _barFloatingSurface: root._barCornerStyle === 1 || root._barCornerStyle === 3
     readonly property real _contentPadding: 14
 
     // Keep the loader resident for the reverse morph. `requestedVisible` is the
@@ -39,21 +37,17 @@ LazyLoader {
     property bool _lingerVisible: false
     property real revealProgress: 0
 
-    // Caelestia's popouts read as deformations of the owning shell surface, not
-    // as a separate card material. Match the Classic Bar's surface family here
-    // so the flared connector and body visually continue the bar.
+    // Connected popouts continue the sole Hug bar surface. Alternate Classic
+    // corner styles are retired, so popup material no longer branches on the
+    // legacy compatibility field.
     readonly property color _surfaceColor: Appearance.zzzEverywhere
-        ? (root._barCornerStyle === 3 ? Appearance.zzz.chromeAlt : Appearance.zzz.chrome)
-        : Appearance.regaliaEverywhere
-            ? (root._barFloatingSurface
-                ? Appearance.regalia.barSurfaceFloating
-                : Appearance.regalia.barSurface)
+        ? Appearance.zzz.chrome
+        : Appearance.regaliaEverywhere ? Appearance.regalia.barSurface
         : Appearance.angelEverywhere
             ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
         : Appearance.inirEverywhere ? Appearance.inir.colLayer0
         : Appearance.auroraEverywhere
             ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
-        : root._barCornerStyle === 3 ? Appearance.colors.colLayer1
         : Appearance.colors.colLayer0
     readonly property color _borderColor: Appearance.zzzEverywhere
         ? Appearance.zzz.hairline

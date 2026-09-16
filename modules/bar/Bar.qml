@@ -16,6 +16,7 @@ import qs.modules.common.functions
 Scope {
     id: bar
     property bool showBarBackground: Config.options?.bar?.showBackground ?? true
+    property bool _legacyCornerStyleMigrationDone: false
     // Note: Vignette effect moved to Backdrop.qml (backdrop wallpaper layer)
 
     // Global style changes can swap surface implementations that are evaluated
@@ -25,6 +26,25 @@ Scope {
     onRebuildKeyChanged: {
         bar.rebuilding = true;
         barRebuildTimer.restart();
+    }
+
+    function normalizeLegacyCornerStyle(): void {
+        if (bar._legacyCornerStyleMigrationDone || !Config.ready)
+            return
+
+        bar._legacyCornerStyleMigrationDone = true
+        if ((Config.options?.bar?.cornerStyle ?? 0) !== 0)
+            Config.setNestedValue("bar.cornerStyle", 0)
+    }
+
+    Component.onCompleted: bar.normalizeLegacyCornerStyle()
+
+    Connections {
+        target: Config
+        function onReadyChanged(): void {
+            if (Config.ready)
+                bar.normalizeLegacyCornerStyle()
+        }
     }
 
     Timer {
@@ -57,25 +77,16 @@ Scope {
                 id: barRoot
                 screen: barLoader.modelData
                 visible: true
-                readonly property bool zzzDetachedRounded: Appearance.zzzEverywhere
-                    && Appearance.zzz.round
-                    && bar.showBarBackground
-                    && (((Config.options?.bar?.cornerStyle ?? 0) === 1) || ((Config.options?.bar?.cornerStyle ?? 0) === 3))
-                readonly property real panelSurfaceHeight: zzzDetachedRounded
-                    ? (Appearance.sizes.baseBarHeight + Appearance.sizes.elevationMargin * 2)
-                    : Appearance.sizes.barHeight
+                readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property bool hugCorners: bar.showBarBackground
-                    && (Config.options?.bar?.cornerStyle ?? 0) === 0
                     && !Appearance.zzzEverywhere
-                readonly property real roundDecoratorAllowance: (!zzzDetachedRounded && hugCorners)
+                readonly property real roundDecoratorAllowance: hugCorners
                     ? Appearance.rounding.screenRounding : 0
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
-                    && !barRoot.zzzDetachedRounded
                     && !Appearance.zzzEverywhere
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.bottom
-                    && !barRoot.zzzDetachedRounded
                     && !Appearance.zzzEverywhere
 
                 property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)

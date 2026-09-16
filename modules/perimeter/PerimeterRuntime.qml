@@ -129,6 +129,12 @@ Scope {
 
     Connections {
         target: ModuleRegistry
+        function onModuleRegistered(moduleId: string): void {
+            // registerModule() can overwrite a healthy source with a stale or
+            // foreign URL. Re-check the feature registry after that write settles.
+            if (root.active)
+                Qt.callLater(root.ensureFeatureRegistry)
+        }
         function onModuleUnregistered(moduleId: string): void {
             if (root.active)
                 Qt.callLater(root.ensureFeatureRegistry)

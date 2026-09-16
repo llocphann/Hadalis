@@ -20,7 +20,7 @@ THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"$(SYSTEMD_USER_DIR)\" LIBEXECDIR=\"$(LIBEXECDIR)\" POLKIT_ACTIONS_DIR=\"$(POLKIT_ACTIONS_DIR)\" TLP_CONFDIR=\"$(TLP_CONFDIR)\" INIR_SYSTEM_SHAREDIR=\"$(INIR_SYSTEM_SHAREDIR)\"
 
-.PHONY: all build test-local test-prefix-install test-package-docs test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-prefix-install test-package-docs test-package-metadata test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -30,7 +30,7 @@ build:
 	@chmod +x setup
 	@find scripts -type f \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} +
 
-test-local: build test-prefix-install test-package-docs
+test-local: build test-prefix-install test-package-docs test-package-metadata
 	@bash scripts/test-local-distribution.sh
 
 test-prefix-install:
@@ -57,6 +57,17 @@ test-package-docs:
 	@grep -Fq 'for doc in "$$srcroot"/docs/*.md; do' distro/arch/inir-shell/PKGBUILD
 	@grep -Fq 'for doc in "$$srcroot"/docs/*.md; do' distro/arch/inir-shell-git/PKGBUILD
 	@grep -Fq 'for doc in docs/*.md; do' nix/package.nix
+	@grep -Fq 'install -Dm644 LICENSE "$$out/share/licenses/inir/LICENSE"' nix/package.nix
+
+test-package-metadata:
+	@repo_version="$$(tr -d '[:space:]' < VERSION)"; \
+		git_version="$$(grep -m1 '^pkgver=' distro/arch/inir-shell-git/PKGBUILD | cut -d= -f2-)"; \
+		case "$$git_version" in \
+			"$$repo_version".r*) ;; \
+			*) printf 'inir-shell-git pkgver seed %s does not follow VERSION %s\n' "$$git_version" "$$repo_version" >&2; exit 1 ;; \
+		esac; \
+		srcinfo_version="$$(sed -n 's/^[[:space:]]*pkgver = //p' distro/arch/inir-shell-git/.SRCINFO | head -1)"; \
+		test "$$srcinfo_version" = "$$git_version"
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh

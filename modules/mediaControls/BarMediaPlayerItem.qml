@@ -305,9 +305,10 @@ Item { // Player instance - Old style design
                             right: parent.right
                         }
                         TrackChangeButton {
+                            buttonText: Translation.tr("Previous")
                             iconName: "skip_previous"
                             enabled: MprisController.canGoPreviousForPlayer(root.player)
-                            downAction: () => MprisController.previousForPlayer(root.player)
+                            onClicked: MprisController.previousForPlayer(root.player)
                         }
                         Item {
                             id: progressBarContainer
@@ -357,9 +358,10 @@ Item { // Player instance - Old style design
                             }
                         }
                         TrackChangeButton {
+                            buttonText: Translation.tr("Next")
                             iconName: "skip_next"
                             enabled: MprisController.canGoNextForPlayer(root.player)
-                            downAction: () => MprisController.nextForPlayer(root.player)
+                            onClicked: MprisController.nextForPlayer(root.player)
                         }
                     }
 
@@ -371,7 +373,8 @@ Item { // Player instance - Old style design
                         property real size: 44
                         implicitWidth: size
                         implicitHeight: size
-                        downAction: () => root.player?.togglePlaying();
+                        buttonText: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
+                        onClicked: root.player?.togglePlaying()
 
                         buttonRadius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall
                             : Appearance.auroraEverywhere ? Appearance.rounding.normal

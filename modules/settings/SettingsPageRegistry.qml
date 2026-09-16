@@ -16,6 +16,7 @@ Singleton {
 
     readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27]
     readonly property int retiredTlpPageIndex: 28
+    readonly property int quickPageIndex: 0
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2
     readonly property int panelsPageIndex: 5
@@ -33,6 +34,11 @@ Singleton {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
             return Object.assign({}, panelsPage, {
                 devNavigationHidden: true
+            })
+        }
+        if (index === root.quickPageIndex) {
+            return Object.assign({}, page, {
+                component: "modules/settings/QuickConfigHugOnly.qml"
             })
         }
         if (index === root.barPageIndex) {

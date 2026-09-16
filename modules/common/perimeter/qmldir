@@ -13,7 +13,6 @@ PerimeterModuleHost 1.0 PerimeterModuleHost.qml
 PerimeterSlotHost 1.0 PerimeterSlotHost.qml
 PerimeterOutputHost 1.0 PerimeterOutputHost.qml
 AnchorPublisher 1.0 AnchorPublisher.qml
-PerimeterAnchorPublisher 1.0 PerimeterAnchorPublisher.qml
 ConnectedSurfaceGeometry 1.0 ConnectedSurfaceGeometry.qml
 ConnectedSurfaceConnector 1.0 ConnectedSurfaceConnector.qml
 ConnectedSurfaceFrame 1.0 ConnectedSurfaceFrame.qml

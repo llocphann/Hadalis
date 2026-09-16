@@ -10,6 +10,7 @@ AndroidQuickToggleButton {
     id: root
 
     name: Translation.tr("Power Profile")
+    accessibilityCheckable: false
     toggled: PowerProfiles.profile !== PowerProfile.Balanced
     buttonIcon: switch(PowerProfiles.profile) {
         case PowerProfile.PowerSaver: return "energy_savings_leaf"

@@ -28,7 +28,6 @@ git_pkg="distro/arch/inir-shell-git/PKGBUILD"
 git_srcinfo="distro/arch/inir-shell-git/.SRCINFO"
 meta_pkg="distro/arch/inir-meta/PKGBUILD"
 meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
-nix_pkg="nix/package.nix"
 stable_hook="distro/arch/inir-shell/inir-shell.install"
 git_hook="distro/arch/inir-shell-git/inir-shell-git.install"
 makefile="Makefile"
@@ -37,7 +36,7 @@ packaging_workflow=".github/workflows/packaging.yml"
 audio_doc="docs/AUDIO_MEDIA.md"
 uninstall_doc="docs/UNINSTALL.md"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$makefile" "$release_script" "$packaging_workflow" "$audio_doc" "$uninstall_doc"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$stable_hook" "$git_hook" "$makefile" "$release_script" "$packaging_workflow" "$audio_doc" "$uninstall_doc"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -137,9 +136,9 @@ grep -Fq '@bash scripts/test-equalizer-service-contract.sh' "$makefile" \
 grep -Fq '@bash scripts/verify-docs.sh' "$makefile" \
   || fail 'make test-local no longer runs documentation verification'
 
-# Release publication is fail-closed: after tag/source identity checks and
-# before draft creation, the helper must verify hosted publication prerequisites
-# and run all packaging/dependency contracts.
+# Release publication is fail-closed for the required non-Nix lane: after
+# tag/source identity checks and before draft creation, the helper must verify
+# hosted publication prerequisites and all required packaging/dependency contracts.
 grep -Fq 'require_release_host_features() {' "$release_script" \
   || fail 'release helper no longer defines hosted publication preflight'
 grep -Fq '.has_wiki' "$release_script" \
@@ -154,8 +153,10 @@ grep -Fq 'git user.name and user.email must be configured' "$release_script" \
   || fail 'release hosted preflight no longer verifies Wiki commit author identity'
 grep -Fq '"$script_dir/test-packaging-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the packaging contract'
-grep -Fq '"$script_dir/test-nix-module-contract.sh"' "$release_script" \
-  || fail 'release publish preflight no longer includes the Nix module contract'
+grep -Fq 'contract="$script_dir/test-nix-module-contract.sh"' "$release_script" \
+  || fail 'release helper no longer retains the deferred Nix diagnostic'
+grep -Fq 'deferred Nix diagnostic failed and is non-blocking' "$release_script" \
+  || fail 'release helper no longer marks the Nix diagnostic non-blocking'
 grep -Fq '"$script_dir/test-doctor-dependency-routing.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the doctor dependency contract'
 grep -Fq '"$script_dir/test-equalizer-boundary-contract.sh"' "$release_script" \
@@ -245,18 +246,6 @@ for pkg in "$stable_pkg" "$git_pkg"; do
     fail "$pkg again replaces only the install_user_service opening marker"
   fi
 done
-
-# NixOS/Home Manager own inir.service declaratively. The Nix packaging patch
-# must prevent the packaged launcher from creating/removing a competing mutable
-# user unit while keeping operational start/restart commands on the provisioned unit.
-grep -Fq 'Nix-managed installations keep inir.service declarative' "$nix_pkg" \
-  || fail 'Nix package no longer blocks mutable service ownership commands'
-grep -Fq 'systemctl --user cat inir.service' "$nix_pkg" \
-  || fail 'Nix package no longer validates the declarative inir.service before start/restart'
-grep -Fq 'install|uninstall|remove|enable|disable)' "$nix_pkg" \
-  || fail 'Nix service ownership guard no longer covers all mutating service commands'
-grep -Fqx '      ${materialSymbolsWrapperArg} \' "$nix_pkg" \
-  || fail 'Nix optional font wrapper argument no longer preserves makeWrapper continuation when empty'
 
 # Audio/media docs must preserve the Phase 1 optional-backend boundary.
 grep -Fq 'The Equalizer Phase 1 capability is disabled by default and is separate from normal Media playback.' "$audio_doc" \

@@ -26,7 +26,16 @@ Singleton {
         Quickshell.execDetached(["/usr/bin/rm", "-f", root.firstRunFilePath])
     }
     function disableNextTime() {
-        Quickshell.execDetached(["/bin/sh", "-c", `echo "${root.firstRunFileContent}" > "${root.firstRunFilePath}"`])
+        const parentDir = root.firstRunFilePath.substring(0, root.firstRunFilePath.lastIndexOf('/'))
+        Quickshell.execDetached([
+            "/bin/sh",
+            "-c",
+            "mkdir -p -- \"$1\" && printf '%s\\n' \"$2\" > \"$3\"",
+            "first-run-marker",
+            parentDir,
+            root.firstRunFileContent,
+            root.firstRunFilePath
+        ])
     }
 
     function handleFirstRun(): void {
@@ -97,8 +106,6 @@ Singleton {
         onExited: (exitCode) => {
             if (exitCode !== 0) {
                 root._pendingFirstRun = true
-                const parentDir = root.firstRunFilePath.substring(0, root.firstRunFilePath.lastIndexOf('/'))
-                Quickshell.execDetached(["/bin/sh", "-c", `mkdir -p "${parentDir}"`])
                 listWallpapersProc.running = true
             }
         }

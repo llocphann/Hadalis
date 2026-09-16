@@ -131,10 +131,30 @@ Singleton {
             }
         }
         property string _rawData: ""
+        property bool startObserved: false
 
         onRunningChanged: {
-            if (running) _rawData = ""
+            if (running) {
+                fetchProc._rawData = ""
+                fetchProc.startObserved = false
+                return
+            }
+            if (fetchProc.startObserved)
+                return
+
+            const source = root._currentFetchSource
+            const errMsg = "curl failed to start"
+            root._fetchHadError = true
+            if (source) {
+                _log("Error fetching", source.name, ":", errMsg)
+                root._updateSourceStatus(source.id, { error: errMsg, lastFetch: new Date().toISOString() })
+                root.sourceError(source.id, errMsg)
+            }
+            root._fetchIndex++
+            Qt.callLater(() => root._fetchNext())
         }
+
+        onStarted: fetchProc.startObserved = true
 
         onExited: (code, status) => {
             const source = root._currentFetchSource

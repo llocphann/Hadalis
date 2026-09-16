@@ -45,20 +45,14 @@ Item {
         onTriggered: activePlayer?.positionChanged()
     }
 
-    // Volume popup
     property bool volumePopupVisible: false
     property real volumePopupValue: Math.max(0, Math.min(1, MprisController.getVolume()))
+    property bool barMediaPopupVisible: false
 
-    // Track switch can swap the active player object; a stale popup value
-    // would then be applied to the new player on the next wheel tick.
     onActivePlayerChanged: {
         volumePopupVisible = false
         volumePopupValue = Math.max(0, Math.min(1, MprisController.getVolume()))
     }
-
-
-    // Bar-anchored media popup
-    property bool barMediaPopupVisible: false
 
     function toggleExpanded(): void {
         if (root.popupMode === "bar")
@@ -66,7 +60,7 @@ Item {
         else
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
     }
-    
+
     Timer {
         id: hideTimer
         interval: 1000
@@ -81,172 +75,53 @@ Item {
         }
     }
 
-    Loader {
-        id: volumePopupLoader
-        active: root.volumePopupVisible
-        sourceComponent: PopupWindow {
-            visible: true
-            color: "transparent"
-            anchor {
-                window: root.QsWindow.window
-                item: root
-                edges: (Config.options?.bar?.bottom ?? false) ? Edges.Top : Edges.Bottom
-                gravity: (Config.options?.bar?.bottom ?? false) ? Edges.Top : Edges.Bottom
+    // The wheel-volume HUD is a real bar popout now, not a detached PopupWindow.
+    StyledPopup {
+        id: volumePopup
+        hoverTarget: root
+        hoverActivates: false
+        alternativeVisibleCondition: root.volumePopupVisible
+
+        Row {
+            spacing: 6
+
+            MaterialSymbol {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.volumePopupValue === 0 ? "volume_off" : "volume_up"
+                iconSize: Appearance.font.pixelSize.normal
+                color: Appearance.zzzEverywhere ? Appearance.zzz.ink
+                    : Appearance.inirEverywhere ? Appearance.inir.colText
+                    : Appearance.colors.colOnLayer0
             }
-            implicitWidth: popupContent.width + 16
-            implicitHeight: popupContent.height + 16
-
-            Rectangle {
-                id: popupContent
-                anchors.centerIn: parent
-                width: volumeRow.width + 12
-                height: volumeRow.height + 8
-                radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                      : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.verysmall
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-                     : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                     : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                     : Appearance.colors.colLayer3
-                border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                            : (Appearance.inirEverywhere || Appearance.auroraEverywhere) ? 1 : 0
-                border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                            : Appearance.auroraEverywhere ? Appearance.aurora.colPopupBorder
-                            : Appearance.colors.colLayer3Hover
-
-                Row {
-                    id: volumeRow
-                    anchors.centerIn: parent
-                    spacing: 4
-                    MaterialSymbol {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.volumePopupValue === 0 ? "volume_off" : "volume_up"
-                        iconSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnLayer3
-                    }
-                    StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: Math.round(root.volumePopupValue * 100) + "%"
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colOnLayer3
-                    }
-                }
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Math.round(root.volumePopupValue * 100) + "%"
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.zzzEverywhere ? Appearance.zzz.ink
+                    : Appearance.inirEverywhere ? Appearance.inir.colText
+                    : Appearance.colors.colOnLayer0
             }
         }
     }
 
-    // Backdrop for click-outside-to-close (Niri)
-    Loader {
-        active: root.barMediaPopupVisible && root.popupMode === "bar" && CompositorService.isNiri
-        sourceComponent: PanelWindow {
-            anchors { top: true; bottom: true; left: true; right: true }
-            color: Qt.rgba(0, 0, 0, 1/255)
-            exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "quickshell:mediaBackdrop"
-            
-            MouseArea {
-                anchors.fill: parent
-                onClicked: root.barMediaPopupVisible = false
-            }
-        }
-    }
+    // Expanded media controls use the same morphing surface as the small bar
+    // popouts. Internal player cards stay intact, but the outer shell deforms
+    // directly from the media module instead of opening a floating window/card.
+    StyledPopup {
+        id: barMediaPopup
+        hoverTarget: root
+        hoverActivates: false
+        alternativeVisibleCondition: root.barMediaPopupVisible && root.popupMode === "bar"
+        closeOnOutsideClick: true
+        keyboardFocus: true
+        popupBackgroundMargin: Appearance.sizes.elevationMargin
+        onRequestClose: root.barMediaPopupVisible = false
 
-    // Bar-anchored media controls popup (when popupMode === "bar")
-    Loader {
-        id: barMediaPopupLoader
-        active: (root.barMediaPopupVisible || _barMediaClosing) && root.popupMode === "bar"
-
-        property bool _barMediaClosing: false
-
-        Connections {
-            target: root
-            function onBarMediaPopupVisibleChanged() {
-                if (!root.barMediaPopupVisible) {
-                    barMediaPopupLoader._barMediaClosing = true
-                    _barMediaCloseTimer.restart()
-                }
-            }
-        }
-
-        Timer {
-            id: _barMediaCloseTimer
-            // Keep the loader alive through the complete exit transition.
-            interval: Math.max(50, Appearance.animation.elementMoveFast.duration + 40)
-            onTriggered: barMediaPopupLoader._barMediaClosing = false
-        }
-
-        sourceComponent: PopupWindow {
-            id: barMediaPopup
-            visible: true
-            color: "transparent"
-            grabFocus: CompositorService.isNiri && root.barMediaPopupVisible
-
-            Component.onCompleted: Qt.callLater(() => popupKeyHandler.forceActiveFocus())
-
-            Item {
-                id: popupKeyHandler
-                anchors.fill: parent
-                focus: true
-                Keys.onPressed: event => {
-                    if (event.key !== Qt.Key_Escape) return
-                    root.barMediaPopupVisible = false
-                    event.accepted = true
-                }
-            }
-
-            CompositorFocusGrab {
-                active: CompositorService.isHyprland && root.barMediaPopupVisible
-                windows: [barMediaPopup]
-                onCleared: root.barMediaPopupVisible = false
-            }
-
-            anchor {
-                window: root.QsWindow.window
-                item: root
-                edges: Config.options.bar.bottom ? Edges.Top : Edges.Bottom
-                gravity: Config.options.bar.bottom ? Edges.Top : Edges.Bottom
-            }
-            implicitWidth: mediaPopupContent.width + Appearance.sizes.elevationMargin * 2
-            implicitHeight: mediaPopupContent.height + Appearance.sizes.elevationMargin * 2
-
-            // Click outside to close
-            MouseArea {
-                anchors.fill: parent
-                onClicked: root.barMediaPopupVisible = false
-                z: -1
-            }
-
-            BarMediaPopup {
-                id: mediaPopupContent
-                anchors.centerIn: parent
-                onCloseRequested: root.barMediaPopupVisible = false
-
-                // Defer presentation so the first visible frame can transition.
-                property bool presented: false
-                Component.onCompleted: Qt.callLater(() => {
-                    mediaPopupContent.presented = root.barMediaPopupVisible
-                })
-                Connections {
-                    target: root
-                    function onBarMediaPopupVisibleChanged() {
-                        mediaPopupContent.presented = root.barMediaPopupVisible
-                    }
-                }
-
-                opacity: presented ? 1 : 0
-                scale: presented ? 1 : 0.975
-                transformOrigin: Config.options.bar.bottom ? Item.Bottom : Item.Top
-
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-                Behavior on scale {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-            }
+        BarMediaPopup {
+            id: mediaPopupContent
+            focus: true
+            onCloseRequested: root.barMediaPopupVisible = false
+            Component.onCompleted: Qt.callLater(() => mediaPopupContent.focusInitialControl())
         }
     }
 

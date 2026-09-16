@@ -210,6 +210,7 @@ jobs:
             /tmp/inir-stage-test/usr/lib/systemd/user/inir.service \
             /tmp/inir-stage-test/usr/share/applications/inir.desktop \
             /tmp/inir-stage-test/usr/share/doc/inir-shell/README.md \
+            /tmp/inir-stage-test/usr/share/licenses/inir-shell/LICENSE \
             /tmp/inir-stage-test/usr/libexec/inir-battery-charge-limit \
             /tmp/inir-stage-test/usr/libexec/inir-thinkfan; do
             grep -Fq "$staged_path" <<< "$install_plan"

@@ -49,6 +49,21 @@ require_release_version_consistency() {
   done
 }
 
+require_release_source_pin() {
+  local tag="$1"
+  local package_file tag_commit source_ref source_commit
+  package_file="$repo_root/distro/arch/inir-shell/PKGBUILD"
+  tag_commit="$(git -C "$repo_root" rev-parse "$tag^{commit}")"
+  source_ref="$(sed -n 's/^_source_ref="${INIR_SOURCE_REF:-\([^}]*\)}"$/\1/p' "$package_file")"
+  [[ -n "$source_ref" ]] \
+    || die "could not read default _source_ref from ${package_file#$repo_root/}"
+  source_commit="$(git -C "$repo_root" rev-parse "$source_ref^{commit}" 2>/dev/null || true)"
+  [[ -n "$source_commit" ]] \
+    || die "release package source ref $source_ref is not a commit in this checkout"
+  [[ "$source_commit" == "$tag_commit" ]] \
+    || die "release package source ref $source_ref does not resolve to $tag ($tag_commit)"
+}
+
 require_release_checkout() {
   local tag="$1"
   local tag_commit head_commit
@@ -108,6 +123,7 @@ publish_release() {
   require_release_version_consistency "$version"
   git -C "$repo_root" rev-parse --verify "$tag" >/dev/null 2>&1 || die "missing local tag $tag"
   require_release_checkout "$tag"
+  require_release_source_pin "$tag"
 
   notes_file="$(mktemp)"
   trap 'rm -f -- "${notes_file:-}"' EXIT

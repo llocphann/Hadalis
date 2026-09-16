@@ -188,18 +188,20 @@ if setup.count(marker) != 1:
 setup_path.write_text(setup.replace(marker, guard, 1))
 
 launcher = launcher_path.read_text()
+launcher_default = 'system_config_dir="$' + '{INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"'
 launcher_value = 'system_config_dir="$' + '{INIR_SYSTEM_RUNTIME_DIR:-' + runtime + '}"'
-launcher, count = launcher.replace('system_config_dir="${INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"', launcher_value, 1), launcher.count('system_config_dir="${INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"')
+count = launcher.count(launcher_default)
 if count != 1:
     raise SystemExit("expected exactly one launcher runtime default")
-launcher_path.write_text(launcher)
+launcher_path.write_text(launcher.replace(launcher_default, launcher_value, 1))
 
 versioning = versioning_path.read_text()
+versioning_default = 'RUNTIME_DIR_SYSTEM_LOCAL="$' + '{INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/inir}"'
 versioning_value = 'RUNTIME_DIR_SYSTEM_LOCAL="$' + '{INIR_SYSTEM_RUNTIME_DIR_LOCAL:-' + runtime + '}"'
-versioning, count = versioning.replace('RUNTIME_DIR_SYSTEM_LOCAL="${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/inir}"', versioning_value, 1), versioning.count('RUNTIME_DIR_SYSTEM_LOCAL="${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/inir}"')
+count = versioning.count(versioning_default)
 if count != 1:
     raise SystemExit("expected exactly one versioning runtime default")
-versioning_path.write_text(versioning)
+versioning_path.write_text(versioning.replace(versioning_default, versioning_value, 1))
 PY
     grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$runtime/setup"
     grep -Fq "$runtime" "$runtime/scripts/inir"

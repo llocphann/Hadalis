@@ -8,6 +8,7 @@ shell_root="$root/shell.qml"
 media_module="$root/modules/perimeter/MediaModule.qml"
 media_surface="$root/modules/perimeter/MediaConnectedSurface.qml"
 media_popup="$root/modules/mediaControls/BarMediaPopup.qml"
+media_controls_root="$root/modules/mediaControls"
 
 fail() {
     printf 'FAIL: equalizer boundary contract: %s\n' "$1" >&2
@@ -17,6 +18,7 @@ fail() {
 for file in "$service" "$qmldir" "$shell_root" "$media_module" "$media_surface" "$media_popup"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
+[[ -d "$media_controls_root" ]] || fail 'missing modules/mediaControls'
 
 grep -Fxq 'singleton EqualizerService 1.0 EqualizerService.qml' "$qmldir" \
     || fail 'EqualizerService is not exported from deferred services'
@@ -56,5 +58,14 @@ for file in "$media_module" "$media_surface" "$media_popup"; do
         fail "${file#"$root/"} bypasses the equalizer service boundary"
     fi
 done
+
+# Guard every Media Controls presentation surface against reaching through the
+# EqualizerService facade to backend names, transport, socket, or wire protocol.
+backend_pattern='EasyEffects|socat|EasyEffectsServer|load_preset:output:|set_property:output:equalizer|get_property:output:equalizer'
+while IFS= read -r -d '' file; do
+    if grep -Eq "$backend_pattern" "$file"; then
+        fail "${file#"$root/"} references the equalizer backend/protocol directly"
+    fi
+done < <(find "$media_controls_root" -type f -name '*.qml' -print0)
 
 printf 'PASS: equalizer architecture boundary\n'

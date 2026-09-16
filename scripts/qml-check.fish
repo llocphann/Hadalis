@@ -176,6 +176,12 @@ if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
         set fatal_errors (math $fatal_errors + 1)
     end
 
+    set -l perimeter_runtime_health_contract "$project_root/scripts/test-perimeter-runtime-health-contract.sh"
+    if not bash "$perimeter_runtime_health_contract"
+        echo "ERROR: Connected Perimeter runtime health contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
     set -l equalizer_boundary_contract "$project_root/scripts/test-equalizer-boundary-contract.sh"
     if not bash "$equalizer_boundary_contract"
         echo "ERROR: Equalizer architecture boundary contract failed" >&2

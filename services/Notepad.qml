@@ -20,6 +20,7 @@ Singleton {
     // Current tab state
     property int currentTab: 0
     property var tabs: [{ title: "Note 1", text: "" }]
+    property bool ready: false
     // Convenience: current tab text (backward compat)
     readonly property string text: (tabs[currentTab]?.text) ?? ""
 
@@ -39,22 +40,25 @@ Singleton {
     }
 
     function setTextValue(newText) {
-        if (currentTab < 0 || currentTab >= tabs.length) return
+        if (!root.ready || currentTab < 0 || currentTab >= tabs.length) return false
         const t = tabs.slice()
         t[currentTab] = Object.assign({}, t[currentTab], { text: String(newText ?? "") })
         tabs = t
         _save()
+        return true
     }
 
     function setTabTitle(index, title) {
-        if (index < 0 || index >= tabs.length) return
+        if (!root.ready || index < 0 || index >= tabs.length) return false
         const t = tabs.slice()
         t[index] = Object.assign({}, t[index], { title: String(title ?? "") })
         tabs = t
         _save()
+        return true
     }
 
     function addTab(title) {
+        if (!root.ready) return false
         const t = tabs.slice()
         const requested = String(title ?? "").trim()
         const name = requested.length > 0 ? requested : `Note ${t.length + 1}`
@@ -62,22 +66,25 @@ Singleton {
         tabs = t
         currentTab = t.length - 1
         _save()
+        return true
     }
 
     function removeTab(index) {
-        if (index < 0 || index >= tabs.length) return
-        if (tabs.length <= 1) return // Keep at least one tab
+        if (!root.ready || index < 0 || index >= tabs.length) return false
+        if (tabs.length <= 1) return false // Keep at least one tab
         const t = tabs.slice()
         t.splice(index, 1)
         tabs = t
         if (currentTab >= t.length) currentTab = t.length - 1
         _save()
+        return true
     }
 
     function switchTab(index) {
-        if (index < 0 || index >= tabs.length) return
+        if (!root.ready || index < 0 || index >= tabs.length) return false
         currentTab = index
         _save()
+        return true
     }
 
     // FileView fires onLoaded after our own setText() write. Keep at most one
@@ -90,14 +97,15 @@ Singleton {
     property bool _storageInitializing: false
 
     function _save() {
-        if (_storageInitializing)
-            return
+        if (!root.ready || _storageInitializing)
+            return false
         if (_saving) {
             _saveQueued = true
-            return
+            return true
         }
         _saving = true
         tabsFileView.setText(JSON.stringify({ currentTab: currentTab, tabs: tabs }))
+        return true
     }
 
     function refresh() {
@@ -128,10 +136,11 @@ Singleton {
                     const index = Number.isInteger(requestedIndex) ? requestedIndex : 0
                     root.tabs = loadedTabs
                     root.currentTab = Math.max(0, Math.min(index, loadedTabs.length - 1))
+                    root.ready = true
                     return
                 }
             } catch (e) {}
-            // Invalid/empty JSON — try legacy migration
+            // Invalid/empty JSON — try legacy migration before allowing writes.
             legacyFileView.path = Qt.resolvedUrl(root.legacyFilePath)
         }
 
@@ -157,6 +166,7 @@ Singleton {
             const content = legacyFileView.text()
             root.tabs = [{ title: "Note 1", text: String(content ?? "") }]
             root.currentTab = 0
+            root.ready = true
             root._save()
         }
 
@@ -190,6 +200,7 @@ Singleton {
                 return
 
             root._storageInitializing = false
+            root.ready = true
             console.warn("[Notepad] Failed to start state directory creation")
             root._save()
         }
@@ -198,6 +209,7 @@ Singleton {
 
         onExited: (exitCode, exitStatus) => {
             root._storageInitializing = false
+            root.ready = true
             if (exitCode !== 0)
                 console.warn("[Notepad] Failed to create state directory", exitCode, exitStatus)
             root._save()

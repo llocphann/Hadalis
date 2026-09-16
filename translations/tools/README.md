@@ -58,10 +58,11 @@ translations/tools/manage-translations.sh status
 translations/tools/manage-translations.sh extract
 translations/tools/manage-translations.sh update
 translations/tools/manage-translations.sh clean
+translations/tools/manage-translations.sh candidates
 translations/tools/manage-translations.sh sync
 ```
 
-`clean` only reports candidates. Reviewed deletion intentionally stays on the explicit `translation-cleaner.py --prune-file/--prune-key` interface so a wrapper command cannot accidentally turn a heuristic orphan scan into deletion.
+`clean` prints a human-readable candidate report. `candidates` emits the same source/catalog boundary as machine-readable JSON through `source-parity.py --json`; its `orphans` array is still only an advisory static-orphan set, not an approved deletion list. Reviewed deletion intentionally stays on the explicit `translation-cleaner.py --prune-file/--prune-key` interface so a wrapper command cannot accidentally turn a heuristic orphan scan into deletion.
 
 Custom paths remain available through `--trans-dir` and `--source-dir`.
 
@@ -91,18 +92,21 @@ python3 translations/tools/l10n.py audit-all
 # 2. Add any newly introduced static Translation.tr(...) strings.
 translations/tools/manage-translations.sh update
 
-# 3. Produce a read-only list of static-orphan candidates.
-translations/tools/manage-translations.sh clean
+# 3. Capture the read-only source/catalog report and candidate list.
+translations/tools/manage-translations.sh candidates > /tmp/source-parity.json
+jq '.orphans' /tmp/source-parity.json > /tmp/static-orphan-candidates.json
 
-# 4. Review candidates against dynamic Translation.tr(...) callsites and put
-#    only proven-retired exact keys in a JSON array.
+# 4. Review those candidates against dynamic Translation.tr(...) callsites.
+#    Put only proven-retired exact keys in a separate reviewed JSON array.
+
+# 5. Prune only the reviewed exact keyset.
 python3 translations/tools/translation-cleaner.py --prune-file /tmp/reviewed-retired-keys.json
 
-# 5. Verify the resulting locale contract again.
+# 6. Verify the resulting locale contract again.
 python3 translations/tools/l10n.py audit-all
 ```
 
-Do not manually add or delete a key in only one locale. New keys are catalog-wide updates, and retired-feature keys must be explicitly reviewed before the same exact set is removed from every locale.
+Do not pass `/tmp/static-orphan-candidates.json` directly to `--prune-file`. Static extraction cannot prove that every candidate is unused. Do not manually add or delete a key in only one locale either: new keys are catalog-wide updates, and retired-feature keys must be explicitly reviewed before the same exact set is removed from every locale.
 
 ## Dynamic translation keys
 

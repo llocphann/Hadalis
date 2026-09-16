@@ -16,6 +16,7 @@ show_help() {
     echo "  extract      Extract translatable texts to temporary file"
     echo "  update       Add missing translation keys across all locales; report extra keys"
     echo "  clean        Report static-orphan candidates without deleting keys"
+    echo "  candidates   Emit live-source parity and orphan candidates as JSON"
     echo "  sync         Sync keys across all language files"
     echo "  status       Show translation status and live-source parity"
     echo ""
@@ -29,6 +30,7 @@ show_help() {
     echo "  $0 extract                    # Extract translatable texts"
     echo "  $0 update                     # Add missing keys to every locale"
     echo "  $0 clean                      # Report cleanup candidates (read-only)"
+    echo "  $0 candidates                 # Emit machine-readable source parity (read-only)"
     echo "  $0 sync                       # Sync keys across all languages"
     echo "  $0 status                     # Show translation status + source parity"
     echo ""
@@ -88,7 +90,7 @@ while [[ $# -gt 0 ]]; do
             show_help
             exit 0
             ;;
-        extract|update|clean|sync|status)
+        extract|update|clean|candidates|sync|status)
             if [ -n "$COMMAND" ]; then
                 echo "Error: Only one command can be specified"
                 exit 1
@@ -133,6 +135,9 @@ case $COMMAND in
     clean)
         echo "Reporting static-orphan translation candidates (read-only)..."
         python3 "$SCRIPT_DIR/translation-cleaner.py" "${BASE_ARGS[@]}" --clean
+        ;;
+    candidates)
+        python3 "$SCRIPT_DIR/source-parity.py" "${BASE_ARGS[@]}" --json
         ;;
     sync)
         echo "Syncing translation keys..."

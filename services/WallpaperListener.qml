@@ -119,7 +119,8 @@ Singleton {
             }
         } else {
             const byMonitorMap = {}
-            for (const entry of wallpapersByMonitorRef) {
+            const entries = Array.isArray(wallpapersByMonitorRef) ? wallpapersByMonitorRef : []
+            for (const entry of entries) {
                 if (entry && entry.monitor) {
                     const p = entry.path ?? ""
                     byMonitorMap[entry.monitor] = {

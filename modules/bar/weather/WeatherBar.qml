@@ -51,20 +51,9 @@ MouseArea {
         root.activatePrimary()
     }
 
-    Rectangle {
+    KeyboardFocusRing {
         anchors.fill: parent
-        color: "transparent"
-        radius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-            : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-            : Appearance.rounding.small
-        border.width: root.activeFocus ? 1 : 0
-        border.color: Appearance.zzzEverywhere ? Appearance.zzz.accent
-            : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-            : Appearance.inirEverywhere ? Appearance.inir.colPrimary
-            : Appearance.colors.colPrimary
-        visible: root.activeFocus
-        z: 2
+        focusVisible: root.activeFocus
     }
 
     RowLayout {

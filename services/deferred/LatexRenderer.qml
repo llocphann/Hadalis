@@ -1,7 +1,6 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
-import qs.modules.common.functions
 import qs.modules.common
 import QtQuick
 import Quickshell
@@ -65,7 +64,6 @@ Singleton {
         // 3. If not, render it with MicroTeX and mark as processed
         // console.log(`[LatexRenderer] Rendering expression: ${expression} with hash: ${hash}`)
         // console.log(`                to file: ${imagePath}`)
-        // console.log(`                with command: cd ${microtexBinaryDir} && ./${microtexBinaryName} -headless -input=${StringUtils.shellSingleQuoteEscape(expression)} -output=${imagePath} -textsize=${Appearance.font.pixelSize.normal} -padding=${renderPadding} -background=${Appearance.m3colors.m3tertiary} -foreground=${Appearance.m3colors.m3onTertiary} -maxwidth=0.85`)
         const command = [
             `${root.microtexBinaryDir}/${root.microtexBinaryName}`,
             "-headless",
@@ -80,11 +78,20 @@ Singleton {
             import Quickshell.Io
             Process {
                 id: microtexProcess${hash}
+                property bool startObserved: false
                 running: true
                 command: ${JSON.stringify(command)}
-                // stdout: SplitParser {
-                //     onRead: data => { console.log("MicroTeX: " + data) }
-                // }
+                onRunningChanged: {
+                    if (running) {
+                        startObserved = false
+                        return
+                    }
+                    if (startObserved)
+                        return
+                    root._forgetRender(${JSON.stringify(hash)})
+                    microtexProcess${hash}.destroy()
+                }
+                onStarted: startObserved = true
                 onExited: (exitCode, exitStatus) => {
                     // console.log("[LatexRenderer] MicroTeX process exited with code: " + exitCode + ", status: " + exitStatus)
                     if (exitCode === 0)

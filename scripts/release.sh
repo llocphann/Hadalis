@@ -84,12 +84,14 @@ publish_release() {
   require_release_checkout "$tag"
 
   notes_file="$(mktemp)"
+  trap 'rm -f -- "${notes_file:-}"' EXIT
   write_notes "$version" "$notes_file"
 
   gh release view "$tag" >/dev/null 2>&1 && die "GitHub release $tag already exists"
   "$script_dir/wiki-sync.sh" publish "docs: sync wiki for $tag"
   gh release create "$tag" --verify-tag --title "$tag" --notes-file "$notes_file"
   rm -f "$notes_file"
+  trap - EXIT
 }
 
 main() {

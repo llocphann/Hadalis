@@ -26,7 +26,7 @@ Item {
             event.accepted = true;
         }
         // Open add dialog on "N" (any modifiers)
-        else if (event.key === Qt.Key_N) {
+        else if (event.key === Qt.Key_N && Todo.ready) {
             root.showAddDialog = true
             event.accepted = true;
         }
@@ -166,6 +166,7 @@ Item {
         anchors.bottom: fabButton.top
         anchors.bottomMargin: 8
         baseSize: 40
+        enabled: Todo.ready
         onClicked: ShellExec.execDetachedArgs(["xdg-open", Directories.todoTxtPath], "Open todo file")
         iconText: "edit_note"
     }
@@ -182,6 +183,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.rightMargin: root.fabMargins
         anchors.bottomMargin: root.fabMargins
+        enabled: Todo.ready
 
         onClicked: root.showAddDialog = true
         iconText: "add"
@@ -198,7 +200,7 @@ Item {
             NumberAnimation { 
                 duration: Appearance.animation.elementMoveFast.duration
                 easing.type: Appearance.animation.elementMoveFast.type
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                easing.bezierCurve: Appearance.animation.elementMoveFast.type
             }
         }
 
@@ -233,8 +235,7 @@ Item {
             radius: Appearance.rounding.normal
 
             function addTask() {
-                if (todoInput.text.length > 0) {
-                    Todo.addTask(todoInput.text)
+                if (todoInput.text.length > 0 && Todo.addTask(todoInput.text)) {
                     todoInput.text = ""
                     root.showAddDialog = false
                     root.currentTab = 0 // Show unfinished tasks
@@ -299,7 +300,7 @@ Item {
                     }
                     DialogButton {
                         buttonText: Translation.tr("Add")
-                        enabled: todoInput.text.length > 0
+                        enabled: Todo.ready && todoInput.text.length > 0
                         onClicked: dialog.addTask()
                     }
                 }

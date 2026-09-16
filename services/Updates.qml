@@ -35,7 +35,7 @@ Singleton {
 
     function load() {}
     function refresh() {
-        if (!available) return;
+        if (!available || checkUpdatesProc.running) return;
         print("[Updates] Checking for system updates")
         checkUpdatesProc.running = true;
     }
@@ -75,9 +75,28 @@ Singleton {
     Process {
         id: checkAvailabilityProc
         running: false
+        property bool startObserved: false
         command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]
+
+        onRunningChanged: {
+            if (checkAvailabilityProc.running) {
+                checkAvailabilityProc.startObserved = false
+                return
+            }
+            if (checkAvailabilityProc.startObserved)
+                return
+
+            root.available = false
+            root.count = 0
+            console.warn("[Updates] Failed to start update availability probe")
+        }
+
+        onStarted: checkAvailabilityProc.startObserved = true
+
         onExited: (exitCode, exitStatus) => {
             root.available = (exitCode === 0);
+            if (!root.available)
+                root.count = 0;
             root.refresh();
         }
     }

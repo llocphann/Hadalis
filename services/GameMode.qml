@@ -91,7 +91,9 @@ Singleton {
         if (active && CompositorService.isNiri) {
             // When setting enabled AND gamemode active -> disable niri animations
             // When setting disabled -> re-enable niri animations
-            setNiriAnimations(!active || !controlNiriAnimations)
+            const shouldEnable = !active || !controlNiriAnimations
+            _lastNiriAnimState = shouldEnable
+            setNiriAnimations(shouldEnable)
         }
     }
 
@@ -371,7 +373,7 @@ Singleton {
     readonly property string niriConfigPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/niri/config.kdl"
 
     function setNiriAnimations(enabled) {
-        if (!controlNiriAnimations) return
+        if (!controlNiriAnimations && !enabled) return
 
         // Try modular file first, fall back to root config.kdl
         const targetFile = niriAnimationsPath

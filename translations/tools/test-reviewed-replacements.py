@@ -103,6 +103,48 @@ def test_exact_reviewed_replacement(module) -> None:
         assert (locale, state, count) == ("tr_TR", "applied", 1)
 
 
+def test_apply_preserves_unrelated_catalog_bytes(module) -> None:
+    key = "Usage: install-package <package-name>"
+    old = "Kullanım: install-package <paket-adı>"
+    new = "Kullanım: install-package <package-name>"
+    with tempfile.TemporaryDirectory() as tmp_name:
+        root = Path(tmp_name)
+        translations = root / "translations"
+        translations.mkdir()
+        write_json(translations / "en_US.json", {key: key, "Echo": "Echo"})
+
+        target = translations / "tr_TR.json"
+        key_literal = json.dumps(key, ensure_ascii=False)
+        old_literal = json.dumps(old, ensure_ascii=False)
+        new_literal = json.dumps(new, ensure_ascii=False)
+        raw = (
+            "{\r\n"
+            "\t\"Echo\"  :  " + old_literal + ",\r\n"
+            "  " + key_literal + "    :    " + old_literal + "\r\n"
+            "}\r\n"
+        )
+        with target.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(raw)
+
+        manifest = root / "reviewed.json"
+        write_json(manifest, manifest_data(old=old, new=new))
+        before = target.read_bytes()
+        expected = before.replace(
+            f"{key_literal}    :    {old_literal}".encode("utf-8"),
+            f"{key_literal}    :    {new_literal}".encode("utf-8"),
+            1,
+        )
+
+        assert module.apply_manifest(
+            manifest,
+            translations,
+            backup=False,
+            check_only=False,
+        ) == 1
+        assert target.read_bytes() == expected
+        assert old_literal.encode("utf-8") in target.read_bytes()
+
+
 def test_catalog_drift_is_rejected(module) -> None:
     old = "Kullanım: install-package <paket-adı>"
     new = "Kullanım: install-package <package-name>"
@@ -201,6 +243,7 @@ def test_live_reviewed_manifest_state(module) -> None:
 def main() -> int:
     module = load_module()
     test_exact_reviewed_replacement(module)
+    test_apply_preserves_unrelated_catalog_bytes(module)
     test_catalog_drift_is_rejected(module)
     test_placeholder_contract_is_rejected(module)
     test_partial_application_is_rejected(module)

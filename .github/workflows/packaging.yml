@@ -118,5 +118,12 @@ jobs:
           bash -n distro/arch/inir-shell/PKGBUILD
           bash -n distro/arch/inir-shell-git/PKGBUILD
           bash -n distro/arch/inir-meta/PKGBUILD
+          bash -n sdata/dist-arch/inir-deps/PKGBUILD
+          repo_version="$(tr -d '[:space:]' < VERSION)"
+          deps_version="$(grep -m1 '^pkgver=' sdata/dist-arch/inir-deps/PKGBUILD | cut -d= -f2-)"
+          if [[ "$deps_version" != "$repo_version" ]]; then
+            echo "::error::inir-deps pkgver=$deps_version does not match VERSION=$repo_version"
+            exit 1
+          fi
           bash -n distro/arch/inir-shell/inir-shell.install
           bash -n distro/arch/inir-shell-git/inir-shell-git.install

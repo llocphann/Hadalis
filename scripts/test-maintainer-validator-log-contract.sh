@@ -15,12 +15,15 @@ fail() {
 mkdir -p "$tmp/caller" "$tmp/workspace"
 
 # Execute the real validator initialization prefix, stopping before clone/log I/O.
-# Fail closed if that boundary changes so this test can never recurse into the
-# full validator accidentally.
-grep -Fq 'cleanup() {' "$validator" \
-    || fail 'validator initialization boundary changed; refusing prefix execution'
+# Guard and extraction must use the same anchored boundary. Requiring exactly one
+# match prevents a comment, indentation drift, or duplicate helper from letting
+# this fixture recurse into the full validator accidentally.
+boundary_re='^cleanup\(\)[[:space:]]*\{'
+boundary_count="$(grep -Ec "$boundary_re" "$validator" || true)"
+[[ "$boundary_count" -eq 1 ]] \
+    || fail "validator initialization boundary count is $boundary_count; refusing prefix execution"
 prefix="$tmp/validator-prefix.sh"
-sed '/^cleanup()/,$d' "$validator" > "$prefix"
+sed -E "/$boundary_re/,$ d" "$validator" > "$prefix"
 cat >> "$prefix" <<'SH'
 printf '%s\n' "$log_path"
 SH

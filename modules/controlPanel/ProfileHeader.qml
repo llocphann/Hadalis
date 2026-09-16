@@ -182,6 +182,7 @@ Item {
             RippleButton {
                 implicitWidth: 32
                 implicitHeight: 32
+                buttonText: Translation.tr("Lock")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
@@ -205,6 +206,7 @@ Item {
             RippleButton {
                 implicitWidth: 32
                 implicitHeight: 32
+                buttonText: Translation.tr("Manage my account")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
@@ -228,6 +230,7 @@ Item {
             RippleButton {
                 implicitWidth: 32
                 implicitHeight: 32
+                buttonText: Translation.tr("Power")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
@@ -253,6 +256,7 @@ Item {
             RippleButton {
                 implicitWidth: 32
                 implicitHeight: 32
+                buttonText: Translation.tr("Close")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                             : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"

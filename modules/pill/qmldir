@@ -1,0 +1,2 @@
+module qs.modules.pill
+singleton PillTheme 1.0 PillTheme.qml

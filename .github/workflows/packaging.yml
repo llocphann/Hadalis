@@ -145,8 +145,8 @@ jobs:
 
       - name: Validate privileged helper contracts
         run: |
-          sh -n scripts/test-battery-charge-limit-helper.sh
-          sh scripts/test-battery-charge-limit-helper.sh
+          bash -n scripts/test-battery-charge-limit-helper.sh
+          bash scripts/test-battery-charge-limit-helper.sh
           bash -n scripts/test-thinkfan-helper.sh
           bash scripts/test-thinkfan-helper.sh
 

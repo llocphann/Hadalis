@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
@@ -10,6 +11,11 @@ MouseArea {
     implicitHeight: Appearance.sizes.barHeight
     hoverEnabled: true
     acceptedButtons: Qt.NoButton
+    activeFocusOnTab: true
+
+    Accessible.role: Accessible.StaticText
+    Accessible.name: Translation.tr("System resources")
+    Accessible.focusable: true
 
     Component.onCompleted: ResourceUsage.keepAlive()
     Component.onDestruction: ResourceUsage.releaseKeepAlive()
@@ -65,7 +71,13 @@ MouseArea {
 
     }
 
+    KeyboardFocusRing {
+        anchors.fill: parent
+        focusVisible: root.activeFocus
+    }
+
     ResourcesPopup {
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
     }
 }

@@ -1,493 +1,212 @@
-# Hadalis Connected Perimeter
+# Hadalis
 
-> **Status:** implemented on `dev`, active integration/stabilization  
-> **Updated:** 2026-09-16  
-> **Cutover:** opt-in; not yet the fresh-install default  
-> **Validation policy:** clean-clone local non-Nix validation is the primary maintainer gate during the current stabilization phase  
-> **Maintainer workflow:** the daily-use checkout may remain on `stable`; validation clones `dev` into a temporary directory and must not mutate the stable working tree  
-> **Release state:** not ready for `dev -> stable` until local validation, documentation, Arch packaging/install, and live acceptance gates are green
+Hadalis is a Quickshell desktop shell for Niri, with secondary Hyprland compatibility. The current `dev` branch is focused on a Caelestia-inspired connected-surface UX while preserving the existing iNiR runtime, services, routing, lifecycle, and panel functionality.
 
-Hadalis is evolving from the older fixed panel composition into a **configurable per-output Connected Perimeter** while preserving the project’s existing services, compositor integration, routing, lifecycle, configuration, and Niri engineering.
+> **Development branch:** `dev`  
+> **Current validation policy:** maintainer local validation is authoritative; hosted CI is diagnostic only  
+> **Release state:** `dev` is not considered ready for `stable` until the maintainer completes the local regression and live desktop acceptance pass
 
-Hadalis is **not** a source merge of Caelestia and iNiR.
+## Current shell contracts
 
-- iNiR/Hadalis supplies the runtime, services, configuration, Niri integration, window lifecycle, and output routing foundations.
-- Caelestia supplies architectural lessons around connected geometry, anchor-aware popouts, state coordination, and seamless surface composition.
-- Hadalis owns the final visual language, topology, implementation, migration policy, and release contract.
+### Connected bar popups
 
-The live code on `dev` is authoritative. Detailed Connected Perimeter behavior and contributor rules are documented in [`docs/PERIMETER.md`](docs/PERIMETER.md).
+Existing bar popups continue to use the established `modules/bar/StyledPopup.qml` abstraction. `StyledPopup.qml` now composes the shared Connected Perimeter primitives rather than introducing a second popup framework.
 
----
+The connected popup path is the default presentation behavior for those popups and does **not** require a new setting, appearance toggle, or full perimeter cutover.
 
-## Current implementation state
+The shared geometry contract covers:
 
-The Connected Perimeter foundation is implemented on `dev` and includes:
+- top, bottom, left, and right bar attachment;
+- inward reveal/growth from the attached edge;
+- real anchor-aware body/connector geometry;
+- device-pixel-aware seam overlap to avoid transparent gaps at fractional scaling;
+- a shared visible/input shape so transparent portions of the full-output host remain click-through.
 
-- eight configurable placement slots per output,
-- module instances resolved through a registry rather than hard-coded slot children,
-- shared/default placement plus per-output overrides,
-- output-aware routing and anchor publication,
-- reusable connected-surface geometry and masking primitives,
-- edge reservation policy,
-- cutover/fallback policy,
-- perimeter presentation policy,
-- Settings integration for placement, reordering, output overrides, and reset operations,
-- regression contracts for topology, routing, settings, reservations, presentation, and cutover behavior.
+Core primitives live under `modules/common/perimeter/`, including `ConnectedSurfaceGeometry.qml`, `ConnectedSurfaceFrame.qml`, `ConnectedSurfaceConnector.qml`, and `ConnectedSurfaceMask.qml`.
 
-The current implementation remains **opt-in**. Fresh/existing configurations continue to use the legacy composition unless `iiPerimeter` is explicitly requested and the cutover policy considers the requested composition valid.
+See [`docs/PERIMETER.md`](docs/PERIMETER.md) and [`docs/SHELL_SURFACE_CONTRACTS.md`](docs/SHELL_SURFACE_CONTRACTS.md).
 
-If perimeter configuration, module resolution, output validation, or legacy compatibility requirements are not satisfied, the shell falls back instead of treating a partial Connected Perimeter as valid.
+### Full `iiPerimeter` composition
 
----
+The repository also contains a broader configurable perimeter composition runtime with per-output topology, module registry/hosting, anchors, routing, reservation policy, and feature adapters.
 
-## Topology
+That **full composition cutover remains guarded**. `PerimeterCutoverPolicy.qml` must keep the legacy composition active whenever broad `iiPerimeter` ownership would drop functionality that still exists only in the legacy panel graph.
 
-Each output owns eight logical slots:
+Connected popup presentation must not be coupled to this broad cutover.
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ TOP-LEFT                 TOP-CENTER                   TOP-RIGHT │
-│                                                                 │
-│                                                                 │
-│ LEFT-EDGE                                            RIGHT-EDGE │
-│                                                                 │
-│                                                                 │
-│ BOTTOM-LEFT             BOTTOM-CENTER              BOTTOM-RIGHT │
-└─────────────────────────────────────────────────────────────────┘
-```
+### Dock and Waffle
 
-Canonical slot IDs:
+The ii Dock has one supported user-facing surface style: **Panel**.
 
-```text
-top.start
-top.center
-top.end
-left.center
-right.center
-bottom.start
-bottom.center
-bottom.end
-```
+- Dock Settings no longer exposes Pill, macOS, Island, or M3 as Dock-style alternatives.
+- Legacy persisted `dock.style` values are normalized to `panel` during startup.
+- Waffle remains a separate supported panel family with its own taskbar and settings; it is not a Dock style and is not part of Dock-style migration.
 
-The generic model is based on **edge + alignment**, not eight independent renderer implementations.
+### English-only shell UI
 
-```text
-edge: top | bottom | left | right
-alignment: start | center | end
-```
+Shell UI localization is English-only.
 
-For left/right edges, `center` is currently the supported initial alignment.
+- Canonical UI locale: `en_US`.
+- `services/Translation.qml` loads `translations/en_US.json`.
+- `translations/en_US.json` is the only shipped shell UI locale catalog.
+- Legacy persisted `language.ui` values normalize to `en_US` during startup.
+- The old interface-language selector and translation-generation UI are not active product features.
 
-Inward direction is derived from edge context:
+Locale/time formatting remains separate from shell UI language.
 
-```text
-top    -> down
-bottom -> up
-left   -> right
-right  -> left
-```
+## Panel families
 
-This context is used by connected surfaces so placement does not depend on hard-coded module ownership.
+Hadalis keeps two supported panel families:
 
----
-
-## Default composition
-
-`PerimeterConfig.qml` provides the architecture preset used when no explicit placement override is present:
-
-| Slot | Default module instances |
+| Family | Runtime |
 |---|---|
-| `top.start` | ThinkFan, System Monitor |
-| `top.center` | Workspaces, Media, Weather |
-| `top.end` | empty |
-| `left.center` | Left Sidebar |
-| `right.center` | Right Sidebar |
-| `bottom.start` | empty |
-| `bottom.center` | Dock |
-| `bottom.end` | empty |
+| Material ii | Classic Bar, ii Dock, sidebars, Overview and related ii surfaces |
+| Waffle | Windows 11-style taskbar, Start menu, Action Center and Notification Center |
 
-These are **defaults only**.
+Waffle must not be classified as a legacy renderer during ii/Connected Perimeter cleanup.
 
-No module is permanently owned by a slot. A valid layout may leave slots empty, place multiple ordered instances in a slot, reorder instances, or move supported instances to another valid slot.
+Retired renderer families and old feature surfaces must not be revived merely to satisfy stale configuration or documentation references.
 
-Placement belongs to perimeter configuration, not to feature implementation.
+## Connected Perimeter topology
 
----
-
-## Registered perimeter modules
-
-`modules/perimeter/PerimeterFeatureRegistry.qml` currently registers:
-
-- `thinkfan`
-- `system-monitor`
-- `workspaces`
-- `media`
-- `weather`
-- `left-sidebar`
-- `right-sidebar`
-- `dock`
-
-Feature adapters consume perimeter context; they do not choose their permanent edge or output.
-
-The default preset currently places ThinkFan/System Monitor at top-left, Workspaces/Media/Weather at top-center, sidebars at the side centers, and Dock at bottom-center.
-
----
-
-## Core architecture
-
-Reusable Connected Perimeter infrastructure lives under:
+The broad perimeter runtime models eight logical placement slots per output:
 
 ```text
-modules/common/perimeter/
+┌───────────────────────────────────────────────────────────────┐
+│ top.start              top.center                    top.end │
+│                                                               │
+│ left.center                                      right.center │
+│                                                               │
+│ bottom.start         bottom.center                 bottom.end │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-Important components include:
+Placement belongs to perimeter configuration, not to individual feature implementations. Slots may be empty or host ordered module instances. Feature adapters consume edge/output context instead of owning a permanent hard-coded position.
+
+The current built-in perimeter preset includes ThinkFan/System Monitor, Workspaces/Media/Weather, sidebars, and Dock adapters. That preset describes the full perimeter runtime and does not imply that broad composition ownership is enabled by default.
+
+## Repository map
 
 ```text
-AnchorPublisher.qml
-AnchorRegistry.qml
-ConnectedSurfaceConnector.qml
-ConnectedSurfaceFrame.qml
-ConnectedSurfaceGeometry.qml
-ConnectedSurfaceMask.qml
-ModuleRegistry.qml
-PerimeterAnchorPublisher.qml
-PerimeterConfig.qml
-PerimeterContext.qml
-PerimeterCutoverPolicy.qml
-PerimeterModuleHost.qml
-PerimeterOutputHost.qml
-PerimeterSlotHost.qml
-PerimeterSlotModel.qml
-PerimeterTokens.qml
-PerimeterTopology.qml
-SurfaceRouteController.qml
+shell.qml                     # Quickshell root and startup sequencing
+ShellIiPanels.qml             # Material ii panel family
+ShellWafflePanels.qml         # Waffle panel family
+GlobalStates.qml              # Shared runtime UI state
+
+modules/common/               # Shared config, appearance, widgets, perimeter core
+modules/bar/                  # Classic Bar + StyledPopup
+modules/dock/                 # ii Dock
+modules/perimeter/            # Hadalis perimeter feature adapters/runtime
+modules/settings/             # Settings pages and compatibility normalization
+modules/waffle/               # Waffle family
+services/                     # Runtime singletons
+scripts/                      # CLI, helpers, regressions and validation
+translations/                 # en_US UI catalog + English-only validators
+sdata/                        # Install/update lifecycle and migrations
+docs/                         # User/developer documentation
 ```
 
-Hadalis-specific feature adapters live under:
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`STRUCTURE.md`](STRUCTURE.md) for the maintained architecture map.
 
-```text
-modules/perimeter/
+## Configuration compatibility
+
+Runtime configuration is owned by `modules/common/Config.qml` and persisted through the existing iNiR configuration path.
+
+Compatibility normalization is intentionally narrow:
+
+- legacy Dock styles converge to `dock.style = "panel"`;
+- legacy UI locale values converge to `language.ui = "en_US"`;
+- retired Settings page indices remain hidden/redirected rather than reviving removed feature pages.
+
+`SettingsPageRegistry` is materialized from shell startup so these compatibility migrations do not depend on the user opening Settings first.
+
+## Installation and lifecycle
+
+Typical repository workflow:
+
+```bash
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
+./setup
+./setup install -y
+./setup update
+./setup doctor
+./setup rollback
 ```
 
-The key ownership flow is:
+The supported forced restart path is:
 
-```text
-module
-  -> registry/config
-     -> placement
-        -> perimeter host
-           -> rendered surface / connected route
+```bash
+inir restart
 ```
 
-not:
+Avoid bypassing the managed user service with raw Quickshell kill/start commands unless debugging the service layer itself.
 
-```text
-component
-  -> hard-coded screen position
+## Local validation
+
+The canonical maintainer validation entry point is:
+
+```bash
+bash scripts/validate-maintainer-local.sh
 ```
 
----
+Focused shell-surface regression coverage is also available with:
 
-## Configuration model
-
-The typed configuration exposes a `perimeter` node with schema version `1`.
-
-The model supports:
-
-- shared module instance descriptors,
-- shared/default slot entries,
-- per-output slot overrides,
-- per-output instance overrides,
-- validation of slot IDs and configured sources,
-- reset to default/shared placement,
-- compatibility handling for older persisted object/map representation.
-
-An omitted slot may inherit the architecture preset. An explicitly configured empty slot remains empty.
-
-Malformed output entries, duplicate descriptors, unsupported schema versions, invalid slots, or unresolved module sources must fail validation rather than being rendered blindly.
-
----
-
-## Routing and connected surfaces
-
-Connected popups use the real rendered module anchor instead of deriving position from assumed module ordering.
-
-Routing is output-aware and coordinated through the shared route/controller layer so transient surfaces do not compete through unrelated state flags indefinitely.
-
-The migration target is:
-
-- deterministic output ownership,
-- deterministic Escape/backdrop/focus-loss behavior,
-- explicit transient-surface conflicts,
-- anchor-aware popup geometry,
-- visible/input geometry derived from the same authority,
-- correct inward expansion for all supported edges,
-- click-through transparent regions,
-- no bogus reservation or hit region for empty slots.
-
-Media and Weather already have Connected Surface adapters. Routing and anchor infrastructure are implemented, while migration of the wider transient-surface set remains ongoing.
-
----
-
-## Sidebars and Dock
-
-Left and right sidebars are registered perimeter modules.
-
-Their semantic feature/system state remains global, while perimeter placement controls where their presentation is available. Output routing also respects configured sidebar screen eligibility.
-
-The Connected Perimeter target is not a permanently full-height sidebar host. Presentation size, placement, input ownership, and edge relationship are handled by perimeter policies while preserving useful existing sidebar lifecycle/compositor behavior.
-
-Dock is a normal perimeter module instance. `bottom.center` is its default placement, not architectural ownership.
-
----
-
-## Settings / layout editing
-
-`modules/settings/ShellLayoutConfig.qml` contains the Connected Perimeter layout controls.
-
-Current Settings support includes:
-
-- enabling/disabling the perimeter cutover request,
-- shared/default versus per-output placement scope,
-- selecting valid slots,
-- moving module instances,
-- reordering instances within a slot,
-- resetting per-output overrides,
-- resetting shared/default placement,
-- live shell layout editing integration.
-
-A future custom preset library may extend this model, but placement is already centrally editable and is not implemented as independent hard-coded `position` controls inside every module.
-
----
-
-## Cutover and fallback
-
-`PerimeterCutoverPolicy.qml` enables perimeter ownership only when the requested composition is safe to activate.
-
-The policy currently evaluates conditions including:
-
-1. `iiPerimeter` is requested in `enabledPanels`;
-2. current legacy bar/dock policies are compatible with cutover;
-3. perimeter configuration validates for connected outputs;
-4. configured modules resolve through the registry.
-
-If the perimeter is requested but the composition is incomplete or invalid, fallback remains active instead of leaving the shell in a partially-owned state.
-
-This fallback is intentional during migration and stabilization.
-
----
-
-## Regression contracts
-
-Connected Perimeter behavior is guarded by repository tests rather than documentation alone.
-
-The test suite covers areas including:
-
-- required core/feature files,
-- module registry resolution,
-- cutover policy state,
-- output-specific placement,
-- route ownership,
-- settings placement behavior,
-- reservation metadata and edge zones,
-- click-through reservation surfaces,
-- presentation lifecycle,
-- disabled-module behavior,
-- runtime/registry recovery,
-- QML startup/static validation.
-
-Perimeter contracts are invoked from the full QML validation path used by local acceptance. Hosted CI should mirror those checks where practical, but hosted status is diagnostic rather than the maintainer source of truth during this stabilization phase.
-
----
-
-## Local validation policy and latest snapshot
-
-During the current stabilization phase, the maintainer release signal is a **clean clone of `dev` followed by local build/regression validation**. Hosted GitHub Actions are useful diagnostics, but they do not override a reproducible local result. Dedicated Nix validation is temporarily outside the maintainer acceptance gate because the active environment does not use Nix; this does **not** claim that Nix support is currently green.
-
-### Maintainer workflow
-
-The normal desktop can remain on the `stable` branch while development validation happens independently:
-
-```text
-daily-use checkout: stable
-        |
-        |  untouched by validation
-        v
-local validator
-        |
-        +--> mktemp directory
-        +--> clean clone of dev
-        +--> build + non-Nix tests + docs + QML guards + staged install
-        +--> log records the exact tested SHA
+```bash
+python scripts/test-shell-surface-contracts.py
 ```
 
-The validator must not `git switch`, `git checkout`, `git pull`, reset, or otherwise mutate the maintainer's existing `stable` working tree. Only the temporary `dev` clone is built and tested.
+A validation result applies only to the exact SHA tested. This README intentionally does not publish an old “latest green SHA”; after `dev` changes, the maintainer should rerun the local validator and use the SHA printed by that run.
 
-A result applies only to the exact SHA printed in the validation log. If `dev` advances after that SHA, the new HEAD is **unvalidated** until the clean-clone local suite is rerun. Bots may fix code and contracts on `dev`, but they must not claim the newer HEAD is green before a maintainer local rerun confirms it.
+The focused shell-surface contract checks source-level invariants for:
 
-The latest completed clean-clone validation supplied by the maintainer was run against:
+- existing `StyledPopup.qml` connected-perimeter integration;
+- four-edge geometry/seam behavior contracts;
+- Panel-only Dock Settings and legacy Dock migration;
+- Waffle remaining a separate panel family;
+- canonical English-only UI catalog/runtime behavior;
+- startup materialization of configuration normalization.
 
-```text
-724e06cb04b827aba89e242c029738b42334bc95
-```
+Static/local regression is not a substitute for live desktop acceptance.
 
-That snapshot passed:
+## Live acceptance checklist
 
-- `make build` and tracked Bash/Fish/Python/JavaScript/JSON syntax checks;
-- IPC registry generated-state and parser checks;
-- battery/TLP helper runtime tests except the stale Settings UI contract described below;
-- ThinkFan helper and lifecycle checks;
-- News service contract;
-- optional audio dependency and Equalizer boundary/service contracts;
-- every Connected Perimeter cutover, compatibility-placement, family, route, settings, source, and runtime-health contract;
-- full-tree QML project guards with no fatal issues;
-- staged full install/build and staged runtime sanity checks.
+For the final local pass, verify at minimum:
 
-The same snapshot reported eight top-level failures, which reduce to four independent issue groups:
-
-1. **Localization/catalog drift — real release work.** Translation audit, source parity, cleaner tests, and documentation verification are red. Most shipped locales are only a few keys behind, while `tr_TR` is substantially stale and also fails placeholder/protected-term checks. Source parity also reports a large live/catalog mismatch. Documentation verification is red primarily because it includes the failing runtime locale validation.
-2. **TLP Settings guard — stale test contract.** The test expects the old literal `category.pages.filter(index => index !== root.retiredTlpPageIndex)`, while the live registry now uses the broader `isHiddenLegacyIndex()` helper so all retired feature indexes remain filtered. The implementation preserves the intended behavior; the assertion needs to follow the current abstraction.
-3. **Make-install lifecycle fixture — test setup defect.** The test explicitly notes that package installation does not create managed TLP drop-ins, then writes synthetic drop-ins into the staged TLP directory without creating that directory first. The fixture needs to create its staging directory before writing those files.
-4. **Packaging aggregate contract — stale ordering assertion.** `make test-local` still includes optional-audio, Equalizer, News, and docs targets, but the packaging test searches for an older contiguous target sequence that no longer matches after `test-news-contract` was inserted.
-
-Several non-localization contract defects listed above have since been repaired on `dev`, but that does not retroactively change the result for `724e06cb04b827aba89e242c029738b42334bc95`. Current `dev` remains unvalidated until a maintainer clean-clone rerun records a newer exact SHA.
-
-QML validation on that snapshot emitted 10 advisory warnings and skipped the parser pass because the detected `qmlformat 1.0` is below the project’s supported parser threshold. Project-specific startup/architecture guards still ran and passed, but a future acceptance run on a modern Qt/QML parser should also exercise the parser pass.
-
-### Current completion order
-
-Until a newer local validation proves otherwise, repository completion work should be prioritized in this order:
-
-1. reconcile translation catalogs/source parity and make documentation locale validation pass;
-2. repair stale or broken local test contracts without weakening their intended behavior;
-3. rerun the clean-clone local non-Nix validator and use its exact SHA as the next acceptance checkpoint;
-4. exercise full QML parsing with a supported modern Qt/QML parser when available;
-5. continue multi-output/hotplug/resume/focus/fullscreen/fractional-scale live acceptance and remaining transient-surface migration;
-6. finish namespace/product migration and release documentation;
-7. only then expand large optional presentation features.
-
-Nix remains a deferred compatibility lane, not a reason to block progress in the current maintainer environment. It should not be deleted or declared supported/green without evidence.
-
----
-
-## Legacy cleanup
-
-The conversion is being built on the cleaned Material ii / Classic baseline.
-
-Retired renderer/feature families removed from the live graph must not be reintroduced merely to satisfy old references. This includes the retired Bar M3, historical Pill renderer/feature family, Orbit, Mascot, Workspace Strip, and related obsolete settings paths removed during the cleanup work. The current `modules/pill` directory is a live theme-only token module and is not a restoration of that retired Pill renderer family.
-
-Classic Bar remains part of the compatibility/fallback path while Connected Perimeter cutover is opt-in.
-
-The project is still completing product/namespace cleanup. Runtime, package, and user configuration paths currently retain historical `inir` / `illogical-impulse` naming in places, so namespace migration must preserve backward compatibility rather than being performed as an unsafe global rename.
-
----
-
-## Equalizer implementation status
-
-Serpantinum is currently used only as an external interaction/design reference for the Media equalizer direction. Other Serpantinum features and other external UI references remain deferred.
-
-### Implemented
-
-- `EqualizerService.qml` provides the Phase 1 backend/service contract and is disabled by default.
-- EasyEffects is an optional backend, with optional transport support; absence of the backend/transport does not block normal Media playback.
-- the service boundary exposes capability/error/lifecycle state and preset/band mutation APIs without putting backend execution into Media presentation code;
-- architecture, lifecycle/protocol, packaging, and optional-dependency contracts guard this Phase 1 boundary. A Nix contract also exists in-tree but is temporarily outside the maintainer local acceptance gate.
-
-### Stabilizing
-
-- backend capability detection and lifecycle/error behavior across supported EasyEffects installation modes;
-- packaging/install/release behavior that keeps EasyEffects and its transport optional;
-- interaction with Connected Media routing/lifecycle without coupling Equalizer execution to shell startup.
-
-### Planned
-
-Reference: `https://github.com/ilyamiro/serpantinum`
-
-The planned presentation work is to take the **equalizer concept and interaction model** from Serpantinum and integrate it directly **below the existing Hadalis Media content** inside the current Connected Media popup. It should extend the current Hadalis Media surface rather than replace or redesign it.
-
-Target behavior:
-
-- preserve Hadalis' existing Media/MPRIS presentation and playback controls;
-- place the equalizer below the current media content;
-- provide multi-band gain controls and useful preset/apply/reset state based on the Serpantinum equalizer interaction model;
-- use Hadalis' existing EasyEffects/service boundary instead of introducing a second audio-control stack;
-- keep equalizer runtime/process work inactive when the Media surface is not using it;
-- make absence of EasyEffects or a compatible audio path fail gracefully without breaking Media playback controls.
-
-Serpantinum currently implements its Media equalizer around EasyEffects and an `equalizer.sh` helper. Prefer a Hadalis-native presentation integrated with the existing Media and EasyEffects boundaries rather than copying unrelated Serpantinum UI or architecture.
-
-The full Equalizer UI, spectrum, preset surface, multi-band presentation redesign, Serpantinum bar design, Bluetooth popup, Dashboard, other popups, and all other external design experiments are **planned/deferred rather than current release prerequisites**.
-
----
-
-## What remains before release
-
-The project has moved beyond architecture/prototype work. The remaining work is primarily migration, hardening, and release preparation:
-
-- migrate remaining transient surfaces onto the shared anchor/routing/lifecycle model where appropriate;
-- finish feature parity needed before making Connected Perimeter the default;
-- continue multi-output, hotplug, resume, focus, fullscreen, fractional-scale, and reservation hardening;
-- make the clean-clone local non-Nix regression suite green, including localization/documentation, Arch packaging, install/uninstall, and release contracts;
-- keep hosted CI aligned with the local acceptance suite where useful, while treating Nix as temporarily non-blocking for the current maintainer environment;
-- complete product/namespace cutover with compatibility migration;
-- keep README and architecture/release documentation synchronized with live behavior;
-- run live acceptance on supported multi-monitor configurations;
-- freeze `dev` and merge to `stable` only after the active release gates are green.
-
-The Connected Perimeter should **not** be treated as release-complete merely because the core runtime exists.
-
----
+1. Open existing bar popups from a top bar and confirm body + connector read as one attached surface.
+2. Repeat for bottom, left, and right bar placement.
+3. Verify reveal starts from the attached bar/screen edge rather than appearing as an independent floating scale animation.
+4. Verify transparent regions outside the visible popup shape do not intercept input.
+5. Restart with a legacy `dock.style` value and confirm the persisted value converges to `panel` and only Panel presentation is offered.
+6. Verify Waffle behavior is unchanged and is never presented as a Dock style.
+7. Restart with a legacy `language.ui` value and confirm the shell stays English and persists `en_US`.
+8. Exercise multi-output, hotplug, suspend/resume, fullscreen/focus transitions, and fractional scaling.
+9. If testing the full `iiPerimeter` composition separately, confirm fallback prevents loss of legacy-only functionality.
 
 ## Development rules
 
-When extending the perimeter:
+- Work from current `dev`; refetch before edits and branch updates.
+- Keep commits focused and fix forward rather than rewriting shared history.
+- Reuse existing popup/runtime abstractions instead of building parallel frameworks.
+- Keep feature state/functionality separate from perimeter placement.
+- Preserve Waffle as a separate supported family.
+- Do not add a user-facing Connected Perimeter appearance toggle to control connected popup geometry.
+- Do not reintroduce retired Dock style choices or multilingual shell UI generation.
+- Keep broad `iiPerimeter` cutover guarded until feature parity is sufficient.
 
-- add reusable composition behavior under `modules/common/perimeter/`;
-- add Hadalis-specific adapters under `modules/perimeter/`;
-- register module IDs through `PerimeterFeatureRegistry`;
-- keep feature state/functionality separate from placement;
-- preserve empty-slot and multiple-instance behavior;
-- carry output identity through anchors, routes, placement, and input regions;
-- validate per-output configuration before rendering/reserving compositor space;
-- preserve fallback behavior until cutover policy explicitly considers the requested composition ready;
-- do not restore retired renderer families or appearance selectors;
-- prefer small, atomic changes on current `dev`.
+## Further documentation
 
----
+- [`docs/PERIMETER.md`](docs/PERIMETER.md) — Connected Perimeter geometry, topology and cutover rules.
+- [`docs/SHELL_SURFACE_CONTRACTS.md`](docs/SHELL_SURFACE_CONTRACTS.md) — focused local acceptance contract.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — runtime architecture.
+- [`STRUCTURE.md`](STRUCTURE.md) — codebase layout.
+- [`docs/INSTALL.md`](docs/INSTALL.md) — installation details.
+- [`docs/PACKAGES.md`](docs/PACKAGES.md) — packaging.
+- [`docs/RELEASING.md`](docs/RELEASING.md) — release process.
+- [`docs/IPC.md`](docs/IPC.md) — IPC targets and commands.
 
-## References
+## Architectural references
 
-### Hadalis
+Caelestia is used as a connected-composition/interaction reference, not as a source merge. Hadalis keeps its own topology, runtime ownership, routing, lifecycle, service boundaries, configuration and visual implementation.
 
-- [`docs/PERIMETER.md`](docs/PERIMETER.md)
-- [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- [`STRUCTURE.md`](STRUCTURE.md)
-- [`docs/INSTALL.md`](docs/INSTALL.md)
-- [`docs/PACKAGES.md`](docs/PACKAGES.md)
-- [`docs/RELEASING.md`](docs/RELEASING.md)
-- `modules/common/perimeter/`
-- `modules/perimeter/`
-- `modules/settings/ShellLayoutConfig.qml`
-- `modules/ii/ShellIiPanelsImpl.qml`
-
-### Architectural references
-
-- Caelestia shell: `https://github.com/caelestia-dots/shell`
-- Serpantinum: `https://github.com/ilyamiro/serpantinum`
-
-Caelestia remains the connected-composition architecture reference. Serpantinum is currently referenced only for the **Media equalizer behavior/design**. No Serpantinum bar, Bluetooth, Dashboard, or other popup work is planned at this time. These references do not change Hadalis' ownership of its final topology, routing, lifecycle, service boundaries, and QML integration.
-
-### ThinkFan
-
-Upstream: `https://github.com/vmatare/thinkfan`
-
-ThinkFan integration is hardware control. Configuration mutation must remain validated, privileged only where necessary, non-blocking to QML, and fail-safe when compatible hardware/service state is unavailable.
-
----
-
-## Architecture rule
-
-> **Hadalis is a configurable connected perimeter, not a fixed top bar plus fixed sidebars plus a fixed dock.**
->
-> The eight perimeter slots are layout locations. Modules are movable instances. Connected surfaces derive direction and geometry from slot context and their real rendered anchor. Documented placements are defaults only.
+Any other external UI reference remains feature-specific and does not change these shell-surface contracts.

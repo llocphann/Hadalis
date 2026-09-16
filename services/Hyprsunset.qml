@@ -263,11 +263,24 @@ Singleton {
 
     Process {
         id: fetchProc
+        property bool startObserved: false
         running: !CompositorService.isNiri
         command: ["/usr/bin/bash", "-c", "hyprctl hyprsunset temperature"]
         stdout: StdioCollector {
             id: stateCollector
         }
+        onRunningChanged: {
+            if (fetchProc.running) {
+                fetchProc.startObserved = false
+                return
+            }
+            if (fetchProc.startObserved)
+                return
+
+            console.warn("[Hyprsunset] Hyprland state probe failed to start")
+            root._finishStateProbe(false)
+        }
+        onStarted: fetchProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             const output = stateCollector.text.trim()
             root._finishStateProbe(exitCode === 0
@@ -311,8 +324,21 @@ Singleton {
 
     Process {
         id: niriFetchProc
+        property bool startObserved: false
         running: CompositorService.isNiri
         command: ["/usr/bin/pidof", "wlsunset"]
+        onRunningChanged: {
+            if (niriFetchProc.running) {
+                niriFetchProc.startObserved = false
+                return
+            }
+            if (niriFetchProc.startObserved)
+                return
+
+            console.warn("[Hyprsunset] Niri state probe failed to start")
+            root._finishStateProbe(false)
+        }
+        onStarted: niriFetchProc.startObserved = true
         onExited: (exitCode, exitStatus) => root._finishStateProbe(exitCode === 0)
     }
 

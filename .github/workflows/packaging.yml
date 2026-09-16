@@ -1,0 +1,33 @@
+name: Packaging contracts
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packaging-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate packaging contracts
+        run: bash scripts/test-packaging-contract.sh
+
+      - name: Parse Arch recipes and lifecycle hooks
+        run: |
+          bash -n distro/arch/inir-shell/PKGBUILD
+          bash -n distro/arch/inir-shell-git/PKGBUILD
+          bash -n distro/arch/inir-meta/PKGBUILD
+          bash -n distro/arch/inir-shell/inir-shell.install
+          bash -n distro/arch/inir-shell-git/inir-shell-git.install

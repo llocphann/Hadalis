@@ -7,6 +7,7 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Wayland
 
 Scope {
@@ -323,7 +324,7 @@ Scope {
 
             mask: perimeterWindow.mapped ? perimeterInputRegion : emptyInputRegion
 
-            CompositorFocusGrab {
+            HyprlandFocusGrab {
                 windows: [perimeterWindow]
                 active: perimeterWindow.mapped
                     && perimeterWindow.sidebarPresented

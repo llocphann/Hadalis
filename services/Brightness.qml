@@ -121,6 +121,7 @@ Singleton {
 
     Process {
         id: backlightDetectProc
+        property bool timedOut: false
         property bool startObserved: false
         command: ["brightnessctl", "-l", "-m", "-c", "backlight"]
         onRunningChanged: {
@@ -131,6 +132,7 @@ Singleton {
             if (backlightDetectProc.startObserved)
                 return
 
+            backlightDetectTimeout.stop()
             root.backlightDetectionReady = true
             root.monitors.forEach(monitor => {
                 if (!monitor.isDdc)
@@ -138,7 +140,11 @@ Singleton {
             })
             console.warn("[Brightness] Failed to start brightnessctl backlight detection")
         }
-        onStarted: backlightDetectProc.startObserved = true
+        onStarted: {
+            backlightDetectProc.startObserved = true
+            backlightDetectProc.timedOut = false
+            backlightDetectTimeout.restart()
+        }
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {
@@ -160,11 +166,26 @@ Singleton {
             }
         }
         onExited: {
+            backlightDetectTimeout.stop()
+            if (backlightDetectProc.timedOut)
+                console.warn("[Brightness] brightnessctl backlight detection timed out")
             root.backlightDetectionReady = true
             root.monitors.forEach(monitor => {
                 if (!monitor.isDdc)
                     monitor.initialize()
             })
+        }
+    }
+
+    Timer {
+        id: backlightDetectTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!backlightDetectProc.running)
+                return
+            backlightDetectProc.timedOut = true
+            backlightDetectProc.running = false
         }
     }
 

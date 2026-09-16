@@ -19,6 +19,8 @@ Item {
         String(screen?.name ?? "") === root.outputName) ?? null
     readonly property bool compactSystem: root.systemRole
         && (Config.options?.sidebar?.layout ?? "default") === "compact"
+    readonly property bool surfaceEnabled: (root.featureRole || root.systemRole)
+        && PerimeterPresentationPolicy.sidebarSurfaceEnabled(root.featureRole)
     readonly property bool presented: root.featureRole
         ? GlobalStates.sidebarLeftOpen
             && GlobalStates.sidebarLeftPresentationOutput === root.outputName
@@ -26,7 +28,8 @@ Item {
             ? GlobalStates.sidebarRightOpen
                 && GlobalStates.sidebarRightPresentationOutput === root.outputName
             : false
-    readonly property bool activeOnOutput: root.targetScreen !== null
+    readonly property bool activeOnOutput: root.surfaceEnabled
+        && root.targetScreen !== null
         && root.presented
 
     function bounded(value, fallback, minimum, maximum) {

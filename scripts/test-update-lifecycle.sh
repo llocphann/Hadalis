@@ -116,10 +116,22 @@ grep -Fq 'cp -- "$_meta_dir/PKGBUILD" "$_meta_build_dir/PKGBUILD"' "$arch_depend
     || fail 'Arch installer does not copy the dependency meta recipe into staging'
 grep -Fq 'sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_build_dir/PKGBUILD"' "$arch_dependency_installer" \
     || fail 'Arch installer does not patch the staged dependency meta recipe'
+grep -Fq 'for _meta_dep in "${depends[@]}"; do' "$arch_dependency_installer" \
+    || fail 'Arch installer does not filter dependency tracker entries by installed packages'
+grep -Fq 'pacman -Q "$_meta_pkg"' "$arch_dependency_installer" \
+    || fail 'Arch installer does not verify tracked packages are installed'
+grep -Fq 'pkg_sudo pacman -U --noconfirm "${local_pkg[0]}"' "$arch_dependency_installer" \
+    || fail 'Arch installer does not refresh dependency tracker metadata on rerun'
 grep -Fq 'rm -rf -- "$_meta_build_dir"' "$arch_dependency_installer" \
     || fail 'Arch installer does not clean the dependency meta staging directory'
 if grep -Fq 'sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_dir/PKGBUILD"' "$arch_dependency_installer"; then
     fail 'Arch installer still mutates the tracked dependency meta PKGBUILD'
+fi
+if grep -Fq 'pacman -Udd' "$arch_dependency_installer"; then
+    fail 'Arch dependency tracker still bypasses dependency verification'
+fi
+if grep -Fq 'pacman -U --noconfirm --needed "${local_pkg[0]}"' "$arch_dependency_installer"; then
+    fail 'Arch dependency tracker can skip same-version metadata refreshes'
 fi
 
 # Nix packages are immutable/package-managed. Their runtime metadata must make
@@ -152,6 +164,10 @@ from pathlib import Path
 import sys
 
 text = Path(sys.argv[1]).read_text()
+version_consistency = text.split('require_release_version_consistency() {', 1)[1].split('\n}\n\nrequire_release_source_pin() {', 1)[0]
+if 'sdata/dist-arch/inir-deps/PKGBUILD' not in version_consistency:
+    raise SystemExit('release version preflight must include the dependency tracker package')
+
 source_pin = text.split('require_release_source_pin() {', 1)[1].split('\n}\n\nrequire_release_checkout() {', 1)[0]
 if '[[ "$source_ref" == "$tag" ]]' not in source_pin:
     raise SystemExit('release package source pin must equal the immutable release tag')

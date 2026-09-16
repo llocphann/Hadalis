@@ -18,8 +18,10 @@ snapshots="$repo_root/sdata/lib/snapshots.sh"
 payload_tool="$repo_root/sdata/lib/runtime-payload.py"
 updates_service="$repo_root/services/Updates.qml"
 nix_package="$repo_root/nix/package.nix"
+arch_package="$repo_root/distro/arch/inir-shell/PKGBUILD"
+arch_git_package="$repo_root/distro/arch/inir-shell-git/PKGBUILD"
 
-for required in "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$nix_package"; do
+for required in "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$nix_package" "$arch_package" "$arch_git_package"; do
     [[ -f "$required" ]] || fail "missing lifecycle file: ${required#$repo_root/}"
 done
 
@@ -47,6 +49,14 @@ grep -Fq 'sync_launcher_from_repo' "$setup_file" \
     || fail 'setup update does not preserve repo-link launcher topology'
 grep -Fq 'runtime-payload.py" sync-dir' "$setup_file" \
     || fail 'setup update does not use the canonical runtime payload policy'
+
+# Package-managed payloads must preserve package-manager launcher ownership.
+# Otherwise `inir migrate` can materialize a stale raw launcher in ~/.local/bin
+# and shadow the launcher that pacman/Nix updates on the next package upgrade.
+for package_recipe in "$arch_package" "$arch_git_package"; do
+    grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$package_recipe" \
+        || fail "Arch package can shadow its packaged launcher during migrate: ${package_recipe#$repo_root/}"
+done
 
 # Nix packages are immutable/package-managed. Their runtime metadata must make
 # setup/status defer payload updates to Nix, and packaged migrate must not copy

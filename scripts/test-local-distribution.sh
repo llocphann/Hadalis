@@ -186,6 +186,28 @@ fi
 if [[ -f "$runtime_root/Makefile" ]]; then
     step "make install dry run"
     make -n install PREFIX=/tmp/inir-stage-test -C "$runtime_root" >/dev/null
+
+    step "privileged helper path relocation"
+    (
+        privileged_stage="$(mktemp -d)"
+        trap 'rm -rf -- "$privileged_stage"' EXIT
+        make -s -C "$runtime_root" \
+            install-battery-helper install-thinkfan-helper \
+            DESTDIR="$privileged_stage" \
+            LIBEXECDIR=/opt/inir/libexec \
+            POLKIT_ACTIONS_DIR=/opt/inir/share/polkit-1/actions \
+            INIR_SYSTEM_SHAREDIR=/opt/inir/share/inir
+
+        battery_helper="$privileged_stage/opt/inir/libexec/inir-battery-charge-limit"
+        thinkfan_helper="$privileged_stage/opt/inir/libexec/inir-thinkfan"
+        battery_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.battery-charge-limit.policy"
+        thinkfan_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.thinkfan.policy"
+        tlp_schema="$privileged_stage/opt/inir/share/inir/tlp-settings-schema.json"
+
+        [[ -x "$battery_helper" && -x "$thinkfan_helper" && -f "$tlp_schema" ]]
+        grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-battery-charge-limit</annotate>' "$battery_policy"
+        grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-thinkfan</annotate>' "$thinkfan_policy"
+    )
 fi
 
 if [[ -d "$runtime_root/distro/arch" ]]; then

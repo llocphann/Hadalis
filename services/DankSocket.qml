@@ -16,6 +16,10 @@ Item {
     signal connectionStateChanged()
 
     onConnectedChanged: {
+        if (!connected) {
+            reconnectTimer.stop()
+            root._reconnectAttempt = 0
+        }
         socket.connected = connected
     }
 
@@ -39,8 +43,13 @@ Item {
         interval: 0
         repeat: false
         onTriggered: {
+            if (!root.connected)
+                return
             socket.connected = false
-            Qt.callLater(() => socket.connected = true)
+            Qt.callLater(() => {
+                if (root.connected)
+                    socket.connected = true
+            })
         }
     }
 

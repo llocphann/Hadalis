@@ -191,6 +191,24 @@ Singleton {
         Qt.openUrlExternally(searchUrl)
     }
 
+    function _notifyError(message: string): void {
+        root.lastError = message
+        Quickshell.execDetached([
+            "/usr/bin/notify-send", Translation.tr("Voice input"),
+            root.lastError, "-a", "Shell",
+        ])
+    }
+
+    function _drainProbeQueue(): void {
+        if (!root._probeQueued)
+            return
+        root._probeQueued = false
+        Qt.callLater(() => {
+            if (!localProbe.running)
+                localProbe.running = true
+        })
+    }
+
     Connections {
         target: KeyringStorage
         function onLoadedChanged(): void {
@@ -206,6 +224,7 @@ Singleton {
 
     Process {
         id: localProbe
+        property bool startObserved: false
         running: false
         command: [
             "/usr/bin/python3",
@@ -227,19 +246,26 @@ Singleton {
                 }
             }
         }
-        onExited: {
-            if (!root._probeQueued)
+        onRunningChanged: {
+            if (localProbe.running) {
+                localProbe.startObserved = false
                 return
-            root._probeQueued = false
-            Qt.callLater(() => {
-                if (!localProbe.running)
-                    localProbe.running = true
-            })
+            }
+            if (localProbe.startObserved)
+                return
+
+            root.localAvailable = false
+            root.detectedLocalExecutable = ""
+            root.detectedLocalModel = ""
+            root._drainProbeQueue()
         }
+        onStarted: localProbe.startObserved = true
+        onExited: root._drainProbeQueue()
     }
 
     Process {
         id: recordProc
+        property bool startObserved: false
         running: false
         command: [
             "/usr/bin/bash",
@@ -257,18 +283,30 @@ Singleton {
                     root._audioPath = path
                     root._transcribe()
                 } else {
-                    root.lastError = Translation.tr("Recording failed")
-                    Quickshell.execDetached([
-                        "/usr/bin/notify-send", Translation.tr("Voice input"),
-                        root.lastError, "-a", "Shell",
-                    ])
+                    root._notifyError(Translation.tr("Recording failed"))
                 }
             }
         }
+        onRunningChanged: {
+            if (recordProc.running) {
+                recordProc.startObserved = false
+                return
+            }
+            if (recordProc.startObserved)
+                return
+
+            if (root._cancelRequested) {
+                root._cancelRequested = false
+                return
+            }
+            root._notifyError(Translation.tr("Recording failed"))
+        }
+        onStarted: recordProc.startObserved = true
     }
 
     Process {
         id: transcribeProc
+        property bool startObserved: false
         running: false
         environment: ({
             "INIR_VOICE_API_KEY": root._providerKey(root.activeProvider),
@@ -293,6 +331,23 @@ Singleton {
         stderr: StdioCollector {
             onStreamFinished: root._transcriptionError = text.trim()
         }
+        onRunningChanged: {
+            if (transcribeProc.running) {
+                transcribeProc.startObserved = false
+                return
+            }
+            if (transcribeProc.startObserved)
+                return
+
+            root._transcriptionOutput = ""
+            root._transcriptionError = ""
+            if (root._cancelRequested) {
+                root._cancelRequested = false
+                return
+            }
+            root._notifyError(Translation.tr("Transcription failed"))
+        }
+        onStarted: transcribeProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (root._cancelRequested) {
                 root._cancelRequested = false
@@ -304,12 +359,8 @@ Singleton {
                 root._handleTranscription(root._transcriptionOutput)
                 return
             }
-            root.lastError = root._transcriptionError.length > 0
-                ? root._transcriptionError : Translation.tr("Transcription failed")
-            Quickshell.execDetached([
-                "/usr/bin/notify-send", Translation.tr("Voice input"),
-                root.lastError, "-a", "Shell",
-            ])
+            root._notifyError(root._transcriptionError.length > 0
+                ? root._transcriptionError : Translation.tr("Transcription failed"))
         }
     }
 

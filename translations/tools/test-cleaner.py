@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression coverage for translation-cleaner mutation boundaries."""
+"""Regression coverage for translation cleanup and source-parity boundaries."""
 
 import json
 import subprocess
@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CLEANER = ROOT / "translations" / "tools" / "translation-cleaner.py"
+PARITY = ROOT / "translations" / "tools" / "source-parity.py"
 
 
 def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
@@ -23,6 +24,23 @@ def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
     if result.returncode != expect:
         raise AssertionError(
             f"command returned {result.returncode}, expected {expect}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+    return result
+
+
+def run_parity(*args: str, expect: int = 0) -> subprocess.CompletedProcess:
+    result = subprocess.run(
+        [sys.executable, str(PARITY), *args],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != expect:
+        raise AssertionError(
+            f"source parity returned {result.returncode}, expected {expect}\n"
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
     return result
@@ -82,6 +100,42 @@ def main() -> None:
         if (translations / "fr_FR.json").read_bytes() != before_fr:
             raise AssertionError("--clean mutated a target locale")
 
+        parity = run_parity(
+            "--translations-dir", str(translations),
+            "--source-dir", str(source),
+            "--json",
+        )
+        report = json.loads(parity.stdout)
+        if report["missing"] != []:
+            raise AssertionError(f"unexpected missing source keys: {report['missing']}")
+        if report["orphans"] != ["Dynamic", "Retired"]:
+            raise AssertionError(f"unexpected orphan report: {report['orphans']}")
+        if report["keptOrphans"] != ["Protected"]:
+            raise AssertionError(f"keep marker was not honored: {report['keptOrphans']}")
+
+        run_parity(
+            "--translations-dir", str(translations),
+            "--source-dir", str(source),
+            "--strict-orphans",
+            expect=1,
+        )
+
+        missing_fixture = source / "Missing.qml"
+        missing_fixture.write_text(
+            'import QtQuick\nItem { property string missing: Translation.tr("Missing") }\n',
+            encoding="utf-8",
+        )
+        missing = run_parity(
+            "--translations-dir", str(translations),
+            "--source-dir", str(source),
+            "--json",
+            expect=1,
+        )
+        missing_report = json.loads(missing.stdout)
+        if missing_report["missing"] != ["Missing"]:
+            raise AssertionError(f"missing live key was not reported: {missing_report['missing']}")
+        missing_fixture.unlink()
+
         prune_file = tmp / "reviewed.json"
         prune_file.write_text('["Retired"]\n', encoding="utf-8")
         run(
@@ -116,7 +170,7 @@ def main() -> None:
             if (translations / f"{locale}.json").read_bytes() != original:
                 raise AssertionError(f"rejected protected prune mutated {locale}")
 
-    print("ok - translation cleaner requires reviewed exact keys for deletion")
+    print("ok - translation cleanup and source parity preserve reviewed boundaries")
 
 
 if __name__ == "__main__":

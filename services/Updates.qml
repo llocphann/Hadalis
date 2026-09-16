@@ -23,12 +23,12 @@ Singleton {
     readonly property int checkIntervalMinutes: {
         const configured = Number(Config.options?.updates?.checkInterval)
         return Number.isFinite(configured) && configured > 0
-            ? Math.max(1, Math.round(configured)) : 60
+            ? Math.max(1, Math.round(configured)) : 120
     }
     readonly property int adviseUpdateThreshold: root._nonNegativeInt(
-        Config.options?.updates?.adviseUpdateThreshold, 15)
+        Config.options?.updates?.adviseUpdateThreshold, 75)
     readonly property int stronglyAdviseUpdateThreshold: root._nonNegativeInt(
-        Config.options?.updates?.stronglyAdviseUpdateThreshold, 50)
+        Config.options?.updates?.stronglyAdviseUpdateThreshold, 200)
     
     readonly property bool updateAdvised: available && count > root.adviseUpdateThreshold
     readonly property bool updateStronglyAdvised: available && count > root.stronglyAdviseUpdateThreshold

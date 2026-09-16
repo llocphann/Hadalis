@@ -18,7 +18,7 @@ Users can disable any panel from Settings without touching config files.
 
 | Module | Panel ID | Description |
 |--------|----------|-------------|
-| `bar/` | `iiBar` | Top bar. Workspaces, clock, system indicators, tray, weather. ~35 QML files. |
+| `bar/` | `iiBar` | Horizontal Classic Bar (top/bottom). Workspaces, clock, system indicators, tray, weather. ~35 QML files. |
 | `verticalBar/` | `iiVerticalBar` | Vertical bar variant for left/right edge placement. |
 | `dock/` | `iiDock` | Application dock. Supports all 4 edges (top/bottom/left/right). Scroll an icon to cycle that app's windows; `dock.notificationBadge` puts an app's pending notification count on its icon. |
 | `background/` | `iiBackground` | Desktop wallpaper layer. Parallax, blur, desktop widget canvas. |

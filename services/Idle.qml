@@ -17,7 +17,7 @@ Singleton {
 
     // Battery profile: only meaningful on a laptop that is actually unplugged.
     readonly property bool batteryProfileActive: (Config.options?.idle?.onBattery?.enable ?? false)
-        && Battery.available && !Battery.isPluggedIn
+        && Battery.onBattery
 
     readonly property int screenOffTimeout: batteryProfileActive
         ? (Config.options?.idle?.onBattery?.screenOffTimeout ?? 120)

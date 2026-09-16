@@ -43,14 +43,13 @@ grep -Fq 'target: PerimeterCutoverPolicy' "$route_controller" \
 grep -Fq 'root._closePerimeterRoutesForFallback()' "$route_controller" \
     || fail 'family fallback cannot close perimeter routes'
 
-# PerimeterRuntime owns replacement chrome and therefore belongs in the critical
-# ii tree. It must switch on synchronously with the same policy that switches the
-# legacy Bar/Dock off; moving it into the deferred tree creates a family-return
-# interval where neither runtime owns persistent chrome.
-runtime_block="$(grep -A2 -F 'active: Config.ready && root.perimeterEnabled' "$critical")"
+# PerimeterRuntime belongs in the critical ii tree, but presentation QML is
+# intentionally deferred behind a URL boundary. The critical root must gate the
+# loader with the same policy that disables legacy Bar/Dock ownership.
+runtime_block="$(grep -A3 -F 'active: Config.ready && root.perimeterEnabled' "$critical")"
 [[ -n "$runtime_block" ]] || fail 'critical ii tree no longer gates perimeter runtime'
-grep -Fq 'component: PerimeterRuntime {}' <<<"$runtime_block" \
-    || fail 'critical cutover gate does not instantiate PerimeterRuntime'
+grep -Fq 'source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml")' <<<"$runtime_block" \
+    || fail 'critical cutover gate no longer resolves PerimeterRuntime behind a URL boundary'
 if grep -Fq 'PerimeterRuntime' "$ii_panels"; then
     fail 'PerimeterRuntime moved into deferred ii panels'
 fi

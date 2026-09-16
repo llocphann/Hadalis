@@ -65,7 +65,24 @@ Singleton {
 
     Process {
         id: checkUpdatesProc
+        property bool startObserved: false
         command: ["checkupdates"]
+
+        onRunningChanged: {
+            if (checkUpdatesProc.running) {
+                checkUpdatesProc.startObserved = false
+                return
+            }
+            if (checkUpdatesProc.startObserved)
+                return
+
+            root.count = 0
+            root.available = false
+            console.warn("[Updates] Failed to start checkupdates")
+        }
+
+        onStarted: checkUpdatesProc.startObserved = true
+
         stdout: StdioCollector {
             onStreamFinished: {
                 const t = (text ?? "").trim();
@@ -81,6 +98,7 @@ Singleton {
                 return;
             }
             if (exitCode !== 0) {
+                root.count = 0;
                 console.error("[Updates] checkupdates failed", exitCode, exitStatus)
             }
         }

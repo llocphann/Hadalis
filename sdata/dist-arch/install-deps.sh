@@ -476,8 +476,9 @@ v install-python-packages
 
 #####################################################################################
 # Register dependencies with pacman via meta-package
-# This prevents "clean orphans" from removing iNiR's deps.
-# The meta-package contains no files — only dependency declarations.
+# This prevents "clean orphans" from removing iNiR's installed dependencies.
+# The staged meta-package contains no files — only dependency declarations for
+# packages that are actually present after this install run.
 #####################################################################################
 tui_info "Registering dependencies with pacman..."
 
@@ -493,21 +494,60 @@ if [[ -f "$_meta_dir/PKGBUILD" ]]; then
 
     (
       cd "$_meta_build_dir"
-      # -d: skip dependency checks during build (they're already installed)
-      # -f: force rebuild if .pkg.tar.zst already exists
-      # -C: clean build dir first
+
+      # A user may explicitly disable dependency groups, and optional/AUR
+      # packages may be unavailable. Track only dependencies that pacman says
+      # are installed so the tracker never needs --nodeps and cannot leave the
+      # local package database with intentionally unsatisfied dependencies.
+      if source ./PKGBUILD; then
+        _meta_installed_deps=()
+        for _meta_dep in "${depends[@]}"; do
+          _meta_pkg="${_meta_dep%%[<>=]*}"
+          if pacman -Q "$_meta_pkg" >/dev/null 2>&1; then
+            _meta_installed_deps+=("$_meta_dep")
+          fi
+        done
+
+        if ! python3 - ./PKGBUILD "${_meta_installed_deps[@]}" <<'PY'
+from pathlib import Path
+import shlex
+import sys
+
+path = Path(sys.argv[1])
+deps = sys.argv[2:]
+text = path.read_text()
+start = text.find("depends=(")
+if start < 0:
+    raise SystemExit("dependency tracker PKGBUILD has no depends array")
+body_start = start + len("depends=(")
+end = text.find("\n)\n", body_start)
+if end < 0:
+    raise SystemExit("dependency tracker PKGBUILD has an unterminated depends array")
+replacement = "depends=(\n" + "".join(f"  {shlex.quote(dep)}\n" for dep in deps) + ")"
+path.write_text(text[:start] + replacement + text[end + 2:])
+PY
+        then
+          log_warning "Could not filter meta-package dependencies — orphan protection unavailable"
+          exit 0
+        fi
+
+        log_info "Tracking ${#_meta_installed_deps[@]} installed dependencies with inir-deps"
+      else
+        log_warning "Could not read staged meta-package recipe — orphan protection unavailable"
+        exit 0
+      fi
+
+      # -d: dependency installation was already handled above; package metadata
+      # itself still contains only dependencies that are currently satisfied.
+      # -f: force rebuild if a package archive already exists.
+      # -C: clean build dir first.
       if makepkg -dfC 2>/dev/null; then
-        # Install the meta-package (overwrite if already installed)
         local_pkg=(*.pkg.tar.zst)
         if [[ -f "${local_pkg[0]}" ]]; then
           if pkg_sudo pacman -U --noconfirm --needed "${local_pkg[0]}" 2>/dev/null; then
             log_success "Meta-package inir-deps registered — orphan cleaner will skip iNiR deps"
           else
-            # Some deps might be AUR-only and not satisfy pacman's check.
-            # Fall back to installing without dep verification.
-            pkg_sudo pacman -Udd --noconfirm "${local_pkg[0]}" 2>/dev/null && \
-              log_success "Meta-package inir-deps registered (forced)" || \
-              log_warning "Could not register meta-package — orphan protection unavailable"
+            log_warning "Could not register meta-package — orphan protection unavailable"
           fi
         fi
       else

@@ -56,8 +56,17 @@ Singleton {
         if (syncEnabled) _queueSync()
     }
 
+    Connections {
+        target: Config
+
+        function onReadyChanged(): void {
+            if (Config.ready && root.syncEnabled)
+                root._queueSync()
+        }
+    }
+
     function _queueSync(): void {
-        if (!syncEnabled) return
+        if (!Config.ready || !syncEnabled) return
         _pendingSync = true
         syncDebounce.restart()
     }
@@ -101,7 +110,7 @@ Singleton {
 
     // Initialize on load
     Component.onCompleted: {
-        if (syncEnabled) {
+        if (Config.ready && syncEnabled) {
             // Reconcile persisted desktop settings on every shell start. The old
             // implementation only synced after a value changed, leaving GTK/KDE
             // stale after upgrades, manual edits, or restored configs.

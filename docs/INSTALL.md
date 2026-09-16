@@ -99,6 +99,8 @@ With the default Makefile paths, this installs:
 
 Those system locations can be changed through the Makefile install variables when packaging. The target does **not** install distro dependencies, install ThinkFan/TLP themselves, or enable the iNiR user service for you.
 
+The ThinkFan helper is only the Hadalis control bridge; managed fan control still requires the `thinkfan` executable, a working `thinkfan.service`, and a machine-specific ThinkFan configuration. See [ThinkFan Integration](THINKFAN.md) before enabling managed fan control.
+
 ### 4. Copy the configs
 
 ```bash
@@ -156,3 +158,4 @@ If something's broken, the logs will probably tell you which package is missing.
 - [IPC.md](IPC.md) - Make your own keybindings
 - [SETUP.md](SETUP.md) - Updating, uninstalling, how configs are handled
 - [PACKAGES.md](PACKAGES.md) - Full package list if something's missing
+- [THINKFAN.md](THINKFAN.md) - ThinkFan prerequisites, service ownership, and troubleshooting

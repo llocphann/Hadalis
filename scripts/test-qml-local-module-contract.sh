@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+scan_root="${1:-$repo_root}"
+
+if [[ ! -d "$scan_root" ]]; then
+    printf 'qml local module contract: root not found: %s\n' "$scan_root" >&2
+    exit 2
+fi
+
+python3 - "$scan_root" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+root = Path(sys.argv[1]).resolve()
+skip_parts = {'.git', 'node_modules', '.venv'}
+
+
+def qml_files():
+    for path in sorted(root.rglob('*.qml')):
+        if any(part in skip_parts for part in path.parts):
+            continue
+        yield path
+
+
+def code_only(text: str) -> str:
+    """Remove comments and string contents while preserving line structure."""
+    out = []
+    i = 0
+    state = 'code'
+    quote = ''
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ''
+        if state == 'code':
+            if ch == '/' and nxt == '/':
+                out.extend((' ', ' '))
+                i += 2
+                state = 'line-comment'
+                continue
+            if ch == '/' and nxt == '*':
+                out.extend((' ', ' '))
+                i += 2
+                state = 'block-comment'
+                continue
+            if ch in ('"', "'", '`'):
+                out.append(' ')
+                quote = ch
+                state = 'string'
+                i += 1
+                continue
+            out.append(ch)
+            i += 1
+            continue
+        if state == 'line-comment':
+            if ch == '\n':
+                out.append('\n')
+                state = 'code'
+            else:
+                out.append(' ')
+            i += 1
+            continue
+        if state == 'block-comment':
+            if ch == '*' and nxt == '/':
+                out.extend((' ', ' '))
+                i += 2
+                state = 'code'
+                continue
+            out.append('\n' if ch == '\n' else ' ')
+            i += 1
+            continue
+        if state == 'string':
+            if ch == '\\' and nxt:
+                out.append('\n' if ch == '\n' else ' ')
+                out.append('\n' if nxt == '\n' else ' ')
+                i += 2
+                continue
+            if ch == quote:
+                out.append(' ')
+                i += 1
+                state = 'code'
+                continue
+            out.append('\n' if ch == '\n' else ' ')
+            i += 1
+    return ''.join(out)
+
+
+import_re = re.compile(r'^\s*import\s+(qs(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\b')
+object_use = lambda name: re.compile(rf'\b{re.escape(name)}\s*\{{')
+files = list(qml_files())
+parsed = {}
+errors = []
+
+for path in files:
+    try:
+        code = code_only(path.read_text(encoding='utf-8'))
+    except UnicodeDecodeError as exc:
+        errors.append(f'{path.relative_to(root)}: unreadable QML source: {exc}')
+        continue
+    parsed[path] = code
+    for lineno, line in enumerate(code.splitlines(), 1):
+        match = import_re.match(line)
+        if not match:
+            continue
+        uri = match.group(1)
+        parts = uri.split('.')[1:]
+        if not parts:
+            continue
+        module_dir = root.joinpath(*parts)
+        if not module_dir.is_dir():
+            errors.append(
+                f'{path.relative_to(root)}:{lineno}: local QML import {uri} '
+                f'maps to missing directory {module_dir.relative_to(root)}'
+            )
+
+# Types retired from the source tree must not remain as object usages. If a
+# future implementation is intentionally restored, this guard automatically
+# stops treating the type as retired.
+for type_name in ('MascotImage', 'MascotAnimation', 'CompositorFocusGrab'):
+    implementations = [path for path in files if path.name == f'{type_name}.qml']
+    if implementations:
+        continue
+    pattern = object_use(type_name)
+    for path, code in parsed.items():
+        for lineno, line in enumerate(code.splitlines(), 1):
+            if pattern.search(line):
+                errors.append(
+                    f'{path.relative_to(root)}:{lineno}: {type_name} is used but '
+                    f'{type_name}.qml is absent from the scanned tree'
+                )
+
+# CompositorFocusGrab is a critical exported local type. Consumers outside its
+# own module must import the module that actually exports it; this catches the
+# exact type-resolution failure that can make PerimeterRuntime unavailable.
+focus_impls = [path for path in files if path.name == 'CompositorFocusGrab.qml']
+if len(focus_impls) == 1:
+    impl = focus_impls[0]
+    module_rel = impl.parent.relative_to(root)
+    expected_uri = 'qs' + ('.' + '.'.join(module_rel.parts) if module_rel.parts else '')
+    pattern = object_use('CompositorFocusGrab')
+    for path, code in parsed.items():
+        if path == impl or path.parent == impl.parent or not pattern.search(code):
+            continue
+        imports = {
+            match.group(1)
+            for line in code.splitlines()
+            if (match := import_re.match(line))
+        }
+        if expected_uri not in imports:
+            errors.append(
+                f'{path.relative_to(root)}: CompositorFocusGrab consumer must import '
+                f'{expected_uri} (implementation: {impl.relative_to(root)})'
+            )
+elif len(focus_impls) > 1:
+    errors.append('multiple CompositorFocusGrab.qml implementations make module ownership ambiguous')
+
+if errors:
+    for error in errors:
+        print(f'ERROR: {error}', file=sys.stderr)
+    print(f'qml local module/type contract: {len(errors)} issue(s)', file=sys.stderr)
+    raise SystemExit(1)
+
+print('qml local module/type contract: ok')
+PY

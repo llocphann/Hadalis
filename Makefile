@@ -20,7 +20,7 @@ THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"$(SYSTEMD_USER_DIR)\" LIBEXECDIR=\"$(LIBEXECDIR)\" POLKIT_ACTIONS_DIR=\"$(POLKIT_ACTIONS_DIR)\" TLP_CONFDIR=\"$(TLP_CONFDIR)\" INIR_SYSTEM_SHAREDIR=\"$(INIR_SYSTEM_SHAREDIR)\"
 
-.PHONY: all build test-local test-prefix-install test-package-docs test-package-metadata test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -30,7 +30,7 @@ build:
 	@chmod +x setup
 	@find scripts -type f \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} +
 
-test-local: build test-prefix-install test-package-docs test-package-metadata
+test-local: build test-prefix-install test-package-docs test-package-metadata test-package-hooks
 	@bash scripts/test-local-distribution.sh
 
 test-prefix-install:
@@ -68,6 +68,19 @@ test-package-metadata:
 		esac; \
 		srcinfo_version="$$(sed -n 's/^[[:space:]]*pkgver = //p' distro/arch/inir-shell-git/.SRCINFO | head -1)"; \
 		test "$$srcinfo_version" = "$$git_version"
+
+test-package-hooks:
+	@cmp -s distro/arch/inir-shell/inir-shell.install distro/arch/inir-shell-git/inir-shell-git.install || { \
+		printf 'Arch stable/git install hooks drifted; keep lifecycle cleanup in sync\n' >&2; \
+		exit 1; \
+	}
+	@for hook in distro/arch/inir-shell/inir-shell.install distro/arch/inir-shell-git/inir-shell-git.install; do \
+		grep -Fq 'pre_remove() {' "$$hook"; \
+		grep -Fq '/usr/libexec/inir-battery-charge-limit --config-reset' "$$hook"; \
+		grep -Fq '/usr/libexec/inir-battery-charge-limit --disable' "$$hook"; \
+		grep -Fq '/etc/tlp.d/99-inir-battery-charge-limit.conf' "$$hook"; \
+		grep -Fq '/etc/tlp.d/99-inir-tlp-settings.conf' "$$hook"; \
+	done
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh

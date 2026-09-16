@@ -229,6 +229,9 @@ jobs:
           bash scripts/test-news-service-contract.sh
           bash scripts/test-equalizer-service-contract.sh
 
+      - name: Run perimeter regressions
+        run: make test-perimeter-contracts
+
       - name: Run QML startup guards
         run: fish scripts/qml-check.fish --all
 

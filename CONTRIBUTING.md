@@ -192,6 +192,12 @@ When a persisted config or data format changes between versions:
 
 User-visible strings belong in the translation system. Follow existing keys and use `Translation.tr(...)` in QML where the surrounding code does so. Run the localization audit used by CI after translation changes.
 
+## Releases
+
+Release preparation and publication are maintainer workflows. Follow [docs/RELEASING.md](docs/RELEASING.md) for the version/package files that move together, stable/tag preconditions, validation commands, draft-release staging, Wiki synchronization, and recovery behavior.
+
+Do not publish directly from `dev`, retarget the non-VCS Arch package to a moving branch, or bypass the release helper's preflight checks for routine releases.
+
 ## AI-assisted contributions
 
 AI assistance is acceptable; unverified output is not. Before publishing AI-assisted work:

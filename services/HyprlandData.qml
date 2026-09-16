@@ -22,27 +22,52 @@ Singleton {
     property var monitors: []
     property var layers: ({})
 
+    property bool _clientsRefreshQueued: false
+    property bool _monitorsRefreshQueued: false
+    property bool _layersRefreshQueued: false
+    property bool _workspacesRefreshQueued: false
+
     function updateWindowList() {
         if (!CompositorService.isHyprland)
             return;
+        if (getClients.running) {
+            root._clientsRefreshQueued = true
+            return
+        }
+        root._clientsRefreshQueued = false
         getClients.running = true;
     }
 
     function updateLayers() {
         if (!CompositorService.isHyprland)
             return;
+        if (getLayers.running) {
+            root._layersRefreshQueued = true
+            return
+        }
+        root._layersRefreshQueued = false
         getLayers.running = true;
     }
 
     function updateMonitors() {
         if (!CompositorService.isHyprland)
             return;
+        if (getMonitors.running) {
+            root._monitorsRefreshQueued = true
+            return
+        }
+        root._monitorsRefreshQueued = false
         getMonitors.running = true;
     }
 
     function updateWorkspaces() {
         if (!CompositorService.isHyprland)
             return;
+        if (getWorkspaces.running || getActiveWorkspace.running) {
+            root._workspacesRefreshQueued = true
+            return
+        }
+        root._workspacesRefreshQueued = false
         getWorkspaces.running = true;
         getActiveWorkspace.running = true;
     }
@@ -54,6 +79,35 @@ Singleton {
         updateMonitors();
         updateLayers();
         updateWorkspaces();
+    }
+
+    function _finishClientsRefresh() {
+        if (!root._clientsRefreshQueued)
+            return
+        root._clientsRefreshQueued = false
+        Qt.callLater(() => root.updateWindowList())
+    }
+
+    function _finishMonitorsRefresh() {
+        if (!root._monitorsRefreshQueued)
+            return
+        root._monitorsRefreshQueued = false
+        Qt.callLater(() => root.updateMonitors())
+    }
+
+    function _finishLayersRefresh() {
+        if (!root._layersRefreshQueued)
+            return
+        root._layersRefreshQueued = false
+        Qt.callLater(() => root.updateLayers())
+    }
+
+    function _finishWorkspacesRefresh() {
+        if (getWorkspaces.running || getActiveWorkspace.running
+                || !root._workspacesRefreshQueued)
+            return
+        root._workspacesRefreshQueued = false
+        Qt.callLater(() => root.updateWorkspaces())
     }
 
     function biggestWindowForWorkspace(workspaceId) {
@@ -105,6 +159,7 @@ Singleton {
                 root.addresses = root.windowList.map(win => win.address);
             }
         }
+        onExited: root._finishClientsRefresh()
     }
 
     Process {
@@ -121,6 +176,7 @@ Singleton {
                 }
             }
         }
+        onExited: root._finishMonitorsRefresh()
     }
 
     Process {
@@ -137,6 +193,7 @@ Singleton {
                 }
             }
         }
+        onExited: root._finishLayersRefresh()
     }
 
     Process {
@@ -160,6 +217,7 @@ Singleton {
                 root.workspaceIds = root.workspaces.map(ws => ws.id);
             }
         }
+        onExited: root._finishWorkspacesRefresh()
     }
 
     Process {
@@ -176,5 +234,6 @@ Singleton {
                 }
             }
         }
+        onExited: root._finishWorkspacesRefresh()
     }
 }

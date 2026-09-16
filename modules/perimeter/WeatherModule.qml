@@ -50,17 +50,14 @@ MouseArea {
     function requestExpanded(): void {
         if (!root.presented || !(root.perimeterContext?.valid ?? false))
             return
-        anchorPublisher.publish()
-        const anchor = AnchorRegistry.lookup(root.outputName, root.instanceId, "weather")
-        if (!anchor)
+        if (!anchorPublisher.publish())
             return
         SurfaceRouteController.toggle({
             output: root.outputName,
             family: "perimeter",
             surface: "weather",
             sourceInstance: root.instanceId,
-            slot: root.slotId,
-            anchorRect: anchor.rect
+            slot: root.slotId
         })
     }
 

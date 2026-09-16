@@ -65,15 +65,24 @@ grep -Fq 'root._closePerimeterRoutesForFallback()' "$route_controller" \
 
 # Connected-surface callers must identify themselves as perimeter routes so the
 # controller's cutover/family fail-safe cannot be bypassed by an implicit default
-# route family.
+# route family. Callers publish source identity, but the controller alone owns the
+# authoritative anchor lookup and geometry snapshot used for routing.
 for route_module in "$media_module" "$weather_module"; do
     request_block="$(sed -n '/function requestExpanded(): void {/,/^    }/p' "$route_module")"
     [[ -n "$request_block" ]] \
         || fail "$(basename "$route_module") is missing requestExpanded"
+    grep -Fq 'if (!anchorPublisher.publish())' <<<"$request_block" \
+        || fail "$(basename "$route_module") does not fail closed when anchor publication fails"
     grep -Fq 'SurfaceRouteController.toggle({' <<<"$request_block" \
         || fail "$(basename "$route_module") bypasses connected route controller"
     grep -Fq 'family: "perimeter"' <<<"$request_block" \
         || fail "$(basename "$route_module") can open a route outside perimeter fallback cleanup"
+    if grep -Fq 'AnchorRegistry.lookup(' <<<"$request_block"; then
+        fail "$(basename "$route_module") duplicates controller-owned anchor lookup"
+    fi
+    if grep -Fq 'anchorRect:' <<<"$request_block"; then
+        fail "$(basename "$route_module") passes caller-owned geometry into route ownership"
+    fi
 done
 
 printf 'PASS: perimeter route contracts\n'

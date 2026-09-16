@@ -261,7 +261,14 @@ Singleton {
                 start.setHours(0, 0, 0, 0)
                 const end = event.endDate ? new Date(event.endDate) : new Date(start)
                 end.setHours(0, 0, 0, 0)
-                return targetTime >= start.getTime() && targetTime <= end.getTime()
+                const startTime = start.getTime()
+                const endTime = end.getTime()
+                // RFC 5545 DTEND is exclusive for all-day events. The parser
+                // uses startDate as endDate when DTEND is absent, so preserve
+                // that single-day fallback instead of making it disappear.
+                if (endTime <= startTime)
+                    return targetTime === startTime
+                return targetTime >= startTime && targetTime < endTime
             }
             const evtDate = new Date(event.startDate)
             evtDate.setHours(0, 0, 0, 0)

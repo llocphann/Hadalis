@@ -47,14 +47,19 @@ AbstractQuickPanel {
         var row = [];
         var totalSize = 0; // Total cols taken in current row
         for (var i = 0; i < togglesList.length; i++) {
-            if (!togglesList[i]) continue;
-            if (totalSize + togglesList[i].size > columns) {
+            const toggle = togglesList[i];
+            if (!toggle) continue;
+            const configuredSize = Number(toggle.size ?? 1);
+            const size = Number.isFinite(configuredSize)
+                ? Math.max(1, Math.min(columns, Math.round(configuredSize)))
+                : 1;
+            if (row.length > 0 && totalSize + size > columns) {
                 rows.push(row);
                 row = [];
                 totalSize = 0;
             }
-            row.push(togglesList[i]);
-            totalSize += togglesList[i].size;
+            row.push(Object.assign({}, toggle, { size }));
+            totalSize += size;
         }
         if (row.length > 0) {
             rows.push(row);

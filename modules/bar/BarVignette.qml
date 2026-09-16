@@ -26,8 +26,14 @@ Variants {
         color: "transparent"
 
         readonly property bool vignetteEnabled: Config.options?.bar?.vignette?.enabled ?? false
-        readonly property real vignetteIntensity: Config.options?.bar?.vignette?.intensity ?? 0.6
-        readonly property real vignetteRadius: Config.options?.bar?.vignette?.radius ?? 0.5
+        readonly property real configuredVignetteIntensity: Number(
+            Config.options?.bar?.vignette?.intensity ?? 0.6)
+        readonly property real configuredVignetteRadius: Number(
+            Config.options?.bar?.vignette?.radius ?? 0.5)
+        readonly property real vignetteIntensity: Number.isFinite(configuredVignetteIntensity)
+            ? Math.max(0, Math.min(1, configuredVignetteIntensity)) : 0.6
+        readonly property real vignetteRadius: Number.isFinite(configuredVignetteRadius)
+            ? Math.max(0, Math.min(1, configuredVignetteRadius)) : 0.5
         readonly property bool isBarAtTop: !(Config.options?.bar?.bottom ?? false)
         
         // Vignette height: extends from top/bottom of screen

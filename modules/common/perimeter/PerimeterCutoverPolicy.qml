@@ -38,4 +38,18 @@ QtObject {
     readonly property bool enabled: root.requested
         && root.configurationValid
         && root.sourcesReady
+    readonly property bool fallbackActive: root.requested && !root.enabled
+    readonly property string statusReason: {
+        if (!root.requested)
+            return "disabled"
+        if (!Config.ready)
+            return "config-loading"
+        if (Quickshell.screens.length === 0)
+            return "no-outputs"
+        if (!root.configurationValid)
+            return "invalid-config"
+        if (!root.sourcesReady)
+            return "missing-module-source"
+        return "active"
+    }
 }

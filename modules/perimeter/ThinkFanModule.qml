@@ -11,6 +11,7 @@ Item {
     property var perimeterContext: null
     property var instanceConfig: ({})
 
+    readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
     readonly property string statusText: {
@@ -23,9 +24,11 @@ Item {
         return ThinkFanService.active ? "ON" : "FW"
     }
 
-    implicitWidth: statusLoader.item?.implicitWidth ?? 0
-    implicitHeight: statusLoader.item?.implicitHeight ?? 0
-    activeFocusOnTab: true
+    implicitWidth: root.presented ? (statusLoader.item?.implicitWidth ?? 0) : 0
+    implicitHeight: root.presented ? (statusLoader.item?.implicitHeight ?? 0) : 0
+    visible: root.presented
+    enabled: root.presented
+    activeFocusOnTab: root.presented
 
     Accessible.role: Accessible.Button
     Accessible.name: Translation.tr("ThinkFan")

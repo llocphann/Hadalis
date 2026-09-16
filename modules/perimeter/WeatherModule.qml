@@ -12,23 +12,26 @@ MouseArea {
     property var perimeterContext: null
     property var instanceConfig: ({})
 
+    readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
     readonly property string outputName: root.perimeterContext?.outputName ?? ""
     readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
     readonly property string slotId: root.perimeterContext?.slotId ?? ""
 
-    implicitWidth: root.vertical
+    implicitWidth: !root.presented ? 0 : root.vertical
         ? Math.max(content.implicitWidth, Appearance.sizes.barHeight)
         : content.implicitWidth + 12
-    implicitHeight: root.vertical
+    implicitHeight: !root.presented ? 0 : root.vertical
         ? content.implicitHeight + 12
         : Appearance.sizes.barHeight
+    visible: root.presented
+    enabled: root.presented
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton
-    activeFocusOnTab: true
+    activeFocusOnTab: root.presented
 
     Accessible.role: Accessible.Button
     Accessible.name: Translation.tr("Weather")
@@ -45,7 +48,7 @@ MouseArea {
     }
 
     function requestExpanded(): void {
-        if (!(root.perimeterContext?.valid ?? false))
+        if (!root.presented || !(root.perimeterContext?.valid ?? false))
             return
         anchorPublisher.publish()
         const anchor = AnchorRegistry.lookup(root.outputName, root.instanceId, "weather")
@@ -62,6 +65,8 @@ MouseArea {
     }
 
     onClicked: mouse => {
+        if (!root.presented)
+            return
         if (mouse.button === Qt.RightButton) {
             Weather.forceRefresh()
             return

@@ -14,6 +14,7 @@ MouseArea {
     property var perimeterContext: null
     property var instanceConfig: ({})
 
+    readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
@@ -23,19 +24,19 @@ MouseArea {
     readonly property string cleanedTitle:
         StringUtils.cleanMusicTitle(root.activePlayer?.trackTitle) || Translation.tr("No media")
 
-    implicitWidth: root.vertical
+    implicitWidth: !root.presented ? 0 : root.vertical
         ? Appearance.sizes.barHeight
         : Math.min(220 * Appearance.fontSizeScale,
             mediaRow.implicitWidth + 12)
-    implicitHeight: root.vertical
-        ? Appearance.sizes.barHeight
-        : Appearance.sizes.barHeight
+    implicitHeight: root.presented ? Appearance.sizes.barHeight : 0
+    visible: root.presented
+    enabled: root.presented
     clip: true
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton
-    activeFocusOnTab: true
+    activeFocusOnTab: root.presented
 
     Accessible.role: Accessible.Button
     Accessible.name: Translation.tr("Media")
@@ -52,7 +53,7 @@ MouseArea {
     }
 
     function requestExpanded(): void {
-        if (!(root.perimeterContext?.valid ?? false))
+        if (!root.presented || !(root.perimeterContext?.valid ?? false))
             return
         anchorPublisher.publish()
         const anchor = AnchorRegistry.lookup(root.outputName, root.instanceId, "media")

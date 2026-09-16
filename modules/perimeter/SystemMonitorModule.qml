@@ -8,11 +8,14 @@ Item {
     property var perimeterContext: null
     property var instanceConfig: ({})
 
+    readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
 
-    implicitWidth: monitorLoader.item?.implicitWidth ?? 0
-    implicitHeight: monitorLoader.item?.implicitHeight ?? 0
+    implicitWidth: root.presented ? (monitorLoader.item?.implicitWidth ?? 0) : 0
+    implicitHeight: root.presented ? (monitorLoader.item?.implicitHeight ?? 0) : 0
+    visible: root.presented
+    enabled: root.presented
 
     Component.onCompleted: ResourceUsage.keepAlive()
     Component.onDestruction: ResourceUsage.releaseKeepAlive()

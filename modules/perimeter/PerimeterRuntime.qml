@@ -29,14 +29,114 @@ Scope {
             console.warn("[Perimeter] Failed to register runtime module sources")
     }
 
-    Component.onCompleted: root.ensureFeatureRegistry()
-    onActiveChanged: root.ensureFeatureRegistry()
+    function outputHasModule(outputName: string, moduleId: string): bool {
+        const name = String(outputName ?? "")
+        const module = String(moduleId ?? "")
+        if (!name || !module || !PerimeterConfig.validate(name))
+            return false
+        for (const slotId of PerimeterTopology.slotIds) {
+            for (const instanceId of PerimeterConfig.slotInstanceIds(name, slotId)) {
+                const descriptor = PerimeterConfig.instanceDescriptor(name, instanceId)
+                if (String(descriptor?.moduleId ?? "") === module)
+                    return true
+            }
+        }
+        return false
+    }
+
+    function outputsWithModule(moduleId: string): var {
+        return Quickshell.screens
+            .map(screen => String(screen?.name ?? ""))
+            .filter(name => name.length > 0 && root.outputHasModule(name, moduleId))
+    }
+
+    function syncSidebarRoute(featureRole: bool): void {
+        const open = featureRole
+            ? GlobalStates.sidebarLeftOpen : GlobalStates.sidebarRightOpen
+        if (!open)
+            return
+
+        const moduleId = featureRole ? "left-sidebar" : "right-sidebar"
+        const eligible = root.outputsWithModule(moduleId)
+        if (eligible.length === 0) {
+            if (featureRole)
+                GlobalStates.closeSidebarLeft()
+            else
+                GlobalStates.closeSidebarRight()
+            return
+        }
+
+        const currentOutput = featureRole
+            ? GlobalStates.sidebarLeftPresentationOutput
+            : GlobalStates.sidebarRightPresentationOutput
+        if (eligible.includes(currentOutput))
+            return
+
+        const resolved = GlobalStates.resolveOutputName("", eligible)
+        if (!resolved) {
+            if (featureRole)
+                GlobalStates.closeSidebarLeft()
+            else
+                GlobalStates.closeSidebarRight()
+            return
+        }
+
+        if (featureRole)
+            GlobalStates.openSidebarLeft(resolved)
+        else
+            GlobalStates.openSidebarRight(resolved)
+    }
+
+    function syncSidebarRoutes(): void {
+        if (!root.active)
+            return
+        root.syncSidebarRoute(true)
+        root.syncSidebarRoute(false)
+    }
+
+    Component.onCompleted: {
+        root.ensureFeatureRegistry()
+        Qt.callLater(root.syncSidebarRoutes)
+    }
+    onActiveChanged: {
+        root.ensureFeatureRegistry()
+        if (root.active)
+            Qt.callLater(root.syncSidebarRoutes)
+    }
 
     Connections {
         target: ModuleRegistry
         function onModuleUnregistered(moduleId: string): void {
             if (root.active)
                 Qt.callLater(root.ensureFeatureRegistry)
+        }
+    }
+
+    Connections {
+        target: Config
+        function onRevisionChanged(): void {
+            if (root.active)
+                Qt.callLater(root.syncSidebarRoutes)
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSidebarLeftOpenChanged(): void {
+            if (GlobalStates.sidebarLeftOpen)
+                Qt.callLater(() => root.syncSidebarRoute(true))
+        }
+        function onSidebarRightOpenChanged(): void {
+            if (GlobalStates.sidebarRightOpen)
+                Qt.callLater(() => root.syncSidebarRoute(false))
+        }
+        function onSidebarLeftPresentationOutputChanged(): void {
+            if (GlobalStates.sidebarLeftOpen)
+                Qt.callLater(() => root.syncSidebarRoute(true))
+        }
+        function onSidebarRightPresentationOutputChanged(): void {
+            if (GlobalStates.sidebarRightOpen)
+                Qt.callLater(() => root.syncSidebarRoute(false))
         }
     }
 

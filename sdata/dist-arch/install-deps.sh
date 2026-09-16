@@ -169,11 +169,12 @@ install_pkgbuild_deps() {
   }
 }
 
-# Install from each PKGBUILD
+# Install dependency groups. inir-deps is the aggregate tracker built only after
+# dependency resolution; running it here would defeat --no-* group choices.
 for pkgdir in ./sdata/dist-arch/inir-*/; do
-  # Check group flags
   pkgname=$(basename "$pkgdir")
   case "$pkgname" in
+    inir-deps) continue ;;
     inir-audio) $INSTALL_AUDIO || continue ;;
     inir-toolkit) $INSTALL_TOOLKIT || continue ;;
     inir-screencapture) $INSTALL_SCREENCAPTURE || continue ;;

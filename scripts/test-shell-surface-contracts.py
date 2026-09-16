@@ -44,6 +44,11 @@ def main() -> None:
           "Connected bar popups must use the owning bar surface family, not the detached popup-card material")
     check("active: root.requestedVisible || root._lingerVisible" in styled_popup,
           "Connected popout loader must stay resident long enough to retract into the bar")
+    check("cornerStyle" not in styled_popup,
+          "Connected bar popouts must not branch on retired Classic Bar corner styles")
+    check("Appearance.zzz.chromeAlt" not in styled_popup
+          and "Appearance.regalia.barSurfaceFloating" not in styled_popup,
+          "Connected bar popouts must use the Hug surface family only")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
     for edge in ("top", "bottom", "left", "right"):
@@ -117,6 +122,16 @@ def main() -> None:
     check("active: root.trayOverflowOpen" not in tray,
           "Tray overflow must not bypass the retract lifecycle by overriding LazyLoader.active")
 
+    bar_settings = read("modules/settings/BarConfigHugOnly.qml")
+    quick_settings = read("modules/settings/QuickConfigHugOnly.qml")
+    check('Translation.tr("Corner style")' in bar_settings
+          and 'Translation.tr("Float shadow")' in bar_settings,
+          "Public Bar settings must suppress retired corner-style and float-shadow controls")
+    check('Translation.tr("Bar style")' in quick_settings,
+          "Quick settings must suppress the retired Bar style selector")
+    check("_hugUiReady" in bar_settings and "_hugUiReady" in quick_settings,
+          "Hug-only settings facades must prune retired controls before first paint")
+
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()
     for legacy_style in ('value: "pill"', 'value: "macos"', 'value: "island"', 'value: "m3"'):
@@ -132,6 +147,14 @@ def main() -> None:
           "Legacy Dock styles must normalize to Panel")
     check('Config.setNestedValue("language.ui", "en_US")' in settings_registry,
           "Legacy UI locales must normalize to canonical en_US")
+    check('Config.setNestedValue("bar.cornerStyle", 0)' in settings_registry,
+          "Legacy Classic Bar corner styles must normalize to Hug")
+    check('component: "modules/settings/BarConfigHugOnly.qml"' in settings_registry,
+          "Public Bar settings must route through the Hug-only facade")
+    check('component: "modules/settings/QuickConfigHugOnly.qml"' in settings_registry,
+          "Public Quick settings must route through the Hug-only facade")
+    check('entry.label !== Translation.tr("Corner style")' in settings_registry,
+          "Settings search must not expose the retired Bar corner-style selector")
 
     shell = read("shell.qml")
     check("DevNavigation.registerSettingsPages(SettingsPageRegistry.pages)" in shell,

@@ -17,6 +17,7 @@ robust="$repo_root/sdata/lib/robust-update.sh"
 snapshots="$repo_root/sdata/lib/snapshots.sh"
 payload_tool="$repo_root/sdata/lib/runtime-payload.py"
 updates_service="$repo_root/services/Updates.qml"
+release_script="$repo_root/scripts/release.sh"
 nix_package="$repo_root/nix/package.nix"
 arch_package="$repo_root/distro/arch/inir-shell/PKGBUILD"
 arch_package_srcinfo="$repo_root/distro/arch/inir-shell/.SRCINFO"
@@ -26,7 +27,7 @@ arch_meta_package="$repo_root/distro/arch/inir-meta/PKGBUILD"
 arch_meta_srcinfo="$repo_root/distro/arch/inir-meta/.SRCINFO"
 
 for required in \
-    "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" \
+    "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$release_script" \
     "$nix_package" \
     "$arch_package" "$arch_package_srcinfo" \
     "$arch_git_package" "$arch_git_srcinfo" \
@@ -98,6 +99,32 @@ grep -Fq '"packageManager": "nix"' "$nix_package" \
     || fail 'Nix package metadata does not identify Nix ownership'
 grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$nix_package" \
     || fail 'Nix package can shadow its wrapped launcher during migrate'
+
+# Release tooling must be location-independent: callers commonly invoke the
+# script by absolute path from outside the checkout. Also keep publish fail-closed
+# by checking repository/package versions before any tag/checkout publication work.
+release_version="$(tr -d '[:space:]' < "$repo_root/VERSION")"
+release_notes="$tmp/release-notes.md"
+(
+    cd "$tmp"
+    bash "$release_script" notes "$release_version" "$release_notes"
+)
+grep -Fq 'Update: https://github.com/llocphann/Hadalis/blob/stable/docs/SETUP.md#update' "$release_notes" \
+    || fail 'release notes generation lost the update documentation link'
+grep -Fq 'Fresh install: https://github.com/llocphann/Hadalis/blob/stable/docs/INSTALL.md' "$release_notes" \
+    || fail 'release notes generation lost the install documentation link'
+python3 - "$release_script" <<'PY'
+from pathlib import Path
+import sys
+
+text = Path(sys.argv[1]).read_text()
+publish = text.split('publish_release() {', 1)[1].split('\n}\n\nmain() {', 1)[0]
+preflight = publish.find('require_release_version_consistency "$version"')
+tag_check = publish.find('git rev-parse --verify "$tag"')
+checkout = publish.find('require_release_checkout "$tag"')
+if preflight < 0 or tag_check < 0 or checkout < 0 or not (preflight < tag_check < checkout):
+    raise SystemExit('release publish must run version preflight before tag/checkout validation')
+PY
 
 # Inspect the exact already-up-to-date and completion ordering rather than just
 # grepping for functions that may occur in unrelated commands.

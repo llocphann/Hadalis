@@ -66,7 +66,7 @@ python3 translations/tools/apply-reviewed-replacements.py \
   translations/l10n/tr_TR-placeholder-repairs.json
 ```
 
-The replacement tool preserves unrelated translations and rejects missing keys, changed reviewed source values, partially applied manifests, or replacements that violate the canonical placeholder/markup contract. A manifest is not permission to prune historical translations or bulk-rewrite a locale.
+The exact-repair helper is byte-preserving outside the reviewed value literals: it does not reformat or reorder the catalog, normalize line endings, or replace the same text under unrelated keys. `--check` validates the same exact serialized key/value literals that apply will edit, so it fails before writing if the raw catalog representation has drifted. The tool also rejects missing keys, changed reviewed source values, partially applied manifests, or replacements that violate the canonical placeholder/markup contract. A manifest is not permission to prune historical translations or bulk-rewrite a locale.
 
 After an exact repair, confirm the manifest reports `applied`, then rerun both catalog and source-boundary checks:
 

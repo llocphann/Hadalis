@@ -15,8 +15,9 @@ home="nix/home-module.nix"
 package="nix/package.nix"
 switchwall="scripts/colors/switchwall.sh"
 color_generator="scripts/colors/generate_colors_material.py"
+zed_module="scripts/colors/modules/31-zed.sh"
 
-for file in "$common" "$nixos" "$home" "$package" "$switchwall" "$color_generator"; do
+for file in "$common" "$nixos" "$home" "$package" "$switchwall" "$color_generator" "$zed_module"; do
   [[ -f "$file" ]] || fail "missing Nix/runtime contract file: $file"
 done
 
@@ -50,6 +51,14 @@ for python_package in materialyoucolor numpy pillow; do
   grep -Eq "^[[:space:]]+${python_package}$" "$package" \
     || fail "Nix runtime Python environment is missing ${python_package}"
 done
+
+bash -n "$zed_module" || fail 'Zed theming module has invalid Bash syntax'
+grep -Fq 'python_cmd="$(venv_python)"' "$zed_module" \
+  || fail 'packaged Zed theming no longer resolves the managed/package Python runtime'
+grep -Fq '"$python_cmd" "$SCRIPT_DIR/generate_terminal_configs.py"' "$zed_module" \
+  || fail 'packaged Zed theming no longer falls back to the shipped Python generator'
+grep -Fq -- '--zed >> "$ZED_THEMEGEN_LOG" 2>&1' "$zed_module" \
+  || fail 'packaged Zed Python fallback no longer requests Zed theme generation'
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - NixOS, Home Manager, and packaged runtime contracts are coherent'

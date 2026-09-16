@@ -17,10 +17,12 @@ Singleton {
     readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27]
     readonly property int retiredTlpPageIndex: 28
     readonly property int systemPageIndex: 1
+    readonly property int barPageIndex: 2
     readonly property int panelsPageIndex: 5
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
+    property bool _legacyBarCornerStyleMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
@@ -31,6 +33,14 @@ Singleton {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
             return Object.assign({}, panelsPage, {
                 devNavigationHidden: true
+            })
+        }
+        if (index === root.barPageIndex) {
+            return Object.assign({}, page, {
+                // BarConfig.qml remains the compatibility implementation so old
+                // configs can still be parsed; the public page removes retired
+                // Float/Rectangle/Card controls and exposes Hug only.
+                component: "modules/settings/BarConfigHugOnly.qml"
             })
         }
         if (index !== root.retiredTlpPageIndex)
@@ -99,6 +109,17 @@ Singleton {
             Config.setNestedValue("language.ui", "en_US")
     }
 
+    function _migrateLegacyBarCornerStyle(): void {
+        if (root._legacyBarCornerStyleMigrationDone || !Config.ready)
+            return
+
+        root._legacyBarCornerStyleMigrationDone = true
+        // cornerStyle is retained only as a compatibility field for persisted
+        // configs. Hug is the sole supported Classic Bar surface geometry.
+        if ((Config.options?.bar?.cornerStyle ?? 0) !== 0)
+            Config.setNestedValue("bar.cornerStyle", 0)
+    }
+
     function consumeLegacyTlpPowerRedirect(): bool {
         if (!root._legacyTlpPowerRedirectPending)
             return false
@@ -114,6 +135,8 @@ Singleton {
     function searchIndex(): var {
         return SettingsPageRegistryData.searchIndex()
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
+            .filter(entry => entry.pageIndex !== root.barPageIndex
+                || entry.label !== Translation.tr("Corner style"))
             .map(entry => {
                 if (entry.pageIndex !== root.retiredTlpPageIndex)
                     return entry
@@ -140,6 +163,7 @@ Singleton {
         root._migrateLegacyPersistentPage()
         root._migrateLegacyDockStyle()
         root._migrateLegacyUiLocale()
+        root._migrateLegacyBarCornerStyle()
     }
 
     Connections {
@@ -156,6 +180,7 @@ Singleton {
             if (Config.ready) {
                 root._migrateLegacyDockStyle()
                 root._migrateLegacyUiLocale()
+                root._migrateLegacyBarCornerStyle()
             }
         }
     }

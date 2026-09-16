@@ -261,7 +261,7 @@ for _qs_pkg in "${_qs_shell_conflicts[@]}"; do
 done
 
 # After removing a shell that provides quickshell (e.g. noctalia-qs), the
-# quickshell slot is empty.  Sync the package db so pacman can install the
+# quickshell slot is empty. Sync the package db so pacman can install the
 # upstream quickshell cleanly.
 if $_qs_shell_found; then
   pkg_sudo pacman -Sy 2>/dev/null || true
@@ -483,44 +483,51 @@ tui_info "Registering dependencies with pacman..."
 
 _meta_dir="./sdata/dist-arch/inir-deps"
 if [[ -f "$_meta_dir/PKGBUILD" ]]; then
-  # Update pkgver from VERSION file
   _inir_ver="$(cat ./VERSION 2>/dev/null || echo '2.29.3')"
-  sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_dir/PKGBUILD"
+  _meta_build_dir="$(mktemp -d)"
 
-  (
-    cd "$_meta_dir"
-    # -d: skip dependency checks during build (they're already installed)
-    # -f: force rebuild if .pkg.tar.zst already exists
-    # -C: clean build dir first
-    if makepkg -dfC 2>/dev/null; then
-      # Install the meta-package (overwrite if already installed)
-      local_pkg=(*.pkg.tar.zst)
-      if [[ -f "${local_pkg[0]}" ]]; then
-        if pkg_sudo pacman -U --noconfirm --needed "${local_pkg[0]}" 2>/dev/null; then
-          log_success "Meta-package inir-deps registered — orphan cleaner will skip iNiR deps"
-        else
-          # Some deps might be AUR-only and not satisfy pacman's check.
-          # Fall back to installing without dep verification.
-          pkg_sudo pacman -Udd --noconfirm "${local_pkg[0]}" 2>/dev/null && \
-            log_success "Meta-package inir-deps registered (forced)" || \
-            log_warning "Could not register meta-package — orphan protection unavailable"
+  # Build from a staged recipe so setup never rewrites a tracked PKGBUILD just
+  # to inject the current VERSION into the dependency-tracker package.
+  if cp -- "$_meta_dir/PKGBUILD" "$_meta_build_dir/PKGBUILD"; then
+    sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_build_dir/PKGBUILD"
+
+    (
+      cd "$_meta_build_dir"
+      # -d: skip dependency checks during build (they're already installed)
+      # -f: force rebuild if .pkg.tar.zst already exists
+      # -C: clean build dir first
+      if makepkg -dfC 2>/dev/null; then
+        # Install the meta-package (overwrite if already installed)
+        local_pkg=(*.pkg.tar.zst)
+        if [[ -f "${local_pkg[0]}" ]]; then
+          if pkg_sudo pacman -U --noconfirm --needed "${local_pkg[0]}" 2>/dev/null; then
+            log_success "Meta-package inir-deps registered — orphan cleaner will skip iNiR deps"
+          else
+            # Some deps might be AUR-only and not satisfy pacman's check.
+            # Fall back to installing without dep verification.
+            pkg_sudo pacman -Udd --noconfirm "${local_pkg[0]}" 2>/dev/null && \
+              log_success "Meta-package inir-deps registered (forced)" || \
+              log_warning "Could not register meta-package — orphan protection unavailable"
+          fi
         fi
-        rm -f "${local_pkg[@]}" 2>/dev/null
+      else
+        log_warning "Could not build meta-package — orphan protection unavailable"
       fi
-    else
-      log_warning "Could not build meta-package — orphan protection unavailable"
-    fi
-  )
+    )
+  else
+    log_warning "Could not stage meta-package recipe — orphan protection unavailable"
+  fi
+
+  rm -rf -- "$_meta_build_dir"
 else
   log_warning "Meta-package PKGBUILD not found at $_meta_dir"
 fi
-unset _meta_dir _inir_ver
+unset _meta_dir _meta_build_dir _inir_ver
 
 #####################################################################################
 # Post-install: Check for Qt/Quickshell ABI mismatch
 # pacman -Syu may update Qt while quickshell-git/quickshell-bin (AUR) was built
 # against the old Qt. Quickshell uses Qt private APIs, so minor bumps break ABI.
-# See: https://github.com/snowarch/iNiR/issues/93
 #####################################################################################
 if command -v qs >/dev/null 2>&1; then
   qs_abi_output="$(timeout 5 env QT_QPA_PLATFORM=offscreen qs --version 2>&1 || true)"

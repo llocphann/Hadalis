@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 github_repo="llocphann/Hadalis"
+wiki_url="https://github.com/llocphann/Hadalis.wiki.git"
 
 usage() {
   cat <<'EOF'
@@ -106,7 +107,7 @@ require_release_checkout() {
 }
 
 require_release_host_features() {
-  local wiki_enabled
+  local wiki_enabled wiki_head git_name git_email
 
   command -v gh >/dev/null 2>&1 \
     || die "GitHub CLI (gh) is required for release publication"
@@ -114,6 +115,16 @@ require_release_host_features() {
     || die "could not verify GitHub Wiki availability for $github_repo"
   [[ "$wiki_enabled" == "true" ]] \
     || die "GitHub Wiki is disabled for $github_repo; enable it before publishing so repository docs can be synchronized"
+
+  wiki_head="$(GIT_TERMINAL_PROMPT=0 git ls-remote "$wiki_url" HEAD 2>/dev/null)" \
+    || die "GitHub Wiki repository is not accessible; initialize the Wiki and verify Git credentials before publishing"
+  [[ -n "$wiki_head" ]] \
+    || die "GitHub Wiki repository is not initialized; create its first page before publishing"
+
+  git_name="$(git -C "$repo_root" config user.name || true)"
+  git_email="$(git -C "$repo_root" config user.email || true)"
+  [[ -n "$git_name" && -n "$git_email" ]] \
+    || die "git user.name and user.email must be configured before Wiki synchronization"
 }
 
 require_release_contracts() {

@@ -121,6 +121,7 @@ Singleton {
         id: translationScanner
         required property string translationsDir
         property var fallbackLanguages: ["en_US"]
+        property bool startObserved: false
         signal languagesScanned(var languages)
 
         command: ["/usr/bin/find", translationScanner.translationsDir, "-maxdepth", "1", "-type", "f", "-name", "*.json", "-exec", "/usr/bin/basename", "{}", ".json", ";"]
@@ -136,6 +137,19 @@ Singleton {
                 translationScanner.languagesScanned(files);
             }
         }
+
+        onRunningChanged: {
+            if (translationScanner.running) {
+                translationScanner.startObserved = false;
+                return;
+            }
+            if (translationScanner.startObserved)
+                return;
+
+            translationScanner.languagesScanned([...translationScanner.fallbackLanguages]);
+        }
+
+        onStarted: translationScanner.startObserved = true
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {

@@ -11,14 +11,30 @@ Item {
     readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
+    property bool _resourceUsageHeld: false
 
     implicitWidth: root.presented ? (monitorLoader.item?.implicitWidth ?? 0) : 0
     implicitHeight: root.presented ? (monitorLoader.item?.implicitHeight ?? 0) : 0
     visible: root.presented
     enabled: root.presented
 
-    Component.onCompleted: ResourceUsage.keepAlive()
-    Component.onDestruction: ResourceUsage.releaseKeepAlive()
+    function syncResourceUsageLifecycle(): void {
+        if (root.presented === root._resourceUsageHeld)
+            return
+        if (root.presented)
+            ResourceUsage.keepAlive()
+        else
+            ResourceUsage.releaseKeepAlive()
+        root._resourceUsageHeld = root.presented
+    }
+
+    Component.onCompleted: root.syncResourceUsageLifecycle()
+    onPresentedChanged: root.syncResourceUsageLifecycle()
+    Component.onDestruction: {
+        if (root._resourceUsageHeld)
+            ResourceUsage.releaseKeepAlive()
+        root._resourceUsageHeld = false
+    }
 
     Loader {
         id: monitorLoader

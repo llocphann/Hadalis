@@ -87,6 +87,7 @@ Singleton {
     }
 
     function _notifyUser(): void {
+        if (!root.enabled) { _log("threshold hit, monitoring disabled"); return }
         if (!root.notifyEnabled) { _log("threshold hit, notification disabled"); return }
         if (root.notificationShown || root.userDismissed) return
         
@@ -110,6 +111,11 @@ Singleton {
         repeat: true
         running: root.enabled
         onTriggered: root._checkMemoryPressure()
+    }
+
+    onEnabledChanged: {
+        if (root.enabled)
+            Qt.callLater(() => root._checkMemoryPressure())
     }
 
     // ── Maps reader ───────────────────────────────────────────────────────

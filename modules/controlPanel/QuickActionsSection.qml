@@ -37,24 +37,28 @@ PanelSurface {
         // Row 1: Audio
         ActionTile {
             icon: Audio.sink?.audio?.muted ? "volume_off" : "volume_up"
+            accessibleName: Audio.sink?.audio?.muted ? Translation.tr("Unmute audio") : Translation.tr("Mute audio")
             active: !(Audio.sink?.audio?.muted ?? false)
             onClicked: Audio.toggleMute()
         }
 
         ActionTile {
             icon: Audio.micMuted ? "mic_off" : "mic"
+            accessibleName: Audio.micMuted ? Translation.tr("Unmute microphone") : Translation.tr("Mute microphone")
             active: !Audio.micMuted
             onClicked: Audio.toggleMicMute()
         }
 
         ActionTile {
             icon: "notifications"
+            accessibleName: Notifications.silent ? Translation.tr("Unmute notifications") : Translation.tr("Mute notifications")
             active: !Notifications.silent
             onClicked: Notifications.silent = !Notifications.silent
         }
 
         ActionTile {
             icon: "dark_mode"
+            accessibleName: Appearance.m3colors.darkmode ? Translation.tr("Switch to light mode") : Translation.tr("Switch to dark mode")
             active: Appearance.m3colors.darkmode
             onClicked: Appearance.toggleDarkMode()
         }
@@ -62,6 +66,7 @@ PanelSurface {
         // Row 2: Connectivity & System
         ActionTile {
             icon: Network.wifiEnabled ? "wifi" : "wifi_off"
+            accessibleName: Network.wifiEnabled ? Translation.tr("Disable Wi-Fi") : Translation.tr("Enable Wi-Fi")
             active: Network.wifiEnabled
             onClicked: Network.toggleWifi()
         }
@@ -69,18 +74,21 @@ PanelSurface {
         ActionTile {
             visible: BluetoothStatus.available
             icon: BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
+            accessibleName: BluetoothStatus.enabled ? Translation.tr("Disable Bluetooth") : Translation.tr("Enable Bluetooth")
             active: BluetoothStatus.enabled
             onClicked: BluetoothStatus.toggle()
         }
 
         ActionTile {
             icon: "coffee"
+            accessibleName: Idle.inhibit ? Translation.tr("Allow sleep") : Translation.tr("Keep awake")
             active: Idle.inhibit
             onClicked: Idle.toggleInhibit()
         }
 
         ActionTile {
             icon: "sports_esports"
+            accessibleName: GameMode.active ? Translation.tr("Disable game mode") : Translation.tr("Enable game mode")
             active: GameMode.active
             onClicked: GameMode.toggle()
         }
@@ -88,6 +96,7 @@ PanelSurface {
         // Row 3: Tools
         ActionTile {
             icon: "screenshot_monitor"
+            accessibleName: Translation.tr("Take screenshot")
             onClicked: {
                 GlobalStates.controlPanelOpen = false
                 // Resolve action/mode explicitly — a bare regionSelectorOpen=true
@@ -98,6 +107,7 @@ PanelSurface {
 
         ActionTile {
             icon: "settings"
+            accessibleName: Translation.tr("Open settings")
             onClicked: {
                 GlobalStates.controlPanelOpen = false
                 Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "settings"])
@@ -106,6 +116,7 @@ PanelSurface {
 
         ActionTile {
             icon: "lock"
+            accessibleName: Translation.tr("Lock screen")
             onClicked: {
                 GlobalStates.controlPanelOpen = false
                 Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "lock", "activate"])
@@ -114,6 +125,7 @@ PanelSurface {
 
         ActionTile {
             icon: "power_settings_new"
+            accessibleName: Translation.tr("Open power menu")
             iconColor: Appearance.angelEverywhere ? Appearance.colors.colError
                      : root.inirEverywhere ? Appearance.inir.colError
                      : root.auroraEverywhere ? Appearance.colors.colError
@@ -128,6 +140,7 @@ PanelSurface {
     component ActionTile: Rectangle {
         id: tile
         property string icon
+        required property string accessibleName
         property bool active: false
         property color iconColor: active
             ? (root.regaliaEverywhere ? Appearance.regalia.primaryPlateInk
@@ -230,10 +243,37 @@ PanelSurface {
             }
         }
 
+        Rectangle {
+            anchors.fill: parent
+            visible: tileMouseArea.activeFocus
+            color: "transparent"
+            radius: tile.radius
+            border.width: 2
+            border.color: Appearance.zzzEverywhere ? Appearance.zzz.accent
+                : Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                : root.inirEverywhere ? Appearance.inir.colPrimary
+                : Appearance.colors.colPrimary
+            z: 2
+        }
+
         MouseArea {
             id: tileMouseArea
             anchors.fill: parent
             hoverEnabled: true
+            activeFocusOnTab: true
+            Accessible.role: Accessible.Button
+            Accessible.name: tile.accessibleName
+            Accessible.focusable: true
+            Accessible.onPressAction: tile.clicked()
+            Keys.onPressed: event => {
+                if (event.isAutoRepeat
+                        || (event.key !== Qt.Key_Return
+                            && event.key !== Qt.Key_Enter
+                            && event.key !== Qt.Key_Space))
+                    return
+                tile.clicked()
+                event.accepted = true
+            }
             cursorShape: Qt.PointingHandCursor
             onClicked: tile.clicked()
         }

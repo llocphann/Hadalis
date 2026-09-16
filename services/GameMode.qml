@@ -135,6 +135,11 @@ Singleton {
     }
 
     function _saveState() {
+        if (saveProcess.running) {
+            saveProcess.rerunAfterExit = true
+            return
+        }
+        saveProcess.rerunAfterExit = false
         saveProcess.running = true
     }
 
@@ -279,13 +284,20 @@ Singleton {
     // State persistence - write via process
     Process {
         id: saveProcess
+        property bool rerunAfterExit: false
         command: [
             "/usr/bin/bash",
             "-c",
             "mkdir -p ~/.local/state/quickshell/user\n" +
             "echo " + (root._manualActive ? "1" : "0") + " > " + root._stateFile
         ]
-        onExited: root._log("[GameMode] State saved:", root._manualActive)
+        onExited: {
+            root._log("[GameMode] State saved:", root._manualActive)
+            if (saveProcess.rerunAfterExit) {
+                saveProcess.rerunAfterExit = false
+                Qt.callLater(() => root._saveState())
+            }
+        }
     }
 
     // React to window changes

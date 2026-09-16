@@ -50,6 +50,15 @@ Scope {
                 && root.featuresReady
                 && Config.ready
                 && !GlobalStates.screenLocked
+            readonly property string outputName: modelData?.name ?? ""
+            readonly property bool leftSidebarPresented: hostActive
+                && GlobalStates.sidebarLeftOpen
+                && GlobalStates.sidebarLeftPresentationOutput === outputName
+            readonly property bool rightSidebarPresented: hostActive
+                && GlobalStates.sidebarRightOpen
+                && GlobalStates.sidebarRightPresentationOutput === outputName
+            readonly property bool sidebarPresented:
+                leftSidebarPresented || rightSidebarPresented
 
             screen: modelData
             visible: hostActive
@@ -60,7 +69,11 @@ Scope {
 
             WlrLayershell.namespace: "hadalis:perimeter"
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            // Base perimeter chrome must never steal keyboard focus. A presented
+            // sidebar, however, contains text fields and other focusable controls;
+            // allow those controls to request focus only on the owning output.
+            WlrLayershell.keyboardFocus: sidebarPresented
+                ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
             anchors {
                 top: true
@@ -98,7 +111,7 @@ Scope {
             PerimeterOutputHost {
                 id: outputHost
                 anchors.fill: parent
-                outputName: perimeterWindow.modelData?.name ?? ""
+                outputName: perimeterWindow.outputName
                 hostEnabled: perimeterWindow.hostActive
                 slotSpacing: root.slotSpacing
                 topInset: root.topInset

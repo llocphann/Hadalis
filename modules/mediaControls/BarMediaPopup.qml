@@ -181,6 +181,8 @@ Item {
             Rectangle {
                 id: placeholderBackground
                 anchors.centerIn: parent
+                width: Math.min(implicitWidth,
+                    Math.max(0, parent.width - Appearance.sizes.elevationMargin))
                 color: Appearance.zzzEverywhere ? Appearance.zzz.bg0
                     : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
                     : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colLayer1
@@ -194,7 +196,7 @@ Item {
                 border.width: Appearance.zzzEverywhere ? 1 : (Appearance.angelEverywhere ? 0 : ((Appearance.inirEverywhere || Appearance.auroraEverywhere) ? 1 : 0))
                 Behavior on border.width {
                     enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
                 border.color: Appearance.zzzEverywhere ? Appearance.zzz.borderColor
                             : Appearance.angelEverywhere ? "transparent"
@@ -214,8 +216,12 @@ Item {
                 ColumnLayout {
                     id: placeholderLayout
                     anchors.centerIn: parent
+                    width: Math.max(0, parent.width - parent.padding * 2)
 
                     StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
                         text: Translation.tr("No active player")
                         font.pixelSize: Appearance.font.pixelSize.large
                         color: Appearance.zzzEverywhere ? Appearance.zzz.ink
@@ -229,6 +235,9 @@ Item {
                         }
                     }
                     StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
                         color: Appearance.zzzEverywhere ? Appearance.zzz.ghostInk
                             : Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
                             : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colTextSecondary

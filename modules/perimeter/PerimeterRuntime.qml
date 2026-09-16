@@ -63,6 +63,18 @@ Scope {
         if (!open)
             return
 
+        // Global sidebar state can be toggled independently through IPC/keybinds.
+        // Never route or retain a perimeter presentation for a panel the user has
+        // disabled in enabledPanels; doing so can leave an invisible Overlay/focus
+        // surface even though the owning legacy panel is intentionally disabled.
+        if (!PerimeterPresentationPolicy.sidebarSurfaceEnabled(featureRole)) {
+            if (featureRole)
+                GlobalStates.closeSidebarLeft()
+            else
+                GlobalStates.closeSidebarRight()
+            return
+        }
+
         const moduleId = featureRole ? "left-sidebar" : "right-sidebar"
         const eligible = root.outputsWithModule(moduleId)
         if (eligible.length === 0) {
@@ -231,9 +243,11 @@ Scope {
                 && !GlobalStates.screenLocked
             readonly property string outputName: modelData?.name ?? ""
             readonly property bool leftSidebarPresented: hostActive
+                && PerimeterPresentationPolicy.sidebarSurfaceEnabled(true)
                 && GlobalStates.sidebarLeftOpen
                 && GlobalStates.sidebarLeftPresentationOutput === outputName
             readonly property bool rightSidebarPresented: hostActive
+                && PerimeterPresentationPolicy.sidebarSurfaceEnabled(false)
                 && GlobalStates.sidebarRightOpen
                 && GlobalStates.sidebarRightPresentationOutput === outputName
             readonly property bool sidebarPresented:

@@ -105,6 +105,17 @@ require_release_checkout() {
     || die "$tag on origin does not match local tag commit $tag_commit"
 }
 
+require_release_host_features() {
+  local wiki_enabled
+
+  command -v gh >/dev/null 2>&1 \
+    || die "GitHub CLI (gh) is required for release publication"
+  wiki_enabled="$(gh api "repos/$github_repo" --jq '.has_wiki' 2>/dev/null)" \
+    || die "could not verify GitHub Wiki availability for $github_repo"
+  [[ "$wiki_enabled" == "true" ]] \
+    || die "GitHub Wiki is disabled for $github_repo; enable it before publishing so repository docs can be synchronized"
+}
+
 require_release_contracts() {
   local contract
   for contract in \
@@ -197,6 +208,7 @@ publish_release() {
   git -C "$repo_root" rev-parse --verify "$tag" >/dev/null 2>&1 || die "missing local tag $tag"
   require_release_checkout "$tag"
   require_release_source_pin "$tag"
+  require_release_host_features
   require_release_contracts
 
   notes_file="$(mktemp)"

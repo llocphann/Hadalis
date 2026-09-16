@@ -76,6 +76,13 @@ def main() -> None:
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
 
+    mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
+    for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
+        check(token in mask,
+              f"ConnectedSurfaceMask must track the flared connector rather than its full bounding box: {token}")
+    check("item: root.active ? root.connectorItem" not in mask,
+          "ConnectedSurfaceMask must not make the transparent connector bounding box fully interactive")
+
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,
           "Bar Media must not restore detached PopupWindow surfaces")
@@ -85,6 +92,16 @@ def main() -> None:
           "Bar Media must preserve its expanded control content inside the connected surface")
     check("keyboardFocus: true" in media,
           "Expanded Media connected popout must preserve keyboard focus")
+
+    taskbar_preview = read("modules/bar/BarTaskbarPreview.qml")
+    check("StyledPopup {" in taskbar_preview,
+          "Taskbar window previews must use the connected bar popout shell")
+    check("PopupWindow {" not in taskbar_preview,
+          "Taskbar window previews must not restore the detached PopupWindow shell")
+    check("GlassBackground {" not in taskbar_preview,
+          "Taskbar window previews must not draw a second floating card inside the connected shell")
+    check("anchorItem" in taskbar_preview and "previewOpen" in taskbar_preview,
+          "Taskbar preview must preserve real button anchoring and hover lifecycle")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()

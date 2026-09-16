@@ -99,8 +99,8 @@ for install_hook in \
         "$install_hook no longer enables the user service"
     require_contains 'inir service start' "$install_hook" \
         "$install_hook no longer starts the user service"
-    require_contains 'The running QML shell currently stores user config in:' "$install_hook" \
-        "$install_hook no longer explains the live QML config path"
+    require_contains 'Pacman does not modify user home directories. The live QML compatibility path is:' "$install_hook" \
+        "$install_hook no longer explains the live QML config path and ownership boundary"
     require_contains '~/.config/illogical-impulse/config.json' "$install_hook" \
         "$install_hook live QML config path drifted"
     if grep -Fq 'Package-managed installs keep user config in:' "$install_hook"; then

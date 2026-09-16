@@ -171,9 +171,9 @@ class TranslationManager:
                             if is_template and _has_template_interpolation(text):
                                 continue
 
-                            clean_text = _decode_static_literal(text).strip()
-                            if clean_text:
-                                translatable_texts.add(clean_text)
+                            decoded_text = _decode_static_literal(text)
+                            if decoded_text.strip():
+                                translatable_texts.add(decoded_text)
                 except (UnicodeDecodeError, OSError) as exc:
                     print(f"Warning: Cannot read file {file_path}: {exc}")
 

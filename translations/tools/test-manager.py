@@ -68,6 +68,8 @@ Item {
     property string dynamicTemplate: Translation.tr(`Hello ${name}`)
     property string escapedInterpolation: Translation.tr(`Literal \${name}`)
     property string escapedBacktick: Translation.tr(`tick \` mark`)
+    property string paddedQuoted: Translation.tr("  padded quoted  ")
+    property string paddedTemplate: Translation.tr(`  padded template  `)
 }
 ''',
             encoding="utf-8",
@@ -82,13 +84,15 @@ Item {
             "static template",
             "Literal ${name}",
             "tick ` mark",
+            "  padded quoted  ",
+            "  padded template  ",
         }
         if extracted != expected_keys:
             raise AssertionError(
                 f"unexpected extracted keys: {sorted(extracted)!r} != {sorted(expected_keys)!r}"
             )
 
-    print("ok - translation extraction decodes static literals and skips dynamic templates")
+    print("ok - translation extraction preserves static literal semantics")
 
 
 if __name__ == "__main__":

@@ -82,5 +82,36 @@ QML
 bash "$guard" "$case_root" >/dev/null \
     || fail 'guard rejected corrected local module/type fixture'
 
+# Incident class 4: a compatibility type can be intentionally restored, but the
+# existence of MascotImage.qml does not make it globally visible. Consumers must
+# still import the owning local module. This protects the old CloseConfirm class
+# of failure if mascot compatibility is reintroduced on an always-loaded path.
+case_root="$stage/restored-mascot-import"
+mkdir -p "$case_root/modules/common/widgets" "$case_root/modules/panel"
+cat > "$case_root/modules/common/widgets/MascotImage.qml" <<'QML'
+import QtQuick
+Item {}
+QML
+cat > "$case_root/modules/panel/Panel.qml" <<'QML'
+import QtQuick
+Item {
+    MascotImage {}
+}
+QML
+expect_guard_failure "$case_root" \
+    'MascotImage consumer must import qs.modules.common.widgets'
+
+# The owner import resolves the restored compatibility type. Use an alias to
+# prove the guard keys off the imported URI, not one exact import spelling.
+cat > "$case_root/modules/panel/Panel.qml" <<'QML'
+import QtQuick
+import qs.modules.common.widgets as Widgets
+Item {
+    Widgets.MascotImage {}
+}
+QML
+bash "$guard" "$case_root" >/dev/null \
+    || fail 'guard rejected restored MascotImage consumer with owner-module import'
+
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - local QML resolution guard catches missing modules, retired types, and missing critical imports'
+printf '%s\n' 'ok 1 - local QML resolution guard catches missing modules, retired types, and missing owner imports for restored critical types'

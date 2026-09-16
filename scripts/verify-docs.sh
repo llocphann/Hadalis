@@ -41,9 +41,10 @@ while read -r p; do
     || note "docs reference '$p' but no file named '$b' exists"
 done < <(grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' docs/*.md 2>/dev/null | sort -u)
 
-# 4. Relative Markdown links in README/docs must point at repository paths that
-#    exist. Anchors are deliberately ignored here; this guards file moves/typos
-#    without trying to duplicate each Markdown renderer's heading-slug rules.
+# 4. Relative Markdown links in README/docs must resolve to repository content.
+#    GitHub Wiki exports docs/index.md as Home.md and conventionally links pages
+#    without the .md suffix, so validate those intentional forms against their
+#    repository source files instead of treating them as missing literal paths.
 echo "[links] relative Markdown targets"
 if command -v python3 >/dev/null 2>&1; then
   if ! python3 - <<'PY'
@@ -53,10 +54,37 @@ import sys
 from urllib.parse import unquote
 
 root = Path.cwd().resolve()
+docs_root = (root / "docs").resolve()
 documents = [Path("README.md"), *sorted(Path("docs").glob("*.md"))]
 link_re = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 scheme_re = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 errors = []
+
+
+def inside_repo(path: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def candidates_for(document: Path, path_text: str) -> list[Path]:
+    literal = (document.parent / path_text).resolve()
+    candidates = [literal]
+
+    # GitHub Wiki page links omit .md, while repository sources keep it.
+    relative_path = Path(path_text)
+    if not relative_path.suffix:
+        candidates.append(literal.with_suffix(".md"))
+
+    # scripts/wiki-sync.sh exports docs/index.md as Wiki Home.md.
+    if document.parent.resolve() == docs_root and path_text == "Home":
+        candidates.append((docs_root / "index.md").resolve())
+
+    # Preserve order while avoiding duplicate checks.
+    return list(dict.fromkeys(candidates))
+
 
 for document in documents:
     if not document.is_file():
@@ -73,13 +101,12 @@ for document in documents:
         path_text = unquote(destination.split("#", 1)[0])
         if not path_text:
             continue
-        target = (document.parent / path_text).resolve()
-        try:
-            target.relative_to(root)
-        except ValueError:
+
+        candidates = candidates_for(document, path_text)
+        if any(not inside_repo(candidate) for candidate in candidates):
             errors.append(f"{document}: link escapes repository: {destination}")
             continue
-        if not target.exists():
+        if not any(candidate.exists() for candidate in candidates):
             errors.append(f"{document}: missing link target: {destination}")
 
 if errors:

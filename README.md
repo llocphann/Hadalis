@@ -311,54 +311,48 @@ The project is still completing product/namespace cleanup. Runtime, package, and
 
 ---
 
-## Future design direction
+## Future implementation scope
 
-The following items are **planned design direction**, not claims about current Hadalis implementation and not blockers for stabilizing the existing Connected Perimeter release. They should be implemented as Hadalis-native connected surfaces after the relevant runtime/service contracts are ready.
+The current future scope is intentionally narrow. Bluetooth, Dashboard, and other Serpantinum-inspired popup work are **deferred** and are not part of the present plan.
 
-### Serpantinum-inspired connected popups
+### Media equalizer
 
 Reference: `https://github.com/ilyamiro/serpantinum`
 
-Hadalis may use selected **popup/content interaction ideas** from Serpantinum. The Serpantinum bar itself is **not** a target and should not be copied. Any adopted presentation must remain compatible with Hadalis' movable perimeter modules, output-aware anchors, inward-direction rules, route controller, masks, focus semantics, and lifecycle policies.
+The only Serpantinum-derived feature currently planned is the **equalizer section**. It should be integrated directly **below the existing Hadalis Media content** inside the current Connected Media popup rather than replacing or redesigning the Media surface.
 
-Planned areas:
+Target behavior:
 
-- **Bluetooth** — a connected Bluetooth popup inspired by Serpantinum's device presentation and interaction hierarchy. It should expose discovery, paired/connected state, connect/disconnect actions, useful device metadata, and battery/profile information when the backend provides it. The popup must originate from the actual triggering module anchor instead of from a fixed bar position.
-- **Dashboard** — a Hadalis connected dashboard may combine calendar/date/schedule information, weather, and selected glanceable system information in one composition. Serpantinum's current dashboard preset provides a useful layout reference for weather and system-resource cards, while its calendar exists as a separate feature; Hadalis intentionally may combine those ideas rather than reproduce the preset literally.
-- **Media** — evolve the existing Connected Media surface toward a richer presentation inspired by Serpantinum: MPRIS playback, artwork-driven presentation, audio visualization, and an optional equalizer/preset view. Serpantinum's current implementation uses Cava-style visualization and an EasyEffects-backed equalizer helper; Hadalis should audit its own audio/service boundary before selecting an equalizer backend instead of transplanting that implementation directly.
+- preserve Hadalis' existing Media/MPRIS presentation;
+- add an equalizer section below the current media controls/content;
+- use the Serpantinum equalizer interaction model as the reference for multi-band gain controls, presets, apply/save/reset behavior, and useful state feedback;
+- integrate through Hadalis' existing EasyEffects/service boundary where possible instead of introducing a second audio-control stack;
+- keep equalizer runtime/process work inactive when the Media surface is not using it;
+- make absence of EasyEffects or a compatible audio path fail gracefully without breaking Media playback controls.
 
-Visual reference supplied for the Media direction: `https://www.threads.com/@saadkhalidhere/post/Dbrd_L_CBns`.
+Serpantinum currently implements its Media equalizer around EasyEffects and an `equalizer.sh` helper. Hadalis is GPL-3.0 while Serpantinum is AGPL-3.0-or-later, so copying AGPL source directly into the Hadalis codebase should not be the default approach. Prefer an independent Hadalis-native implementation of the same equalizer behavior and layout using Hadalis' existing EasyEffects integration unless the project explicitly decides to accept the licensing consequences of direct source reuse.
 
-The current Serpantinum source contains the corresponding Media/equalizer feature set, but the exact visual revision shown by the external video should be treated as a reference rather than as a guaranteed one-to-one representation of current `master`.
+The Serpantinum bar design, Bluetooth popup, Dashboard, and other Serpantinum UI are **out of scope for now**.
 
-### Breezy Weather-inspired right sidebar
+### Breezy Weather tab for the right sidebar
 
 Reference: `https://github.com/breezy-weather/breezy-weather`
 
-The future right-sidebar Weather experience may use Breezy Weather as a **visualization and information-hierarchy reference**, especially its Material 3 Expressive block model and dense but readable forecast presentation.
+A dedicated **Weather tab** is planned inside the Connected popup/presentation of the **right sidebar**. Breezy Weather should be used more directly than a visual reference where doing so is technically useful and license-compliant, to avoid re-designing already solved weather presentation patterns.
 
-Candidate right-sidebar weather content includes:
+The preferred approach is:
 
-- current conditions and feels-like temperature,
-- compact hourly and daily forecast views,
-- precipitation/next-hour information where supported by the selected data source,
-- severe-weather alerts,
-- wind, humidity, pressure, visibility, and UV,
-- air-quality and pollen information where available,
-- sunrise/sunset and moon information,
-- compact chart views where they remain readable inside the sidebar.
+- reuse portable Breezy Weather logic, data presentation rules, calculations, or assets when they can be cleanly separated and their LGPL-3.0 requirements are preserved;
+- adapt the relevant weather presentation into QML for Hadalis rather than attempting to embed Android UI code;
+- keep Hadalis' existing weather service/data contract as the shell-side source of truth unless a specific Breezy component provides a clear reason to extend it;
+- expose the result as one dedicated tab within the connected right-sidebar popup, not as a separate standalone application window;
+- adapt sizing, typography, spacing, navigation, animation, and information density to the right-sidebar connected-surface constraints.
 
-Hadalis does not need to reproduce Breezy Weather's Android application architecture or its large weather-provider matrix. The target is a Hadalis-native QML sidebar presentation backed by the shell's own weather service/data contracts.
+Useful content for that tab may include current conditions, feels-like temperature, hourly/daily forecasts, precipitation, alerts, wind, humidity, pressure, visibility, UV, air quality/pollen where available, sunrise/sunset, moon information, and compact charts when supported by Hadalis' selected data source.
 
-### Provenance and implementation rules
+Breezy Weather's current UI is implemented in Android/Kotlin/Compose, so its UI source cannot be dropped directly into Hadalis' QML runtime. Direct reuse is therefore most practical for portable logic/assets/data conventions; the visual layer still requires adaptation to QML. Breezy Weather is LGPL-3.0, so any copied or modified code/assets must retain the required provenance, notices, and source obligations.
 
-These references are architectural/visual inspiration, not an instruction to merge source trees.
-
-- Do not copy Serpantinum's bar design.
-- Prefer clean Hadalis-native QML implementations that reproduce desired interaction/design principles through existing Hadalis services.
-- Future popups must use Connected Perimeter anchors/routes rather than introduce new fixed-position popup ownership.
-- Keep backend/service behavior separate from presentation so future designs remain movable and replaceable.
-- Serpantinum is AGPL-3.0-or-later and Breezy Weather is LGPL-3.0; any future direct code or asset reuse must be reviewed for license/attribution implications before it enters Hadalis. Design inspiration alone should not become an accidental source-code transplant.
+No other future feature expansion is planned from these reference projects at this time.
 
 ---
 
@@ -417,7 +411,7 @@ When extending the perimeter:
 - Serpantinum: `https://github.com/ilyamiro/serpantinum`
 - Breezy Weather: `https://github.com/breezy-weather/breezy-weather`
 
-Caelestia is primarily a connected-composition architecture reference. Serpantinum is a future popup/content design reference, explicitly excluding its bar design. Breezy Weather is a future weather visualization/information-hierarchy reference for the right sidebar. None of these references changes Hadalis' ownership of its final topology, visual language, routing, lifecycle, and implementation.
+Caelestia remains the connected-composition architecture reference. Serpantinum is currently referenced only for the Media equalizer behavior/design, not for its bar, Bluetooth, Dashboard, or other popup surfaces. Breezy Weather is the implementation/design reference for a dedicated Weather tab in the connected right sidebar, with reusable pieces adopted only where technically portable and license-compliant. None of these references changes Hadalis' ownership of its final topology, routing, lifecycle, service boundaries, and QML integration.
 
 ### ThinkFan
 

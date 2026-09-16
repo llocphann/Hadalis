@@ -7,15 +7,15 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=2
+pkgrel=3
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
 license=('GPL-3.0-only')
 
-# All dependencies from official Arch repos.
-# Having this package installed tells pacman these are needed,
-# so "clean orphans" won't remove them.
+# Dependency candidates tracked when already installed. setup stages this recipe
+# and filters depends to packages present in pacman's database before building,
+# so optional/AUR packages do not become hard install requirements.
 depends=(
   #--- Quickshell + Qt6 runtime ---
   quickshell
@@ -128,6 +128,7 @@ depends=(
   glib2
   starship
   eza
+  mission-center
 
   #--- Power management ---
   tlp

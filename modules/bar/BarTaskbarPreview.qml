@@ -19,6 +19,13 @@ StyledPopup {
     property Item anchorItem
     property bool previewOpen: false
 
+    // BarTaskbar historically supplied anchor.window to the old PopupWindow.
+    // Keep that grouped property as a no-op compatibility input while placement
+    // now comes exclusively from StyledPopup + the real anchorItem geometry.
+    property QtObject anchor: QtObject {
+        property var window: null
+    }
+
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
 
     hoverTarget: root.anchorItem

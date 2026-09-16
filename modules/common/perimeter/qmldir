@@ -1,6 +1,7 @@
 module qs.modules.common.perimeter
 singleton PerimeterTopology 1.0 PerimeterTopology.qml
 singleton PerimeterConfig 1.0 PerimeterConfig.qml
+singleton PerimeterCutoverPolicy 1.0 PerimeterCutoverPolicy.qml
 singleton ModuleRegistry 1.0 ModuleRegistry.qml
 singleton AnchorRegistry 1.0 AnchorRegistry.qml
 singleton SurfaceRouteController 1.0 SurfaceRouteController.qml

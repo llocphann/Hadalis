@@ -31,9 +31,16 @@ Singleton {
         CompositorService.setSortingConsumer("waffleTaskbar", false)
 
     function togglePin(appId) {
+        const normalized = String(appId ?? "").trim()
+        if (normalized.length === 0)
+            return
+
+        const key = normalized.toLowerCase()
         const pinned = Config.options?.dock?.pinnedApps ?? []
-        const exists = pinned.indexOf(appId) !== -1
-        const next = exists ? pinned.filter(id => id !== appId) : pinned.concat([appId])
+        const exists = pinned.some(id => String(id).toLowerCase() === key)
+        const next = exists
+            ? pinned.filter(id => String(id).toLowerCase() !== key)
+            : pinned.concat([normalized])
         Config.setNestedValue(["dock", "pinnedApps"], next)
     }
 

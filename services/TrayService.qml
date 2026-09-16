@@ -157,7 +157,10 @@ Singleton {
         return item && item.id;
     }
     
-    property var _pinnedItems: Config.options?.tray?.pinnedItems ?? []
+    property var _pinnedItems: {
+        const value = Config.options?.tray?.pinnedItems
+        return Array.isArray(value) ? value : []
+    }
     property list<var> itemsInUserList: SystemTray.items.values.filter(i => (isValidItem(i) && _pinnedItems.includes(i.id)))
     property list<var> itemsNotInUserList: SystemTray.items.values.filter(i => (isValidItem(i) && !_pinnedItems.includes(i.id) && (!smartTray || i.status !== Status.Passive)))
 
@@ -188,17 +191,20 @@ Singleton {
 
     // Pinning
     function pin(itemId) {
-        var pins = Config.options?.tray?.pinnedItems ?? [];
+        if (!itemId) return;
+        const pins = root._pinnedItems.slice();
         if (pins.includes(itemId)) return;
         pins.push(itemId);
         Config.setNestedValue("tray.pinnedItems", pins);
     }
     function unpin(itemId) {
-        var pins = Config.options?.tray?.pinnedItems ?? [];
+        if (!itemId) return;
+        const pins = root._pinnedItems.slice();
         Config.setNestedValue("tray.pinnedItems", pins.filter(id => id !== itemId));
     }
     function togglePin(itemId) {
-        var pins = Config.options?.tray?.pinnedItems ?? [];
+        if (!itemId) return;
+        const pins = root._pinnedItems;
         if (pins.includes(itemId)) {
             unpin(itemId)
         } else {

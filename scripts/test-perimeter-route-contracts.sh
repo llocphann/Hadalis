@@ -4,13 +4,15 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 anchor_publisher="$root/modules/common/perimeter/AnchorPublisher.qml"
 route_controller="$root/modules/common/perimeter/SurfaceRouteController.qml"
+media_module="$root/modules/perimeter/MediaModule.qml"
+weather_module="$root/modules/perimeter/WeatherModule.qml"
 
 fail() {
     printf 'FAIL: perimeter route contract: %s\n' "$1" >&2
     exit 1
 }
 
-for file in "$anchor_publisher" "$route_controller"; do
+for file in "$anchor_publisher" "$route_controller" "$media_module" "$weather_module"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
@@ -45,5 +47,18 @@ grep -Fq 'target: PerimeterCutoverPolicy' "$route_controller" \
     || fail 'route controller does not observe cutover policy changes'
 grep -Fq 'root._closePerimeterRoutesForFallback()' "$route_controller" \
     || fail 'cutover changes do not trigger perimeter route cleanup'
+
+# Connected-surface callers must identify themselves as perimeter routes so the
+# controller's cutover/family fail-safe cannot be bypassed by an implicit default
+# route family.
+for route_module in "$media_module" "$weather_module"; do
+    request_block="$(sed -n '/function requestExpanded(): void {/,/^    }/p' "$route_module")"
+    [[ -n "$request_block" ]] \
+        || fail "$(basename "$route_module") is missing requestExpanded"
+    grep -Fq 'SurfaceRouteController.toggle({' <<<"$request_block" \
+        || fail "$(basename "$route_module") bypasses connected route controller"
+    grep -Fq 'family: "perimeter"' <<<"$request_block" \
+        || fail "$(basename "$route_module") can open a route outside perimeter fallback cleanup"
+done
 
 printf 'PASS: perimeter route contracts\n'

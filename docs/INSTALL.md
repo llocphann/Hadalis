@@ -115,7 +115,17 @@ This gives you:
 - GTK settings
 - Fuzzel config
 
-### 5. Enable the iNiR user service
+### 5. Apply per-user migrations and enable the iNiR user service
+
+Run the required config migrations as the user who will run Hadalis, not through `sudo`:
+
+```bash
+inir migrate
+```
+
+Migration 019 establishes `~/.config/inir` as the canonical config directory while keeping the live QML compatibility path `~/.config/illogical-impulse` linked to it. `sudo make install` deliberately does not mutate user home directories, so this per-user step is separate from the system payload installation.
+
+Then create and enable the manual-install user service state:
 
 ```bash
 inir service install

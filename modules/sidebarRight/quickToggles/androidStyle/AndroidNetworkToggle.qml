@@ -8,7 +8,7 @@ AndroidQuickToggleButton {
     id: root
     
     name: Translation.tr("Internet")
-    statusText: Network.networkName
+    statusText: Network.connectionTooltip()
 
     toggled: Network.wifiEnabled
     buttonIcon: Network.materialSymbol

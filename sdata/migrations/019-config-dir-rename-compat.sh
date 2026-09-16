@@ -39,24 +39,34 @@ migration_apply() {
       mkdir -p "$config_new"
       return 0
     fi
-    rm -f "$config_legacy"
+    printf 'migration %s: refusing to replace legacy symlink %s -> %s; reconcile it manually before rerunning migration\n' \
+      "$MIGRATION_ID" "$config_legacy" "${target:-<unreadable>}" >&2
+    return 1
   fi
 
-  if [[ -d "$config_legacy" && ! -d "$config_new" ]]; then
-    mv "$config_legacy" "$config_new"
-    ln -s "$config_new" "$config_legacy"
+  if [[ -d "$config_legacy" && ! -e "$config_new" ]]; then
+    mv "$config_legacy" "$config_new" || return 1
+    if ! ln -s "$config_new" "$config_legacy"; then
+      mv "$config_new" "$config_legacy" 2>/dev/null || true
+      return 1
+    fi
     return 0
   fi
 
   if [[ -d "$config_legacy" && -d "$config_new" ]]; then
-    cp -an "$config_legacy/." "$config_new/" 2>/dev/null || true
-    rm -rf "$config_legacy"
-    ln -s "$config_new" "$config_legacy"
-    return 0
+    printf 'migration %s: both config directories exist; refusing destructive automatic merge:\n' "$MIGRATION_ID" >&2
+    printf '  canonical: %s\n  legacy: %s\n' "$config_new" "$config_legacy" >&2
+    printf 'reconcile the directories manually, preserving any needed files, then rerun migration\n' >&2
+    return 1
   fi
 
-  mkdir -p "$config_new"
-  if [[ ! -e "$config_legacy" ]]; then
-    ln -s "$config_new" "$config_legacy"
+  if [[ -e "$config_legacy" ]]; then
+    printf 'migration %s: legacy config path is neither the expected directory nor compatibility symlink: %s\n' \
+      "$MIGRATION_ID" "$config_legacy" >&2
+    printf 'preserving it unchanged; reconcile the path manually before rerunning migration\n' >&2
+    return 1
   fi
+
+  mkdir -p "$config_new" || return 1
+  ln -s "$config_new" "$config_legacy"
 }

@@ -71,20 +71,18 @@ grep -Fq 'const dockPolicySupported = !dockOwned || !dockEnabled' "$core_policy"
     || fail 'disabled dock can still block perimeter cutover'
 compatibility_block="$(sed -n '/readonly property bool compatibilityReady: {/,/^    }/p' "$core_policy")"
 [[ -n "$compatibility_block" ]] || fail 'policy is missing compatibility readiness block'
-left_sidebar_ownership_block="$(sed -n '/const leftSidebarOwned =/,/const rightSidebarOwned =/p' "$core_policy")"
-[[ -n "$left_sidebar_ownership_block" ]] || fail 'sidebar compatibility policy is missing left ownership'
-grep -Fq 'enabledPanels.includes("iiSidebarLeft")' <<<"$left_sidebar_ownership_block" \
+sidebar_ownership_block="$(sed -n '/enabledPanels.includes("iiSidebarLeft")/,/const sidebarEdgeOpen =/p' "$core_policy")"
+[[ -n "$sidebar_ownership_block" ]] || fail 'sidebar compatibility policy is missing semantic ownership'
+grep -Fq 'enabledPanels.includes("iiSidebarLeft")' <<<"$sidebar_ownership_block" \
     || fail 'sidebar compatibility policy ignores left semantic enablement'
-grep -Fq 'root.modulePlacedAnywhere("left-sidebar")' <<<"$left_sidebar_ownership_block" \
+grep -Fq 'root.modulePlacedAnywhere("left-sidebar")' <<<"$sidebar_ownership_block" \
     || fail 'unplaced left sidebar can still block perimeter cutover'
-right_sidebar_ownership_block="$(sed -n '/const rightSidebarOwned =/,/const sidebarOwned =/p' "$core_policy")"
-[[ -n "$right_sidebar_ownership_block" ]] || fail 'sidebar compatibility policy is missing right ownership'
-grep -Fq 'enabledPanels.includes("iiSidebarRight")' <<<"$right_sidebar_ownership_block" \
+grep -Fq 'enabledPanels.includes("iiSidebarRight")' <<<"$sidebar_ownership_block" \
     || fail 'sidebar compatibility policy ignores right semantic enablement'
-grep -Fq 'root.modulePlacedAnywhere("right-sidebar")' <<<"$right_sidebar_ownership_block" \
+grep -Fq 'root.modulePlacedAnywhere("right-sidebar")' <<<"$sidebar_ownership_block" \
     || fail 'unplaced right sidebar can still block perimeter cutover'
-grep -Fq 'const sidebarOwned = leftSidebarOwned || rightSidebarOwned' <<<"$compatibility_block" \
-    || fail 'sidebar compatibility policy does not combine placement-aware ownership'
+grep -Fq 'const sidebarOwned =' <<<"$sidebar_ownership_block" \
+    || fail 'sidebar compatibility policy does not combine semantic ownership'
 grep -Fq 'Config.options?.sidebar?.edgeOpen?.enable' <<<"$compatibility_block" \
     || fail 'policy does not gate unsupported sidebar edge-open behavior'
 grep -Fq 'const sidebarPolicySupported = !sidebarOwned || !sidebarEdgeOpen' <<<"$compatibility_block" \

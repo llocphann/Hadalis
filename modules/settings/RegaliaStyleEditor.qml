@@ -78,6 +78,8 @@ ColumnLayout {
             stepSize: sliderRow.stepSize
             value: sliderRow.value
             configuration: StyledSlider.Configuration.S
+            Accessible.name: sliderRow.label
+            Accessible.description: sliderRow.description
             onMoved: Config.setNestedValue(sliderRow.configPath, Math.round(value * 100) / 100)
         }
     }
@@ -170,6 +172,7 @@ ColumnLayout {
                     required property var modelData
                     Layout.fillWidth: true
                     implicitHeight: 42
+                    buttonText: modelData.label
                     buttonRadius: Appearance.regalia.roundSmall
                     colBackground: Appearance.regalia.controlPlate
                     colBackgroundHover: Appearance.regalia.controlPlateHover
@@ -258,6 +261,7 @@ ColumnLayout {
         Layout.alignment: Qt.AlignRight
         implicitWidth: resetRow.implicitWidth + 22
         implicitHeight: 34
+        buttonText: Translation.tr("Reset Regalia defaults")
         buttonRadius: Appearance.regalia.roundSmall
         colBackground: Appearance.regalia.controlPlate
         colBackgroundHover: Appearance.regalia.controlPlateHover

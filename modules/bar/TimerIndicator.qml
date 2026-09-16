@@ -209,6 +209,12 @@ MouseArea {
         }
     }
 
+    KeyboardFocusRing {
+        anchors.fill: pill
+        focusVisible: root.activeFocus
+        radius: pill.radius
+    }
+
     RowLayout {
         id: contentRow
         anchors.centerIn: pill

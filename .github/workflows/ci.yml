@@ -115,6 +115,14 @@ jobs:
           grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell/.SRCINFO
           grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell-git/.SRCINFO
 
+          install_hook=distro/arch/inir-shell-git/inir-shell-git.install
+          grep -Fq 'The running QML shell currently stores user config in:' "$install_hook"
+          grep -Fq '~/.config/illogical-impulse/config.json' "$install_hook"
+          if grep -Fq 'Package-managed installs keep user config in:' "$install_hook"; then
+            echo 'Arch post-install guidance misstates the live QML config path' >&2
+            exit 1
+          fi
+
       - name: Validate release source identity
         run: |
           grep -Fq 'https://github.com/llocphann/Hadalis?tab=readme-ov-file#update' scripts/release.sh

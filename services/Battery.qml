@@ -102,10 +102,13 @@ Singleton {
 
     onIsCriticalAndNotChargingChanged: {
         if (!root.available || !isCriticalAndNotCharging) return;
+        const message = root.allowAutomaticSuspend
+            ? Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(root.suspendThreshold)
+            : Translation.tr("Consider plugging in your device")
         Quickshell.execDetached([
             "/usr/bin/notify-send", 
             Translation.tr("Critically low battery"), 
-            Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(root.suspendThreshold), 
+            message, 
             "-u", "critical",
             "-a", "Shell",
             "--hint=int:transient:1",

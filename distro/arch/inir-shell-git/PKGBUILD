@@ -138,6 +138,7 @@ path = Path(sys.argv[1])
 text = path.read_text()
 
 install_marker = "install_user_service() {\n"
+install_next_marker = "\ncleanup_stale_wants_links() {\n"
 install_guard = """install_user_service() {
     require_command systemctl
     local package_unit="/usr/lib/systemd/user/inir.service"
@@ -170,10 +171,15 @@ install_guard = """install_user_service() {
     systemctl --user daemon-reload
     printf '%s\\n' "$package_unit"
     return 0
+}
 """
 if text.count(install_marker) != 1:
     raise SystemExit("expected exactly one install_user_service definition")
-text = text.replace(install_marker, install_guard, 1)
+install_start = text.index(install_marker)
+install_end = text.find(install_next_marker, install_start)
+if install_end < 0:
+    raise SystemExit("cleanup_stale_wants_links must follow install_user_service")
+text = text[:install_start] + install_guard + text[install_end:]
 
 link_marker = 'ln -sf "$systemd_user_dir/inir.service" "$wants_dir/inir.service"'
 link_value = 'ln -sf "/usr/lib/systemd/user/inir.service" "$wants_dir/inir.service"'
@@ -215,6 +221,7 @@ text = text.replace(
 )
 path.write_text(text)
 PY
+    bash -n "$launcher" || return
     grep -Fq 'local package_unit="/usr/lib/systemd/user/inir.service"' "$launcher" || return
     grep -Fq 'cmp -s "$user_unit" "$package_unit"' "$launcher" || return
     grep -Fq 'ln -sf "$package_unit" "$correct_link"' "$launcher" || return

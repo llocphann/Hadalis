@@ -88,7 +88,7 @@ publish_release() {
 
   gh release view "$tag" >/dev/null 2>&1 && die "GitHub release $tag already exists"
   "$script_dir/wiki-sync.sh" publish "docs: sync wiki for $tag"
-  gh release create "$tag" --title "$tag" --notes-file "$notes_file"
+  gh release create "$tag" --verify-tag --title "$tag" --notes-file "$notes_file"
   rm -f "$notes_file"
 }
 

@@ -218,17 +218,8 @@ jobs:
             grep -Fq "$staged_path" <<< "$install_plan"
           done
 
-      - name: Run updater and TLP regressions
-        run: make test-update-tlp-contracts
-
-      - name: Run deferred service regressions
-        run: make test-news-contract test-equalizer-contracts
-
-      - name: Run perimeter regressions
-        run: make test-perimeter-contracts
+      - name: Run canonical local regression suite
+        run: make test-local
 
       - name: Run QML startup guards
         run: fish scripts/qml-check.fish --all
-
-      - name: Run aggregate static suite
-        run: bash scripts/test-local-distribution.sh

@@ -22,6 +22,7 @@ Button {
     property var downAction // When left clicking (down)
     property var releaseAction // When left clicking (release)
     property var altAction // When right clicking
+    property bool altActionEnabled: true
     property var middleClickAction // When middle clicking
     property bool bounce: !Appearance.regaliaEverywhere
     // Cookie Shapes: an organic face costs a Canvas, and a segmented group needs
@@ -97,7 +98,7 @@ Button {
     TapHandler {
         acceptedButtons: Qt.RightButton
         onTapped: {
-            if (root.altAction) root.altAction();
+            if (root.altActionEnabled && root.altAction) root.altAction();
         }
     }
 
@@ -114,7 +115,7 @@ Button {
         acceptedButtons: Qt.LeftButton
         longPressThreshold: 0.5
         onLongPressed: {
-            if (root.altAction) root.altAction();
+            if (root.altActionEnabled && root.altAction) root.altAction();
         }
     }
 

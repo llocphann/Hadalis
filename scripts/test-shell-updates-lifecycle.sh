@@ -52,12 +52,18 @@ assert_contains 'root.initialUpdateCheckDone = true' "$count_helper" 'count star
 assert_contains 'root.isChecking = false' "$finish_helper" 'normal finish helper must release isChecking'
 assert_contains 'root.initialUpdateCheckDone = true' "$finish_helper" 'normal finish helper must mark the check cycle complete'
 
+fetch_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$fetch_block")"
+branch_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$branch_block")"
+local_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$local_block")"
 remote_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$remote_block")"
 remote_main_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$remote_main_block")"
 remote_master_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$remote_master_block")"
 count_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$count_block")"
 message_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$message_block")"
 
+assert_contains 'root._failCheckStart("fetch")' "$fetch_start" 'fetch startup failure must terminate the stuck check'
+assert_contains 'root._failCheckStart("branch lookup")' "$branch_start" 'branch lookup startup failure must terminate the stuck check'
+assert_contains 'root._failCheckStart("local commit lookup")' "$local_start" 'local commit startup failure must terminate the stuck check'
 assert_contains 'remoteCommitFallbackProc.running = true' "$remote_start" 'primary remote lookup startup failure must continue to origin/main'
 assert_contains 'remoteCommitFallback2Proc.running = true' "$remote_main_start" 'origin/main startup failure must continue to origin/master'
 assert_contains 'root._failCheckStart("remote commit lookup")' "$remote_master_start" 'final remote lookup startup failure must terminate the stuck check'

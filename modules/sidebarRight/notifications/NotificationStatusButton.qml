@@ -8,6 +8,10 @@ GroupButton {
     property string buttonIcon: ""
     property string buttonText: ""
 
+    Accessible.name: button.buttonText.length > 0
+        ? button.buttonText
+        : button.buttonIcon.replace(/_/g, " ")
+
     baseHeight: 36
     baseWidth: content.implicitWidth + 46
     clickedWidth: baseWidth + 6

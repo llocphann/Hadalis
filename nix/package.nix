@@ -30,7 +30,11 @@ let
       gnused
       jq
       procps
-      python3
+      (python3.withPackages (pythonPackages: with pythonPackages; [
+        materialyoucolor
+        numpy
+        pillow
+      ]))
       ripgrep
       rsync
       systemd

@@ -49,7 +49,22 @@ QtObject {
             return false
         const current = root._registry[id] ?? ({})
         const next = Object.assign({}, root._registry)
-        next[id] = Object.assign({}, current, descriptor ?? ({}), { moduleId: id })
+        const merged = Object.assign({}, current, descriptor ?? ({}), {
+            moduleId: id
+        })
+        const builtin = root._builtinRegistry[id] ?? null
+        if (builtin) {
+            // Feature registration may supply a source and extension fields, but
+            // builtin presentation/reservation metadata remains core-owned. Keep
+            // this generic so future builtin metadata keys are protected too.
+            const immutableMetadata = Object.assign({}, builtin)
+            delete immutableMetadata.source
+            next[id] = Object.assign({}, merged, immutableMetadata, {
+                moduleId: id
+            })
+        } else {
+            next[id] = merged
+        }
         root._registry = next
         root.moduleRegistered(id)
         return true

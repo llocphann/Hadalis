@@ -149,6 +149,49 @@ The current guard must continue to fail on source equivalent to `799b52c3` while
 
 Source regression coverage now checks fresh staged and reinstall QML/module resolution via `b690c88e`. Continue verifying `./setup install`, packaged installs, and real update/uninstall behavior so an older installed tree cannot remain mixed with current QML. Do not claim criterion 5 closed until a maintainer/current-HEAD staging or clean-clone acceptance run supplies the required evidence.
 
+Bot 5 fixes already landed in the current `dev` family include fail-closed config namespace migration, runtime-payload mirror cleanup for Make/Arch staging, byte-preserving reviewed localization repair tooling, release-gated localization provenance, and uninstall path literalization. `b66087ce` removes unsafe `eval` re-expansion from managed uninstall paths, `d41246fc` makes uninstall path safety release-required, and `030f012d` makes every `translations/l10n/*-repairs.json` provenance state release-required without applying or pruning translations.
+
+Still-open Bot 5 queue after source audit:
+
+```text
+ID: LOCAL-setup-recovery-orphans
+Priority: P1
+Status: OPEN
+Observed SHA: f24da74ecf333b14ed1a70fa77cfdaadbe2d6ab7
+Observed by: Bot 5 source/install lifecycle audit
+Failure: recovery-style ./setup install can preserve retired root-level QML when IS_UPDATE=false
+Root-cause lane: Bot 5
+Primary owner: Bot 5
+Evidence: sdata/subcmd-install/3.files.sh finalizes the canonical .inir-manifest but calls cleanup_orphans only inside an IS_UPDATE=true guard; managed subdirectories use rsync --delete while root QML is copied file-by-file.
+Required fix: every managed runtime refresh must remove manifest-orphaned root QML/source-only files while preserving runtime-exclusion/private artifacts; update backup/runtime verification semantics may remain update-only.
+Acceptance: a regression exercises an existing/partial runtime through the install path with IS_UPDATE=false and proves retired managed root QML is removed while excluded/private artifacts survive.
+Notes: do not move cleanup side effects into generate_manifest merely to avoid editing the installer; that helper is intentionally manifest-only.
+
+ID: LOCAL-uninstall-dangling-owned-link
+Priority: P2
+Status: OPEN
+Observed SHA: f24da74ecf333b14ed1a70fa77cfdaadbe2d6ab7
+Observed by: Bot 5 uninstall source audit
+Failure: an iNiR-owned dangling symlink can survive uninstall_remove_inir_only
+Root-cause lane: Bot 5
+Primary owner: Bot 5
+Evidence: uninstall_remove_inir_only pre-counts with -e and removes only -d/-f paths; a dangling symlink satisfies none of those tests.
+Required fix: remove package/app-owned symlink paths, including dangling links, as links without traversing arbitrary targets; preserve the namespace migration rule that foreign legacy symlinks are not silently deleted.
+Acceptance: extend uninstall path-safety regression with a dangling owned symlink and prove the link is removed without touching its absent/foreign target.
+
+ID: LOCAL-tr_TR-reviewed-placeholders
+Priority: P1
+Status: OPEN
+Observed SHA: f24da74ecf333b14ed1a70fa77cfdaadbe2d6ab7
+Observed by: Bot 5 localization/catalog audit
+Failure: three reviewed Turkish usage placeholders remain pending in translations/tr_TR.json
+Root-cause lane: Bot 5
+Primary owner: Bot 5
+Evidence: translations/l10n/tr_TR-placeholder-repairs.json records three exact reviewed from/to repairs; live tr_TR catalog blob remains c8b36d43888e85bfde60b9c0f300b81d18fc064f. The helper can validate/apply them byte-preservingly in a checkout, while the GitHub connector currently offers only whole-file replacement for the 272 KB catalog.
+Required fix: apply exactly the reviewed replacements without bulk rewriting or pruning historical translations, then run locale audit/source parity.
+Acceptance: reviewed-replacement --status reports applied and the canonical localization/docs/source-parity gates pass on the exact tested SHA.
+```
+
 ## ACCEPTANCE CRITERIA
 
 Do not mark this incident closed until a current-HEAD/fresh-install test demonstrates all of the following:

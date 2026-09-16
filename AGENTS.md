@@ -19,7 +19,7 @@ Hadalis uses a single-agent development workflow on `dev`.
 Until the maintainer changes them, prioritize:
 
 1. Caelestia-like UI/UX using the existing iNiR surfaces: existing popups should visually connect to their bar/screen edge instead of introducing a second popup system.
-2. Connected Perimeter as the default ii runtime with safe fallback on real runtime/configuration failure, not an opt-in presentation toggle.
+2. Connected-surface presentation is the default for existing bar popups and must not require a user-facing toggle. Keep the broader `iiPerimeter` composition cutover guarded until it can replace the legacy composition without dropping functionality.
 3. Keep Dock presentation simple: Panel is the canonical ii dock style; historical style values must degrade safely to Panel.
 4. English-only localization. `translations/en_US.json` is the only shipped locale catalog; multilingual translation generation/auditing is not an active product requirement.
 5. Runtime correctness, local regression coverage, install/update lifecycle, and source/package identity.

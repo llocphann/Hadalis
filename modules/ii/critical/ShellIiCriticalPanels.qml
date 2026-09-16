@@ -14,10 +14,33 @@ Item {
     id: root
 
     readonly property bool barVertical: Config.options?.bar?.vertical ?? false
-    // Cut over only when the user requested perimeter and every connected
-    // output validates. Invalid/corrupt perimeter state therefore falls back to
-    // the legacy chrome instead of leaving the shell without persistent UI.
+    readonly property bool perimeterRequested: PerimeterCutoverPolicy.requested
+    // Cut over only when the user requested perimeter, every connected output
+    // validates, and every placed module source is resolvable. Invalid/corrupt
+    // perimeter state therefore falls back to legacy chrome.
     readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled
+    property bool perimeterRegistrationReady: false
+
+    function ensurePerimeterFeatures(): void {
+        if (!root.perimeterRequested) {
+            root.perimeterRegistrationReady = false
+            return
+        }
+        root.perimeterRegistrationReady = PerimeterFeatureRegistry.registerAll()
+        if (!root.perimeterRegistrationReady)
+            console.warn("[Perimeter] Critical bootstrap could not register module sources")
+    }
+
+    Component.onCompleted: root.ensurePerimeterFeatures()
+    onPerimeterRequestedChanged: root.ensurePerimeterFeatures()
+
+    Connections {
+        target: ModuleRegistry
+        function onModuleUnregistered(moduleId: string): void {
+            if (root.perimeterRequested)
+                Qt.callLater(root.ensurePerimeterFeatures)
+        }
+    }
 
     component CriticalPanelLoader: LazyLoader {
         required property string identifier

@@ -1,6 +1,6 @@
 pkgname=inir-shell-git
 pkgver=2.29.3.r0.g0000000
-pkgrel=3
+pkgrel=4
 pkgdesc='Hadalis shell payload, launcher, and user service (git)'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -128,6 +128,91 @@ package() {
 
   install -Dm755 "$srcroot/scripts/inir" "$pkgdir/usr/bin/inir"
   install -Dm644 "$srcroot/assets/systemd/inir.service" "$pkgdir/usr/lib/systemd/user/inir.service"
+
+  for launcher in "$pkgdir/usr/bin/inir" "$shellroot/scripts/inir"; do
+    python3 - "$launcher" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+
+install_marker = "install_user_service() {\n"
+install_guard = """install_user_service() {
+    require_command systemctl
+    local package_unit="/usr/lib/systemd/user/inir.service"
+    local user_unit="$systemd_user_dir/inir.service"
+
+    if [[ ! -f "$package_unit" ]]; then
+        echo "package-owned inir.service is missing; reinstall the inir-shell package" >&2
+        return 1
+    fi
+
+    if [[ -e "$user_unit" || -L "$user_unit" ]]; then
+        if [[ -f "$user_unit" ]] && cmp -s "$user_unit" "$package_unit"; then
+            rm -f "$user_unit"
+        else
+            echo "custom user inir.service shadows the package unit: $user_unit" >&2
+            echo "move or remove that override before using the package-managed service" >&2
+            return 1
+        fi
+    fi
+
+    cleanup_stale_wants_links
+    systemctl --user daemon-reload
+    printf '%s\\n' "$package_unit"
+    return 0
+"""
+if text.count(install_marker) != 1:
+    raise SystemExit("expected exactly one install_user_service definition")
+text = text.replace(install_marker, install_guard, 1)
+
+link_marker = 'ln -sf "$systemd_user_dir/inir.service" "$wants_dir/inir.service"'
+link_value = 'ln -sf "/usr/lib/systemd/user/inir.service" "$wants_dir/inir.service"'
+if text.count(link_marker) != 1:
+    raise SystemExit("expected exactly one compositor wants link")
+text = text.replace(link_marker, link_value, 1)
+
+uninstall_marker = """        uninstall|remove)
+            disable_inir_service 2>/dev/null || true
+            require_command systemctl
+            rm -f "$systemd_user_dir/inir.service"
+            systemctl --user daemon-reload
+            echo "Uninstalled inir.service"
+            ;;
+"""
+uninstall_guard = """        uninstall|remove)
+            echo "inir.service is owned by the pacman package; use 'inir service disable' to remove compositor wiring or pacman to remove the package" >&2
+            return 1
+            ;;
+"""
+if text.count(uninstall_marker) != 1:
+    raise SystemExit("expected exactly one service uninstall branch")
+text = text.replace(uninstall_marker, uninstall_guard, 1)
+
+text = text.replace(
+    "install     Write the user unit file from the current launcher path",
+    "install     Validate the package-owned user unit and migrate an identical legacy copy",
+    1,
+)
+text = text.replace(
+    "  unit: ${systemd_user_dir}/inir.service",
+    "  unit: /usr/lib/systemd/user/inir.service",
+    1,
+)
+text = text.replace(
+    "— run 'inir service install' to fix",
+    "— reinstall/update the inir-shell package to fix",
+    1,
+)
+path.write_text(text)
+PY
+    grep -Fq 'local package_unit="/usr/lib/systemd/user/inir.service"' "$launcher" || return
+    grep -Fq 'cmp -s "$user_unit" "$package_unit"' "$launcher" || return
+    grep -Fq 'ln -sf "/usr/lib/systemd/user/inir.service"' "$launcher" || return
+    grep -Fq 'inir.service is owned by the pacman package' "$launcher" || return
+  done
+
   install -Dm644 "$srcroot/assets/applications/inir.desktop" "$pkgdir/usr/share/applications/inir.desktop"
   install -Dm644 "$srcroot/assets/applications/inir-settings.desktop" "$pkgdir/usr/share/applications/inir-settings.desktop"
   install -Dm644 "$srcroot/assets/icons/desktop-symbolic.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/inir.svg"

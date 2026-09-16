@@ -23,10 +23,25 @@ Singleton {
     // Convenience: current tab text (backward compat)
     readonly property string text: (tabs[currentTab]?.text) ?? ""
 
+    function _normalizeTabs(value) {
+        if (!Array.isArray(value)) return []
+        const normalized = []
+        for (let i = 0; i < value.length; i++) {
+            const tab = value[i]
+            if (!tab || typeof tab !== "object" || Array.isArray(tab))
+                continue
+            normalized.push({
+                title: String(tab.title ?? `Note ${normalized.length + 1}`),
+                text: String(tab.text ?? "")
+            })
+        }
+        return normalized
+    }
+
     function setTextValue(newText) {
         if (currentTab < 0 || currentTab >= tabs.length) return
         const t = tabs.slice()
-        t[currentTab] = Object.assign({}, t[currentTab], { text: newText })
+        t[currentTab] = Object.assign({}, t[currentTab], { text: String(newText ?? "") })
         tabs = t
         _save()
     }
@@ -34,14 +49,15 @@ Singleton {
     function setTabTitle(index, title) {
         if (index < 0 || index >= tabs.length) return
         const t = tabs.slice()
-        t[index] = Object.assign({}, t[index], { title: title })
+        t[index] = Object.assign({}, t[index], { title: String(title ?? "") })
         tabs = t
         _save()
     }
 
     function addTab(title) {
         const t = tabs.slice()
-        const name = title || `Note ${t.length + 1}`
+        const requested = String(title ?? "").trim()
+        const name = requested.length > 0 ? requested : `Note ${t.length + 1}`
         t.push({ title: name, text: "" })
         tabs = t
         currentTab = t.length - 1
@@ -90,9 +106,12 @@ Singleton {
             if (root._saving) { root._saving = false; return }
             try {
                 const data = JSON.parse(tabsFileView.text())
-                if (Array.isArray(data.tabs) && data.tabs.length > 0) {
-                    root.tabs = data.tabs
-                    root.currentTab = Math.max(0, Math.min(data.currentTab ?? 0, data.tabs.length - 1))
+                const loadedTabs = root._normalizeTabs(data?.tabs)
+                if (loadedTabs.length > 0) {
+                    const requestedIndex = Number(data?.currentTab)
+                    const index = Number.isInteger(requestedIndex) ? requestedIndex : 0
+                    root.tabs = loadedTabs
+                    root.currentTab = Math.max(0, Math.min(index, loadedTabs.length - 1))
                     return
                 }
             } catch (e) {}
@@ -120,7 +139,7 @@ Singleton {
 
         onLoaded: {
             const content = legacyFileView.text()
-            root.tabs = [{ title: "Note 1", text: content || "" }]
+            root.tabs = [{ title: "Note 1", text: String(content ?? "") }]
             root.currentTab = 0
             root._save()
         }

@@ -2,15 +2,21 @@
 
 This document records the stabilization contracts that should be checked during a local acceptance pass on `dev`.
 
-## Connected bar popups
+## Connected bar popouts
 
-- Existing bar popups continue through `modules/bar/StyledPopup.qml`; no parallel popup framework is introduced.
-- The popup composes `ConnectedSurfaceGeometry`, `ConnectedSurfaceFrame`, and `ConnectedSurfaceMask` from `modules/common/perimeter/`.
-- Attachment must work from top, bottom, left, and right bars.
-- The popup body/connector overlap is device-pixel-aware so the seam does not expose a transparent gap at fractional scale.
-- Reveal/growth originates from the attached edge.
-- Transparent regions outside the popup shape remain click-through.
-- Connected popup presentation does not require enabling the broad `iiPerimeter` cutover.
+- Existing bar popouts continue through `modules/bar/StyledPopup.qml`; no parallel popup framework is introduced.
+- The outer shell composes `ConnectedSurfaceGeometry`, `ConnectedSurfaceFrame`, `ConnectedSurfaceConnector`, and `ConnectedSurfaceMask` from `modules/common/perimeter/`.
+- Attachment works from top, bottom, left, and right bars.
+- The visible surface is not a detached rounded card with a thin stem. It starts at roughly the source control width, flares through curved Bézier shoulders, and grows into the popup body as one bar-owned surface.
+- The popup body uses the active Classic Bar surface family rather than the old generic popup-card material.
+- Opening morphs outward from the real rendered anchor; closing reverses the same geometry and retracts into the bar before the loader is released.
+- Hover popouts stay resident during the short retract tail so the pointer can cross the connected shoulder from the bar into the body without collapsing the surface.
+- Body and connector overlap by a device-pixel-aware amount so fractional scale cannot expose a transparent seam.
+- The connector input mask follows the flare with a tighter union of rounded strips instead of making its transparent bounding rectangle interactive.
+- Transparent regions outside the visible popup shape remain click-through.
+- Focused connected popouts preserve Niri layer-shell focus and the existing Hyprland compositor focus grab.
+- Media volume HUD, expanded bar Media controls, tray overflow, taskbar window previews, and the existing battery/resources/weather/clock/timer/update popouts all use the shared connected path. Context menus remain context menus rather than being forced into this presentation contract.
+- Connected popup presentation does not require enabling the broad `iiPerimeter` composition cutover.
 
 ## Dock
 
@@ -35,18 +41,22 @@ Run the focused static contract locally with:
 python scripts/test-shell-surface-contracts.py
 ```
 
-This guard is intentionally narrow. It checks architectural invariants and source/catalog state; it does not replace live visual testing.
+The canonical maintainer validator also discovers this `test-*.py` guard automatically. The guard checks architectural/source contracts; it does not replace live visual testing.
 
 ## Local visual acceptance
 
 For the final local pass, verify at minimum:
 
-1. open each existing bar popup from a top bar and confirm the connector/body read as one surface;
-2. repeat with bottom, left, and right bar placement;
-3. verify reveal starts at the bar/screen edge rather than appearing as an independently scaled card;
-4. verify clicks outside the visible popup shape are not captured by its full-output host window;
-5. restart with a legacy `dock.style` value and verify the persisted value is normalized to `panel` and only Panel UI is shown;
-6. verify Waffle behavior is unchanged and is not presented as a Dock style;
-7. restart with a legacy `language.ui` value and verify the shell remains English and normalizes it to `en_US`.
+1. open battery, resources, weather, clock/timer/update and tray overflow from a top bar and confirm each outer shell visually grows from the source control rather than appearing as a separate card;
+2. open the Media wheel-volume HUD, expanded bar Media controls, and taskbar window preview and confirm they use the same connected shell rather than their previous detached `PopupWindow` presentation;
+3. repeat representative popouts with bottom, left, and right bar placement and confirm the growth direction is inward from the owning edge;
+4. close a popout and confirm the body/shoulders retract back into the source edge rather than disappearing immediately;
+5. for a hover popout, move the pointer from the bar control across the shoulder into the popup body and confirm it stays open;
+6. at fractional scaling, inspect the source/shoulder/body joins for a transparent one-pixel seam;
+7. verify clicks in transparent areas outside the visible popup shape are not captured by the full-output host window;
+8. verify expanded Media still receives keyboard focus/Escape correctly on the compositor in use;
+9. restart with a legacy `dock.style` value and verify the persisted value is normalized to `panel` and only Panel UI is shown;
+10. verify Waffle behavior is unchanged and is not presented as a Dock style;
+11. restart with a legacy `language.ui` value and verify the shell remains English and normalizes it to `en_US`.
 
 If a full `iiPerimeter` composition is tested separately, keep fallback coverage in scope: do not treat loss of legacy-only functionality as an acceptable connected-surface result.

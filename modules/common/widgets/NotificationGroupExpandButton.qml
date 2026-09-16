@@ -10,6 +10,8 @@ RippleButton { // Expand button
     required property bool expanded
     property real fontSize: Appearance?.font.pixelSize.small ?? 12
     property real iconSize: Appearance?.font.pixelSize.normal ?? 16
+    buttonText: root.expanded ? Translation.tr("Collapse notifications") : Translation.tr("Expand notifications")
+    Accessible.description: Translation.tr("%1 notifications").arg(root.count)
     implicitHeight: fontSize + 4 * 2
     implicitWidth: Math.max(contentItem.implicitWidth + 5 * 2, 30)
     Layout.alignment: Qt.AlignVCenter

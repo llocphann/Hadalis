@@ -1,6 +1,7 @@
 import qs
 import qs.modules.bar.weather
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.modules.common.perimeter
 import qs.services
 

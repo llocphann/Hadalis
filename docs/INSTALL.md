@@ -69,13 +69,22 @@ For everything else, check [PACKAGES.md](PACKAGES.md). It's organized by categor
 > If shell startup fails with `module "org.kde.syntaxhighlighting" is not installed`, install:
 > `syntax-highlighting kirigami kdialog`
 
-### 2. Clone the repo
+### 2. Clone the source
 
 ```bash
-git clone https://github.com/llocphann/Hadalis.git ~/.config/quickshell/inir
+git clone https://github.com/llocphann/Hadalis.git ~/Hadalis
+cd ~/Hadalis
 ```
 
-### 3. Copy the configs
+### 3. Install the launcher and shell payload
+
+```bash
+sudo make install
+```
+
+This installs the `inir` launcher and a packaging-style shell payload under `/usr/local` by default. It does not install distro dependencies for you.
+
+### 4. Copy the configs
 
 ```bash
 cp -r dots/.config/* ~/.config/
@@ -87,7 +96,7 @@ This gives you:
 - GTK settings
 - Fuzzel config
 
-### 4. Enable the iNiR user service
+### 5. Enable the iNiR user service
 
 ```bash
 inir service install
@@ -95,7 +104,7 @@ inir service enable
 inir service start
 ```
 
-### 5. Restart Niri
+### 6. Restart Niri
 
 ```bash
 niri msg action load-config-file

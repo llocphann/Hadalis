@@ -15,19 +15,25 @@ Singleton {
 
     property bool inhibit: false
 
+    function _nonNegativeInt(value, fallback: int): int {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) && parsed >= 0
+            ? Math.max(0, Math.round(parsed)) : fallback
+    }
+
     // Battery profile: only meaningful on a laptop that is actually unplugged.
     readonly property bool batteryProfileActive: (Config.options?.idle?.onBattery?.enable ?? false)
         && Battery.onBattery
 
     readonly property int screenOffTimeout: batteryProfileActive
-        ? (Config.options?.idle?.onBattery?.screenOffTimeout ?? 120)
-        : (Config.options?.idle?.screenOffTimeout ?? 300)
+        ? root._nonNegativeInt(Config.options?.idle?.onBattery?.screenOffTimeout, 120)
+        : root._nonNegativeInt(Config.options?.idle?.screenOffTimeout, 300)
     readonly property int lockTimeout: batteryProfileActive
-        ? (Config.options?.idle?.onBattery?.lockTimeout ?? 300)
-        : (Config.options?.idle?.lockTimeout ?? 600)
+        ? root._nonNegativeInt(Config.options?.idle?.onBattery?.lockTimeout, 300)
+        : root._nonNegativeInt(Config.options?.idle?.lockTimeout, 600)
     readonly property int suspendTimeout: batteryProfileActive
-        ? (Config.options?.idle?.onBattery?.suspendTimeout ?? 600)
-        : (Config.options?.idle?.suspendTimeout ?? 0)
+        ? root._nonNegativeInt(Config.options?.idle?.onBattery?.suspendTimeout, 600)
+        : root._nonNegativeInt(Config.options?.idle?.suspendTimeout, 0)
     readonly property string launcherPath: Quickshell.shellPath("scripts/inir")
 
     onScreenOffTimeoutChanged: _restartSwayidle()

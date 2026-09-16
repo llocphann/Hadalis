@@ -163,13 +163,20 @@ def main():
         print('\n'.join(payload.filters(args.subdir or '')))
         return
     if args.command == 'filter-installed':
-        # Keep optional packs and private/user artifacts outside orphan cleanup. Old
-        # source-only tooling remains eligible for the existing managed-file cleanup.
+        # Keep optional packs and private/user artifacts outside orphan cleanup,
+        # while allowing paths that are explicitly source-only in the current
+        # tree to be removed from older mixed runtime installs. A generic prefix
+        # such as test- must not hide a known retired source-only path forever.
+        managed_cleanup_paths = [p for p in payload.policy['excludedPaths']
+                                 if not p.startswith('assets/')]
         payload.policy['excludedPaths'] = [p for p in payload.policy['excludedPaths']
                                            if p.startswith('assets/')]
         for line in sys.stdin:
-            if not payload.excluded(line.rstrip('\n')):
-                print(line.rstrip('\n'))
+            relative = line.rstrip('\n')
+            known_source_only = any(relative == p or relative.startswith(p + '/')
+                                    for p in managed_cleanup_paths)
+            if known_source_only or not payload.excluded(relative):
+                print(relative)
         return
     if args.command in ('copy', 'sync-dir'):
         if args.target is None:

@@ -42,6 +42,7 @@ fi
 expected_files=(
   "$stage$prefix/bin/inir"
   "$stage$prefix/share/quickshell/inir/shell.qml"
+  "$stage$prefix/share/quickshell/inir/qmldir"
   "$stage$prefix/share/quickshell/inir/version.json"
   "$stage$systemd_user_dir/inir.service"
   "$stage$prefix/share/applications/inir.desktop"

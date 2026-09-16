@@ -1,6 +1,7 @@
 import qs
 import qs.modules.common
 import qs.modules.common.perimeter
+import qs.modules.common.widgets
 import qs.modules.mediaControls
 import qs.services
 import QtQuick

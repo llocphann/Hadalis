@@ -39,10 +39,8 @@ RowLayout {
 
     function _setTime(h, m) {
         const newTime = _formatTime(h, m)
-        if (root.value !== newTime) {
-            root.value = newTime
+        if (root.value !== newTime)
             root.timeChanged(newTime)
-        }
     }
 
     RowLayout {

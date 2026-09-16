@@ -219,10 +219,7 @@ jobs:
           done
 
       - name: Run updater and TLP regressions
-        run: |
-          bash scripts/test-update-lifecycle.sh
-          bash scripts/test-tlp-settings-ui-guards.sh
-          bash scripts/test-tlp-integration-lifecycle.sh
+        run: make test-update-tlp-contracts
 
       - name: Run deferred service regressions
         run: make test-news-contract test-equalizer-contracts

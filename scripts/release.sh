@@ -51,17 +51,26 @@ require_release_version_consistency() {
 
 require_release_source_pin() {
   local tag="$1"
-  local package_file tag_commit source_ref source_commit
+  local package_file srcinfo_file source_ref srcinfo_source
   package_file="$repo_root/distro/arch/inir-shell/PKGBUILD"
-  tag_commit="$(git -C "$repo_root" rev-parse "$tag^{commit}")"
+  srcinfo_file="$repo_root/distro/arch/inir-shell/.SRCINFO"
+
+  [[ -f "$package_file" ]] || die "missing release package recipe: ${package_file#$repo_root/}"
+  [[ -f "$srcinfo_file" ]] || die "missing release package metadata: ${srcinfo_file#$repo_root/}"
+
   source_ref="$(sed -n 's/^_source_ref="${INIR_SOURCE_REF:-\([^}]*\)}"$/\1/p' "$package_file")"
   [[ -n "$source_ref" ]] \
     || die "could not read default _source_ref from ${package_file#$repo_root/}"
-  source_commit="$(git -C "$repo_root" rev-parse "$source_ref^{commit}" 2>/dev/null || true)"
-  [[ -n "$source_commit" ]] \
-    || die "release package source ref $source_ref is not a commit in this checkout"
-  [[ "$source_commit" == "$tag_commit" ]] \
-    || die "release package source ref $source_ref does not resolve to $tag ($tag_commit)"
+  [[ "$source_ref" == "$tag" ]] \
+    || die "${package_file#$repo_root/} default _source_ref=$source_ref must equal release tag $tag"
+
+  srcinfo_source="$(sed -n 's/^[[:space:]]*source = //p' "$srcinfo_file" | head -1)"
+  [[ -n "$srcinfo_source" ]] \
+    || die "missing source entry in ${srcinfo_file#$repo_root/}"
+  [[ "$srcinfo_source" == *"/archive/${tag}.tar.gz" ]] \
+    || die "${srcinfo_file#$repo_root/} source does not use release tag $tag"
+  [[ "${srcinfo_source%%::*}" == *"-${tag}.tar.gz" ]] \
+    || die "${srcinfo_file#$repo_root/} archive filename does not encode release tag $tag"
 }
 
 require_release_checkout() {

@@ -28,8 +28,9 @@ git_pkg="distro/arch/inir-shell-git/PKGBUILD"
 git_srcinfo="distro/arch/inir-shell-git/.SRCINFO"
 meta_pkg="distro/arch/inir-meta/PKGBUILD"
 meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
+nix_pkg="nix/package.nix"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -107,6 +108,16 @@ done
 
 cmp -s distro/arch/inir-shell/inir-shell.install distro/arch/inir-shell-git/inir-shell-git.install \
   || fail 'stable/git Arch lifecycle hooks differ'
+
+# NixOS/Home Manager own inir.service declaratively. The Nix packaging patch
+# must prevent the packaged launcher from creating/removing a competing mutable
+# user unit while keeping operational start/restart commands on the provisioned unit.
+grep -Fq 'Nix-managed installations keep inir.service declarative' "$nix_pkg" \
+  || fail 'Nix package no longer blocks mutable service ownership commands'
+grep -Fq 'systemctl --user cat inir.service' "$nix_pkg" \
+  || fail 'Nix package no longer validates the declarative inir.service before start/restart'
+grep -Fq 'install|uninstall|remove|enable|disable)' "$nix_pkg" \
+  || fail 'Nix service ownership guard no longer covers all mutating service commands'
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - packaging metadata and distribution contracts are coherent'

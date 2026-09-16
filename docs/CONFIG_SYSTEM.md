@@ -12,7 +12,7 @@ After required migration 019 has been applied, the canonical config file is:
 ~/.config/inir/config.json
 ```
 
-The live QML compatibility path is still `~/.config/illogical-impulse/config.json`. Migration 019 moves or merges legacy data into `~/.config/inir` and replaces `~/.config/illogical-impulse` with a symlink to the canonical directory, so the current QML path and maintenance tooling resolve the same data.
+The live QML compatibility path is still `~/.config/illogical-impulse/config.json`. When only the legacy directory exists, migration 019 moves it to `~/.config/inir` and replaces the legacy path with a symlink to the canonical directory. If both real directories exist, or the legacy path is a foreign symlink or another unexpected object, the migration fails closed and preserves the existing state so the user can reconcile it manually before rerunning `inir migrate`. This keeps the current QML path and maintenance tooling on the same data without silently overwriting ambiguous user state.
 
 Repo-managed `./setup install` and update flows apply required migrations automatically. Package managers and manual `make install` deliberately do not mutate arbitrary user home directories, so each affected user should run `inir migrate` before first launch (and after an upgrade when migrations are pending). Until migration 019 has run for that user, the QML compatibility path may still be a real legacy directory rather than a symlink. Do not run another user's config migration as root.
 

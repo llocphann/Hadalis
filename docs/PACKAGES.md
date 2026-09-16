@@ -253,9 +253,11 @@ The package recipes under `distro/arch/` distribute Hadalis itself rather than s
 
 | Package | Purpose |
 |---------|---------|
-| `inir-shell` | Versioned non-VCS Hadalis shell/runtime package. Release builds pin the immutable release tag. |
+| `inir-shell` | Versioned non-VCS Hadalis shell/runtime package. Before release tags exist, the committed recipe may pin an immutable reviewed commit snapshot; release preparation switches the default source identity to the immutable `vX.Y.Z` tag. |
 | `inir-shell-git` | Development/VCS package following `dev`. |
 | `inir-meta` | Full Hadalis desktop-experience meta-package depending on `inir-shell` plus the wider integration set. |
+
+The pre-release commit pin is a reproducible development/package snapshot, not evidence that current `dev` has passed package acceptance. Published release preparation must replace that default `_source_ref` with the release tag and regenerate `.SRCINFO`; `RELEASING.md` and the publication preflight own that invariant.
 
 `inir-meta` also keeps `easyeffects` and `socat` in `optdepends`, not `depends`. Installing the distributable shell or meta-package therefore does not make the Equalizer backend a hard requirement.
 

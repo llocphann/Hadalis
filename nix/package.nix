@@ -145,7 +145,11 @@ pkgs.stdenvNoCC.mkDerivation {
     runHook preInstall
 
     runtime="$out/share/quickshell/inir"
-    mkdir -p "$runtime" "$out/bin"
+    mkdir -p \
+      "$runtime" \
+      "$out/bin" \
+      "$out/share/applications" \
+      "$out/share/icons/hicolor/scalable/apps"
 
     python3 sdata/lib/runtime-payload.py copy --root . --target "$runtime"
 
@@ -236,6 +240,16 @@ EOF
       ${materialSymbolsWrapperArg}
       --set-default INIR_SYSTEM_RUNTIME_DIR "$runtime" \
       --set-default INIR_FALLBACK_SYSTEM_RUNTIME_DIR "$runtime"
+
+    sed "s|^Exec=inir|Exec=$out/bin/inir|" \
+      assets/applications/inir.desktop > "$out/share/applications/inir.desktop"
+    sed "s|^Exec=inir|Exec=$out/bin/inir|" \
+      assets/applications/inir-settings.desktop > "$out/share/applications/inir-settings.desktop"
+    chmod 0644 \
+      "$out/share/applications/inir.desktop" \
+      "$out/share/applications/inir-settings.desktop"
+    install -Dm644 assets/icons/desktop-symbolic.svg \
+      "$out/share/icons/hicolor/scalable/apps/inir.svg"
 
     runHook postInstall
   '';

@@ -39,6 +39,33 @@ bash scripts/verify-docs.sh
 
 The apply command refuses unknown or duplicate keys, changed English source text, modified placeholders or markup such as `%1`, `{0}`, `<i>` and `</i>`, and translations that rename protected product terms.
 
+## Apply an exact reviewed repair
+
+For a small correction to existing locale values that has already been reviewed, use a provenance-backed replacement manifest instead of regenerating or rewriting the locale. Each manifest records the target locale and an exact `from`/`to` pair for every stable key, so applying it fails closed if the catalog changed after review.
+
+The currently reviewed Turkish placeholder repair can be checked without writing first:
+
+```bash
+python3 translations/tools/apply-reviewed-replacements.py \
+  translations/l10n/tr_TR-placeholder-repairs.json --check
+```
+
+After that check succeeds, apply only those reviewed values:
+
+```bash
+python3 translations/tools/apply-reviewed-replacements.py \
+  translations/l10n/tr_TR-placeholder-repairs.json
+```
+
+The replacement tool preserves unrelated translations and rejects missing keys, changed reviewed source values, or replacements that violate the canonical placeholder/markup contract. A manifest is not permission to prune historical translations or bulk-rewrite a locale.
+
+After an exact repair, rerun both catalog and source-boundary checks:
+
+```bash
+python3 translations/tools/l10n.py audit-all
+python3 translations/tools/source-parity.py
+```
+
 ## Rules
 
 - Keep product names and commands unchanged.

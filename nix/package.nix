@@ -159,26 +159,51 @@ pkgs.stdenvNoCC.mkDerivation {
       -type f \( -name '*.qml' -o -name '*.js' -o -name '*.sh' -o -name '*.py' \) \
       -exec sed -i '1!s#/usr/bin/##g' {} +
 
-    # Package-managed maintenance must not copy the raw runtime launcher into
-    # ~/.local/bin. Doing so would shadow this Nix wrapper and drop its PATH/QML
-    # environment on subsequent `inir migrate` calls.
-    python3 - "$runtime/setup" <<'PY'
+    # Keep direct runtime entrypoints package-aware even when they are invoked
+    # outside $out/bin/inir and therefore do not inherit makeWrapper variables.
+    # Package-managed maintenance must also never copy the raw launcher into
+    # ~/.local/bin, where it would shadow the Nix wrapper on later invocations.
+    python3 - \
+      "$runtime/setup" \
+      "$runtime/scripts/inir" \
+      "$runtime/sdata/lib/versioning.sh" \
+      "$runtime" <<'PY'
 from pathlib import Path
 import sys
 
-path = Path(sys.argv[1])
-text = path.read_text()
+setup_path = Path(sys.argv[1])
+launcher_path = Path(sys.argv[2])
+versioning_path = Path(sys.argv[3])
+runtime = sys.argv[4]
+
+setup = setup_path.read_text()
 marker = "sync_launcher_from_repo() {\n"
 guard = """sync_launcher_from_repo() {
     if [[ "$(get_installed_update_strategy 2>/dev/null || true)" == "package-manager" ]]; then
         return 0
     fi
 """
-if text.count(marker) != 1:
+if setup.count(marker) != 1:
     raise SystemExit("expected exactly one sync_launcher_from_repo definition")
-path.write_text(text.replace(marker, guard, 1))
+setup_path.write_text(setup.replace(marker, guard, 1))
+
+launcher = launcher_path.read_text()
+launcher_value = 'system_config_dir="$' + '{INIR_SYSTEM_RUNTIME_DIR:-' + runtime + '}"'
+launcher, count = launcher.replace('system_config_dir="${INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"', launcher_value, 1), launcher.count('system_config_dir="${INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"')
+if count != 1:
+    raise SystemExit("expected exactly one launcher runtime default")
+launcher_path.write_text(launcher)
+
+versioning = versioning_path.read_text()
+versioning_value = 'RUNTIME_DIR_SYSTEM_LOCAL="$' + '{INIR_SYSTEM_RUNTIME_DIR_LOCAL:-' + runtime + '}"'
+versioning, count = versioning.replace('RUNTIME_DIR_SYSTEM_LOCAL="${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/inir}"', versioning_value, 1), versioning.count('RUNTIME_DIR_SYSTEM_LOCAL="${INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/inir}"')
+if count != 1:
+    raise SystemExit("expected exactly one versioning runtime default")
+versioning_path.write_text(versioning)
 PY
     grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$runtime/setup"
+    grep -Fq "$runtime" "$runtime/scripts/inir"
+    grep -Fq "$runtime" "$runtime/sdata/lib/versioning.sh"
 
     cat > "$runtime/version.json" <<'EOF'
 {

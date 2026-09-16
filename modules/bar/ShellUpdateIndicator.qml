@@ -108,6 +108,12 @@ MouseArea {
         }
     }
 
+    KeyboardFocusRing {
+        anchors.fill: pill
+        focusVisible: root.activeFocus
+        radius: pill.radius
+    }
+
     RowLayout {
         id: contentRow
         anchors.centerIn: pill
@@ -160,6 +166,7 @@ MouseArea {
     StyledPopup {
         id: updatePopup
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
 
         // Wrapper caps implicitWidth so StyledPopup doesn't grow unbounded
         // (monospace hashes + branch names exceed the visual area otherwise)

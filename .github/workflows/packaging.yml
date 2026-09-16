@@ -118,7 +118,9 @@ jobs:
           bash -n distro/arch/inir-shell/PKGBUILD
           bash -n distro/arch/inir-shell-git/PKGBUILD
           bash -n distro/arch/inir-meta/PKGBUILD
-          bash -n sdata/dist-arch/inir-deps/PKGBUILD
+          for recipe in sdata/dist-arch/inir-*/PKGBUILD; do
+            bash -n "$recipe"
+          done
           repo_version="$(tr -d '[:space:]' < VERSION)"
           deps_version="$(grep -m1 '^pkgver=' sdata/dist-arch/inir-deps/PKGBUILD | cut -d= -f2-)"
           if [[ "$deps_version" != "$repo_version" ]]; then

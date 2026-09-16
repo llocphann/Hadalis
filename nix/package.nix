@@ -145,8 +145,10 @@ pkgs.stdenvNoCC.mkDerivation {
     runHook preInstall
 
     runtime="$out/share/quickshell/inir"
+    docs="$out/share/doc/inir"
     mkdir -p \
       "$runtime" \
+      "$docs" \
       "$out/bin" \
       "$out/share/applications" \
       "$out/share/icons/hicolor/scalable/apps"
@@ -250,6 +252,11 @@ EOF
       "$out/share/applications/inir-settings.desktop"
     install -Dm644 assets/icons/desktop-symbolic.svg \
       "$out/share/icons/hicolor/scalable/apps/inir.svg"
+
+    install -Dm644 README.md "$docs/README.md"
+    for doc in docs/*.md; do
+      install -Dm644 "$doc" "$docs/${doc##*/}"
+    done
 
     runHook postInstall
   '';

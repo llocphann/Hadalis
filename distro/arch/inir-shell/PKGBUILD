@@ -155,6 +155,14 @@ install_guard = """install_user_service() {
     fi
 
     cleanup_stale_wants_links
+    local correct_target correct_link
+    correct_target="$(detect_compositor_service 2>/dev/null)" || correct_target=""
+    if [[ -n "$correct_target" ]]; then
+        correct_link="$systemd_user_dir/${correct_target}.wants/inir.service"
+        if [[ -e "$correct_link" || -L "$correct_link" ]]; then
+            ln -sf "$package_unit" "$correct_link"
+        fi
+    fi
     systemctl --user daemon-reload
     printf '%s\\n' "$package_unit"
     return 0
@@ -205,6 +213,7 @@ path.write_text(text)
 PY
     grep -Fq 'local package_unit="/usr/lib/systemd/user/inir.service"' "$launcher" || return
     grep -Fq 'cmp -s "$user_unit" "$package_unit"' "$launcher" || return
+    grep -Fq 'ln -sf "$package_unit" "$correct_link"' "$launcher" || return
     grep -Fq 'ln -sf "/usr/lib/systemd/user/inir.service"' "$launcher" || return
     grep -Fq 'inir.service is owned by the pacman package' "$launcher" || return
   done

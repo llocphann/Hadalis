@@ -8,11 +8,19 @@ import qs.modules.common.perimeter
 QtObject {
     id: root
 
-    function _barThickness(): real {
+    function _barThickness(edge: string): real {
         if (!PerimeterPresentationPolicy.barSurfaceEnabled)
             return 0
-        const showBackground = Config.options?.bar?.showBackground ?? true
+        const targetEdge = String(edge ?? "")
         const cornerStyle = Number(Config.options?.bar?.cornerStyle ?? 0)
+        if (targetEdge === "left" || targetEdge === "right") {
+            // Match legacy VerticalBar reservation semantics when bar-family
+            // modules are hosted on a vertical perimeter edge.
+            return Appearance.sizes.baseVerticalBarWidth
+                + (cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
+        }
+
+        const showBackground = Config.options?.bar?.showBackground ?? true
         const detachedRounded = Appearance.zzzEverywhere
             && Appearance.zzz.round
             && showBackground
@@ -58,7 +66,7 @@ QtObject {
                     // must not become a second placement source.
                     if (GlobalStates.barOpen
                             && !GlobalStates.coverflowSelectorOpen)
-                        zone = Math.max(zone, root._barThickness())
+                        zone = Math.max(zone, root._barThickness(targetEdge))
                 } else if (kind === "dock") {
                     // A pinned legacy Dock keeps its zone while reveal content is
                     // hidden. Which output owns the dock is determined only by

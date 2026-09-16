@@ -31,9 +31,10 @@ meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
 nix_pkg="nix/package.nix"
 stable_hook="distro/arch/inir-shell/inir-shell.install"
 git_hook="distro/arch/inir-shell-git/inir-shell-git.install"
+release_script="scripts/release.sh"
 uninstall_doc="docs/UNINSTALL.md"
 
-for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$uninstall_doc"; do
+for file in "$stable_pkg" "$stable_srcinfo" "$git_pkg" "$git_srcinfo" "$meta_pkg" "$meta_srcinfo" "$nix_pkg" "$stable_hook" "$git_hook" "$release_script" "$uninstall_doc"; do
   [[ -f "$file" ]] || fail "missing packaging file: $file"
 done
 
@@ -116,6 +117,15 @@ for pair in \
       || fail "$srcinfo is missing color generator Python dependency: $package"
   done
 done
+
+# Release publication is fail-closed: after tag/source identity checks and
+# before draft creation, the helper must run both packaging contract suites.
+grep -Fq '"$script_dir/test-packaging-contract.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the packaging contract'
+grep -Fq '"$script_dir/test-nix-module-contract.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the Nix module contract'
+grep -Fq '  require_release_contracts' "$release_script" \
+  || fail 'release publish path no longer executes release packaging contracts'
 
 # inir-meta promises the full desktop experience. These packages represent
 # default source-installer supplements across shell utilities, visuals, login,

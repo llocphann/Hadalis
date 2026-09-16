@@ -49,9 +49,10 @@ QtObject {
                 const registration = ModuleRegistry.resolve(moduleId)
                 const kind = String(registration?.reservationKind ?? "")
                 if (kind === "bar") {
-                    // Legacy Bar unmaps with barOpen. Keep the reservation in
-                    // lock-step with that semantic state during migration.
-                    if (GlobalStates.barOpen)
+                    // Legacy Bar drops its zone while coverflow owns the edge and
+                    // unmaps completely when barOpen is false.
+                    if (GlobalStates.barOpen
+                            && !GlobalStates.coverflowSelectorOpen)
                         zone = Math.max(zone, root._barThickness())
                 } else if (kind === "dock") {
                     zone = Math.max(zone, root._dockThickness(instance))

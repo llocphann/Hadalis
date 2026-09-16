@@ -13,23 +13,43 @@ MouseArea {
     property bool useThumbnail: Images.isValidMediaByName(fileModelData.fileName)
     property bool isSelected: false
     property bool isHovered: false
+    readonly property bool interactionHighlighted: root.isHovered || root.activeFocus
 
     property color colBackground: Appearance.regaliaEverywhere
         ? (isSelected ? Appearance.regalia.primaryPlate
-            : isHovered ? Appearance.regalia.controlPlateHover : "transparent")
-        : isHovered ? Appearance.colors.colPrimary
+            : interactionHighlighted ? Appearance.regalia.controlPlateHover : "transparent")
+        : interactionHighlighted ? Appearance.colors.colPrimary
         : isSelected ? Appearance.colors.colSecondaryContainer
         : ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
     property color colText: Appearance.regaliaEverywhere
         ? (isSelected ? Appearance.regalia.primaryPlateInk : Appearance.regalia.onColor)
-        : isHovered ? Appearance.colors.colOnPrimary
+        : interactionHighlighted ? Appearance.colors.colOnPrimary
         : isSelected ? Appearance.colors.colOnSecondaryContainer
         : Appearance.colors.colOnLayer1
 
     signal activated()
 
     hoverEnabled: true
-    onClicked: root.activated()
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: root.fileModelData.fileName
+    Accessible.description: root.isDirectory
+        ? Translation.tr("Open folder") : Translation.tr("Select wallpaper")
+    Accessible.checkable: !root.isDirectory
+    Accessible.checked: root.isSelected
+    Accessible.onPressAction: root.activated()
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+            root.activated()
+            event.accepted = true
+        }
+    }
+
+    onClicked: {
+        root.forceActiveFocus()
+        root.activated()
+    }
 
     Rectangle {
         id: background

@@ -46,6 +46,7 @@ bash scripts/test-doctor-dependency-routing.sh
 bash scripts/test-equalizer-boundary-contract.sh
 bash scripts/test-equalizer-service-contract.sh
 bash scripts/test-optional-audio-deps-contract.sh
+bash scripts/test-reviewed-replacement-manifests.sh
 bash scripts/test-config-namespace-migration.sh
 bash scripts/test-runtime-orphan-cleanup.sh
 bash scripts/test-battery-charge-limit-helper.sh
@@ -68,6 +69,8 @@ A failure or unavailable Nix lane is diagnostic during this phase; it does not o
 The battery-charge-limit and ThinkFan helper checks use simulated command/hardware boundaries in their default mode, so they are safe for normal CI and release preflight. Explicit battery lifecycle modes such as `--live-restart`, `--live-display`, and `--live-suspend` are manual machine checks and are not invoked by release publication.
 
 These Equalizer checks validate the current Phase 1 backend/service contract: disabled-by-default behavior, lifecycle/protocol guards, and the boundary that keeps backend execution out of Media presentation code. Future Equalizer presentation work such as the full UI, spectrum, presets surface, or multi-band redesign is not a release prerequisite here.
+
+The reviewed-replacement manifest check validates every `translations/l10n/*-repairs.json` against its live locale and canonical placeholder/markup contract. A manifest may be uniformly `pending` or uniformly `applied`; partial application, unreviewed drift, or an invalid replacement fails closed. The check never applies translations itself and does not authorize pruning or bulk rewriting historical locale content.
 
 The config-namespace, runtime-orphan, and uninstall path-safety checks protect install/update/uninstall lifecycle boundaries. Migration 019 must preserve ambiguous legacy config data instead of destructively merging it, managed runtime refreshes must remove retired QML files/modules without deleting policy-excluded private artifacts, and uninstall must treat already-expanded `HOME`/XDG paths as literal path data rather than evaluating shell syntax embedded in them. These contracts are required in the current non-Nix release lane.
 
@@ -104,7 +107,7 @@ Do not move the tag after publication. `scripts/release.sh publish` requires all
 - the GitHub Wiki feature is enabled so repository docs can be synchronized
 - the Wiki repository has been initialized with at least one page and is reachable with non-interactive Git credentials
 - local Git `user.name` and `user.email` are configured so Wiki sync can create a commit when docs differ
-- packaging, doctor dependency-routing, Equalizer Phase 1 boundary/service, optional-audio dependency, config-namespace migration, runtime-orphan cleanup, battery-charge-limit helper, ThinkFan helper, Makefile install/uninstall lifecycle, uninstall path-safety, and documentation contracts all pass
+- packaging, doctor dependency-routing, Equalizer Phase 1 boundary/service, optional-audio dependency, reviewed-replacement manifest integrity, config-namespace migration, runtime-orphan cleanup, battery-charge-limit helper, ThinkFan helper, Makefile install/uninstall lifecycle, uninstall path-safety, and documentation contracts all pass
 
 After those required contracts pass, the release helper attempts `scripts/test-nix-module-contract.sh` as a deferred compatibility diagnostic when the script is present. Missing or failing Nix diagnostics are reported as warnings and do not block the current non-Nix release lane.
 
@@ -120,7 +123,7 @@ scripts/release.sh publish X.Y.Z
 
 The publication sequence is:
 
-1. Validate version, checkout, remote tag, package source identity, GitHub/Wiki publication prerequisites, required non-Nix packaging/dependency contracts, config-namespace/runtime-orphan/uninstall path-safety lifecycle contracts, privileged helper contracts, Equalizer Phase 1 backend/service boundaries, staged install/uninstall lifecycle, and documentation consistency; report the deferred Nix compatibility diagnostic without making it blocking.
+1. Validate version, checkout, remote tag, package source identity, GitHub/Wiki publication prerequisites, required non-Nix packaging/dependency and localization-provenance contracts, config-namespace/runtime-orphan/uninstall path-safety lifecycle contracts, privileged helper contracts, Equalizer Phase 1 backend/service boundaries, staged install/uninstall lifecycle, and documentation consistency; report the deferred Nix compatibility diagnostic without making it blocking.
 2. Generate release notes.
 3. Create a GitHub draft release, or reuse an existing draft for the same tag.
 4. Sync repository docs to the GitHub Wiki.

@@ -135,6 +135,7 @@ require_release_contracts() {
     "$script_dir/test-equalizer-boundary-contract.sh" \
     "$script_dir/test-equalizer-service-contract.sh" \
     "$script_dir/test-optional-audio-deps-contract.sh" \
+    "$script_dir/test-reviewed-replacement-manifests.sh" \
     "$script_dir/test-config-namespace-migration.sh" \
     "$script_dir/test-runtime-orphan-cleanup.sh" \
     "$script_dir/test-battery-charge-limit-helper.sh" \

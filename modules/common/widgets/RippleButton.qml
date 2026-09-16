@@ -102,6 +102,9 @@ Button {
         const dist = (ox,oy) => ox*ox + oy*oy
         const stateEndY = stateY + buttonBackground.height
         rippleAnim.radius = Math.sqrt(Math.max(dist(0, stateY), dist(0, stateEndY), dist(width, stateY), dist(width, stateEndY)))
+
+        rippleFadeAnim.complete();
+        rippleAnim.restart();
     }
 
     component RippleAnim: NumberAnimation {

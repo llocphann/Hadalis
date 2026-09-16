@@ -22,6 +22,20 @@ ContentPage {
         Quickshell.env("INIR_STANDALONE_WINDOW") === "1"
     readonly property var surfaces: ShellLayoutController.surfacesForFamily(
         root.activeFamily)
+    readonly property bool perimeterEnabled:
+        (Config.options?.enabledPanels ?? []).includes("iiPerimeter")
+
+    function setPerimeterEnabled(enabled: bool): void {
+        let panels = [...(Config.options?.enabledPanels ?? [])]
+        const currentlyEnabled = panels.includes("iiPerimeter")
+        if (currentlyEnabled === enabled)
+            return
+        if (enabled)
+            panels.push("iiPerimeter")
+        else
+            panels = panels.filter(panel => panel !== "iiPerimeter")
+        Config.setNestedValue("enabledPanels", panels)
+    }
 
     function toggleLiveEditor(): void {
         if (root.standaloneSettings) {
@@ -73,6 +87,40 @@ ContentPage {
         if (scope === "global")
             return Translation.tr("Global")
         return scope
+    }
+
+    SettingsCardSection {
+        expanded: true
+        icon: "view_quilt"
+        title: Translation.tr("Connected Perimeter")
+
+        SettingsGroup {
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Use the Connected Perimeter runtime for persistent ii-family chrome. It replaces the legacy bar, dock, and sidebar windows while keeping the existing shell layout available as the fallback runtime.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.Wrap
+            }
+
+            SettingsSwitch {
+                buttonIcon: "view_quilt"
+                text: Translation.tr("Use Connected Perimeter runtime")
+                checked: root.perimeterEnabled
+                enabled: root.activeFamily === "ii"
+                onCheckedChanged: root.setPerimeterEnabled(checked)
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.activeFamily === "ii"
+                    ? Translation.tr("Perimeter module placement is controlled by the perimeter configuration. The legacy layout controls below remain available for fallback and migration.")
+                    : Translation.tr("Connected Perimeter is available for the ii family. Switch panel family to ii before enabling it.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.Wrap
+            }
+        }
     }
 
     SettingsCardSection {

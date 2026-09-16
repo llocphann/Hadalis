@@ -598,6 +598,11 @@ Singleton {
                 return
             root._pendingBandIndex = -1
             root._setProcessError("band-apply-failed", generation)
+            if (root.enabled && generation === root._lifecycleGeneration) {
+                root._equalizerAvailable = false
+                root._markBandsUnsynced()
+                root._scheduleReconcile()
+            }
         }
         onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
@@ -629,6 +634,7 @@ Singleton {
                     }) : band)
             }
             root.error = ""
+            root._scheduleReconcile()
         }
     }
 

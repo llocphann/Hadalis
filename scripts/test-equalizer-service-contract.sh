@@ -116,6 +116,20 @@ for marker in [
 if apply_proc.count("root._scheduleReconcile()") < 3:
     raise SystemExit("FAIL: Equalizer preset mutation no longer reconciles all completion paths")
 
+set_start_failure = set_proc[set_proc.index("onRunningChanged:"):set_proc.index("onStarted:")]
+for marker in [
+    "root._pendingBandIndex = -1",
+    'root._setProcessError("band-apply-failed", generation)',
+    "if (root.enabled && generation === root._lifecycleGeneration)",
+    "root._equalizerAvailable = false",
+    "root._markBandsUnsynced()",
+    "root._scheduleReconcile()",
+]:
+    if marker not in set_start_failure:
+        raise SystemExit(
+            f"FAIL: Equalizer band process-start failure is not fail-closed/reconciled: {marker}"
+        )
+
 set_failure_start = set_proc.index("if (exitCode !== 0)")
 set_failure_end = set_proc.index("if (!root.backendRunning)", set_failure_start)
 set_failure = set_proc[set_failure_start:set_failure_end]
@@ -129,6 +143,11 @@ for marker in [
         raise SystemExit(
             f"FAIL: Equalizer band mutation failure is not fail-closed/reconciled: {marker}"
         )
+
+set_success_start = set_proc.index("root._equalizerAvailable = true", set_failure_end)
+set_success_error = set_proc.index('root.error = ""', set_success_start)
+if "root._scheduleReconcile()" not in set_proc[set_success_error:]:
+    raise SystemExit("FAIL: successful Equalizer band mutation is not reconciled with backend state")
 
 reset_start_failure = reset_proc[reset_proc.index("onRunningChanged:"):reset_proc.index("onStarted:")]
 for marker in [

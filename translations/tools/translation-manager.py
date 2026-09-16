@@ -23,6 +23,99 @@ DEFAULT_SOURCE_DIR = str(CURRENT_DIR.parents[1])
 CANONICAL_SOURCE_LANG = "en_US"
 
 
+def _decode_static_literal(text: str) -> str:
+    """Decode QML/JavaScript string escapes without re-decoding real Unicode.
+
+    Decoding the complete UTF-8 byte sequence with ``unicode_escape`` corrupts
+    non-ASCII text when the same literal also contains a ``\\u`` or ``\\x``
+    escape. Walk escape sequences instead so already-decoded Unicode stays
+    untouched and escaped backslashes retain their literal meaning.
+    """
+    simple_escapes = {
+        "n": "\n",
+        "t": "\t",
+        "r": "\r",
+        '"': '"',
+        "'": "'",
+        "f": "\f",
+        "b": "\b",
+        "\\": "\\",
+    }
+    hex_digits = set("0123456789abcdefABCDEF")
+    decoded = []
+    index = 0
+
+    while index < len(text):
+        char = text[index]
+        if char != "\\":
+            decoded.append(char)
+            index += 1
+            continue
+
+        if index + 1 >= len(text):
+            decoded.append("\\")
+            break
+
+        escape = text[index + 1]
+        if escape in simple_escapes:
+            decoded.append(simple_escapes[escape])
+            index += 2
+            continue
+
+        if escape == "x" and index + 4 <= len(text):
+            digits = text[index + 2:index + 4]
+            if len(digits) == 2 and all(ch in hex_digits for ch in digits):
+                decoded.append(chr(int(digits, 16)))
+                index += 4
+                continue
+
+        if escape == "u":
+            if index + 3 < len(text) and text[index + 2] == "{":
+                end = text.find("}", index + 3)
+                if end != -1:
+                    digits = text[index + 3:end]
+                    if (
+                        1 <= len(digits) <= 6
+                        and all(ch in hex_digits for ch in digits)
+                    ):
+                        codepoint = int(digits, 16)
+                        if codepoint <= 0x10FFFF and not 0xD800 <= codepoint <= 0xDFFF:
+                            decoded.append(chr(codepoint))
+                            index = end + 1
+                            continue
+
+            if index + 6 <= len(text):
+                digits = text[index + 2:index + 6]
+                if len(digits) == 4 and all(ch in hex_digits for ch in digits):
+                    codepoint = int(digits, 16)
+                    if 0xD800 <= codepoint <= 0xDBFF and index + 12 <= len(text):
+                        low_prefix = text[index + 6:index + 8]
+                        low_digits = text[index + 8:index + 12]
+                        if (
+                            low_prefix == "\\u"
+                            and len(low_digits) == 4
+                            and all(ch in hex_digits for ch in low_digits)
+                        ):
+                            low = int(low_digits, 16)
+                            if 0xDC00 <= low <= 0xDFFF:
+                                combined = 0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00)
+                                decoded.append(chr(combined))
+                                index += 12
+                                continue
+                    elif not 0xD800 <= codepoint <= 0xDFFF:
+                        decoded.append(chr(codepoint))
+                        index += 6
+                        continue
+
+        # Preserve malformed or unsupported escapes verbatim rather than
+        # silently changing the catalog key that runtime code would request.
+        decoded.append("\\")
+        decoded.append(escape)
+        index += 2
+
+    return "".join(decoded)
+
+
 class TranslationManager:
     def __init__(self, translations_dir: str, source_dir: str, yes_mode: bool = False):
         self.translations_dir = Path(translations_dir)
@@ -54,24 +147,7 @@ class TranslationManager:
                             else:
                                 text = match
 
-                            try:
-                                if "\\u" in text or "\\x" in text:
-                                    clean_text = bytes(text, "utf-8").decode("unicode_escape")
-                                else:
-                                    clean_text = (
-                                        text.replace("\\n", "\n")
-                                        .replace("\\t", "\t")
-                                        .replace("\\r", "\r")
-                                        .replace('\\"', '"')
-                                        .replace("\\'", "'")
-                                        .replace("\\f", "\f")
-                                        .replace("\\b", "\b")
-                                        .replace("\\\\", "\\")
-                                    )
-                            except Exception:
-                                clean_text = text
-
-                            clean_text = clean_text.strip()
+                            clean_text = _decode_static_literal(text).strip()
                             if clean_text:
                                 translatable_texts.add(clean_text)
                 except (UnicodeDecodeError, OSError) as exc:

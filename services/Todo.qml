@@ -52,6 +52,12 @@ Singleton {
     // until storage is ready, then persist the latest list once.
     property bool _storageInitializing: false
 
+    // FileView emits onLoaded after setText(). Serialize canonical JSON writes
+    // so a stale self-write callback cannot rehydrate an older list while a
+    // newer UI/external-text edit is waiting to be persisted.
+    property bool _jsonSaving: false
+    property bool _jsonSaveQueued: false
+
     // --- Public API ---
 
     function _normalizeList(value) {
@@ -111,10 +117,21 @@ Singleton {
 
     // --- Persistence helpers ---
 
+    function _saveJson() {
+        if (root._storageInitializing)
+            return
+        if (root._jsonSaving) {
+            root._jsonSaveQueued = true
+            return
+        }
+        root._jsonSaving = true
+        todoFileView.setText(JSON.stringify(root.list))
+    }
+
     function _persistAll() {
         if (root._storageInitializing)
             return
-        todoFileView.setText(JSON.stringify(root.list))
+        root._saveJson()
         if (!root._suppressTxtWrite) {
             _writeTxt()
         }
@@ -214,6 +231,15 @@ Singleton {
         id: todoFileView
         path: Qt.resolvedUrl(root.filePath)
         onLoaded: {
+            if (root._jsonSaving) {
+                root._jsonSaving = false
+                if (root._jsonSaveQueued) {
+                    root._jsonSaveQueued = false
+                    Qt.callLater(() => root._saveJson())
+                }
+                return
+            }
+
             const fileContents = todoFileView.text()
             try {
                 root.list = root._normalizeList(JSON.parse(fileContents))
@@ -333,7 +359,7 @@ Singleton {
                 _log("[Todo] txt changed externally:", parsed.length, "tasks")
                 root._suppressTxtWrite = true
                 root.list = parsed
-                todoFileView.setText(JSON.stringify(root.list))
+                root._saveJson()
                 root._suppressTxtWrite = false
             }
         }

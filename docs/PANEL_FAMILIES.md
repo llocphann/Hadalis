@@ -29,7 +29,7 @@ color: Appearance.zzzEverywhere ? Appearance.colors.colLayer1
 
 ### Layout
 
-- **Bar**: top of screen (horizontal), or left/right edge (vertical). The horizontal bar is modular: left edge, two center-side zones, centered workspace pivot, right edge.
+- **Bar**: top or bottom of screen (horizontal), or left/right edge (vertical). The horizontal bar is modular: left edge, two center-side zones, centered workspace pivot, right edge.
 - **Sidebars**: left sidebar (AI chat, YT Music, widgets), right sidebar (toggles, calendar, tools)
 - **Dock**: application dock (any of 4 edges)
 - **Overview**: workspace overview with app launcher and search (`Super+Space`)
@@ -53,7 +53,7 @@ ii loads about 25 panels through `ShellIiPanels.qml`. Some notable ones:
 
 | Panel ID | What it is |
 |----------|-----------|
-| `iiBar` | Top bar (horizontal mode) |
+| `iiBar` | Horizontal Classic Bar (top or bottom) |
 | `iiVerticalBar` | Side bar (vertical mode) |
 | `iiDock` | Application dock |
 | `iiSidebarLeft` | Left sidebar (AI, music, widgets) |

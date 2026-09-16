@@ -128,6 +128,10 @@ grep -Fq '"$script_dir/test-nix-module-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the Nix module contract'
 grep -Fq '"$script_dir/test-doctor-dependency-routing.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the doctor dependency contract'
+grep -Fq '"$script_dir/test-equalizer-boundary-contract.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the Equalizer architecture boundary contract'
+grep -Fq '"$script_dir/test-equalizer-service-contract.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the Equalizer lifecycle/protocol contract'
 grep -Fq '"$script_dir/test-optional-audio-deps-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the optional audio dependency contract'
 grep -Fq '"$script_dir/test-make-install-lifecycle.sh"' "$release_script" \

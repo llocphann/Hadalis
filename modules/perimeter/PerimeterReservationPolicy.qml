@@ -9,6 +9,8 @@ QtObject {
     id: root
 
     function _barThickness(): real {
+        if (!PerimeterPresentationPolicy.barSurfaceEnabled)
+            return 0
         const showBackground = Config.options?.bar?.showBackground ?? true
         const cornerStyle = Number(Config.options?.bar?.cornerStyle ?? 0)
         const detachedRounded = Appearance.zzzEverywhere
@@ -21,7 +23,8 @@ QtObject {
     }
 
     function _dockThickness(instance): real {
-        if (!(Config.options?.dock?.enable ?? true))
+        if (!PerimeterPresentationPolicy.dockSurfaceEnabled
+                || !(Config.options?.dock?.enable ?? true))
             return 0
         const raw = Number(instance?.config?.thickness
             ?? Config.options?.dock?.height ?? 70)

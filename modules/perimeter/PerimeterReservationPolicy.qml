@@ -53,17 +53,17 @@ QtObject {
                 const kind = String(registration?.reservationKind ?? "")
                 if (kind === "bar") {
                     // Legacy Bar drops its zone while coverflow owns the edge and
-                    // unmaps completely when barOpen is false. screenList limits
-                    // reservation to the same outputs that own a legacy Bar.
-                    if (PerimeterPresentationPolicy.barOutputEnabled(name)
-                            && GlobalStates.barOpen
+                    // unmaps completely when barOpen is false. Output placement is
+                    // perimeter-owned once cutover is requested, so legacy screenList
+                    // must not become a second placement source.
+                    if (GlobalStates.barOpen
                             && !GlobalStates.coverflowSelectorOpen)
                         zone = Math.max(zone, root._barThickness())
                 } else if (kind === "dock") {
                     // A pinned legacy Dock keeps its zone while reveal content is
-                    // hidden, but never reserves outputs excluded by screenList.
-                    if (PerimeterPresentationPolicy.dockOutputEnabled(name))
-                        zone = Math.max(zone, root._dockThickness(instance))
+                    // hidden. Which output owns the dock is determined only by
+                    // PerimeterConfig placement.
+                    zone = Math.max(zone, root._dockThickness(instance))
                 }
             }
         }

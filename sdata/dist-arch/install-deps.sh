@@ -544,7 +544,9 @@ PY
       if makepkg -dfC 2>/dev/null; then
         local_pkg=(*.pkg.tar.zst)
         if [[ -f "${local_pkg[0]}" ]]; then
-          if pkg_sudo pacman -U --noconfirm --needed "${local_pkg[0]}" 2>/dev/null; then
+          # Reinstall even at the same pkgver/pkgrel so changing --no-* choices
+          # refreshes the dependency metadata recorded by pacman.
+          if pkg_sudo pacman -U --noconfirm "${local_pkg[0]}" 2>/dev/null; then
             log_success "Meta-package inir-deps registered — orphan cleaner will skip iNiR deps"
           else
             log_warning "Could not register meta-package — orphan protection unavailable"

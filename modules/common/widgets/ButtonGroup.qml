@@ -16,20 +16,37 @@ Rectangle {
     property alias clickIndex: rowLayout.clickIndex
     property alias childrenCount: rowLayout.childrenCount
 
+    readonly property var firstVisibleChild: {
+        for (let i = 0; i < rowLayout.children.length; ++i) {
+            const child = rowLayout.children[i];
+            if (child.visible) return child;
+        }
+        return null;
+    }
+    readonly property var lastVisibleChild: {
+        for (let i = rowLayout.children.length - 1; i >= 0; --i) {
+            const child = rowLayout.children[i];
+            if (child.visible) return child;
+        }
+        return null;
+    }
+
     property real contentWidth: {
         let total = 0;
+        let visibleCount = 0;
         for (let i = 0; i < rowLayout.children.length; ++i) {
             const child = rowLayout.children[i];
             if (!child.visible) continue;
             total += child.baseWidth ?? child.implicitWidth ?? child.width;
+            visibleCount += 1;
         }
-        return total + rowLayout.spacing * (rowLayout.children.length - 1);
+        return total + rowLayout.spacing * Math.max(0, visibleCount - 1);
     }
 
-    topLeftRadius: rowLayout.children.length > 0 ? (rowLayout.children[0].radius + padding) : 
+    topLeftRadius: root.firstVisibleChild ? (root.firstVisibleChild.radius + padding) :
         Appearance?.rounding?.small
     bottomLeftRadius: topLeftRadius
-    topRightRadius: rowLayout.children.length > 0 ? (rowLayout.children[rowLayout.children.length - 1].radius + padding) : 
+    topRightRadius: root.lastVisibleChild ? (root.lastVisibleChild.radius + padding) :
         Appearance?.rounding?.small
     bottomRightRadius: topRightRadius
 

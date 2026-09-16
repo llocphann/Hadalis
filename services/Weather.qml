@@ -766,7 +766,7 @@ Singleton {
                         );
                         root.fetchWeather();
                     } else {
-                        console.warn("[Weather] No geocode results for:", root.configCity);
+                        console.warn("[Weather] No geocode results for:", root.redactedLogLocationName(root.configCity));
                         root.location = { valid: true, lat: 0, lon: 0, name: root.configCity };
                         root.fetchWeather();
                     }
@@ -914,7 +914,7 @@ Singleton {
                             lon: data.longitude,
                             name: data.city + (data.region ? `, ${data.region}` : "")
                         };
-                        console.info("[Weather] Location (fallback):", root.location.name);
+                        console.info("[Weather] Location (fallback):", root.redactedLogLocationName(root.location.name));
                         root.fetchWeather();
                     } else {
                         // Both methods failed, schedule retry

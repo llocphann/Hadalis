@@ -30,19 +30,23 @@ Keep the package archive filename tagged as well; `scripts/release.sh publish` c
 
 ## Validate before promotion
 
-Run the repository checks that cover packaging, generated state, install lifecycle, documentation, QML startup, and optional dependency boundaries:
+Run the repository checks that cover packaging, generated state, install lifecycle, documentation, QML startup, the Equalizer Phase 1 service boundary, and optional dependency boundaries:
 
 ```bash
 make test-local
 bash scripts/test-packaging-contract.sh
 bash scripts/test-nix-module-contract.sh
 bash scripts/test-doctor-dependency-routing.sh
+bash scripts/test-equalizer-boundary-contract.sh
+bash scripts/test-equalizer-service-contract.sh
 bash scripts/test-optional-audio-deps-contract.sh
 bash scripts/test-make-install-lifecycle.sh
 bash scripts/verify-docs.sh
 fish scripts/qml-check.fish --all
 python3 scripts/lib/generate-ipc-registry.py --check
 ```
+
+These Equalizer checks validate the current Phase 1 backend/service contract: disabled-by-default behavior, lifecycle/protocol guards, and the boundary that keeps backend execution out of Media presentation code. Future Equalizer presentation work such as the full UI, spectrum, presets surface, or multi-band redesign is not a release prerequisite here.
 
 Preview the release notes before tagging:
 
@@ -73,7 +77,7 @@ Do not move the tag after publication. `scripts/release.sh publish` requires all
 - the tag exists on the remote and resolves to the same commit as the local tag
 - `distro/arch/inir-shell/PKGBUILD` defaults `_source_ref` to exactly `vX.Y.Z`
 - `distro/arch/inir-shell/.SRCINFO` points at the same tag archive
-- packaging, Nix, doctor dependency-routing, optional-audio dependency, Makefile install/uninstall lifecycle, and documentation contracts all pass
+- packaging, Nix, doctor dependency-routing, Equalizer Phase 1 boundary/service, optional-audio dependency, Makefile install/uninstall lifecycle, and documentation contracts all pass
 
 ## Publish
 
@@ -85,7 +89,7 @@ scripts/release.sh publish X.Y.Z
 
 The publication sequence is:
 
-1. Validate version, checkout, remote tag, package source identity, packaging/dependency contracts, staged install/uninstall lifecycle, and documentation consistency.
+1. Validate version, checkout, remote tag, package source identity, packaging/dependency contracts, Equalizer Phase 1 backend/service boundaries, staged install/uninstall lifecycle, and documentation consistency.
 2. Generate release notes.
 3. Create a GitHub draft release, or reuse an existing draft for the same tag.
 4. Sync repository docs to the GitHub Wiki.

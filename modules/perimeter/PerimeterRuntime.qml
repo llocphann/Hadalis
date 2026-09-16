@@ -45,9 +45,16 @@ Scope {
     }
 
     function outputsWithModule(moduleId: string): var {
+        // Sidebar semantic routing still honors sidebar.screenList. Perimeter
+        // placement controls where a module exists; screenList controls which
+        // connected outputs are eligible to present the singular sidebar state.
+        const allowed = GlobalStates.connectedOutputNames(
+            Config.options?.sidebar?.screenList ?? [])
         return Quickshell.screens
             .map(screen => String(screen?.name ?? ""))
-            .filter(name => name.length > 0 && root.outputHasModule(name, moduleId))
+            .filter(name => name.length > 0
+                && allowed.includes(name)
+                && root.outputHasModule(name, moduleId))
     }
 
     function syncSidebarRoute(featureRole: bool): void {

@@ -59,6 +59,7 @@ test-prefix-install:
 		test -f "$$runtime/shell.qml"; \
 		test -f "$$runtime/qmldir"; \
 		test -f "$$docs/README.md"; \
+		test -f "$$docs/AUDIO_MEDIA.md"; \
 		test -f "$$docs/INSTALL.md"; \
 		test -f "$$docs/PACKAGES.md"; \
 		test -f "$$docs/RELEASING.md"; \

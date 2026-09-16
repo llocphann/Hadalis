@@ -44,6 +44,27 @@ Singleton {
         Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "welcome"])
     }
 
+    function _persistAndHandleFirstRun(): void {
+        if (root.defaultWallpaperPath.length > 0)
+            Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, root.defaultWallpaperPath])
+
+        const parentDir = root.firstRunFilePath.substring(0, root.firstRunFilePath.lastIndexOf('/'))
+        const launcherPath = Quickshell.shellPath("scripts/inir")
+        // Keep marker persistence and welcome launch in one process so the
+        // launcher cannot win the scheduling race. The welcome still opens if
+        // persistence fails; the semicolon intentionally preserves that fallback.
+        Quickshell.execDetached([
+            "/bin/sh",
+            "-c",
+            "mkdir -p -- \"$1\" && printf '%s\\n' \"$2\" > \"$3\"; exec \"$4\" welcome",
+            "first-run-marker",
+            parentDir,
+            root.firstRunFileContent,
+            root.firstRunFilePath,
+            launcherPath
+        ])
+    }
+
     function _completeFirstRun(): void {
         if (listWallpapersProc._candidates.length > 0) {
             const sorted = [...listWallpapersProc._candidates].sort()
@@ -51,8 +72,7 @@ Singleton {
                 ?? sorted[0]
         }
         if (root._pendingFirstRun) {
-            root.disableNextTime()
-            root.handleFirstRun()
+            root._persistAndHandleFirstRun()
             root._pendingFirstRun = false
         }
     }

@@ -88,7 +88,6 @@ def code_only(text: str) -> str:
 
 
 import_re = re.compile(r'^\s*import\s+(qs(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\b')
-object_use = lambda name: re.compile(rf'\b{re.escape(name)}\s*\{{')
 symbol_use = lambda name: re.compile(rf'\b{re.escape(name)}\b')
 files = list(qml_files())
 parsed = {}
@@ -121,7 +120,8 @@ for path in files:
 # properties/functions and other symbol references cannot survive while an old
 # parser is skipped. Comments and strings were removed above to avoid stale-doc
 # false positives. If a type is intentionally restored, its implementation
-# automatically disables the retired-type check.
+# automatically disables the retired-type check and falls through to the owner-
+# import contract below for critical exported types.
 for type_name in ('MascotImage', 'MascotAnimation', 'CompositorFocusGrab'):
     implementations = [path for path in files if path.name == f'{type_name}.qml']
     if implementations:
@@ -135,30 +135,36 @@ for type_name in ('MascotImage', 'MascotAnimation', 'CompositorFocusGrab'):
                     f'{type_name}.qml is absent from the scanned tree'
                 )
 
-# CompositorFocusGrab is a critical exported local type. Consumers outside its
-# own module must import the module that actually exports it; this catches the
-# exact type-resolution failure that can make PerimeterRuntime unavailable.
-focus_impls = [path for path in files if path.name == 'CompositorFocusGrab.qml']
-if len(focus_impls) == 1:
-    impl = focus_impls[0]
-    module_rel = impl.parent.relative_to(root)
-    expected_uri = 'qs' + ('.' + '.'.join(module_rel.parts) if module_rel.parts else '')
-    pattern = object_use('CompositorFocusGrab')
-    for path, code in parsed.items():
-        if path == impl or path.parent == impl.parent or not pattern.search(code):
-            continue
-        imports = {
-            match.group(1)
-            for line in code.splitlines()
-            if (match := import_re.match(line))
-        }
-        if expected_uri not in imports:
-            errors.append(
-                f'{path.relative_to(root)}: CompositorFocusGrab consumer must import '
-                f'{expected_uri} (implementation: {impl.relative_to(root)})'
-            )
-elif len(focus_impls) > 1:
-    errors.append('multiple CompositorFocusGrab.qml implementations make module ownership ambiguous')
+# Historical startup failures involved exported local types whose implementation
+# lived in qs.modules.common.widgets. If one of these compatibility/critical types
+# exists, every consumer outside the owning directory must import that owner
+# module. This stays valid across retirement/restoration: absent implementations
+# are handled above, while restored implementations cannot silently make an
+# unqualified external type token resolvable without the corresponding import.
+for type_name in ('MascotImage', 'CompositorFocusGrab'):
+    implementations = [path for path in files if path.name == f'{type_name}.qml']
+    if len(implementations) == 1:
+        impl = implementations[0]
+        module_rel = impl.parent.relative_to(root)
+        expected_uri = 'qs' + ('.' + '.'.join(module_rel.parts) if module_rel.parts else '')
+        pattern = symbol_use(type_name)
+        for path, code in parsed.items():
+            if path == impl or path.parent == impl.parent or not pattern.search(code):
+                continue
+            imports = {
+                match.group(1)
+                for line in code.splitlines()
+                if (match := import_re.match(line))
+            }
+            if expected_uri not in imports:
+                errors.append(
+                    f'{path.relative_to(root)}: {type_name} consumer must import '
+                    f'{expected_uri} (implementation: {impl.relative_to(root)})'
+                )
+    elif len(implementations) > 1:
+        errors.append(
+            f'multiple {type_name}.qml implementations make module ownership ambiguous'
+        )
 
 if errors:
     for error in errors:

@@ -18,7 +18,7 @@ Singleton {
         return Array.from(combined).sort();
     }
     property bool isScanning: scanLanguagesProcess.running || scanGeneratedLanguagesProcess.running
-    property bool isLoading: false
+    readonly property bool isLoading: translationFileView.loadPending || generatedTranslationFileView.loadPending
     property string translationKeepSuffix: "/*keep*/"
     property string translationsDir: Quickshell.shellPath("translations")
     property string generatedTranslationsDir: Directories.shellConfig + "/translations"
@@ -63,6 +63,8 @@ Singleton {
 
     onLanguageCodeChanged: {
         print("[Translation] Language changed to", root.languageCode);
+        root.translations = ({});
+        root.generatedTranslations = ({});
         translationFileView.languageCode = root.languageCode;
         generatedTranslationFileView.languageCode = root.languageCode;
         if (!scanGeneratedLanguagesProcess.running)
@@ -85,7 +87,6 @@ Singleton {
         languageCode: root.languageCode
         onContentLoaded: (data) => {
             root.translations = data;
-            root.isLoading = false;
         }
     }
 
@@ -96,7 +97,6 @@ Singleton {
         isGenerated: true
         onContentLoaded: (data) => {
             root.generatedTranslations = data;
-            root.isLoading = false;
         }
     }
 
@@ -174,14 +174,17 @@ Singleton {
         required property string translationsDir
         property string languageCode: root.languageCode
         property bool isGenerated: false
+        property bool loadPending: false
         signal contentLoaded(var data)
         printErrors: false
 
         function reread() { // Proper reload in case the file was incorrect before
+            translationReader.loadPending = true;
             const langs = translationReader.isGenerated ? root.availableGeneratedLanguages : root.availableLanguages;
             if (!(langs ?? []).includes(translationReader.languageCode)) {
                 translationReader.path = "";
                 translationReader.contentLoaded({});
+                translationReader.loadPending = false;
                 return;
             }
             translationReader.path = "";
@@ -200,9 +203,11 @@ Singleton {
                 console.log("[Translation] Failed to load translations:", e);
                 translationReader.contentLoaded({});
             }
+            translationReader.loadPending = false;
         }
         onLoadFailed: error => {
             translationReader.contentLoaded({});
+            translationReader.loadPending = false;
         }
     }
 }

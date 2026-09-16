@@ -8,6 +8,9 @@ import qs.modules.common
 BarConfig {
     id: root
 
+    property bool _hugUiReady: false
+    opacity: root._hugUiReady ? 1 : 0
+
     function _applyHugOnlyUi(item): void {
         if (!item)
             return
@@ -34,6 +37,9 @@ BarConfig {
         interval: 0
         running: true
         repeat: false
-        onTriggered: root._applyHugOnlyUi(root)
+        onTriggered: {
+            root._applyHugOnlyUi(root)
+            root._hugUiReady = true
+        }
     }
 }

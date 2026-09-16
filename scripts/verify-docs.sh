@@ -41,7 +41,60 @@ while read -r p; do
     || note "docs reference '$p' but no file named '$b' exists"
 done < <(grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' docs/*.md 2>/dev/null | sort -u)
 
-# 4. (local, optional) nested AGENTS.md are gitignored — only checked if present.
+# 4. Relative Markdown links in README/docs must point at repository paths that
+#    exist. Anchors are deliberately ignored here; this guards file moves/typos
+#    without trying to duplicate each Markdown renderer's heading-slug rules.
+echo "[links] relative Markdown targets"
+if command -v python3 >/dev/null 2>&1; then
+  if ! python3 - <<'PY'
+from pathlib import Path
+import re
+import sys
+from urllib.parse import unquote
+
+root = Path.cwd().resolve()
+documents = [Path("README.md"), *sorted(Path("docs").glob("*.md"))]
+link_re = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+scheme_re = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+errors = []
+
+for document in documents:
+    if not document.is_file():
+        continue
+    text = document.read_text(encoding="utf-8")
+    for match in link_re.finditer(text):
+        raw = match.group(1).strip()
+        if not raw or raw.startswith("#") or scheme_re.match(raw):
+            continue
+        if raw.startswith("<") and ">" in raw:
+            destination = raw[1:raw.index(">")]
+        else:
+            destination = raw.split(None, 1)[0]
+        path_text = unquote(destination.split("#", 1)[0])
+        if not path_text:
+            continue
+        target = (document.parent / path_text).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            errors.append(f"{document}: link escapes repository: {destination}")
+            continue
+        if not target.exists():
+            errors.append(f"{document}: missing link target: {destination}")
+
+if errors:
+    for error in errors:
+        print(f"  - {error}", file=sys.stderr)
+    raise SystemExit(1)
+PY
+  then
+    note "one or more relative Markdown link targets are missing"
+  fi
+else
+  note "python3 is required for relative Markdown link validation"
+fi
+
+# 5. (local, optional) nested AGENTS.md are gitignored — only checked if present.
 #    Same basename match; these cite components by name.
 if find modules services -name AGENTS.md -print -quit 2>/dev/null | grep -q .; then
   echo "[local] nested AGENTS.md .qml references"
@@ -53,7 +106,7 @@ if find modules services -name AGENTS.md -print -quit 2>/dev/null | grep -q .; t
   done < <(grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' $(find modules services -name AGENTS.md) 2>/dev/null | sort -u)
 fi
 
-# 5. Runtime locales must expose the same keys, placeholders and markup as
+# 6. Runtime locales must expose the same keys, placeholders and markup as
 #    English. The localization tool owns this contract so review batches and
 #    repository verification cannot drift apart.
 echo "[i18n] runtime locale structure"
@@ -64,7 +117,7 @@ else
   note "python3 and translations/tools/l10n.py are required for locale validation"
 fi
 
-# 6. Generated IPC CLI registry must be in sync with docs/IPC.md + QML targets.
+# 7. Generated IPC CLI registry must be in sync with docs/IPC.md + QML targets.
 #    A stale scripts/lib/ipc-registry.sh breaks the `inir <target> <fn>` shorthand
 #    even though the IPC itself works — the bug that hid the dashboard target.
 if command -v python3 >/dev/null 2>&1 && [ -f scripts/lib/generate-ipc-registry.py ]; then

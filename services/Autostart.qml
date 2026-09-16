@@ -262,6 +262,10 @@ Singleton {
     }
 
     function _write(): void {
+        if (!root.ready) {
+            console.warn("[Autostart] Refusing to write before initial startup file load")
+            return
+        }
         if (!isNiri || startupFilePath.length === 0) {
             root.status = isNiri ? "missing" : "notniri"
             return
@@ -275,6 +279,7 @@ Singleton {
     // ── Public mutations ─────────────────────────────────────────────────
 
     function addApp(desktopId): void {
+        if (!root.ready) return
         const id = String(desktopId ?? "").trim()
         if (id.length === 0) return
         // Avoid duplicates by desktopId.
@@ -293,6 +298,7 @@ Singleton {
     }
 
     function addCommand(command): void {
+        if (!root.ready) return
         const cmd = String(command ?? "").trim()
         if (cmd.length === 0) return
         const entries = root.entries.slice()
@@ -302,6 +308,7 @@ Singleton {
     }
 
     function removeEntry(index): void {
+        if (!root.ready) return
         const entries = root.entries.slice()
         if (index >= 0 && index < entries.length) {
             entries.splice(index, 1)
@@ -311,6 +318,7 @@ Singleton {
     }
 
     function setEntryEnabled(index, enabled): void {
+        if (!root.ready) return
         const entries = root.entries.slice()
         if (index >= 0 && index < entries.length) {
             entries[index].enabled = enabled === true
@@ -358,6 +366,7 @@ Singleton {
     }
 
     function setAppEnabled(desktopId, enabled): void {
+        if (!root.ready) return
         const id = String(desktopId ?? "")
         const entries = root.entries.slice()
         let idx = -1
@@ -381,14 +390,17 @@ Singleton {
             return `${root.isNiri ? "niri" : "other"}|${root.startupFilePath}|${root.entries.length}|${root.externalLines.length}|${root.status}`
         }
         function addCommand(cmd: string): string {
+            if (!root.ready) return "not-ready"
             root.addCommand(cmd)
             return "ok"
         }
         function addApp(desktopId: string): string {
+            if (!root.ready) return "not-ready"
             root.addApp(desktopId)
             return "ok"
         }
         function removeLast(): string {
+            if (!root.ready) return "not-ready"
             if (root.entries.length > 0) root.removeEntry(root.entries.length - 1)
             return "ok"
         }

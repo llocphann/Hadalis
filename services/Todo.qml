@@ -50,8 +50,25 @@ Singleton {
 
     // --- Public API ---
 
+    function _normalizeList(value) {
+        if (!Array.isArray(value)) return []
+        const normalized = []
+        for (let i = 0; i < value.length; i++) {
+            const item = value[i]
+            if (!item || typeof item !== "object" || Array.isArray(item))
+                continue
+            normalized.push({
+                "content": String(item.content ?? ""),
+                "done": item.done === true
+            })
+        }
+        return normalized
+    }
+
     function addItem(item) {
-        list.push(item)
+        const normalized = root._normalizeList([item])
+        if (normalized.length === 0) return
+        list.push(normalized[0])
         root.list = list.slice(0)
         _persistAll()
     }
@@ -168,7 +185,7 @@ Singleton {
         onLoaded: {
             const fileContents = todoFileView.text()
             try {
-                root.list = JSON.parse(fileContents)
+                root.list = root._normalizeList(JSON.parse(fileContents))
             } catch (e) {
                 console.log("[Todo] JSON parse error, resetting list:", e)
                 root.list = []

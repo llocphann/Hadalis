@@ -39,3 +39,19 @@ pre_remove() {
     /etc/tlp.d/99-inir-battery-charge-limit.conf \
     /etc/tlp.d/99-inir-tlp-settings.conf
 }
+
+post_remove() {
+  cat <<'EOF'
+Hadalis has been removed.
+
+Pacman does not modify per-user systemd state. If an account previously ran
+'inir service enable' without first running 'inir service disable', remove any
+dangling compositor wants link in that account and reload its user manager:
+
+  find "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" -path '*.wants/inir.service' -type l -delete
+  systemctl --user daemon-reload
+
+For future removals, run 'inir service disable' as each affected user before
+removing the package.
+EOF
+}

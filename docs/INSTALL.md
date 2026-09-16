@@ -118,7 +118,7 @@ If everything went well, you should see:
 - Background/wallpaper (hopefully not a black screen)
 - `Mod+Tab` opens the Niri overview (native)
 - `Mod+Space` (`Super+Space`) toggles the ii overview
-- `Alt+Tab` cycles windows using ii's switcher
+- `Alt+Tab` cycles windows using Niri's native bindings
 - `Super+V` opens the clipboard panel
 - `Super+Shift+S` takes a region screenshot
 

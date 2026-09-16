@@ -65,12 +65,14 @@ jobs:
             translations/tools/translation-cleaner.py \
             translations/tools/test-cleaner.py \
             translations/tools/test-locale-drift.py \
-            translations/tools/test-manager.py
+            translations/tools/test-manager.py \
+            translations/tools/test-reviewed-replacements.py
           python3 translations/tools/l10n.py audit-all
           python3 translations/tools/source-parity.py
           python3 translations/tools/test-cleaner.py
           python3 translations/tools/test-locale-drift.py
           python3 translations/tools/test-manager.py
+          python3 translations/tools/test-reviewed-replacements.py
           python3 scripts/lib/generate-ipc-registry.py --check
           make -n install PREFIX=/tmp/inir-stage-test >/dev/null
 

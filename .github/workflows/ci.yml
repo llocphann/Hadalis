@@ -37,6 +37,8 @@ jobs:
           bash -n scripts/test-tlp-settings-ui-guards.sh
           bash -n scripts/test-tlp-integration-lifecycle.sh
           bash -n scripts/verify-docs.sh
+          bash -n scripts/release.sh
+          bash -n scripts/wiki-sync.sh
           bash -n scripts/ai/gemini-translate.sh
           sh -n assets/helpers/inir-thinkfan
           bash -n distro/arch/inir-shell/PKGBUILD
@@ -112,6 +114,17 @@ jobs:
           grep -Fq 'source = inir::git+https://github.com/llocphann/Hadalis.git#branch=dev' distro/arch/inir-shell-git/.SRCINFO
           grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell/.SRCINFO
           grep -Fq 'optdepends = thinkfan: managed fan-control integration' distro/arch/inir-shell-git/.SRCINFO
+
+      - name: Validate release source identity
+        run: |
+          grep -Fq 'https://github.com/llocphann/Hadalis?tab=readme-ov-file#update' scripts/release.sh
+          grep -Fq 'https://github.com/llocphann/Hadalis?tab=readme-ov-file#install' scripts/release.sh
+          grep -Fq 'https://github.com/llocphann/Hadalis/blob/stable/CHANGELOG.md' scripts/release.sh
+          grep -Fq 'wiki_url="https://github.com/llocphann/Hadalis.wiki.git"' scripts/wiki-sync.sh
+          if grep -Fqi 'github.com/snowarch/inir' scripts/release.sh scripts/wiki-sync.sh; then
+            echo 'release tooling still targets the upstream iNiR repository' >&2
+            exit 1
+          fi
 
       - name: Validate privileged integration packaging
         run: |

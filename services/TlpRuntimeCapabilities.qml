@@ -269,6 +269,8 @@ Singleton {
 
     Process {
         id: gpuProbe
+        property bool timedOut: false
+        property bool startObserved: false
         command: ["/bin/sh", "-c",
             "global_min=''; global_max=''; has_i915=0; has_xe=0; "
             + "for card in /sys/class/drm/card[0-9]*; do "
@@ -294,11 +296,48 @@ Singleton {
             id: gpuOutput
         }
 
+        onRunningChanged: {
+            if (gpuProbe.running) {
+                gpuProbe.startObserved = false
+                return
+            }
+            if (gpuProbe.startObserved)
+                return
+
+            gpuProbeTimeout.stop()
+            root._clearGpuCapabilities()
+            console.warn("[TLP] Failed to start GPU capability probe")
+        }
+
+        onStarted: {
+            gpuProbe.startObserved = true
+            gpuProbe.timedOut = false
+            gpuProbeTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
+            gpuProbeTimeout.stop()
+            if (gpuProbe.timedOut) {
+                root._clearGpuCapabilities()
+                console.warn("[TLP] Timed out while probing GPU capabilities")
+                return
+            }
             if (exitCode === 0)
                 root._applyGpuCapabilities(gpuOutput.text)
             else
                 root._clearGpuCapabilities()
+        }
+    }
+
+    Timer {
+        id: gpuProbeTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!gpuProbe.running)
+                return
+            gpuProbe.timedOut = true
+            gpuProbe.running = false
         }
     }
 

@@ -150,9 +150,13 @@ Item {
         PanelWindow {
             id: dualSidebarBackdrop
             required property var modelData
-            readonly property bool leftPresented: GlobalStates.sidebarLeftOpen
+            readonly property bool leftPresented:
+                (Config.options?.enabledPanels ?? []).includes("iiSidebarLeft")
+                && GlobalStates.sidebarLeftOpen
                 && GlobalStates.sidebarLeftPresentationOutput === (modelData?.name ?? "")
-            readonly property bool rightPresented: GlobalStates.sidebarRightOpen
+            readonly property bool rightPresented:
+                (Config.options?.enabledPanels ?? []).includes("iiSidebarRight")
+                && GlobalStates.sidebarRightOpen
                 && GlobalStates.sidebarRightPresentationOutput === (modelData?.name ?? "")
             screen: modelData
             visible: leftPresented || rightPresented

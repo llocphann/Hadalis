@@ -169,6 +169,8 @@ pkgs.stdenvNoCC.mkDerivation {
     # outside $out/bin/inir and therefore do not inherit makeWrapper variables.
     # Package-managed maintenance must also never copy the raw launcher into
     # ~/.local/bin, where it would shadow the Nix wrapper on later invocations.
+    # NixOS/Home Manager own inir.service declaratively, so the packaged CLI
+    # must not materialize or delete mutable user units/wants links either.
     python3 - \
       "$runtime/setup" \
       "$runtime/scripts/inir" \
@@ -199,7 +201,47 @@ launcher_value = 'system_config_dir="$' + '{INIR_SYSTEM_RUNTIME_DIR:-' + runtime
 count = launcher.count(launcher_default)
 if count != 1:
     raise SystemExit("expected exactly one launcher runtime default")
-launcher_path.write_text(launcher.replace(launcher_default, launcher_value, 1))
+launcher = launcher.replace(launcher_default, launcher_value, 1)
+
+ensure_marker = """ensure_service_unit_available() {
+    # Always reinstall the service template to pick up improvements (e.g. KillMode,
+"""
+ensure_guard = """ensure_service_unit_available() {
+    require_command systemctl
+    if ! systemctl --user cat inir.service >/dev/null 2>&1; then
+        echo "inir.service is not provisioned by Nix; enable programs.inir.service in NixOS or Home Manager" >&2
+        return 1
+    fi
+    return 0
+
+    # Always reinstall the service template to pick up improvements (e.g. KillMode,
+"""
+if launcher.count(ensure_marker) != 1:
+    raise SystemExit("expected exactly one ensure_service_unit_available definition")
+launcher = launcher.replace(ensure_marker, ensure_guard, 1)
+
+service_marker = (
+    'run_service_command() {\n'
+    '    local action="$' + '{1:-status}"\n'
+    '    shift || true\n\n'
+    '    case "$action" in\n'
+)
+service_guard = (
+    'run_service_command() {\n'
+    '    local action="$' + '{1:-status}"\n'
+    '    shift || true\n\n'
+    '    case "$action" in\n'
+    '        install|uninstall|remove|enable|disable)\n'
+    '            echo "Nix-managed installations keep inir.service declarative; configure programs.inir.service and rebuild." >&2\n'
+    '            return 1\n'
+    '            ;;\n'
+    '    esac\n\n'
+    '    case "$action" in\n'
+)
+if launcher.count(service_marker) != 1:
+    raise SystemExit("expected exactly one run_service_command definition")
+launcher = launcher.replace(service_marker, service_guard, 1)
+launcher_path.write_text(launcher)
 
 versioning = versioning_path.read_text()
 versioning_default = 'RUNTIME_DIR_SYSTEM_LOCAL="$' + '{INIR_SYSTEM_RUNTIME_DIR_LOCAL:-/usr/local/share/quickshell/inir}"'
@@ -211,6 +253,8 @@ versioning_path.write_text(versioning.replace(versioning_default, versioning_val
 PY
     grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$runtime/setup"
     grep -Fq "$runtime" "$runtime/scripts/inir"
+    grep -Fq 'Nix-managed installations keep inir.service declarative' "$runtime/scripts/inir"
+    grep -Fq 'systemctl --user cat inir.service' "$runtime/scripts/inir"
     grep -Fq "$runtime" "$runtime/sdata/lib/versioning.sh"
 
     cat > "$runtime/version.json" <<'EOF'

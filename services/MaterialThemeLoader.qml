@@ -76,35 +76,59 @@ Singleton {
         schemeVariantProc.running = true
     }
 
+    function _finishGenerator(name: string, code: int, immediateReload: bool, spawnFailed: bool): void {
+        if (spawnFailed) {
+            console.warn("[MaterialThemeLoader]", name, "generator failed to start")
+        } else if (code === 0) {
+            // Only a confirmed successful generation may bypass the manual-theme
+            // apply gate. Startup failures and non-zero exits must never reuse a
+            // stale colors.json as if it belonged to the requested generation.
+            root._forceApply = true
+            if (immediateReload)
+                reloadDebounce.restart()
+        }
+
+        // Preserve the existing non-zero-exit recovery semantics for startup
+        // failures too: poll for a late/partial file update and refresh external
+        // targets without asserting that generation itself succeeded.
+        root.scheduleReload()
+        delayedExternalApply.restart()
+    }
+
     Process {
         id: schemeVariantProc
         running: false
-        onExited: (code, status) => {
-            if (code === 0) {
-                // Script succeeded — colors.json is ready. Set force flag so the
-                // next applyColors call bypasses the isAutoTheme gate.
-                root._forceApply = true
-                // Route through reloadDebounce so this doesn't race the
-                // onFileChanged that the script's own write is about to fire.
-                reloadDebounce.restart()
+        property bool startObserved: false
+        onRunningChanged: {
+            if (schemeVariantProc.running) {
+                schemeVariantProc.startObserved = false
+                return
             }
-            // Safety net: poll for file changes in case the immediate reload misses
-            root.scheduleReload()
-            // Apply external app theming (terminals, GTK, etc.) after generation
-            delayedExternalApply.restart()
+            if (schemeVariantProc.startObserved)
+                return
+
+            root._finishGenerator("scheme variant", -1, true, true)
         }
+        onStarted: schemeVariantProc.startObserved = true
+        onExited: (code, status) => root._finishGenerator("scheme variant", code, true, false)
     }
 
     Process {
         id: darkModeProc
         running: false
-        onExited: (code, status) => {
-            if (code === 0) {
-                root._forceApply = true
+        property bool startObserved: false
+        onRunningChanged: {
+            if (darkModeProc.running) {
+                darkModeProc.startObserved = false
+                return
             }
-            root.scheduleReload()
-            delayedExternalApply.restart()
+            if (darkModeProc.startObserved)
+                return
+
+            root._finishGenerator("dark mode", -1, false, true)
         }
+        onStarted: darkModeProc.startObserved = true
+        onExited: (code, status) => root._finishGenerator("dark mode", code, false, false)
     }
 
     function _log(...args): void {
@@ -220,19 +244,25 @@ Singleton {
     Process {
         id: colorInvertProc
         running: false
+        property bool startObserved: false
         command: [
             "/usr/bin/bash",
             Directories.wallpaperSwitchScriptPath,
             "--noswitch",
             "--skip-accent-write"
         ]
-        onExited: (code, status) => {
-            if (code === 0) {
-                root._forceApply = true
+        onRunningChanged: {
+            if (colorInvertProc.running) {
+                colorInvertProc.startObserved = false
+                return
             }
-            root.scheduleReload()
-            delayedExternalApply.restart()
+            if (colorInvertProc.startObserved)
+                return
+
+            root._finishGenerator("color invert", -1, false, true)
         }
+        onStarted: colorInvertProc.startObserved = true
+        onExited: (code, status) => root._finishGenerator("color invert", code, false, false)
     }
 
     Timer {

@@ -64,6 +64,8 @@ Singleton {
 
     function _stopSwayidle() {
         _startSwayidleDelayed.stop()
+        swayidleRestartTimer.stop()
+        swayidleProcess.stopRequested = true
         swayidleProcess.running = false
     }
 
@@ -110,17 +112,46 @@ Singleton {
 
         if (Quickshell.env("QS_DEBUG") === "1") console.log("[Idle] Starting swayidle")
         swayidleProcess.command = cmd
+        swayidleProcess.stopRequested = false
         swayidleProcess.running = true
     }
 
     Process {
         id: swayidleProcess
+        property bool startObserved: false
+        property bool stopRequested: false
+
+        onRunningChanged: {
+            if (swayidleProcess.running) {
+                swayidleProcess.startObserved = false
+                return
+            }
+            if (swayidleProcess.stopRequested || root.inhibit)
+                return
+
+            console.warn(swayidleProcess.startObserved
+                ? "[Idle] swayidle exited unexpectedly; retrying in 30s"
+                : "[Idle] Failed to start swayidle; retrying in 30s")
+            swayidleRestartTimer.restart()
+        }
+
+        onStarted: swayidleProcess.startObserved = true
     }
 
     Timer {
         id: _startSwayidleDelayed
         interval: 200
         onTriggered: root._startSwayidle()
+    }
+
+    Timer {
+        id: swayidleRestartTimer
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!root.inhibit)
+                root._startSwayidle()
+        }
     }
 
     Connections {

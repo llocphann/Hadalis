@@ -90,6 +90,7 @@
     "scripts/wiki-sync.sh",
     "scripts/verify-docs.sh",
     "scripts/qml-check.fish",
+    "scripts/validate-maintainer-local.sh",
     "scripts/test-battery-charge-limit-helper.sh",
     "scripts/test-doctor-dependency-routing.sh",
     "scripts/test-equalizer-boundary-contract.sh",

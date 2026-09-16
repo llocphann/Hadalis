@@ -121,6 +121,8 @@ inir service enable
 inir service start
 ```
 
+For a manual `make install`, those service commands create per-user systemd state. When uninstalling, tear that state down **before** `sudo make uninstall` removes the launcher. See [Uninstall and Service Teardown](UNINSTALL.md#manual-package-style-installation-sudo-make-install).
+
 ### 6. Restart Niri
 
 ```bash
@@ -157,5 +159,6 @@ If something's broken, the logs will probably tell you which package is missing.
 - [KEYBINDS.md](KEYBINDS.md) - Learn the shortcuts
 - [IPC.md](IPC.md) - Make your own keybindings
 - [SETUP.md](SETUP.md) - Updating, uninstalling, how configs are handled
+- [UNINSTALL.md](UNINSTALL.md) - Ownership-aware teardown for repo, Makefile, Arch package, and Nix installs
 - [PACKAGES.md](PACKAGES.md) - Full package list if something's missing
 - [THINKFAN.md](THINKFAN.md) - ThinkFan prerequisites, service ownership, and troubleshooting

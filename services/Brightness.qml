@@ -158,13 +158,33 @@ Singleton {
         stdout: SplitParser {
             splitMarker: "\n\n"
             onRead: data => {
-                if (data.startsWith("Display ")) {
-                    const lines = data.split("\n").map(l => l.trim());
-                    root._ddcNext.push({
-                        model: lines.find(l => l.startsWith("Monitor:")).split(":")[2],
-                        busNum: lines.find(l => l.startsWith("I2C bus:")).split("/dev/i2c-")[1]
-                    });
+                if (!data.startsWith("Display "))
+                    return
+
+                const lines = data.split("\n").map(l => l.trim())
+                const monitorLine = lines.find(l => l.startsWith("Monitor:"))
+                const busLine = lines.find(l => l.startsWith("I2C bus:"))
+                if (!monitorLine || !busLine) {
+                    console.warn("[Brightness] Ignoring malformed ddcutil display block")
+                    return
                 }
+
+                const monitorParts = monitorLine.split(":")
+                const model = (monitorParts.length >= 3
+                    ? monitorParts.slice(2).join(":")
+                    : monitorParts.slice(1).join(":"))
+                    .trim()
+                const busMarker = "/dev/i2c-"
+                const busIndex = busLine.indexOf(busMarker)
+                const busNum = busIndex >= 0
+                    ? busLine.slice(busIndex + busMarker.length).trim()
+                    : ""
+                if (!model || !/^\d+$/.test(busNum)) {
+                    console.warn("[Brightness] Ignoring invalid ddcutil monitor fields")
+                    return
+                }
+
+                root._ddcNext.push({ model: model, busNum: busNum })
             }
         }
         onRunningChanged: {

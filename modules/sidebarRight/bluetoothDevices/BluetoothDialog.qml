@@ -31,6 +31,7 @@ WindowDialog {
         Layout.rightMargin: -(Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.large)
     }
     StyledListView {
+        id: deviceList
         Layout.fillHeight: true
         Layout.fillWidth: true
         Layout.topMargin: -15
@@ -45,6 +46,29 @@ WindowDialog {
         clip: true
         spacing: 4
         animateAppearance: false
+
+        header: Item {
+            width: deviceList.width
+            height: deviceList.count === 0 ? deviceList.height : 0
+            visible: height > 0
+
+            StyledText {
+                anchors {
+                    centerIn: parent
+                    leftMargin: 24
+                    rightMargin: 24
+                }
+                width: Math.max(0, parent.width - 48)
+                text: !BluetoothStatus.available
+                    ? Translation.tr("Bluetooth is unavailable")
+                    : (Bluetooth.defaultAdapter?.discovering ?? false)
+                        ? Translation.tr("Searching for Bluetooth devices…")
+                        : Translation.tr("No Bluetooth devices found")
+                color: Appearance.colors.colSubtext
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+            }
+        }
 
         model: ScriptModel {
             values: [...Bluetooth.devices.values].sort((a, b) => {

@@ -7,9 +7,12 @@ core_registry="$root/modules/common/perimeter/ModuleRegistry.qml"
 perimeter_config="$root/modules/common/perimeter/PerimeterConfig.qml"
 core_qmldir="$root/modules/common/perimeter/qmldir"
 feature_qmldir="$root/modules/perimeter/qmldir"
+presentation_policy="$root/modules/perimeter/PerimeterPresentationPolicy.qml"
 reservation_policy="$root/modules/perimeter/PerimeterReservationPolicy.qml"
 runtime="$root/modules/perimeter/PerimeterRuntime.qml"
+sidebar_module="$root/modules/perimeter/SidebarModule.qml"
 critical="$root/modules/ii/critical/ShellIiCriticalPanels.qml"
+ii_panels="$root/modules/ii/ShellIiPanelsImpl.qml"
 left_sidebar="$root/modules/sidebarLeft/SidebarLeft.qml"
 right_sidebar="$root/modules/sidebarRight/SidebarRight.qml"
 
@@ -19,8 +22,9 @@ fail() {
 }
 
 for file in "$core_policy" "$core_registry" "$perimeter_config" "$core_qmldir" \
-        "$feature_qmldir" "$reservation_policy" "$runtime" "$critical" \
-        "$left_sidebar" "$right_sidebar"; do
+        "$feature_qmldir" "$presentation_policy" "$reservation_policy" "$runtime" \
+        "$sidebar_module" "$critical" "$ii_panels" "$left_sidebar" \
+        "$right_sidebar"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 
@@ -74,6 +78,25 @@ grep -Fq 'GlobalStates.barOpen' "$reservation_policy" \
     || fail 'bar reservation no longer tracks bar semantic visibility'
 grep -Fq 'GlobalStates.coverflowSelectorOpen' "$reservation_policy" \
     || fail 'bar reservation no longer releases for coverflow'
+
+grep -Fq 'function sidebarSurfaceEnabled(featureRole: bool): bool {' \
+    "$presentation_policy" || fail 'presentation policy does not expose sidebar ownership'
+route_block="$(sed -n '/function syncSidebarRoute(/,/^    }/p' "$runtime")"
+[[ -n "$route_block" ]] || fail 'runtime missing sidebar route synchronization'
+grep -Fq '!PerimeterPresentationPolicy.sidebarSurfaceEnabled(featureRole)' <<<"$route_block" \
+    || fail 'runtime can route a disabled sidebar'
+grep -Fq '&& PerimeterPresentationPolicy.sidebarSurfaceEnabled(true)' "$runtime" \
+    || fail 'runtime can focus a disabled left sidebar'
+grep -Fq '&& PerimeterPresentationPolicy.sidebarSurfaceEnabled(false)' "$runtime" \
+    || fail 'runtime can focus a disabled right sidebar'
+grep -Fq 'PerimeterPresentationPolicy.sidebarSurfaceEnabled(root.featureRole)' \
+    "$sidebar_module" || fail 'sidebar module ignores panel ownership'
+backdrop_block="$(sed -n '/id: dualSidebarBackdrop/,/^        }/p' "$ii_panels")"
+[[ -n "$backdrop_block" ]] || fail 'ii panels missing dual sidebar backdrop'
+grep -Fq 'includes("iiSidebarLeft")' <<<"$backdrop_block" \
+    || fail 'left sidebar backdrop ignores panel ownership'
+grep -Fq 'includes("iiSidebarRight")' <<<"$backdrop_block" \
+    || fail 'right sidebar backdrop ignores panel ownership'
 
 grep -Fq 'component EdgeReservationWindow: PanelWindow {' "$runtime" \
     || fail 'runtime has no edge-specific reservation surface'

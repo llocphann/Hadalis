@@ -44,6 +44,8 @@ fish scripts/qml-check.fish --all
 python3 scripts/lib/generate-ipc-registry.py --check
 ```
 
+`make test-local` is the aggregate non-QML release-boundary gate. It includes install/package lifecycle checks, doctor routing, optional-audio dependency policy, Equalizer Phase 1 architecture/service contracts, documentation verification, packaging contracts, and Nix module contracts.
+
 For runtime-facing changes, also exercise the affected flow on a real session and inspect `inir logs`. For packaging/install changes, use dry-run or staged install paths rather than writing into the host filesystem just to test a package layout.
 
 Keep each commit focused on one logical change. Prefer imperative, specific commit messages and avoid unrelated reformatting.
@@ -214,4 +216,4 @@ This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Getting help
 
-Use the repository issue tracker for Hadalis-specific bugs and development questions: <https://github.com/llocphann/Hadalis/issues>.
+GitHub Issues and Discussions are currently disabled for this private repository. For a change already under review, use its pull-request conversation. For questions that do not belong to an existing pull request, coordinate through the maintainer channel that granted repository access rather than relying on an unavailable issue tracker.

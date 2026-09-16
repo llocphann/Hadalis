@@ -27,6 +27,8 @@ def main() -> None:
         "Appearance.colors.colLayer0",
         "Appearance.rounding.large",
         "geometry.revealProgress",
+        "CompositorFocusGrab",
+        "WlrKeyboardFocus.OnDemand",
     ):
         check(token in styled_popup, f"StyledPopup must preserve connected-perimeter contract: {token}")
     for edge in ("top", "bottom", "left", "right"):
@@ -73,6 +75,16 @@ def main() -> None:
           "ConnectedSurfaceFrame must preserve the flared body/connector seam contract")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
+
+    media = read("modules/bar/Media.qml")
+    check("PopupWindow" not in media,
+          "Bar Media must not restore detached PopupWindow surfaces")
+    check(media.count("StyledPopup {") >= 2,
+          "Bar Media wheel HUD and expanded controls must both use StyledPopup")
+    check("BarMediaPopup {" in media,
+          "Bar Media must preserve its expanded control content inside the connected surface")
+    check("keyboardFocus: true" in media,
+          "Expanded Media connected popout must preserve keyboard focus")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()

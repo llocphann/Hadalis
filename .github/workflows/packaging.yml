@@ -10,6 +10,7 @@ on:
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
+      - 'scripts/test-nix-module-contract.sh'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
       - 'sdata/lib/doctor.sh'
@@ -38,6 +39,7 @@ on:
       - 'scripts/test-packaging-contract.sh'
       - 'scripts/test-make-install-lifecycle.sh'
       - 'scripts/test-doctor-dependency-routing.sh'
+      - 'scripts/test-nix-module-contract.sh'
       - 'distro/arch/**'
       - 'sdata/dist-arch/**'
       - 'sdata/lib/doctor.sh'
@@ -77,6 +79,11 @@ jobs:
 
       - name: Validate packaging contracts
         run: bash scripts/test-packaging-contract.sh
+
+      - name: Validate Nix module contracts
+        run: |
+          bash -n scripts/test-nix-module-contract.sh
+          bash scripts/test-nix-module-contract.sh
 
       - name: Validate doctor dependency routing
         run: |

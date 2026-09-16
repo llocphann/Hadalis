@@ -123,9 +123,13 @@ for pair in \
 done
 
 # The primary local aggregate should exercise the same fast release-boundary
-# contracts even when hosted CI cannot start a runner.
-grep -Fq 'test-optional-audio-deps test-equalizer-contracts test-docs' "$makefile" \
-  || fail 'make test-local no longer includes optional-audio, Equalizer, and docs gates'
+# contracts even when hosted CI cannot start a runner. Target membership is the
+# invariant; dependency ordering may change as independent gates are added.
+test_local_rule="$(grep -m1 '^test-local:' "$makefile")"
+for target in test-optional-audio-deps test-news-contract test-equalizer-contracts test-docs; do
+  [[ " $test_local_rule " == *" $target "* ]] \
+    || fail "make test-local no longer includes required gate: $target"
+done
 grep -Fq '@bash scripts/test-equalizer-boundary-contract.sh' "$makefile" \
   || fail 'make test-local no longer runs the Equalizer architecture boundary contract'
 grep -Fq '@bash scripts/test-equalizer-service-contract.sh' "$makefile" \

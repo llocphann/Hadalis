@@ -173,10 +173,14 @@ Item {
             width: 20
             height: 72
             axis: "horizontal"
+            accessibleName: qsTr("Resize selected frame")
             active: true
             accentColor: root.accentColor
             surfaceColor: root.surfaceColor
+            textColor: root.textColor
             radius: root.radius
+            touchSize: 72
+            animationDuration: root.animationDuration
         }
     }
 }

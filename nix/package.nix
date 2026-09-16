@@ -159,6 +159,27 @@ pkgs.stdenvNoCC.mkDerivation {
       -type f \( -name '*.qml' -o -name '*.js' -o -name '*.sh' -o -name '*.py' \) \
       -exec sed -i '1!s#/usr/bin/##g' {} +
 
+    # Package-managed maintenance must not copy the raw runtime launcher into
+    # ~/.local/bin. Doing so would shadow this Nix wrapper and drop its PATH/QML
+    # environment on subsequent `inir migrate` calls.
+    python3 - "$runtime/setup" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "sync_launcher_from_repo() {\n"
+guard = """sync_launcher_from_repo() {
+    if [[ "$(get_installed_update_strategy 2>/dev/null || true)" == "package-manager" ]]; then
+        return 0
+    fi
+"""
+if text.count(marker) != 1:
+    raise SystemExit("expected exactly one sync_launcher_from_repo definition")
+path.write_text(text.replace(marker, guard, 1))
+PY
+    grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$runtime/setup"
+
     cat > "$runtime/version.json" <<'EOF'
 {
   "version": "${packageVersion}",

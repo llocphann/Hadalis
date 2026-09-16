@@ -160,6 +160,10 @@ grep -Fq '"$script_dir/test-equalizer-service-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the Equalizer lifecycle/protocol contract'
 grep -Fq '"$script_dir/test-optional-audio-deps-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the optional audio dependency contract'
+grep -Fq '"$script_dir/test-battery-charge-limit-helper.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the battery charge-limit helper contract'
+grep -Fq '"$script_dir/test-thinkfan-helper.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the ThinkFan helper contract'
 grep -Fq '"$script_dir/test-make-install-lifecycle.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the make install lifecycle contract'
 grep -Fq '"$script_dir/verify-docs.sh"' "$release_script" \

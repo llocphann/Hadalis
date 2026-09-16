@@ -96,7 +96,7 @@ Quickshell, Qt 6, and QML/KDE runtime dependencies declared by `sdata/dist-arch/
 
 ## Audio (`inir-audio`)
 
-Audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/PKGBUILD`. This group is enabled by default and can be disabled with the installer's audio option.
+Core audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/PKGBUILD`. This group is enabled by default and can be disabled with the installer's audio option.
 
 | Package | Purpose |
 |---------|---------|
@@ -108,11 +108,18 @@ Audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/PKGBU
 | `libdbusmenu-gtk3` | Tray/menu integration |
 | `pavucontrol` | Advanced volume-control GUI |
 | `cava` | Audio visualizer |
-| `easyeffects` | Audio effects |
 | `mpv` | Media playback backend |
 | `mpv-mpris` | MPRIS bridge for mpv |
 | `yt-dlp` | YouTube extraction backend |
-| `socat` | IPC fallback for media control |
+
+Equalizer Phase 1 keeps its backend and control transport optional. The group advertises these through `optdepends`, so the source install remains usable without them:
+
+| Optional package | Purpose |
+|------------------|---------|
+| `easyeffects` | Optional audio-effects and Equalizer backend |
+| `socat` | Optional EasyEffects control transport for Equalizer |
+
+Missing either optional package must not make Media playback or shell startup fail. Equalizer capability should degrade to unavailable/error state instead.
 
 The installer separately ensures `plasma-browser-integration` is present for browser media sessions and artwork.
 
@@ -229,12 +236,14 @@ These integrations are useful when their corresponding feature is desired, but t
 
 | Package | Purpose | Used by |
 |---------|---------|---------|
+| `easyeffects` | Optional audio-effects backend | Equalizer capability |
+| `socat` | Optional EasyEffects control transport | Equalizer capability |
 | `warp-cli` | Cloudflare WARP VPN toggle | Quick toggles |
 | `ollama` | Local LLM backend | AI integrations |
 | `whisper-cpp` | Local speech-to-text | Voice input/search |
 | `deno` / `node` / `bun` | JavaScript runtime for yt-dlp | YouTube media extraction when a JS runtime is required |
 
-`cava`, `easyeffects`, `yt-dlp`, and `mpv` belong to the `inir-audio` dependency group rather than this list. Their features should still degrade gracefully when the audio group is disabled or the packages are otherwise unavailable.
+`cava`, `yt-dlp`, and `mpv` remain required members of the `inir-audio` dependency group. `easyeffects` and `socat` are advertised by the audio group and dependency tracker as optional feature dependencies; their absence should leave Equalizer unavailable/degraded without breaking Media playback.
 
 ---
 
@@ -247,6 +256,8 @@ The package recipes under `distro/arch/` distribute Hadalis itself rather than s
 | `inir-shell` | Versioned non-VCS Hadalis shell/runtime package. Release builds pin the immutable release tag. |
 | `inir-shell-git` | Development/VCS package following `dev`. |
 | `inir-meta` | Full Hadalis desktop-experience meta-package depending on `inir-shell` plus the wider integration set. |
+
+`inir-meta` also keeps `easyeffects` and `socat` in `optdepends`, not `depends`. Installing the distributable shell or meta-package therefore does not make the Equalizer backend a hard requirement.
 
 `inir-shell` and `inir-shell-git` install the runtime payload, `inir` launcher, user service, desktop entries, icon, privileged helper/polkit assets, docs, and package-managed version metadata. Their packaged `setup migrate` path preserves package-manager launcher ownership rather than materializing a stale user-local launcher.
 

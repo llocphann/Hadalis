@@ -171,56 +171,104 @@ QtObject {
         : Qt.rect(bodyCrossStart, tangentStart,
             clampedBodySize.width, clampedBodySize.height)
 
-    readonly property real animationOffset: snap((1 - clamp(progress, 0, 1))
-        * effectiveConnectorLength)
-    readonly property real offsetX: edge === "left" ? -animationOffset
-        : edge === "right" ? animationOffset : 0
-    readonly property real offsetY: edge === "top" ? -animationOffset
-        : edge === "bottom" ? animationOffset : 0
-    readonly property rect animatedBodyRect: Qt.rect(
-        snap(bodyRect.x + offsetX),
-        snap(bodyRect.y + offsetY),
-        bodyRect.width,
-        bodyRect.height)
-
     readonly property real anchorCenter: horizontal
         ? anchorRect.x + anchorRect.width / 2
         : anchorRect.y + anchorRect.height / 2
+    readonly property real anchorTangentExtent: horizontal
+        ? anchorRect.width : anchorRect.height
     readonly property real bodyTangentExtent: horizontal ? bodyRect.width : bodyRect.height
-    readonly property real connectorTangentExtent: snapSize(Math.min(
-        Math.max(0, connectorWidth), bodyTangentExtent))
-    readonly property real connectorCenter: connectorTangentExtent > 0
-        ? snapWithin(anchorCenter,
-            tangentStart + connectorTangentExtent / 2,
-            tangentStart + bodyTangentExtent - connectorTangentExtent / 2)
-        : snap(tangentStart)
+    readonly property real bodyTangentCenter: horizontal
+        ? bodyRect.x + bodyRect.width / 2
+        : bodyRect.y + bodyRect.height / 2
+
+    // A Caelestia-like connected surface starts at roughly the source control's
+    // width, then broadens into the popup body. The connector's body-side extent
+    // therefore includes rounded shoulders instead of remaining a thin stem.
+    readonly property real connectorSourceExtent: snapSize(Math.min(
+        bodyTangentExtent,
+        Math.max(Math.max(0, connectorWidth), anchorTangentExtent)))
+    readonly property real connectorBodyExtent: snapSize(Math.min(
+        bodyTangentExtent,
+        connectorSourceExtent + Math.max(0, outerRadius) * 2))
+
+    readonly property real revealProgress: clamp(progress, 0, 1)
+    readonly property real animatedTangentExtent: snapSize(
+        connectorSourceExtent
+            + (bodyTangentExtent - connectorSourceExtent) * revealProgress)
+    readonly property real animatedCrossExtent: snapSize(
+        crossBodyExtent * revealProgress)
+    readonly property real animatedTangentCenter: snap(
+        anchorCenter + (bodyTangentCenter - anchorCenter) * revealProgress)
+    readonly property real animatedTangentStart: snap(
+        animatedTangentCenter - animatedTangentExtent / 2)
+    readonly property real animationOffset: snap(
+        (1 - revealProgress) * effectiveConnectorLength)
+
+    // Morph from the real anchor: the tangent axis expands from the anchor/neck
+    // width while the inward axis grows from zero to the full body. This reads as
+    // one surface extruding from the bar instead of a floating card fading nearby.
+    readonly property rect animatedBodyRect: edge === "top"
+        ? Qt.rect(animatedTangentStart,
+            snap(bodyRect.y - animationOffset),
+            animatedTangentExtent, animatedCrossExtent)
+        : edge === "bottom"
+            ? Qt.rect(animatedTangentStart,
+                snap(bodyRect.y + bodyRect.height + animationOffset - animatedCrossExtent),
+                animatedTangentExtent, animatedCrossExtent)
+        : edge === "left"
+            ? Qt.rect(snap(bodyRect.x - animationOffset),
+                animatedTangentStart,
+                animatedCrossExtent, animatedTangentExtent)
+        : Qt.rect(snap(bodyRect.x + bodyRect.width + animationOffset - animatedCrossExtent),
+            animatedTangentStart,
+            animatedCrossExtent, animatedTangentExtent)
+
+    readonly property real connectorTangentExtent: connectorBodyExtent
+
+    function connectorExtentForBody(body) {
+        const bodyExtent = root.horizontal ? body.width : body.height
+        return root.snapSize(Math.min(
+            root.connectorBodyExtent,
+            Math.max(root.connectorSourceExtent, bodyExtent)))
+    }
+
+    function connectorCenterForBody(body, extent) {
+        const bodyStart = root.horizontal ? body.x : body.y
+        const bodyExtent = root.horizontal ? body.width : body.height
+        if (extent <= 0 || bodyExtent <= 0)
+            return root.snap(root.anchorCenter)
+        return root.snapWithin(root.anchorCenter,
+            bodyStart + extent / 2,
+            bodyStart + bodyExtent - extent / 2)
+    }
 
     function connectorRectForBody(body) {
-        const extent = root.connectorTangentExtent
+        const extent = root.connectorExtentForBody(body)
+        const center = root.connectorCenterForBody(body, extent)
         const overlap = root.effectiveSeamOverlap
         if (extent <= 0)
             return Qt.rect(0, 0, 0, 0)
 
         if (root.edge === "top") {
-            const x = root.snap(root.connectorCenter - extent / 2)
+            const x = root.snap(center - extent / 2)
             const y = root.snap(root.anchorRect.y + root.anchorRect.height - overlap)
             const end = root.snap(body.y + overlap)
             return Qt.rect(x, y, extent, root.snapSize(end - y))
         }
         if (root.edge === "bottom") {
-            const x = root.snap(root.connectorCenter - extent / 2)
+            const x = root.snap(center - extent / 2)
             const y = root.snap(body.y + body.height - overlap)
             const end = root.snap(root.anchorRect.y + overlap)
             return Qt.rect(x, y, extent, root.snapSize(end - y))
         }
         if (root.edge === "left") {
             const x = root.snap(root.anchorRect.x + root.anchorRect.width - overlap)
-            const y = root.snap(root.connectorCenter - extent / 2)
+            const y = root.snap(center - extent / 2)
             const end = root.snap(body.x + overlap)
             return Qt.rect(x, y, root.snapSize(end - x), extent)
         }
         const x = root.snap(body.x + body.width - overlap)
-        const y = root.snap(root.connectorCenter - extent / 2)
+        const y = root.snap(center - extent / 2)
         const end = root.snap(root.anchorRect.x + overlap)
         return Qt.rect(x, y, root.snapSize(end - x), extent)
     }

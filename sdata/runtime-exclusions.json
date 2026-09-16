@@ -97,6 +97,7 @@
     "scripts/test-packaging-contract.sh",
     "scripts/test-perimeter-contracts.sh",
     "scripts/test-perimeter-route-contracts.sh",
+    "scripts/test-perimeter-settings-contracts.sh",
     "scripts/test-battery-charge-limit-helper.sh",
     "scripts/test-thinkfan-helper.sh",
     "scripts/test-tlp-integration-lifecycle.sh",

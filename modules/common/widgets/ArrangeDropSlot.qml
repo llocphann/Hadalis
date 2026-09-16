@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import qs.services
 import qs.modules.common
 import qs.modules.common.functions
 
@@ -14,6 +15,7 @@ Rectangle {
 
     property bool active: false      // something is lifted somewhere
     property bool compact: true      // tile between chips; false = wide bar
+    property string accessibleName: Translation.tr("Place here")
     signal placed()
 
     visible: active
@@ -24,6 +26,10 @@ Rectangle {
          : ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.10)
     border.width: 1
     border.color: ColorUtils.applyAlpha(Appearance.colors.colPrimary, slotHover.hovered ? 0.9 : pulse.alpha)
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.accessibleName
+    Accessible.onPressAction: root.placed()
 
     Behavior on implicitHeight {
         enabled: Appearance.animationsEnabled

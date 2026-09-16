@@ -2,16 +2,21 @@ post_install() {
   cat <<'EOF'
 Hadalis has been installed.
 
-Recommended next steps:
+Recommended next steps for each user who will run the shell:
+  - Initialize or migrate the per-user config compatibility layout with:
+      inir migrate
   - Start the shell manually with: inir run
   - Or wire the user service to the detected compositor and start it with:
       inir service enable
       inir service start
 
-The running QML shell currently stores user config in:
+Pacman does not modify user home directories. The live QML compatibility path is:
   ~/.config/illogical-impulse/config.json
 
-Hadalis maintenance tooling also recognizes ~/.config/inir for migrated installs.
+Required migration 019 makes ~/.config/inir the canonical config directory and
+links ~/.config/illogical-impulse to it. Run 'inir migrate' as the affected user
+before first launch to establish that layout; do not run it as root for another
+user's home.
 
 The packaged runtime lives in:
   /usr/share/quickshell/inir
@@ -22,10 +27,13 @@ post_upgrade() {
   cat <<'EOF'
 Hadalis has been upgraded.
 
-Recommended next steps:
+Recommended next steps for each affected user:
+  - Apply required per-user migrations with: inir migrate
   - Restart the shell with: inir restart
-  - Package-managed installs use pacman for updates.
-  - Runtime migrations, when needed, are applied by Hadalis's packaged lifecycle.
+  - Package-managed installs use pacman for package updates.
+
+Pacman does not mutate user home directories, so config migrations are performed
+by the affected user through 'inir migrate', not by the package transaction.
 EOF
 }
 

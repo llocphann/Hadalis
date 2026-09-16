@@ -8,9 +8,11 @@ doctor="sdata/lib/doctor.sh"
 arch_installer="sdata/dist-arch/install-deps.sh"
 arch_core="sdata/dist-arch/inir-core/PKGBUILD"
 arch_tracker="sdata/dist-arch/inir-deps/PKGBUILD"
+default_config="defaults/config.json"
 
-python3 - "$doctor" "$arch_installer" "$arch_core" "$arch_tracker" <<'PY'
+python3 - "$doctor" "$arch_installer" "$arch_core" "$arch_tracker" "$default_config" <<'PY'
 from pathlib import Path
+import json
 import re
 import sys
 
@@ -18,10 +20,12 @@ doctor_path = Path(sys.argv[1])
 installer_path = Path(sys.argv[2])
 core_path = Path(sys.argv[3])
 tracker_path = Path(sys.argv[4])
+default_config_path = Path(sys.argv[5])
 doctor = doctor_path.read_text(encoding="utf-8")
 installer = installer_path.read_text(encoding="utf-8")
 core = core_path.read_text(encoding="utf-8")
 tracker = tracker_path.read_text(encoding="utf-8")
+default_config = json.loads(default_config_path.read_text(encoding="utf-8"))
 
 cmd_block = re.search(r"local cmds=\(\n(?P<body>.*?)\n\s*\)", doctor, re.S)
 if not cmd_block:
@@ -86,6 +90,28 @@ if mapping.get(network_editor) != network_editor:
 for package_path, package_text in ((core_path, core), (tracker_path, tracker)):
     if not re.search(rf"^\s+{re.escape(network_editor)}\s*$", package_text, re.M):
         raise SystemExit(f"FAIL: {package_path} is missing required dependency: {network_editor}")
+
+# The default task manager must be installed by the normal source Arch path and
+# retained by the staged dependency tracker. The tracker later filters missing
+# AUR packages, so this preserves orphan protection without making install fail
+# when mission-center itself is unavailable.
+task_manager = default_config.get("apps", {}).get("taskManager")
+if task_manager != "missioncenter":
+    raise SystemExit(f"FAIL: unexpected default task manager command: {task_manager!r}")
+if task_manager not in doctor_cmds:
+    raise SystemExit(f"FAIL: default task manager is absent from doctor dependencies: {task_manager}")
+task_manager_package = mapping.get(task_manager)
+if task_manager_package != "mission-center":
+    raise SystemExit(
+        f"FAIL: default task manager route is {task_manager_package!r}, expected 'mission-center'"
+    )
+aur_block = re.search(r"^AUR_PACKAGES=\(\n(?P<body>.*?)\n\)", installer, re.S | re.M)
+if not aur_block or not re.search(
+    rf"^\s*{re.escape(task_manager_package)}\s*$", aur_block.group("body"), re.M
+):
+    raise SystemExit(f"FAIL: normal Arch install does not install {task_manager_package}")
+if not re.search(rf"^\s+{re.escape(task_manager_package)}\s*$", tracker, re.M):
+    raise SystemExit(f"FAIL: dependency tracker does not retain {task_manager_package}")
 
 print(f"ok - {len(doctor_cmds)} doctor command dependencies have explicit Arch package routing")
 PY

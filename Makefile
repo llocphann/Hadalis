@@ -47,6 +47,10 @@ test-equalizer-contracts:
 test-perimeter-contracts:
 	@bash scripts/test-perimeter-contracts.sh
 	@bash scripts/test-perimeter-compatibility-placement-contract.sh
+	@bash scripts/test-perimeter-family-contracts.sh
+	@bash scripts/test-perimeter-route-contracts.sh
+	@bash scripts/test-perimeter-settings-contracts.sh
+	@bash scripts/test-perimeter-source-contracts.sh
 
 test-docs:
 	@bash scripts/verify-docs.sh

@@ -7,6 +7,12 @@ cd "$repo_root"
 stage="$(mktemp -d)"
 trap 'rm -rf -- "$stage"' EXIT
 
+source_fingerprint() {
+  git diff --no-ext-diff --binary -- scripts setup | sha256sum | awk '{print $1}'
+}
+
+source_before="$(source_fingerprint)"
+
 prefix=/opt/inir
 systemd_user_dir="$prefix/lib/systemd/user"
 libexecdir="$prefix/libexec"
@@ -25,6 +31,13 @@ make_args=(
 )
 
 make -s install "${make_args[@]}"
+
+source_after_install="$(source_fingerprint)"
+if [[ "$source_after_install" != "$source_before" ]]; then
+  printf 'FAIL: make install mutated tracked scripts/setup in the source checkout\n' >&2
+  git diff --summary -- scripts setup >&2 || true
+  exit 1
+fi
 
 expected_files=(
   "$stage$prefix/bin/inir"
@@ -61,6 +74,13 @@ if find "$stage" -mindepth 1 -maxdepth 1 ! -name opt -print -quit | grep -q .; t
 fi
 
 make -s uninstall "${make_args[@]}"
+
+source_after_uninstall="$(source_fingerprint)"
+if [[ "$source_after_uninstall" != "$source_before" ]]; then
+  printf 'FAIL: make uninstall mutated tracked scripts/setup in the source checkout\n' >&2
+  git diff --summary -- scripts setup >&2 || true
+  exit 1
+fi
 
 for path in "${expected_files[@]}"; do
   if [[ -e "$path" || -L "$path" ]]; then

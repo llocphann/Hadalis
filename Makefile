@@ -25,10 +25,9 @@ PACKAGE_UPDATE_HINT = sudo make install PREFIX=\"$(PREFIX)\" SYSTEMD_USER_DIR=\"
 all: build
 
 build:
-	@chmod +x scripts/inir
-	@chmod +x scripts/test-local-distribution.sh
-	@chmod +x setup
-	@find scripts -type f \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} +
+	@bash -n scripts/inir
+	@bash -n scripts/test-local-distribution.sh
+	@bash -n setup
 
 test-local: build test-prefix-install test-package-docs test-package-metadata test-package-hooks
 	@bash scripts/test-local-distribution.sh

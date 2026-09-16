@@ -7,9 +7,7 @@ Item {
     property var perimeterContext: null
     property var instanceConfig: ({})
 
-    readonly property string outputName: String(root.perimeterContext?.outputName ?? "")
-    readonly property bool presented:
-        PerimeterPresentationPolicy.barPresentedForOutput(root.outputName)
+    readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
 

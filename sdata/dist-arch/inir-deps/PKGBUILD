@@ -6,10 +6,10 @@
 # Safe to remove with: sudo pacman -R inir-deps
 
 pkgname=inir-deps
-pkgver=2.29.2
-pkgrel=4
+pkgver=2.29.3
+pkgrel=1
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
-url='https://github.com/snowarch/inir'
+url='https://github.com/llocphann/Hadalis'
 arch=(any)
 license=('GPL-3.0-only')
 

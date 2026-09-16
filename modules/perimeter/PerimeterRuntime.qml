@@ -60,10 +60,20 @@ Scope {
                 && GlobalStates.sidebarRightPresentationOutput === outputName
             readonly property bool sidebarPresented:
                 leftSidebarPresented || rightSidebarPresented
+            readonly property bool hasChrome: outputHost.configValid && (
+                outputHost.topStartOccupied
+                || outputHost.topCenterOccupied
+                || outputHost.topEndOccupied
+                || outputHost.leftCenterOccupied
+                || outputHost.rightCenterOccupied
+                || outputHost.bottomStartOccupied
+                || outputHost.bottomCenterOccupied
+                || outputHost.bottomEndOccupied)
+            readonly property bool mapped: hostActive && hasChrome
 
             screen: modelData
-            visible: hostActive
-            updatesEnabled: hostActive
+            visible: mapped
+            updatesEnabled: mapped
             color: "transparent"
             exclusiveZone: 0
             exclusionMode: ExclusionMode.Ignore
@@ -112,11 +122,12 @@ Scope {
                 Region { item: outputHost.bottomEndOccupied ? outputHost.bottomEndSlot : emptyInputArea }
             }
 
-            mask: perimeterWindow.hostActive ? perimeterInputRegion : emptyInputRegion
+            mask: perimeterWindow.mapped ? perimeterInputRegion : emptyInputRegion
 
             CompositorFocusGrab {
                 windows: [perimeterWindow]
-                active: perimeterWindow.sidebarPresented
+                active: perimeterWindow.mapped
+                    && perimeterWindow.sidebarPresented
                     && CompositorService.isHyprland
                 onCleared: () => {
                     if (perimeterWindow.leftSidebarPresented

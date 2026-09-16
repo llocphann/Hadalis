@@ -140,6 +140,7 @@ require_release_contracts() {
     "$script_dir/test-battery-charge-limit-helper.sh" \
     "$script_dir/test-thinkfan-helper.sh" \
     "$script_dir/test-make-install-lifecycle.sh" \
+    "$script_dir/test-uninstall-path-safety.sh" \
     "$script_dir/verify-docs.sh"; do
     [[ -f "$contract" ]] || die "missing release contract: ${contract#$repo_root/}"
     bash "$contract" \

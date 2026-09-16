@@ -38,6 +38,9 @@ if grep -Fq 'eval echo "$path"' "$repo_root/sdata/lib/uninstall.sh"; then
     fail 'uninstall path handling still re-evaluates expanded paths as shell code'
 fi
 
+grep -Fq '"$script_dir/test-uninstall-path-safety.sh"' "$repo_root/scripts/release.sh" \
+    || fail 'release helper no longer requires the uninstall path-safety contract'
+
 # Some uninstall counters intentionally use post-increment expressions whose
 # status is 1 at zero, so run the helper without inheriting this test's errexit.
 set +e

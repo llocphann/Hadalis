@@ -105,6 +105,17 @@ require_release_checkout() {
     || die "$tag on origin does not match local tag commit $tag_commit"
 }
 
+require_release_contracts() {
+  local contract
+  for contract in \
+    "$script_dir/test-packaging-contract.sh" \
+    "$script_dir/test-nix-module-contract.sh"; do
+    [[ -f "$contract" ]] || die "missing release contract: ${contract#$repo_root/}"
+    bash "$contract" \
+      || die "release contract failed: ${contract#$repo_root/}"
+  done
+}
+
 extract_notes() {
   local version="$1"
   awk -v version="$version" '
@@ -180,6 +191,7 @@ publish_release() {
   git -C "$repo_root" rev-parse --verify "$tag" >/dev/null 2>&1 || die "missing local tag $tag"
   require_release_checkout "$tag"
   require_release_source_pin "$tag"
+  require_release_contracts
 
   notes_file="$(mktemp)"
   trap 'rm -f -- "${notes_file:-}"' EXIT

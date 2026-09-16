@@ -39,6 +39,8 @@ def _decode_static_literal(text: str) -> str:
         "'": "'",
         "f": "\f",
         "b": "\b",
+        "`": "`",
+        "$": "$",
         "\\": "\\",
     }
     hex_digits = set("0123456789abcdefABCDEF")
@@ -116,6 +118,25 @@ def _decode_static_literal(text: str) -> str:
     return "".join(decoded)
 
 
+def _has_template_interpolation(text: str) -> bool:
+    """Return whether a template body contains an unescaped ``${...}`` start."""
+    index = 0
+    while True:
+        index = text.find("${", index)
+        if index < 0:
+            return False
+
+        backslashes = 0
+        cursor = index - 1
+        while cursor >= 0 and text[cursor] == "\\":
+            backslashes += 1
+            cursor -= 1
+
+        if backslashes % 2 == 0:
+            return True
+        index += 2
+
+
 class TranslationManager:
     def __init__(self, translations_dir: str, source_dir: str, yes_mode: bool = False):
         self.translations_dir = Path(translations_dir)
@@ -129,8 +150,8 @@ class TranslationManager:
         translatable_texts: Set[str] = set()
 
         patterns = [
-            r'Translation\.tr\s*\(\s*(["\'])(((?!\1)[^\\]|\\.)*)(\1)\s*\)',
-            r'Translation\.tr\s*\(\s*`([^`]*(?:\\.[^`]*)*?)`\s*\)',
+            (r'Translation\.tr\s*\(\s*(["\'])(((?!\1)[^\\]|\\.)*)(\1)\s*\)', False),
+            (r'Translation\.tr\s*\(\s*`([^`]*(?:\\.[^`]*)*?)`\s*\)', True),
         ]
 
         for ext in ("*.qml", "*.js"):
@@ -139,13 +160,16 @@ class TranslationManager:
                     with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
 
-                    for pattern in patterns:
+                    for pattern, is_template in patterns:
                         matches = re.findall(pattern, content, re.MULTILINE | re.DOTALL)
                         for match in matches:
                             if isinstance(match, tuple):
                                 text = match[1] if len(match) >= 3 else (match[0] if match else "")
                             else:
                                 text = match
+
+                            if is_template and _has_template_interpolation(text):
+                                continue
 
                             clean_text = _decode_static_literal(text).strip()
                             if clean_text:

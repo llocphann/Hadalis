@@ -28,12 +28,28 @@ def main() -> None:
         r"piñata \x21": "piñata !",
         r"line\nnext": "line\nnext",
         r"bad \u12G4": r"bad \u12G4",
+        r"tick \` mark": "tick ` mark",
+        r"money \$5": "money $5",
     }
     for raw, expected in cases.items():
         actual = module._decode_static_literal(raw)
         if actual != expected:
             raise AssertionError(
                 f"literal decode mismatch for {raw!r}: {actual!r} != {expected!r}"
+            )
+
+    interpolation_cases = {
+        r"Hello ${name}": True,
+        r"Literal \${name}": False,
+        r"Even \\${name}": True,
+        r"Odd \\\${name}": False,
+        "plain": False,
+    }
+    for raw, expected in interpolation_cases.items():
+        actual = module._has_template_interpolation(raw)
+        if actual != expected:
+            raise AssertionError(
+                f"template interpolation mismatch for {raw!r}: {actual!r} != {expected!r}"
             )
 
     with tempfile.TemporaryDirectory() as tmp_name:
@@ -48,6 +64,10 @@ Item {
     property string mixed: Translation.tr("Café \u263A")
     property string emoji: Translation.tr("Emoji \uD83D\uDE00")
     property string literalEscape: Translation.tr("literal \\u263A")
+    property string staticTemplate: Translation.tr(`static template`)
+    property string dynamicTemplate: Translation.tr(`Hello ${name}`)
+    property string escapedInterpolation: Translation.tr(`Literal \${name}`)
+    property string escapedBacktick: Translation.tr(`tick \` mark`)
 }
 ''',
             encoding="utf-8",
@@ -55,13 +75,20 @@ Item {
 
         manager = module.TranslationManager(str(translations), str(source))
         extracted = manager.extract_translatable_texts()
-        expected_keys = {"Café ☺", "Emoji 😀", r"literal \u263A"}
+        expected_keys = {
+            "Café ☺",
+            "Emoji 😀",
+            r"literal \u263A",
+            "static template",
+            "Literal ${name}",
+            "tick ` mark",
+        }
         if extracted != expected_keys:
             raise AssertionError(
                 f"unexpected extracted keys: {sorted(extracted)!r} != {sorted(expected_keys)!r}"
             )
 
-    print("ok - translation extraction preserves real Unicode while decoding escapes")
+    print("ok - translation extraction decodes static literals and skips dynamic templates")
 
 
 if __name__ == "__main__":

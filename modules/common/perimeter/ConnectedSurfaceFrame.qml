@@ -37,12 +37,11 @@ Item {
         border.color: root.borderColor
         border.width: root.borderWidth
         visible: root.visible && width > 0 && height > 0
-        opacity: root.geometry.progress
     }
 
-    // Render after the body so seamOverlap covers the body's border at the
-    // attachment edge. Connector border is disabled by default to avoid a
-    // double-line seam until a unified outline renderer replaces it.
+    // Render after the body so the flared connector erases the body outline at
+    // the attachment edge. The connector itself stays unoutlined by default so
+    // the bar, shoulder and body read as one continuous surface.
     ConnectedSurfaceConnector {
         id: connector
         geometry: root.geometry

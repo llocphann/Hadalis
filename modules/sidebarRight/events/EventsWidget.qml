@@ -251,6 +251,7 @@ Item {
         anchors.rightMargin: root.fabMargins
         anchors.bottomMargin: root.fabMargins
         iconText: "add"
+        buttonText: Translation.tr("Add event")
         baseSize: root.fabSize
         onClicked: root.openEventsDialog(null)
     }

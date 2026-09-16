@@ -40,6 +40,7 @@ Singleton {
     property list<var> apps: {
         const identityRulesRevision = root._identityRulesRevision;
         var map = new Map();
+        let hasResolvedPinnedApps = false;
 
         // Pinned apps
         const pinnedApps = Config.options?.dock?.pinnedApps ?? [];
@@ -47,6 +48,7 @@ Singleton {
             // Skip pinned apps with no desktop entry installed
             if (!AppSearch.lookupDesktopEntry(appId))
                 continue;
+            hasResolvedPinnedApps = true;
             if (!map.has(appId.toLowerCase())) map.set(appId.toLowerCase(), ({
                 pinned: true,
                 toplevels: []
@@ -54,7 +56,7 @@ Singleton {
         }
 
         // Separator
-        if (pinnedApps.length > 0) {
+        if (hasResolvedPinnedApps) {
             map.set("SEPARATOR", { pinned: false, toplevels: [] });
         }
 

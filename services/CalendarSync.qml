@@ -279,10 +279,25 @@ Singleton {
     // Query: get all events in a date range (for upcoming view)
     function getUpcomingEvents(days: int): var {
         const now = new Date()
+        const today = new Date(now)
+        today.setHours(0, 0, 0, 0)
         const future = new Date()
         future.setDate(future.getDate() + (days || 7))
 
         return root.events.filter(event => {
+            if (event.allDay) {
+                const start = new Date(event.startDate)
+                start.setHours(0, 0, 0, 0)
+                const end = event.endDate ? new Date(event.endDate) : new Date(start)
+                end.setHours(0, 0, 0, 0)
+                const startTime = start.getTime()
+                const endTime = end.getTime()
+                if (endTime <= startTime)
+                    return start >= today && start <= future
+                // All-day DTEND is exclusive, so include any event whose date
+                // span overlaps today through the requested upcoming horizon.
+                return start <= future && end > today
+            }
             const evtDate = new Date(event.startDate)
             return evtDate >= now && evtDate <= future
         }).sort((a, b) => new Date(a.startDate) - new Date(b.startDate))

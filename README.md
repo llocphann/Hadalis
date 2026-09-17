@@ -73,7 +73,7 @@ The broad perimeter runtime models eight logical placement slots per output:
 
 ```text
 ┌───────────────────────────────────────────────────────────────┐
-│ top.start              top.center                    top.end │
+│ top.start              top.center                     top.end │
 │                                                               │
 │ left.center                                      right.center │
 │                                                               │

@@ -58,34 +58,13 @@ LazyLoader {
     property bool _lingerVisible: false
     property real revealProgress: 0
 
-    // Connected popouts continue the sole Hug bar surface. Alternate Classic
-    // corner styles are retired, so popup material no longer branches on the
-    // legacy compatibility field.
-    readonly property color _surfaceColor: Appearance.zzzEverywhere
-        ? Appearance.zzz.chrome
-        : Appearance.regaliaEverywhere ? Appearance.regalia.barSurface
-        : Appearance.angelEverywhere
-            ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-        : Appearance.auroraEverywhere
-            ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
-        : Appearance.colors.colLayer0
-    readonly property color _borderColor: Appearance.zzzEverywhere
-        ? Appearance.zzz.hairline
-        : Appearance.regaliaEverywhere ? "transparent"
-        : Appearance.angelEverywhere ? Appearance.angel.colPanelBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-        : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder
-        : Appearance.colors.colLayer0Border
-    readonly property real _borderWidth: Appearance.zzzEverywhere ? 1
-        : Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
-        : 0
-    readonly property real _surfaceRadius: Appearance.zzzEverywhere
-        ? Appearance.zzz.panelRadius
-        : Appearance.regaliaEverywhere ? Appearance.regalia.roundLarge
-        : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-        : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-        : Appearance.rounding.large
+    // Material is the sole supported Global Theme for v1.0. Keep the connected
+    // popup surface on the canonical Material palette and radius instead of
+    // retaining unreachable alternate-theme branches in the shared popup path.
+    readonly property color _surfaceColor: Appearance.colors.colLayer0
+    readonly property color _borderColor: Appearance.colors.colLayer0Border
+    readonly property real _borderWidth: 0
+    readonly property real _surfaceRadius: Appearance.rounding.large
 
     signal requestClose()
 

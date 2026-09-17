@@ -5,22 +5,35 @@ from pathlib import Path
 import re
 
 TRAY_PATH = Path("modules/bar/SysTray.qml")
+TRAY_ITEM_PATH = Path("modules/bar/SysTrayItem.qml")
 
 
 def main() -> int:
     text = TRAY_PATH.read_text(encoding="utf-8")
+    item_text = TRAY_ITEM_PATH.read_text(encoding="utf-8")
     failures: list[str] = []
 
     required = (
         "overflowPopup.presentationWindow",
         "root.activeMenu = window;",
-        "root.activeMenu = null;",
         "active: (root.trayOverflowOpen && overflowPopup.presentationWindow !== null)",
         ".filter(window => window !== null)",
+        "function releaseFocus(window)",
+        "if (root.activeMenu === window)",
+        "onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);",
     )
     for needle in required:
         if needle not in text:
             failures.append(f"missing tray focus contract: {needle}")
+
+    item_required = (
+        "signal menuClosed(qsWindow: var)",
+        "const window = menu.item;",
+        "root.menuClosed(window);",
+    )
+    for needle in item_required:
+        if needle not in item_text:
+            failures.append(f"missing tray-item close identity contract: {needle}")
 
     # QML imperative assignment to a bound property removes that binding. The
     # focus-grab active state must therefore remain derived from popup/menu state.
@@ -28,12 +41,19 @@ def main() -> int:
         failures.append("focusGrab.active must stay declarative; imperative assignment breaks its binding")
 
     release_match = re.search(
-        r"function\s+releaseFocus\s*\(\s*\)\s*\{(?P<body>.*?)\}",
+        r"function\s+releaseFocus\s*\(\s*window\s*\)\s*\{(?P<body>.*?)\}",
         text,
         re.DOTALL,
     )
-    if not release_match or "root.activeMenu = null;" not in release_match.group("body"):
-        failures.append("releaseFocus() must clear activeMenu so the declarative grab can release")
+    if not release_match:
+        failures.append("releaseFocus(window) must remain identity-aware")
+    else:
+        body = release_match.group("body")
+        if "root.activeMenu === window" not in body or "root.activeMenu = null;" not in body:
+            failures.append("releaseFocus(window) must clear only the matching activeMenu")
+
+    if re.search(r"onMenuClosed\s*:\s*root\.releaseFocus\s*\(\s*\)", text):
+        failures.append("tray menu close handlers must forward the closing window identity")
 
     if failures:
         print("Tray focus contract failures:")

@@ -6,6 +6,36 @@ The canonical daily maintainer gate is local, clean-clone validation of `dev`:
 bash scripts/validate-maintainer-local.sh
 ```
 
+## Fish all-in-one validation
+
+For a developer workstation using Fish, `scripts/validate-all.fish` is the single orchestration entrypoint. It reuses the canonical clean-clone validator instead of maintaining a second copy of the regression matrix, then optionally adds environment-dependent and live acceptance checks.
+
+Run the complete non-release REQUIRED LOCAL matrix for the exact checked-out HEAD with:
+
+```fish
+fish scripts/validate-all.fish
+```
+
+For the broadest workstation run, including the deferred Nix lane when Nix is installed, live shell `version`/`status`/`doctor`/`doctor --perf`, runtime journal scanning, and an interactive release acceptance checklist, use:
+
+```fish
+fish scripts/validate-all.fish --full
+```
+
+Useful focused forms are:
+
+```fish
+fish scripts/validate-all.fish --strict-qml
+fish scripts/validate-all.fish --with-nix
+fish scripts/validate-all.fish --live
+fish scripts/validate-all.fish --interactive
+fish scripts/validate-all.fish --full --log /tmp/hadalis-my-validation.log
+```
+
+The Fish wrapper requires a clean working tree because the canonical validator deliberately tests a clean clone of the exact Git HEAD; uncommitted changes would otherwise be outside the tested snapshot. It records the exact SHA, tool/environment information, PASS/FAIL/SKIP for every orchestration stage, embeds the canonical validator output into the same persistent log, and returns nonzero when REQUIRED checks or explicitly requested optional/release checks fail.
+
+`--full` does not pretend that hardware/compositor/release behavior can be proven statically. The interactive portion asks the operator to exercise bar/settings loading, connected popouts, Media, taskbar previews, both sidebars, Waffle/Overview/Search, Dock, settings navigation, fullscreen/focus transitions, multi-monitor/hotplug, fractional scaling, suspend/resume, hardware-dependent battery/TLP/ThinkFan paths, and package acceptance. Items that are not applicable should be recorded as SKIP rather than PASS.
+
 The command creates a temporary clone, records the exact tested SHA, runs the required non-Nix validation matrix, and writes **one canonical diagnostic log**. By default the log is outside the working tree at:
 
 ```text

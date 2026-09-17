@@ -19,7 +19,9 @@ Singleton {
     readonly property int quickPageIndex: 0
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2
+    readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
+    readonly property var retiredGlobalStyleKeywords: ["cards", "aurora", "inir", "angel", "regalia", "zzz", "cookie"]
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
@@ -27,6 +29,16 @@ Singleton {
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
+    }
+
+    function isRetiredGlobalStyleEntry(entry): bool {
+        if (!entry || entry.pageIndex !== root.themesPageIndex)
+            return false
+        const words = [entry.section ?? "", entry.label ?? "", entry.description ?? ""]
+            .concat(Array.isArray(entry.keywords) ? entry.keywords : [])
+            .join(" ")
+            .toLowerCase()
+        return root.retiredGlobalStyleKeywords.some(keyword => words.includes(keyword))
     }
 
     readonly property var pages: SettingsPageRegistryData.pages.map((page, index) => {
@@ -47,6 +59,15 @@ Singleton {
                 // configs can still be parsed; the public page removes retired
                 // Float/Rectangle/Card controls and exposes Hug only.
                 component: "modules/settings/BarConfigHugOnly.qml"
+            })
+        }
+        if (index === root.themesPageIndex) {
+            return Object.assign({}, page, {
+                // ThemesConfig.qml remains the compatibility implementation for
+                // the mature Material color/font/motion controls. The public
+                // facade removes the retired shell-wide Global Style selector.
+                component: "modules/settings/ThemesConfigMaterial.qml",
+                desc: Translation.tr("Material colors, typography and motion")
             })
         }
         if (index !== root.retiredTlpPageIndex)
@@ -141,6 +162,7 @@ Singleton {
     function searchIndex(): var {
         return SettingsPageRegistryData.searchIndex()
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
+            .filter(entry => !root.isRetiredGlobalStyleEntry(entry))
             .filter(entry => entry.pageIndex !== root.barPageIndex
                 || entry.label !== Translation.tr("Corner style"))
             .map(entry => {

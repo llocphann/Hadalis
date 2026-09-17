@@ -17,7 +17,9 @@ fi
 if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
   tui_info "Installing missing dependencies only..."
 
-  # doctor reports command IDs; map them to Arch package names.
+  # doctor reports command IDs; map them to Arch package names. Keep command
+  # aliases explicit when the executable name differs from the package name so
+  # setup update never asks an AUR helper for a package that cannot exist.
   declare -A cmd_to_pkg=(
     [qs]="quickshell"
     [niri]="niri"
@@ -28,27 +30,52 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [curl]="curl"
     [git]="git"
     [python3]="python"
-    [wlsunset]="wlsunset"
-    [dunstify]="dunst"
     [fish]="fish"
     [magick]="imagemagick"
-    [swaylock]="swaylock"
-    [swayidle]="swayidle"
     [grim]="grim"
-    [mpv]="mpv"
     [cliphist]="cliphist"
     [wl-copy]="wl-clipboard"
     [wl-paste]="wl-clipboard"
     [fuzzel]="fuzzel"
+    [awww]="awww"
+    [awww-daemon]="awww"
     [hyprpicker]="hyprpicker"
+    [playerctl]="playerctl"
+    [notify-send]="libnotify"
+    [flock]="util-linux"
+    [go]="go"
+    [wlsunset]="wlsunset"
+    [easyeffects]="easyeffects"
+    [uv]="uv"
+    [cava]="cava"
+    [qalc]="libqalculate"
+    [yt-dlp]="yt-dlp"
+    [socat]="socat"
+    [brightnessctl]="brightnessctl"
+    [slurp]="slurp"
+    [wf-recorder]="wf-recorder"
+    [ffmpeg]="ffmpeg"
+    [swappy]="swappy"
+    [tesseract]="tesseract"
+    [blueman-manager]="blueman"
+    [gowall]="gowall-bin"
+    [kwriteconfig6]="kconfig"
+    [checkupdates]="pacman-contrib"
+    [ddcutil]="ddcutil"
+    [missioncenter]="mission-center"
+    [nm-connection-editor]="nm-connection-editor"
+    [xdg-settings]="xdg-utils"
+    [mpv]="mpv"
+    [swaylock]="swaylock"
+    [swayidle]="swayidle"
     [songrec]="songrec"
     [trans]="translate-shell"
-    # Package-level checks from doctor (no direct command binary)
+    # Legacy/package-level checks with no direct command binary.
+    [dunstify]="dunst"
     [syntax-highlighting]="syntax-highlighting"
     [kirigami]="kirigami"
     [kdialog]="kdialog"
     [millennium]="millennium-bin"
-    [missioncenter]="mission-center"
   )
 
   _miss_installflags="--needed"
@@ -169,11 +196,12 @@ install_pkgbuild_deps() {
   }
 }
 
-# Install from each PKGBUILD
+# Install dependency groups. inir-deps is the aggregate tracker built only after
+# dependency resolution; running it here would defeat --no-* group choices.
 for pkgdir in ./sdata/dist-arch/inir-*/; do
-  # Check group flags
   pkgname=$(basename "$pkgdir")
   case "$pkgname" in
+    inir-deps) continue ;;
     inir-audio) $INSTALL_AUDIO || continue ;;
     inir-toolkit) $INSTALL_TOOLKIT || continue ;;
     inir-screencapture) $INSTALL_SCREENCAPTURE || continue ;;
@@ -261,7 +289,7 @@ for _qs_pkg in "${_qs_shell_conflicts[@]}"; do
 done
 
 # After removing a shell that provides quickshell (e.g. noctalia-qs), the
-# quickshell slot is empty.  Sync the package db so pacman can install the
+# quickshell slot is empty. Sync the package db so pacman can install the
 # upstream quickshell cleanly.
 if $_qs_shell_found; then
   pkg_sudo pacman -Sy 2>/dev/null || true
@@ -476,51 +504,100 @@ v install-python-packages
 
 #####################################################################################
 # Register dependencies with pacman via meta-package
-# This prevents "clean orphans" from removing iNiR's deps.
-# The meta-package contains no files — only dependency declarations.
+# This prevents "clean orphans" from removing iNiR's installed dependencies.
+# The staged meta-package contains no files — only dependency declarations for
+# packages that are actually present after this install run.
 #####################################################################################
 tui_info "Registering dependencies with pacman..."
 
 _meta_dir="./sdata/dist-arch/inir-deps"
 if [[ -f "$_meta_dir/PKGBUILD" ]]; then
-  # Update pkgver from VERSION file
   _inir_ver="$(cat ./VERSION 2>/dev/null || echo '2.29.3')"
-  sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_dir/PKGBUILD"
+  _meta_build_dir="$(mktemp -d)"
 
-  (
-    cd "$_meta_dir"
-    # -d: skip dependency checks during build (they're already installed)
-    # -f: force rebuild if .pkg.tar.zst already exists
-    # -C: clean build dir first
-    if makepkg -dfC 2>/dev/null; then
-      # Install the meta-package (overwrite if already installed)
-      local_pkg=(*.pkg.tar.zst)
-      if [[ -f "${local_pkg[0]}" ]]; then
-        if pkg_sudo pacman -U --noconfirm --needed "${local_pkg[0]}" 2>/dev/null; then
-          log_success "Meta-package inir-deps registered — orphan cleaner will skip iNiR deps"
-        else
-          # Some deps might be AUR-only and not satisfy pacman's check.
-          # Fall back to installing without dep verification.
-          pkg_sudo pacman -Udd --noconfirm "${local_pkg[0]}" 2>/dev/null && \
-            log_success "Meta-package inir-deps registered (forced)" || \
-            log_warning "Could not register meta-package — orphan protection unavailable"
+  # Build from a staged recipe so setup never rewrites a tracked PKGBUILD just
+  # to inject the current VERSION into the dependency-tracker package.
+  if cp -- "$_meta_dir/PKGBUILD" "$_meta_build_dir/PKGBUILD"; then
+    sed -i "s/^pkgver=.*/pkgver=${_inir_ver}/" "$_meta_build_dir/PKGBUILD"
+
+    (
+      cd "$_meta_build_dir"
+
+      # A user may explicitly disable dependency groups, and optional/AUR
+      # packages may be unavailable. Track only dependencies that pacman says
+      # are installed so the tracker never needs --nodeps and cannot leave the
+      # local package database with intentionally unsatisfied dependencies.
+      if source ./PKGBUILD; then
+        _meta_installed_deps=()
+        for _meta_dep in "${depends[@]}"; do
+          _meta_pkg="${_meta_dep%%[<>=]*}"
+          if pacman -Q "$_meta_pkg" >/dev/null 2>&1; then
+            _meta_installed_deps+=("$_meta_dep")
+          fi
+        done
+
+        if ! python3 - ./PKGBUILD "${_meta_installed_deps[@]}" <<'PY'
+from pathlib import Path
+import shlex
+import sys
+
+path = Path(sys.argv[1])
+deps = sys.argv[2:]
+text = path.read_text()
+start = text.find("depends=(")
+if start < 0:
+    raise SystemExit("dependency tracker PKGBUILD has no depends array")
+body_start = start + len("depends=(")
+end = text.find("\n)\n", body_start)
+if end < 0:
+    raise SystemExit("dependency tracker PKGBUILD has an unterminated depends array")
+replacement = "depends=(\n" + "".join(f"  {shlex.quote(dep)}\n" for dep in deps) + ")"
+path.write_text(text[:start] + replacement + text[end + 2:])
+PY
+        then
+          log_warning "Could not filter meta-package dependencies — orphan protection unavailable"
+          exit 0
         fi
-        rm -f "${local_pkg[@]}" 2>/dev/null
+
+        log_info "Tracking ${#_meta_installed_deps[@]} installed dependencies with inir-deps"
+      else
+        log_warning "Could not read staged meta-package recipe — orphan protection unavailable"
+        exit 0
       fi
-    else
-      log_warning "Could not build meta-package — orphan protection unavailable"
-    fi
-  )
+
+      # -d: dependency installation was already handled above; package metadata
+      # itself still contains only dependencies that are currently satisfied.
+      # -f: force rebuild if a package archive already exists.
+      # -C: clean build dir first.
+      if makepkg -dfC 2>/dev/null; then
+        local_pkg=(*.pkg.tar.zst)
+        if [[ -f "${local_pkg[0]}" ]]; then
+          # Reinstall even at the same pkgver/pkgrel so changing --no-* choices
+          # refreshes the dependency metadata recorded by pacman.
+          if pkg_sudo pacman -U --noconfirm "${local_pkg[0]}" 2>/dev/null; then
+            log_success "Meta-package inir-deps registered — orphan cleaner will skip iNiR deps"
+          else
+            log_warning "Could not register meta-package — orphan protection unavailable"
+          fi
+        fi
+      else
+        log_warning "Could not build meta-package — orphan protection unavailable"
+      fi
+    )
+  else
+    log_warning "Could not stage meta-package recipe — orphan protection unavailable"
+  fi
+
+  rm -rf -- "$_meta_build_dir"
 else
   log_warning "Meta-package PKGBUILD not found at $_meta_dir"
 fi
-unset _meta_dir _inir_ver
+unset _meta_dir _meta_build_dir _inir_ver
 
 #####################################################################################
 # Post-install: Check for Qt/Quickshell ABI mismatch
 # pacman -Syu may update Qt while quickshell-git/quickshell-bin (AUR) was built
 # against the old Qt. Quickshell uses Qt private APIs, so minor bumps break ABI.
-# See: https://github.com/snowarch/iNiR/issues/93
 #####################################################################################
 if command -v qs >/dev/null 2>&1; then
   qs_abi_output="$(timeout 5 env QT_QPA_PLATFORM=offscreen qs --version 2>&1 || true)"

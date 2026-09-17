@@ -374,7 +374,7 @@ cleanup_old_snapshots() {
 ###############################################################################
 get_update_tracking_branch() {
     local branch=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)
-    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="main"
+    [[ -z "$branch" || "$branch" == "HEAD" ]] && branch="stable"
     printf '%s' "$branch"
 }
 

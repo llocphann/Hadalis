@@ -66,6 +66,7 @@ Singleton {
 
     function rescanWifi(): void {
         wifiScanning = true;
+        rescanProcess.attempted = true;
         rescanProcess.running = true;
     }
 
@@ -177,12 +178,49 @@ Singleton {
 
     Process {
         id: rescanProcess
+        property bool attempted: false
+        property bool startObserved: false
+        property bool timedOut: false
         command: ["nmcli", "dev", "wifi", "list", "--rescan", "yes"]
-        stdout: SplitParser {
-            onRead: {
-                wifiScanning = false;
-                getNetworks.running = true;
+        onRunningChanged: {
+            if (rescanProcess.running) {
+                rescanProcess.startObserved = false
+                return
             }
+            if (!rescanProcess.attempted || rescanProcess.startObserved)
+                return
+            rescanTimeout.stop()
+            rescanProcess.attempted = false
+            root.wifiScanning = false
+            console.warn("[Network] Failed to start Wi-Fi rescan")
+        }
+        onStarted: {
+            rescanProcess.startObserved = true
+            rescanProcess.timedOut = false
+            rescanTimeout.restart()
+        }
+        onExited: (exitCode) => {
+            rescanTimeout.stop()
+            rescanProcess.attempted = false
+            root.wifiScanning = false
+            if (rescanProcess.timedOut) {
+                console.warn("[Network] Timed out while rescanning Wi-Fi")
+                return
+            }
+            if (exitCode === 0)
+                getNetworks.running = true
+        }
+    }
+
+    Timer {
+        id: rescanTimeout
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!rescanProcess.running)
+                return
+            rescanProcess.timedOut = true
+            rescanProcess.running = false
         }
     }
 
@@ -209,32 +247,55 @@ Singleton {
 
     property bool _destroying: false
 
+    function _startSubscriber(): void {
+        if (!root._destroying && !subscriber.running)
+            subscriber.running = true
+    }
+
+    function _scheduleSubscriberRestart(): void {
+        if (!root._destroying)
+            subscriberRestart.restart()
+    }
+
     Component.onCompleted: {
-        // Kill any orphaned nmcli monitor processes from previous shell instances,
-        // then start the fresh subscriber once cleanup finishes.
-        _cleanupStale.running = true;
+        root._startSubscriber()
         // Prime initial state once; subsequent updates come from nmcli monitor.
         Qt.callLater(() => root.update())
     }
 
     Component.onDestruction: {
         root._destroying = true;
+        subscriberRestart.stop()
         subscriber.running = false;
     }
 
-    Process {
-        id: _cleanupStale
-        command: ["pkill", "-f", "nmcli monitor"]
-        running: false
-        onExited: subscriber.running = true
+    Timer {
+        id: subscriberRestart
+        interval: 2000
+        repeat: false
+        onTriggered: root._startSubscriber()
     }
 
     Process {
         id: subscriber
+        property bool startObserved: false
         running: false
         command: ["nmcli", "monitor"]
-        // Auto-restart if the monitor process dies (can happen after lockscreen/suspend)
-        onRunningChanged: if (!running && !root._destroying) running = true
+        // Restart through a delay rather than directly from runningChanged. If
+        // nmcli cannot start or NetworkManager makes the monitor exit instantly,
+        // an inline restart would otherwise turn into a process-spawn loop.
+        onRunningChanged: {
+            if (subscriber.running) {
+                subscriber.startObserved = false
+                return
+            }
+            if (root._destroying || subscriber.startObserved)
+                return
+            console.warn("[Network] Failed to start nmcli monitor; retrying")
+            root._scheduleSubscriberRestart()
+        }
+        onStarted: subscriber.startObserved = true
+        onExited: root._scheduleSubscriberRestart()
         stdout: SplitParser {
             onRead: root.update()
         }
@@ -268,13 +329,21 @@ Singleton {
             let hasWifi = false;
             let wifiStatus = "disconnected";
             lines.forEach(line => {
-                if (line.includes("ethernet") && line.includes("connected"))
+                const separator = line.indexOf(":");
+                if (separator < 0)
+                    return;
+
+                const type = line.slice(0, separator);
+                const state = line.slice(separator + 1);
+                const connected = state === "connected" || state.startsWith("connected ");
+
+                if (type === "ethernet" && connected)
                     hasEthernet = true;
-                else if (line.includes("wifi:")) {
-                    if (line.includes("disconnected")) {
+                else if (type === "wifi") {
+                    if (state === "disconnected") {
                         wifiStatus = "disconnected"
                     }
-                    else if (line.includes("connected")) {
+                    else if (connected) {
                         hasWifi = true;
                         wifiStatus = "connected"
 
@@ -283,10 +352,10 @@ Singleton {
                             wifiStatus = "limited"
                         }
                     }
-                    else if (line.includes("connecting")) {
+                    else if (state.startsWith("connecting")) {
                         wifiStatus = "connecting"
                     }
-                    else if (line.includes("unavailable")) {
+                    else if (state === "unavailable") {
                         wifiStatus = "disabled"
                     }
                 }
@@ -306,10 +375,8 @@ Singleton {
         id: updateNetworkName
         command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
         running: false
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkName = data;
-            }
+        stdout: StdioCollector {
+            onStreamFinished: root.networkName = text.trim()
         }
     }
 

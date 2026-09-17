@@ -38,6 +38,7 @@ Singleton {
     property string filePath: Directories.todoPath
     property string txtFilePath: Directories.todoTxtPath
     property var list: []
+    property bool ready: false
 
     // Guard flag: when true, skip writing txt back (because we're
     // processing a txt change and the file is already up-to-date)
@@ -48,50 +49,102 @@ Singleton {
     // from the initial setText() and destroy the list.
     property bool _startupLock: true
 
+    // Fresh-start directory creation is asynchronous. Keep UI edits in memory
+    // until storage is ready, then persist the latest list once.
+    property bool _storageInitializing: false
+
+    // FileView emits onLoaded after setText(). Serialize canonical JSON writes
+    // so a stale self-write callback cannot rehydrate an older list while a
+    // newer UI/external-text edit is waiting to be persisted.
+    property bool _jsonSaving: false
+    property bool _jsonSaveQueued: false
+
     // --- Public API ---
 
+    function _normalizeList(value) {
+        if (!Array.isArray(value)) return []
+        const normalized = []
+        for (let i = 0; i < value.length; i++) {
+            const item = value[i]
+            if (!item || typeof item !== "object" || Array.isArray(item))
+                continue
+            normalized.push({
+                "content": String(item.content ?? ""),
+                "done": item.done === true
+            })
+        }
+        return normalized
+    }
+
     function addItem(item) {
-        list.push(item)
+        if (!root.ready) return false
+        const normalized = root._normalizeList([item])
+        if (normalized.length === 0) return false
+        list.push(normalized[0])
         root.list = list.slice(0)
         _persistAll()
+        return true
     }
 
     function addTask(desc) {
-        addItem({ "content": desc, "done": false })
+        return addItem({ "content": desc, "done": false })
     }
 
     function markDone(index) {
+        if (!root.ready) return false
         if (index >= 0 && index < list.length) {
             list[index].done = true
             root.list = list.slice(0)
             _persistAll()
+            return true
         }
+        return false
     }
 
     function markUnfinished(index) {
+        if (!root.ready) return false
         if (index >= 0 && index < list.length) {
             list[index].done = false
             root.list = list.slice(0)
             _persistAll()
+            return true
         }
+        return false
     }
 
     function deleteItem(index) {
+        if (!root.ready) return false
         if (index >= 0 && index < list.length) {
             list.splice(index, 1)
             root.list = list.slice(0)
             _persistAll()
+            return true
         }
+        return false
     }
 
     function refresh() {
+        root.ready = false
         todoFileView.reload()
     }
 
     // --- Persistence helpers ---
 
-    function _persistAll() {
+    function _saveJson() {
+        if (root._storageInitializing)
+            return
+        if (root._jsonSaving) {
+            root._jsonSaveQueued = true
+            return
+        }
+        root._jsonSaving = true
         todoFileView.setText(JSON.stringify(root.list))
+    }
+
+    function _persistAll() {
+        if (root._storageInitializing)
+            return
+        root._saveJson()
         if (!root._suppressTxtWrite) {
             _writeTxt()
         }
@@ -105,6 +158,32 @@ Singleton {
             lines.push("- " + checkbox + " " + (item.content ?? ""))
         }
         txtFileView.setText(lines.join("\n") + "\n")
+    }
+
+    function _finishMissingInitialization(): void {
+        root._storageInitializing = false
+        root.ready = true
+        root._persistAll()
+        startupUnlock.start()
+    }
+
+    function _ensureStorageDirectories(): void {
+        const jsonParent = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
+        const txtParent = root.txtFilePath.substring(0, root.txtFilePath.lastIndexOf('/'))
+        const dirs = []
+        if (jsonParent.length > 0)
+            dirs.push(jsonParent)
+        if (txtParent.length > 0 && txtParent !== jsonParent)
+            dirs.push(txtParent)
+        if (dirs.length === 0) {
+            root._finishMissingInitialization()
+            return
+        }
+        if (todoInitDirProc.running)
+            return
+        todoInitDirProc.command = ["/usr/bin/mkdir", "-p"].concat(dirs)
+        todoInitDirProc.attempted = true
+        todoInitDirProc.running = true
     }
 
     // --- Text file parsing ---
@@ -166,13 +245,23 @@ Singleton {
         id: todoFileView
         path: Qt.resolvedUrl(root.filePath)
         onLoaded: {
+            if (root._jsonSaving) {
+                root._jsonSaving = false
+                if (root._jsonSaveQueued) {
+                    root._jsonSaveQueued = false
+                    Qt.callLater(() => root._saveJson())
+                }
+                return
+            }
+
             const fileContents = todoFileView.text()
             try {
-                root.list = JSON.parse(fileContents)
+                root.list = root._normalizeList(JSON.parse(fileContents))
             } catch (e) {
                 console.log("[Todo] JSON parse error, resetting list:", e)
                 root.list = []
             }
+            root.ready = true
             _log("[Todo] JSON loaded,", root.list.length, "tasks")
             // Generate txt mirror from loaded JSON, then unlock after settling
             root._writeTxt()
@@ -181,14 +270,48 @@ Singleton {
         onLoadFailed: (error) => {
             if (error == FileViewError.FileNotFound) {
                 console.log("[Todo] JSON not found, creating new file.")
-                const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
-                Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
                 root.list = []
-                todoFileView.setText(JSON.stringify(root.list))
-                root._writeTxt()
-                startupUnlock.start()
+                root._storageInitializing = true
+                root._ensureStorageDirectories()
             } else {
                 console.log("[Todo] Error loading JSON:", error)
+            }
+        }
+    }
+
+    Process {
+        id: todoInitDirProc
+        property bool attempted: false
+        property bool startObserved: false
+        running: false
+
+        onRunningChanged: {
+            if (todoInitDirProc.running) {
+                todoInitDirProc.startObserved = false
+                return
+            }
+            if (!todoInitDirProc.attempted || todoInitDirProc.startObserved)
+                return
+            todoInitDirProc.attempted = false
+            root._storageInitializing = false
+            root.ready = true
+            console.warn("[Todo] Failed to start storage directory creation")
+            root._persistAll()
+            startupUnlock.start()
+        }
+
+        onStarted: todoInitDirProc.startObserved = true
+
+        onExited: (exitCode, exitStatus) => {
+            todoInitDirProc.attempted = false
+            if (exitCode === 0) {
+                root._finishMissingInitialization()
+            } else {
+                root._storageInitializing = false
+                root.ready = true
+                console.warn("[Todo] Failed to create storage directories, exit code:", exitCode)
+                root._persistAll()
+                startupUnlock.start()
             }
         }
     }
@@ -253,7 +376,7 @@ Singleton {
                 _log("[Todo] txt changed externally:", parsed.length, "tasks")
                 root._suppressTxtWrite = true
                 root.list = parsed
-                todoFileView.setText(JSON.stringify(root.list))
+                root._saveJson()
                 root._suppressTxtWrite = false
             }
         }

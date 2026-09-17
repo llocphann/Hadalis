@@ -53,16 +53,35 @@ Singleton {
     onMonoFontChanged: _queueSync()
     onSizeScaleChanged: _queueSync()
     onSyncEnabledChanged: {
-        if (syncEnabled) _queueSync()
+        if (syncEnabled) {
+            _queueSync()
+            return
+        }
+        _pendingSync = false
+        _rerunAfterExit = false
+        syncDebounce.stop()
+    }
+
+    Connections {
+        target: Config
+
+        function onReadyChanged(): void {
+            if (Config.ready && root.syncEnabled)
+                root._queueSync()
+        }
     }
 
     function _queueSync(): void {
-        if (!syncEnabled) return
+        if (!Config.ready || !syncEnabled) return
         _pendingSync = true
         syncDebounce.restart()
     }
 
     function _doSync(): void {
+        if (!Config.ready || !syncEnabled) {
+            _rerunAfterExit = false
+            return
+        }
         _log("[FontSyncService] Syncing font:", gtkFontString)
         if (fontSyncProc.running) {
             _rerunAfterExit = true
@@ -80,28 +99,63 @@ Singleton {
     Process {
         id: fontSyncProc
         running: false
+        property bool startObserved: false
+        property bool timedOut: false
         command: [
             Quickshell.shellPath("scripts/colors/sync-system-fonts.sh"),
             root.mainFont,
             root.monoFont,
             String(root.fontSize)
         ]
+        onRunningChanged: {
+            if (fontSyncProc.running) {
+                fontSyncProc.startObserved = false
+                return
+            }
+            if (fontSyncProc.startObserved)
+                return
+
+            fontSyncTimeout.stop()
+            root._rerunAfterExit = false
+            console.warn("[FontSyncService] Failed to start system font sync helper")
+        }
+        onStarted: {
+            fontSyncProc.startObserved = true
+            fontSyncProc.timedOut = false
+            fontSyncTimeout.restart()
+        }
         onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0) {
+            fontSyncTimeout.stop()
+            if (fontSyncProc.timedOut) {
+                console.warn("[FontSyncService] Timed out while syncing system fonts")
+            } else if (exitCode === 0) {
                 root._log("[FontSyncService] GTK/KDE fonts updated:", root.gtkFontString)
             } else {
                 console.warn("[FontSyncService] System font sync failed, exit code:", exitCode)
             }
             if (root._rerunAfterExit) {
                 root._rerunAfterExit = false
-                Qt.callLater(() => root._doSync())
+                if (root.syncEnabled)
+                    Qt.callLater(() => root._doSync())
             }
+        }
+    }
+
+    Timer {
+        id: fontSyncTimeout
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!fontSyncProc.running)
+                return
+            fontSyncProc.timedOut = true
+            fontSyncProc.running = false
         }
     }
 
     // Initialize on load
     Component.onCompleted: {
-        if (syncEnabled) {
+        if (Config.ready && syncEnabled) {
             // Reconcile persisted desktop settings on every shell start. The old
             // implementation only synced after a value changed, leaving GTK/KDE
             // stale after upgrades, manual edits, or restored configs.

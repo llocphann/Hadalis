@@ -6,6 +6,7 @@ import Quickshell.Io
 
 QuickToggleButton {
     id: nightLightButton
+    accessibleName: Translation.tr("Night Light")
     toggled: Hyprsunset.active
     buttonIcon: (Config.options?.light?.night?.automatic ?? false) ? "night_sight_auto" : "bedtime"
     onClicked: {

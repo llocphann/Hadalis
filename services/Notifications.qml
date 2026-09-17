@@ -102,13 +102,20 @@ Singleton {
         silent = !silent
     }
 
+    function _syncSilentFromConfig(): void {
+        const configSilent = Config.options?.notifications?.silent ?? false
+        if (root.silent !== configSilent)
+            root.silent = configSilent
+    }
+
     Connections {
         target: Config
         function onOptionsChanged() {
-            const configSilent = Config.options?.notifications?.silent ?? false
-            if (root.silent !== configSilent) {
-                root.silent = configSilent
-            }
+            root._syncSilentFromConfig()
+        }
+        function onReadyChanged() {
+            if (Config.ready)
+                root._syncSilentFromConfig()
         }
     }
 
@@ -687,8 +694,9 @@ Singleton {
 
     Component.onCompleted: {
         // Lazy: load persistent notifications only when a UI needs them.
-        // Initialize silent from config
-        silent = Config.options?.notifications?.silent ?? false
+        // Initialize silent from config when Config is already available.
+        if (Config.ready)
+            root._syncSilentFromConfig()
     }
 
     FileView {

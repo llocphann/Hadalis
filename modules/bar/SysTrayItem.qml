@@ -13,22 +13,60 @@ MouseArea {
     required property SystemTrayItem item
     property var trayParent: null  // Reference to SysTray for closing other menus
     property bool targetMenuOpen: false
+    property bool keyboardMenuMode: false
 
     signal menuOpened(qsWindow: var)
     signal menuClosed()
 
     hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+    activeFocusOnTab: true
     implicitWidth: 18
     implicitHeight: 18
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.item?.tooltipTitle || root.item?.title || Translation.tr("System tray item")
+    Accessible.focusable: true
+
+    function activatePrimary(): void {
+        if (!TrayService.smartToggle(root.item))
+            root.item.activate()
+    }
+
+    function openContextMenu(fromKeyboard: bool): void {
+        if (!root.item.hasMenu)
+            return
+        if (root.trayParent)
+            root.trayParent.closeAllTrayMenus()
+        root.keyboardMenuMode = fromKeyboard
+        menu.open()
+    }
+
+    Keys.onPressed: event => {
+        if (event.isAutoRepeat)
+            return
+        if (event.key === Qt.Key_Return
+                || event.key === Qt.Key_Enter
+                || event.key === Qt.Key_Space) {
+            root.activatePrimary()
+            event.accepted = true
+            return
+        }
+        if (event.key === Qt.Key_Menu
+                || (event.key === Qt.Key_F10
+                    && (event.modifiers & Qt.ShiftModifier))) {
+            root.openContextMenu(true)
+            event.accepted = true
+        }
+    }
+
     onPressed: (event) => {
         switch (event.button) {
         case Qt.LeftButton: {
             // Smart toggle: click to show, click again to minimize
             // Falls back to normal activate() if not handled
-            if (!TrayService.smartToggle(item)) {
-                item.activate();
-            }
+            root.activatePrimary();
             break;
         }
         case Qt.MiddleButton:
@@ -36,11 +74,7 @@ MouseArea {
             item.secondaryActivate();
             break;
         case Qt.RightButton:
-            if (item.hasMenu) {
-                // Close other tray menus first
-                if (trayParent) trayParent.closeAllTrayMenus();
-                menu.open();
-            }
+            root.openContextMenu(false);
             break;
         }
         event.accepted = true;
@@ -78,6 +112,7 @@ MouseArea {
             Component.onCompleted: this.open();
             trayItemMenuHandle: root.item.menu
             anchorHovered: root.containsMouse
+            keyboardMode: root.keyboardMenuMode
             anchor {
                 item: root
                 edges: (Config.options?.bar?.vertical ?? false)
@@ -91,10 +126,16 @@ MouseArea {
             }
             onMenuOpened: (window) => root.menuOpened(window);
             onMenuClosed: {
+                root.keyboardMenuMode = false;
                 root.menuClosed();
                 menu.active = false;
             }
         }
+    }
+
+    KeyboardFocusRing {
+        anchors.fill: parent
+        focusVisible: root.activeFocus
     }
 
     IconImage {

@@ -481,6 +481,7 @@ Item {
         property string dialect: Appearance.surfaceDialectFor("")
         property string buttonIcon
         property string tooltipText
+        buttonText: headerButton.tooltipText
         readonly property bool _zzz: headerButton.dialect === "zzz"
         readonly property bool _angel: headerButton.dialect === "angel"
         readonly property bool _inir: headerButton.dialect === "inir"

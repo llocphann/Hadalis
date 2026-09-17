@@ -44,12 +44,20 @@ GeneralConfigCore {
         }
     }
 
-    Component.onCompleted: {
-        // Before TLP moved under System, iiPage=28 meant the standalone TLP
-        // page. The registry rewrites that persisted page to System and leaves
-        // this one-shot hint so the migration lands on Power, not Audio.
+    function _consumeLegacyTlpPowerRedirect(): void {
         if (SettingsPageRegistry.consumeLegacyTlpPowerRedirect())
             root.activeSection = "power"
+    }
+
+    Component.onCompleted: root._consumeLegacyTlpPowerRedirect()
+
+    Connections {
+        target: Persistent
+
+        function onReadyChanged(): void {
+            if (Persistent.ready)
+                Qt.callLater(root._consumeLegacyTlpPowerRedirect)
+        }
     }
 
     // TLP now belongs to System → Power. It is appended to the inherited

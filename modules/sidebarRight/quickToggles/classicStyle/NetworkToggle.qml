@@ -10,7 +10,8 @@ import Quickshell.Io
 
 QuickToggleButton {
     id: root
-    toggled: Network.wifiStatus !== "disabled"
+    accessibleName: Translation.tr("Wi-Fi")
+    toggled: Network.wifiEnabled
     buttonIcon: Network.materialSymbol
     onClicked: Network.toggleWifi()
     // altAction is set by parent (ClassicQuickPanel opens dialog, others may open external app)

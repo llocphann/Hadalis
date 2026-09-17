@@ -81,6 +81,7 @@ Singleton {
     property string _head: ""
     property string _tail: ""
     property bool _hasMarkers: false
+    property string _pendingWriteText: ""
 
     // ── Lifecycle ────────────────────────────────────────────────────────
 
@@ -261,22 +262,24 @@ Singleton {
     }
 
     function _write(): void {
+        if (!root.ready) {
+            console.warn("[Autostart] Refusing to write before initial startup file load")
+            return
+        }
         if (!isNiri || startupFilePath.length === 0) {
             root.status = isNiri ? "missing" : "notniri"
             return
         }
-        const text = _serialize()
-        // Ensure the directory exists (defensive — the file ships with iNiR).
-        Quickshell.execDetached(["/usr/bin/mkdir", "-p",
-            (Directories.homePath ?? "") + "/.config/niri/config.d"])
-        startupFileView.path = Qt.resolvedUrl(startupFilePath)
-        startupFileView.setText(text)
-        _log("[Autostart] Wrote", root.entries.length, "entries to", startupFilePath)
+        root._pendingWriteText = _serialize()
+        root.status = "write"
+        if (!ensureDirectoryProc.running)
+            ensureDirectoryProc.running = true
     }
 
     // ── Public mutations ─────────────────────────────────────────────────
 
     function addApp(desktopId): void {
+        if (!root.ready) return
         const id = String(desktopId ?? "").trim()
         if (id.length === 0) return
         // Avoid duplicates by desktopId.
@@ -295,6 +298,7 @@ Singleton {
     }
 
     function addCommand(command): void {
+        if (!root.ready) return
         const cmd = String(command ?? "").trim()
         if (cmd.length === 0) return
         const entries = root.entries.slice()
@@ -304,6 +308,7 @@ Singleton {
     }
 
     function removeEntry(index): void {
+        if (!root.ready) return
         const entries = root.entries.slice()
         if (index >= 0 && index < entries.length) {
             entries.splice(index, 1)
@@ -313,6 +318,7 @@ Singleton {
     }
 
     function setEntryEnabled(index, enabled): void {
+        if (!root.ready) return
         const entries = root.entries.slice()
         if (index >= 0 && index < entries.length) {
             entries[index].enabled = enabled === true
@@ -360,6 +366,7 @@ Singleton {
     }
 
     function setAppEnabled(desktopId, enabled): void {
+        if (!root.ready) return
         const id = String(desktopId ?? "")
         const entries = root.entries.slice()
         let idx = -1
@@ -383,14 +390,17 @@ Singleton {
             return `${root.isNiri ? "niri" : "other"}|${root.startupFilePath}|${root.entries.length}|${root.externalLines.length}|${root.status}`
         }
         function addCommand(cmd: string): string {
+            if (!root.ready) return "not-ready"
             root.addCommand(cmd)
             return "ok"
         }
         function addApp(desktopId: string): string {
+            if (!root.ready) return "not-ready"
             root.addApp(desktopId)
             return "ok"
         }
         function removeLast(): string {
+            if (!root.ready) return "not-ready"
             if (root.entries.length > 0) root.removeEntry(root.entries.length - 1)
             return "ok"
         }
@@ -402,10 +412,36 @@ Singleton {
 
     // ── File I/O ─────────────────────────────────────────────────────────
 
+    Process {
+        id: ensureDirectoryProc
+        command: ["/usr/bin/mkdir", "-p", (Directories.homePath ?? "") + "/.config/niri/config.d"]
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) {
+                root.status = "write"
+                _log("[Autostart] failed to create startup directory:", exitCode, exitStatus)
+                return
+            }
+            const text = root._pendingWriteText
+            root._pendingWriteText = ""
+            if (text.length === 0)
+                return
+            startupFileView.path = Qt.resolvedUrl(root.startupFilePath)
+            startupFileView.setText(text)
+        }
+    }
+
     FileView {
         id: startupFileView
         watchChanges: true
         printErrors: false
+        onSaved: {
+            root.status = "read"
+            _log("[Autostart] Wrote", root.entries.length, "entries to", root.startupFilePath)
+        }
+        onSaveFailed: error => {
+            root.status = "write"
+            _log("[Autostart] write failed:", error)
+        }
         onFileChanged: {
             // External edit (user touched the file by hand) — re-read.
             _log("[Autostart] file changed externally, reloading")

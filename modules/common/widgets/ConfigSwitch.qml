@@ -19,6 +19,9 @@ RippleButton {
     Layout.fillWidth: true
     implicitHeight: contentItem.implicitHeight + 6 * 2
     font.pixelSize: Appearance.font.pixelSize.small
+    Accessible.checkable: true
+    Accessible.checked: root.checked
+    Accessible.description: root.description
 
     function _findSettingsContext() {
         var page = null;
@@ -126,6 +129,8 @@ RippleButton {
             down: root.down
             scale: 0.6
             Layout.fillWidth: false
+            checkable: false
+            focusPolicy: Qt.NoFocus
             checked: root.checked
             onClicked: root.clicked()
         }

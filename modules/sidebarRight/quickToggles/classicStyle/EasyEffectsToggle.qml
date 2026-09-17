@@ -9,6 +9,7 @@ import Quickshell
 
 QuickToggleButton {
     id: root
+    accessibleName: Translation.tr("EasyEffects")
     visible: EasyEffects.available
     toggled: EasyEffects.active
     buttonIcon: "instant_mix"

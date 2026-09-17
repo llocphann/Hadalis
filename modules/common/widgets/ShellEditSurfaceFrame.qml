@@ -47,6 +47,7 @@ Item {
             ? qsTr("Selected shell surface. Drag to move it to another edge")
             : qsTr("Select shell surface for editing")
     Accessible.focusable: root.active
+    Accessible.onPressAction: root.activated(root.surfaceId)
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter

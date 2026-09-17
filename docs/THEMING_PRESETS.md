@@ -6,13 +6,7 @@
 
 Normally, iNiR extracts colors from your wallpaper using Material You. Presets skip that step and inject a complete Material 3 color palette directly. The palette propagates to external apps (GTK, terminals, Firefox, etc.) the same way wallpaper colors do.
 
-Apply presets from Settings > Appearance > Theme, or via IPC:
-
-```bash
-inir theme setPreset gruvbox-dark
-inir theme setPreset catppuccin-mocha
-inir theme auto                        # back to wallpaper-based
-```
+Apply presets from Settings > Appearance > Theme. The `inir theme` command manages external-app theming targets (`list-targets`, `inspect`, `doctor`, `apply`, `scaffold`); it does not switch shell color presets.
 
 When a preset is active, changing wallpapers changes the background image but doesn't regenerate colors.
 

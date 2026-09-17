@@ -12,6 +12,7 @@ Rectangle {
     id: root
 
     property string symbol: ""
+    property string accessibleName: ""
     property bool selected: false
     property int badgeSize: 30
     property color accentColor: Appearance.zzz.sticker
@@ -19,9 +20,14 @@ Rectangle {
     property var downAction
     property var releaseAction
     property var altAction
+    property bool _keyPressed: false
 
-    readonly property bool _engaged: root.selected || mouseArea.containsPress
-    readonly property bool _lit: root._engaged || mouseArea.containsMouse
+    readonly property bool _engaged: root.selected || mouseArea.containsPress || root._keyPressed
+    readonly property bool _lit: root._engaged || mouseArea.containsMouse || root.activeFocus
+
+    activeFocusOnTab: true
+    Accessible.role: Accessible.Button
+    Accessible.name: root.accessibleName.length > 0 ? root.accessibleName : root.symbol
 
     implicitWidth: badgeSize
     implicitHeight: badgeSize
@@ -32,6 +38,31 @@ Rectangle {
     border.width: Appearance.zzz.borderThick
     border.color: root._engaged ? root.activeColor : root.accentColor
     clip: true
+
+    onActiveFocusChanged: {
+        if (!root.activeFocus)
+            root._keyPressed = false
+    }
+
+    Keys.onPressed: event => {
+        if (event.isAutoRepeat || (event.key !== Qt.Key_Space
+                && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter))
+            return
+        root._keyPressed = true
+        if (root.downAction)
+            root.downAction()
+        event.accepted = true
+    }
+
+    Keys.onReleased: event => {
+        if (event.isAutoRepeat || (event.key !== Qt.Key_Space
+                && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter))
+            return
+        root._keyPressed = false
+        if (root.releaseAction)
+            root.releaseAction()
+        event.accepted = true
+    }
 
     Behavior on color {
         enabled: Appearance.animationsEnabled

@@ -8,9 +8,10 @@ RippleButton {
     Layout.alignment: Qt.AlignHCenter
     implicitWidth: 40
     implicitHeight: 40
-    downAction: () => {
-        parent.expanded = !parent.expanded;
-    }
+    buttonText: root.parent.expanded
+        ? Translation.tr("Collapse navigation")
+        : Translation.tr("Expand navigation")
+    onClicked: root.parent.expanded = !root.parent.expanded
     buttonRadius: Appearance.rounding.full
 
     rotation: root.parent.expanded ? 0 : -180

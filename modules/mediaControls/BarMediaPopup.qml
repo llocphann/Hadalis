@@ -15,12 +15,20 @@ Item {
     id: root
     signal closeRequested()
 
+    Keys.onPressed: event => {
+        if (event.key !== Qt.Key_Escape) return
+        root.closeRequested()
+        event.accepted = true
+    }
+
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     // Use MprisController.displayPlayers - centralized filtering
     readonly property var meaningfulPlayers: MprisController.displayPlayers
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
     property real popupRounding: Appearance.rounding.normal
+    property real screenX: 0
+    property real screenY: 0
     
     // Cache to prevent flickering during track transitions
     property var _playerCache: []
@@ -33,6 +41,26 @@ Item {
             if (a[i] !== b[i]) return false
         }
         return true
+    }
+
+    function focusInitialControl(): bool {
+        let fallback = null
+        for (let i = 0; i < playerRepeater.count; i++) {
+            const delegate = playerRepeater.itemAt(i)
+            if (!delegate)
+                continue
+            if (!fallback)
+                fallback = delegate
+            if (delegate.isActive) {
+                delegate.focusPrimaryControl()
+                return true
+            }
+        }
+        if (fallback) {
+            fallback.focusPrimaryControl()
+            return true
+        }
+        return false
     }
 
     onMeaningfulPlayersChanged: {
@@ -68,17 +96,29 @@ Item {
         spacing: 8
 
         Repeater {
+            id: playerRepeater
             model: ScriptModel {
                 values: root._visiblePlayers
             }
             delegate: Item {
+                id: playerDelegate
                 required property MprisPlayer modelData
                 required property int index
                 Layout.fillWidth: true
                 implicitWidth: root.widgetWidth
                 implicitHeight: root.widgetHeight + (isActive && root._visiblePlayers.length > 1 ? 4 : 0)
                 
-                readonly property bool isActive: modelData === MprisController.trackedPlayer
+                readonly property bool isActive: modelData === root.activePlayer
+                readonly property string selectorLabel: {
+                    const title = StringUtils.cleanMusicTitle(modelData?.trackTitle) || ""
+                    const artist = modelData?.trackArtist ?? ""
+                    if (title.length > 0 && artist.length > 0) return `${title} — ${artist}`
+                    return title || artist || modelData?.dbusName || Translation.tr("Unknown player")
+                }
+
+                function focusPrimaryControl(): void {
+                    playerControl.focusPrimaryControl()
+                }
                 
                 Rectangle {
                     visible: root._visiblePlayers.length > 1
@@ -105,20 +145,53 @@ Item {
                 }
                 
                 PlayerControl {
+                    id: playerControl
                     anchors.fill: parent
                     anchors.leftMargin: root._visiblePlayers.length > 1
                         ? Appearance.sizes.elevationMargin : 0
                     player: modelData
                     visualizerPoints: []
                     radius: root.popupRounding
+                    screenX: root.screenX + playerDelegate.x + playerControl.x
+                    screenY: root.screenY + playerDelegate.y + playerControl.y
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.leftMargin: root._visiblePlayers.length > 1
+                        ? Appearance.sizes.elevationMargin : 0
+                    visible: playerSelector.activeFocus
+                    color: "transparent"
+                    radius: root.popupRounding
+                    border.width: 2
+                    border.color: Appearance.zzzEverywhere ? Appearance.zzz.accent
+                        : Appearance.angelEverywhere ? Appearance.angel.colPrimary
+                        : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colPrimary
+                        : Appearance.colors.colPrimary
+                    z: 2
                 }
                 
                 MouseArea {
+                    id: playerSelector
                     anchors.fill: parent
                     visible: !isActive && root._visiblePlayers.length > 1
+                    activeFocusOnTab: visible
+                    Accessible.role: Accessible.Button
+                    Accessible.name: Translation.tr("Switch media player") + ": " + selectorLabel
+                    Accessible.focusable: visible
+                    Keys.onPressed: event => {
+                        if (event.isAutoRepeat
+                                || (event.key !== Qt.Key_Return
+                                    && event.key !== Qt.Key_Enter
+                                    && event.key !== Qt.Key_Space))
+                            return
+                        event.accepted = true
+                        MprisController.setActivePlayer(modelData)
+                        playerControl.focusPrimaryControl()
+                    }
                     onClicked: MprisController.setActivePlayer(modelData)
                     cursorShape: Qt.PointingHandCursor
-                    z: -1
+                    z: 3
                 }
             }
         }
@@ -140,6 +213,8 @@ Item {
             Rectangle {
                 id: placeholderBackground
                 anchors.centerIn: parent
+                width: Math.min(implicitWidth,
+                    Math.max(0, parent.width - Appearance.sizes.elevationMargin))
                 color: Appearance.zzzEverywhere ? Appearance.zzz.bg0
                     : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
                     : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colLayer1
@@ -173,8 +248,12 @@ Item {
                 ColumnLayout {
                     id: placeholderLayout
                     anchors.centerIn: parent
+                    width: Math.max(0, parent.width - parent.padding * 2)
 
                     StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
                         text: Translation.tr("No active player")
                         font.pixelSize: Appearance.font.pixelSize.large
                         color: Appearance.zzzEverywhere ? Appearance.zzz.ink
@@ -188,6 +267,9 @@ Item {
                         }
                     }
                     StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
                         color: Appearance.zzzEverywhere ? Appearance.zzz.ghostInk
                             : Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
                             : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colTextSecondary

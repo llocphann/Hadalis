@@ -322,6 +322,7 @@ Singleton {
 
     Process {
         id: evdevProbeProc
+        property bool startObserved: false
         running: false
         command: ["/usr/bin/python3", root.lockStateDaemonPath, "--once"]
 
@@ -333,6 +334,18 @@ Singleton {
             onRead: line => root._log("evdev probe", line)
         }
 
+        onRunningChanged: {
+            if (evdevProbeProc.running) {
+                evdevProbeProc.startObserved = false;
+                return;
+            }
+            if (evdevProbeProc.startObserved || root._destroying)
+                return;
+
+            root._log("evdev probe failed to start");
+            root._enableSysfsFallback();
+        }
+        onStarted: evdevProbeProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
                 if (!evdevMonitorProc.running)
@@ -358,6 +371,7 @@ Singleton {
 
     Process {
         id: evdevMonitorProc
+        property bool startObserved: false
         running: false
         command: ["/usr/bin/python3", "-u", root.lockStateDaemonPath]
 
@@ -369,6 +383,22 @@ Singleton {
             onRead: line => root._log("evdev monitor", line)
         }
 
+        onRunningChanged: {
+            if (evdevMonitorProc.running) {
+                evdevMonitorProc.startObserved = false;
+                return;
+            }
+            if (evdevMonitorProc.startObserved || root._destroying)
+                return;
+
+            root._log("evdev monitor failed to start");
+            if (root.usingEvdev) {
+                evdevRestartTimer.restart();
+                return;
+            }
+            root._enableSysfsFallback();
+        }
+        onStarted: evdevMonitorProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (root._destroying)
                 return;

@@ -20,6 +20,7 @@ Options:
   --skip-quickshell   Skip Quickshell config sync
   --skip-niri         Skip Niri config installation
   --skip-backup       Skip backup of existing configs
+  --skip-sysupdate    Skip system package database/update step
   --no-audio          Skip audio dependencies
   --no-toolkit        Skip toolkit dependencies (ydotool, backlight)
   --no-screencapture  Skip screenshot/recording tools

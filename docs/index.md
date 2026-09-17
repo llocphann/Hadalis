@@ -28,9 +28,9 @@ inir update
 
 ## Branches
 
-`main` is the stable branch used by installations and updates.
+`stable` is the stable branch used by installations and updates.
 
-`prerelease` is where development happens. It may be ahead by a lot. That is the point.
+`dev` is where development happens. It may be ahead by a lot. That is the point.
 
 ## Runtime shape
 

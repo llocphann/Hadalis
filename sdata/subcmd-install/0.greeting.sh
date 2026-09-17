@@ -36,14 +36,21 @@ detect_system() {
     # Session type
     DETECTED_SESSION="${XDG_SESSION_TYPE:-unknown}"
     
-    # Check for AUR helper
-    if command -v yay &>/dev/null; then
-        DETECTED_AUR="yay"
-    elif command -v paru &>/dev/null; then
-        DETECTED_AUR="paru"
-    else
-        DETECTED_AUR="none (will install)"
-    fi
+    # AUR helpers are relevant only on the Arch-family path.
+    case "$DETECTED_DISTRO_ID" in
+        arch|endeavouros|manjaro|garuda|cachyos|artix)
+            if command -v yay &>/dev/null; then
+                DETECTED_AUR="yay"
+            elif command -v paru &>/dev/null; then
+                DETECTED_AUR="paru"
+            else
+                DETECTED_AUR="none (installer may add one)"
+            fi
+            ;;
+        *)
+            DETECTED_AUR="n/a"
+            ;;
+    esac
 }
 
 detect_system
@@ -94,7 +101,7 @@ tui_box "$system_snapshot" "System snapshot" "accent-dim" 62
 echo ""
 
 # Arch check with better messaging
-if [[ "$DETECTED_DISTRO_ID" != "arch" && "$DETECTED_DISTRO_ID" != "endeavouros" && "$DETECTED_DISTRO_ID" != "manjaro" && "$DETECTED_DISTRO_ID" != "garuda" && "$DETECTED_DISTRO_ID" != "cachyos" ]]; then
+if [[ "$DETECTED_DISTRO_ID" != "arch" && "$DETECTED_DISTRO_ID" != "endeavouros" && "$DETECTED_DISTRO_ID" != "manjaro" && "$DETECTED_DISTRO_ID" != "garuda" && "$DETECTED_DISTRO_ID" != "cachyos" && "$DETECTED_DISTRO_ID" != "artix" ]]; then
     distro_warning=$(cat <<EOF
 This installer is tuned for Arch-based distributions.
 Detected target: ${DETECTED_DISTRO}

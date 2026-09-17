@@ -18,18 +18,46 @@ step "shell syntax"
 bash -n \
     "$runtime_root/setup" \
     "$runtime_root/scripts/inir" \
+    "$runtime_root/scripts/release.sh" \
+    "$runtime_root/scripts/verify-docs.sh" \
+    "$runtime_root/scripts/wiki-sync.sh" \
+    "$runtime_root/scripts/ai/gemini-translate.sh" \
+    "$runtime_root/scripts/test-thinkfan-helper.sh" \
     "$runtime_root/scripts/test-tlp-integration-lifecycle.sh" \
     "$runtime_root/scripts/test-tlp-settings-ui-guards.sh" \
     "$runtime_root/scripts/test-update-lifecycle.sh" \
     "$runtime_root/sdata/lib/"*.sh \
     "$runtime_root/sdata/subcmd-install/"*.sh \
     "$runtime_root/sdata/migrations/"*.sh
+for dist_installer in "$runtime_root"/sdata/dist-*/install-deps.sh; do
+    [[ -f "$dist_installer" ]] || continue
+    bash -n "$dist_installer"
+done
 sh -n \
     "$runtime_root/assets/helpers/inir-battery-charge-limit" \
     "$runtime_root/scripts/test-battery-charge-limit-helper.sh"
 
+step "Hadalis updater source"
+versioning_lib="$runtime_root/sdata/lib/versioning.sh"
+tracking_lib="$runtime_root/sdata/lib/snapshots.sh"
+if ! grep -Fq 'GITHUB_REPO="llocphann/Hadalis"' "$versioning_lib"; then
+    printf 'FAIL: updater release API does not target llocphann/Hadalis\n' >&2
+    exit 1
+fi
+if ! grep -Fq '[[ -z "$branch" || "$branch" == "HEAD" ]] && branch="stable"' "$versioning_lib"; then
+    printf 'FAIL: detached updater fallback does not target the stable branch\n' >&2
+    exit 1
+fi
+if ! grep -Fq '[[ -z "$branch" || "$branch" == "HEAD" ]] && branch="stable"' "$tracking_lib"; then
+    printf 'FAIL: remote update tracking does not target stable from detached HEAD\n' >&2
+    exit 1
+fi
+
 step "battery charge-limit helper"
 sh "$runtime_root/scripts/test-battery-charge-limit-helper.sh"
+
+step "ThinkFan helper"
+bash "$runtime_root/scripts/test-thinkfan-helper.sh"
 
 step "TLP integration lifecycle"
 bash "$runtime_root/scripts/test-tlp-integration-lifecycle.sh"
@@ -39,6 +67,9 @@ bash "$runtime_root/scripts/test-tlp-settings-ui-guards.sh"
 
 step "update lifecycle regression"
 bash "$runtime_root/scripts/test-update-lifecycle.sh"
+
+step "network lifecycle regression"
+bash "$runtime_root/scripts/test-network-service-lifecycle.sh"
 
 step "session tray ordering"
 service_unit="$runtime_root/assets/systemd/inir.service"
@@ -154,33 +185,46 @@ payload_tool="$runtime_root/sdata/lib/runtime-payload.py"
 payload_list="$(mktemp)"
 trap 'rm -f "$payload_list"' EXIT
 python3 "$payload_tool" list --root "$runtime_root" > "$payload_list"
-if ! grep -qx 'assets/images/mascot/manifest.json' "$payload_list"; then
-    printf 'FAIL: mascot runtime manifest is missing from canonical payload\n' >&2
-    exit 1
-fi
-for forbidden in \
-    'assets/images/mascot/frames/' \
-    'assets/images/mascot/PROMPTS.md'; do
-    if grep -Fq "$forbidden" "$payload_list"; then
-        printf 'FAIL: canonical payload leaks local mascot artifact: %s\n' "$forbidden" >&2
-        exit 1
-    fi
-done
-if grep -Eq '^assets/images/mascot/.*\.(png|gif)$' "$payload_list"; then
-    printf 'FAIL: canonical payload leaks local mascot image artifacts\n' >&2
-    exit 1
-fi
 if ! grep -Fq 'runtime-payload.py copy' "$runtime_root/Makefile"; then
     printf 'FAIL: make install does not use the canonical runtime payload policy\n' >&2
     exit 1
 fi
 
-step "mascot pack install and repair"
-bash "$runtime_root/scripts/test-mascot-pack-flow.sh"
-
 if [[ -f "$runtime_root/Makefile" ]]; then
     step "make install dry run"
     make -n install PREFIX=/tmp/inir-stage-test -C "$runtime_root" >/dev/null
+
+    step "privileged helper path relocation"
+    (
+        privileged_stage="$(mktemp -d)"
+        trap 'rm -rf -- "$privileged_stage"' EXIT
+        make -s -C "$runtime_root" \
+            install-shell install-battery-helper install-thinkfan-helper \
+            DESTDIR="$privileged_stage" \
+            LIBEXECDIR=/opt/inir/libexec \
+            POLKIT_ACTIONS_DIR=/opt/inir/share/polkit-1/actions \
+            TLP_CONFDIR=/opt/inir/etc/tlp.d \
+            INIR_SYSTEM_SHAREDIR=/opt/inir/share/inir
+
+        installed_runtime="$privileged_stage/usr/local/share/quickshell/inir"
+        battery_helper="$privileged_stage/opt/inir/libexec/inir-battery-charge-limit"
+        thinkfan_helper="$privileged_stage/opt/inir/libexec/inir-thinkfan"
+        battery_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.battery-charge-limit.policy"
+        thinkfan_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.thinkfan.policy"
+        tlp_schema="$privileged_stage/opt/inir/share/inir/tlp-settings-schema.json"
+        tlp_service="$installed_runtime/services/TlpSettingsService.qml"
+        thinkfan_service="$installed_runtime/services/ThinkFanService.qml"
+
+        [[ -x "$battery_helper" && -x "$thinkfan_helper" && -f "$tlp_schema" ]]
+        grep -Fq 'config_dir=/opt/inir/etc/tlp.d' "$battery_helper"
+        grep -Fq 'tlp_settings_schema=/opt/inir/share/inir/tlp-settings-schema.json' "$battery_helper"
+        grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-battery-charge-limit</annotate>' "$battery_policy"
+        grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-thinkfan</annotate>' "$thinkfan_policy"
+        grep -Fq 'readonly property string helperPath: "/opt/inir/libexec/inir-battery-charge-limit"' "$tlp_service"
+        grep -Fq '"/opt/inir/libexec/inir-thinkfan"' "$thinkfan_service"
+        ! grep -Fq '/usr/libexec/inir-battery-charge-limit' "$tlp_service"
+        ! grep -Fq '/usr/libexec/inir-thinkfan' "$thinkfan_service"
+    )
 fi
 
 if [[ -d "$runtime_root/distro/arch" ]]; then
@@ -224,6 +268,9 @@ if ! grep -Fq 'vars_to_import+=("DISPLAY=$DISPLAY")' "$inir_launcher" \
 fi
 
 if command -v python3 &>/dev/null && [[ -f "$runtime_root/scripts/lib/generate-ipc-registry.py" ]]; then
+    step "IPC registry generator regression"
+    python3 "$runtime_root/scripts/test-ipc-registry-generator.py"
+
     step "IPC registry freshness"
     python3 "$runtime_root/scripts/lib/generate-ipc-registry.py" --check
 fi
@@ -262,14 +309,18 @@ for name in "${agent_dirs[@]}"; do
         exit 1
     fi
 done
+if grep -Eq '^scripts/test-' "$payload_list"; then
+    printf 'FAIL: canonical payload leaks regression test tooling\n' >&2
+    exit 1
+fi
 for forbidden in \
     scripts/release.sh \
     scripts/wiki-sync.sh \
     scripts/verify-docs.sh \
     scripts/qml-check.fish \
     scripts/test-local-distribution.sh \
-    scripts/test-mascot-pack-flow.sh \
     scripts/test-battery-charge-limit-helper.sh \
+    scripts/test-thinkfan-helper.sh \
     scripts/test-tlp-integration-lifecycle.sh \
     scripts/test-tlp-settings-ui-guards.sh \
     scripts/test-update-lifecycle.sh \

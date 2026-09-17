@@ -68,7 +68,19 @@ Singleton {
 
     Process {
         id: pidofTraysProc
+        property bool startObserved: false
         command: ["/usr/bin/pidof", "kded6"]
+        onRunningChanged: {
+            if (pidofTraysProc.running) {
+                pidofTraysProc.startObserved = false
+                return
+            }
+            if (pidofTraysProc.startObserved)
+                return
+            root._traysConflict = false
+            root._maybeHandleConflicts()
+        }
+        onStarted: pidofTraysProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             root._traysConflict = (exitCode === 0)
             root._maybeHandleConflicts()
@@ -77,7 +89,19 @@ Singleton {
 
     Process {
         id: pidofNotifsProc
+        property bool startObserved: false
         command: ["/usr/bin/pidof", "mako", "dunst"]
+        onRunningChanged: {
+            if (pidofNotifsProc.running) {
+                pidofNotifsProc.startObserved = false
+                return
+            }
+            if (pidofNotifsProc.startObserved)
+                return
+            root._notifsConflict = false
+            root._maybeHandleConflicts()
+        }
+        onStarted: pidofNotifsProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             root._notifsConflict = (exitCode === 0)
             root._maybeHandleConflicts()

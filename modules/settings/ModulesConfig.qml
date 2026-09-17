@@ -18,7 +18,7 @@ ContentPage {
             "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", 
             "iiOverlay", "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners", 
             "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar", 
-            "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate"
+            "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiDashboard"
         ],
         "waffle": [
             "wBar", "wBackground", "wBackdrop", "wStartMenu", "wActionCenter", "wNotificationCenter", "wNotificationPopup", "wOnScreenDisplay", "wWidgets", "wTaskView", "wLock", "wPolkit", "wSessionScreen",
@@ -76,7 +76,7 @@ ContentPage {
         icon: "extension"
         title: Translation.tr("Modules")
         description: Translation.tr("Choose which shell modules run, pick your default terminal and tune interface behavior in focused views.")
-        summary: Translation.tr("Panels \u00b7 Terminal \u00b7 Modules \u00b7 Interface")
+        summary: Translation.tr("Panels · Terminal · Modules · Interface")
         currentValue: modulesPage.activeSection
         onSelected: value => modulesPage.activeSection = value
         options: [
@@ -533,14 +533,6 @@ ContentPage {
                 checked: modulesPage.isPanelEnabled("iiOverview")
                 onCheckedChanged: modulesPage.setPanelEnabled("iiOverview", checked)
                 StyledToolTip { text: Translation.tr("App launcher, search and workspace grid (Super+Space)") }
-            }
-
-            SettingsSwitch {
-                buttonIcon: "view_sidebar"
-                text: Translation.tr("Workspace Strip")
-                checked: modulesPage.isPanelEnabled("iiWorkspaceStrip")
-                onCheckedChanged: modulesPage.setPanelEnabled("iiWorkspaceStrip", checked)
-                StyledToolTip { text: Translation.tr("Hover a screen edge for visual workspace navigation") }
             }
 
             SettingsSwitch {

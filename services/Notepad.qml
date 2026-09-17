@@ -20,58 +20,92 @@ Singleton {
     // Current tab state
     property int currentTab: 0
     property var tabs: [{ title: "Note 1", text: "" }]
+    property bool ready: false
     // Convenience: current tab text (backward compat)
     readonly property string text: (tabs[currentTab]?.text) ?? ""
 
+    function _normalizeTabs(value) {
+        if (!Array.isArray(value)) return []
+        const normalized = []
+        for (let i = 0; i < value.length; i++) {
+            const tab = value[i]
+            if (!tab || typeof tab !== "object" || Array.isArray(tab))
+                continue
+            normalized.push({
+                title: String(tab.title ?? `Note ${normalized.length + 1}`),
+                text: String(tab.text ?? "")
+            })
+        }
+        return normalized
+    }
+
     function setTextValue(newText) {
-        if (currentTab < 0 || currentTab >= tabs.length) return
+        if (!root.ready || currentTab < 0 || currentTab >= tabs.length) return false
         const t = tabs.slice()
-        t[currentTab] = Object.assign({}, t[currentTab], { text: newText })
+        t[currentTab] = Object.assign({}, t[currentTab], { text: String(newText ?? "") })
         tabs = t
         _save()
+        return true
     }
 
     function setTabTitle(index, title) {
-        if (index < 0 || index >= tabs.length) return
+        if (!root.ready || index < 0 || index >= tabs.length) return false
         const t = tabs.slice()
-        t[index] = Object.assign({}, t[index], { title: title })
+        t[index] = Object.assign({}, t[index], { title: String(title ?? "") })
         tabs = t
         _save()
+        return true
     }
 
     function addTab(title) {
+        if (!root.ready) return false
         const t = tabs.slice()
-        const name = title || `Note ${t.length + 1}`
+        const requested = String(title ?? "").trim()
+        const name = requested.length > 0 ? requested : `Note ${t.length + 1}`
         t.push({ title: name, text: "" })
         tabs = t
         currentTab = t.length - 1
         _save()
+        return true
     }
 
     function removeTab(index) {
-        if (tabs.length <= 1) return // Keep at least one tab
+        if (!root.ready || index < 0 || index >= tabs.length) return false
+        if (tabs.length <= 1) return false // Keep at least one tab
         const t = tabs.slice()
         t.splice(index, 1)
         tabs = t
         if (currentTab >= t.length) currentTab = t.length - 1
         _save()
+        return true
     }
 
     function switchTab(index) {
-        if (index < 0 || index >= tabs.length) return
+        if (!root.ready || index < 0 || index >= tabs.length) return false
         currentTab = index
         _save()
+        return true
     }
 
-    // Guard: FileView fires onLoaded after our own setText() write (it watches
-    // the file). Without this, a self-write reload re-parses a stale/cached
-    // buffer and reassigns tabs/currentTab mid-edit, dropping freshly added
-    // tabs or their text. Skip the reload that our own save triggers.
+    // FileView fires onLoaded after our own setText() write. Keep at most one
+    // self-write in flight so a later callback cannot fall through into the
+    // disk parser while newer in-memory edits are waiting to be persisted.
     property bool _saving: false
+    property bool _saveQueued: false
+    // Fresh-start mkdir is asynchronous. While it is running, keep edits in
+    // memory and persist the latest state once the directory is ready.
+    property bool _storageInitializing: false
 
     function _save() {
+        if (!root.ready || _storageInitializing)
+            return false
+        if (_saving) {
+            _saveQueued = true
+            return true
+        }
         _saving = true
         tabsFileView.setText(JSON.stringify({ currentTab: currentTab, tabs: tabs }))
+        return true
     }
 
     function refresh() {
@@ -86,16 +120,27 @@ Singleton {
         path: Qt.resolvedUrl(root.tabsFilePath)
 
         onLoaded: {
-            if (root._saving) { root._saving = false; return }
+            if (root._saving) {
+                root._saving = false
+                if (root._saveQueued) {
+                    root._saveQueued = false
+                    Qt.callLater(() => root._save())
+                }
+                return
+            }
             try {
                 const data = JSON.parse(tabsFileView.text())
-                if (Array.isArray(data.tabs) && data.tabs.length > 0) {
-                    root.tabs = data.tabs
-                    root.currentTab = Math.max(0, Math.min(data.currentTab ?? 0, data.tabs.length - 1))
+                const loadedTabs = root._normalizeTabs(data?.tabs)
+                if (loadedTabs.length > 0) {
+                    const requestedIndex = Number(data?.currentTab)
+                    const index = Number.isInteger(requestedIndex) ? requestedIndex : 0
+                    root.tabs = loadedTabs
+                    root.currentTab = Math.max(0, Math.min(index, loadedTabs.length - 1))
+                    root.ready = true
                     return
                 }
             } catch (e) {}
-            // Invalid/empty JSON — try legacy migration
+            // Invalid/empty JSON — try legacy migration before allowing writes.
             legacyFileView.path = Qt.resolvedUrl(root.legacyFilePath)
         }
 
@@ -119,17 +164,54 @@ Singleton {
 
         onLoaded: {
             const content = legacyFileView.text()
-            root.tabs = [{ title: "Note 1", text: content || "" }]
+            root.tabs = [{ title: "Note 1", text: String(content ?? "") }]
             root.currentTab = 0
+            root.ready = true
             root._save()
         }
 
         onLoadFailed: {
-            // No legacy file either — fresh start
-            const parentDir = root.tabsFilePath.substring(0, root.tabsFilePath.lastIndexOf('/'))
-            Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
+            // No legacy file either — fresh start. Serialize mkdir before the
+            // first FileView write so the marker cannot race its parent directory.
             root.tabs = [{ title: "Note 1", text: "" }]
             root.currentTab = 0
+            root._storageInitializing = true
+            if (!createStorageDirProc.running)
+                createStorageDirProc.running = true
+        }
+    }
+
+    Process {
+        id: createStorageDirProc
+        running: false
+        property bool startObserved: false
+        command: [
+            "/usr/bin/mkdir",
+            "-p",
+            root.tabsFilePath.substring(0, root.tabsFilePath.lastIndexOf('/'))
+        ]
+
+        onRunningChanged: {
+            if (createStorageDirProc.running) {
+                createStorageDirProc.startObserved = false
+                return
+            }
+            if (createStorageDirProc.startObserved)
+                return
+
+            root._storageInitializing = false
+            root.ready = true
+            console.warn("[Notepad] Failed to start state directory creation")
+            root._save()
+        }
+
+        onStarted: createStorageDirProc.startObserved = true
+
+        onExited: (exitCode, exitStatus) => {
+            root._storageInitializing = false
+            root.ready = true
+            if (exitCode !== 0)
+                console.warn("[Notepad] Failed to create state directory", exitCode, exitStatus)
             root._save()
         }
     }

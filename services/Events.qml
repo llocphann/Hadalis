@@ -15,6 +15,9 @@ Singleton {
     property string filePath: Directories.eventsPath
     property var list: []
     property int nextId: 1
+    property bool ready: false
+    property bool _saving: false
+    property bool _saveQueued: false
     
     signal eventAdded(var event)
     signal eventRemoved(int id)
@@ -26,40 +29,108 @@ Singleton {
         checkTimer.start()
     }
 
+    function _ensureStorageDirectory(): void {
+        const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
+        if (parentDir.length === 0) {
+            root.ready = true
+            root.saveToFile()
+            return
+        }
+        if (eventsInitDirProc.running)
+            return
+        eventsInitDirProc.command = ["/usr/bin/mkdir", "-p", parentDir]
+        eventsInitDirProc.attempted = true
+        eventsInitDirProc.running = true
+    }
+
     FileView {
         id: eventsFileView
         path: Qt.resolvedUrl(root.filePath)
         watchChanges: true
         onLoaded: {
+            if (root._saving) {
+                root._saving = false
+                if (root._saveQueued) {
+                    root._saveQueued = false
+                    Qt.callLater(() => root.saveToFile())
+                }
+                return
+            }
+
             const fileContents = eventsFileView.text()
             if (!fileContents || fileContents.trim() === "") {
                 root.list = []
                 root.nextId = 1
+                root.ready = true
                 return
             }
             try {
                 const data = JSON.parse(fileContents)
-                root.list = data.events || []
-                root.nextId = data.nextId || 1
+                const events = Array.isArray(data?.events)
+                    ? data.events.filter(event => event && typeof event === "object" && !Array.isArray(event))
+                    : []
+                let maxId = 0
+                for (const event of events) {
+                    const id = Number(event.id)
+                    if (Number.isInteger(id) && id > maxId)
+                        maxId = id
+                }
+                const storedNextId = Number(data?.nextId)
+                root.list = events
+                root.nextId = Number.isInteger(storedNextId) && storedNextId > maxId
+                    ? storedNextId : maxId + 1
+                root.ready = true
                 _log("[Events] Loaded", root.list.length, "events")
             } catch (e) {
                 console.warn("[Events] Failed to parse file:", e)
                 root.list = []
                 root.nextId = 1
+                root.ready = true
             }
         }
         onLoadFailed: (error) => {
             if (error === FileViewError.FileNotFound) {
                 console.log("[Events] File not found, creating new file.")
-                const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
-                Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
                 root.list = []
                 root.nextId = 1
-                root.saveToFile()
+                root._ensureStorageDirectory()
             } else {
                 console.log("[Events] Error loading file:", error)
                 root.list = []
                 root.nextId = 1
+            }
+        }
+    }
+
+    Process {
+        id: eventsInitDirProc
+        property bool attempted: false
+        property bool startObserved: false
+        running: false
+
+        onRunningChanged: {
+            if (eventsInitDirProc.running) {
+                eventsInitDirProc.startObserved = false
+                return
+            }
+            if (!eventsInitDirProc.attempted || eventsInitDirProc.startObserved)
+                return
+            eventsInitDirProc.attempted = false
+            root.ready = true
+            console.warn("[Events] Failed to start storage directory creation")
+            root.saveToFile()
+        }
+
+        onStarted: eventsInitDirProc.startObserved = true
+
+        onExited: (exitCode, exitStatus) => {
+            eventsInitDirProc.attempted = false
+            root.ready = true
+            if (exitCode === 0)
+                root.saveToFile()
+            else {
+                console.warn("[Events] Failed to create storage directory, exit code:", exitCode)
+                root.saveToFile()
             }
         }
     }
@@ -76,11 +147,13 @@ Singleton {
     signal reminderTriggered(var event, int minutesBefore)
 
     function checkDueEvents() {
+        if (!root.ready) return
         const now = new Date()
         const currentTime = now.getTime()
+        const eventCount = root.list.length
         let needsSave = false
         
-        for (let i = 0; i < root.list.length; i++) {
+        for (let i = 0; i < eventCount; i++) {
             const event = root.list[i]
             if (!event.dateTime) continue
             
@@ -103,7 +176,7 @@ Singleton {
                 
                 // Handle recurrence - create next occurrence
                 if (event.recurrence && event.recurrence !== "none") {
-                    root.createNextRecurrence(event)
+                    root.createNextRecurrence(event, currentTime)
                 }
             }
         }
@@ -111,28 +184,53 @@ Singleton {
         if (needsSave) root.saveToFile()
     }
 
-    function createNextRecurrence(event) {
+    function createNextRecurrence(event, afterTime) {
         const eventDate = new Date(event.dateTime)
-        let nextDate = new Date(eventDate)
+        const eventTime = eventDate.getTime()
+        const targetTime = Number.isFinite(Number(afterTime)) ? Number(afterTime) : Date.now()
+        if (!Number.isFinite(eventTime))
+            return
+
+        const nextDate = new Date(eventDate)
         
         switch (event.recurrence) {
-            case "daily":
-                nextDate.setDate(nextDate.getDate() + 1)
+            case "daily": {
+                const daysBehind = Math.max(0, Math.floor((targetTime - eventTime) / 86400000))
+                nextDate.setDate(nextDate.getDate() + daysBehind + 1)
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setDate(nextDate.getDate() + 1)
                 break
-            case "weekly":
-                nextDate.setDate(nextDate.getDate() + 7)
+            }
+            case "weekly": {
+                const weeksBehind = Math.max(0, Math.floor((targetTime - eventTime) / (7 * 86400000)))
+                nextDate.setDate(nextDate.getDate() + (weeksBehind + 1) * 7)
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setDate(nextDate.getDate() + 7)
                 break
-            case "monthly":
-                nextDate.setMonth(nextDate.getMonth() + 1)
+            }
+            case "monthly": {
+                const targetDate = new Date(targetTime)
+                const monthsBehind = Math.max(0,
+                    (targetDate.getFullYear() - eventDate.getFullYear()) * 12
+                    + targetDate.getMonth() - eventDate.getMonth())
+                nextDate.setMonth(nextDate.getMonth() + Math.max(1, monthsBehind))
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setMonth(nextDate.getMonth() + 1)
                 break
-            case "yearly":
-                nextDate.setFullYear(nextDate.getFullYear() + 1)
+            }
+            case "yearly": {
+                const targetDate = new Date(targetTime)
+                const yearsBehind = Math.max(1, targetDate.getFullYear() - eventDate.getFullYear())
+                nextDate.setFullYear(nextDate.getFullYear() + yearsBehind)
+                while (nextDate.getTime() <= targetTime)
+                    nextDate.setFullYear(nextDate.getFullYear() + 1)
                 break
+            }
             default:
                 return
         }
         
-        // Create recurring event
+        // Create the first recurring occurrence after the current check time.
         root.addEvent(
             event.title,
             event.description,
@@ -145,6 +243,7 @@ Singleton {
     }
 
     function addEvent(title, description, dateTime, category, priority, reminderMinutes, recurrence) {
+        if (!root.ready) return null
         const event = {
             id: root.nextId++,
             title: title || "",
@@ -167,6 +266,7 @@ Singleton {
     }
 
     function removeEvent(id) {
+        if (!root.ready) return false
         const index = root.list.findIndex(e => e.id === id)
         if (index !== -1) {
             root.list.splice(index, 1)
@@ -179,6 +279,7 @@ Singleton {
     }
 
     function updateEvent(id, updates) {
+        if (!root.ready) return false
         const index = root.list.findIndex(e => e.id === id)
         if (index !== -1) {
             root.list[index] = Object.assign({}, root.list[index], updates)
@@ -230,6 +331,11 @@ Singleton {
     }
 
     function saveToFile() {
+        if (root._saving) {
+            root._saveQueued = true
+            return
+        }
+        root._saving = true
         const data = {
             nextId: root.nextId,
             events: root.list
@@ -238,6 +344,7 @@ Singleton {
     }
 
     function loadFromFile() {
+        root.ready = false
         eventsFileView.reload()
     }
 

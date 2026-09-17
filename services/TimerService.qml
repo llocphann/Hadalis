@@ -20,12 +20,49 @@ Singleton {
     property int longBreakTime: 900
     property int cyclesBeforeLongBreak: 4
 
+    function _positiveInt(value, fallback: int): int {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) && parsed > 0 ? Math.max(1, Math.round(parsed)) : fallback
+    }
+
+    function _stopwatchTick(value): int {
+        const parsed = Number(value)
+        if (!Number.isFinite(parsed)) return 0
+
+        // Keep 10 ms wall-clock ticks inside the signed 32-bit range used by
+        // Persistent.states.timer.stopwatch.start and stopwatchTime. Elapsed
+        // values use the same modulus, so wraparound remains monotonic for the
+        // full duration an int stopwatch can represent (~248 days).
+        const modulus = 2147483648
+        const tick = Math.floor(parsed)
+        return ((tick % modulus) + modulus) % modulus
+    }
+
+    // While a timer is paused, reuse its persisted `start` field to hold the
+    // frozen progress. Negative values distinguish this encoding from legacy
+    // positive wall-clock/tick starts without expanding the persistent schema.
+    function _encodePausedValue(value): int {
+        const parsed = Number(value)
+        const normalized = Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0
+        return -normalized - 1
+    }
+
+    function _decodePausedValue(value, fallback: int, maximum: int): int {
+        const parsed = Number(value)
+        let decoded = Number.isFinite(parsed) && parsed < 0
+            ? Math.max(0, -Math.round(parsed) - 1)
+            : Math.max(0, fallback)
+        if (maximum >= 0)
+            decoded = Math.min(decoded, maximum)
+        return decoded
+    }
+
     // Helper to sync all pomodoro values from Config
     function _syncPomodoroConfig() {
-        root.focusTime = Config.options?.time?.pomodoro?.focus ?? 1500
-        root.breakTime = Config.options?.time?.pomodoro?.breakTime ?? 300
-        root.longBreakTime = Config.options?.time?.pomodoro?.longBreak ?? 900
-        root.cyclesBeforeLongBreak = Config.options?.time?.pomodoro?.cyclesBeforeLongBreak ?? 4
+        root.focusTime = root._positiveInt(Config.options?.time?.pomodoro?.focus, 1500)
+        root.breakTime = root._positiveInt(Config.options?.time?.pomodoro?.breakTime, 300)
+        root.longBreakTime = root._positiveInt(Config.options?.time?.pomodoro?.longBreak, 900)
+        root.cyclesBeforeLongBreak = root._positiveInt(Config.options?.time?.pomodoro?.cyclesBeforeLongBreak, 4)
     }
 
     // Sync pomodoro config on ANY config change (reliable - survives object recreation after file reload)
@@ -33,12 +70,17 @@ Singleton {
         target: Config
         function onConfigChanged() { root._syncPomodoroConfig() }
         function onReadyChanged() {
-            if (Config.ready) root._syncPomodoroConfig()
+            if (Config.ready) {
+                root._syncPomodoroConfig()
+                if (Persistent.ready)
+                    root._restorePersistedTimers()
+            }
         }
     }
 
     Component.onCompleted: {
         if (Config.ready) root._syncPomodoroConfig()
+        if (Persistent.ready) root._restorePersistedTimers()
     }
 
     property bool pomodoroRunning: Persistent.states?.timer?.pomodoro?.running ?? false
@@ -69,28 +111,63 @@ Singleton {
     property bool stopwatchRunning: Persistent.states?.timer?.stopwatch?.running ?? false
     property bool stopwatchPaused: Persistent.states?.timer?.stopwatch?.paused ?? false
     property int stopwatchTime: 0
-    property int stopwatchStart: Persistent.states?.timer?.stopwatch?.start ?? 0
-    property var stopwatchLaps: Persistent.states?.timer?.stopwatch?.laps ?? []
+    property int stopwatchStart: root._stopwatchTick(Persistent.states?.timer?.stopwatch?.start ?? 0)
+    property var stopwatchLaps: {
+        const stored = Persistent.states?.timer?.stopwatch?.laps
+        return Array.isArray(stored) ? stored : []
+    }
 
     // Countdown Timer
     property bool countdownRunning: Persistent.states?.timer?.countdown?.running ?? false
     property bool countdownPaused: Persistent.states?.timer?.countdown?.paused ?? false
-    property int countdownDuration: Persistent.states?.timer?.countdown?.duration ?? 300
+    property int countdownDuration: root._positiveInt(Persistent.states?.timer?.countdown?.duration, 300)
     property int countdownSecondsLeft: countdownDuration
+
+    function _restorePersistedTimers(): void {
+        if (!Persistent.ready)
+            return
+
+        if (root.pomodoroRunning) {
+            if (root.pomodoroPaused) {
+                root.pomodoroSecondsLeft = root._decodePausedValue(
+                    Persistent.states.timer.pomodoro.start,
+                    root.pomodoroLapDuration,
+                    root.pomodoroLapDuration)
+            } else {
+                root.refreshPomodoro()
+            }
+        }
+
+        if (!root.stopwatchRunning) {
+            root.stopwatchTime = 0
+        } else if (root.stopwatchPaused
+                && Number(Persistent.states.timer.stopwatch.start) < 0) {
+            root.stopwatchTime = root._decodePausedValue(
+                Persistent.states.timer.stopwatch.start, 0, -1)
+        } else {
+            // Preserve legacy paused states that stored a positive start value;
+            // future pauses use the negative frozen-progress encoding above.
+            root.refreshStopwatch()
+        }
+
+        if (!root.countdownRunning) {
+            root.countdownSecondsLeft = root.countdownDuration
+        } else if (root.countdownPaused) {
+            root.countdownSecondsLeft = root._decodePausedValue(
+                Persistent.states.timer.countdown.start,
+                root.countdownDuration,
+                root.countdownDuration)
+        } else {
+            root.refreshCountdown()
+        }
+    }
 
     // Initialize when Persistent is ready
     Connections {
         target: Persistent
         function onReadyChanged() {
-            if (Persistent.ready) {
-                // Reset local state if not running (don't write to Persistent, just sync local vars)
-                if (!root.stopwatchRunning) {
-                    root.stopwatchTime = 0
-                }
-                if (!root.countdownRunning) {
-                    root.countdownSecondsLeft = root.countdownDuration
-                }
-            }
+            if (Persistent.ready)
+                root._restorePersistedTimers()
         }
     }
 
@@ -98,8 +175,8 @@ Singleton {
         return Math.floor(Date.now() / 1000);
     }
 
-    function getCurrentTimeIn10ms() {  // Stopwatch uses 10ms
-        return Math.floor(Date.now() / 10);
+    function getCurrentTimeIn10ms() {  // Stopwatch uses 10ms ticks kept in int range
+        return root._stopwatchTick(Date.now() / 10);
     }
 
     // Pomodoro
@@ -143,15 +220,25 @@ Singleton {
 
     function togglePomodoro() {
         if (pomodoroRunning) {
-            Persistent.states.timer.pomodoro.paused = !pomodoroPaused;
-            if (!pomodoroPaused) {
-                // Resuming - adjust start time
-                Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds() + pomodoroSecondsLeft - pomodoroLapDuration;
+            if (pomodoroPaused) {
+                const remaining = root._decodePausedValue(
+                    Persistent.states.timer.pomodoro.start,
+                    pomodoroSecondsLeft,
+                    pomodoroLapDuration)
+                pomodoroSecondsLeft = remaining
+                Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds()
+                    + remaining - pomodoroLapDuration
+                Persistent.states.timer.pomodoro.paused = false
+            } else {
+                root.refreshPomodoro()
+                Persistent.states.timer.pomodoro.start = root._encodePausedValue(pomodoroSecondsLeft)
+                Persistent.states.timer.pomodoro.paused = true
             }
         } else {
-            Persistent.states.timer.pomodoro.running = true;
-            Persistent.states.timer.pomodoro.paused = false;
-            Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds() + pomodoroSecondsLeft - pomodoroLapDuration;
+            Persistent.states.timer.pomodoro.start = getCurrentTimeInSeconds()
+                + pomodoroSecondsLeft - pomodoroLapDuration
+            Persistent.states.timer.pomodoro.paused = false
+            Persistent.states.timer.pomodoro.running = true
         }
     }
 
@@ -169,8 +256,8 @@ Singleton {
     }
 
     // Stopwatch
-    function refreshStopwatch() {  // Stopwatch stores time in 10ms
-        stopwatchTime = getCurrentTimeIn10ms() - stopwatchStart;
+    function refreshStopwatch() {  // Stopwatch stores elapsed time in 10ms ticks
+        stopwatchTime = root._stopwatchTick(getCurrentTimeIn10ms() - stopwatchStart);
     }
 
     Timer {
@@ -183,16 +270,15 @@ Singleton {
 
     function toggleStopwatch() {
         if (root.stopwatchRunning) {
-            Persistent.states.timer.stopwatch.paused = !stopwatchPaused;
-            if (!stopwatchPaused) {
-                // Resuming - adjust start time
-                Persistent.states.timer.stopwatch.start = getCurrentTimeIn10ms() - stopwatchTime;
-            }
+            if (root.stopwatchPaused)
+                root.stopwatchResume()
+            else
+                root.stopwatchPause()
         } else {
             if (stopwatchTime === 0) Persistent.states.timer.stopwatch.laps = [];
-            Persistent.states.timer.stopwatch.running = true;
+            Persistent.states.timer.stopwatch.start = root._stopwatchTick(getCurrentTimeIn10ms() - stopwatchTime);
             Persistent.states.timer.stopwatch.paused = false;
-            Persistent.states.timer.stopwatch.start = getCurrentTimeIn10ms() - stopwatchTime;
+            Persistent.states.timer.stopwatch.running = true;
         }
     }
 
@@ -201,13 +287,25 @@ Singleton {
     }
 
     function stopwatchPause() {
+        if (!root.stopwatchRunning || root.stopwatchPaused)
+            return
+        root.refreshStopwatch()
+        Persistent.states.timer.stopwatch.start = root._encodePausedValue(stopwatchTime)
         Persistent.states.timer.stopwatch.paused = true;
     }
 
     function stopwatchResume() {
-        if (stopwatchTime === 0) Persistent.states.timer.stopwatch.laps = [];
+        let elapsed = stopwatchTime
+        if (root.stopwatchPaused) {
+            elapsed = root._decodePausedValue(
+                Persistent.states.timer.stopwatch.start,
+                stopwatchTime,
+                -1)
+        }
+        if (elapsed === 0) Persistent.states.timer.stopwatch.laps = [];
+        root.stopwatchTime = elapsed
+        Persistent.states.timer.stopwatch.start = root._stopwatchTick(getCurrentTimeIn10ms() - elapsed);
         Persistent.states.timer.stopwatch.paused = false;
-        Persistent.states.timer.stopwatch.start = getCurrentTimeIn10ms() - stopwatchTime;
         if (!stopwatchRunning) Persistent.states.timer.stopwatch.running = true;
     }
 
@@ -216,10 +314,14 @@ Singleton {
         Persistent.states.timer.stopwatch.laps = [];
         Persistent.states.timer.stopwatch.running = false;
         Persistent.states.timer.stopwatch.paused = false;
+        Persistent.states.timer.stopwatch.start = 0;
     }
 
     function stopwatchRecordLap() {
-        Persistent.states.timer.stopwatch.laps.push(stopwatchTime);
+        const stored = Persistent.states?.timer?.stopwatch?.laps
+        const laps = Array.isArray(stored) ? stored.slice() : []
+        laps.push(stopwatchTime)
+        Persistent.states.timer.stopwatch.laps = laps
     }
 
     // Countdown Timer
@@ -247,15 +349,27 @@ Singleton {
 
     function toggleCountdown(): void {
         if (countdownRunning) {
-            Persistent.states.timer.countdown.paused = !countdownPaused;
-            if (!countdownPaused) {
-                // Resuming - adjust start time
-                Persistent.states.timer.countdown.start = getCurrentTimeInSeconds() - (countdownDuration - countdownSecondsLeft);
+            if (countdownPaused) {
+                const remaining = root._decodePausedValue(
+                    Persistent.states.timer.countdown.start,
+                    countdownSecondsLeft,
+                    countdownDuration)
+                countdownSecondsLeft = remaining
+                Persistent.states.timer.countdown.start = getCurrentTimeInSeconds()
+                    - (countdownDuration - remaining)
+                Persistent.states.timer.countdown.paused = false
+            } else {
+                root.refreshCountdown()
+                if (!root.countdownRunning)
+                    return
+                Persistent.states.timer.countdown.start = root._encodePausedValue(countdownSecondsLeft)
+                Persistent.states.timer.countdown.paused = true
             }
         } else {
-            Persistent.states.timer.countdown.running = true;
+            Persistent.states.timer.countdown.start = getCurrentTimeInSeconds()
+                - (countdownDuration - countdownSecondsLeft)
             Persistent.states.timer.countdown.paused = false;
-            Persistent.states.timer.countdown.start = getCurrentTimeInSeconds() - (countdownDuration - countdownSecondsLeft);
+            Persistent.states.timer.countdown.running = true;
         }
     }
 
@@ -271,10 +385,10 @@ Singleton {
     }
 
     function setCountdownDuration(seconds: int): void {
-        Persistent.states.timer.countdown.duration = seconds;
-        countdownDuration = seconds;
+        const normalized = root._positiveInt(seconds, 300)
+        Persistent.states.timer.countdown.duration = normalized;
         if (!countdownRunning) {
-            countdownSecondsLeft = seconds;
+            countdownSecondsLeft = normalized;
         }
     }
 }

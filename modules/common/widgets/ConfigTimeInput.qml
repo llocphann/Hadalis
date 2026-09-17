@@ -39,10 +39,8 @@ RowLayout {
 
     function _setTime(h, m) {
         const newTime = _formatTime(h, m)
-        if (root.value !== newTime) {
-            root.value = newTime
+        if (root.value !== newTime)
             root.timeChanged(newTime)
-        }
     }
 
     RowLayout {
@@ -63,29 +61,84 @@ RowLayout {
         }
     }
 
-    // Compact time display with click to edit
+    // Compact time display with pointer and keyboard adjustment.
     Rectangle {
         id: timeRow
         property bool hovered: timeMouseArea.containsMouse
+        property bool editingHours: true
 
-        Layout.preferredWidth: timeLabel.implicitWidth + 24
+        Layout.preferredWidth: timeLabelRow.implicitWidth + 24
         Layout.preferredHeight: 35
+        activeFocusOnTab: root.enabled
         radius: Appearance.rounding.small
         color: hovered ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2
         opacity: root.enabled ? 1 : 0.4
+
+        Accessible.name: root.text
+        Accessible.description: Translation.tr("Time %1. Use Left/Right to select hours or minutes and Up/Down to adjust.")
+            .arg(root._formatTime(root._hour, root._minute))
 
         Behavior on color {
             animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
 
-        StyledText {
-            id: timeLabel
+        Keys.onPressed: event => {
+            if (!root.enabled)
+                return
+
+            if (event.key === Qt.Key_Left) {
+                timeRow.editingHours = true
+            } else if (event.key === Qt.Key_Right) {
+                timeRow.editingHours = false
+            } else if (event.key === Qt.Key_Up) {
+                if (timeRow.editingHours)
+                    root._setTime((root._hour + 1) % 24, root._minute)
+                else
+                    root._setTime(root._hour, (root._minute + 5) % 60)
+            } else if (event.key === Qt.Key_Down) {
+                if (timeRow.editingHours)
+                    root._setTime((root._hour + 23) % 24, root._minute)
+                else
+                    root._setTime(root._hour, (root._minute + 55) % 60)
+            } else {
+                return
+            }
+            event.accepted = true
+        }
+
+        KeyboardFocusRing {
+            anchors.fill: parent
+            focusVisible: timeRow.activeFocus
+        }
+
+        RowLayout {
+            id: timeLabelRow
             anchors.centerIn: parent
-            text: root._formatTime(root._hour, root._minute)
-            color: Appearance.colors.colOnLayer2
-            font.family: Appearance.font.family.numbers
-            font.variableAxes: Appearance.font.variableAxes.numbers
-            font.pixelSize: Appearance.font.pixelSize.small
+            spacing: 0
+
+            StyledText {
+                text: root._hour.toString().padStart(2, '0')
+                color: timeRow.activeFocus && timeRow.editingHours
+                    ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
+                font.family: Appearance.font.family.numbers
+                font.variableAxes: Appearance.font.variableAxes.numbers
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+            StyledText {
+                text: ":"
+                color: Appearance.colors.colOnLayer2
+                font.family: Appearance.font.family.numbers
+                font.variableAxes: Appearance.font.variableAxes.numbers
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+            StyledText {
+                text: root._minute.toString().padStart(2, '0')
+                color: timeRow.activeFocus && !timeRow.editingHours
+                    ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
+                font.family: Appearance.font.family.numbers
+                font.variableAxes: Appearance.font.variableAxes.numbers
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
         }
 
         MouseArea {
@@ -98,6 +151,8 @@ RowLayout {
                 if (!root.enabled) return
                 // Left half = hours, right half = minutes
                 const isHour = mouse.x < width / 2
+                timeRow.editingHours = isHour
+                timeRow.forceActiveFocus()
                 if (mouse.button === Qt.LeftButton) {
                     if (isHour) {
                         root._setTime((root._hour + 1) % 24, root._minute)
@@ -116,6 +171,8 @@ RowLayout {
             onWheel: (wheel) => {
                 if (!root.enabled) return
                 const isHour = wheel.x < width / 2
+                timeRow.editingHours = isHour
+                timeRow.forceActiveFocus()
                 const delta = wheel.angleDelta.y > 0 ? 1 : -1
                 if (isHour) {
                     root._setTime((root._hour + delta + 24) % 24, root._minute)

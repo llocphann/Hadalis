@@ -15,24 +15,32 @@ Singleton {
 
     property bool inhibit: false
 
+    function _nonNegativeInt(value, fallback: int): int {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) && parsed >= 0
+            ? Math.max(0, Math.round(parsed)) : fallback
+    }
+
     // Battery profile: only meaningful on a laptop that is actually unplugged.
     readonly property bool batteryProfileActive: (Config.options?.idle?.onBattery?.enable ?? false)
-        && Battery.available && !Battery.isPluggedIn
+        && Battery.onBattery
 
     readonly property int screenOffTimeout: batteryProfileActive
-        ? (Config.options?.idle?.onBattery?.screenOffTimeout ?? 120)
-        : (Config.options?.idle?.screenOffTimeout ?? 300)
+        ? root._nonNegativeInt(Config.options?.idle?.onBattery?.screenOffTimeout, 120)
+        : root._nonNegativeInt(Config.options?.idle?.screenOffTimeout, 300)
     readonly property int lockTimeout: batteryProfileActive
-        ? (Config.options?.idle?.onBattery?.lockTimeout ?? 300)
-        : (Config.options?.idle?.lockTimeout ?? 600)
+        ? root._nonNegativeInt(Config.options?.idle?.onBattery?.lockTimeout, 300)
+        : root._nonNegativeInt(Config.options?.idle?.lockTimeout, 600)
     readonly property int suspendTimeout: batteryProfileActive
-        ? (Config.options?.idle?.onBattery?.suspendTimeout ?? 600)
-        : (Config.options?.idle?.suspendTimeout ?? 0)
+        ? root._nonNegativeInt(Config.options?.idle?.onBattery?.suspendTimeout, 600)
+        : root._nonNegativeInt(Config.options?.idle?.suspendTimeout, 0)
+    readonly property bool lockBeforeSleep: Config.options?.idle?.lockBeforeSleep !== false
     readonly property string launcherPath: Quickshell.shellPath("scripts/inir")
 
     onScreenOffTimeoutChanged: _restartSwayidle()
     onLockTimeoutChanged: _restartSwayidle()
     onSuspendTimeoutChanged: _restartSwayidle()
+    onLockBeforeSleepChanged: _restartSwayidle()
     onInhibitChanged: _restartSwayidle()
     // Plugging in with identical timeouts on both profiles changes no timeout
     // property, so swayidle would keep the old command line without this.
@@ -58,6 +66,8 @@ Singleton {
 
     function _stopSwayidle() {
         _startSwayidleDelayed.stop()
+        swayidleRestartTimer.stop()
+        swayidleProcess.stopRequested = true
         swayidleProcess.running = false
     }
 
@@ -65,7 +75,6 @@ Singleton {
         if (inhibit) return
 
         const cmd = ["/usr/bin/swayidle", "-w"]
-        const lockBeforeSleep = Config.options?.idle?.lockBeforeSleep !== false
 
         if (screenOffTimeout > 0 && CompositorService.isNiri) {
             const inir = StringUtils.shellSingleQuoteEscape(root.launcherPath);
@@ -77,7 +86,7 @@ Singleton {
         // Determine effective lock timeout
         // If suspend is configured and lockBeforeSleep is enabled, ensure lock happens before suspend
         let effectiveLockTimeout = lockTimeout
-        if (suspendTimeout > 0 && lockBeforeSleep) {
+        if (suspendTimeout > 0 && root.lockBeforeSleep) {
             // Lock should happen before suspend - use 5 seconds before suspend if lockTimeout is 0 or > suspendTimeout
             const lockBeforeSuspendTime = Math.max(1, suspendTimeout - 5)
             if (lockTimeout <= 0 || lockTimeout > lockBeforeSuspendTime) {
@@ -93,7 +102,7 @@ Singleton {
             cmd.push("timeout", suspendTimeout.toString(), "/usr/bin/systemctl suspend -i")
         }
 
-        if (lockBeforeSleep) {
+        if (root.lockBeforeSleep) {
             cmd.push("before-sleep", `'${StringUtils.shellSingleQuoteEscape(root.launcherPath)}' lock activate`)
         }
 
@@ -104,17 +113,46 @@ Singleton {
 
         if (Quickshell.env("QS_DEBUG") === "1") console.log("[Idle] Starting swayidle")
         swayidleProcess.command = cmd
+        swayidleProcess.stopRequested = false
         swayidleProcess.running = true
     }
 
     Process {
         id: swayidleProcess
+        property bool startObserved: false
+        property bool stopRequested: false
+
+        onRunningChanged: {
+            if (swayidleProcess.running) {
+                swayidleProcess.startObserved = false
+                return
+            }
+            if (swayidleProcess.stopRequested || root.inhibit)
+                return
+
+            console.warn(swayidleProcess.startObserved
+                ? "[Idle] swayidle exited unexpectedly; retrying in 30s"
+                : "[Idle] Failed to start swayidle; retrying in 30s")
+            swayidleRestartTimer.restart()
+        }
+
+        onStarted: swayidleProcess.startObserved = true
     }
 
     Timer {
         id: _startSwayidleDelayed
         interval: 200
         onTriggered: root._startSwayidle()
+    }
+
+    Timer {
+        id: swayidleRestartTimer
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!root.inhibit)
+                root._startSwayidle()
+        }
     }
 
     Connections {

@@ -6,16 +6,16 @@
 # Safe to remove with: sudo pacman -R inir-deps
 
 pkgname=inir-deps
-pkgver=2.29.2
-pkgrel=4
+pkgver=2.29.3
+pkgrel=5
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
-url='https://github.com/snowarch/inir'
+url='https://github.com/llocphann/Hadalis'
 arch=(any)
 license=('GPL-3.0-only')
 
-# All dependencies from official Arch repos.
-# Having this package installed tells pacman these are needed,
-# so "clean orphans" won't remove them.
+# Dependency candidates tracked when already installed. setup stages this recipe
+# and filters depends to packages present in pacman's database before building,
+# so optional/AUR packages do not become hard install requirements.
 depends=(
   #--- Quickshell + Qt6 runtime ---
   quickshell
@@ -106,7 +106,6 @@ depends=(
   mpv-mpris
   yt-dlp
   python-ytmusicapi
-  socat
 
   #--- Theming ---
   noto-fonts-emoji
@@ -120,6 +119,7 @@ depends=(
   polkit
   polkit-gnome
   networkmanager
+  nm-connection-editor
   gnome-keyring
   nautilus
   kitty
@@ -127,6 +127,7 @@ depends=(
   glib2
   starship
   eza
+  mission-center
 
   #--- Power management ---
   tlp
@@ -160,7 +161,8 @@ depends=(
 # but won't block install if missing.
 optdepends=(
   'cava: audio visualizer for bar'
-  'easyeffects: audio effects panel'
+  'easyeffects: optional audio effects and equalizer backend'
+  'socat: optional EasyEffects control transport for equalizer'
   'songrec: song recognition'
   'translate-shell: translation widget'
   'hyprpicker: color picker'

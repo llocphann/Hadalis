@@ -1,0 +1,73 @@
+name: Nix package
+
+on:
+  push:
+    paths:
+      - '.github/workflows/nix.yml'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - 'README.md'
+      - 'LICENSE'
+      - 'go.mod'
+      - 'qmldir'
+      - '*.qml'
+      - 'docs/**'
+      - 'setup'
+      - 'modules/**'
+      - 'services/**'
+      - 'scripts/**'
+      - 'assets/**'
+      - 'translations/**'
+      - 'defaults/**'
+      - 'dots/**'
+      - 'sdata/**'
+  pull_request:
+    paths:
+      - '.github/workflows/nix.yml'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - 'README.md'
+      - 'LICENSE'
+      - 'go.mod'
+      - 'qmldir'
+      - '*.qml'
+      - 'docs/**'
+      - 'setup'
+      - 'modules/**'
+      - 'services/**'
+      - 'scripts/**'
+      - 'assets/**'
+      - 'translations/**'
+      - 'defaults/**'
+      - 'dots/**'
+      - 'sdata/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nix-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Evaluate flake outputs
+        run: nix flake check --no-build --print-build-logs
+
+      - name: Build Hadalis package
+        run: nix build .#inir --print-build-logs

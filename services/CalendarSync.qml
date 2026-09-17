@@ -14,8 +14,18 @@ Singleton {
     id: root
 
     readonly property bool enabled: Config.options?.calendar?.externalSync?.enable ?? false
-    readonly property var sources: Config.options?.calendar?.externalSync?.sources ?? []
-    readonly property int fetchIntervalMs: (Config.options?.calendar?.externalSync?.refreshMinutes ?? 15) * 60 * 1000
+    readonly property var sources: {
+        const configured = Config.options?.calendar?.externalSync?.sources
+        if (!Array.isArray(configured))
+            return []
+        return configured.filter(source => source && typeof source === "object" && !Array.isArray(source))
+    }
+    readonly property int refreshMinutes: {
+        const configured = Number(Config.options?.calendar?.externalSync?.refreshMinutes)
+        return Number.isFinite(configured) && configured > 0
+            ? Math.max(1, Math.round(configured)) : 15
+    }
+    readonly property int fetchIntervalMs: root.refreshMinutes * 60 * 1000
 
     // All external events, merged from every enabled source
     property var events: []
@@ -45,12 +55,16 @@ Singleton {
 
     // React to config changes — re-fetch when sources change
     property string _lastSourcesHash: ""
+    property bool _sourcesRefreshPending: false
     onSourcesChanged: {
         const hash = JSON.stringify(root.sources)
         if (hash !== root._lastSourcesHash) {
             root._lastSourcesHash = hash
             if (root.enabled) {
-                Qt.callLater(() => root.fetchAll())
+                if (root.fetching)
+                    root._sourcesRefreshPending = true
+                else
+                    Qt.callLater(() => root.fetchAll())
             }
         }
     }
@@ -58,6 +72,15 @@ Singleton {
     onEnabledChanged: {
         if (root.enabled && root.sources.length > 0) {
             Qt.callLater(() => root.fetchAll())
+            return
+        }
+        if (!root.enabled) {
+            root._sourcesRefreshPending = false
+            if (fetchProc.running)
+                fetchProc.running = false
+            root.events = []
+            root.ready = true
+            root.eventsUpdated()
         }
     }
 
@@ -75,10 +98,12 @@ Singleton {
     property int _fetchIndex: -1
     property var _pendingSources: []
     property var _fetchedEvents: []
+    property bool _fetchHadError: false
 
     function fetchAll(): void {
-        if (root.fetching) return
-        const enabledSources = root.sources.filter(s => s.enabled && s.url && s.url.trim() !== "")
+        if (!root.enabled || root.fetching) return
+        const enabledSources = root.sources.filter(s => s.enabled
+            && typeof s.url === "string" && s.url.trim() !== "")
         if (enabledSources.length === 0) {
             root.events = []
             root.ready = true
@@ -89,6 +114,7 @@ Singleton {
         root.fetching = true
         root._pendingSources = enabledSources
         root._fetchedEvents = []
+        root._fetchHadError = false
         root._fetchIndex = 0
         root.fetchStarted()
         _log("Fetching", enabledSources.length, "calendar sources")
@@ -96,20 +122,45 @@ Singleton {
     }
 
     function _fetchNext(): void {
+        if (!root.enabled) {
+            root._sourcesRefreshPending = false
+            root._pendingSources = []
+            root._fetchedEvents = []
+            root._fetchIndex = -1
+            root.fetching = false
+            root.ready = true
+            root.events = []
+            root.eventsUpdated()
+            root.fetchFinished(false)
+            return
+        }
+
         if (root._fetchIndex >= root._pendingSources.length) {
+            if (root._sourcesRefreshPending) {
+                root._sourcesRefreshPending = false
+                root._pendingSources = []
+                root._fetchedEvents = []
+                root._fetchIndex = -1
+                root.fetching = false
+                root.fetchFinished(false)
+                Qt.callLater(() => root.fetchAll())
+                return
+            }
+
             // All done
             root.events = root._fetchedEvents
             root.fetching = false
             root.ready = true
             root.eventsUpdated()
-            root.fetchFinished(true)
+            root.fetchFinished(!root._fetchHadError)
             root.saveCache()
             _log("Fetch complete:", root.events.length, "events from", root._pendingSources.length, "sources")
             return
         }
 
         const source = root._pendingSources[root._fetchIndex]
-        _log("Fetching source:", source.name, "from", source.url)
+        // ICS subscription URLs can contain bearer tokens; never persist them in logs.
+        _log("Fetching source:", source.name, "(URL redacted)")
         _currentFetchSource = source
         fetchProc.command = ["/usr/bin/curl", "-sL", "--max-time", "30",
             "--compressed", "-H", "Accept: text/calendar", source.url]
@@ -129,14 +180,35 @@ Singleton {
             }
         }
         property string _rawData: ""
+        property bool startObserved: false
 
         onRunningChanged: {
-            if (running) _rawData = ""
+            if (running) {
+                fetchProc._rawData = ""
+                fetchProc.startObserved = false
+                return
+            }
+            if (fetchProc.startObserved)
+                return
+
+            const source = root._currentFetchSource
+            const errMsg = "curl failed to start"
+            root._fetchHadError = true
+            if (source) {
+                _log("Error fetching", source.name, ":", errMsg)
+                root._updateSourceStatus(source.id, { error: errMsg, lastFetch: new Date().toISOString() })
+                root.sourceError(source.id, errMsg)
+            }
+            root._fetchIndex++
+            Qt.callLater(() => root._fetchNext())
         }
+
+        onStarted: fetchProc.startObserved = true
 
         onExited: (code, status) => {
             const source = root._currentFetchSource
             if (!source) {
+                root._fetchHadError = true
                 root._fetchIndex++
                 root._fetchNext()
                 return
@@ -144,6 +216,7 @@ Singleton {
 
             if (code !== 0 || fetchProc._rawData.trim() === "") {
                 const errMsg = code !== 0 ? `curl exited with code ${code}` : "Empty response"
+                root._fetchHadError = true
                 _log("Error fetching", source.name, ":", errMsg)
                 root._updateSourceStatus(source.id, { error: errMsg, lastFetch: new Date().toISOString() })
                 root.sourceError(source.id, errMsg)
@@ -159,6 +232,7 @@ Singleton {
                     _log("Parsed", parsed.length, "events from", source.name)
                 } catch (e) {
                     const errMsg = `Parse error: ${e.message}`
+                    root._fetchHadError = true
                     _log("Parse error for", source.name, ":", e.message)
                     root._updateSourceStatus(source.id, { error: errMsg, lastFetch: new Date().toISOString() })
                     root.sourceError(source.id, errMsg)
@@ -188,7 +262,14 @@ Singleton {
                 start.setHours(0, 0, 0, 0)
                 const end = event.endDate ? new Date(event.endDate) : new Date(start)
                 end.setHours(0, 0, 0, 0)
-                return targetTime >= start.getTime() && targetTime <= end.getTime()
+                const startTime = start.getTime()
+                const endTime = end.getTime()
+                // RFC 5545 DTEND is exclusive for all-day events. The parser
+                // uses startDate as endDate when DTEND is absent, so preserve
+                // that single-day fallback instead of making it disappear.
+                if (endTime <= startTime)
+                    return targetTime === startTime
+                return targetTime >= startTime && targetTime < endTime
             }
             const evtDate = new Date(event.startDate)
             evtDate.setHours(0, 0, 0, 0)
@@ -199,10 +280,25 @@ Singleton {
     // Query: get all events in a date range (for upcoming view)
     function getUpcomingEvents(days: int): var {
         const now = new Date()
+        const today = new Date(now)
+        today.setHours(0, 0, 0, 0)
         const future = new Date()
         future.setDate(future.getDate() + (days || 7))
 
         return root.events.filter(event => {
+            if (event.allDay) {
+                const start = new Date(event.startDate)
+                start.setHours(0, 0, 0, 0)
+                const end = event.endDate ? new Date(event.endDate) : new Date(start)
+                end.setHours(0, 0, 0, 0)
+                const startTime = start.getTime()
+                const endTime = end.getTime()
+                if (endTime <= startTime)
+                    return start >= today && start <= future
+                // All-day DTEND is exclusive, so include any event whose date
+                // span overlaps today through the requested upcoming horizon.
+                return start <= future && end > today
+            }
             const evtDate = new Date(event.startDate)
             return evtDate >= now && evtDate <= future
         }).sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
@@ -231,12 +327,12 @@ Singleton {
             color: color || _nextColor(),
             enabled: true
         }
-        const updated = [...(Config.options?.calendar?.externalSync?.sources ?? []), newSource]
+        const updated = [...root.sources, newSource]
         Config.setNestedValue("calendar.externalSync.sources", updated)
     }
 
     function removeSource(sourceId: string): void {
-        const updated = (Config.options?.calendar?.externalSync?.sources ?? []).filter(s => s.id !== sourceId)
+        const updated = root.sources.filter(s => s.id !== sourceId)
         Config.setNestedValue("calendar.externalSync.sources", updated)
         // Clean cached events from this source
         root.events = root.events.filter(e => e.sourceId !== sourceId)
@@ -244,7 +340,7 @@ Singleton {
     }
 
     function updateSource(sourceId: string, updates: var): void {
-        const sources = [...(Config.options?.calendar?.externalSync?.sources ?? [])]
+        const sources = root.sources.map(source => Object.assign({}, source))
         const idx = sources.findIndex(s => s.id === sourceId)
         if (idx !== -1) {
             sources[idx] = Object.assign({}, sources[idx], updates)
@@ -264,7 +360,22 @@ Singleton {
 
     // Force refresh a single source or all
     function refreshSource(sourceId: string): void {
-        Qt.callLater(() => root.fetchAll())
+        if (!root.enabled || root.fetching)
+            return
+
+        const source = root.sources.find(s => s.id === sourceId && s.enabled
+            && typeof s.url === "string" && s.url.trim() !== "")
+        if (!source)
+            return
+
+        root.fetching = true
+        root._pendingSources = [source]
+        root._fetchedEvents = root.events.filter(event => event.sourceId !== sourceId)
+        root._fetchHadError = false
+        root._fetchIndex = 0
+        root.fetchStarted()
+        _log("Fetching calendar source:", source.name)
+        root._fetchNext()
     }
 
     function forceRefreshAll(): void {
@@ -298,12 +409,17 @@ Singleton {
             }
             try {
                 const data = JSON.parse(content)
-                root.events = data.events || []
-                root.sourceStatuses = data.sourceStatuses || {}
+                root.events = Array.isArray(data?.events)
+                    ? data.events.filter(event => event && typeof event === "object" && !Array.isArray(event))
+                    : []
+                root.sourceStatuses = data?.sourceStatuses && typeof data.sourceStatuses === "object"
+                    && !Array.isArray(data.sourceStatuses) ? data.sourceStatuses : {}
                 root.ready = true
                 _log("Loaded cache:", root.events.length, "events")
             } catch (e) {
                 _log("Cache parse error:", e.message)
+                root.events = []
+                root.sourceStatuses = {}
                 root.ready = true
             }
         }

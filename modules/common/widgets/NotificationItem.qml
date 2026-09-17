@@ -362,6 +362,7 @@ Item { // Notification item area
 
                             NotificationActionButton {
                                 Layout.fillWidth: true
+                                buttonText: Translation.tr("Copy notification")
                                 urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
                                 implicitWidth: !root.hasNotificationActions ? (Math.max(0, actionsFlickable.width - actionRowLayout.spacing) / 2) :
                                     ((contentItem?.implicitWidth ?? 0) + (leftPadding ?? 0) + (rightPadding ?? 0))

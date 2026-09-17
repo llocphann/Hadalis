@@ -10,12 +10,14 @@ Item {
     property real warningThreshold: 100
     property real cautionThreshold: 0  // 0 = disabled
     property bool shown: true
+    readonly property real normalizedPercentage: Number.isFinite(root.percentage)
+        ? Math.max(0, Math.min(1, root.percentage)) : 0
     clip: true
     visible: width > 0 && height > 0
     implicitWidth: resourceRowLayout.x < 0 ? 0 : resourceRowLayout.implicitWidth
     implicitHeight: Appearance.sizes.barHeight
-    property bool warning: percentage * 100 >= warningThreshold
-    property bool caution: cautionThreshold > 0 && percentage * 100 >= cautionThreshold && !warning
+    property bool warning: normalizedPercentage * 100 >= warningThreshold
+    property bool caution: cautionThreshold > 0 && normalizedPercentage * 100 >= cautionThreshold && !warning
 
     RowLayout {
         id: resourceRowLayout
@@ -41,7 +43,7 @@ Item {
             visible: !Appearance.zzzEverywhere
             Layout.alignment: Qt.AlignVCenter
             lineWidth: Appearance.rounding.unsharpen
-            value: percentage
+            value: root.normalizedPercentage
             implicitSize: 20
             colPrimary: root.warning ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError) :
                         root.caution ? (Appearance.inirEverywhere ? Appearance.inir.colWarning : Appearance.colors.colTertiary) :
@@ -90,21 +92,13 @@ Item {
                 font.family: Appearance.zzzEverywhere ? Appearance.font.family.numbers : Appearance.font.family.main
                 font.weight: Appearance.zzzEverywhere ? Font.Black : Font.Normal
                 font.italic: Appearance.zzzEverywhere
-                text: `${Math.round(percentage * 100).toString()}`
+                text: `${Math.round(root.normalizedPercentage * 100).toString()}`
             }
         }
 
         Behavior on x {
             animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
         }
-    }
-
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-        enabled: resourceRowLayout.x >= 0 && root.width > 0 && root.visible
     }
 
     Behavior on implicitWidth {

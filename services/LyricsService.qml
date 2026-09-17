@@ -195,6 +195,19 @@ Singleton {
         });
     }
 
+    function _finishLyricsProcess(spawnFailed: bool): void {
+        const requestId = root._runningRequestId;
+        root._runningRequestId = "";
+        root._runningTrackKey = "";
+
+        if (spawnFailed && requestId !== "") {
+            console.warn("LyricsService: lyrics helper failed to start");
+            root._publishFailure(requestId, "error");
+        }
+
+        Qt.callLater(root._startPendingRequest);
+    }
+
     onActiveChanged: root.scheduleRefresh()
     onActivePlayerChanged: root.scheduleRefresh()
 
@@ -255,6 +268,7 @@ Singleton {
 
     Process {
         id: lyricsProc
+        property bool startObserved: false
         running: false
 
         stdout: StdioCollector {
@@ -304,11 +318,18 @@ Singleton {
             }
         }
 
-        onExited: {
-            root._runningRequestId = "";
-            root._runningTrackKey = "";
-            Qt.callLater(root._startPendingRequest);
+        onRunningChanged: {
+            if (lyricsProc.running) {
+                lyricsProc.startObserved = false;
+                return;
+            }
+            if (lyricsProc.startObserved)
+                return;
+
+            root._finishLyricsProcess(true);
         }
+        onStarted: lyricsProc.startObserved = true
+        onExited: root._finishLyricsProcess(false)
     }
 
     Connections {

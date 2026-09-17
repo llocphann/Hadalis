@@ -447,11 +447,26 @@ Singleton {
 
     Process {
         id: ensureStateDir
+        property bool startObserved: false
         running: false
         command: [
             "/usr/bin/mkdir", "-p",
             root.filePath.substring(0, root.filePath.lastIndexOf('/'))
         ]
+        onRunningChanged: {
+            if (ensureStateDir.running) {
+                ensureStateDir.startObserved = false
+                return
+            }
+            if (ensureStateDir.startObserved)
+                return
+
+            root._stateDirPending = false
+            root.ready = true
+            root.available = false
+            root._error("Failed to prepare desktop-item state directory (process failed to start)")
+        }
+        onStarted: ensureStateDir.startObserved = true
         onExited: (exitCode, exitStatus) => {
             root._stateDirPending = false
             if (exitCode !== 0) {

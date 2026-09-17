@@ -400,14 +400,96 @@ Singleton {
         applyProc.running = true
     }
 
+    function _finishApply(exitCode: int, spawnFailed: bool): void {
+        const queuedSignature = applyProc._queuedSignature
+        const queuedCommand = applyProc._queuedCommand
+        const shouldStopAfterApply = root._queuedStopAfterApply
+
+        if (!spawnFailed && exitCode === 0) {
+            root.lastSyncSignature = applyProc._pendingSignature
+            root.lastError = ""
+        } else if (spawnFailed) {
+            root.lastError = "awww apply failed to start"
+            console.warn("[AwwwBackend]", root.lastError)
+        } else {
+            root.lastError = (applyStderr.text ?? applyStdout.text ?? "").trim()
+            if (root.lastError.length === 0)
+                root.lastError = "awww apply failed"
+            console.warn("[AwwwBackend]", root.lastError)
+        }
+
+        applyProc._pendingSignature = ""
+        applyProc._queuedSignature = ""
+        applyProc._queuedCommand = []
+
+        if (shouldStopAfterApply) {
+            root._queuedStopAfterApply = false
+            if (!stopProc.running)
+                stopProc.running = true
+            return
+        }
+
+        root._queuedStopAfterApply = false
+
+        if (queuedSignature !== "" && queuedCommand.length > 0
+                && (queuedSignature !== root.lastSyncSignature || root.lastError !== "")) {
+            root.lastError = ""
+            applyProc.command = queuedCommand
+            applyProc._pendingSignature = queuedSignature
+            applyProc.running = true
+        }
+    }
+
+    function _finishPreview(spawnFailed: bool): void {
+        if (spawnFailed) {
+            console.warn("[AwwwBackend] preview process failed to start")
+            root.previewActive = false
+            root._previewSignature = ""
+            root._previewQueuedPath = ""
+        }
+
+        if (root._restoreAfterPreviewExit) {
+            root._restoreAfterPreviewExit = false
+            root.lastSyncSignature = ""
+            root.forceSync()
+            return
+        }
+
+        root._drainPreviewQueue()
+    }
+
+    function _finishStop(spawnFailed: bool): void {
+        if (spawnFailed)
+            console.warn("[AwwwBackend] stop process failed to start")
+        root.lastSyncSignature = ""
+        root.lastError = ""
+        root.stoppedForNoOutputs = true
+        root._drainPreviewQueue()
+    }
+
     Process {
         id: probeProc
+        property bool startObserved: false
         // Check well-known paths first, then fall back to command -v for non-standard installs.
         // Using explicit paths avoids login-shell PATH issues that cause false negatives.
         command: ["/usr/bin/bash", "-c", "for p in /usr/bin/awww /usr/local/bin/awww; do [ -x \"$p\" ] && { echo client; break; }; done; command -v awww >/dev/null 2>&1 && echo client; for p in /usr/bin/awww-daemon /usr/local/bin/awww-daemon; do [ -x \"$p\" ] && { echo daemon; break; }; done; command -v awww-daemon >/dev/null 2>&1 && echo daemon"]
         stdout: StdioCollector {
             id: probeStdout
         }
+        onRunningChanged: {
+            if (probeProc.running) {
+                probeProc.startObserved = false
+                return
+            }
+            if (probeProc.startObserved)
+                return
+
+            root.clientAvailable = false
+            root.daemonAvailable = false
+            root.probing = false
+            console.warn("[AwwwBackend] capability probe failed to start")
+        }
+        onStarted: probeProc.startObserved = true
         onExited: {
             const text = (probeStdout.text ?? "")
             root.clientAvailable = text.indexOf("client") >= 0
@@ -423,73 +505,60 @@ Singleton {
         property string _pendingSignature: ""
         property string _queuedSignature: ""
         property var _queuedCommand: []
+        property bool startObserved: false
         stdout: StdioCollector {
             id: applyStdout
         }
         stderr: StdioCollector {
             id: applyStderr
         }
-        onExited: (exitCode) => {
-            const queuedSignature = applyProc._queuedSignature
-            const queuedCommand = applyProc._queuedCommand
-            const shouldStopAfterApply = root._queuedStopAfterApply
-
-            if (exitCode === 0) {
-                root.lastSyncSignature = applyProc._pendingSignature
-                root.lastError = ""
-            } else {
-                root.lastError = (applyStderr.text ?? applyStdout.text ?? "").trim()
-                if (root.lastError.length === 0)
-                    root.lastError = "awww apply failed"
-                console.warn("[AwwwBackend]", root.lastError)
-            }
-
-            applyProc._pendingSignature = ""
-            applyProc._queuedSignature = ""
-            applyProc._queuedCommand = []
-
-            if (shouldStopAfterApply) {
-                root._queuedStopAfterApply = false
-                if (!stopProc.running)
-                    stopProc.running = true
+        onRunningChanged: {
+            if (applyProc.running) {
+                applyProc.startObserved = false
                 return
             }
+            if (applyProc.startObserved)
+                return
 
-            root._queuedStopAfterApply = false
-
-            if (queuedSignature !== "" && queuedCommand.length > 0
-                    && (queuedSignature !== root.lastSyncSignature || root.lastError !== "")) {
-                root.lastError = ""
-                applyProc.command = queuedCommand
-                applyProc._pendingSignature = queuedSignature
-                applyProc.running = true
-            }
+            root._finishApply(-1, true)
         }
+        onStarted: applyProc.startObserved = true
+        onExited: (exitCode) => root._finishApply(exitCode, false)
     }
 
     Process {
         id: previewProc
-        onExited: {
-            if (root._restoreAfterPreviewExit) {
-                root._restoreAfterPreviewExit = false
-                root.lastSyncSignature = ""
-                root.forceSync()
+        property bool startObserved: false
+        onRunningChanged: {
+            if (previewProc.running) {
+                previewProc.startObserved = false
                 return
             }
+            if (previewProc.startObserved)
+                return
 
-            root._drainPreviewQueue()
+            root._finishPreview(true)
         }
+        onStarted: previewProc.startObserved = true
+        onExited: root._finishPreview(false)
     }
 
     Process {
         id: stopProc
+        property bool startObserved: false
         command: ["/usr/bin/bash", "-lc", "command -v awww >/dev/null 2>&1 && awww kill >/dev/null 2>&1 || true"]
-        onExited: {
-            root.lastSyncSignature = ""
-            root.lastError = ""
-            root.stoppedForNoOutputs = true
-            root._drainPreviewQueue()
+        onRunningChanged: {
+            if (stopProc.running) {
+                stopProc.startObserved = false
+                return
+            }
+            if (stopProc.startObserved)
+                return
+
+            root._finishStop(true)
         }
+        onStarted: stopProc.startObserved = true
+        onExited: root._finishStop(false)
     }
 
     Timer {

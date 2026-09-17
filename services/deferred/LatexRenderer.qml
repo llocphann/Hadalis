@@ -1,7 +1,6 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
-import qs.modules.common.functions
 import qs.modules.common
 import QtQuick
 import Quickshell
@@ -28,6 +27,17 @@ Singleton {
 
     signal renderFinished(string hash, string imagePath)
 
+    function _forgetRender(hash: string): void {
+        root.processedHashes = root.processedHashes.filter(item => item !== hash)
+        delete root.processedExpressions[hash]
+        delete root.renderedImagePaths[hash]
+    }
+
+    function _completeRender(hash: string, imagePath: string): void {
+        root.renderedImagePaths[hash] = imagePath
+        root.renderFinished(hash, imagePath)
+    }
+
     /**
     * Requests rendering of a LaTeX expression.
     * Returns the [hash, isNew]
@@ -39,8 +49,11 @@ Singleton {
         
         // 2. Check if the hash is already processed
         if (processedHashes.includes(hash)) {
-            // console.log("Already processed: " + hash)
-            renderFinished(hash, imagePath)
+            // A duplicate request may arrive while the original render is still
+            // in flight. Only replay completion after the output was recorded.
+            const renderedPath = root.renderedImagePaths[hash]
+            if (renderedPath)
+                renderFinished(hash, renderedPath)
             return [hash, false]
         } else {
             root.processedHashes.push(hash)
@@ -51,36 +64,53 @@ Singleton {
         // 3. If not, render it with MicroTeX and mark as processed
         // console.log(`[LatexRenderer] Rendering expression: ${expression} with hash: ${hash}`)
         // console.log(`                to file: ${imagePath}`)
-        // console.log(`                with command: cd ${microtexBinaryDir} && ./${microtexBinaryName} -headless -input=${StringUtils.shellSingleQuoteEscape(expression)} -output=${imagePath} -textsize=${Appearance.font.pixelSize.normal} -padding=${renderPadding} -background=${Appearance.m3colors.m3tertiary} -foreground=${Appearance.m3colors.m3onTertiary} -maxwidth=0.85`)
+        const command = [
+            `${root.microtexBinaryDir}/${root.microtexBinaryName}`,
+            "-headless",
+            `-input=${expression}`,
+            `-output=${imagePath}`,
+            `-textsize=${Appearance.font.pixelSize.normal}`,
+            `-padding=${renderPadding}`,
+            `-foreground=${Appearance.colors.colOnLayer1}`,
+            "-maxwidth=0.85"
+        ]
         const processQml = `
             import Quickshell.Io
             Process {
                 id: microtexProcess${hash}
+                property bool startObserved: false
                 running: true
-                command: [
-                    "${root.microtexBinaryDir}/${root.microtexBinaryName}",
-                    "-headless",
-                    "-input=${StringUtils.escapeBackslashes(expression)}",
-                    "-output=${imagePath}",
-                    "-textsize=${Appearance.font.pixelSize.normal}",
-                    "-padding=${renderPadding}",
-                    // "-background=${Appearance.m3colors.m3tertiary}",
-                    "-foreground=${Appearance.colors.colOnLayer1}",
-                    "-maxwidth=0.85"
-                ]
-                // stdout: SplitParser {
-                //     onRead: data => { console.log("MicroTeX: " + data) }
-                // }
+                command: ${JSON.stringify(command)}
+                onRunningChanged: {
+                    if (running) {
+                        startObserved = false
+                        return
+                    }
+                    if (startObserved)
+                        return
+                    root._forgetRender(${JSON.stringify(hash)})
+                    microtexProcess${hash}.destroy()
+                }
+                onStarted: startObserved = true
                 onExited: (exitCode, exitStatus) => {
                     // console.log("[LatexRenderer] MicroTeX process exited with code: " + exitCode + ", status: " + exitStatus)
-                    renderedImagePaths["${hash}"] = "${imagePath}"
-                    root.renderFinished("${hash}", "${imagePath}")
+                    if (exitCode === 0)
+                        root._completeRender(${JSON.stringify(hash)}, ${JSON.stringify(imagePath)})
+                    else
+                        root._forgetRender(${JSON.stringify(hash)})
                     microtexProcess${hash}.destroy()
                 }
             }
         `
         // console.log("MicroTeX: " + processQml)
-        Qt.createQmlObject(processQml, root, `MicroTeXProcess_${hash}`)
+        try {
+            const process = Qt.createQmlObject(processQml, root, `MicroTeXProcess_${hash}`)
+            if (!process)
+                root._forgetRender(hash)
+        } catch (e) {
+            root._forgetRender(hash)
+            console.error("[LatexRenderer] Failed to create MicroTeX process:", e)
+        }
         return [hash, true]
     }
 }

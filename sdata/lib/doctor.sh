@@ -58,9 +58,9 @@ check_dependencies() {
     local missing_cmds=()
     
     # Commands to check (command:friendly_name)
-    # These are distro-agnostic - we check for the command, not the package
-    # ALL dependencies are required — optional features still need their tools
-    # installed to avoid user confusion when things silently don't work.
+    # These are distro-agnostic - we check for the command, not the package.
+    # Feature-specific optional backends are intentionally excluded here so
+    # doctor does not turn a graceful capability downgrade into a hard failure.
     local cmds=(
         "qs:Quickshell"
         "niri:Niri"
@@ -86,12 +86,10 @@ check_dependencies() {
         "flock:util-linux"
         "go:go"
         "wlsunset:wlsunset"
-        "easyeffects:EasyEffects"
         "uv:uv"
         "cava:cava"
         "qalc:qalculate"
         "yt-dlp:yt-dlp"
-        "socat:socat"
         "brightnessctl:brightnessctl"
         "slurp:slurp"
         "wf-recorder:wf-recorder"
@@ -286,7 +284,7 @@ check_repo_checkout_state() {
 
     local branch tracked_branch update_rc=0
     branch="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
-    tracked_branch="$(get_update_tracking_branch 2>/dev/null || echo "main")"
+    tracked_branch="$(get_update_tracking_branch 2>/dev/null || echo "stable")"
 
     if [[ "$branch" == "HEAD" ]]; then
         doctor_fail "Repo checkout is detached HEAD"
@@ -319,7 +317,7 @@ check_repo_checkout_state() {
         doctor_pass "Repo remote check unavailable in this context"
     fi
 
-    if [[ "$branch" != "main" && "$branch" != "master" ]]; then
+    if [[ "$branch" != "stable" ]]; then
         tui_warn "Tracking non-release branch: ${branch}"
     fi
 }

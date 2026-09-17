@@ -15,6 +15,7 @@ Button {
     id: root
     property bool toggled
     property string buttonText
+    Accessible.name: root.buttonText.length > 0 ? root.buttonText : root.text
     property real buttonRadius: Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius
         : (Appearance?.rounding?.small ?? 8)
     property real buttonRadiusPressed: Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius
@@ -22,6 +23,7 @@ Button {
     property var downAction // When left clicking (down)
     property var releaseAction // When left clicking (release)
     property var altAction // When right clicking
+    property bool altActionEnabled: true
     property var middleClickAction // When middle clicking
     property bool bounce: !Appearance.regaliaEverywhere
     // Cookie Shapes: an organic face costs a Canvas, and a segmented group needs
@@ -37,12 +39,30 @@ Button {
     property real clickedWidth: baseWidth + (isAtSide ? 10 : 20)
     property real clickedHeight: baseHeight
     property var parentGroup: root.parent
-    property int indexInParent: parentGroup?.children.indexOf(root) ?? -1
+    property int indexInParent: {
+        if (!parentGroup?.children) return -1
+        let visibleIndex = 0
+        for (let i = 0; i < parentGroup.children.length; ++i) {
+            const child = parentGroup.children[i]
+            if (!child.visible) continue
+            if (child === root) return visibleIndex
+            visibleIndex += 1
+        }
+        return -1
+    }
+    property int visibleChildrenCount: {
+        if (!parentGroup?.children) return 0
+        let count = 0
+        for (let i = 0; i < parentGroup.children.length; ++i) {
+            if (parentGroup.children[i].visible) count += 1
+        }
+        return count
+    }
     property int clickIndex: parentGroup?.clickIndex ?? -1
-    property bool isAtSide: indexInParent === 0 || indexInParent === (parentGroup?.childrenCount - 1)
+    property bool isAtSide: indexInParent === 0 || indexInParent === (visibleChildrenCount - 1)
 
-    Layout.fillWidth: (clickIndex - 1 <= indexInParent && indexInParent <= clickIndex + 1)
-    Layout.fillHeight: (clickIndex - 1 <= indexInParent && indexInParent <= clickIndex + 1)
+    Layout.fillWidth: clickIndex >= 0 && (clickIndex - 1 <= indexInParent && indexInParent <= clickIndex + 1)
+    Layout.fillHeight: clickIndex >= 0 && (clickIndex - 1 <= indexInParent && indexInParent <= clickIndex + 1)
     implicitWidth: (root.down && bounce) ? clickedWidth : baseWidth
     implicitHeight: (root.down && bounce) ? clickedHeight : baseHeight
 
@@ -67,11 +87,12 @@ Button {
             colBackground)) : colBackground
 
     onDownChanged: {
-        if (root.down) {
-            if (root.parent.clickIndex !== undefined) {
-                root.parent.clickIndex = parent.children.indexOf(root)
-            }
-        }
+        if (root.parent.clickIndex === undefined)
+            return
+        if (root.down)
+            root.parent.clickIndex = root.indexInParent
+        else if (root.parent.clickIndex === root.indexInParent)
+            root.parent.clickIndex = -1
     }
 
     Behavior on implicitWidth {
@@ -97,7 +118,7 @@ Button {
     TapHandler {
         acceptedButtons: Qt.RightButton
         onTapped: {
-            if (root.altAction) root.altAction();
+            if (root.altActionEnabled && root.altAction) root.altAction();
         }
     }
 
@@ -114,7 +135,7 @@ Button {
         acceptedButtons: Qt.LeftButton
         longPressThreshold: 0.5
         onLongPressed: {
-            if (root.altAction) root.altAction();
+            if (root.altActionEnabled && root.altAction) root.altAction();
         }
     }
 

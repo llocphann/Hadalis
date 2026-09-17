@@ -51,8 +51,8 @@ Use them like this:
 ## Install
 
 ```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
 ./setup install
 inir run
 ```
@@ -65,13 +65,13 @@ If you want a packaging-style local install surface instead of the repo-sync ins
 sudo make install
 ```
 
-That installs:
+With the default Makefile paths, that installs:
 
-- `inir` launcher into your install prefix `bin/`
-- shell payload into `/usr/local/share/quickshell/inir` by default
-- user service asset
-- desktop entry
-- runtime metadata so `status` / `doctor` can detect package-managed style installs
+- the `inir` launcher, Quickshell runtime payload, generated package-managed runtime metadata, user service unit, both desktop entries, desktop icon, docs, and license under `/usr/local`;
+- the battery/TLP and ThinkFan privileged helpers under `/usr/libexec`;
+- their polkit policies, plus the TLP settings schema, under `/usr/share`.
+
+Those system locations can be changed through the Makefile install variables when packaging. `make install` does **not** install distro dependencies, install ThinkFan/TLP themselves, or enable the iNiR user service for you. See [ThinkFan Integration](THINKFAN.md) for ThinkFan service/config prerequisites and troubleshooting.
 
 ## Update
 
@@ -282,8 +282,8 @@ inir test-local --with-runtime
 
 These checks cover:
 
-- shell syntax for `setup`, `doctor`, `versioning`, `package-installers`, and `scripts/inir`
-- PKGBUILD syntax for the new Arch package roots
+- shell syntax for setup/launcher, release/docs/wiki/translation tooling, installer libraries/migrations, and helper regression scripts
+- PKGBUILD syntax for the Arch package roots
 - local `make install` dry-run
 - launcher path and status resolution
 - optional runtime restart and filtered log/error smoke test
@@ -298,10 +298,14 @@ These checks cover:
 | QML code (`make install` / package style) | `/usr/share/quickshell/inir/` or `/usr/local/share/quickshell/inir/` |
 | User config                               | `~/.config/illogical-impulse/config.json`                            |
 | State files                               | `~/.local/state/quickshell/user/`                                    |
-| Cache                                     | `~/.cache/inir/`                                                     |
-| Launcher                                  | `inir` in the install prefix                                         |
+| Cache                                     | `${XDG_CACHE_HOME:-~/.cache}/quickshell/inir/`                       |
+| Launcher (`./setup install`)              | `${XDG_BIN_HOME:-~/.local/bin}/inir`                                 |
+| Launcher (`make install` / package style) | `inir` in the install prefix                                         |
+| User service (`./setup install`)          | `${XDG_CONFIG_HOME:-~/.config}/systemd/user/inir.service`            |
 | Super daemon                              | `~/.local/bin/inir_super_overview_daemon.py`                         |
 | Daemon service                            | `~/.config/systemd/user/inir-super-overview.service`                 |
+
+For `make install`, the package-style system payload also includes the user service unit, desktop entries/icon, docs/license, battery/TLP and ThinkFan helpers, matching polkit policies, and the TLP settings schema. See [Installation](INSTALL.md#3-install-the-packaged-runtime-assets) for the default paths and packaging overrides.
 
 ### Compositor & Themes
 
@@ -350,6 +354,7 @@ The uninstall script intelligently removes iNiR while preserving shared resource
 
 - Creates automatic backup before removal
 - Removes iNiR-exclusive files and directories
+- Stops `inir.service` and removes iNiR-owned user-service wants links
 - Asks before removing shared configs (Niri, GTK, themes)
 - Detects if you're in a Niri session (preserves compositor config)
 - Detects other Quickshell configs (preserves shared resources)
@@ -377,20 +382,28 @@ If the shell payload is externally managed, `uninstall` removes the user-side iN
 
 ### Files Removed Automatically
 
-The following are removed without prompting (iNiR-exclusive):
+The following are removed without prompting (iNiR-exclusive). XDG variables below use their normal home-directory defaults when unset:
 
 ```
-~/.config/quickshell/inir/                       # Shell configuration
-~/.config/illogical-impulse/                     # User preferences
-~/.local/state/quickshell/user/                  # Notifications, todo
-~/.cache/inir/                                   # Cache
-~/.local/bin/inir_super_overview_daemon.py       # Super daemon
-~/.config/systemd/user/inir-super-overview.service # Daemon service
-~/.config/vesktop/themes/system24.theme.css      # Vesktop Material theme
-~/.config/vesktop/themes/inir-tui.theme.css      # Vesktop TUI theme
-~/.config/vesktop/themes/inir-midnight.theme.css # Vesktop Midnight theme
-~/.config/vesktop/themes/ii-colors.css           # Vesktop colors
+${XDG_CONFIG_HOME:-~/.config}/quickshell/inir/                  # Shell configuration
+${XDG_CONFIG_HOME:-~/.config}/illogical-impulse/                # User preferences
+${XDG_STATE_HOME:-~/.local/state}/quickshell/user/              # Notifications, todo
+${XDG_CACHE_HOME:-~/.cache}/quickshell/inir/                    # Cache
+${XDG_BIN_HOME:-~/.local/bin}/inir                              # User launcher
+~/.local/bin/inir_super_overview_daemon.py                      # Super daemon
+${XDG_CONFIG_HOME:-~/.config}/systemd/user/inir.service         # Canonical user service
+${XDG_CONFIG_HOME:-~/.config}/systemd/user/inir-super-overview.service # Daemon service
+${XDG_DATA_HOME:-~/.local/share}/applications/inir.desktop      # Desktop entry
+${XDG_DATA_HOME:-~/.local/share}/applications/inir-settings.desktop # Settings desktop entry
+${XDG_DATA_HOME:-~/.local/share}/icons/hicolor/scalable/apps/inir.svg # Desktop icon
+~/.local/bin/sync-pixel-sddm.py                                 # SDDM theme sync helper
+~/.config/vesktop/themes/system24.theme.css                     # Vesktop Material theme
+~/.config/vesktop/themes/inir-tui.theme.css                     # Vesktop TUI theme
+~/.config/vesktop/themes/inir-midnight.theme.css                # Vesktop Midnight theme
+~/.config/vesktop/themes/ii-colors.css                          # Vesktop colors
 ```
+
+The uninstall service phase also removes `inir.service` links from user `*.wants` directories before reloading the user systemd manager.
 
 ### Shared Configs (Asked Before Removal)
 
@@ -457,17 +470,28 @@ cp -r ~/.local/share/inir-uninstall-backup-*/illogical-impulse ~/.config/illogic
 If the automated script fails or is unavailable:
 
 ```bash
-# Stop services
-qs kill -c inir
-systemctl --user disable --now inir-super-overview.service 2>/dev/null
+# Stop/disable services and remove compositor wants links
+systemctl --user disable --now inir.service 2>/dev/null || true
+systemctl --user disable --now inir-super-overview.service 2>/dev/null || true
+for wants_dir in "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"/*.wants; do
+    [ -d "$wants_dir" ] || continue
+    rm -f "$wants_dir/inir.service"
+done
+qs -p "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir" kill 2>/dev/null || true
 
 # Remove iNiR-exclusive files
-rm -rf ~/.config/quickshell/inir
-rm -rf ~/.config/illogical-impulse
-rm -rf ~/.local/state/quickshell/user
-rm -rf ~/.cache/inir
+rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir"
+rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/illogical-impulse"
+rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user"
+rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/inir"
+rm -f "${XDG_BIN_HOME:-$HOME/.local/bin}/inir"
 rm -f ~/.local/bin/inir_super_overview_daemon.py
-rm -f ~/.config/systemd/user/inir-super-overview.service
+rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/inir.service"
+rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/inir-super-overview.service"
+rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/inir.desktop"
+rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/inir-settings.desktop"
+rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps/inir.svg"
+rm -f ~/.local/bin/sync-pixel-sddm.py
 rm -f ~/.config/vesktop/themes/system24.theme.css
 rm -f ~/.config/vesktop/themes/inir-tui.theme.css
 rm -f ~/.config/vesktop/themes/inir-midnight.theme.css
@@ -476,6 +500,7 @@ rm -f ~/.config/Vesktop/themes/system24.theme.css
 rm -f ~/.config/Vesktop/themes/inir-tui.theme.css
 rm -f ~/.config/Vesktop/themes/inir-midnight.theme.css
 rm -f ~/.config/Vesktop/themes/ii-colors.css
+systemctl --user daemon-reload 2>/dev/null || true
 
 # Remove shared configs (review before running)
 # rm -rf ~/.config/niri/config.kdl  # Only if not using Niri
@@ -496,13 +521,15 @@ rm -f ~/.config/Vesktop/themes/ii-colors.css
 # spawn-at-startup "inir" "start"
 ```
 
+For package-managed installs, use the package manager to remove the system payload separately; the manual commands above only target user-side state owned by the source/setup lifecycle.
+
 ### Reinstalling
 
 To reinstall iNiR after uninstalling:
 
 ```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
 ./setup install
 inir run
 ```

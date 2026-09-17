@@ -1,26 +1,28 @@
 # Config System
 
-How configuration works in iNiR, from the user's perspective and from the code side.
+How configuration works in Hadalis/iNiR, from the user's perspective and from the code side.
 
 ## For users
 
 Everything is configurable through the graphical Settings UI. Open it with `Super+,` or `inir settings`. You should never need to edit the config file by hand.
 
-If you do want to edit it directly, it lives at:
+After required migration 019 has been applied, the canonical config file is:
 
 ```
-~/.config/illogical-impulse/config.json
+~/.config/inir/config.json
 ```
 
-(The directory name is a legacy artifact from when iNiR was called illogical-impulse. `~/.config/inir` is symlinked to it.)
+The live QML compatibility path is still `~/.config/illogical-impulse/config.json`. When only the legacy directory exists, migration 019 moves it to `~/.config/inir` and replaces the legacy path with a symlink to the canonical directory. If both real directories exist, or the legacy path is a foreign symlink or another unexpected object, the migration fails closed and preserves the existing state so the user can reconcile it manually before rerunning `inir migrate`. This keeps the current QML path and maintenance tooling on the same data without silently overwriting ambiguous user state.
+
+Repo-managed `./setup install` and update flows apply required migrations automatically. Package managers and manual `make install` deliberately do not mutate arbitrary user home directories, so each affected user should run `inir migrate` before first launch (and after an upgrade when migrations are pending). Until migration 019 has run for that user, the QML compatibility path may still be a real legacy directory rather than a symlink. Do not run another user's config migration as root.
+
+This compatibility layout is part of the in-progress namespace cutover. Do not remove the legacy QML path or its migration support until the runtime itself has moved off `illogical-impulse` and that cutover has been validated.
 
 Changes you make in the file are picked up automatically within 50ms. No restart needed.
 
 ### Fresh-install profile
 
 A new configuration starts deliberately quiet. Settings opens in Focused mode, the left sidebar contains one curated Widgets tab, and the right sidebar starts with connectivity, sliders, notifications, and four daily tools: Calendar, To Do, Calculator, and System Monitor. Weather, desktop widgets, notification sounds, news feeds, wallpaper search, AI, and anime integrations stay off until you enable them.
-
-Workspace Strip is a preview feature and is not part of either panel family's default module set. It remains available in Settings for explicit opt-in. Existing configurations are not rewritten when these fresh-install defaults change.
 
 The Welcome wizard exposes only choices that materially affect the first session. Advanced styles, additional sidebar tabs, and specialized modules remain available in the full Settings view.
 

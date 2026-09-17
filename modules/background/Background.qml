@@ -29,7 +29,6 @@ import qs.modules.background.widgets.uptime
 import qs.modules.background.widgets.worldClock
 import qs.modules.background.widgets.userCard
 import qs.modules.background.widgets.newsTicker
-import qs.modules.background.widgets.mascot
 import qs.modules.background.widgets.japaneseTypography
 import qs.modules.background.desktopItems
 import "root:modules/common/functions/parallax.js" as ParallaxMath
@@ -119,7 +118,7 @@ Scope {
                 imageConverter: false, mediaControls: false,
                 visualizer: false, systemMonitor: false, battery: false,
                 notes: false, calendarUpcoming: false, uptime: false,
-                newsTicker: false, mascot: false, japaneseTypography: false,
+                newsTicker: false, japaneseTypography: false,
                 worldClock: false, userCard: false
             })
             let known = builtinDefaults[name] !== undefined
@@ -129,13 +128,7 @@ Scope {
                     builtinDefaults[name]))
                 : false
 
-            if (name.startsWith("mascotInstances.")) {
-                const instanceId = name.slice("mascotInstances.".length)
-                const instance = Config.getNestedValue(
-                    "background.widgets.mascotInstances." + instanceId, null)
-                known = instance !== null && typeof instance === "object"
-                baseEnabled = known && Boolean(instance.enable)
-            } else if (name.startsWith("custom.")) {
+            if (name.startsWith("custom.")) {
                 const customId = name.slice("custom.".length)
                 known = CustomWidgets.ready
                     && CustomWidgets.widgets.some(widget => widget.id === customId)
@@ -185,7 +178,7 @@ Scope {
         function setWidgetEnabled(widgetName: string, enabled: bool): string {
             const knownWidgets = ["weather", "clock", "customImage", "imageConverter",
                 "mediaControls", "visualizer", "systemMonitor", "battery", "notes",
-                "calendarUpcoming", "uptime", "newsTicker", "mascot", "japaneseTypography",
+                "calendarUpcoming", "uptime", "newsTicker", "japaneseTypography",
                 "worldClock", "userCard"];
             if (!knownWidgets.includes(widgetName))
                 return "unknown widget: " + widgetName;
@@ -506,7 +499,6 @@ Scope {
             { key: "calendarUpcoming",   defaultOn: false, icon: "event" },
             { key: "uptime",             defaultOn: false, icon: "avg_pace" },
             { key: "newsTicker",         defaultOn: false, icon: "newspaper" },
-            { key: "mascot",             defaultOn: false, icon: "pets" },
             { key: "japaneseTypography", defaultOn: false, icon: "translate" },
             { key: "worldClock",         defaultOn: false, icon: "public" },
             { key: "userCard",           defaultOn: false, icon: "account_circle" }
@@ -527,17 +519,6 @@ Scope {
                 const strat = bgRoot._widgetConfigValue(w.key, "placementStrategy", "free");
                 if (zones.indexOf(strat) >= 0)
                     occ[strat].push({ name: w.key, icon: w.icon, locked: Boolean(bgRoot._widgetConfigValue(w.key, "locked", false)) });
-            }
-            // Extra mascot instances
-            {
-                const extraMascots = Config.getNestedValue("background.widgets.mascotInstances", {}) ?? {};
-                for (const id of Object.keys(extraMascots)) {
-                    const prefix = "background.widgets.mascotInstances." + id;
-                    if (!Config.getNestedValue(prefix + ".enable", false)) continue;
-                    const strat = Config.getNestedValue(prefix + ".placementStrategy", "free");
-                    if (zones.indexOf(strat) >= 0)
-                        occ[strat].push({ name: "mascot #" + id, icon: "pets", locked: Boolean(Config.getNestedValue(prefix + ".locked", false)) });
-                }
             }
             // Custom widgets
             if (typeof CustomWidgets !== "undefined" && CustomWidgets.ready) {
@@ -2464,7 +2445,6 @@ Scope {
                                     { key: "notes", icon: "sticky_note_2", label: "Notes", defaultOn: false },
                                     { key: "calendarUpcoming", icon: "event", label: "Upcoming Events", defaultOn: false },
                                     { key: "uptime", icon: "avg_pace", label: "System Uptime", defaultOn: false },
-                                    { key: "mascot", icon: "pets", label: "Mascot", defaultOn: false },
                                     { key: "newsTicker", icon: "newspaper", label: "News Ticker", defaultOn: false },
                                     { key: "worldClock", icon: "public", label: "World Clock", defaultOn: false },
                                     { key: "userCard", icon: "account_circle", label: "User Card", defaultOn: false }
@@ -2929,22 +2909,6 @@ Scope {
                 }
 
                 FadeLoader {
-                    shown: bgRoot._widgetEnabled("mascot", false)
-                    z: item?.desktopStackZ ?? 0
-                    containmentMask: GlobalStates.widgetEditMode ? _hitMask13 : null
-                    Item { id: _hitMask13; x: parent?.item?.editInputX ?? -8; y: parent?.item?.editInputY ?? -8; width: parent?.item?.editInputWidth ?? ((parent?.width ?? 0) + 16); height: parent?.item?.editInputHeight ?? ((parent?.height ?? 0) + 16) }
-                    sourceComponent: MascotWidget {
-                        widgetIndex: 12
-                        outputName: bgRoot.screen?.name ?? ""
-                        screenWidth: bgRoot.screen.width
-                        screenHeight: bgRoot.screen.height
-                        scaledScreenWidth: bgRoot.screen.width
-                        scaledScreenHeight: bgRoot.screen.height
-                        wallpaperScale: 1
-                    }
-                }
-
-                FadeLoader {
                     shown: bgRoot._widgetEnabled("japaneseTypography", false)
                     z: item?.desktopStackZ ?? 0
                     containmentMask: GlobalStates.widgetEditMode ? _hitMask14 : null
@@ -2957,77 +2921,6 @@ Scope {
                         scaledScreenWidth: bgRoot.screen.width
                         scaledScreenHeight: bgRoot.screen.height
                         wallpaperScale: 1
-                    }
-                }
-
-                // Extra mascot instances (Settings › Widgets › Mascot › "+"),
-                // one MascotWidget per id under background.widgets.mascotInstances.
-                Repeater {
-                    model: {
-                        void Config.revision;
-                        const obj = Config.getNestedValue("background.widgets.mascotInstances", {});
-                        return Object.keys(obj ?? {}).sort();
-                    }
-
-                    Loader {
-                        id: mascotInstanceLoader
-                        required property string modelData
-                        required property int index
-                        z: item?.desktopStackZ ?? 0
-                        containmentMask: GlobalStates.widgetEditMode ? _hitMaskInst : null
-                        Item { id: _hitMaskInst; x: parent?.item?.editInputX ?? -8; y: parent?.item?.editInputY ?? -8; width: parent?.item?.editInputWidth ?? ((parent?.width ?? 0) + 16); height: parent?.item?.editInputHeight ?? ((parent?.height ?? 0) + 16) }
-
-                        active: false
-
-                        function _configEnabled(): bool {
-                            return DesktopWidgetLayout.enabled(bgRoot.screenName,
-                                "mascotInstances." + modelData,
-                                Config.getNestedValue("background.widgets.mascotInstances." + modelData + ".enable", false));
-                        }
-                        function _load(): void {
-                            active = true;
-                            setSource(Quickshell.shellPath("modules/background/widgets/mascot/MascotWidget.qml"), {
-                                configEntryName: "mascotInstances." + modelData,
-                                widgetIndex: 20 + index,
-                                outputName: bgRoot.screen?.name ?? "",
-                                screenWidth: bgRoot.screen.width,
-                                screenHeight: bgRoot.screen.height,
-                                scaledScreenWidth: bgRoot.screen.width,
-                                scaledScreenHeight: bgRoot.screen.height,
-                                wallpaperScale: 1
-                            });
-                        }
-                        function _unload(): void {
-                            active = false;
-                            source = "";
-                        }
-                        function _syncLoaded(): void {
-                            if (_configEnabled()) {
-                                if (!item) _load();
-                            } else if (item || active) {
-                                _unload();
-                            }
-                        }
-
-                        Component.onCompleted: Qt.callLater(_syncLoaded)
-
-                        Connections {
-                            target: Config
-                            function onConfigChanged() { Qt.callLater(mascotInstanceLoader._syncLoaded) }
-                        }
-                        Connections {
-                            target: bgRoot.screen
-                            function onWidthChanged() {
-                                if (!mascotInstanceLoader.item) return;
-                                mascotInstanceLoader.item.screenWidth = bgRoot.screen.width;
-                                mascotInstanceLoader.item.scaledScreenWidth = bgRoot.screen.width;
-                            }
-                            function onHeightChanged() {
-                                if (!mascotInstanceLoader.item) return;
-                                mascotInstanceLoader.item.screenHeight = bgRoot.screen.height;
-                                mascotInstanceLoader.item.scaledScreenHeight = bgRoot.screen.height;
-                            }
-                        }
                     }
                 }
 

@@ -49,10 +49,21 @@ Item {
         root.slideDirection = 1
         MprisController.nextForPlayer(root.player)
     }
+
+    function focusPrimaryControl(): void {
+        playPauseButton.forceActiveFocus()
+    }
     
     // Screen position for aurora glass effect
     property real screenX: 0
     property real screenY: 0
+    readonly property var surfaceScreen: root.QsWindow.window?.screen ?? Quickshell.screens[0] ?? null
+    readonly property string surfaceWallpaperUrl: {
+        const _dep1 = WallpaperListener.multiMonitorEnabled
+        const _dep2 = WallpaperListener.effectivePerMonitor
+        const _dep3 = Wallpapers.effectiveWallpaperUrl
+        return WallpaperListener.wallpaperUrlForScreen(root.surfaceScreen)
+    }
 
     readonly property string effectiveArtUrl: isYtMusicPlayer ? YtMusic.currentThumbnail : MprisController.effectiveArtUrl(player)
     readonly property string effectiveTitle: isYtMusicPlayer ? YtMusic.currentTitle : (player?.trackTitle ?? "")
@@ -199,14 +210,14 @@ Item {
             id: auroraWallpaper
             x: -root.screenX - (card.x + (root.width - card.width) / 2)
             y: -root.screenY - (card.y + (root.height - card.height) / 2)
-            width: Quickshell.screens[0]?.width ?? 1920
-            height: Quickshell.screens[0]?.height ?? 1080
+            width: root.surfaceScreen?.width ?? 1920
+            height: root.surfaceScreen?.height ?? 1080
             visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
-            source: visible ? Wallpapers.effectiveWallpaperUrl : ""
+            source: visible ? root.surfaceWallpaperUrl : ""
             fillMode: Image.PreserveAspectCrop
             cache: true
-            sourceSize.width: Quickshell.screens[0]?.width ?? 1920
-            sourceSize.height: Quickshell.screens[0]?.height ?? 1080
+            sourceSize.width: root.surfaceScreen?.width ?? 1920
+            sourceSize.height: root.surfaceScreen?.height ?? 1080
             smooth: true
             mipmap: true
             asynchronous: true
@@ -366,9 +377,11 @@ Item {
                     implicitHeight: 16
 
                     Loader {
+                        id: seekLoader
                         anchors.fill: parent
                         active: root.player?.canSeek ?? false
                         sourceComponent: StyledSlider {
+                            Accessible.name: Translation.tr("Playback position")
                             configuration: StyledSlider.Configuration.Wavy
                             wavy: root.player?.isPlaying ?? false
                             animateWave: root.player?.isPlaying ?? false
@@ -407,6 +420,11 @@ Item {
                             value: root.player?.length > 0 ? root.player.position / root.player.length : 0
                         }
                     }
+
+                    KeyboardFocusRing {
+                        anchors.fill: parent
+                        focusVisible: seekLoader.item?.visualFocus ?? false
+                    }
                 }
 
                 // Time + controls
@@ -430,6 +448,7 @@ Item {
 
                     RippleButton {
                         implicitWidth: 32; implicitHeight: 32
+                        buttonText: Translation.tr("Previous")
                         enabled: root.effectiveCanGoPrevious
                         buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
                             : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
@@ -463,6 +482,7 @@ Item {
                     RippleButton {
                         id: playPauseButton
                         implicitWidth: 40; implicitHeight: 40
+                        buttonText: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
                         buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
                             : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                         colBackground: "transparent"
@@ -496,6 +516,7 @@ Item {
 
                     RippleButton {
                         implicitWidth: 32; implicitHeight: 32
+                        buttonText: Translation.tr("Next")
                         enabled: root.effectiveCanGoNext
                         buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
                             : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full

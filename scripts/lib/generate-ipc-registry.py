@@ -9,7 +9,6 @@ Usage:
     python3 scripts/lib/generate-ipc-registry.py --check    # check if output is stale
 """
 
-import hashlib
 import os
 import re
 import sys
@@ -191,6 +190,12 @@ class IpcMdEntry:
     is_waffle: bool = False
 
 
+def _split_markdown_table_row(row: str) -> list[str]:
+    """Split a Markdown table row without treating escaped pipes as delimiters."""
+    parts = re.split(r"(?<!\\)\|", row.strip())
+    return [part.strip().replace(r"\|", "|") for part in parts]
+
+
 def parse_ipc_md() -> dict[str, IpcMdEntry]:
     """Parse docs/IPC.md for target metadata."""
     if not IPC_MD.exists():
@@ -295,11 +300,12 @@ def parse_ipc_md() -> dict[str, IpcMdEntry]:
                     current.description = " ".join(desc_lines).strip()
                 continue
             if in_table:
-                parts = [p.strip() for p in stripped.split("|")]
+                parts = _split_markdown_table_row(stripped)
                 # parts[0] is empty (before first |), parts[1] is function, parts[2] is desc
                 if len(parts) >= 3:
                     func_cell = parts[1].strip("`").strip()
-                    func_name = func_cell.split()[0] if func_cell else ""
+                    name_match = re.match(r"[A-Za-z_][A-Za-z0-9_]*", func_cell)
+                    func_name = name_match.group(0) if name_match else ""
                     func_desc = parts[2].strip()
                     if func_name and func_name.lower() != "function":
                         current.functions[func_name] = func_desc
@@ -433,22 +439,13 @@ def generate_bash(targets: list[IpcTarget], aliases: dict[str, str]) -> str:
     """Generate the bash registry file content."""
     lines: list[str] = []
 
-    # Compute source hashes for staleness check
-    qml_files = set()
-    for t in targets:
-        if t.qml_file:
-            qml_files.add(t.qml_file)
-    md_hash = ""
-    if IPC_MD.exists():
-        md_hash = hashlib.sha256(IPC_MD.read_bytes()).hexdigest()[:16]
-
     lines.append("#!/usr/bin/env bash")
     lines.append(
         "# Auto-generated from QML IpcHandler declarations + docs/IPC.md metadata."
     )
     lines.append("# Do not edit manually.")
-    lines.append(f"# Regenerate: python3 scripts/lib/generate-ipc-registry.py")
-    lines.append(f"# IPC.md hash: {md_hash}")
+    lines.append("# Regenerate: python3 scripts/lib/generate-ipc-registry.py")
+    lines.append("# IPC.md metadata: docs/IPC.md")
     lines.append(f"# Targets: {len(targets)}")
     lines.append("")
 

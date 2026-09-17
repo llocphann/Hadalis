@@ -70,6 +70,7 @@ PanelSurface {
             RippleButton {
                 implicitWidth: root.compactMode ? 24 : 28
                 implicitHeight: root.compactMode ? 24 : 28
+                buttonText: root.hideLocation ? Translation.tr("Show location") : Translation.tr("Hide location")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                     : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
@@ -94,6 +95,7 @@ PanelSurface {
             RippleButton {
                 implicitWidth: root.compactMode ? 24 : 28
                 implicitHeight: root.compactMode ? 24 : 28
+                buttonText: Translation.tr("Refresh")
                 buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
                     : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"

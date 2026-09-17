@@ -1,7 +1,6 @@
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
-import Quickshell
 import QtQuick
 import QtQuick.Layouts
 
@@ -15,12 +14,6 @@ Item {
     readonly property int _datePixelSize: Config.options?.bar?.clock?.datePixelSize ?? 0
     implicitWidth: rowLayout.implicitWidth
     implicitHeight: Appearance.sizes.barHeight
-
-    // Easter egg: long-press the clock → bedtime lecture, whatever the hour
-    TapHandler {
-        enabled: Config.options?.mascot?.enable ?? false
-        onLongPressed: Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "mascot", "appear", "late-night", "top"])
-    }
 
     RowLayout {
         id: rowLayout

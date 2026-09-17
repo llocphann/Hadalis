@@ -128,6 +128,7 @@ Rectangle {
     component DefaultQuickSlider: Item {
         id: quickSlider
         required property string materialSymbol
+        required property string accessibleName
         property real modelValue: 0
         readonly property alias value: slider.value
         signal moved(real value)
@@ -150,6 +151,7 @@ Rectangle {
                 rightMargin: 8
                 verticalCenter: parent.verticalCenter
             }
+            Accessible.name: quickSlider.accessibleName
             configuration: StyledSlider.Configuration.M
             stopIndicatorValues: []
             scrollable: true
@@ -179,6 +181,7 @@ Rectangle {
     component ZzzQuickSlider: Slider {
         id: quickSlider
         required property string materialSymbol
+        required property string accessibleName
         property real modelValue: 0
         property color zzzSignalColor: materialSymbol === "brightness_6" ? Appearance.zzz.tertiary
             : materialSymbol === "mic" ? Appearance.zzz.secondary
@@ -187,6 +190,7 @@ Rectangle {
         readonly property real effectiveDraggingWidth: width - leftPadding - rightPadding
 
         Layout.fillWidth: true
+        Accessible.name: quickSlider.accessibleName
         from: 0
         to: 1
         value: modelValue
@@ -317,6 +321,7 @@ Rectangle {
         id: defaultBrightnessSlider
         DefaultQuickSlider {
             materialSymbol: "brightness_6"
+            accessibleName: Translation.tr("Brightness")
             modelValue: root.brightnessValue
             onMoved: (value) => root.brightnessMonitor?.setBrightness(value)
         }
@@ -326,6 +331,7 @@ Rectangle {
         id: defaultVolumeSlider
         DefaultQuickSlider {
             materialSymbol: "volume_up"
+            accessibleName: Translation.tr("Volume")
             modelValue: root.volumeValue
             onMoved: (value) => Audio.setSinkVolume(value)
         }
@@ -335,6 +341,7 @@ Rectangle {
         id: defaultMicSlider
         DefaultQuickSlider {
             materialSymbol: "mic"
+            accessibleName: Translation.tr("Microphone")
             modelValue: Audio.micVolume
             onMoved: (value) => Audio.setSourceVolume(value)
         }
@@ -345,6 +352,7 @@ Rectangle {
         ZzzQuickSlider {
             id: brightnessSlider
             materialSymbol: "brightness_6"
+            accessibleName: Translation.tr("Brightness")
             modelValue: root.brightnessValue
             onMoved: () => root.brightnessMonitor?.setBrightness(brightnessSlider.value)
         }
@@ -355,6 +363,7 @@ Rectangle {
         ZzzQuickSlider {
             id: volumeSlider
             materialSymbol: "volume_up"
+            accessibleName: Translation.tr("Volume")
             modelValue: root.volumeValue
             onMoved: () => Audio.setSinkVolume(volumeSlider.value)
         }
@@ -365,6 +374,7 @@ Rectangle {
         ZzzQuickSlider {
             id: micSlider
             materialSymbol: "mic"
+            accessibleName: Translation.tr("Microphone")
             modelValue: Audio.micVolume
             onMoved: () => Audio.setSourceVolume(micSlider.value)
         }

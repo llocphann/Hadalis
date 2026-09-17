@@ -40,17 +40,22 @@ Singleton {
     function disable() {
         if (!root.available) return
         root.active = false
-        if (pkillProc.running || flatpakKillProc.running) return
-        pkillProc.running = true
+        if (root.nativeInstalled) {
+            if (pkillProc.running) return
+            pkillProc.running = true
+        } else {
+            if (flatpakKillProc.running) return
+            flatpakKillProc.running = true
+        }
     }
 
     function enable() {
         if (!root.available) return
         root.active = true
         if (root.nativeInstalled) {
-            Quickshell.execDetached(["/usr/bin/easyeffects", "--service-mode"])
+            Quickshell.execDetached(["/usr/bin/env", "easyeffects", "--service-mode"])
         } else {
-            Quickshell.execDetached(["/usr/bin/flatpak", "run", "com.github.wwmm.easyeffects", "--service-mode"])
+            Quickshell.execDetached(["/usr/bin/env", "flatpak", "run", "com.github.wwmm.easyeffects", "--service-mode"])
         }
         refreshStateTimer.restart()
     }
@@ -106,11 +111,12 @@ Singleton {
     Process {
         id: whichProc
         running: false
-        command: ["/usr/bin/which", "easyeffects"]
+        command: ["/usr/bin/env", "sh", "-c", "command -v easyeffects >/dev/null 2>&1"]
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
                 root.nativeInstalled = true
                 root.available = true
+                Qt.callLater(() => root.fetchActiveState())
             } else {
                 root.nativeInstalled = false
                 flatpakInfoProc.running = true
@@ -121,17 +127,21 @@ Singleton {
     Process {
         id: flatpakInfoProc
         running: false
-        command: ["/bin/sh", "-c", "flatpak info com.github.wwmm.easyeffects"]
+        command: ["/usr/bin/env", "flatpak", "info", "com.github.wwmm.easyeffects"]
         onExited: (exitCode, exitStatus) => {
             root.nativeInstalled = false
             root.available = (exitCode === 0)
+            if (root.available)
+                Qt.callLater(() => root.fetchActiveState())
+            else
+                root.active = false
         }
     }
 
     Process {
         id: nativeStatusProc
         running: false
-        command: ["/usr/bin/pgrep", "-x", "easyeffects"]
+        command: ["/usr/bin/env", "pgrep", "-x", "easyeffects"]
         onExited: (exitCode, _exitStatus) => {
             root.active = (exitCode === 0)
         }
@@ -140,12 +150,12 @@ Singleton {
     Process {
         id: flatpakPsProc
         running: false
-        command: ["/bin/sh", "-c", "flatpak ps --columns=application"]
+        command: ["/usr/bin/env", "flatpak", "ps", "--columns=application"]
         stdout: StdioCollector {
             id: flatpakPsCollector
             onStreamFinished: {
                 const t = (flatpakPsCollector.text ?? "")
-                root.active = t.split("\n").some(l => l.trim().includes("com.github.wwmm.easyeffects"))
+                root.active = t.split("\n").some(l => l.trim() === "com.github.wwmm.easyeffects")
             }
         }
     }
@@ -153,17 +163,14 @@ Singleton {
     Process {
         id: pkillProc
         running: false
-        command: ["/usr/bin/pkill", "easyeffects"]
-        onExited: (_exitCode, _exitStatus) => {
-            flatpakKillProc.running = true
-            refreshStateTimer.restart()
-        }
+        command: ["/usr/bin/env", "pkill", "-x", "easyeffects"]
+        onExited: (_exitCode, _exitStatus) => refreshStateTimer.restart()
     }
 
     Process {
         id: flatpakKillProc
         running: false
-        command: ["/bin/sh", "-c", "flatpak kill com.github.wwmm.easyeffects"]
+        command: ["/usr/bin/env", "flatpak", "kill", "com.github.wwmm.easyeffects"]
         onExited: (_exitCode, _exitStatus) => refreshStateTimer.restart()
     }
 }

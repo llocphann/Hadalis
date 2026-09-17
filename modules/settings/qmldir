@@ -3,6 +3,10 @@ singleton SettingsPageRegistryData 1.0 SettingsPageRegistryData.qml
 singleton SettingsPageRegistry 1.0 SettingsPageRegistry.qml
 singleton SettingsArrangement 1.0 SettingsArrangement.qml
 singleton SettingsChromeLayout 1.0 SettingsChromeLayout.qml
+QuickConfig 1.0 QuickConfig.qml
+QuickConfigHugOnly 1.0 QuickConfigHugOnly.qml
+BarConfig 1.0 BarConfig.qml
+BarConfigHugOnly 1.0 BarConfigHugOnly.qml
 QuickWallpaperItem 1.0 QuickWallpaperItem.qml
 ThemePresetCard 1.0 ThemePresetCard.qml
 ColorPickerRow 1.0 ColorPickerRow.qml
@@ -12,9 +16,7 @@ GeneralConfigCore 1.0 GeneralConfigCore.qml
 TlpPowerSettings 1.0 TlpPowerSettings.qml
 WaffleConfig 1.0 WaffleConfig.qml
 AutostartConfig 1.0 AutostartConfig.qml
-WorkspaceStripConfig 1.0 WorkspaceStripConfig.qml
 DockConfig 1.0 DockConfig.qml
-M3LayoutSection 1.0 M3LayoutSection.qml
 SidebarsConfig 1.0 SidebarsConfig.qml
 SettingsOverlay 1.0 SettingsOverlay.qml
 SettingsFocus 1.0 SettingsFocus.qml
@@ -22,6 +24,3 @@ SettingsPageHost 1.0 SettingsPageHost.qml
 SettingsNavEditPane 1.0 SettingsNavEditPane.qml
 SettingsChromeEditFrame 1.0 SettingsChromeEditFrame.qml
 SettingsNativeDialogGuard 1.0 SettingsNativeDialogGuard.qml
-PillOptionsEditor 1.0 PillOptionsEditor.qml
-RicelinIslandEditor 1.0 RicelinIslandEditor.qml
-OrbitShelfEditor 1.0 OrbitShelfEditor.qml

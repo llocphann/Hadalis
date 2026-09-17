@@ -123,8 +123,13 @@ Item {
         let targetMonth = month
         let targetYear = year
         if (cellData.today === -1) {
-            if (month === 0) { targetMonth = 11; targetYear = year - 1 }
-            else targetMonth = month - 1
+            if (weekRow === 0) {
+                if (month === 0) { targetMonth = 11; targetYear = year - 1 }
+                else targetMonth = month - 1
+            } else {
+                if (month === 11) { targetMonth = 0; targetYear = year + 1 }
+                else targetMonth = month + 1
+            }
         }
         return new Date(targetYear, targetMonth, day)
     }
@@ -317,6 +322,10 @@ Item {
                                 required property int index
                                 required property int modelData
                                 day: root.calendarLayout[modelData][index].day
+                                buttonText: {
+                                    const targetDate = root._getDateForCell(root.calendarLayout[modelData][index].day, modelData, index)
+                                    return targetDate ? root.locale.toString(targetDate, "d MMMM yyyy") : day
+                                }
                                 isToday: root.calendarLayout[modelData][index].today
                                 eventCount: root.getEventCountForDay(root.calendarLayout[modelData][index].day, modelData, index)
                                 sourceColors: root.getSourceColorsForDay(root.calendarLayout[modelData][index].day, modelData, index)
@@ -384,10 +393,28 @@ Item {
 
         implicitWidth: 32
         implicitHeight: 32
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: navBtn.tooltipText.length > 0
+            ? navBtn.tooltipText : navBtn.icon.replace(/_/g, " ")
+        Accessible.focusable: true
+        Accessible.onPressAction: navBtn.clicked()
+
+        Keys.onPressed: event => {
+            if (event.isAutoRepeat
+                    || (event.key !== Qt.Key_Return
+                        && event.key !== Qt.Key_Enter
+                        && event.key !== Qt.Key_Space))
+                return
+            navBtn.clicked()
+            event.accepted = true
+        }
 
         Rectangle {
             anchors.fill: parent
             radius: root.radius
+            border.width: navBtn.activeFocus ? 1 : 0
+            border.color: root.colPrimary
             color: {
                 if (navBtnMA.containsPress)
                     return Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
@@ -417,7 +444,7 @@ Item {
             }
 
             StyledToolTip {
-                visible: navBtnMA.containsMouse && navBtn.tooltipText !== ""
+                visible: (navBtnMA.containsMouse || navBtn.activeFocus) && navBtn.tooltipText !== ""
                 text: navBtn.tooltipText
             }
         }

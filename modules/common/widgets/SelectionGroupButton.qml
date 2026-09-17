@@ -10,6 +10,8 @@ import qs.modules.common.functions
 
 GroupButton {
     id: root
+    Accessible.checkable: true
+    Accessible.checked: root.toggled
     horizontalPadding: Appearance.regaliaEverywhere ? Appearance.regalia.controlPaddingHorizontal : 11
     verticalPadding: Appearance.regaliaEverywhere ? Appearance.regalia.controlPaddingVertical : 6
     bounce: false

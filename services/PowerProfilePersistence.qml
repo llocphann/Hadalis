@@ -13,6 +13,7 @@ Singleton {
     property bool _initialized: false
     property bool _tlpProbeDone: false
     property bool _tlpPdManaged: false
+    property string _pendingProfile: ""
 
     function _profileToString(profile): string {
         switch (profile) {
@@ -61,8 +62,10 @@ Singleton {
     }
 
     function _probeTlpPd(): void {
-        if (!tlpPdProbe.running)
+        if (!tlpPdProbe.running) {
+            root._tlpProbeDone = false
             tlpPdProbe.running = true
+        }
     }
 
     Connections {
@@ -81,12 +84,67 @@ Singleton {
 
     Process {
         id: tlpPdProbe
-        command: ["/usr/bin/systemctl", "is-enabled", "--quiet", "tlp-pd.service"]
+        property bool timedOut: false
+        property bool startObserved: false
+        command: [
+            "/usr/bin/sh",
+            "-c",
+            "/usr/bin/systemctl is-active --quiet tlp-pd.service || " +
+            "/usr/bin/systemctl is-enabled --quiet tlp-pd.service"
+        ]
+
+        onRunningChanged: {
+            if (tlpPdProbe.running) {
+                tlpPdProbe.startObserved = false
+                return
+            }
+            if (tlpPdProbe.startObserved)
+                return
+
+            tlpPdTimeout.stop()
+            root._tlpProbeDone = false
+            console.warn("[PowerProfilePersistence] Failed to start tlp-pd ownership probe")
+        }
+
+        onStarted: {
+            tlpPdProbe.startObserved = true
+            tlpPdProbe.timedOut = false
+            tlpPdTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
+            tlpPdTimeout.stop()
+            if (tlpPdProbe.timedOut) {
+                root._tlpProbeDone = false
+                console.warn("[PowerProfilePersistence] Timed out probing tlp-pd ownership")
+                return
+            }
+
             root._tlpPdManaged = exitCode === 0
             root._tlpProbeDone = true
+
+            if (root._tlpPdManaged) {
+                root._pendingProfile = ""
+            } else if (root._initialized && root._pendingProfile.length > 0) {
+                const pending = root._pendingProfile
+                root._pendingProfile = ""
+                Config.setNestedValue("powerProfiles.preferredProfile", pending)
+            }
+
             if (Config.ready)
                 Qt.callLater(() => root._applyPreferredProfile())
+        }
+    }
+
+    Timer {
+        id: tlpPdTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!tlpPdProbe.running)
+                return
+            tlpPdProbe.timedOut = true
+            tlpPdProbe.running = false
         }
     }
 
@@ -101,13 +159,25 @@ Singleton {
     Connections {
         target: PowerProfiles
         function onProfileChanged(): void {
-            // Don't persist tlp-pd's automatic AC/BAT selection as a user preference.
-            if (root._tlpPdManaged)
-                return
-
             const s = root._profileToString(PowerProfiles.profile)
             if (s.length === 0)
                 return
+
+            // Ownership is unknown while tlp-pd is being probed. Preserve only
+            // post-startup changes so the initial automatic profile still cannot
+            // overwrite the user's persisted preference.
+            if (!root._tlpProbeDone) {
+                if (root._initialized)
+                    root._pendingProfile = s
+                return
+            }
+
+            if (root._tlpPdManaged) {
+                root._pendingProfile = ""
+                return
+            }
+
+            root._pendingProfile = ""
             Config.setNestedValue("powerProfiles.preferredProfile", s)
         }
     }

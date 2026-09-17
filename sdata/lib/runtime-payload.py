@@ -116,6 +116,22 @@ class Payload:
         target = Path(target).absolute()
         if target.is_symlink() or target.resolve() == source.resolve() or source.resolve().is_relative_to(target.resolve()) or target.resolve().is_relative_to(source.resolve()):
             raise ValueError('destination must be a separate installed directory')
+        if delete and subdir is None and target.exists():
+            # The root rsync filter includes only QML files that still exist in
+            # source, so rsync considers a retired root QML excluded and would
+            # otherwise preserve it even with --delete. Remove only obsolete,
+            # non-excluded root QML here; other private/excluded artifacts stay
+            # outside installer ownership.
+            source_root_qml = {
+                path.name
+                for path in self.root.glob('*.qml')
+                if path.is_file() and not self.excluded(path.name)
+            }
+            for installed in target.glob('*.qml'):
+                if installed.name in source_root_qml or self.excluded(installed.name):
+                    continue
+                if installed.is_file() or installed.is_symlink():
+                    installed.unlink()
         args = ['rsync', '-a', *self.filters(subdir or '')]
         if delete:
             args += ['--delete']
@@ -147,21 +163,33 @@ def main():
         print('\n'.join(payload.filters(args.subdir or '')))
         return
     if args.command == 'filter-installed':
-        # Keep optional packs and private/user artifacts outside orphan cleanup. Old
-        # source-only tooling remains eligible for the existing managed-file cleanup.
+        # Keep optional packs and private/user artifacts outside orphan cleanup,
+        # while allowing paths that are explicitly source-only in the current
+        # tree to be removed from older mixed runtime installs. A generic prefix
+        # such as test- must not hide a known retired source-only path forever.
+        managed_cleanup_paths = [p for p in payload.policy['excludedPaths']
+                                 if not p.startswith('assets/')]
         payload.policy['excludedPaths'] = [p for p in payload.policy['excludedPaths']
                                            if p.startswith('assets/')]
         for line in sys.stdin:
-            if not payload.excluded(line.rstrip('\n')):
-                print(line.rstrip('\n'))
+            relative = line.rstrip('\n')
+            known_source_only = any(relative == p or relative.startswith(p + '/')
+                                    for p in managed_cleanup_paths)
+            if known_source_only or not payload.excluded(relative):
+                print(relative)
         return
     if args.command in ('copy', 'sync-dir'):
         if args.target is None:
             parser.error('--target is required')
         if args.command == 'sync-dir' and args.subdir not in payload.dirs:
             parser.error('--subdir must name a runtime payload directory')
+        # A full installed payload is package/runtime-owned, so `copy` mirrors
+        # managed directories by default and cannot leave retired QML modules
+        # behind after an in-place reinstall. `sync-dir` remains opt-in because
+        # repo-managed update callers already choose the directories they own.
+        delete = args.delete or args.command == 'copy'
         payload.sync(args.target, subdir=args.subdir if args.command == 'sync-dir' else None,
-                     delete=args.delete, out_format=args.out_format)
+                     delete=delete, out_format=args.out_format)
     else:
         for name in sorted(set(payload.paths())):
             if args.command == 'list':

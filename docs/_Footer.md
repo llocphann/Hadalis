@@ -1,1 +1,1 @@
-iNiR documentation. `main` is stable. `prerelease` is development.
+iNiR documentation. `stable` is stable. `dev` is development.

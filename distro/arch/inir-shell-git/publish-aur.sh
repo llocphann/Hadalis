@@ -28,7 +28,7 @@ echo "  SSH access OK"
 
 # Step 2: Verify GitHub has LICENSE
 echo "[2/5] Verifying LICENSE exists on GitHub..."
-if ! curl -sf "https://raw.githubusercontent.com/snowarch/iNiR/dev/LICENSE" >/dev/null 2>&1; then
+if ! curl -sf "https://raw.githubusercontent.com/llocphann/Hadalis/dev/LICENSE" >/dev/null 2>&1; then
     echo "ERROR: LICENSE not found on GitHub."
     echo "  Push your local commits first: git push origin dev"
     exit 1
@@ -61,13 +61,18 @@ ls -la "${WORK_DIR}"/{PKGBUILD,.SRCINFO,inir-shell-git.install}
 # Step 5: Commit and push
 echo "[5/5] Committing and pushing to AUR..."
 cd "${WORK_DIR}"
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    commit_prefix="Update"
+else
+    commit_prefix="Initial upload"
+fi
 git add PKGBUILD .SRCINFO inir-shell-git.install
-git commit -m "Initial upload: inir-shell-git $(grep pkgver= PKGBUILD | head -1 | cut -d= -f2)"
+git commit -m "${commit_prefix}: inir-shell-git $(grep pkgver= PKGBUILD | head -1 | cut -d= -f2)"
 
 echo ""
 echo "Ready to push. Review the commit:"
 git log --oneline -1
-git diff --stat HEAD~1
+git show --stat --format=short HEAD
 echo ""
 read -rp "Push to AUR? [y/N] " confirm
 if [[ "${confirm}" =~ ^[Yy]$ ]]; then

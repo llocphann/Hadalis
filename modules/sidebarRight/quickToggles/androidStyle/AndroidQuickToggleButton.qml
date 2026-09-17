@@ -16,6 +16,13 @@ GroupButton {
     required property var mainAction
     property var altAction: null
     property string statusText: toggled ? Translation.tr("Active") : Translation.tr("Inactive")
+    property bool accessibilityCheckable: true
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.name
+    Accessible.description: root.statusText
+    Accessible.checkable: root.accessibilityCheckable
+    Accessible.checked: root.accessibilityCheckable && root.toggled
 
     required property real baseCellWidth
     required property real baseCellHeight
@@ -25,6 +32,7 @@ GroupButton {
     baseHeight: root.baseCellHeight
 
     property bool editMode: false
+    altActionEnabled: !root.editMode
     readonly property color colDarkSurface: Appearance.angelEverywhere
         ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.76)
         : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colLayer1, 0.22)
@@ -68,17 +76,7 @@ GroupButton {
         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
     }
 
-
-
     signal openMenu()
-
-    // TapHandler for right-click - needs to be here because contentItem has MouseAreas
-    TapHandler {
-        acceptedButtons: Qt.RightButton
-        onTapped: {
-            if (root.altAction) root.altAction();
-        }
-    }
 
     padding: 6
     horizontalPadding: padding
@@ -182,6 +180,7 @@ GroupButton {
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         acceptedButtons: Qt.AllButtons
+        property bool longPressHandled: false
 
         function toggleEnabled() {
             // Identify the entry by type: buttonIndex is positional and goes
@@ -203,7 +202,10 @@ GroupButton {
             const toggleList = [...(Config.options?.sidebar?.quickToggles?.android?.toggles ?? [])];
             const existingIndex = toggleList.findIndex(toggle => toggle && toggle.type === buttonType);
             if (existingIndex === -1) return;
-            toggleList[existingIndex].size = 3 - toggleList[existingIndex].size; // Alternate between 1 and 2
+            const toggle = toggleList[existingIndex];
+            const configuredSize = Number(toggle?.size ?? 1);
+            const normalizedSize = Number.isFinite(configuredSize) && Math.round(configuredSize) === 2 ? 2 : 1;
+            toggleList[existingIndex] = Object.assign({}, toggle, { size: normalizedSize === 1 ? 2 : 1 });
             Config.setNestedValue("sidebar.quickToggles.android.toggles", toggleList);
         }
 
@@ -221,13 +223,16 @@ GroupButton {
         }
 
         onReleased: (event) => {
-            if (event.button === Qt.LeftButton)
+            if (event.button === Qt.LeftButton && !longPressHandled)
                 toggleEnabled();
+            longPressHandled = false;
         }
         onPressed: (event) => {
+            if (event.button === Qt.LeftButton) longPressHandled = false;
             if (event.button === Qt.RightButton) toggleSize();
         }
-        onPressAndHold: (event) => { // Also toggle size
+        onPressAndHold: (event) => {
+            longPressHandled = true;
             toggleSize();
         }
         onWheel: (event) => {

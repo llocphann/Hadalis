@@ -1,5 +1,5 @@
 {
-  description = "iNiR desktop shell for Niri, packaged for NixOS and Home Manager";
+  description = "Hadalis desktop shell runtime, packaged for NixOS and Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -20,12 +20,10 @@
       packages = forAllSystems (pkgs:
         let
           package = pkgs.callPackage ./nix/package.nix { inherit pkgs; };
-          mascotPackage = pkgs.callPackage ./nix/mascot-package.nix { inherit pkgs; };
         in
         {
           default = package;
           inir = package;
-          inir-mascot = mascotPackage;
         });
 
       nixosModules.default = nixosModule;

@@ -105,8 +105,12 @@ assert_contains 'SettingsPageRegistryData.pages.map((page, index)' "$registry" \
     'legacy page 28 must remain an internal compatibility alias until migration wins the startup race'
 assert_contains 'name: systemPage.name' "$registry" \
     'the internal page-28 fallback must present itself as System, not as a standalone Battery page'
-assert_contains 'pages: category.pages.filter(index => index !== root.retiredTlpPageIndex)' "$registry" \
-    'the internal page-28 fallback must never reappear in sidebar categories'
+assert_contains 'function isHiddenLegacyIndex(index: int): bool' "$registry" \
+    'the registry must centralize filtering of retired navigation indexes'
+assert_contains 'return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)' "$registry" \
+    'the hidden-index invariant must include both the retired TLP page and retired feature pages'
+assert_contains 'pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))' "$registry" \
+    'retired compatibility pages must never reappear in sidebar categories'
 assert_contains 'Persistent.states.settings.iiPage = root.systemPageIndex' "$registry" \
     'persisted legacy page 28 must migrate to System when Persistent becomes available'
 assert_contains 'function consumeLegacyTlpPowerRedirect(): bool' "$registry" \

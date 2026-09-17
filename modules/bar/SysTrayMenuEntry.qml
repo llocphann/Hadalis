@@ -26,6 +26,9 @@ RippleButton {
     enabled: !menuEntry.isSeparator
     opacity: 1
 
+    Accessible.name: root.menuEntry.text
+    Accessible.focusable: root.enabled
+
     horizontalPadding: 8
     implicitWidth: contentItem.implicitWidth + horizontalPadding * 2
     implicitHeight: menuEntry.isSeparator ? 1 : 32
@@ -39,16 +42,28 @@ RippleButton {
         }
     }
 
-    releaseAction: () => { 
-        if (menuEntry.hasChildren) {
-            root.openSubmenu(root.menuEntry);
-            return;
+    function activateEntry(): void {
+        if (root.menuEntry.hasChildren) {
+            root.openSubmenu(root.menuEntry)
+            return
         }
-        menuEntry.triggered();
-        root.dismiss(); 
+        root.menuEntry.triggered()
+        root.dismiss()
     }
+
+    releaseAction: () => root.activateEntry()
     altAction: (event) => { // Not hog right-click
         event.accepted = false;
+    }
+
+    Keys.onPressed: event => {
+        if (!root.enabled || event.isAutoRepeat
+                || (event.key !== Qt.Key_Return
+                    && event.key !== Qt.Key_Enter
+                    && event.key !== Qt.Key_Space))
+            return
+        root.activateEntry()
+        event.accepted = true
     }
 
     contentItem: RowLayout {

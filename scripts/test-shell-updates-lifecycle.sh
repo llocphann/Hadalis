@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+service="$repo_root/services/ShellUpdates.qml"
+
+fail() {
+    printf 'shell updates lifecycle guard failed: %s\n' "$1" >&2
+    exit 1
+}
+
+assert_contains() {
+    local needle="$1" text="$2" message="$3"
+    grep -Fq -- "$needle" <<<"$text" || fail "$message"
+}
+
+assert_guarded_process() {
+    local id="$1" block="$2"
+    [[ -n "$block" ]] || fail "$id process block is missing"
+    assert_contains 'property bool startObserved: false' "$block" "$id startup guard state is missing"
+    assert_contains 'onRunningChanged:' "$block" "$id startup failure path is missing"
+    assert_contains "onStarted: $id.startObserved = true" "$block" "$id must distinguish a successful start"
+}
+
+fetch_block="$(sed -n '/id: fetchProc/,/\/\/ Step 3:/p' "$service")"
+branch_block="$(sed -n '/id: currentBranchProc/,/\/\/ Step 4:/p' "$service")"
+local_block="$(sed -n '/id: localCommitProc/,/\/\/ Step 5:/p' "$service")"
+remote_block="$(sed -n '/id: remoteCommitProc/,/\/\/ Step 5b:/p' "$service")"
+remote_main_block="$(sed -n '/id: remoteCommitFallbackProc/,/\/\/ Step 5c:/p' "$service")"
+remote_master_block="$(sed -n '/id: remoteCommitFallback2Proc/,/\/\/ Step 6:/p' "$service")"
+count_block="$(sed -n '/id: countCommitsProc/,/\/\/ Step 7:/p' "$service")"
+message_block="$(sed -n '/id: latestMessageProc/,/Detail fetching/p' "$service")"
+
+assert_guarded_process fetchProc "$fetch_block"
+assert_guarded_process currentBranchProc "$branch_block"
+assert_guarded_process localCommitProc "$local_block"
+assert_guarded_process remoteCommitProc "$remote_block"
+assert_guarded_process remoteCommitFallbackProc "$remote_main_block"
+assert_guarded_process remoteCommitFallback2Proc "$remote_master_block"
+assert_guarded_process countCommitsProc "$count_block"
+assert_guarded_process latestMessageProc "$message_block"
+
+fail_helper="$(sed -n '/function _failCheckStart/,/^    }/p' "$service")"
+count_helper="$(sed -n '/function _finishCountFallback/,/^    }/p' "$service")"
+finish_helper="$(sed -n '/function _finishCheck/,/^    }/p' "$service")"
+
+assert_contains 'root.lastError = message' "$fail_helper" 'failed startup must publish a diagnostic error'
+assert_contains 'root.isChecking = false' "$fail_helper" 'failed startup must release isChecking'
+assert_contains 'root.localCommit !== root.remoteCommit' "$count_helper" 'count startup fallback must compare resolved commit IDs'
+assert_contains 'root.commitsBehind = root.hasUpdate ? 1 : 0' "$count_helper" 'count startup fallback must retain a usable behind count'
+assert_contains 'root.initialUpdateCheckDone = true' "$count_helper" 'count startup fallback must finish the check cycle'
+assert_contains 'root.isChecking = false' "$finish_helper" 'normal finish helper must release isChecking'
+assert_contains 'root.initialUpdateCheckDone = true' "$finish_helper" 'normal finish helper must mark the check cycle complete'
+
+fetch_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$fetch_block")"
+branch_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$branch_block")"
+local_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$local_block")"
+remote_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$remote_block")"
+remote_main_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$remote_main_block")"
+remote_master_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$remote_master_block")"
+count_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$count_block")"
+message_start="$(sed -n '/onRunningChanged:/,/onStarted:/p' <<<"$message_block")"
+
+assert_contains 'root._failCheckStart("fetch")' "$fetch_start" 'fetch startup failure must terminate the stuck check'
+assert_contains 'root._failCheckStart("branch lookup")' "$branch_start" 'branch lookup startup failure must terminate the stuck check'
+assert_contains 'root._failCheckStart("local commit lookup")' "$local_start" 'local commit startup failure must terminate the stuck check'
+assert_contains 'remoteCommitFallbackProc.running = true' "$remote_start" 'primary remote lookup startup failure must continue to origin/main'
+assert_contains 'remoteCommitFallback2Proc.running = true' "$remote_main_start" 'origin/main startup failure must continue to origin/master'
+assert_contains 'root._failCheckStart("remote commit lookup")' "$remote_master_start" 'final remote lookup startup failure must terminate the stuck check'
+assert_contains 'root._finishCountFallback()' "$count_start" 'count startup failure must use the direct commit fallback'
+assert_contains 'root.latestMessage = ""' "$message_start" 'latest-message startup failure must clear stale message text'
+assert_contains 'root._finishCheck()' "$message_start" 'latest-message startup failure must complete the check cycle'
+
+printf 'shell updates check lifecycle guards: ok\n'

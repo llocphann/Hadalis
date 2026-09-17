@@ -89,12 +89,13 @@ Item {
     }
 
     function closeOverflowMenu() {
+        root.trayOverflowOpen = false;
         focusGrab.active = false;
     }
 
     CompositorFocusGrab {
         id: focusGrab
-        active: (root.trayOverflowOpen && overflowPopup.QsWindow?.window !== null) || root.activeMenu !== null
+        active: (root.trayOverflowOpen && overflowPopup.QsWindow?.window != null) || root.activeMenu !== null
         windows: [overflowPopup.QsWindow?.window, root.activeMenu]
         onCleared: {
             if (root.activeMenu) {
@@ -163,7 +164,7 @@ Item {
                 id: overflowPopup
                 hoverTarget: trayOverflowButton
                 hoverActivates: false
-                active: root.trayOverflowOpen && root.unpinnedItems.length > 0
+                alternativeVisibleCondition: root.trayOverflowOpen && root.unpinnedItems.length > 0
                 popupBackgroundMargin: 0
                 closeOnOutsideClick: false
                 onRequestClose: root.trayOverflowOpen = false

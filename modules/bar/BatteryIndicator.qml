@@ -1,30 +1,26 @@
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
-import Quickshell
 import QtQuick
 import QtQuick.Layouts
 
 MouseArea {
     id: root
-    property bool borderless: Config.options.bar.borderless
 
-    // Easter egg: long-press the battery and she boops in
-    onPressAndHold: {
-        if (Config.options?.mascot?.enable ?? false)
-            Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "mascot", "appearWithLine",
-                "camera-boop", "top", Translation.tr("Boop.")])
-    }
-    readonly property var chargeState: Battery.chargeState
     readonly property bool isCharging: Battery.isCharging
-    readonly property bool isPluggedIn: Battery.isPluggedIn
     readonly property real percentage: Battery.percentage
-    readonly property bool isLow: percentage <= Config.options.battery.low / 100
+    readonly property bool isLow: percentage <= (Config.options?.battery?.low ?? 20) / 100
 
     implicitWidth: batteryProgress.implicitWidth
     implicitHeight: Appearance.sizes.barHeight
 
     hoverEnabled: true
+    acceptedButtons: Qt.NoButton
+    activeFocusOnTab: true
+
+    Accessible.role: Accessible.StaticText
+    Accessible.name: Translation.tr("Battery") + " " + Math.round(root.percentage * 100) + "%"
+    Accessible.focusable: true
 
     ClippedProgressBar {
         id: batteryProgress
@@ -72,8 +68,15 @@ MouseArea {
         }
     }
 
+    KeyboardFocusRing {
+        anchors.fill: batteryProgress
+        focusVisible: root.activeFocus
+        radius: batteryProgress.radius
+    }
+
     BatteryPopup {
         id: batteryPopup
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
     }
 }

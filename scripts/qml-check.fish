@@ -138,6 +138,68 @@ for file in $qml_files
     end
 end
 
+# Resolve local qs.* imports even when qmlformat is unavailable or too old.
+# This also runs against staged payload roots, catching mixed installs that keep
+# QML consumers after the module they import has been retired.
+if test $scan_all -eq 1
+    set -l qml_local_module_contract "$project_root/scripts/test-qml-local-module-contract.sh"
+    if not bash "$qml_local_module_contract" "$scan_root"
+        echo "ERROR: local QML module/type resolution contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+end
+
+# Project-wide architectural startup guards run only in the full-tree CI mode.
+if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
+    set -l perimeter_contract "$project_root/scripts/test-perimeter-contracts.sh"
+    if not bash "$perimeter_contract"
+        echo "ERROR: Connected Perimeter cutover contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l perimeter_route_contract "$project_root/scripts/test-perimeter-route-contracts.sh"
+    if not bash "$perimeter_route_contract"
+        echo "ERROR: Connected Perimeter route contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l perimeter_settings_contract "$project_root/scripts/test-perimeter-settings-contracts.sh"
+    if not bash "$perimeter_settings_contract"
+        echo "ERROR: Connected Perimeter settings contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l perimeter_family_contract "$project_root/scripts/test-perimeter-family-contracts.sh"
+    if not bash "$perimeter_family_contract"
+        echo "ERROR: Connected Perimeter family contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l perimeter_source_contract "$project_root/scripts/test-perimeter-source-contracts.sh"
+    if not bash "$perimeter_source_contract"
+        echo "ERROR: Connected Perimeter source integrity contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l perimeter_compatibility_placement_contract "$project_root/scripts/test-perimeter-compatibility-placement-contract.sh"
+    if not bash "$perimeter_compatibility_placement_contract"
+        echo "ERROR: Connected Perimeter compatibility placement contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l perimeter_runtime_health_contract "$project_root/scripts/test-perimeter-runtime-health-contract.sh"
+    if not bash "$perimeter_runtime_health_contract"
+        echo "ERROR: Connected Perimeter runtime health contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+
+    set -l equalizer_boundary_contract "$project_root/scripts/test-equalizer-boundary-contract.sh"
+    if not bash "$equalizer_boundary_contract"
+        echo "ERROR: Equalizer architecture boundary contract failed" >&2
+        set fatal_errors (math $fatal_errors + 1)
+    end
+end
+
 if test -z "$parser"
     if test -n "$parser_skip_reason"
         echo "qml-check: $parser_skip_reason; parser pass skipped" >&2

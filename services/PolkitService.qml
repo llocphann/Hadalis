@@ -97,8 +97,9 @@ Singleton {
     Process {
         id: polkitAgentCheck
         running: false
+        property bool startObserved: false
 
-        // Note: pidof returns 0 if ANY process exists. If pidof is missing or fails, exitCode != 0 and we proceed.
+        // Note: pidof returns 0 if ANY process exists. A nonzero exit means no known agent.
         command: [
             "/usr/bin/pidof",
             "polkit-gnome-authentication-agent-1",
@@ -106,6 +107,21 @@ Singleton {
             "polkit-kde-authentication-agent-1",
             "mate-polkit"
         ]
+
+        onRunningChanged: {
+            if (polkitAgentCheck.running) {
+                polkitAgentCheck.startObserved = false
+                return
+            }
+            if (polkitAgentCheck.startObserved)
+                return
+
+            // FailedToStart does not emit exited; lack of pidof must not disable
+            // Hadalis' own authentication agent.
+            root._loadImpl()
+        }
+
+        onStarted: polkitAgentCheck.startObserved = true
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {

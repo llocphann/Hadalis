@@ -31,7 +31,6 @@ Scope {
     readonly property real altBlurAmount: altSwitcherOptions.blurAmount ?? 0.4
     readonly property int altScrimDim: altSwitcherOptions.scrimDim ?? 35
     readonly property string altPanelAlignment: altSwitcherOptions.panelAlignment ?? "right"
-    readonly property bool altUseM3Layout: altSwitcherOptions.useM3Layout ?? false
     readonly property bool altCompactStyle: altSwitcherOptions.compactStyle ?? false
     readonly property bool altShowOverviewWhileSwitching: altSwitcherOptions.showOverviewWhileSwitching ?? false
     readonly property int altAutoHideDelayMs: altSwitcherOptions.autoHideDelayMs ?? 500
@@ -45,7 +44,6 @@ Scope {
     property var iconCache: ({})
     property var iconCacheKeys: []
     readonly property int maxIconCacheSize: 100
-    property bool useM3Layout: root.altUseM3Layout
     property bool centerPanel: root.altPanelAlignment === "center"
     property bool compactStyle: root.altCompactStyle && !root.listStyle && !root.skewStyle
     property bool listStyle: root.altPreset === "list"
@@ -146,18 +144,6 @@ Scope {
         onTriggered: {
             if (GlobalStates.altSwitcherOpen)
                 altReleaseDetector.forceActiveFocus()
-        }
-    }
-
-
-
-    onUseM3LayoutChanged: {
-        // Al cambiar de layout normal 
-        // a Material 3 (y viceversa), reseteamos la visibilidad
-        // interna si el switcher está cerrado para que se
-        // vuelva a construir limpio en el próximo Alt+Tab.
-        if (!GlobalStates.altSwitcherOpen) {
-            panelVisible = false
         }
     }
 
@@ -390,8 +376,6 @@ Scope {
                 right: true
             }
 
-
-
             Rectangle {
                 anchors.fill: parent
                 z: -1
@@ -551,15 +535,13 @@ Scope {
                         return Appearance.inir.colLayer0
                     if (Appearance.auroraEverywhere)
                         return Appearance.colors.colLayer0Base
-                    if (root.altUseM3Layout)
-                        return Appearance.colors.colLayer0
                     const base = ColorUtils.mix(Appearance.colors.colLayer0, Qt.rgba(0, 0, 0, 1), 0.35)
                     return ColorUtils.applyAlpha(base, root.altBackgroundOpacity)
                 }
                 border.width: Appearance.regaliaEverywhere ? 0
                     : Appearance.zzzEverywhere ? 0
                     : Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
-                    : Appearance.inirEverywhere || Appearance.auroraEverywhere ? 1 : (root.altUseM3Layout ? 1 : 0)
+                    : Appearance.inirEverywhere || Appearance.auroraEverywhere ? 1 : 0
                 border.color: Appearance.zzzEverywhere ? Appearance.zzz.borderColor
                     : Appearance.angelEverywhere ? Appearance.angel.colPanelBorder
                     : Appearance.inirEverywhere ? Appearance.inir.colBorder 
@@ -645,7 +627,7 @@ Scope {
                 z: 0.5
                 anchors.fill: panelBackground
                 source: panelBackground
-                visible: !root.compactStyle && !root.listStyle && !root.skewStyle && !root.altUseM3Layout && !Appearance.zzzEverywhere && Appearance.effectsEnabled && root.effectiveEnableBlurGlass && root.altBlurAmount > 0 && !root.isHighLoad
+                visible: !root.compactStyle && !root.listStyle && !root.skewStyle && !Appearance.zzzEverywhere && Appearance.effectsEnabled && root.effectiveEnableBlurGlass && root.altBlurAmount > 0 && !root.isHighLoad
                 blurEnabled: true
                 blur: root.altBlurAmount
                 blurMax: 64
@@ -1538,9 +1520,7 @@ Scope {
                             anchors.fill: parent
                             radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut
                             visible: selected
-                            color: root.altUseM3Layout
-                                   ? Appearance.colors.colPrimaryContainer
-                                   : Appearance.colors.colLayer1
+                            color: Appearance.colors.colLayer1
                         }
 
                         // Dark gradient towards the left edge inside the highlight
@@ -1587,15 +1567,7 @@ Scope {
 
                                 StyledText {
                                     text: modelData.appName || modelData.title || "Window"
-                                    color: {
-                                        const selected = row.selected
-                                        const useM3 = root.altUseM3Layout
-                                        if (useM3 && selected)
-                                            return Appearance.colors.colOnPrimaryContainer
-                                        if (useM3)
-                                            return Appearance.colors.colOnSurface
-                                        return Appearance.colors.colOnLayer1
-                                    }
+                                    color: Appearance.colors.colOnLayer1
                                     font.pixelSize: Appearance.font.pixelSize.large
                                     elide: Text.ElideRight
                                 }
@@ -1616,15 +1588,7 @@ Scope {
                                                 return "WS " + wsIdx
                                             return title
                                         }
-                                        color: {
-                                            const selected = row.selected
-                                            const useM3 = root.altUseM3Layout
-                                            if (useM3 && selected)
-                                                return Appearance.colors.colOnPrimaryContainer
-                                            if (useM3)
-                                                return Appearance.colors.colSubtext
-                                            return ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.6)
-                                        }
+                                        color: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.6)
                                         font.pixelSize: Appearance.font.pixelSize.small
                                         elide: Text.ElideRight
                                     }

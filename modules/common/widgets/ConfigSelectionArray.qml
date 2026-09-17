@@ -67,7 +67,19 @@ Flow {
             }
             p = p.parent;
         }
-        root.forceActiveFocus();
+
+        // Focus a real option rather than the non-interactive Flow so the
+        // search result lands on a visible, keyboard-operable control.
+        Qt.callLater(() => {
+            let targetIndex = 0
+            for (let i = 0; i < root.options.length; ++i) {
+                if (root.currentValue != null && root.currentValue == root.options[i]?.value) {
+                    targetIndex = i
+                    break
+                }
+            }
+            optionRepeater.itemAt(targetIndex)?.forceActiveFocus()
+        })
     }
 
     Component.onCompleted: {

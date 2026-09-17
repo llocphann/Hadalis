@@ -1,128 +1,139 @@
 # Package Reference
 
-Complete list of packages used by iNiR, organized by category. These are what the setup script installs on Arch-based systems.
+This page documents the Arch-based source install dependency model used by `./setup install`, plus the separate Arch package recipes that distribute the Hadalis/iNiR runtime itself.
 
-The PKGBUILDs live in `sdata/dist-arch/`.
+## Packaging layers
 
-> **`inir-deps`** is a meta-package that depends on all the groups below. It exists so that `pacman -Qdtq | pacman -Rns -` (clean orphans) doesn't remove iNiR's dependencies. It has no files of its own.
+Hadalis has two different Arch packaging trees with different responsibilities:
+
+| Path | Purpose |
+|---|---|
+| `sdata/dist-arch/` | Dependency-group recipes consumed by the source installer, plus the `inir-deps` orphan-protection tracker. |
+| `distro/arch/` | Distributable runtime packages: `inir-shell`, `inir-shell-git`, and the `inir-meta` full-experience meta-package. |
+
+The source installer reads the `depends` arrays from the dependency-group PKGBUILDs under `sdata/dist-arch/`; those group recipes are dependency declarations, not the packaged Hadalis shell payload.
+
+`inir-deps` is different from the dependency groups. It is excluded from the dependency-install loop and is built only after dependency installation finishes. The installer stages its PKGBUILD in a temporary directory, filters its `depends` array to packages that are actually installed, and reinstalls the tracker so changes to `--no-*` choices are reflected in pacman's dependency metadata. The tracker contains no files of its own and exists to keep installed Hadalis dependencies from being removed by orphan cleanup.
+
+The committed `sdata/dist-arch/inir-deps/PKGBUILD` version follows the repository `VERSION`; release publication checks this invariant.
 
 ---
 
 ## Core (`inir-core`)
 
-Essential packages for Niri + ii to function.
+Essential compositor, desktop, portal, and command-line dependencies declared by `sdata/dist-arch/inir-core/PKGBUILD`.
 
 | Package | Purpose |
 |---------|---------|
 | `niri` | Compositor |
 | `awww` | Wallpaper daemon |
 | `bc` | Math in scripts |
-| `coreutils` | Basic utils |
+| `coreutils` | Basic utilities |
 | `cliphist` | Clipboard history |
 | `curl` | HTTP requests |
 | `wget` | Downloads |
 | `ripgrep` | Fast search |
 | `jq` | JSON parsing |
-| `python` | Python interpreter (scripts) |
+| `python` | Python interpreter |
 | `xdg-user-dirs` | User directories |
-| `xdg-utils` | xdg-settings, xdg-open |
-| `rsync` | File sync |
+| `xdg-utils` | `xdg-open` and related utilities |
+| `rsync` | File synchronization |
 | `git` | Version control |
-| `wl-clipboard` | Wayland clipboard (wl-copy, wl-paste) |
-| `libnotify` | Notifications |
-| `pacman-contrib` | checkupdates for update notifications |
-| `wlsunset` | Night light / blue light filter |
+| `wl-clipboard` | Wayland clipboard (`wl-copy`, `wl-paste`) |
+| `libnotify` | Notification CLI integration |
+| `pacman-contrib` | `checkupdates` for update notifications |
+| `wlsunset` | Night-light control |
 | `xdg-desktop-portal` | XDG portal base |
-| `xdg-desktop-portal-gtk` | GTK portal |
-| `xdg-desktop-portal-gnome` | GNOME portal (screenshare) |
-| `polkit` | Privilege elevation |
-| `polkit-gnome` | Polkit auth-dialog agent (works universally) |
+| `xdg-desktop-portal-gtk` | GTK portal backend |
+| `xdg-desktop-portal-gnome` | GNOME portal backend |
+| `polkit` | Privilege elevation framework |
+| `polkit-gnome` | Polkit authentication agent |
 | `networkmanager` | Network management |
-| `gnome-keyring` | Secrets storage |
-| `nautilus` | File manager |
-| `kitty` | Terminal (default) |
-| `fish` | Fish shell (required for scripts) |
-| `gum` | TUI for setup script |
-| `xwayland-satellite` | X11 compatibility |
+| `gnome-keyring` | Secret storage |
+| `nautilus` | Default file manager integration |
+| `kitty` | Default terminal integration |
+| `fish` | Fish shell used by project scripts |
+| `gum` | Setup TUI helper |
+| `xwayland-satellite` | X11 compatibility under Wayland |
 
 ---
 
 ## Quickshell (`inir-quickshell`)
 
-Qt6 stack and Quickshell runtime.
-
-### From official repos
+Quickshell, Qt 6, and QML/KDE runtime dependencies declared by `sdata/dist-arch/inir-quickshell/PKGBUILD`.
 
 | Package | Purpose |
 |---------|---------|
+| `quickshell` | Shell runtime |
 | `qt6-declarative` | QML engine |
 | `qt6-base` | Qt core |
 | `qt6-svg` | SVG support |
 | `qt6-wayland` | Wayland integration |
-| `qt6-5compat` | Qt5 compatibility |
-| `qt6-imageformats` | Image formats |
-| `qt6-multimedia` | Media playback |
-| `qt6-positioning` | Geolocation |
+| `qt6-5compat` | Qt 5 compatibility APIs |
+| `qt6-imageformats` | Additional image formats |
+| `qt6-multimedia` | Media APIs |
+| `qt6-positioning` | Geolocation APIs |
 | `qt6-quicktimeline` | Timeline animations |
 | `qt6-sensors` | Sensor APIs |
 | `qt6-tools` | Qt tools |
-| `qt6-translations` | Translations |
+| `qt6-translations` | Qt translations |
 | `qt6-virtualkeyboard` | Virtual keyboard |
 | `jemalloc` | Memory allocator |
 | `libpipewire` | PipeWire integration |
 | `libxcb` | X11 bridge |
-| `wayland` | Wayland libs |
-| `libdrm` | DRM/display |
-| `mesa` | OpenGL |
-| `kirigami` | KDE components |
+| `wayland` | Wayland libraries |
+| `libdrm` | DRM/display support |
+| `mesa` | Graphics/OpenGL stack |
+| `kirigami` | KDE/QML components |
 | `kdialog` | KDE dialogs |
-| `syntax-highlighting` | Code highlighting |
-| `qt6ct` | Qt6 config tool |
-| `breeze-icons` | Breeze icon theme (lightweight) |
-| `plasma-integration` | KDE platform theme (reads kdeglobals for Qt colors) |
+| `syntax-highlighting` | KDE syntax-highlighting QML support |
+| `qt6ct` | Qt 6 configuration tool |
+| `breeze-icons` | Breeze icon fallback |
 
-### From AUR
-
-| Package | Purpose |
-|---------|---------|
-| `qt6-avif-image-plugin` | AVIF image support |
+`plasma-integration` is installed separately by the source installer as a Qt platform-theme integration; `qt6-avif-image-plugin` is attempted through the AUR helper for AVIF image support.
 
 ---
 
 ## Audio (`inir-audio`)
 
-Audio stack and media controls.
+Core audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/PKGBUILD`. This group is enabled by default and can be disabled with the installer's audio option.
 
 | Package | Purpose |
 |---------|---------|
 | `pipewire` | Audio server |
-| `pipewire-pulse` | PulseAudio compat |
-| `pipewire-alsa` | ALSA compat |
-| `wireplumber` | Session manager |
-| `playerctl` | Media player control |
-| `plasma-browser-integration` | Browser media sessions for MPRIS controls/artwork |
-| `libdbusmenu-gtk3` | Tray menus |
-| `pavucontrol` | Volume control GUI |
+| `pipewire-pulse` | PulseAudio compatibility |
+| `pipewire-alsa` | ALSA compatibility |
+| `wireplumber` | PipeWire session manager |
+| `playerctl` | Media-player control |
+| `libdbusmenu-gtk3` | Tray/menu integration |
+| `pavucontrol` | Advanced volume-control GUI |
+| `cava` | Audio visualizer |
 | `mpv` | Media playback backend |
 | `mpv-mpris` | MPRIS bridge for mpv |
 | `yt-dlp` | YouTube extraction backend |
-| `socat` | IPC fallback for YTMusic control |
-| `cava` | Audio visualizer |
-| `easyeffects` | Audio effects |
 
-`pipewire-jack` and `nodejs` are optional/recommended extras depending on your audio and YTMusic setup.
+Equalizer Phase 1 keeps its backend and control transport optional. The group advertises these through `optdepends`, so the source install remains usable without them:
+
+| Optional package | Purpose |
+|------------------|---------|
+| `easyeffects` | Optional audio-effects and Equalizer backend |
+| `socat` | Optional EasyEffects control transport for Equalizer |
+
+Missing either optional package must not make Media playback or shell startup fail. Equalizer capability should degrade to unavailable/error state instead.
+
+The installer separately ensures `plasma-browser-integration` is present for browser media sessions and artwork.
 
 ---
 
 ## Screenshots & Recording (`inir-screencapture`)
 
-Region tools dependencies.
+Screenshot, OCR, and recording dependencies declared by `sdata/dist-arch/inir-screencapture/PKGBUILD`.
 
 | Package | Purpose |
 |---------|---------|
 | `grim` | Screenshots |
 | `slurp` | Region selection |
-| `swappy` | Screenshot editor |
+| `swappy` | Screenshot annotation |
 | `tesseract` | OCR engine |
 | `tesseract-data-eng` | English OCR data |
 | `wf-recorder` | Screen recording |
@@ -133,82 +144,127 @@ Region tools dependencies.
 
 ## Input Toolkit (`inir-toolkit`)
 
-Input simulation, hardware control, and idle management.
+Input simulation, hardware control, idle handling, screenshot helpers, and utility dependencies declared by `sdata/dist-arch/inir-toolkit/PKGBUILD`.
 
 | Package | Purpose |
 |---------|---------|
-| `upower` | Power management |
-| `wtype` | Wayland typing |
-| `ydotool` | Input simulation |
+| `upower` | Power/battery information |
+| `wtype` | Wayland text injection |
+| `ydotool` | Virtual input |
 | `python-evdev` | Evdev bindings |
-| `python-pillow` | Image processing |
+| `python-pillow` | Python image processing |
+| `hyprpicker` | Color picker |
+| `translate-shell` | Translation CLI |
+| `fprintd` | Fingerprint authentication |
 | `brightnessctl` | Backlight control |
-| `ddcutil` | DDC/CI for monitors |
+| `ddcutil` | DDC/CI monitor control |
 | `geoclue` | Geolocation |
-| `swayidle` | Idle management (screen off, lock, suspend) |
+| `swayidle` | Idle management |
 | `swaylock` | Screen locker |
-| `blueman` | Bluetooth manager GUI |
-| `fprintd` | Fingerprint authentication (lock screen) |
+| `grim` | Screenshot capture |
+| `slurp` | Region selection |
+| `imagemagick` | Image processing |
 | `libqalculate` | Calculator backend |
+| `blueman` | Bluetooth manager GUI |
+| `kconfig` | KDE configuration tools such as `kwriteconfig6` |
 | `tesseract` | OCR engine |
 | `tesseract-data-eng` | English OCR data |
 | `tesseract-data-spa` | Spanish OCR data |
+
+When the toolkit option is enabled, the installer also adds `uv` through the AUR helper for the packaged Python environment workflow.
 
 ---
 
 ## Fonts & Theming (`inir-fonts`)
 
-Fonts, theming, and utilities.
-
-### From official repos
+Base font/theming dependencies declared by `sdata/dist-arch/inir-fonts/PKGBUILD`:
 
 | Package | Purpose |
 |---------|---------|
 | `fontconfig` | Font configuration |
+| `noto-fonts-emoji` | Emoji font fallback |
 | `ttf-dejavu` | DejaVu fonts |
 | `ttf-liberation` | Liberation fonts |
+| `ttf-roboto` | Roboto font family |
+| `ttf-roboto-mono` | Roboto Mono |
+| `songrec` | Music recognition integration |
+| `translate-shell` | Translation CLI |
 | `fuzzel` | Application launcher |
 | `glib2` | GLib utilities |
-| `translate-shell` | Translation CLI |
-| `kvantum` | Qt theming |
+| `kvantum` | Qt style engine |
+| `plasma-integration` | Qt/KDE platform-theme integration |
 
-### From AUR
+When the fonts/theming option is enabled, the installer additionally attempts these theme assets through the AUR helper:
 
-| Package | Purpose | Required |
-|---------|---------|----------|
-| `darkly-bin` | Darkly Qt style (Material You widget style for Qt apps) | Yes |
-| `ttf-jetbrains-mono-nerd` | JetBrains Mono Nerd | Yes (monospace and glyphs) |
-| `ttf-material-symbols-variable-git` | Material Symbols | Yes (UI icons) |
-| `ttf-roboto-flex` | Roboto Flex variable font | Yes (default UI font) |
-| `ttf-oxanium` | Oxanium font | Yes (ZZZ and Angel styles) |
-| `ttf-gabarito-git` | Gabarito variable font | Yes (default title font) |
-| `ttf-readex-pro` | Readex Pro font | No (has fallback) |
-| `ttf-rubik-vf` | Rubik variable font | No (has fallback) |
-| `otf-space-grotesk` | Space Grotesk font | No (has fallback) |
-| `ttf-twemoji` | Twitter emoji | No (has fallback) |
-| `adw-gtk-theme-git` | Adwaita GTK theme | Yes |
-| `capitaine-cursors` | Capitaine cursor theme | Yes |
-| `xwayland-satellite` | Xwayland helper for legacy apps | Yes |
+| Package | Role |
+|---------|------|
+| `adw-gtk-theme` | GTK theme |
+| `capitaine-cursors` | Cursor theme |
+| `whitesur-icon-theme` | Additional icon theme |
+| `darkly-bin` | Qt style |
 
-> **Note:** Optional fonts will be downloaded directly from GitHub if AUR packages are unavailable (e.g., due to regional restrictions). The UI will use system fallback fonts if installation fails completely.
+Critical font installs attempted separately are `ttf-material-symbols-variable-git`, `ttf-jetbrains-mono-nerd`, `ttf-roboto-flex`, `ttf-oxanium`, and `ttf-gabarito-git`.
+
+Optional font installs are `otf-space-grotesk`, `ttf-readex-pro`, `ttf-rubik-vf`, and `ttf-twemoji`. For optional fonts with configured fallback URLs, setup attempts a direct font download when the AUR package is unavailable; complete failure falls back to system fonts.
 
 ---
 
-## Optional
+## Installer supplements
 
-Not installed by default, but useful. The shell handles their absence gracefully.
+The source installer intentionally ensures several packages outside the group PKGBUILDs. This list can overlap the groups; the duplicate installation requests use `--needed`.
+
+Always ensured from configured repositories include:
+
+- `quickshell`, `syntax-highlighting`, `kirigami`, `kdialog`
+- `niri`, `cliphist`, `gum`, `starship`, `eza`, `xwayland-satellite`
+- `noto-fonts-emoji`, `nautilus`, `polkit-gnome`
+- `hicolor-icon-theme`, `adwaita-icon-theme`, `papirus-icon-theme`, `breeze-icons`
+- `qt6ct`, `kvantum`, `plasma-integration`, `plasma-browser-integration`
+- `frameworkintegration`, `kdecoration`
+- `sddm`, `qt6-svg`, `qt6-virtualkeyboard`, `qt6-multimedia-ffmpeg`
+- `ffmpeg`
+
+The default AUR-helper pass attempts `qt6-avif-image-plugin`, `gowall-bin`, and `mission-center`. Theme/font and toolkit-specific AUR additions are controlled by their corresponding install options as described above.
+
+Python dependencies are handled by the installer's Python-environment setup rather than being represented as Arch packages merely for the sake of this page.
+
+---
+
+## Runtime integrations not guaranteed by setup
+
+These integrations are useful when their corresponding feature is desired, but the source installer does not guarantee that they are present in every installation:
 
 | Package | Purpose | Used by |
 |---------|---------|---------|
-| `warp-cli` | Cloudflare WARP VPN toggle | Quick toggles panel |
-| `ollama` | Local LLM for AI chat | Sidebar AI assistant |
-| `whisper-cpp` | Local speech-to-text, no API key needed | Voice input and voice search |
-| `cava` | Audio visualizer | Bar widget (optional) |
-| `easyeffects` | Audio effects | Quick toggles panel |
-| `yt-dlp` | YouTube video/audio extraction | YTMusic sidebar |
-| `mpv` | Media player | YTMusic sidebar |
-| `deno` / `node` / `bun` | JavaScript runtime for yt-dlp | YTMusic sidebar (YouTube anti-bot) |
+| `easyeffects` | Optional audio-effects backend | Equalizer capability |
+| `socat` | Optional EasyEffects control transport | Equalizer capability |
+| `warp-cli` | Cloudflare WARP VPN toggle | Quick toggles |
+| `ollama` | Local LLM backend | AI integrations |
+| `whisper-cpp` | Local speech-to-text | Voice input/search |
+| `deno` / `node` / `bun` | JavaScript runtime for yt-dlp | YouTube media extraction when a JS runtime is required |
 
-> **Note:** `cava` and `easyeffects` are included in `inir-audio` but are optional features. The toggles will be hidden if the packages aren't installed.
+`cava`, `yt-dlp`, and `mpv` remain required members of the `inir-audio` dependency group. `easyeffects` and `socat` are advertised by the audio group and dependency tracker as optional feature dependencies; their absence should leave Equalizer unavailable/degraded without breaking Media playback.
 
-> **YTMusic Requirements:** The YTMusic sidebar requires `yt-dlp` and `mpv` for playback. Additionally, yt-dlp needs a JavaScript runtime (`deno`, `node` ≥20, or `bun` ≥1.0.31) to solve YouTube's anti-bot challenges. Install at least one: `deno` (recommended), `nodejs`, or `bun`.
+---
+
+## Distributable Arch packages (`distro/arch`)
+
+The package recipes under `distro/arch/` distribute Hadalis itself rather than serving as source-installer dependency groups:
+
+| Package | Purpose |
+|---------|---------|
+| `inir-shell` | Versioned non-VCS Hadalis shell/runtime package. Before release tags exist, the committed recipe may pin an immutable reviewed commit snapshot; release preparation switches the default source identity to the immutable `vX.Y.Z` tag. |
+| `inir-shell-git` | Development/VCS package following `dev`. |
+| `inir-meta` | Full Hadalis desktop-experience meta-package depending on `inir-shell` plus the wider integration set. |
+
+The pre-release commit pin is a reproducible development/package snapshot, not evidence that current `dev` has passed package acceptance. Published release preparation must replace that default `_source_ref` with the release tag and regenerate `.SRCINFO`; `RELEASING.md` and the publication preflight own that invariant.
+
+`inir-meta` also keeps `easyeffects` and `socat` in `optdepends`, not `depends`. Installing the distributable shell or meta-package therefore does not make the Equalizer backend a hard requirement.
+
+`inir-shell` and `inir-shell-git` install the runtime payload, `inir` launcher, user service, desktop entries, icon, privileged helper/polkit assets, docs, and package-managed version metadata. Their packaged `setup migrate` path preserves package-manager launcher ownership rather than materializing a stale user-local launcher.
+
+For pacman installs, `/usr/lib/systemd/user/inir.service` remains the authoritative unit. The packaged launcher does not copy that unit into `~/.config/systemd/user`; `inir service enable` creates only the compositor-specific wants link and points it directly at the package unit. On upgrade, a legacy user unit is removed automatically only when it is byte-identical to the package unit. A different user unit is treated as an intentional override and causes the package-managed service command to stop with a warning instead of overwriting it.
+
+Run `inir service disable` as each affected user before removing `inir-shell` or `inir-shell-git`. Pacman package hooks deliberately do not mutate users' home directories. If a package is removed while compositor wiring is still enabled, the removal message explains how to delete the resulting dangling `*.wants/inir.service` symlink and reload the user systemd manager.
+
+For release-specific version/source invariants, see [RELEASING.md](RELEASING.md).

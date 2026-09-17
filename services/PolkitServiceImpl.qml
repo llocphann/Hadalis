@@ -14,10 +14,15 @@ Scope {
     property bool interactionAvailable: false
 
     function cancel() {
+        if (!root.flow)
+            return
         root.flow.cancelAuthenticationRequest()
+        root.interactionAvailable = false
     }
 
     function submit(string) {
+        if (!root.flow)
+            return
         root.flow.submit(string)
         root.interactionAvailable = false
     }

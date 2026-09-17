@@ -10,6 +10,10 @@ AndroidQuickToggleButton {
     id: root
     
     name: Translation.tr("EasyEffects")
+    visible: root.editMode || EasyEffects.available
+    statusText: EasyEffects.available
+        ? (toggled ? Translation.tr("Active") : Translation.tr("Inactive"))
+        : Translation.tr("Unavailable")
 
     toggled: EasyEffects.active
     buttonIcon: "graphic_eq"

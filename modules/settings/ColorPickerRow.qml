@@ -79,6 +79,7 @@ Item {
         RippleButton {
             Layout.fillWidth: true
             implicitHeight: 36
+            buttonText: root.label
             colBackground: Appearance.colors.colLayer2
             colBackgroundHover: Appearance.colors.colLayer2Hover
             colRipple: Appearance.colors.colLayer2Active

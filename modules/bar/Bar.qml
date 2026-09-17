@@ -16,17 +16,35 @@ import qs.modules.common.functions
 Scope {
     id: bar
     property bool showBarBackground: Config.options?.bar?.showBackground ?? true
+    property bool _legacyCornerStyleMigrationDone: false
     // Note: Vignette effect moved to Backdrop.qml (backdrop wallpaper layer)
 
-    // Global style and bar appearance decide which surfaces, decorators and insets
-    // the bar window is built with, and several of them are Loaders that only
-    // evaluate at creation. Rebuilding the window is what moving the bar and moving
-    // it back used to do by hand — do it here instead.
-    readonly property string rebuildKey: `${Config.options?.appearance?.globalStyle ?? "material"}_${Config.options?.bar?.appearanceStyle ?? "classic"}`
+    // Global style changes can swap surface implementations that are evaluated
+    // when the bar window is created, so rebuild only for that live dependency.
+    readonly property string rebuildKey: Config.options?.appearance?.globalStyle ?? "material"
     property bool rebuilding: false
     onRebuildKeyChanged: {
         bar.rebuilding = true;
         barRebuildTimer.restart();
+    }
+
+    function normalizeLegacyCornerStyle(): void {
+        if (bar._legacyCornerStyleMigrationDone || !Config.ready)
+            return
+
+        bar._legacyCornerStyleMigrationDone = true
+        if ((Config.options?.bar?.cornerStyle ?? 0) !== 0)
+            Config.setNestedValue("bar.cornerStyle", 0)
+    }
+
+    Component.onCompleted: bar.normalizeLegacyCornerStyle()
+
+    Connections {
+        target: Config
+        function onReadyChanged(): void {
+            if (Config.ready)
+                bar.normalizeLegacyCornerStyle()
+        }
     }
 
     Timer {
@@ -59,30 +77,16 @@ Scope {
                 id: barRoot
                 screen: barLoader.modelData
                 visible: true
-                readonly property bool zzzDetachedRounded: Appearance.zzzEverywhere
-                    && Appearance.zzz.round
-                    && ((Config.options?.bar?.appearanceStyle ?? "classic") === "classic")
-                    && bar.showBarBackground
-                    && (((Config.options?.bar?.cornerStyle ?? 0) === 1) || ((Config.options?.bar?.cornerStyle ?? 0) === 3))
-                readonly property real panelSurfaceHeight: zzzDetachedRounded
-                    ? (Appearance.sizes.baseBarHeight + Appearance.sizes.elevationMargin * 2)
-                    : Appearance.sizes.barHeight
-                readonly property real islandShadowAllowance: barContent.islandShadowAllowance
-                // Hug corners belong to the classic bar surface. Islands, scenic,
-                // frame and pill draw their own, so the decorators must go with it.
+                readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property bool hugCorners: bar.showBarBackground
-                    && (Config.options?.bar?.cornerStyle ?? 0) === 0
-                    && (Config.options?.bar?.appearanceStyle ?? "classic") === "classic"
                     && !Appearance.zzzEverywhere
-                readonly property real roundDecoratorAllowance: (!zzzDetachedRounded && hugCorners)
+                readonly property real roundDecoratorAllowance: hugCorners
                     ? Appearance.rounding.screenRounding : 0
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
-                    && !barRoot.zzzDetachedRounded
                     && !Appearance.zzzEverywhere
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.bottom
-                    && !barRoot.zzzDetachedRounded
                     && !Appearance.zzzEverywhere
 
                 property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
@@ -117,7 +121,6 @@ Scope {
                     barRoot.panelSurfaceHeight
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: barRoot.panelSurfaceHeight + barRoot.roundDecoratorAllowance
-                    + barRoot.islandShadowAllowance
                 // Explicit zero-size item prevents ambiguous null input region during
                 // surface map/unmap transitions. Region { item: null } can be interpreted
                 // as "full surface accepts input" by the compositor, causing an invisible
@@ -129,37 +132,11 @@ Scope {
                 color: "transparent"
 
                 // Shaped compositor blur; Niri applies the request only inside the
-                // actual bar content rather than across the whole layer surface.
+                // actual Classic bar background rather than across the whole layer surface.
                 BackgroundEffect.blurRegion: Region {
                     Region {
-                        item: barContent.nativeBlurActive && !barContent.isIslands
-                            ? barContent.backgroundItem : emptyMask
+                        item: barContent.nativeBlurActive ? barContent.backgroundItem : emptyMask
                         radius: barContent.backgroundItem.radius
-                    }
-                    Region {
-                        item: barContent.nativeBlurActive && barContent.isIslands
-                            ? barContent.nativeBlurLeftIsland : emptyMask
-                        radius: barContent.nativeBlurLeftIsland?.radius ?? 0
-                    }
-                    Region {
-                        item: barContent.nativeBlurActive && barContent.isIslands
-                            ? barContent.nativeBlurCenterLeftIsland : emptyMask
-                        radius: barContent.nativeBlurCenterLeftIsland?.radius ?? 0
-                    }
-                    Region {
-                        item: barContent.nativeBlurActive && barContent.isIslands
-                            ? barContent.nativeBlurCenterIsland : emptyMask
-                        radius: barContent.nativeBlurCenterIsland?.radius ?? 0
-                    }
-                    Region {
-                        item: barContent.nativeBlurActive && barContent.isIslands
-                            ? barContent.nativeBlurCenterRightIsland : emptyMask
-                        radius: barContent.nativeBlurCenterRightIsland?.radius ?? 0
-                    }
-                    Region {
-                        item: barContent.nativeBlurActive && barContent.isIslands
-                            ? barContent.nativeBlurRightIsland : emptyMask
-                        radius: barContent.nativeBlurRightIsland?.radius ?? 0
                     }
                 }
 
@@ -204,7 +181,7 @@ Scope {
                             left: parent.left
                             top: parent.top
                             bottom: undefined
-                            topMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -(barRoot.panelSurfaceHeight + barRoot.islandShadowAllowance) : 0
+                            topMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -barRoot.panelSurfaceHeight : 0
                             bottomMargin: barRoot.bottomDeadPixelWorkaround ? -1 : 0
                             rightMargin: barRoot.rightDeadPixelWorkaround ? -1 : 0
                         }
@@ -232,7 +209,7 @@ Scope {
                             PropertyChanges {
                                 target: barContent
                                 anchors.topMargin: 0
-                                anchors.bottomMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -(barRoot.panelSurfaceHeight + barRoot.islandShadowAllowance) : 0
+                                anchors.bottomMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -barRoot.panelSurfaceHeight : 0
                             }
                         }
                     }

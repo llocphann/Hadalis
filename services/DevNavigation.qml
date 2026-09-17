@@ -63,6 +63,7 @@ Singleton {
         const list = pages ?? []
         for (let index = 0; index < list.length; index++) {
             const page = list[index]
+            if (page?.devNavigationHidden === true) continue
             const key = String(page?.key ?? "")
             if (key.length === 0) continue
             out.push({ id: "settings/" + key, family: "shared", surface: "settings", view: key, pageIndex: index, safe: true, settleMs: 300 })

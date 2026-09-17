@@ -1,0 +1,50 @@
+name: Documentation contracts
+
+on:
+  push:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - '**/*.qml'
+      - 'translations/**'
+      - 'sdata/subcmd-install/1.deps-router.sh'
+      - 'scripts/release.sh'
+      - 'scripts/verify-docs.sh'
+      - 'scripts/test-ipc-registry-generator.py'
+      - 'scripts/lib/generate-ipc-registry.py'
+      - 'scripts/lib/ipc-registry.sh'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - '**/*.qml'
+      - 'translations/**'
+      - 'sdata/subcmd-install/1.deps-router.sh'
+      - 'scripts/release.sh'
+      - 'scripts/verify-docs.sh'
+      - 'scripts/test-ipc-registry-generator.py'
+      - 'scripts/lib/generate-ipc-registry.py'
+      - 'scripts/lib/ipc-registry.sh'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate IPC registry parser
+        run: python3 scripts/test-ipc-registry-generator.py
+
+      - name: Validate documentation contracts
+        run: bash scripts/verify-docs.sh

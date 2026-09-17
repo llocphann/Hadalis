@@ -38,13 +38,22 @@ Singleton {
             }))
 
     readonly property var defaultTimezones: ["Australia/Sydney", "Asia/Tokyo", "Europe/London", "America/New_York"]
-    readonly property var timezones: Config.options?.background?.widgets?.worldClock?.timezones ?? root.defaultTimezones
+    readonly property var timezones: {
+        const configured = Config.options?.background?.widgets?.worldClock?.timezones
+        if (!Array.isArray(configured))
+            return root.defaultTimezones
+        return configured.map(tz => String(tz ?? "").trim())
+            .filter(tz => tz.length > 0)
+    }
 
     function setTimezone(index: int, tz: string): void {
         let updated = root.timezones.slice();
         if (index < 0 || index >= updated.length)
             return;
-        updated[index] = tz;
+        const normalized = String(tz ?? "").trim()
+        if (normalized.length === 0)
+            return;
+        updated[index] = normalized;
         Config.setNestedValue("background.widgets.worldClock.timezones", updated);
     }
 
@@ -61,6 +70,7 @@ Singleton {
     property var now: new Date()
     property var offsetsMinutes: [0, 0, 0, 0]
     property int _offsetIndex: -1
+    property var _offsetTimezones: []
     property var _nextOffsets: []
     property bool _refreshQueued: false
     property string _offsetText: ""
@@ -74,28 +84,42 @@ Singleton {
         }
         root._refreshQueued = false;
         root._offsetIndex = 0;
+        root._offsetTimezones = root.timezones.slice();
         root._nextOffsets = [];
         root._runNextOffset();
+    }
+
+    function _completeOffset(offset: int): void {
+        const nextOffsets = root._nextOffsets.slice();
+        nextOffsets.push(offset);
+        root._nextOffsets = nextOffsets;
+        root._offsetIndex++;
+        Qt.callLater(root._runNextOffset);
     }
 
     function _runNextOffset(): void {
         if (!root.enabled) {
             root._offsetIndex = -1;
+            root._offsetTimezones = [];
             root._nextOffsets = [];
+            root._refreshQueued = false;
             return;
         }
-        if (root._offsetIndex >= root.timezones.length) {
-            root.offsetsMinutes = root._nextOffsets;
+        if (root._offsetIndex >= root._offsetTimezones.length) {
             root._offsetIndex = -1;
-            if (root._refreshQueued)
+            if (root._refreshQueued) {
                 root.refreshOffsets();
+                return;
+            }
+            root.offsetsMinutes = root._nextOffsets;
+            root._offsetTimezones = [];
             return;
         }
 
         root._offsetText = "";
         offsetProc.exec({
             command: ["date", "+%z"],
-            environment: ({ TZ: String(root.timezones[root._offsetIndex] ?? "UTC") })
+            environment: ({ TZ: String(root._offsetTimezones[root._offsetIndex] ?? "UTC") })
         });
     }
 
@@ -124,21 +148,29 @@ Singleton {
 
     Process {
         id: offsetProc
+        property bool startObserved: false
         stdout: StdioCollector {
             id: offsetCollector
             onStreamFinished: root._offsetText = offsetCollector.text.trim()
         }
+        onRunningChanged: {
+            if (offsetProc.running) {
+                offsetProc.startObserved = false;
+                return;
+            }
+            if (offsetProc.startObserved)
+                return;
+
+            root._completeOffset(0);
+        }
+        onStarted: offsetProc.startObserved = true
         onExited: {
             const match = root._offsetText.match(/^([+-])(\d{2})(\d{2})$/);
             const offset = match
                 ? (match[1] === "-" ? -1 : 1)
                     * (parseInt(match[2]) * 60 + parseInt(match[3]))
                 : 0;
-            const nextOffsets = root._nextOffsets.slice();
-            nextOffsets.push(offset);
-            root._nextOffsets = nextOffsets;
-            root._offsetIndex++;
-            Qt.callLater(root._runNextOffset);
+            root._completeOffset(offset);
         }
     }
 

@@ -7,7 +7,7 @@ AndroidQuickToggleButton {
     id: root
 
     name: Translation.tr("Game mode")
-    statusText: GameMode.active ? Translation.tr("Active") : ""
+    statusText: GameMode.active ? Translation.tr("Active") : Translation.tr("Inactive")
     toggled: GameMode.active
     buttonIcon: "gamepad"
 

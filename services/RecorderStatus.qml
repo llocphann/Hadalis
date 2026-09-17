@@ -158,18 +158,20 @@ Singleton {
 
     // Quick recheck after a recording action (start/stop) to catch state change fast
     function scheduleQuickCheck(): void {
+        quickCheckTimer.initialRecordingState = root.isRecording
         quickCheckTimer.attemptsRemaining = 6
         quickCheckTimer.restart()
     }
     Timer {
         id: quickCheckTimer
+        property bool initialRecordingState: false
         property int attemptsRemaining: 0
         interval: 350
         repeat: true
         onTriggered: {
             root.refreshStatus()
             attemptsRemaining = Math.max(0, attemptsRemaining - 1)
-            if (root.isRecording || attemptsRemaining <= 0)
+            if (root.isRecording !== initialRecordingState || attemptsRemaining <= 0)
                 stop()
         }
     }
@@ -189,11 +191,22 @@ Singleton {
 
     Process {
         id: storedConfigProcess
+        property bool startObserved: false
         command: ["/usr/bin/cat", Config.filePath]
         stdout: StdioCollector {
             id: storedConfigCollector
         }
         stderr: StdioCollector {}
+        onRunningChanged: {
+            if (storedConfigProcess.running) {
+                storedConfigProcess.startObserved = false
+                return
+            }
+            if (storedConfigProcess.startObserved)
+                return
+            root.resetStoredAudioConfig()
+        }
+        onStarted: storedConfigProcess.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0)
                 root.parseStoredAudioConfig(storedConfigCollector.text)
@@ -204,11 +217,22 @@ Singleton {
 
     Process {
         id: metadataProcess
+        property bool startObserved: false
         command: ["/usr/bin/cat", root.recorderStatusPath]
         stdout: StdioCollector {
             id: metadataCollector
         }
         stderr: StdioCollector {}
+        onRunningChanged: {
+            if (metadataProcess.running) {
+                metadataProcess.startObserved = false
+                return
+            }
+            if (metadataProcess.startObserved)
+                return
+            root.resetAudioMetadata()
+        }
+        onStarted: metadataProcess.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 root.resetAudioMetadata()
@@ -233,10 +257,22 @@ Singleton {
 
     Process {
         id: checkProcess
+        property bool startObserved: false
         command: ["/usr/bin/pgrep", "-xo", "wf-recorder"]
         stdout: StdioCollector {
             id: recorderPidCollector
         }
+        onRunningChanged: {
+            if (checkProcess.running) {
+                checkProcess.startObserved = false
+                return
+            }
+            if (checkProcess.startObserved)
+                return
+            root.recorderPid = 0
+            root.isRecording = false
+        }
+        onStarted: checkProcess.startObserved = true
         onExited: (exitCode, exitStatus) => {
             const previousPid = root.recorderPid
             const parsedPid = parseInt(recorderPidCollector.text.trim(), 10)

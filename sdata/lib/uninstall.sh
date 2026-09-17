@@ -384,7 +384,7 @@ uninstall_remove_inir_only() {
     local total=0
     for path in "${!INIR_ONLY_PATHS[@]}"; do
         local ep
-        ep=$(eval echo "$path")
+        ep="$path"
         [[ -e "$ep" ]] && ((total++))
     done
 
@@ -394,7 +394,7 @@ uninstall_remove_inir_only() {
         local idx=0
         for path in "${!INIR_ONLY_PATHS[@]}"; do
             local ep
-            ep=$(eval echo "$path")
+            ep="$path"
             local desc="${INIR_ONLY_PATHS[$path]}"
 
             if [[ -d "$ep" ]]; then
@@ -438,7 +438,7 @@ uninstall_handle_shared_configs() {
 
     for path in "${!SHARED_PATHS[@]}"; do
         local ep
-        ep=$(eval echo "$path")
+        ep="$path"
         [[ ! -e "$ep" ]] && continue
 
         parse_shared_path_meta "${SHARED_PATHS[$path]}"
@@ -616,7 +616,7 @@ uninstall_handle_quickshell_shared() {
         echo ""
         for path in "${!QUICKSHELL_SHARED[@]}"; do
             local ep
-            ep=$(eval echo "$path")
+            ep="$path"
             local desc="${QUICKSHELL_SHARED[$path]}"
             [[ -e "$ep" ]] && echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc"
         done
@@ -628,7 +628,7 @@ uninstall_handle_quickshell_shared() {
             local _removed=0
             for path in "${!QUICKSHELL_SHARED[@]}"; do
                 local ep
-                ep=$(eval echo "$path")
+                ep="$path"
                 local desc="${QUICKSHELL_SHARED[$path]}"
                 if [[ -d "$ep" ]]; then
                     rm -rf "$ep"
@@ -648,7 +648,7 @@ uninstall_handle_quickshell_shared() {
         else
             for path in "${!QUICKSHELL_SHARED[@]}"; do
                 local ep
-                ep=$(eval echo "$path")
+                ep="$path"
                 local desc="${QUICKSHELL_SHARED[$path]}"
                 [[ -e "$ep" ]] && echo -e "  ${STY_YELLOW}⊘${STY_RST} Keeping: $desc"
             done

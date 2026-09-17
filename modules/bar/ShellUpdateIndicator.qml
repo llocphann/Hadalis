@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -25,11 +24,32 @@ MouseArea {
     hoverEnabled: true
     cursorShape: ShellUpdates.isUpdating ? Qt.ArrowCursor : Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton
+    activeFocusOnTab: root.visible && !ShellUpdates.isUpdating
+
+    Accessible.role: Accessible.Button
+    Accessible.name: ShellUpdates.isUpdating
+        ? Translation.tr("Updating iNiR") : Translation.tr("iNiR update available")
+    Accessible.focusable: root.visible && !ShellUpdates.isUpdating
 
     readonly property color accentColor: Appearance.angelEverywhere ? Appearance.angel.colPrimary
         : Appearance.inirEverywhere ? (Appearance.inir?.colAccent ?? Appearance.colors.colPrimary)
         : Appearance.auroraEverywhere ? (Appearance.aurora?.colAccent ?? Appearance.colors.colPrimary)
         : Appearance.colors.colPrimary
+
+    function activatePrimary(): void {
+        if (!ShellUpdates.isUpdating)
+            ShellUpdates.openOverlay()
+    }
+
+    Keys.onPressed: event => {
+        if (ShellUpdates.isUpdating || event.isAutoRepeat
+                || (event.key !== Qt.Key_Return
+                    && event.key !== Qt.Key_Enter
+                    && event.key !== Qt.Key_Space))
+            return
+        root.activatePrimary()
+        event.accepted = true
+    }
 
     onClicked: (mouse) => {
         if (ShellUpdates.isUpdating) return;
@@ -37,15 +57,8 @@ MouseArea {
         if (mouse.button === Qt.RightButton) {
             ShellUpdates.dismiss()
         } else {
-            ShellUpdates.openOverlay()
+            root.activatePrimary()
         }
-    }
-
-    // Easter egg: long-press instead of clicking and she takes the credit
-    onPressAndHold: {
-        if (Config.options?.mascot?.enable ?? false)
-            Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "mascot", "appearWithLine",
-                "update-ready", "top", Translation.tr("Pressed it. You're welcome.")])
     }
 
     // Background pill
@@ -93,6 +106,12 @@ MouseArea {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
+    }
+
+    KeyboardFocusRing {
+        anchors.fill: pill
+        focusVisible: root.activeFocus
+        radius: pill.radius
     }
 
     RowLayout {
@@ -147,6 +166,7 @@ MouseArea {
     StyledPopup {
         id: updatePopup
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
 
         // Wrapper caps implicitWidth so StyledPopup doesn't grow unbounded
         // (monospace hashes + branch names exceed the visual area otherwise)

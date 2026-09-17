@@ -34,7 +34,7 @@ Total cold start to panels visible: under 2 seconds on decent hardware.
 
 The shell has two completely separate visual identities that share the same services layer:
 
-**Material ii** uses Material Design language with 6 style variants (material, cards, aurora, inir, angel, zzz). Bar at the top. Sidebars from the edges. Overview launcher.
+**Material ii** uses Material Design language with the active material, cards, aurora, inir, angel, zzz, and cookie style options. Its Classic Bar supports top, bottom, left, and right placement. Sidebars open from the edges. Overview provides the launcher/task-navigation surface.
 
 **Waffle** uses Windows 11 Fluent Design. Taskbar at the bottom. Start menu. Action center. Notification center.
 
@@ -105,7 +105,7 @@ A simplified map of what lives where:
 | `scripts/inir` | CLI launcher (~3600 lines of bash) | High |
 | `sdata/` | Install, update, migrations | High |
 | `defaults/` | Shipped default config and app configs | Medium |
-| `modules/bar/` | Top bar (ii family) | Normal |
+| `modules/bar/` | Classic Bar runtime (ii family; horizontal and vertical placements) | Normal |
 | `modules/waffle/` | Complete Windows 11 family | Normal |
 | `modules/sidebar/` | Physical sidebar hosts and live layout behavior | High |
 | `modules/sidebarLeft/` | Semantic feature content: AI chat, YT Music, widgets | Normal |
@@ -119,8 +119,8 @@ Full breakdown: [Project Map](PROJECT_MAP.md)
 iNiR ships as a git repo with an interactive installer:
 
 ```bash
-git clone https://github.com/snowarch/inir.git
-cd inir
+git clone https://github.com/llocphann/Hadalis.git
+cd Hadalis
 ./setup install
 ```
 

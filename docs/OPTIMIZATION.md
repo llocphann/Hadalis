@@ -270,7 +270,7 @@ Use `Appearance.animationsEnabled` and `Appearance.effectsEnabled` to respect us
 
 On Niri 26.04 or newer, Settings › Effects can delegate supported translucent surfaces to Niri's `ext-background-effect-v1` implementation and avoid a duplicate QML blur pass. The page is shared by ii and Waffle and provides a default backend plus overrides for bars, docks, panels, islands and desktop widgets. `Auto` preserves each global style's intended material; `Wallpaper`, `Compositor` and `Off` are explicit requests.
 
-Native blur is deliberately shape-aware. Rounded rectangles publish their exact item bounds and radius, while the islands bar publishes a union of its five live cards. Complex connected decorations, pill compositions and non-rounded silhouettes use wallpaper blur when an equivalent compositor region cannot be expressed. Disabling compositor blur keeps the selected global style and resolves through its wallpaper or solid fallback.
+Native blur is deliberately shape-aware. Rounded rectangles publish their exact item bounds and radius, while surfaces using the `islands-union` topology publish the exact union of their live regions. Complex connected decorations, pill compositions and non-rounded silhouettes use wallpaper blur when an equivalent compositor region cannot be expressed. Disabling compositor blur keeps the selected global style and resolves through its wallpaper or solid fallback.
 
 Launchers, overview, wallpaper pickers and most other heavy panels are created on demand. Their IPC commands remain registered through lightweight routers. Sidebars are the deliberate exception: their fullscreen roots load in the deferred phase, their content waits for the first valid mapped geometry, and both remain resident afterward so rapid close/reopen can reverse one surface without rebuilding its workspace.
 
@@ -288,9 +288,9 @@ The bar spectrum uses one shared Cava process regardless of monitor count. Its
 `Primary only` mode is the performance default: only the configured primary
 output uploads and paints spectrum canvases, while the other bars keep their
 normal layout. `All monitors` is available in Settings › Bar › Audio spectrum
-for users who prefer matching visualizers on every output. M3 visualizer slots
-collapse while the shared service reports no audio signal, so an empty Cava
-frame does not reserve bar space.
+for users who prefer matching visualizers on every output. The Classic bar
+visualizer only paints while the shared service reports an audio signal, so an
+empty Cava frame does not reserve bar space.
 
 
 ## Tools

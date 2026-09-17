@@ -97,6 +97,14 @@ MouseArea {
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
+    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    activeFocusOnTab: root.visible
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.showPinnedIdle
+        ? Translation.tr("Timer")
+        : Translation.tr("Timer %1").arg(root.timeText)
+    Accessible.focusable: root.visible
 
     function openTimerPanel(): void {
         GlobalStates.openSidebarRight(root.QsWindow.window?.screen?.name ?? "")
@@ -117,21 +125,33 @@ MouseArea {
         }
     }
 
-    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    function activatePrimary(): void {
+        if (!root.anyActive && root.showPinnedIdle) {
+            root.openTimerPanel()
+            return
+        }
+
+        if (root.pomodoroActive)
+            TimerService.togglePomodoro()
+        else if (root.countdownActive)
+            TimerService.toggleCountdown()
+        else if (root.stopwatchActive)
+            TimerService.toggleStopwatch()
+    }
+
+    Keys.onPressed: event => {
+        if (event.isAutoRepeat
+                || (event.key !== Qt.Key_Return
+                    && event.key !== Qt.Key_Enter
+                    && event.key !== Qt.Key_Space))
+            return
+        root.activatePrimary()
+        event.accepted = true
+    }
+
     onClicked: (mouse) => {
         if (mouse.button === Qt.LeftButton) {
-            if (!root.anyActive && root.showPinnedIdle) {
-                root.openTimerPanel()
-                return
-            }
-
-            if (root.pomodoroActive) {
-                TimerService.togglePomodoro()
-            } else if (root.countdownActive) {
-                TimerService.toggleCountdown()
-            } else if (root.stopwatchActive) {
-                TimerService.toggleStopwatch()
-            }
+            root.activatePrimary()
             return
         }
 
@@ -187,6 +207,12 @@ MouseArea {
             enabled: Appearance.animationsEnabled
             animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
+    }
+
+    KeyboardFocusRing {
+        anchors.fill: pill
+        focusVisible: root.activeFocus
+        radius: pill.radius
     }
 
     RowLayout {
@@ -249,6 +275,7 @@ MouseArea {
     // Tooltip
     TimerIndicatorTooltip {
         hoverTarget: root
+        alternativeVisibleCondition: root.activeFocus
         pomodoroActive: root.pomodoroActive
         countdownActive: root.countdownActive
         stopwatchActive: root.stopwatchActive

@@ -11,7 +11,7 @@ Item {
     property string text: ""
     property font font
     property bool extraVisibleCondition: true
-    property bool alternativeVisibleCondition: false
+    property bool alternativeVisibleCondition: parent?.activeFocus ?? false
     property int delay: 16
     property real horizontalPadding: 10
     property real verticalPadding: 5

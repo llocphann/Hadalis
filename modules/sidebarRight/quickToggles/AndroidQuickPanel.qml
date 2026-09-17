@@ -30,7 +30,10 @@ AbstractQuickPanel {
 
     // Toggles
     readonly property list<string> availableToggleTypes: ["network", "hotspot", "bluetooth", "idleInhibitor", "easyEffects", "nightLight", "darkMode", "cloudflareWarp", "gameMode", "screenSnip", "colorPicker", "onScreenKeyboard", "mic", "audio", "notifications", "powerProfile", "musicRecognition", "voiceSearch", "antiFlashbang"]
-    readonly property int columns: Config.options?.sidebar?.quickToggles?.android?.columns ?? 4
+    readonly property int columns: {
+        const configured = Number(Config.options?.sidebar?.quickToggles?.android?.columns ?? 4)
+        return Number.isFinite(configured) ? Math.max(1, Math.round(configured)) : 4
+    }
     readonly property list<var> toggles: Config.ready ? (Config.options?.sidebar?.quickToggles?.android?.toggles ?? []) : []
     readonly property list<var> toggleRows: toggleRowsForList(toggles)
     readonly property list<var> unusedToggles: {
@@ -43,15 +46,25 @@ AbstractQuickPanel {
         var rows = [];
         var row = [];
         var totalSize = 0; // Total cols taken in current row
+        var seenTypes = [];
         for (var i = 0; i < togglesList.length; i++) {
-            if (!togglesList[i]) continue;
-            if (totalSize + togglesList[i].size > columns) {
+            const toggle = togglesList[i];
+            if (!toggle) continue;
+            const type = String(toggle.type ?? "");
+            if (availableToggleTypes.indexOf(type) === -1 || seenTypes.indexOf(type) !== -1)
+                continue;
+            seenTypes.push(type);
+            const configuredSize = Number(toggle.size ?? 1);
+            const size = Number.isFinite(configuredSize)
+                ? Math.max(1, Math.min(columns, Math.round(configuredSize)))
+                : 1;
+            if (row.length > 0 && totalSize + size > columns) {
                 rows.push(row);
                 row = [];
                 totalSize = 0;
             }
-            row.push(togglesList[i]);
-            totalSize += togglesList[i].size;
+            row.push(Object.assign({}, toggle, { size }));
+            totalSize += size;
         }
         if (row.length > 0) {
             rows.push(row);

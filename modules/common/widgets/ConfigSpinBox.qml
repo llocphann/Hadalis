@@ -123,6 +123,7 @@ RowLayout {
     StyledSpinBox {
         id: spinBoxWidget
         Layout.fillWidth: false
-        value: root.value
+        Accessible.name: root.text
+        Accessible.description: root.description
     }
 }

@@ -91,7 +91,9 @@ Singleton {
         if (active && CompositorService.isNiri) {
             // When setting enabled AND gamemode active -> disable niri animations
             // When setting disabled -> re-enable niri animations
-            setNiriAnimations(!active || !controlNiriAnimations)
+            const shouldEnable = !active || !controlNiriAnimations
+            _lastNiriAnimState = shouldEnable
+            setNiriAnimations(shouldEnable)
         }
     }
 
@@ -135,6 +137,11 @@ Singleton {
     }
 
     function _saveState() {
+        if (saveProcess.running) {
+            saveProcess.rerunAfterExit = true
+            return
+        }
+        saveProcess.rerunAfterExit = false
         saveProcess.running = true
     }
 
@@ -279,13 +286,20 @@ Singleton {
     // State persistence - write via process
     Process {
         id: saveProcess
+        property bool rerunAfterExit: false
         command: [
             "/usr/bin/bash",
             "-c",
             "mkdir -p ~/.local/state/quickshell/user\n" +
             "echo " + (root._manualActive ? "1" : "0") + " > " + root._stateFile
         ]
-        onExited: root._log("[GameMode] State saved:", root._manualActive)
+        onExited: {
+            root._log("[GameMode] State saved:", root._manualActive)
+            if (saveProcess.rerunAfterExit) {
+                saveProcess.rerunAfterExit = false
+                Qt.callLater(() => root._saveState())
+            }
+        }
     }
 
     // React to window changes
@@ -359,7 +373,15 @@ Singleton {
     readonly property string niriConfigPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/niri/config.kdl"
 
     function setNiriAnimations(enabled) {
-        if (!controlNiriAnimations) return
+        if (!controlNiriAnimations && !enabled) return
+        if (niriAnimProcess.running) {
+            niriAnimProcess.pendingEnabled = enabled
+            niriAnimProcess.rerunAfterExit = true
+            return
+        }
+
+        niriAnimProcess.pendingEnabled = enabled
+        niriAnimProcess.rerunAfterExit = false
 
         // Try modular file first, fall back to root config.kdl
         const targetFile = niriAnimationsPath
@@ -378,14 +400,41 @@ Singleton {
         niriAnimProcess.running = true
     }
 
+    function _finishNiriAnimationMutation(code: int, spawnFailed: bool): void {
+        if (spawnFailed)
+            root._log("[GameMode] Niri animation update failed to start")
+        else if (code === 0)
+            root._log("[GameMode] Niri animations updated")
+
+        // Toast suppression is a temporary UI gate, not process ownership.
+        // Release it even when the helper cannot be spawned so a failed update
+        // cannot mute later compositor reload notifications indefinitely.
+        suppressClearTimer.restart()
+
+        if (niriAnimProcess.rerunAfterExit) {
+            const pending = niriAnimProcess.pendingEnabled
+            niriAnimProcess.rerunAfterExit = false
+            Qt.callLater(() => root.setNiriAnimations(pending))
+        }
+    }
+
     Process {
         id: niriAnimProcess
-        onExited: (code, status) => {
-            if (code === 0) {
-                root._log("[GameMode] Niri animations updated")
+        property bool pendingEnabled: true
+        property bool rerunAfterExit: false
+        property bool startObserved: false
+        onRunningChanged: {
+            if (niriAnimProcess.running) {
+                niriAnimProcess.startObserved = false
+                return
             }
-            suppressClearTimer.restart()
+            if (niriAnimProcess.startObserved)
+                return
+
+            root._finishNiriAnimationMutation(-1, true)
         }
+        onStarted: niriAnimProcess.startObserved = true
+        onExited: (code, status) => root._finishNiriAnimationMutation(code, false)
     }
 
     Timer {
@@ -426,8 +475,10 @@ Singleton {
         }
     }
 
-    // Track last applied state for discover-overlay control
+    // Track the service state we actually changed. GameMode must not kill a
+    // manually launched process or start a service that was already inactive.
     property bool _lastDiscoverOverlayGameState: false
+    property bool _discoverOverlayWasActive: false
 
     Timer {
         id: discoverOverlayDebounce
@@ -443,11 +494,14 @@ Singleton {
             root._lastDiscoverOverlayGameState = shouldStop
 
             if (shouldStop) {
-                root._log("[GameMode] Stopping", root._discoverOverlayServiceName)
-                discoverOverlayStopProc.running = true
-            } else {
-                root._log("[GameMode] Starting", root._discoverOverlayServiceName)
-                discoverOverlayStartProc.running = true
+                root._log("[GameMode] Stopping managed", root._discoverOverlayServiceName)
+                if (!discoverOverlayStopProc.running)
+                    discoverOverlayStopProc.running = true
+            } else if (root._discoverOverlayWasActive) {
+                root._discoverOverlayWasActive = false
+                root._log("[GameMode] Restoring", root._discoverOverlayServiceName)
+                if (!discoverOverlayStartProc.running)
+                    discoverOverlayStartProc.running = true
             }
         }
     }
@@ -457,11 +511,20 @@ Singleton {
         command: [
             "/usr/bin/bash",
             "-c",
-            "systemctl --user stop " + root._discoverOverlayServiceName + " 2>/dev/null; " +
-            "pkill -x discover-overlay 2>/dev/null; true"
+            "if /usr/bin/systemctl --user is-active --quiet " + root._discoverOverlayServiceName + "; then " +
+            "/usr/bin/systemctl --user stop " + root._discoverOverlayServiceName + "; else exit 3; fi"
         ]
         onExited: (code, status) => {
-            root._log("[GameMode] discover-overlay stop exited:", code)
+            const stoppedManagedService = code === 0
+            root._discoverOverlayWasActive = stoppedManagedService
+            root._log("[GameMode] managed discover-overlay stop exited:", code)
+            // If GameMode ended while systemctl was still stopping the unit,
+            // restore it now rather than leaving a previously-active service off.
+            if (stoppedManagedService && !root.active) {
+                root._discoverOverlayWasActive = false
+                if (!discoverOverlayStartProc.running)
+                    discoverOverlayStartProc.running = true
+            }
         }
     }
 

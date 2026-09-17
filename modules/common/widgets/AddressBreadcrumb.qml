@@ -35,7 +35,9 @@ ListView {
         rightmost: index === breadcrumbDirectory.split("/").length - 1
 
         onClicked: {
-            root.navigateToDirectory(breadcrumbDirectory.split("/").slice(0, index + 1).join("/"))
+            const parts = breadcrumbDirectory.split("/")
+            const path = index === 0 ? "/" : parts.slice(0, index + 1).join("/")
+            root.navigateToDirectory(path)
         }
     }
 }

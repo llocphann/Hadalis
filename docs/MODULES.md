@@ -18,7 +18,7 @@ Users can disable any panel from Settings without touching config files.
 
 | Module | Panel ID | Description |
 |--------|----------|-------------|
-| `bar/` | `iiBar` | Top bar. Workspaces, clock, system indicators, tray, weather. ~35 QML files. |
+| `bar/` | `iiBar` | Horizontal Classic Bar (top/bottom). Workspaces, clock, system indicators, tray, weather. ~35 QML files. |
 | `verticalBar/` | `iiVerticalBar` | Vertical bar variant for left/right edge placement. |
 | `dock/` | `iiDock` | Application dock. Supports all 4 edges (top/bottom/left/right). Scroll an icon to cycle that app's windows; `dock.notificationBadge` puts an app's pending notification count on its icon. |
 | `background/` | `iiBackground` | Desktop wallpaper layer. Parallax, blur, desktop widget canvas. |
@@ -60,8 +60,6 @@ Users can disable any panel from Settings without touching config files.
 | `tilingOverlay/` | `iiTilingOverlay` | Tiling hints overlay. |
 | `shellUpdate/` | `iiShellUpdate` | Shell update notification banner. |
 | `recordingOsd/` | `iiRecordingOsd` | Screen recording indicator (disabled by default). |
-| `workspaceStrip/` | `iiWorkspaceStrip` | Optional edge navigator with cached workspace previews, selected-card app summaries, window focus and close controls, drag-to-move, scroll navigation, and MPRIS media controls. Hover the configured edge to open it, then hover a card to inspect that workspace. Shared with waffle. IPC target `workspaceStrip`. |
-| `mascot/` | `iiMascotCompanion` | Playful full-body mascot companion: peeks from screen edges, reacts to shell events (music, battery, network, updates, notifications, screenshots, gaming, unlock), plays chase/hide-and-seek, and can physically interact with desktop widgets in chaos mode. Curated poses and per-surface overrides live in Settings › Mascot; a desktop widget variant lives in Settings › Widgets. Never over fullscreen, game mode, lock or session screens. Shared with waffle. IPC targets `mascot`, `mascotMood`. |
 
 ## Waffle Panels
 
@@ -147,7 +145,7 @@ If no timezones are configured, it suggests useful zones from the user's locale/
 
 Some panels work under both families. They keep their `ii` prefix but load in waffle mode too:
 
-`iiCheatsheet`, `iiOnScreenKeyboard`, `iiOverlay`, `iiOverview`, `iiRegionSelector`, `iiScreenCorners`, `iiWallpaperSelector`, `iiWallpaperLauncher`, `iiClipboard`, `iiRecordingOsd`, `iiWorkspaceStrip`, `iiMascotCompanion`
+`iiCheatsheet`, `iiOnScreenKeyboard`, `iiOverlay`, `iiOverview`, `iiRegionSelector`, `iiScreenCorners`, `iiWallpaperSelector`, `iiWallpaperLauncher`, `iiClipboard`, `iiRecordingOsd`
 
 ## For contributors
 

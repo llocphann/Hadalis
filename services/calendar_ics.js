@@ -78,13 +78,21 @@ function _buildEvent(props, sourceId, sourceName, sourceColor) {
     if (!startResult) return null
 
     const endResult = props.DTEND ? _parseICSDate(props.DTEND, props.DTEND_PARAMS) : null
+    let endDate = endResult ? endResult.date : startResult.date
+    if (!endResult && startResult.allDay) {
+        // RFC 5545: DATE-valued DTSTART without DTEND/DURATION is a one-day
+        // event. Keep the stored end exclusive so recurrence duration and date
+        // queries agree with explicit all-day DTEND semantics.
+        endDate = new Date(startResult.date)
+        endDate.setDate(endDate.getDate() + 1)
+    }
 
     return {
         title: props.SUMMARY || "(No title)",
         description: props.DESCRIPTION || "",
         location: props.LOCATION || "",
         startDate: startResult.date.toISOString(),
-        endDate: endResult ? endResult.date.toISOString() : startResult.date.toISOString(),
+        endDate: endDate.toISOString(),
         allDay: startResult.allDay,
         sourceId: sourceId,
         sourceName: sourceName,

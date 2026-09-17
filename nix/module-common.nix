@@ -6,26 +6,26 @@ in
 {
   optionsModule = { config, ... }: {
     options.programs.inir = {
-      enable = lib.mkEnableOption "iNiR desktop shell";
+      enable = lib.mkEnableOption "Hadalis desktop shell runtime";
 
       package = lib.mkOption {
         type = lib.types.package;
         default = defaultPackage;
         defaultText = lib.literalExpression "pkgs.callPackage ./nix/package.nix { inherit pkgs; }";
-        description = "iNiR package to install and run.";
+        description = "Hadalis package to install and run through the inir runtime identity.";
       };
 
       extraPackages = lib.mkOption {
         type = lib.types.listOf lib.types.package;
         default = [ ];
-        description = "Extra runtime packages made available to the iNiR service.";
+        description = "Extra runtime packages made available to the Hadalis shell service.";
       };
 
       service = {
         enable = lib.mkOption {
           type = lib.types.bool;
           default = true;
-          description = "Create the inir systemd user service.";
+          description = "Create the inir systemd user service for Hadalis.";
         };
 
         compositor = lib.mkOption {

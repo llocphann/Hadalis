@@ -257,56 +257,6 @@ Scope {
                 }
             }
 
-            // ── Mascot wave ──
-            Item {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 132
-                Layout.preferredHeight: 132
-                visible: greetingMascotAnim.active
-                opacity: root._cascade >= 1 ? 1.0 : 0.0
-                scale: root._cascade >= 1 ? 1.0 : 0.85
-                transformOrigin: Item.Center
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation {
-                        duration: Appearance.animation.elementMoveEnter.duration
-                        easing.type: Easing.OutCubic
-                    }
-                }
-                Behavior on scale {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation {
-                        duration: Appearance.animation.elementMove.duration
-                        easing.type: Easing.OutBack
-                    }
-                }
-
-                // Rare dramatic boot: she arrives by rocket instead of waving
-                readonly property bool dramaticBoot: Math.random() < 0.12
-
-                MascotAnimation {
-                    id: greetingMascotAnim
-                    anchors.fill: parent
-                    surface: "bootGreeting"
-                    pose: "wave-loop"
-                    visible: active && status !== Image.Error && !parent.dramaticBoot
-                }
-
-                MascotImage {
-                    anchors.fill: parent
-                    surface: "bootGreeting"
-                    pose: "rocket-ride"
-                    visible: active && parent.dramaticBoot
-                }
-
-                MascotImage {
-                    anchors.fill: parent
-                    surface: "bootGreeting"
-                    pose: "welcome-wave"
-                    visible: active && !parent.dramaticBoot && greetingMascotAnim.status === Image.Error
-                }
-            }
-
             // ── Greeting ──
             StyledText {
                 id: greetingText

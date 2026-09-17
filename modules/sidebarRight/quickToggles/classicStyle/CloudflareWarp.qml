@@ -14,6 +14,7 @@ QuickToggleButton {
 
     property bool _daemonRunning: true
 
+    accessibleName: Translation.tr("Cloudflare WARP")
     toggled: false
     visible: false
 

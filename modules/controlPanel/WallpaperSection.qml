@@ -15,6 +15,13 @@ PanelSurface {
     Layout.fillWidth: true
     implicitHeight: wallpaperLayout.implicitHeight + 16
     readonly property bool showSchemeChips: Config.options?.controlPanel?.showWallpaperSchemeChips ?? false
+    readonly property var surfaceScreen: root.QsWindow.window?.screen ?? null
+    readonly property string previewWallpaperUrl: {
+        const _multiMonitor = WallpaperListener.multiMonitorEnabled
+        const _perMonitor = WallpaperListener.effectivePerMonitor
+        const _global = Wallpapers.effectiveWallpaperUrl
+        return WallpaperListener.wallpaperUrlForScreen(root.surfaceScreen)
+    }
     
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property bool auroraEverywhere: Appearance.auroraEverywhere
@@ -55,6 +62,7 @@ PanelSurface {
             RippleButton {
                 implicitWidth: 26
                 implicitHeight: 26
+                buttonText: Translation.tr("Random")
                 buttonRadius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
                 colBackgroundHover: root.inirEverywhere ? Appearance.inir.colLayer2Hover 
@@ -75,6 +83,7 @@ PanelSurface {
             RippleButton {
                 implicitWidth: 26
                 implicitHeight: 26
+                buttonText: Translation.tr("Browse")
                 buttonRadius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
                 colBackground: "transparent"
                 colBackgroundHover: root.inirEverywhere ? Appearance.inir.colLayer2Hover 
@@ -109,7 +118,7 @@ PanelSurface {
             Image {
                 id: wallpaperPreview
                 anchors.fill: parent
-                source: Wallpapers.effectiveWallpaperUrl
+                source: root.previewWallpaperUrl
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 cache: true

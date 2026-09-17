@@ -43,7 +43,6 @@ ContentPage {
             "japanese typography": "personal",
             "notes": "personal",
             "user card": "personal",
-            "mascot": "personal",
             "custom widgets": "personal"
         }
         const target = sections[label] ?? ""
@@ -359,7 +358,7 @@ ContentPage {
     readonly property var _paletteWidgetKeys: [
         "clock", "weather", "customImage", "imageConverter", "mediaControls",
         "visualizer", "systemMonitor", "battery", "notes", "japaneseTypography",
-        "calendarUpcoming", "uptime", "worldClock", "userCard", "mascot", "newsTicker"
+        "calendarUpcoming", "uptime", "worldClock", "userCard", "newsTicker"
     ]
 
     function _semanticRoleOptions(): var {
@@ -630,7 +629,7 @@ ContentPage {
         }
 
         // Label fills the row so a right-aligned control hugs the edge with no
-        // dead gap (mascot-page density). When the control itself should stretch
+        // dead gap. When the control itself should stretch
         // (trailing:false, e.g. a selection array), the label hugs instead.
         StyledText {
             text: wsr.label
@@ -1562,7 +1561,6 @@ ContentPage {
                         { key: "calendarUpcoming", icon: "event", label: Translation.tr("Events"), def: false },
                         { key: "uptime", icon: "avg_pace", label: Translation.tr("Uptime"), def: false },
                         { key: "newsTicker", icon: "newspaper", label: Translation.tr("News"), def: false },
-                        { key: "mascot", icon: "pets", label: Translation.tr("Mascot"), def: false },
                         { key: "japaneseTypography", icon: "translate", label: Translation.tr("Japanese Typography"), def: false },
                         { key: "worldClock", icon: "public", label: Translation.tr("World Clock"), def: false },
                         { key: "userCard", icon: "account_circle", label: Translation.tr("User Card"), def: false }
@@ -4755,150 +4753,6 @@ ContentPage {
                     useBlur: false, showBorder: true, backgroundOpacity: 0.16,
                     borderWidth: 1, borderOpacity: 0.20, cornerRadius: -1,
                     colorMode: "auto", locked: false, x: 80, y: 420
-                })
-            }
-        }
-            }
-        }
-    }
-
-    // ── Mascot ───────────────────────────────────────────────
-    LazySection {
-        requested: root.isIiActive && root.activeSection === "personal"
-        sourceComponent: Component {
-            SettingsCardSection {
-                settingsTaskSection: "personal"
-                expanded: true
-        icon: "pets"
-        title: Translation.tr("Mascot")
-
-        SettingsGroup {
-            id: mascotWidgetGroup
-
-            // Pose thumbnails come from the shared mascot catalog.
-            readonly property var poseGroups: [
-                { f: "all", label: Translation.tr("All") },
-                { f: "featured", label: Translation.tr("Featured") },
-                { f: "pixel", label: Translation.tr("Pixel") },
-                { f: "street", label: Translation.tr("Street") },
-                { f: "chibi", label: Translation.tr("Chibi") },
-                { f: "loops", label: Translation.tr("Loops") },
-                { f: "manual", label: Translation.tr("Manual") }
-            ]
-            function _optionsFor(poses: var): var {
-                const result = []
-                for (let i = 0; i < poses.length; ++i) {
-                    const pose = poses[i]
-                    result.push({
-                        displayName: MascotCatalog.displayName(pose),
-                        value: pose,
-                        image: MascotCatalog.sourceFor(pose)
-                    })
-                }
-                return result
-            }
-            readonly property var poseOptions: {
-                MascotCatalog.revision
-                return mascotWidgetGroup._optionsFor(
-                    MascotCatalog.desktopWidgetSelectablePoses)
-            }
-            // Same persisted key as the widget popover chips, so both stay in sync
-            readonly property string poseFilter: {
-                Config.revision
-                return Config.getNestedValue("background.widgets.mascot.poseFilter", "all")
-            }
-            readonly property var filteredPoseOptions: {
-                MascotCatalog.revision
-                return mascotWidgetGroup._optionsFor(
-                    MascotCatalog.desktopWidgetPosesForGroup(
-                        mascotWidgetGroup.poseFilter))
-            }
-
-            WidgetStateControls {
-                configPath: "background.widgets.mascot"
-                configEntry: Config.getNestedValue("background.widgets.mascot", ({}))
-                defaultStrategy: "free"
-            }
-            ContentSubsection {
-                title: Translation.tr("Image")
-
-                StyledText {
-                    Layout.fillWidth: true
-                    visible: !(Config.options?.mascot?.enable ?? false)
-                text: Translation.tr("Needs the global mascot switch (Settings › Mascot)")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-                wrapMode: Text.Wrap
-            }
-            Flow {
-                Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
-                spacing: 2
-                Repeater {
-                    model: mascotWidgetGroup.poseGroups
-                    SelectionGroupButton {
-                        required property var modelData
-                        required property int index
-                        leftmost: index === 0
-                        rightmost: index === mascotWidgetGroup.poseGroups.length - 1
-                        toggled: mascotWidgetGroup.poseFilter === modelData.f
-                        buttonText: modelData.label
-                        onClicked: Config.setNestedValue(
-                            "background.widgets.mascot.poseFilter", modelData.f)
-                    }
-                }
-            }
-            StyledText {
-                Layout.fillWidth: true
-                visible: mascotWidgetGroup.poseFilter === "manual"
-                text: Translation.tr("Manual-only poses never rotate automatically")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-                wrapMode: Text.Wrap
-            }
-            MascotPoseGallery {
-                Layout.fillWidth: true
-                label: Translation.tr("Pose on the desktop")
-                options: mascotWidgetGroup.filteredPoseOptions
-                currentValue: {
-                    const configured = Config.getNestedValue("background.widgets.mascot.pose", "reading")
-                    return mascotWidgetGroup.poseOptions.some(o => o.value === configured)
-                        ? configured
-                        : (mascotWidgetGroup.poseOptions[0]?.value ?? "presence-idle-loop")
-                }
-                onSelected: value => Config.setNestedValue("background.widgets.mascot.pose", value)
-            }
-            WidgetSettingRow {
-                label: Translation.tr("Custom image")
-                icon: "image"
-                trailing: false
-                MaterialTextField {
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("Path to any image or GIF (empty = pose above)")
-                    text: Config.getNestedValue("background.widgets.mascot.customPath", "")
-                    onEditingFinished: Config.setNestedValue("background.widgets.mascot.customPath", text.trim())
-                }
-            }
-            }
-
-            WidgetAppearanceControls {
-                configPath: "background.widgets.mascot"
-                configEntry: Config.getNestedValue("background.widgets.mascot", ({}))
-                hasColorMode: false
-                hasCardControls: true
-            }
-        }
-
-        SettingsGroup {
-            WidgetResetButton {
-                configPath: "background.widgets.mascot"
-                defaults: ({
-                    placementStrategy: "free", contentWidth: 200,
-                    dim: 0, widgetScale: 100, widgetOpacity: 100, showBackground: false,
-                    useBlur: false, showBorder: false, backgroundOpacity: 0.16,
-                    borderWidth: 1, borderOpacity: 0.20, cornerRadius: -1,
-                    colorMode: "auto", pose: "reading", customPath: "",
-                    anchorWidget: "", locked: false, x: 120, y: 320
                 })
             }
         }

@@ -6,6 +6,7 @@ import Quickshell
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.widgets
 
 ContentPage {
@@ -17,11 +18,107 @@ ContentPage {
     property string liftedSurfaceId: ""
     property string confirmationSurfaceId: ""
     property string confirmationSlot: ""
+    property string perimeterOutputName: ""
     readonly property string activeFamily: ShellLayoutController.activeFamily
     readonly property bool standaloneSettings:
         Quickshell.env("INIR_STANDALONE_WINDOW") === "1"
     readonly property var surfaces: ShellLayoutController.surfacesForFamily(
         root.activeFamily)
+    readonly property bool perimeterRequested: PerimeterCutoverPolicy.requested
+    readonly property bool perimeterActive: PerimeterCutoverPolicy.enabled
+    readonly property bool perimeterFallbackActive: PerimeterCutoverPolicy.fallbackActive
+    readonly property string perimeterStatusReason: PerimeterCutoverPolicy.statusReason
+    readonly property var perimeterOutputOptions: [{
+        displayName: Translation.tr("Shared default"),
+        value: ""
+    }].concat(Quickshell.screens.map(screen => ({
+        displayName: String(screen?.name ?? Translation.tr("Output")),
+        value: String(screen?.name ?? "")
+    })).filter(option => option.value.length > 0))
+    readonly property var perimeterInstances: {
+        Config.revision
+        return PerimeterConfig.instancesForOutput(root.perimeterOutputName)
+    }
+    readonly property var perimeterSlotOptions: [{
+        displayName: Translation.tr("Disabled"),
+        value: ""
+    }].concat(PerimeterTopology.slotIds.map(slotId => ({
+        displayName: Translation.tr(slotId),
+        value: slotId
+    })))
+
+    onPerimeterOutputOptionsChanged: {
+        if (!root.perimeterOutputOptions.some(option =>
+                option.value === root.perimeterOutputName))
+            root.perimeterOutputName = ""
+    }
+
+    function setPerimeterRequested(requested: bool): void {
+        let panels = [...(Config.options?.enabledPanels ?? [])]
+        const currentlyRequested = panels.includes("iiPerimeter")
+        if (currentlyRequested === requested)
+            return
+        if (requested)
+            panels.push("iiPerimeter")
+        else
+            panels = panels.filter(panel => panel !== "iiPerimeter")
+        Config.setNestedValue("enabledPanels", panels)
+    }
+
+    function perimeterRuntimeStatus(): string {
+        if (!root.perimeterRequested)
+            return "disabled"
+        return root.perimeterActive
+            ? "active"
+            : "fallback · " + root.perimeterStatusReason
+    }
+
+    function perimeterModuleLabel(moduleId: string): string {
+        switch (String(moduleId ?? "")) {
+        case "thinkfan": return "ThinkFan"
+        case "system-monitor": return Translation.tr("System monitor")
+        case "workspaces": return Translation.tr("Workspaces")
+        case "media": return Translation.tr("Media")
+        case "weather": return Translation.tr("Weather")
+        case "left-sidebar": return Translation.tr("Left sidebar")
+        case "right-sidebar": return Translation.tr("Right sidebar")
+        case "dock": return Translation.tr("Dock")
+        default: return String(moduleId ?? "")
+        }
+    }
+
+    function perimeterPlacement(instanceId: string): var {
+        Config.revision
+        return root.perimeterOutputName.length > 0
+            ? PerimeterConfig.outputPlacementForInstance(
+                root.perimeterOutputName, instanceId)
+            : PerimeterConfig.defaultPlacementForInstance(instanceId)
+    }
+
+    function perimeterSlotEntries(): var {
+        Config.revision
+        return root.perimeterOutputName.length > 0
+            ? PerimeterConfig.outputSlotEntries(root.perimeterOutputName)
+            : PerimeterConfig.defaultSlotEntries()
+    }
+
+    function movePerimeterInstance(instanceId: string, slotId: string,
+            index): void {
+        if (root.perimeterOutputName.length > 0) {
+            PerimeterConfig.moveOutputInstance(root.perimeterOutputName,
+                instanceId, slotId, index)
+            return
+        }
+        PerimeterConfig.moveDefaultInstance(instanceId, slotId, index)
+    }
+
+    function resetPerimeterSlots(): void {
+        if (root.perimeterOutputName.length > 0) {
+            PerimeterConfig.resetOutputSlots(root.perimeterOutputName)
+            return
+        }
+        PerimeterConfig.resetDefaultSlots()
+    }
 
     function toggleLiveEditor(): void {
         if (root.standaloneSettings) {
@@ -73,6 +170,190 @@ ContentPage {
         if (scope === "global")
             return Translation.tr("Global")
         return scope
+    }
+
+    SettingsCardSection {
+        expanded: true
+        icon: "view_quilt"
+        title: Translation.tr("Connected Perimeter")
+
+        SettingsGroup {
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Use the Connected Perimeter runtime for persistent ii-family chrome. It replaces the legacy bar, dock, and sidebar windows while keeping the existing shell layout available as the fallback runtime.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.Wrap
+            }
+
+            SettingsSwitch {
+                buttonIcon: "view_quilt"
+                text: Translation.tr("Use Connected Perimeter runtime")
+                checked: root.perimeterRequested
+                enabled: root.activeFamily === "ii"
+                onCheckedChanged: root.setPerimeterRequested(checked)
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.perimeterRequested
+                text: Translation.tr("Connected Perimeter") + " · "
+                    + root.perimeterRuntimeStatus()
+                color: root.perimeterFallbackActive
+                    ? Appearance.colors.colError : Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.Wrap
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.activeFamily === "ii"
+                    ? Translation.tr("Perimeter module placement is controlled here. The legacy layout controls below remain available for fallback and migration.")
+                    : Translation.tr("Connected Perimeter is available for the ii family. Switch panel family to ii before enabling it.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.Wrap
+            }
+        }
+
+        SettingsGroup {
+            visible: root.perimeterRequested
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                StyledText {
+                    Layout.preferredWidth: 120
+                    text: Translation.tr("Scope")
+                    color: Appearance.colors.colOnLayer1
+                }
+
+                StyledComboBox {
+                    Layout.fillWidth: true
+                    model: root.perimeterOutputOptions
+                    textRole: "displayName"
+                    currentIndex: Math.max(0,
+                        root.perimeterOutputOptions.findIndex(option =>
+                            option.value === root.perimeterOutputName))
+                    onActivated: index => {
+                        if (index >= 0 && index < root.perimeterOutputOptions.length)
+                            root.perimeterOutputName =
+                                root.perimeterOutputOptions[index].value
+                    }
+                }
+
+                RippleButtonWithIcon {
+                    materialIcon: "restart_alt"
+                    mainText: root.perimeterOutputName.length > 0
+                        ? Translation.tr("Reset override")
+                        : Translation.tr("Reset preset")
+                    onClicked: root.resetPerimeterSlots()
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.perimeterOutputName.length > 0
+                    ? Translation.tr("This output inherits shared placement until a module is moved here. Reset removes only this output's slot overrides.")
+                    : Translation.tr("Shared placement applies to every output that does not override the affected slot.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                wrapMode: Text.Wrap
+            }
+
+            Repeater {
+                model: root.perimeterInstances
+
+                delegate: RowLayout {
+                    id: perimeterRow
+                    required property var modelData
+                    readonly property int configRevision: Config.revision
+                    readonly property string instanceId:
+                        String(modelData?.instanceId ?? "")
+                    readonly property string moduleId:
+                        String(modelData?.moduleId ?? "")
+                    readonly property var placement: {
+                        perimeterRow.configRevision
+                        return root.perimeterPlacement(perimeterRow.instanceId)
+                    }
+                    readonly property int slotOptionIndex: Math.max(0,
+                        root.perimeterSlotOptions.findIndex(option =>
+                            option.value === (placement?.slotId ?? "")))
+
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 120
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.perimeterModuleLabel(perimeterRow.moduleId)
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: perimeterRow.instanceId
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    StyledComboBox {
+                        Layout.preferredWidth: 190
+                        model: root.perimeterSlotOptions
+                        textRole: "displayName"
+                        currentIndex: perimeterRow.slotOptionIndex
+                        onActivated: index => {
+                            if (index < 0 || index >= root.perimeterSlotOptions.length)
+                                return
+                            root.movePerimeterInstance(
+                                perimeterRow.instanceId,
+                                root.perimeterSlotOptions[index].value,
+                                undefined)
+                        }
+                    }
+
+                    RippleButtonWithIcon {
+                        visible: (perimeterRow.placement?.slotId ?? "").length > 0
+                        enabled: (perimeterRow.placement?.index ?? -1) > 0
+                        materialIcon: "arrow_upward"
+                        mainText: Translation.tr("Up")
+                        onClicked: root.movePerimeterInstance(
+                            perimeterRow.instanceId,
+                            perimeterRow.placement.slotId,
+                            perimeterRow.placement.index - 1)
+                    }
+
+                    RippleButtonWithIcon {
+                        readonly property int slotCount: {
+                            const slotId = perimeterRow.placement?.slotId ?? ""
+                            if (slotId.length === 0)
+                                return 0
+                            const entry = root.perimeterSlotEntries()
+                                .find(candidate => candidate.slotId === slotId)
+                            return entry?.instanceIds?.length ?? 0
+                        }
+                        visible: (perimeterRow.placement?.slotId ?? "").length > 0
+                        enabled: (perimeterRow.placement?.index ?? -1) >= 0
+                            && perimeterRow.placement.index < slotCount - 1
+                        materialIcon: "arrow_downward"
+                        mainText: Translation.tr("Down")
+                        onClicked: root.movePerimeterInstance(
+                            perimeterRow.instanceId,
+                            perimeterRow.placement.slotId,
+                            perimeterRow.placement.index + 1)
+                    }
+                }
+            }
+        }
     }
 
     SettingsCardSection {

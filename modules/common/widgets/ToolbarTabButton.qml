@@ -10,6 +10,8 @@ RippleButton {
     id: root
     required property string materialSymbol
     required property bool current
+    Accessible.checkable: true
+    Accessible.checked: root.current
     property bool showLabel: true
     horizontalPadding: 10
 

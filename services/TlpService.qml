@@ -236,15 +236,44 @@ Singleton {
 
     Process {
         id: detector
+        property bool timedOut: false
+        property bool startObserved: false
         command: ["/usr/libexec/inir-battery-charge-limit", "--status"]
 
         stdout: SplitParser {
             onRead: data => root._parseStatus(data)
         }
 
-        onStarted: root._statusSeen = false
+        onRunningChanged: {
+            if (detector.running) {
+                detector.startObserved = false
+                return
+            }
+            if (detector.startObserved)
+                return
+
+            detectorTimeout.stop()
+            root._clearStatus()
+            console.warn("[TLP] Failed to start battery charge policy helper")
+            if (root._redetectAfterCurrent) {
+                root._redetectAfterCurrent = false
+                Qt.callLater(() => root._detect())
+            } else {
+                root._reconcileAfterDetect = false
+            }
+        }
+
+        onStarted: {
+            detector.startObserved = true
+            root._statusSeen = false
+            detector.timedOut = false
+            detectorTimeout.restart()
+        }
 
         onExited: (exitCode, exitStatus) => {
+            detectorTimeout.stop()
+            if (detector.timedOut)
+                console.warn("[TLP] Timed out while reading battery charge policy status")
             if (exitCode !== 0 || !root._statusSeen) {
                 root._clearStatus()
                 if (root._redetectAfterCurrent) {
@@ -269,18 +298,67 @@ Singleton {
         }
     }
 
+    Timer {
+        id: detectorTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!detector.running)
+                return
+            detector.timedOut = true
+            detector.running = false
+        }
+    }
+
     Process {
         id: applyProcess
+        property bool timedOut: false
+        property bool startObserved: false
+
+        onRunningChanged: {
+            if (applyProcess.running) {
+                applyProcess.startObserved = false
+                return
+            }
+            if (applyProcess.startObserved || !root.busy)
+                return
+
+            applyTimeout.stop()
+            root.busy = false
+            console.warn("[TLP] Failed to start privileged battery charge policy helper")
+            root._detect()
+        }
+
+        onStarted: {
+            applyProcess.startObserved = true
+            applyProcess.timedOut = false
+            applyTimeout.restart()
+        }
 
         onExited: (exitCode, exitStatus) => {
+            applyTimeout.stop()
             root.busy = false
-            if (exitCode !== 0)
+            if (applyProcess.timedOut)
+                console.warn("[TLP] Timed out while applying battery charge policy")
+            else if (exitCode !== 0)
                 console.warn("[TLP] Failed to apply battery charge policy (exit code " + exitCode + ")")
             else
                 root._log("[TLP] Battery charge policy applied")
 
             // Re-read status after mutation; preserve any queued reconciliation.
             root._detect()
+        }
+    }
+
+    Timer {
+        id: applyTimeout
+        interval: 60000
+        repeat: false
+        onTriggered: {
+            if (!applyProcess.running)
+                return
+            applyProcess.timedOut = true
+            applyProcess.running = false
         }
     }
 

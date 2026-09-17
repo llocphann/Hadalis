@@ -50,6 +50,9 @@ Item {
             StyledSlider {
                 id: slider
                 configuration: StyledSlider.Configuration.S
+                Accessible.name: root.node
+                    ? Translation.tr("Volume for %1").arg(MprisController.streamDisplayName(root.node))
+                    : Translation.tr("Volume")
                 property real modelValue: root.node?.audio.volume ?? 0
                 to: (root.node === Audio.sink) ? 1.5 : 1
 

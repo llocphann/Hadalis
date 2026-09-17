@@ -28,9 +28,11 @@ Singleton {
     readonly property real hardMaxValue: 2.00
     property string audioTheme: Config.options?.sounds?.theme ?? "freedesktop"
     property real value: sink?.audio?.volume ?? rawSink?.audio?.volume ?? 0
-    property bool micBeingAccessed: Pipewire.links.values.filter(link =>
-        !link.source.isStream && !link.source.isSink && link.target.isStream
-    ).length > 0
+    property bool micBeingAccessed: (Pipewire.links?.values ?? []).some(link =>
+        !(link?.source?.isStream ?? true)
+            && !(link?.source?.isSink ?? true)
+            && (link?.target?.isStream ?? false)
+    )
 
     property bool _micMuted: false
     // Tracked explicitly rather than bound to source.audio.volume: setSourceVolume()

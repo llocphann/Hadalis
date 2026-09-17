@@ -121,7 +121,30 @@ Singleton {
 
     Process {
         id: backlightDetectProc
+        property bool timedOut: false
+        property bool startObserved: false
         command: ["brightnessctl", "-l", "-m", "-c", "backlight"]
+        onRunningChanged: {
+            if (backlightDetectProc.running) {
+                backlightDetectProc.startObserved = false
+                return
+            }
+            if (backlightDetectProc.startObserved)
+                return
+
+            backlightDetectTimeout.stop()
+            root.backlightDetectionReady = true
+            root.monitors.forEach(monitor => {
+                if (!monitor.isDdc)
+                    monitor.initialize()
+            })
+            console.warn("[Brightness] Failed to start brightnessctl backlight detection")
+        }
+        onStarted: {
+            backlightDetectProc.startObserved = true
+            backlightDetectProc.timedOut = false
+            backlightDetectTimeout.restart()
+        }
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: line => {
@@ -143,6 +166,9 @@ Singleton {
             }
         }
         onExited: {
+            backlightDetectTimeout.stop()
+            if (backlightDetectProc.timedOut)
+                console.warn("[Brightness] brightnessctl backlight detection timed out")
             root.backlightDetectionReady = true
             root.monitors.forEach(monitor => {
                 if (!monitor.isDdc)
@@ -151,31 +177,101 @@ Singleton {
         }
     }
 
+    Timer {
+        id: backlightDetectTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!backlightDetectProc.running)
+                return
+            backlightDetectProc.timedOut = true
+            backlightDetectProc.running = false
+        }
+    }
+
     Process {
         id: ddcProc
+        property bool timedOut: false
+        property bool startObserved: false
 
         command: ["ddcutil", "detect", "--brief"]
         stdout: SplitParser {
             splitMarker: "\n\n"
             onRead: data => {
-                if (data.startsWith("Display ")) {
-                    const lines = data.split("\n").map(l => l.trim());
-                    root._ddcNext.push({
-                        model: lines.find(l => l.startsWith("Monitor:")).split(":")[2],
-                        busNum: lines.find(l => l.startsWith("I2C bus:")).split("/dev/i2c-")[1]
-                    });
+                if (!data.startsWith("Display "))
+                    return
+
+                const lines = data.split("\n").map(l => l.trim())
+                const monitorLine = lines.find(l => l.startsWith("Monitor:"))
+                const busLine = lines.find(l => l.startsWith("I2C bus:"))
+                if (!monitorLine || !busLine) {
+                    console.warn("[Brightness] Ignoring malformed ddcutil display block")
+                    return
                 }
+
+                const monitorParts = monitorLine.split(":")
+                const model = (monitorParts.length >= 3
+                    ? monitorParts.slice(2).join(":")
+                    : monitorParts.slice(1).join(":"))
+                    .trim()
+                const busMarker = "/dev/i2c-"
+                const busIndex = busLine.indexOf(busMarker)
+                const busNum = busIndex >= 0
+                    ? busLine.slice(busIndex + busMarker.length).trim()
+                    : ""
+                if (!model || !/^\d+$/.test(busNum)) {
+                    console.warn("[Brightness] Ignoring invalid ddcutil monitor fields")
+                    return
+                }
+
+                root._ddcNext.push({ model: model, busNum: busNum })
             }
         }
         onRunningChanged: {
-            if (running)
+            if (ddcProc.running) {
+                ddcProc.startObserved = false
                 root._ddcNext = []
-        }
-        onExited: {
-            if (root._ddcNext.length > 0)
-                root.ddcMonitors = root._ddcNext
+                return
+            }
+            if (ddcProc.startObserved)
+                return
+
+            ddcTimeout.stop()
             root._ddcNext = []
-            root.ddcMonitorsChanged()
+            console.warn("[Brightness] Failed to start ddcutil detection; keeping previous monitor snapshot")
+        }
+        onStarted: {
+            ddcProc.startObserved = true
+            ddcProc.timedOut = false
+            ddcTimeout.restart()
+        }
+        onExited: (exitCode, exitStatus) => {
+            ddcTimeout.stop()
+            if (ddcProc.timedOut) {
+                console.warn("[Brightness] ddcutil detection timed out; keeping previous monitor snapshot")
+            } else if (exitCode === 0) {
+                // A successful empty probe means all DDC displays disappeared.
+                // Replace the snapshot even when no blocks were parsed so stale
+                // model/bus mappings cannot survive a hot-unplug.
+                root.ddcMonitors = root._ddcNext
+                root.ddcMonitorsChanged()
+            } else {
+                // Preserve the last known-good mapping on transient probe errors.
+                console.warn("[Brightness] ddcutil detect failed; keeping previous monitor snapshot", exitCode, exitStatus)
+            }
+            root._ddcNext = []
+        }
+    }
+
+    Timer {
+        id: ddcTimeout
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (!ddcProc.running)
+                return
+            ddcProc.timedOut = true
+            ddcProc.running = false
         }
     }
 
@@ -268,7 +364,28 @@ Singleton {
             initProc.running = true;
         }
 
+        function _finishInitialization(): void {
+            if (monitor.ready)
+                return
+            const screenName = monitor.screen?.name ?? ""
+            const value = BrightnessPolicy.pickRestoreValue(
+                root.lastValidBrightness[screenName],
+                monitor.brightness
+            )
+            if (Number.isFinite(value)) {
+                if (screenName)
+                    root.lastValidBrightness[screenName] = value
+                monitor.brightness = value
+                monitor.ready = true
+                syncBrightness()
+                return
+            }
+            monitor.ready = true
+        }
+
         readonly property Process initProc: Process {
+            property bool startObserved: false
+            property bool timedOut: false
             stdout: SplitParser {
                 onRead: data => {
                     const parts = data.trim().split(/\s+/)
@@ -289,23 +406,39 @@ Singleton {
                         monitor.syncBrightness()
                 }
             }
-            onExited: {
-                if (monitor.ready)
-                    return
-                const screenName = monitor.screen?.name ?? ""
-                const value = BrightnessPolicy.pickRestoreValue(
-                    root.lastValidBrightness[screenName],
-                    monitor.brightness
-                )
-                if (Number.isFinite(value)) {
-                    if (screenName)
-                        root.lastValidBrightness[screenName] = value
-                    monitor.brightness = value
-                    monitor.ready = true
-                    syncBrightness()
+            onRunningChanged: {
+                if (initProc.running) {
+                    initProc.startObserved = false
                     return
                 }
-                monitor.ready = true
+                if (initProc.startObserved)
+                    return
+
+                initTimeout.stop()
+                console.warn("[Brightness] Failed to start monitor brightness initialization")
+                monitor._finishInitialization()
+            }
+            onStarted: {
+                initProc.startObserved = true
+                initProc.timedOut = false
+                initTimeout.restart()
+            }
+            onExited: {
+                initTimeout.stop()
+                if (initProc.timedOut)
+                    console.warn("[Brightness] Monitor brightness initialization timed out")
+                monitor._finishInitialization()
+            }
+        }
+
+        property var initTimeout: Timer {
+            interval: 30000
+            repeat: false
+            onTriggered: {
+                if (!initProc.running)
+                    return
+                initProc.timedOut = true
+                initProc.running = false
             }
         }
 

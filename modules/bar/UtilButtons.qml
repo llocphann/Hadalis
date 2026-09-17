@@ -34,6 +34,7 @@ Item {
             visible: active
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Translation.tr("Take screenshot")
                 onClicked: Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "region", "screenshot"])
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
@@ -59,6 +60,9 @@ Item {
                 CircleUtilButton {
                     id: screenRecordButton
                     anchors.fill: parent
+                    Accessible.name: recordButtonWrapper.isRecording
+                        ? Translation.tr("Stop screen recording")
+                        : Translation.tr("Start screen recording")
 
                     onClicked: {
                         const args = [Directories.recordScriptPath]
@@ -123,6 +127,7 @@ Item {
             visible: active
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Translation.tr("Pick color")
                 onClicked: ShellExec.execDetachedArgs(["/usr/bin/hyprpicker", "-a"], "Pick color")
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
@@ -139,6 +144,7 @@ Item {
             visible: active
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Translation.tr("Open notepad")
                 onClicked: {
                     GlobalStates.sidebarRightRequestedWidget = "notepad"
                     GlobalStates.openSidebarRight(root.QsWindow.window?.screen?.name ?? "")
@@ -158,6 +164,7 @@ Item {
             visible: active
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Translation.tr("Toggle on-screen keyboard")
                 onClicked: GlobalStates.oskOpen = !GlobalStates.oskOpen
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
@@ -177,6 +184,7 @@ Item {
             visible: active
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Translation.tr("Switch keyboard layout")
                 onClicked: NiriService.switchLayout()
                 Item {
                     anchors.fill: parent
@@ -203,6 +211,9 @@ Item {
                 readonly property bool isMuted: Audio.micMuted
                 readonly property bool isInUse: (Privacy.micActive || (Audio?.micBeingAccessed ?? false))
 
+                Accessible.name: micButton.isMuted
+                    ? Translation.tr("Unmute microphone")
+                    : Translation.tr("Mute microphone")
                 onClicked: Audio.toggleMicMute()
 
                 Item {
@@ -265,6 +276,9 @@ Item {
 
                 readonly property bool isCasting: Persistent.states.screenCast.active
 
+                Accessible.name: screenCastButton.isCasting
+                    ? Translation.tr("Stop screen casting")
+                    : Translation.tr("Start screen casting")
                 onClicked: {
                     const output = Config.options?.bar?.utilButtons?.screenCastOutput ?? "HDMI-A-1"
 
@@ -329,6 +343,9 @@ Item {
             visible: active
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Appearance.m3colors.darkmode
+                    ? Translation.tr("Switch to light mode")
+                    : Translation.tr("Switch to dark mode")
                 onClicked: event => {
                     MaterialThemeLoader.setDarkMode(!Appearance.m3colors.darkmode)
                 }
@@ -347,6 +364,7 @@ Item {
             visible: active
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Translation.tr("Change power profile")
                 onClicked: event => {
                     if (PowerProfiles.hasPerformanceProfile) {
                         switch(PowerProfiles.profile) {

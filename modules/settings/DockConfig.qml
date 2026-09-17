@@ -34,32 +34,13 @@ ContentPage {
                     Config.setNestedValue("dock.enable", checked);
                 }
                 StyledToolTip {
-                    text: Translation.tr("Show the macOS-style dock at the bottom of the screen")
+                    text: Translation.tr("Show the application dock")
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Dock style")
-                tooltip: Translation.tr("How the dock surface is drawn.")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options?.dock?.style ?? "panel"
-                    onSelected: newValue => {
-                        Config.setNestedValue("dock.style", newValue)
-                    }
-                    options: [
-                        { displayName: Translation.tr("Panel"),  icon: "dock_to_bottom", value: "panel"  },
-                        { displayName: Translation.tr("Pill"),   icon: "interests",      value: "pill"   },
-                        { displayName: Translation.tr("macOS"),  icon: "desktop_mac",    value: "macos"  },
-                        { displayName: Translation.tr("Island"), icon: "blur_on",        value: "island" },
-                        { displayName: Translation.tr("M3"),     icon: "category",       value: "m3"     }
-                    ]
-                }
-
-                SettingsNote {
-                    icon: "dock_to_bottom"
-                    text: Translation.tr("Redraws the dock surface.")
-                }
+            SettingsNote {
+                icon: "dock_to_bottom"
+                text: Translation.tr("Dock uses the Panel surface style.")
             }
 
             ConfigRow {
@@ -97,8 +78,6 @@ ContentPage {
                     SettingsSwitch {
                         buttonIcon: "desktop_windows"
                         text: Translation.tr("Show on desktop")
-                        // In Hover mode the dock is already hidden by default, so
-                        // this only matters for Empty workspace mode.
                         enabled: !(Config.options?.dock?.hoverToReveal ?? true)
                         checked: Config.options?.dock?.showOnDesktop ?? true
                         onCheckedChanged: Config.setNestedValue('dock.showOnDesktop', checked)
@@ -109,8 +88,6 @@ ContentPage {
                     SettingsSwitch {
                         buttonIcon: "keep"
                         text: Translation.tr("Pinned on startup")
-                        // A pinned dock can never hide, which cancels Hover reveal.
-                        // Disable it under Hover so the contradiction is visible.
                         enabled: !(Config.options?.dock?.hoverToReveal ?? true)
                         checked: Config.options.dock.pinnedOnStartup
                         onCheckedChanged: {
@@ -176,18 +153,6 @@ ContentPage {
 
             ContentSubsection {
                 title: Translation.tr("Appearance")
-
-                SettingsSwitch {
-                    buttonIcon: "branding_watermark"
-                    text: Translation.tr("Use Card style")
-                    checked: Config.options.dock?.cardStyle ?? false
-                    onCheckedChanged: {
-                        Config.setNestedValue("dock.cardStyle", checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Use the new Card style (lighter background, specific rounding) generic to settings")
-                    }
-                }
 
                 ConfigSpinBox {
                     icon: "height"

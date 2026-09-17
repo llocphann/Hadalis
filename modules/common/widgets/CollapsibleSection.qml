@@ -33,9 +33,14 @@ ColumnLayout {
         return { page: page };
     }
 
+    function toggleExpanded() {
+        if (root.collapsible)
+            root.expanded = !root.expanded;
+    }
+
     function focusFromSettingsSearch() {
         root.expanded = true;
-        root.forceActiveFocus();
+        headerBackground.forceActiveFocus();
     }
 
     Component.onCompleted: {
@@ -76,11 +81,27 @@ ColumnLayout {
         Layout.fillWidth: true
         implicitHeight: headerRow.implicitHeight + 12
         radius: Appearance.rounding.normal
-        color: headerMouseArea.containsMouse && root.collapsible 
+        activeFocusOnTab: root.collapsible
+        Accessible.role: Accessible.Button
+        Accessible.name: root.title
+        Accessible.ignored: !root.collapsible
+        Accessible.checkable: root.collapsible
+        Accessible.checked: root.expanded
+        Accessible.onPressAction: root.toggleExpanded()
+        color: (headerMouseArea.containsMouse || headerBackground.activeFocus) && root.collapsible 
             ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
               : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
               : Appearance.colors.colLayer1Hover)
             : "transparent"
+
+        Keys.onPressed: event => {
+            if (!root.collapsible)
+                return;
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                root.toggleExpanded();
+                event.accepted = true;
+            }
+        }
         
         Behavior on color {
             enabled: Appearance.animationsEnabled
@@ -129,11 +150,7 @@ ColumnLayout {
             anchors.fill: parent
             hoverEnabled: root.collapsible
             cursorShape: root.collapsible ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: {
-                if (root.collapsible) {
-                    root.expanded = !root.expanded;
-                }
-            }
+            onClicked: root.toggleExpanded()
         }
     }
 

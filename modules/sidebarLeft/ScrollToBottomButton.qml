@@ -9,6 +9,8 @@ RippleButton {
     required property ListView target
     property bool compact: false
 
+    buttonText: Translation.tr("Scroll to Bottom")
+
     anchors {
         bottom: parent.bottom
         horizontalCenter: root.compact ? undefined : parent.horizontalCenter
@@ -42,9 +44,7 @@ RippleButton {
     buttonRadius: root.compact ? Appearance.rounding.small
         : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.verysmall
 
-    downAction: () => {
-        target.positionViewAtEnd()
-    }
+    onClicked: target.positionViewAtEnd()
 
     contentItem: Item {
         implicitWidth: root.compact ? 18 : fullContent.implicitWidth

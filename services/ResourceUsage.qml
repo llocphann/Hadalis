@@ -72,6 +72,7 @@ Singleton {
 
     Process {
         id: detectGpuUsageSource
+        property bool startObserved: false
         // NVIDIA GPUs are detected first by vendor ID (0x10de) and prefer nvidia-smi,
         // because their sysfs gpu_busy_percent can exist but always return 0.
         // AMD/Intel use the native DRM sysfs counter. Fall back to nvidia-smi otherwise.
@@ -141,6 +142,21 @@ Singleton {
                 }
             }
         }
+        onRunningChanged: {
+            if (detectGpuUsageSource.running) {
+                detectGpuUsageSource.startObserved = false
+                return
+            }
+            if (detectGpuUsageSource.startObserved)
+                return
+
+            root._gpuUsageSource = "none"
+            root._gpuUsagePath = ""
+            root._nvidiaSmiPath = ""
+            root._intelGpuTopPath = ""
+            root._releaseInitRequest("GPU usage source")
+        }
+        onStarted: detectGpuUsageSource.startObserved = true
     }
 
     Process {
@@ -218,6 +234,11 @@ Singleton {
         return Math.max(0, Math.min(1, value));
     }
 
+    function _releaseInitRequest(stage: string): void {
+        root._initRequested = false
+        console.warn("[ResourceUsage] Failed to start " + stage + " probe; initialization can retry on the next consumer request")
+    }
+
     function ensureRunning(): void {
         root._runningRequested = true;
         if (!root._initRequested) {
@@ -275,7 +296,8 @@ Singleton {
     }
 
     function _pollSensors(): void {
-        autoStopTimer.restart();
+        if (root._persistentConsumers === 0)
+            autoStopTimer.restart();
 
         // Determine whether GPU polling should be skipped this cycle.
         // On hybrid (iGPU+dGPU) systems, querying GPU data via nvidia-smi or hwmon
@@ -423,6 +445,7 @@ Singleton {
 
     Process {
         id: detectTempSensors
+        property bool startObserved: false
         // Detect CPU and GPU temperature sensors using priority-based selection.
         // On Intel, acpitz/pch report near-constant values; coretemp is the real sensor.
         command: ["/usr/bin/bash", "-c", `
@@ -524,10 +547,24 @@ Singleton {
                 }
             }
         }
+        onRunningChanged: {
+            if (detectTempSensors.running) {
+                detectTempSensors.startObserved = false
+                return
+            }
+            if (detectTempSensors.startObserved)
+                return
+
+            root._cpuTempPath = ""
+            root._gpuTempPath = ""
+            root._releaseInitRequest("temperature sensor")
+        }
+        onStarted: detectTempSensors.startObserved = true
     }
 
     Process {
         id: detectHybridGpu
+        property bool startObserved: false
         // Detect iGPU+dGPU hybrid setups by reading DRM boot_vga flags.
         // boot_vga=1 → primary display GPU (iGPU on laptops), boot_vga=0 → secondary (dGPU).
         // On hybrid systems, outputs the dGPU's runtime_status path so the poll loop can
@@ -563,10 +600,23 @@ Singleton {
                     root._dGpuRuntimeStatusPath = line.slice(5);
             }
         }
+        onRunningChanged: {
+            if (detectHybridGpu.running) {
+                detectHybridGpu.startObserved = false
+                return
+            }
+            if (detectHybridGpu.startObserved)
+                return
+
+            root._dGpuRuntimeStatusPath = ""
+            root._releaseInitRequest("hybrid GPU")
+        }
+        onStarted: detectHybridGpu.startObserved = true
     }
 
     Process {
         id: findCpuMaxFreqProc
+        property bool startObserved: false
         environment: ({
                 LANG: "C",
                 LC_ALL: "C"
@@ -584,6 +634,18 @@ Singleton {
                 }
             }
         }
+        onRunningChanged: {
+            if (findCpuMaxFreqProc.running) {
+                findCpuMaxFreqProc.startObserved = false
+                return
+            }
+            if (findCpuMaxFreqProc.startObserved)
+                return
+
+            root.maxAvailableCpuString = "--"
+            root._releaseInitRequest("CPU max frequency")
+        }
+        onStarted: findCpuMaxFreqProc.startObserved = true
     }
 
     Process {

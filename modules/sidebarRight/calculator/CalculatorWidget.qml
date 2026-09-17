@@ -293,6 +293,7 @@ FocusScope {
                     RippleButton {
                         implicitWidth: root.toolButtonHeight
                         implicitHeight: root.toolButtonHeight
+                        buttonText: showHistory ? Translation.tr("Hide history") : Translation.tr("Show history")
                         buttonRadius: root.radiusSmall
                         colBackground: showHistory ? root.colLayer2 : "transparent"
                         colBackgroundHover: root.colLayer2
@@ -304,6 +305,7 @@ FocusScope {
                     RippleButton {
                         implicitWidth: root.toolButtonHeight
                         implicitHeight: root.toolButtonHeight
+                        buttonText: scientificMode ? Translation.tr("Disable scientific mode") : Translation.tr("Enable scientific mode")
                         buttonRadius: root.radiusSmall
                         colBackground: scientificMode ? root.colLayer2 : "transparent"
                         colBackgroundHover: root.colLayer2
@@ -403,6 +405,7 @@ FocusScope {
                             RippleButton {
                                 implicitWidth: 20
                                 implicitHeight: 20
+                                buttonText: Translation.tr("Clear history")
                                 buttonRadius: 10
                                 colBackground: "transparent"
                                 enabled: history.length > 0
@@ -424,6 +427,7 @@ FocusScope {
                                 required property int index
                                 width: ListView.view.width
                                 implicitHeight: 24
+                                buttonText: modelData.expr + " = " + modelData.result
                                 buttonRadius: 4
                                 colBackground: "transparent"
                                 colBackgroundHover: root.colLayer2

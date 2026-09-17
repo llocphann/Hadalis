@@ -12,26 +12,45 @@ import Quickshell.Io
 Singleton {
     id: root
 
+    function _nonNegativeInt(value, fallback: int): int {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) && parsed >= 0
+            ? Math.max(0, Math.round(parsed)) : fallback
+    }
+
     property bool available: false
     property int count: 0
+    readonly property int checkIntervalMinutes: {
+        const configured = Number(Config.options?.updates?.checkInterval)
+        return Number.isFinite(configured) && configured > 0
+            ? Math.max(1, Math.round(configured)) : 120
+    }
+    readonly property int adviseUpdateThreshold: root._nonNegativeInt(
+        Config.options?.updates?.adviseUpdateThreshold, 75)
+    readonly property int stronglyAdviseUpdateThreshold: root._nonNegativeInt(
+        Config.options?.updates?.stronglyAdviseUpdateThreshold, 200)
     
-    readonly property bool updateAdvised: available && count > (Config.options?.updates?.adviseUpdateThreshold ?? 75)
-    readonly property bool updateStronglyAdvised: available && count > (Config.options?.updates?.stronglyAdviseUpdateThreshold ?? 200)
+    readonly property bool updateAdvised: available && count > root.adviseUpdateThreshold
+    readonly property bool updateStronglyAdvised: available && count > root.stronglyAdviseUpdateThreshold
 
     function load() {}
     function refresh() {
-        if (!available) return;
+        if (!available || checkUpdatesProc.running) return;
         print("[Updates] Checking for system updates")
         checkUpdatesProc.running = true;
     }
 
     Timer {
-        interval: (Config.options?.updates?.checkInterval ?? 120) * 60 * 1000
+        interval: root.checkIntervalMinutes * 60 * 1000
         repeat: true
         running: Config.ready
         onTriggered: {
-            print("[Updates] Periodic update check due")
-            root.refresh();
+            if (root.available) {
+                print("[Updates] Periodic update check due")
+                root.refresh();
+            } else if (!checkAvailabilityProc.running) {
+                checkAvailabilityProc.running = true;
+            }
         }
     }
 
@@ -49,19 +68,90 @@ Singleton {
         }
     }
 
+    Component.onCompleted: {
+        if (Config.ready) availabilityDefer.start()
+    }
+
     Process {
         id: checkAvailabilityProc
         running: false
-        command: ["which", "checkupdates"]
+        property bool startObserved: false
+        property bool timedOut: false
+        command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]
+
+        onRunningChanged: {
+            if (checkAvailabilityProc.running) {
+                checkAvailabilityProc.startObserved = false
+                return
+            }
+            if (checkAvailabilityProc.startObserved)
+                return
+
+            availabilityTimeout.stop()
+            root.available = false
+            root.count = 0
+            console.warn("[Updates] Failed to start update availability probe")
+        }
+
+        onStarted: {
+            checkAvailabilityProc.startObserved = true
+            checkAvailabilityProc.timedOut = false
+            availabilityTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
+            availabilityTimeout.stop()
+            if (checkAvailabilityProc.timedOut) {
+                root.available = false
+                root.count = 0
+                console.warn("[Updates] Timed out probing checkupdates availability")
+                return
+            }
             root.available = (exitCode === 0);
+            if (!root.available)
+                root.count = 0;
             root.refresh();
+        }
+    }
+
+    Timer {
+        id: availabilityTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!checkAvailabilityProc.running)
+                return
+            checkAvailabilityProc.timedOut = true
+            checkAvailabilityProc.running = false
         }
     }
 
     Process {
         id: checkUpdatesProc
+        property bool startObserved: false
+        property bool timedOut: false
         command: ["checkupdates"]
+
+        onRunningChanged: {
+            if (checkUpdatesProc.running) {
+                checkUpdatesProc.startObserved = false
+                return
+            }
+            if (checkUpdatesProc.startObserved)
+                return
+
+            updateCheckTimeout.stop()
+            root.count = 0
+            root.available = false
+            console.warn("[Updates] Failed to start checkupdates")
+        }
+
+        onStarted: {
+            checkUpdatesProc.startObserved = true
+            checkUpdatesProc.timedOut = false
+            updateCheckTimeout.restart()
+        }
+
         stdout: StdioCollector {
             onStreamFinished: {
                 const t = (text ?? "").trim();
@@ -69,9 +159,35 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
+            updateCheckTimeout.stop()
+            if (checkUpdatesProc.timedOut) {
+                root.count = 0
+                console.warn("[Updates] Timed out checking for system updates")
+                return
+            }
+            // pacman-contrib checkupdates uses exit 2 for the normal
+            // "no updates available" state. Clear any stale previous count and
+            // reserve error logging for genuine failures.
+            if (exitCode === 2) {
+                root.count = 0;
+                return;
+            }
             if (exitCode !== 0) {
+                root.count = 0;
                 console.error("[Updates] checkupdates failed", exitCode, exitStatus)
             }
+        }
+    }
+
+    Timer {
+        id: updateCheckTimeout
+        interval: 120000
+        repeat: false
+        onTriggered: {
+            if (!checkUpdatesProc.running)
+                return
+            checkUpdatesProc.timedOut = true
+            checkUpdatesProc.running = false
         }
     }
 }

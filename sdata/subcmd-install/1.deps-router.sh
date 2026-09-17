@@ -16,8 +16,14 @@ case "$OS_GROUP_ID" in
     ;;
     
   fedora)
-    printf "${STY_GREEN}Using Fedora installer${STY_RST}\n"
-    source ./sdata/dist-fedora/install-deps.sh
+    if is_immutable_distro; then
+      printf "${STY_YELLOW}Fedora Atomic support requires rpm-ostree/toolbox-aware manual setup${STY_RST}\n"
+      printf "${STY_YELLOW}Using generic installer guidance instead of the dnf host installer${STY_RST}\n"
+      source ./sdata/dist-generic/install-deps.sh
+    else
+      printf "${STY_GREEN}Using Fedora installer${STY_RST}\n"
+      source ./sdata/dist-fedora/install-deps.sh
+    fi
     ;;
     
   debian|ubuntu)
@@ -46,17 +52,14 @@ case "$OS_GROUP_ID" in
   nixos)
     printf "${STY_YELLOW}NixOS requires declarative configuration${STY_RST}\n"
     echo ""
-    echo "For NixOS, add iNiR to your configuration.nix or home-manager."
-    echo "See: https://github.com/snowarch/inir/wiki/NixOS"
+    echo "For the experimental Nix package/module path, follow docs/NIXOS.md."
+    echo "The source installer cannot provision Nix-managed dependencies for you."
     echo ""
-    echo "Basic steps:"
-    echo "  1. Add quickshell and niri to your system packages"
-    echo "  2. Clone this repo to ~/.config/quickshell/inir"
-    echo "  3. Run: ./setup install --skip-deps"
+    echo "If you continue with this source installer, dependency installation will be skipped."
     echo ""
     
     if $ask; then
-      read -p "Continue with --skip-deps? [y/N]: " choice
+      read -p "Continue with the source install and skip dependencies? [y/N]: " choice
       if [[ ! "$choice" =~ ^[yY]$ ]]; then
         exit 0
       fi

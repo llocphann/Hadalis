@@ -28,6 +28,10 @@ The right sidebar (ii) and action center (waffle) include a per-app volume mixer
 
 If EasyEffects is installed, iNiR detects its virtual sink and controls the physical sink behind it instead. This means volume control works correctly whether EasyEffects is running or not. A toggle in the right sidebar/action center lets you enable/disable EasyEffects.
 
+The Equalizer Phase 1 capability is disabled by default and is separate from normal Media playback. EasyEffects is its first optional backend, while `socat` is used only as an optional transport to the local EasyEffects control socket. If either the backend or transport is unavailable, the Equalizer capability remains unavailable and playback continues normally.
+
+Native EasyEffects and Flatpak installations can be detected at runtime. Package-managed installs therefore do not need to hard-depend on EasyEffects or `socat`; users who want the Equalizer controls can install or opt into those components separately.
+
 ### IPC
 
 ```bash

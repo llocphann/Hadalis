@@ -38,7 +38,7 @@ Item {
     // When this widget gets focus (from BottomWidgetGroup.focusActiveItem),
     // move focus to the internal text area on the next event loop tick.
     onFocusChanged: (focus) => {
-        if (focus) {
+        if (focus && Notepad.ready) {
             Qt.callLater(() => textArea.forceActiveFocus())
         }
     }
@@ -61,6 +61,10 @@ Item {
         function onCurrentTabChanged() { root._loadActiveTab() }
         function onTabsChanged() {
             if (textArea.text !== Notepad.text) root._loadActiveTab()
+        }
+        function onReadyChanged() {
+            if (Notepad.ready && textArea.text !== Notepad.text)
+                root._loadActiveTab()
         }
     }
 
@@ -194,6 +198,7 @@ Item {
                                     MouseArea {
                                         anchors.fill: parent
                                         anchors.margins: -4
+                                        enabled: Notepad.ready
                                         onClicked: Notepad.removeTab(tabPill.index)
                                     }
                                 }
@@ -202,8 +207,9 @@ Item {
                             MouseArea {
                                 id: tabMA
                                 anchors.fill: parent
+                                enabled: Notepad.ready
                                 hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 z: -1
                                 onClicked: Notepad.switchTab(tabPill.index)
                             }
@@ -216,6 +222,7 @@ Item {
             NotepadToolButton {
                 icon: "add"
                 tooltipText: Translation.tr("New tab")
+                enabled: Notepad.ready
                 onClicked: Notepad.addTab()
             }
         }
@@ -238,6 +245,7 @@ Item {
             NotepadToolButton {
                 icon: "content_paste"
                 tooltipText: Translation.tr("Paste from clipboard")
+                enabled: Notepad.ready
                 onClicked: clipboardProc.running = true
             }
 
@@ -253,7 +261,7 @@ Item {
             NotepadToolButton {
                 icon: "delete"
                 tooltipText: Translation.tr("Clear all")
-                enabled: textArea.text.length > 0
+                enabled: Notepad.ready && textArea.text.length > 0
                 destructive: true
                 onClicked: {
                     textArea.text = ""
@@ -285,6 +293,7 @@ Item {
 
                 TextArea {
                     id: textArea
+                    enabled: Notepad.ready
                     width: scrollView.availableWidth
                     wrapMode: TextArea.Wrap
                     renderType: Text.NativeRendering
@@ -309,14 +318,14 @@ Item {
                     }
 
                     Keys.onPressed: (event) => {
-                        if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) {
+                        if (Notepad.ready && (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) {
                             Notepad.setTextValue(textArea.text)
                             event.accepted = true
                         }
                     }
 
                     onTextChanged: {
-                        if (root._loadingTab) return
+                        if (root._loadingTab || !Notepad.ready) return
                         saveTimer.restart()
                     }
 
@@ -336,7 +345,8 @@ Item {
         interval: 800
         repeat: false
         onTriggered: {
-            Notepad.setTextValue(textArea.text)
+            if (Notepad.ready)
+                Notepad.setTextValue(textArea.text)
         }
     }
 
@@ -348,7 +358,7 @@ Item {
         stdout: SplitParser {
             splitMarker: ""
             onRead: data => {
-                if (data && data.length > 0) {
+                if (Notepad.ready && data && data.length > 0) {
                     const cursorPos = textArea.cursorPosition
                     textArea.insert(cursorPos, data)
                 }

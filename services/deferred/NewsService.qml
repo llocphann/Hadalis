@@ -27,6 +27,7 @@ Singleton {
     // Cache per feed key
     property var _cache: ({})
     property var _cacheTimestamps: ({})
+    property int _requestGeneration: 0
     readonly property int cacheValidityMs: 15 * 60 * 1000
 
     readonly property var topics: ["WORLD", "NATION", "BUSINESS", "TECHNOLOGY", "ENTERTAINMENT", "SCIENCE", "SPORTS", "HEALTH"]
@@ -52,7 +53,10 @@ Singleton {
 
     function fetch(mode, topic) {
         const url = root.feedUrl(mode, topic)
+        const generation = ++root._requestGeneration
         if (root._isCacheValid(url) && root._cache[url]) {
+            root.loading = false
+            root.lastError = ""
             root.articles = root._cache[url]
             return
         }
@@ -62,14 +66,20 @@ Singleton {
         xhr.onreadystatechange = function () {
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return
-            root.loading = false
             if (xhr.status !== 200) {
-                root.lastError = "HTTP " + xhr.status
+                if (generation === root._requestGeneration) {
+                    root.loading = false
+                    root.lastError = "HTTP " + xhr.status
+                }
                 return
             }
             const parsed = root._parseRss(xhr.responseText)
+            if (generation !== root._requestGeneration)
+                return
             root._cache[url] = parsed
             root._cacheTimestamps[url] = Date.now()
+            root.loading = false
+            root.lastError = ""
             root.articles = parsed
         }
         xhr.open("GET", url)

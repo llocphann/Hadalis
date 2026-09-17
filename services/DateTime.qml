@@ -28,8 +28,8 @@ Singleton {
         const fmt = Config.options?.time?.format ?? "hh:mm";
         if (!(Config.options?.time?.secondPrecision ?? false) || fmt.includes("s"))
             return Qt.locale().toString(clock.date, fmt);
-        const ap = fmt.indexOf(" AP");
-        return Qt.locale().toString(clock.date, ap >= 0 ? fmt.slice(0, ap) + ":ss" + fmt.slice(ap) : fmt + ":ss");
+        const meridiemIndex = Math.max(fmt.lastIndexOf(" AP"), fmt.lastIndexOf(" ap"));
+        return Qt.locale().toString(clock.date, meridiemIndex >= 0 ? fmt.slice(0, meridiemIndex) + ":ss" + fmt.slice(meridiemIndex) : fmt + ":ss");
     }
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
@@ -44,8 +44,10 @@ Singleton {
         repeat: true
         onTriggered: {
             fileUptime.reload();
-            const textUptime = fileUptime.text();
-            const uptimeSeconds = Number(textUptime.split(" ")[0] ?? 0);
+            const textUptime = String(fileUptime.text() ?? "").trim();
+            const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
+            if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
+                return;
 
             // Convert seconds to days, hours, and minutes
             const days = Math.floor(uptimeSeconds / 86400);

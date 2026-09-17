@@ -11,6 +11,7 @@ Column {
     id: root
 
     property alias text: sliderName.text
+    property string accessibleName: root.text
     property alias from: sliderWidget.from
     property alias to: sliderWidget.to
     property alias value: sliderWidget.value
@@ -39,6 +40,7 @@ Column {
             leftMargin: 4
             rightMargin: 4
         }
+        Accessible.name: root.accessibleName
         configuration: StyledSlider.Configuration.S
         onMoved: root.moved()
     }

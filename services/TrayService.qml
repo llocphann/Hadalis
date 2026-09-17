@@ -157,11 +157,14 @@ Singleton {
         return item && item.id;
     }
     
-    property var _pinnedItems: Config.options?.tray?.pinnedItems ?? []
+    property var _pinnedItems: {
+        const value = Config.options?.tray?.pinnedItems
+        return Array.isArray(value) ? value : []
+    }
     property list<var> itemsInUserList: SystemTray.items.values.filter(i => (isValidItem(i) && _pinnedItems.includes(i.id)))
     property list<var> itemsNotInUserList: SystemTray.items.values.filter(i => (isValidItem(i) && !_pinnedItems.includes(i.id) && (!smartTray || i.status !== Status.Passive)))
 
-    property bool invertPins: Config.options?.tray?.invertPinnedItems ?? false
+    property bool invertPins: Config.options?.tray?.invertPinnedItems ?? true
     property list<var> pinnedItems: invertPins ? itemsNotInUserList : itemsInUserList
     property list<var> unpinnedItems: invertPins ? itemsInUserList : itemsNotInUserList
 
@@ -188,17 +191,20 @@ Singleton {
 
     // Pinning
     function pin(itemId) {
-        var pins = Config.options?.tray?.pinnedItems ?? [];
+        if (!itemId) return;
+        const pins = root._pinnedItems.slice();
         if (pins.includes(itemId)) return;
         pins.push(itemId);
         Config.setNestedValue("tray.pinnedItems", pins);
     }
     function unpin(itemId) {
-        var pins = Config.options?.tray?.pinnedItems ?? [];
+        if (!itemId) return;
+        const pins = root._pinnedItems.slice();
         Config.setNestedValue("tray.pinnedItems", pins.filter(id => id !== itemId));
     }
     function togglePin(itemId) {
-        var pins = Config.options?.tray?.pinnedItems ?? [];
+        if (!itemId) return;
+        const pins = root._pinnedItems;
         if (pins.includes(itemId)) {
             unpin(itemId)
         } else {
@@ -241,7 +247,25 @@ Singleton {
 
     Process {
         id: xembedProxyCheckProc
+        property bool startObserved: false
         command: ["/usr/bin/pgrep", "-x", "xembedsniproxy"]
+
+        onRunningChanged: {
+            if (xembedProxyCheckProc.running) {
+                xembedProxyCheckProc.startObserved = false;
+                return;
+            }
+            if (xembedProxyCheckProc.startObserved)
+                return;
+
+            root._xembedProxyCheckedOnce = true;
+            root._log("[xembedsniproxy] pgrep could not start; attempting proxy launch")
+            xembedProxyStartProc.running = false;
+            xembedProxyStartProc.running = true;
+        }
+
+        onStarted: xembedProxyCheckProc.startObserved = true
+
         onExited: (exitCode, exitStatus) => {
             root._xembedProxyCheckedOnce = true;
             if (exitCode !== 0) {
@@ -253,6 +277,7 @@ Singleton {
 
     Process {
         id: xembedProxyStartProc
+        property bool startObserved: false
         stdout: SplitParser {
             onRead: (line) => root._log("[xembedsniproxy]", line)
         }
@@ -274,8 +299,25 @@ Singleton {
             "--setenv=QT_QPA_PLATFORM=xcb",
             "/usr/bin/xembedsniproxy"
         ]
+
+        onRunningChanged: {
+            if (xembedProxyStartProc.running) {
+                xembedProxyStartProc.startObserved = false;
+                return;
+            }
+            if (xembedProxyStartProc.startObserved)
+                return;
+
+            root._xembedProxyStartRequested = false;
+            root._log("[xembedsniproxy] systemd-run could not start")
+        }
+
+        onStarted: xembedProxyStartProc.startObserved = true
+
         onExited: (exitCode, exitStatus) => {
             root._log("[xembedsniproxy] exited", exitCode, exitStatus)
+            if (exitCode !== 0)
+                root._xembedProxyStartRequested = false;
         }
     }
 

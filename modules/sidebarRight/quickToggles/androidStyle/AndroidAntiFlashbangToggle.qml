@@ -7,8 +7,6 @@ import Quickshell
 AndroidQuickToggleButton {
     id: root
     
-    property bool auto: Config.options?.light?.night?.automatic ?? false
-
     name: Translation.tr("Anti-flashbang")
 
     toggled: Config.options?.light?.antiFlashbang?.enable ?? false

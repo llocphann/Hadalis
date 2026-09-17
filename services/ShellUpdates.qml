@@ -156,6 +156,25 @@ Singleton {
         fetchProc.running = true
     }
 
+    function _failCheckStart(stage: string): void {
+        const message = "Update check failed to start (" + stage + ")."
+        root.lastError = message
+        root.isChecking = false
+        console.warn("[ShellUpdates] " + message)
+    }
+
+    function _finishCountFallback(): void {
+        root.hasUpdate = root.localCommit !== root.remoteCommit && root.remoteCommit.length > 0
+        root.commitsBehind = root.hasUpdate ? 1 : 0
+        root.isChecking = false
+        root.initialUpdateCheckDone = true
+    }
+
+    function _finishCheck(): void {
+        root.isChecking = false
+        root.initialUpdateCheckDone = true
+    }
+
     // Fetch detailed info for the overlay (commit log, changelog, local mods)
     function fetchDetails(): void {
         if (isFetchingDetails || managedExternally) return
@@ -764,8 +783,20 @@ Singleton {
     // Step 2: Fetch from remote
     Process {
         id: fetchProc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "fetch", "origin", "--quiet", "--no-tags"]
+        onRunningChanged: {
+            if (fetchProc.running) {
+                fetchProc.startObserved = false
+                return
+            }
+            if (fetchProc.startObserved)
+                return
+
+            root._failCheckStart("fetch")
+        }
+        onStarted: fetchProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 root.isChecking = false
@@ -798,6 +829,7 @@ Singleton {
     // Step 3: Get current branch
     Process {
         id: currentBranchProc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "rev-parse", "--abbrev-ref", "HEAD"]
         stdout: StdioCollector {
@@ -806,6 +838,17 @@ Singleton {
                 print("[ShellUpdates] Current branch: " + root.currentBranch)
             }
         }
+        onRunningChanged: {
+            if (currentBranchProc.running) {
+                currentBranchProc.startObserved = false
+                return
+            }
+            if (currentBranchProc.startObserved)
+                return
+
+            root._failCheckStart("branch lookup")
+        }
+        onStarted: currentBranchProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 root.isChecking = false
@@ -818,6 +861,7 @@ Singleton {
     // Step 4: Get local commit
     Process {
         id: localCommitProc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "rev-parse", "--short", "HEAD"]
         stdout: StdioCollector {
@@ -825,6 +869,17 @@ Singleton {
                 root.localCommit = (text ?? "").trim()
             }
         }
+        onRunningChanged: {
+            if (localCommitProc.running) {
+                localCommitProc.startObserved = false
+                return
+            }
+            if (localCommitProc.startObserved)
+                return
+
+            root._failCheckStart("local commit lookup")
+        }
+        onStarted: localCommitProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 root.isChecking = false
@@ -837,6 +892,7 @@ Singleton {
     // Step 5: Get remote commit
     Process {
         id: remoteCommitProc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "rev-parse", "--short", "origin/" + root.currentBranch]
         stdout: StdioCollector {
@@ -844,6 +900,18 @@ Singleton {
                 root.remoteCommit = (text ?? "").trim()
             }
         }
+        onRunningChanged: {
+            if (remoteCommitProc.running) {
+                remoteCommitProc.startObserved = false
+                return
+            }
+            if (remoteCommitProc.startObserved)
+                return
+
+            console.warn("[ShellUpdates] Remote branch lookup failed to start; trying origin/main")
+            remoteCommitFallbackProc.running = true
+        }
+        onStarted: remoteCommitProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 // Try origin/main as fallback (in case branch doesn't exist remotely)
@@ -858,6 +926,7 @@ Singleton {
     // Step 5b: Fallback to origin/main
     Process {
         id: remoteCommitFallbackProc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "rev-parse", "--short", "origin/main"]
         stdout: StdioCollector {
@@ -865,6 +934,18 @@ Singleton {
                 root.remoteCommit = (text ?? "").trim()
             }
         }
+        onRunningChanged: {
+            if (remoteCommitFallbackProc.running) {
+                remoteCommitFallbackProc.startObserved = false
+                return
+            }
+            if (remoteCommitFallbackProc.startObserved)
+                return
+
+            console.warn("[ShellUpdates] origin/main lookup failed to start; trying origin/master")
+            remoteCommitFallback2Proc.running = true
+        }
+        onStarted: remoteCommitFallbackProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 // Try origin/master as last resort
@@ -879,6 +960,7 @@ Singleton {
     // Step 5c: Fallback to origin/master
     Process {
         id: remoteCommitFallback2Proc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "rev-parse", "--short", "origin/master"]
         stdout: StdioCollector {
@@ -886,6 +968,17 @@ Singleton {
                 root.remoteCommit = (text ?? "").trim()
             }
         }
+        onRunningChanged: {
+            if (remoteCommitFallback2Proc.running) {
+                remoteCommitFallback2Proc.startObserved = false
+                return
+            }
+            if (remoteCommitFallback2Proc.startObserved)
+                return
+
+            root._failCheckStart("remote commit lookup")
+        }
+        onStarted: remoteCommitFallback2Proc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 root.isChecking = false
@@ -899,6 +992,7 @@ Singleton {
     // Step 6: Count commits behind
     Process {
         id: countCommitsProc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "rev-list", "--count", "HEAD..origin/" + root._remoteBranch]
         stdout: StdioCollector {
@@ -907,13 +1001,22 @@ Singleton {
                 root.commitsBehind = isNaN(count) ? 0 : count
             }
         }
+        onRunningChanged: {
+            if (countCommitsProc.running) {
+                countCommitsProc.startObserved = false
+                return
+            }
+            if (countCommitsProc.startObserved)
+                return
+
+            console.warn("[ShellUpdates] Commit-count lookup failed to start; comparing commit IDs directly")
+            root._finishCountFallback()
+        }
+        onStarted: countCommitsProc.startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
                 // Fallback: compare commits directly
-                root.hasUpdate = root.localCommit !== root.remoteCommit && root.remoteCommit.length > 0
-                root.commitsBehind = root.hasUpdate ? 1 : 0
-                root.isChecking = false
-                root.initialUpdateCheckDone = true
+                root._finishCountFallback()
                 return
             }
             root.hasUpdate = root.commitsBehind > 0
@@ -921,8 +1024,7 @@ Singleton {
             if (root.hasUpdate) {
                 latestMessageProc.running = true
             } else {
-                root.isChecking = false
-                root.initialUpdateCheckDone = true
+                root._finishCheck()
                 print("[ShellUpdates] Up to date (" + root.localCommit + ")")
             }
         }
@@ -931,6 +1033,7 @@ Singleton {
     // Step 7: Get latest commit message from remote
     Process {
         id: latestMessageProc
+        property bool startObserved: false
         running: false
         command: [...root._gitCmd, "log", "--oneline", "-1", "origin/" + root._remoteBranch]
         stdout: StdioCollector {
@@ -938,10 +1041,20 @@ Singleton {
                 root.latestMessage = (text ?? "").trim()
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            root.isChecking = false
-            root.initialUpdateCheckDone = true
+        onRunningChanged: {
+            if (latestMessageProc.running) {
+                latestMessageProc.startObserved = false
+                return
+            }
+            if (latestMessageProc.startObserved)
+                return
+
+            root.latestMessage = ""
+            console.warn("[ShellUpdates] Latest-message lookup failed to start; keeping update state without message")
+            root._finishCheck()
         }
+        onStarted: latestMessageProc.startObserved = true
+        onExited: (exitCode, exitStatus) => root._finishCheck()
     }
 
     // =========================================================================

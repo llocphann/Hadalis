@@ -269,6 +269,8 @@ Singleton {
 
     Process {
         id: gpuProbe
+        property bool timedOut: false
+        property bool startObserved: false
         command: ["/bin/sh", "-c",
             "global_min=''; global_max=''; has_i915=0; has_xe=0; "
             + "for card in /sys/class/drm/card[0-9]*; do "
@@ -294,7 +296,32 @@ Singleton {
             id: gpuOutput
         }
 
+        onRunningChanged: {
+            if (gpuProbe.running) {
+                gpuProbe.startObserved = false
+                return
+            }
+            if (gpuProbe.startObserved)
+                return
+
+            gpuProbeTimeout.stop()
+            root._clearGpuCapabilities()
+            console.warn("[TLP] Failed to start GPU capability probe")
+        }
+
+        onStarted: {
+            gpuProbe.startObserved = true
+            gpuProbe.timedOut = false
+            gpuProbeTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
+            gpuProbeTimeout.stop()
+            if (gpuProbe.timedOut) {
+                root._clearGpuCapabilities()
+                console.warn("[TLP] Timed out while probing GPU capabilities")
+                return
+            }
             if (exitCode === 0)
                 root._applyGpuCapabilities(gpuOutput.text)
             else
@@ -302,9 +329,37 @@ Singleton {
         }
     }
 
+    Timer {
+        id: gpuProbeTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!gpuProbe.running)
+                return
+            gpuProbe.timedOut = true
+            gpuProbe.running = false
+        }
+    }
+
     Process {
         id: rdwBinaryProbe
+        property bool startObserved: false
         command: ["/usr/bin/test", "-x", "/usr/bin/tlp-rdw"]
+
+        onRunningChanged: {
+            if (rdwBinaryProbe.running) {
+                rdwBinaryProbe.startObserved = false
+                return
+            }
+            if (rdwBinaryProbe.startObserved)
+                return
+
+            root.rdwAvailable = false
+            root.rdwProbeDone = false
+            console.warn("[TLP] Failed to start RDW binary probe")
+        }
+
+        onStarted: rdwBinaryProbe.startObserved = true
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
@@ -318,11 +373,52 @@ Singleton {
 
     Process {
         id: rdwDispatcherProbe
+        property bool timedOut: false
+        property bool startObserved: false
         command: ["/usr/bin/systemctl", "is-enabled", "--quiet", "NetworkManager-dispatcher.service"]
 
+        onRunningChanged: {
+            if (rdwDispatcherProbe.running) {
+                rdwDispatcherProbe.startObserved = false
+                return
+            }
+            if (rdwDispatcherProbe.startObserved)
+                return
+
+            rdwDispatcherTimeout.stop()
+            root.rdwAvailable = false
+            root.rdwProbeDone = false
+            console.warn("[TLP] Failed to start NetworkManager dispatcher probe")
+        }
+
+        onStarted: {
+            rdwDispatcherProbe.startObserved = true
+            rdwDispatcherProbe.timedOut = false
+            rdwDispatcherTimeout.restart()
+        }
+
         onExited: (exitCode, exitStatus) => {
+            rdwDispatcherTimeout.stop()
+            if (rdwDispatcherProbe.timedOut) {
+                root.rdwAvailable = false
+                root.rdwProbeDone = false
+                console.warn("[TLP] Timed out while probing NetworkManager dispatcher")
+                return
+            }
             root.rdwAvailable = exitCode === 0
             root.rdwProbeDone = true
+        }
+    }
+
+    Timer {
+        id: rdwDispatcherTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!rdwDispatcherProbe.running)
+                return
+            rdwDispatcherProbe.timedOut = true
+            rdwDispatcherProbe.running = false
         }
     }
 

@@ -1,0 +1,56 @@
+name: Packaging contracts
+
+on:
+  push:
+    paths:
+      - 'VERSION'
+      - 'Makefile'
+      - 'setup'
+      - 'scripts/**'
+      - 'scripts/wiki-sync.sh'
+      - 'services/**'
+      - 'defaults/**'
+      - 'distro/arch/**'
+      - 'sdata/**'
+      - 'assets/**'
+      - 'docs/**'
+      - '.github/workflows/packaging.yml'
+  pull_request:
+    paths:
+      - 'VERSION'
+      - 'Makefile'
+      - 'setup'
+      - 'scripts/**'
+      - 'scripts/wiki-sync.sh'
+      - 'services/**'
+      - 'defaults/**'
+      - 'distro/arch/**'
+      - 'sdata/**'
+      - 'assets/**'
+      - 'docs/**'
+      - '.github/workflows/packaging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packaging-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install local-validation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fish jq rsync
+
+      - name: Run canonical local validator
+        run: bash scripts/validate-maintainer-local.sh --current-repo

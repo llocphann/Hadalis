@@ -19,7 +19,6 @@ TASKBAR_PATH = Path("modules/bar/BarTaskbar.qml")
 TASKBAR_PREVIEW_PATH = Path("modules/bar/BarTaskbarPreview.qml")
 TRAY_PATH = Path("modules/bar/SysTray.qml")
 MEDIA_PATH = Path("modules/bar/Media.qml")
-THINKFAN_SURFACE_PATH = Path("modules/perimeter/ThinkFanConnectedSurface.qml")
 SETTINGS_QMLDIR_PATH = Path("modules/settings/qmldir")
 SETTINGS_REGISTRY_PATH = Path("modules/settings/SettingsPageRegistry.qml")
 
@@ -171,7 +170,6 @@ def source_contract_failures() -> list[str]:
     preview = TASKBAR_PREVIEW_PATH.read_text(encoding="utf-8")
     tray = TRAY_PATH.read_text(encoding="utf-8")
     media = MEDIA_PATH.read_text(encoding="utf-8")
-    thinkfan_surface = THINKFAN_SURFACE_PATH.read_text(encoding="utf-8")
     settings_qmldir = SETTINGS_QMLDIR_PATH.read_text(encoding="utf-8")
     settings_registry = SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8")
 
@@ -194,9 +192,8 @@ def source_contract_failures() -> list[str]:
     forbid(styled, "PanelWindow.onActiveChanged", str(STYLED_POPUP_PATH), failures)
     forbid(styled, "PanelWindow.active", str(STYLED_POPUP_PATH), failures)
 
-    # The taskbar preview is now source-item-only: the real taskbar button is the
-    # geometry/output authority for the connected surface. A synthetic window
-    # anchor or compatibility group would reintroduce detached-window semantics.
+    # The taskbar preview is source-item-only: the real taskbar button is the
+    # geometry/output authority for the connected surface.
     require(preview, "hoverTarget: root.anchorItem", str(TASKBAR_PREVIEW_PATH), failures)
     require(preview, "property Item anchorItem", str(TASKBAR_PREVIEW_PATH), failures)
     forbid(taskbar, "anchor.window:", str(TASKBAR_PATH), failures)
@@ -210,10 +207,9 @@ def source_contract_failures() -> list[str]:
     require(tray, "overflowPopup.presentationWindow", str(TRAY_PATH), failures)
     forbid(tray, "overflowPopup.QsWindow", str(TRAY_PATH), failures)
 
-    # The bar media popup can reverse/reopen while StyledPopup's lazily-created
-    # presentation window is still resident. Initial keyboard focus therefore has
-    # to rearm on both requested visibility and presentation-window creation,
-    # rather than only once when BarMediaPopup is first constructed.
+    # The bar media popup can reverse/reopen while StyledPopup's presentation
+    # window is still resident; focus therefore rearms on semantic visibility and
+    # presentation-window creation rather than only once at construction.
     require(media, "function restoreInitialFocus(): void", str(MEDIA_PATH), failures)
     require(media, "onRequestedVisibleChanged:", str(MEDIA_PATH), failures)
     require(media, "onPresentationWindowChanged:", str(MEDIA_PATH), failures)
@@ -231,15 +227,10 @@ def source_contract_failures() -> list[str]:
         failures,
     )
 
-    # PanelWindow does not expose an active/onActiveChanged focus API. ThinkFan
-    # keeps the verified layer-shell focus path, gives its first control focus when
-    # the route is owned, and uses CompositorFocusGrab only on Hyprland.
-    require(thinkfan_surface, "WlrLayershell.keyboardFocus:", str(THINKFAN_SURFACE_PATH), failures)
-    require(thinkfan_surface, "thinkFanContent.focusInitialControl()", str(THINKFAN_SURFACE_PATH), failures)
-    require(thinkfan_surface, "CompositorService.isHyprland", str(THINKFAN_SURFACE_PATH), failures)
-    forbid(thinkfan_surface, "onActiveChanged:", str(THINKFAN_SURFACE_PATH), failures)
-    forbid(thinkfan_surface, "root.active", str(THINKFAN_SURFACE_PATH), failures)
-    forbid(thinkfan_surface, "_niriFocusSeen", str(THINKFAN_SURFACE_PATH), failures)
+    # ThinkFan no longer owns a standalone connected surface. Its System Monitor
+    # integration has a dedicated regression contract; this test must not recreate
+    # or require the retired surface merely to satisfy a presentation assertion.
+    forbid(styled, "ThinkFanConnectedSurface", str(STYLED_POPUP_PATH), failures)
 
     # Public settings routes intentionally expose Hug-only facades. Their base
     # types and facades must be registered in the settings module or Loader will

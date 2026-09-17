@@ -35,20 +35,29 @@ def main() -> None:
           "Hover popouts must retain the body hover bridge during visual linger")
 
     for token in (
-        "property bool _niriFocusSeen: false",
-        "onActiveChanged:",
-        "CompositorService.isNiri",
-        "popupWindow._niriFocusSeen = true",
-        "root.requestClose()",
-        "function onRequestedVisibleChanged()",
+        "focusable: root.keyboardFocus && root.requestedVisible",
+        "WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible",
+        "? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None",
+        "CompositorFocusGrab {",
+        "active: root.keyboardFocus && root.requestedVisible",
+        "windows: [popupWindow]",
+        "onCleared: root.requestClose()",
     ):
         check(token in popup,
-              f"Focused connected popup must preserve Niri focus-loss lifecycle: {token}")
-    check("if (!root.requestedVisible)" in popup
-          and "popupWindow._niriFocusSeen = false" in popup,
-          "Niri focus tracking must reset as soon as semantic popup state closes")
-    check("if (!root.keyboardFocus || !CompositorService.isNiri)" in popup,
-          "Niri focus-loss dismissal must be limited to keyboard-focused popups")
+              f"Focused connected popup must preserve the layer-shell/focus-grab lifecycle: {token}")
+
+    for forbidden in (
+        "onActiveChanged:",
+        "property bool _niriFocusSeen",
+        "popupWindow._niriFocusSeen",
+        "CompositorService.isNiri",
+    ):
+        check(forbidden not in popup,
+              f"StyledPopup must not revive the retired PanelWindow active-focus workaround: {forbidden}")
+
+    check("visible: root._anchorReady && root.requestedVisible && root.closeOnOutsideClick" in popup
+          and "screen: root._anchorScreen" in popup,
+          "Outside-click catcher must follow semantic visibility and explicit source-screen ownership")
 
     check("hoverActivates: false" in media
           and "closeOnOutsideClick: true" in media

@@ -5,20 +5,26 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
+STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 
 
-def require(text: str, token: str) -> None:
+def require(text: str, token: str, source: str) -> None:
     if token not in text:
-        raise AssertionError(f"ThemeService.qml is missing required Material-only contract token: {token!r}")
+        raise AssertionError(
+            f"{source} is missing required Material-only contract token: {token!r}"
+        )
 
 
-def forbid(text: str, token: str) -> None:
+def forbid(text: str, token: str, source: str) -> None:
     if token in text:
-        raise AssertionError(f"ThemeService.qml still contains retired global-style routing: {token!r}")
+        raise AssertionError(
+            f"{source} still contains retired global-style routing: {token!r}"
+        )
 
 
 def main() -> None:
-    text = THEME_SERVICE.read_text(encoding="utf-8")
+    theme_service = THEME_SERVICE.read_text(encoding="utf-8")
+    styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
 
     for token in (
         'readonly property string supportedGlobalStyle: "material"',
@@ -28,7 +34,7 @@ def main() -> None:
         'if (styleId !== root.supportedGlobalStyle)',
         'root.normalizeGlobalStyle()',
     ):
-        require(text, token)
+        require(theme_service, token, "ThemeService.qml")
 
     # The compatibility setter may remain for old callers, but it must never
     # persist the requested legacy style or resurrect per-style shell geometry.
@@ -43,7 +49,26 @@ def main() -> None:
         'case "zzz":',
         'case "cookie":',
     ):
-        forbid(text, token)
+        forbid(theme_service, token, "ThemeService.qml")
+
+    # The shared connected-popup path is user-facing runtime, not migration
+    # compatibility. It must consume the canonical Material tokens directly.
+    for token in (
+        'readonly property color _surfaceColor: Appearance.colors.colLayer0',
+        'readonly property color _borderColor: Appearance.colors.colLayer0Border',
+        'readonly property real _borderWidth: 0',
+        'readonly property real _surfaceRadius: Appearance.rounding.large',
+    ):
+        require(styled_popup, token, "StyledPopup.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+    ):
+        forbid(styled_popup, token, "StyledPopup.qml")
 
     print("Material-only global style contract: PASS")
 

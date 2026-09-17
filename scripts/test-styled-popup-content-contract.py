@@ -17,11 +17,14 @@ from pathlib import Path
 STYLED_POPUP_PATH = Path("modules/bar/StyledPopup.qml")
 TASKBAR_PATH = Path("modules/bar/BarTaskbar.qml")
 TASKBAR_PREVIEW_PATH = Path("modules/bar/BarTaskbarPreview.qml")
+TRAY_PATH = Path("modules/bar/SysTray.qml")
 SETTINGS_QMLDIR_PATH = Path("modules/settings/qmldir")
 SETTINGS_REGISTRY_PATH = Path("modules/settings/SettingsPageRegistry.qml")
 
 CONSUMER_ROOT_RE = re.compile(r"^\s*StyledPopup\s*\{")
 IMPLEMENTATION_ROOT_RE = re.compile(r"^\s*LazyLoader\s*\{")
+DIRECT_OBJECT_RE = re.compile(r"^\s*([A-Z][A-Za-z0-9_]*)\s*\{")
+EXPLICIT_CONTENT_RE = re.compile(r"^\s*contentItem\s*:\s*([A-Z][A-Za-z0-9_]*)\s*\{")
 NON_VISUAL_RE = re.compile(
     r"^\s*(Connections|Timer|Binding|Component|QtObject|Instantiator|PanelWindow|"
     r"PopupWindow|Process|FileView|Socket)\s*\{"
@@ -111,6 +114,44 @@ def direct_child_violations(path: Path) -> list[tuple[int, str]]:
     return found
 
 
+def visual_content_violations(path: Path) -> list[str]:
+    """Each StyledPopup consumer must supply exactly one visual content root."""
+    if path == STYLED_POPUP_PATH:
+        return []
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    state: dict[str, object] = {"quote": None, "block_comment": False}
+    depth = 0
+    blocks: list[dict[str, int]] = []
+    failures: list[str] = []
+
+    for line_no, line in enumerate(lines, 1):
+        if CONSUMER_ROOT_RE.match(line):
+            blocks.append({"direct_depth": depth + 1, "count": 0, "line": line_no})
+
+        for block in blocks:
+            if depth != block["direct_depth"]:
+                continue
+            if DIRECT_OBJECT_RE.match(line) or EXPLICIT_CONTENT_RE.match(line):
+                block["count"] += 1
+
+        depth += brace_delta(line, state)
+
+        still_open: list[dict[str, int]] = []
+        for block in blocks:
+            if depth < block["direct_depth"]:
+                if block["count"] != 1:
+                    failures.append(
+                        f"{path}:{block['line']}: StyledPopup has {block['count']} direct visual "
+                        "content roots; expected exactly one Item-compatible root"
+                    )
+            else:
+                still_open.append(block)
+        blocks = still_open
+
+    return failures
+
+
 def require(text: str, needle: str, label: str, failures: list[str]) -> None:
     if needle not in text:
         failures.append(f"{label}: missing required contract `{needle}`")
@@ -126,15 +167,24 @@ def source_contract_failures() -> list[str]:
     styled = STYLED_POPUP_PATH.read_text(encoding="utf-8")
     taskbar = TASKBAR_PATH.read_text(encoding="utf-8")
     preview = TASKBAR_PREVIEW_PATH.read_text(encoding="utf-8")
+    tray = TRAY_PATH.read_text(encoding="utf-8")
     settings_qmldir = SETTINGS_QMLDIR_PATH.read_text(encoding="utf-8")
     settings_registry = SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8")
 
-    # Output/window ownership must come from the actual bar control. LazyLoader is
-    # not a visual child of the bar and must never be used as geometry authority.
+    # Output/window ownership must come from the actual bar control. QsWindow's
+    # mapping API is non-reactive, so windowTransform must participate in the
+    # geometry binding. A valid screen is mandatory before the full-output layer
+    # surface is allowed to exist; otherwise a dangling output can leave an input
+    # mask attached to the wrong monitor.
     require(styled, "root.hoverTarget.QsWindow.window", str(STYLED_POPUP_PATH), failures)
+    require(styled, "root._anchorScreen !== null", str(STYLED_POPUP_PATH), failures)
+    require(styled, "hostWindow.windowTransform", str(STYLED_POPUP_PATH), failures)
     require(styled, "screen: root._anchorScreen", str(STYLED_POPUP_PATH), failures)
+    require(styled, "WlrLayershell.layer: WlrLayer.Overlay", str(STYLED_POPUP_PATH), failures)
     require(styled, "mask: connectedMask", str(STYLED_POPUP_PATH), failures)
     require(styled, "exclusionMode: ExclusionMode.Ignore", str(STYLED_POPUP_PATH), failures)
+    require(styled, "devicePixelRatio: popupWindow.devicePixelRatio", str(STYLED_POPUP_PATH), failures)
+    require(styled, "property var presentationWindow: null", str(STYLED_POPUP_PATH), failures)
     forbid(styled, "const host = root.QsWindow", str(STYLED_POPUP_PATH), failures)
     forbid(styled, "WlrLayershell.exclusionMode", str(STYLED_POPUP_PATH), failures)
 
@@ -145,6 +195,11 @@ def source_contract_failures() -> list[str]:
         require(preview, "component LegacyAnchor: QtObject", str(TASKBAR_PREVIEW_PATH), failures)
         require(preview, "property LegacyAnchor anchor: LegacyAnchor", str(TASKBAR_PREVIEW_PATH), failures)
     forbid(preview, "property QtObject anchor: QtObject", str(TASKBAR_PREVIEW_PATH), failures)
+
+    # Presentation peers that need the lazily-created surface (tray focus grab)
+    # must use the explicit handle rather than QsWindow on the StyledPopup loader.
+    require(tray, "overflowPopup.presentationWindow", str(TRAY_PATH), failures)
+    forbid(tray, "overflowPopup.QsWindow", str(TRAY_PATH), failures)
 
     # Public settings routes intentionally expose Hug-only facades. Their base
     # types and facades must be registered in the settings module or Loader will
@@ -186,6 +241,7 @@ def main() -> int:
                 f"{path}:{line_no}: direct {object_type} child violates "
                 "StyledPopup default property Item contentItem"
             )
+        failures.extend(visual_content_violations(path))
 
     failures.extend(source_contract_failures())
 
@@ -194,14 +250,15 @@ def main() -> int:
         for failure in failures:
             print(f"  - {failure}")
         print(
-            "Keep feature helpers inside the popup content Item (or explicit object "
-            "properties), and keep output ownership on the real visual anchor."
+            "Keep one visual content root per popup, keep feature helpers inside that "
+            "Item (or explicit object properties), and keep output ownership on the "
+            "real visual anchor."
         )
         return 1
 
     print(
         f"Connected StyledPopup contract passed ({scanned} candidate QML files scanned; "
-        "anchor/mask/settings contracts verified)."
+        "content/anchor/mask/lifecycle/settings contracts verified)."
     )
     return 0
 

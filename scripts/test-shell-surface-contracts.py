@@ -43,8 +43,9 @@ def main() -> None:
               f"StyledPopup must preserve {edge} attachment handling")
     check("Appearance.colors.colSurfaceContainer" not in styled_popup,
           "Connected bar popups must use the owning bar surface family, not the detached popup-card material")
-    check("active: root.requestedVisible || root._lingerVisible" in styled_popup,
-          "Connected popout loader must stay resident long enough to retract into the bar")
+    check("root._anchorReady" in styled_popup
+          and "root.requestedVisible || root._lingerVisible" in styled_popup,
+          "Connected popout loader must require a real anchor and stay resident long enough to retract into it")
     check("cornerStyle" not in styled_popup,
           "Connected bar popouts must not branch on retired Classic Bar corner styles")
     check("Appearance.zzz.chromeAlt" not in styled_popup
@@ -71,6 +72,10 @@ def main() -> None:
     ):
         check(token in geometry,
               f"ConnectedSurfaceGeometry missing seam/morph geometry contract: {token}")
+    check("property real connectorWidth: PerimeterTokens.connectorWidth" in geometry,
+          "ConnectedSurfaceGeometry must source popup connector width from the shared perimeter token")
+    check("Math.max(Math.max(0, connectorWidth), anchorTangentExtent)" not in geometry,
+          "Connected popup neck width must not expand or shrink with the source control width")
 
     content_host = read("modules/common/perimeter/ConnectedSurfaceContentHost.qml")
     for token in ("geometry.animatedBodyRect", "effectivePadding", "clip: true"):

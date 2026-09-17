@@ -154,18 +154,6 @@ ContentPage {
             ContentSubsection {
                 title: Translation.tr("Appearance")
 
-                SettingsSwitch {
-                    buttonIcon: "branding_watermark"
-                    text: Translation.tr("Use Card style")
-                    checked: Config.options.dock?.cardStyle ?? false
-                    onCheckedChanged: {
-                        Config.setNestedValue("dock.cardStyle", checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Use the new Card style (lighter background, specific rounding) generic to settings")
-                    }
-                }
-
                 ConfigSpinBox {
                     icon: "height"
                     text: Translation.tr("Dock height (px)")

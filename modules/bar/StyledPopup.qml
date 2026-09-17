@@ -25,6 +25,21 @@ LazyLoader {
         : (root._trailingEdge ? "bottom" : "top")
     readonly property real _contentPadding: 14
 
+    // The visual anchor is the authority for output/window ownership. StyledPopup
+    // itself is a LazyLoader and is not a visual child of the bar, so resolving
+    // QsWindow from the loader can point at no window at all. Keeping placement,
+    // screen selection and geometry attached to the actual source Item mirrors the
+    // layer-surface model used by edge shells: a full-output presentation window
+    // with a shape-aware input region, driven by a control already on that output.
+    readonly property var _anchorWindow: root.hoverTarget
+        ? root.hoverTarget.QsWindow.window : null
+    readonly property var _anchorScreen: root._anchorWindow
+        ? root._anchorWindow.screen : null
+    readonly property bool _anchorReady: root.hoverTarget !== null
+        && root._anchorWindow !== null
+        && root.hoverTarget.width > 0
+        && root.hoverTarget.height > 0
+
     // Keep the loader resident for the reverse morph. `requestedVisible` is the
     // semantic popup state; `active` includes only the short retract tail. While
     // hover-activated, the body itself also counts as the request so the pointer
@@ -68,7 +83,7 @@ LazyLoader {
 
     signal requestClose()
 
-    active: root.requestedVisible || root._lingerVisible
+    active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
     function _syncRequestedVisibility(): void {
         if (root.requestedVisible) {
@@ -130,8 +145,8 @@ LazyLoader {
 
     function _anchorRect(outputWidth, outputHeight) {
         const target = root.hoverTarget
-        const host = root.QsWindow
-        const hostWindow = host?.window ?? null
+        const host = target ? target.QsWindow : null
+        const hostWindow = root._anchorWindow
         if (!target || !host || !hostWindow
                 || target.width <= 0 || target.height <= 0
                 || outputWidth <= 0 || outputHeight <= 0)
@@ -167,13 +182,13 @@ LazyLoader {
     // semantic popup closes while the visual surface is allowed to retract.
     property QtObject _clickOutsideBackdropObject: PanelWindow {
         id: clickOutsideBackdrop
-        visible: root.requestedVisible && root.closeOnOutsideClick
-        screen: root.QsWindow.window?.screen ?? null
+        visible: root._anchorReady && root.requestedVisible && root.closeOnOutsideClick
+        screen: root._anchorScreen
         color: Qt.rgba(0, 0, 0, 1/255)
         exclusiveZone: 0
+        exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell:popup-catcher"
-        WlrLayershell.exclusionMode: ExclusionMode.Ignore
         anchors { top: true; bottom: true; left: true; right: true }
         MouseArea {
             anchors.fill: parent
@@ -185,7 +200,7 @@ LazyLoader {
     component: PanelWindow {
         id: popupWindow
 
-        screen: root.QsWindow.window?.screen ?? null
+        screen: root._anchorScreen
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0

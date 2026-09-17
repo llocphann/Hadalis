@@ -84,6 +84,7 @@ Loader {
         // SysTrayMenu stacking order so outside clicks close without blocking buttons.
         PanelWindow {
             id: clickOutsideBackdrop
+            screen: popupWindow.screen
             visible: CompositorService.isNiri && popupWindow.visible
                 && (root.closeOnFocusLost || root.closeOnOutsideClick)
             color: Qt.rgba(0, 0, 0, 1/255)

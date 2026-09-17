@@ -19,6 +19,7 @@ TASKBAR_PATH = Path("modules/bar/BarTaskbar.qml")
 TASKBAR_PREVIEW_PATH = Path("modules/bar/BarTaskbarPreview.qml")
 TRAY_PATH = Path("modules/bar/SysTray.qml")
 MEDIA_PATH = Path("modules/bar/Media.qml")
+THINKFAN_SURFACE_PATH = Path("modules/perimeter/ThinkFanConnectedSurface.qml")
 SETTINGS_QMLDIR_PATH = Path("modules/settings/qmldir")
 SETTINGS_REGISTRY_PATH = Path("modules/settings/SettingsPageRegistry.qml")
 
@@ -170,6 +171,7 @@ def source_contract_failures() -> list[str]:
     preview = TASKBAR_PREVIEW_PATH.read_text(encoding="utf-8")
     tray = TRAY_PATH.read_text(encoding="utf-8")
     media = MEDIA_PATH.read_text(encoding="utf-8")
+    thinkfan_surface = THINKFAN_SURFACE_PATH.read_text(encoding="utf-8")
     settings_qmldir = SETTINGS_QMLDIR_PATH.read_text(encoding="utf-8")
     settings_registry = SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8")
 
@@ -189,6 +191,8 @@ def source_contract_failures() -> list[str]:
     require(styled, "property var presentationWindow: null", str(STYLED_POPUP_PATH), failures)
     forbid(styled, "const host = root.QsWindow", str(STYLED_POPUP_PATH), failures)
     forbid(styled, "WlrLayershell.exclusionMode", str(STYLED_POPUP_PATH), failures)
+    forbid(styled, "PanelWindow.onActiveChanged", str(STYLED_POPUP_PATH), failures)
+    forbid(styled, "PanelWindow.active", str(STYLED_POPUP_PATH), failures)
 
     # The taskbar preview is now source-item-only: the real taskbar button is the
     # geometry/output authority for the connected surface. A synthetic window
@@ -226,6 +230,16 @@ def source_contract_failures() -> list[str]:
         str(MEDIA_PATH),
         failures,
     )
+
+    # PanelWindow does not expose an active/onActiveChanged focus API. ThinkFan
+    # keeps the verified layer-shell focus path, gives its first control focus when
+    # the route is owned, and uses CompositorFocusGrab only on Hyprland.
+    require(thinkfan_surface, "WlrLayershell.keyboardFocus:", str(THINKFAN_SURFACE_PATH), failures)
+    require(thinkfan_surface, "thinkFanContent.focusInitialControl()", str(THINKFAN_SURFACE_PATH), failures)
+    require(thinkfan_surface, "CompositorService.isHyprland", str(THINKFAN_SURFACE_PATH), failures)
+    forbid(thinkfan_surface, "onActiveChanged:", str(THINKFAN_SURFACE_PATH), failures)
+    forbid(thinkfan_surface, "root.active", str(THINKFAN_SURFACE_PATH), failures)
+    forbid(thinkfan_surface, "_niriFocusSeen", str(THINKFAN_SURFACE_PATH), failures)
 
     # Public settings routes intentionally expose Hug-only facades. Their base
     # types and facades must be registered in the settings module or Loader will

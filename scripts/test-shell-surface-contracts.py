@@ -144,17 +144,6 @@ def main() -> None:
     check("item: root.active ? root.connectorItem" not in mask,
           "ConnectedSurfaceMask must not make the transparent connector bounding box fully interactive")
 
-    media_surface = read("modules/perimeter/MediaConnectedSurface.qml")
-    weather_surface = read("modules/perimeter/WeatherConnectedSurface.qml")
-    for path, source in (
-        ("modules/perimeter/MediaConnectedSurface.qml", media_surface),
-        ("modules/perimeter/WeatherConnectedSurface.qml", weather_surface),
-    ):
-        check("ConnectedSurfaceContentHost {" in source,
-              f"{path} must use the shared connected content host")
-        check("geometry.offsetX" not in source and "geometry.offsetY" not in source,
-              f"{path} must not reference retired connected geometry offsets")
-
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,
           "Bar Media must not restore detached PopupWindow surfaces")

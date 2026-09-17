@@ -261,30 +261,43 @@ Source work already present on `dev`:
 - `modules/sidebar/SidebarEdgeConnectors.qml` connects Left/Right Sidebar presentation to the corresponding vertical Screen Edge, independent of top/bottom Bar placement;
 - the broad legacy `modules/perimeter` runtime/topology/adapters have been retired and removed after caller auditing; the old cutover policy was removed as well, and regression contracts were aligned with the supported connected-surface architecture;
 - shared connected-popup primitives remain active and protected under `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml`, and `modules/bar/StyledPopup.qml`; do not recreate the retired broad runtime to solve popup issues;
-- Thinkfan standalone connected-surface/content files have been removed from normal UX; Thinkfan controls/state are integrated into the existing System Monitor/resources popup and Settings, and repo-managed installs provision the Hadalis Thinkfan helper/polkit bridge;
+- Thinkfan standalone connected-surface/content files have been removed from normal UX; Thinkfan controls/state are integrated into the existing System Monitor/resources popup and Settings. Fresh repo-managed installs provision the Hadalis helper/polkit bridge, and required migration `041-thinkfan-helper-bridge` reconciles missing/outdated Hadalis-owned bridge files during repo-managed updates without modifying upstream Thinkfan package/service/config ownership;
+- `modules/common/widgets/KeyboardFocusRing.qml` imports `qs.modules.common` on current `dev`, so the earlier `Appearance is not defined` warning belongs to an older runtime snapshot and must be rechecked only after the local shell updates/reloads to current source;
 - `Settings > Bar` has a real supported v1.0 facade/content path instead of the previous blank route;
-- public Global Theme Settings are constrained to Material, persisted legacy style values normalize to Material, and retired Global Style search entries are hidden;
+- public Global Theme Settings are constrained to Material, persisted legacy style values normalize/write back to Material, and the runtime `Appearance.globalStyle` boundary is clamped to Material so a persisted legacy style cannot transiently reactivate an old Global Theme branch during startup;
+- the final source-side Material runtime audit removed the live legacy Global Style editors while retaining only migration/config/local-token compatibility that still has a supported caller; runtime visual validation remains part of the local release pass;
 - the Calendar/Weather composition has source implementation for the requested Serpantinum-inspired left/center presentation while retaining Hadalis detailed weather ownership/content on the right;
 - Media Popup owns the existing CAVA -> `PlayerControl` -> `WaveVisualizer` path and gates visualizer activity by popup presentation/playback lifecycle;
 - tray/context-menu output ownership, popup focus lifecycle, reverse retract and exact-menu delayed-close protections remain part of the connected-surface contract.
 
+Maintainer-reported follow-up checklist below is **source-side only**. A checked item means the source condition has been addressed or already exists on current `dev`; it does **not** mark the corresponding release/runtime gate as passed:
+
+- [x] **Thinkfan missing helper after update:** required state-based migration reconciles `/usr/libexec/inir-thinkfan` and the Hadalis polkit action for repo-managed installs. Live update + System Monitor validation is pending.
+- [x] **KeyboardFocusRing `Appearance` import:** current source already imports `qs.modules.common`. Live shell update/reload validation is pending.
+- [ ] **Connected popup geometry:** make popup/body/connector/bar-or-Screen-Edge read as one Caelestia-like connected surface without detached stems or seams.
+- [ ] **Bar/Screen Edge overlap and color:** suppress the Screen Edge on an edge occupied by the Bar and make Screen Edge surface color follow the Bar surface contract.
+- [ ] **Media Popup equalizer:** diagnose why the existing CAVA -> `PlayerControl` -> `WaveVisualizer` source path is not visibly rendering in the reported runtime.
+- [ ] **Time & Date / Weather hover:** remove the redundant separate Time & Date hover surface, route hover into the Weather/Calendar composition, and tighten the Serpantinum-inspired frontend while retaining Hadalis detailed weather ownership on the right.
+- [ ] **Left/right Sidebar connectors:** source connector exists; diagnose why it is not visibly joining the vertical Screen Edge in the reported runtime.
+- [ ] **Overview bottom connector:** connect the Super/Meta+Space Overview/dashboard surface to the bottom Screen Edge through the active shared connected-surface primitives.
+- [ ] **Thinkfan uninstall ownership symmetry:** repo-managed uninstall should remove only the Hadalis-owned helper/policy when appropriate; it must not remove/disable upstream Thinkfan package/service/config or interfere with package-manager ownership.
+
 Still open / must be treated as unfinished until audited or locally validated:
 
-1. **Material-only cleanup still needs a final active-tree audit.** Search current runtime/assets/imports/tests/docs for non-Material Global Theme residue. Remove only dead live paths; retain only the minimal persisted-value migration needed to normalize old values to Material. Waffle remains supported.
-2. **Packaging/runtime dependency audit is still open.** Confirm supported install/package paths cover `cava`, the Hadalis Thinkfan helper/polkit bridge plus its underlying runtime requirements, and weather dependencies. Source wiring alone is not sufficient.
-3. **Thinkfan uninstall ownership symmetry needs review.** Repo-managed uninstall should clean up only Hadalis-owned helper/policy artifacts when appropriate; it must not remove the upstream Thinkfan package/service/config or interfere with package-manager ownership.
-4. **Regression/docs residue needs a final pass after perimeter retirement.** Remove or rewrite stale contracts/documentation that still assume the deleted broad runtime, retired Global Styles or unsupported APIs. Do not change supported runtime behavior merely to satisfy stale tests.
-5. **Connected-surface/Settings final source review remains.** Re-check active `StyledPopup` consumers, connector/anchor/focus/mask consistency, Settings routing, multi-output ownership and recent Screen Edge corner work for source-level inconsistencies before declaring a candidate.
-6. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan missing-service behavior, CAVA lifecycle, Screen Edge rounded corners and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
+1. **Packaging/runtime dependency audit is still open.** Confirm supported install/package paths cover `cava`, the Hadalis Thinkfan helper/polkit bridge plus its underlying runtime requirements, and weather dependencies. Source wiring alone is not sufficient.
+2. **Thinkfan uninstall ownership symmetry remains open.** Cleanup must be limited to Hadalis-owned artifacts and must preserve package-manager/upstream Thinkfan ownership.
+3. **Regression/docs residue needs a final pass after perimeter retirement.** Remove or rewrite stale contracts/documentation that still assume the deleted broad runtime, retired Global Styles or unsupported APIs. Do not change supported runtime behavior merely to satisfy stale tests.
+4. **Maintainer-reported connected-surface/UI issues remain open.** Popup connector geometry, same-edge Screen Edge suppression/color, Sidebar connector visibility, Overview bottom attachment, Media visualizer visibility and Time/Date+Weather hover composition all require concrete source fixes followed by live validation.
+5. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
 Recommended next source-side sequence:
 
-1. refetch `dev` and `stable`, inspect every commit that landed since the previous turn, and re-read README/targets on the latest HEAD before editing;
-2. finish the Material-only active-tree audit and remove only proven-dead non-Material runtime/assets/imports/tests/docs;
-3. audit package/install manifests for `cava`, Thinkfan helper/runtime requirements and weather dependencies, then close any concrete packaging gap;
-4. audit repo-managed Thinkfan uninstall ownership symmetry without touching upstream Thinkfan package/service/config ownership;
-5. remove/update stale regression contracts and docs left by the broad perimeter/Global Style retirement;
-6. perform a final source review of connected-popup geometry/focus/output ownership, Settings routing and Screen Edge corner behavior;
+1. refetch `dev` and `stable`, inspect every concurrent commit, and re-read README/targets on the latest HEAD before editing;
+2. fix the connected-surface cluster from the maintainer report: shared popup connector geometry, same-edge Bar/Screen Edge ownership/color, Sidebar vertical connector visibility and Overview bottom attachment, without rebuilding the retired broad perimeter runtime;
+3. diagnose/fix Media Popup CAVA/WaveVisualizer visibility on the existing media path;
+4. merge Time & Date hover behavior into the Weather/Calendar popup and tighten its Serpantinum-inspired left/center frontend while keeping Hadalis detailed weather on the right;
+5. finish Thinkfan uninstall ownership symmetry and the packaging/runtime dependency audit for CAVA, Thinkfan and weather;
+6. remove/update stale regression contracts/docs that still describe retired runtime/theme behavior;
 7. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 
 ## 12. New-conversation continuation prompt
@@ -301,25 +314,27 @@ Không chạy/check GitHub Actions/CI vì usage limit đã hết. Tôi sẽ ch�
 Mục tiêu UI/UX: giữ kiến trúc/functionality iNiR hiện có nhưng làm connected surfaces theo hướng Caelestia. Không build popup framework mới. Existing bar popups vẫn đi qua `modules/bar/StyledPopup.qml` + `modules/common/perimeter/ConnectedSurface*` + `PerimeterTokens.qml`. Không reintroduce guessed `PanelWindow.active/onActiveChanged`, Pill/Mascot runtime, retired Bar/Dock renderers, Orbit/workspace experiments hay non-Material Global Themes. Waffle vẫn là panel family được support.
 
 Trạng thái source hiện tại đã có:
-- persistent Screen Edge + width setting; Screen Edge hiện có wallpaper-facing rounded inner corners;
+- persistent Screen Edge + width setting; Screen Edge có wallpaper-facing rounded inner corners;
 - connector width dùng shared contract;
-- Left/Right Sidebar có vertical edge connector riêng;
-- broad legacy `modules/perimeter` runtime/topology/adapters và cutover policy đã được retire/xóa; regression contracts liên quan đã được chỉnh theo architecture hiện tại;
-- TUYỆT ĐỐI không dựng lại broad perimeter runtime: giữ các shared primitives đang active ở `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml` và `modules/bar/StyledPopup.qml`;
-- Thinkfan đã tích hợp vào System Monitor/resources popup + Settings, standalone Thinkfan surface/content đã bỏ khỏi normal UX, repo-managed install đã provision Hadalis helper/polkit bridge;
+- broad legacy `modules/perimeter` runtime/topology/adapters và cutover policy đã được retire/xóa; TUYỆT ĐỐI không dựng lại broad perimeter runtime;
+- shared connected-surface primitives đang active ở `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml` và `modules/bar/StyledPopup.qml`;
+- Thinkfan đã tích hợp vào System Monitor/resources popup + Settings; fresh repo-managed install provision helper/polkit bridge và required migration `041-thinkfan-helper-bridge` tự reconcile bridge bị thiếu/outdated trên repo-managed update mà không chạm upstream Thinkfan package/service/config;
+- `KeyboardFocusRing.qml` trên current dev đã import `qs.modules.common`; warning `Appearance is not defined` từ runtime cũ cần recheck sau update/reload;
 - Bar Settings có facade/content thật;
-- public Global Theme Settings là Material-only, legacy value normalize về Material và retired Global Style search entries đã được ẩn;
+- public Global Theme là Material-only; runtime boundary đã clamp Material và migration shim vẫn normalize/write-back persisted legacy values;
 - Calendar/Weather có composition Serpantinum-inspired cho left/center nhưng giữ detailed Hadalis weather ở right;
-- Media Popup dùng CAVA -> PlayerControl -> WaveVisualizer và lifecycle đã gate theo popup presentation/playback;
+- Media Popup có source path CAVA -> PlayerControl -> WaveVisualizer, nhưng maintainer report runtime vẫn chưa thấy Equalizer;
 - tray/context-menu output ownership và popup focus/close contracts đã được harden.
 
-Ưu tiên tiếp theo, theo thứ tự:
-1. Final Material-only active-tree audit: tìm non-Material runtime/assets/imports/tests/docs còn live; chỉ xóa khi chứng minh không còn supported caller, giữ migration shim tối thiểu để normalize persisted legacy value về Material.
-2. Audit packaging/runtime dependency cho `cava`, Hadalis Thinkfan helper/polkit + upstream runtime requirements, và weather. Nếu có gap cụ thể thì sửa installer/package manifests/docs + regression contract tương ứng.
-3. Audit Thinkfan uninstall ownership symmetry: repo-managed uninstall chỉ dọn artifact Hadalis-owned khi đúng context; không remove/disable upstream Thinkfan package/service/config và không phá package-manager ownership.
-4. Audit stale regression contracts/docs còn giả định broad perimeter runtime, retired Global Style hoặc unsupported API; sửa contract theo supported runtime, không làm runtime regress để chiều test cũ.
-5. Final source review `StyledPopup` consumers, connector/anchor/focus/mask, Settings routes, multi-output ownership và Screen Edge corner behavior. Chỉ patch khi tìm được inconsistency/root cause cụ thể; tránh speculative UI churn.
-6. Khi source đã sạch, báo exact candidate SHA để tôi tự chạy `bash scripts/validate-maintainer-local.sh` rồi live-test Niri/Hyprland. Không tự đánh dấu release gate là pass.
+Maintainer-reported việc còn phải sửa:
+1. Connected popup geometry phải liền với Bar/Screen Edge kiểu Caelestia; connector/body phải align đúng.
+2. Nếu Bar chiếm một edge thì không render Screen Edge trên cùng edge đó; Screen Edge dùng cùng surface color contract với Bar.
+3. Media Popup phải thực sự hiển thị Equalizer/CAVA.
+4. Bỏ hover popup riêng của Time & Date; merge hover vào Weather/Calendar và làm frontend left/center sát Serpantinum hơn, vẫn giữ detailed Hadalis weather ở right.
+5. Left/Right Sidebar connector hiện có source nhưng runtime report không thấy nối vào vertical Screen Edge; tìm root cause geometry/visibility.
+6. Overview/dashboard mở bằng Super/Meta+Space phải nối vào bottom Screen Edge.
+7. Thinkfan uninstall ownership symmetry: repo-managed uninstall chỉ dọn Hadalis helper/policy khi đúng context; không remove/disable upstream Thinkfan package/service/config và không phá package-manager ownership.
+8. Audit packaging/runtime dependency cho CAVA, Thinkfan và weather, rồi dọn stale regression/docs sau khi các source fix trên ổn định.
 
-Sau mỗi nhóm thay đổi: refetch trước write, giữ patch nhỏ/atomic, commit trực tiếp lên `dev`, xác nhận HEAD sau commit và báo ngắn gọn root cause/goal, file đã đổi, SHA, source-level contract thay đổi và phần local/runtime validation còn lại.
+Sau mỗi nhóm thay đổi: refetch trước write, giữ patch nhỏ/atomic, commit trực tiếp lên `dev`, cập nhật checklist source-side trong README, xác nhận HEAD sau commit và báo root cause/goal, file đã đổi, SHA, source-level contract thay đổi và phần local/runtime validation còn lại.
 ```

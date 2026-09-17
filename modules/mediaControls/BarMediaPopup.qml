@@ -34,7 +34,13 @@ Item {
     property var _playerCache: []
     property bool _cacheValid: false
     readonly property var _visiblePlayers: root._cacheValid ? root._playerCache : (root.meaningfulPlayers ?? [])
-    readonly property bool visualizerActive: root.visible
+    // Item.visible alone is insufficient for popout lifecycle: an item's local
+    // visible flag can remain true while its presentation window is closed.
+    // Gate CAVA by the actual Quickshell window so the shared subscription is
+    // released as soon as this surface is no longer presented.
+    readonly property bool presentationActive: root.QsWindow.window?.visible ?? false
+    readonly property bool visualizerActive: root.presentationActive
+        && root.visible
         && root._visiblePlayers.length > 0
         && MprisController.isPlaying
 
@@ -251,7 +257,7 @@ Item {
                             : "transparent"
                 Behavior on border.color {
                     enabled: Appearance.animationsEnabled
-                    ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                    ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 }
                 property real padding: 20
 

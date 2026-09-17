@@ -261,6 +261,8 @@ LazyLoader {
             geometry: geometry
             bodyItem: frame.bodyItem
             connectorItem: frame.connectorItem
+            inputEnabled: root.requestedVisible
+                || (root.hoverActivates && root._lingerVisible)
         }
 
         mask: connectedMask

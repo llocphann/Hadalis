@@ -7,8 +7,10 @@ Region {
     required property var geometry
     required property Item bodyItem
     required property Item connectorItem
+    property bool inputEnabled: true
 
-    readonly property bool active: geometry?.valid === true
+    readonly property bool active: inputEnabled
+        && geometry?.valid === true
         && Number(geometry?.progress ?? 0) > 0
     readonly property bool horizontalConnector: geometry?.edge === "top"
         || geometry?.edge === "bottom"

@@ -24,6 +24,14 @@ Item {
         source: Qt.resolvedUrl("../../screenCorners/ScreenEdges.qml")
     }
 
+    // Sidebar bridges are presentation-only and use the same connected-surface
+    // primitive as bar popups. They stay independent from Bar position and only
+    // appear while the semantic left/right sidebar owns the matching output.
+    LazyLoader {
+        active: Config.ready
+        source: Qt.resolvedUrl("../../sidebar/SidebarEdgeConnectors.qml")
+    }
+
     CriticalPanelLoader {
         identifier: "iiBackground"
         source: Qt.resolvedUrl("../../background/Background.qml")

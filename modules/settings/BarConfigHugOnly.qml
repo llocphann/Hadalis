@@ -1,5 +1,6 @@
 import QtQuick
 import qs.modules.common
+import qs.modules.common.widgets
 
 // Public Classic Bar settings facade. The legacy BarConfig implementation is
 // kept intact for compatibility, while retired surface choices are removed from
@@ -41,5 +42,30 @@ BarConfig {
         running: true
         repeat: false
         onTriggered: root._applyHugOnlyUi(root)
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "appearance"
+        visible: root.isIiActive && root.activeSection === "appearance"
+        expanded: true
+        icon: "border_outer"
+        title: Translation.tr("Screen Edge")
+
+        SettingsGroup {
+            ConfigSpinBox {
+                icon: "width"
+                text: Translation.tr("Screen edge width (px)")
+                value: Config.options?.appearance?.screenEdge?.width ?? 10
+                from: 1
+                to: 32
+                stepSize: 1
+                onValueChanged: Config.setNestedValue("appearance.screenEdge.width", value)
+            }
+
+            SettingsNote {
+                icon: "info"
+                text: Translation.tr("The screen edge stays visible on the desktop and maximized windows. True fullscreen and lock screen hide it.")
+            }
+        }
     }
 }

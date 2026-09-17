@@ -111,6 +111,41 @@ function setup_systemd_services(){
 }
 
 #####################################################################################
+# ThinkFan privileged bridge
+#####################################################################################
+function setup_thinkfan_helper(){
+  local helper_src="${REPO_ROOT}/assets/helpers/inir-thinkfan"
+  local policy_src="${REPO_ROOT}/assets/polkit/org.inir.thinkfan.policy"
+  local helper_dst="/usr/libexec/inir-thinkfan"
+  local policy_dst="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"
+  local update_strategy=""
+
+  update_strategy="$(get_installed_update_strategy 2>/dev/null || true)"
+  if [[ "$update_strategy" == "package-manager" ]]; then
+    log_info "ThinkFan helper is package-managed; leaving system payload ownership to the package manager"
+    return 0
+  fi
+
+  if [[ ! -f "$helper_src" || ! -f "$policy_src" ]]; then
+    log_warning "ThinkFan integration assets are missing from the source checkout"
+    return 0
+  fi
+
+  tui_info "Installing ThinkFan integration helper..."
+
+  if [[ -x "$helper_dst" && -f "$policy_dst" ]] \
+      && cmp -s "$helper_src" "$helper_dst" \
+      && cmp -s "$policy_src" "$policy_dst"; then
+    log_success "ThinkFan integration helper is current"
+    return 0
+  fi
+
+  x pkg_sudo install -Dm755 "$helper_src" "$helper_dst"
+  x pkg_sudo install -Dm644 "$policy_src" "$policy_dst"
+  log_success "ThinkFan integration helper installed"
+}
+
+#####################################################################################
 # Super-tap daemon (tap Super key to toggle overview)
 #####################################################################################
 function setup_super_daemon(){
@@ -269,6 +304,9 @@ v setup_user_groups
 
 showfun setup_systemd_services
 v setup_systemd_services
+
+showfun setup_thinkfan_helper
+v setup_thinkfan_helper
 
 showfun setup_desktop_settings
 v setup_desktop_settings

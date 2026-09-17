@@ -19,6 +19,9 @@ def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
     bar_settings = read("modules/settings/BarConfigHugOnly.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
+    thinkfan_migration = read("sdata/migrations/041-thinkfan-helper-bridge.sh")
+    migration_engine = read("sdata/lib/migrations.sh")
+    setup_entrypoint = read("setup")
     thinkfan_docs = read("docs/THINKFAN.md")
 
     for token in (
@@ -78,6 +81,41 @@ def main() -> None:
 
     check('update_strategy" == "package-manager"' in source_setup,
           "Source setup must not overwrite package-manager-owned ThinkFan integration files")
+
+    for token in (
+        'MIGRATION_ID="041-thinkfan-helper-bridge"',
+        "MIGRATION_REQUIRED=true",
+        'get_installed_update_strategy 2>/dev/null || true',
+        '== "package-manager"',
+        'helper_src="${REPO_ROOT}/assets/helpers/inir-thinkfan"',
+        'policy_src="${REPO_ROOT}/assets/polkit/org.inir.thinkfan.policy"',
+        'helper_dst="/usr/libexec/inir-thinkfan"',
+        'policy_dst="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"',
+        'cmp -s "$helper_src" "$helper_dst"',
+        'cmp -s "$policy_src" "$policy_dst"',
+        'pkg_sudo install -Dm755 "$helper_src" "$helper_dst"',
+        'pkg_sudo install -Dm644 "$policy_src" "$policy_dst"',
+    ):
+        check(token in thinkfan_migration,
+              f"Required migration must self-heal the Hadalis ThinkFan bridge: {token}")
+
+    for forbidden in (
+        "systemctl stop thinkfan",
+        "systemctl disable thinkfan",
+        "systemctl disable --now thinkfan",
+        "pacman -R",
+        "dnf remove thinkfan",
+        "apt remove thinkfan",
+        "rm -f /etc/thinkfan",
+        "rm -rf /etc/thinkfan",
+    ):
+        check(forbidden not in thinkfan_migration,
+              f"ThinkFan bridge migration must preserve upstream ThinkFan ownership: {forbidden}")
+
+    check("run_migrations_auto" in setup_entrypoint,
+          "Repo update path must run required migrations after pulling source changes")
+    check('apply_migration "$migration_id" true' in migration_engine,
+          "Required migrations must re-apply from real state when a managed artifact is missing/outdated")
     check("sudo make install-thinkfan-helper" in thinkfan_docs,
           "ThinkFan troubleshooting must document the targeted helper repair path")
 

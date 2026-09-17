@@ -187,19 +187,16 @@ function run_canonical_validator
 end
 
 function scan_runtime_journal
-    set -g CHECK_NO (math "$CHECK_NO + 1")
     set -l label 'runtime QML error scan since validation start'
     set -l journal_file "$VALIDATION_WORKDIR/inir-journal.log"
     set -l hits_file "$VALIDATION_WORKDIR/inir-journal-errors.log"
 
     if not type -q journalctl
         skip_stage OPTIONAL "$label" 'journalctl is unavailable'
-        set -g CHECK_NO (math "$CHECK_NO - 1")
         return
     end
     if not type -q systemctl
         skip_stage OPTIONAL "$label" 'systemctl is unavailable'
-        set -g CHECK_NO (math "$CHECK_NO - 1")
         return
     end
 
@@ -207,10 +204,10 @@ function scan_runtime_journal
     set -l service_status $status
     if test $service_status -ne 0
         skip_stage OPTIONAL "$label" 'inir.service is not active under systemd --user; manual qs launches cannot be scoped safely'
-        set -g CHECK_NO (math "$CHECK_NO - 1")
         return
     end
 
+    set -g CHECK_NO (math "$CHECK_NO + 1")
     journalctl --user -u inir.service --since "$START_JOURNAL" --no-pager > "$journal_file" 2>&1
     set -l journal_rc $status
     if test $journal_rc -ne 0

@@ -8,8 +8,11 @@ import qs.modules.common
 BarConfig {
     id: root
 
-    property bool _hugUiReady: false
-    opacity: root._hugUiReady ? 1 : 0
+    // Never gate the whole page on the post-construction compatibility pass.
+    // SettingsPageHost may expose this Loader before the zero-delay Timer runs;
+    // keeping opacity at 0 in that window made a successfully loaded Bar page
+    // indistinguishable from an empty page. The pass below only hides retired
+    // controls and is safe to apply after the page is already visible.
 
     function _applyHugOnlyUi(item): void {
         if (!item)
@@ -37,9 +40,6 @@ BarConfig {
         interval: 0
         running: true
         repeat: false
-        onTriggered: {
-            root._applyHugOnlyUi(root)
-            root._hugUiReady = true
-        }
+        onTriggered: root._applyHugOnlyUi(root)
     }
 }

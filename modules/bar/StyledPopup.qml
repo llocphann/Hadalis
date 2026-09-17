@@ -115,7 +115,10 @@ LazyLoader {
         }
     }
 
-    Timer {
+    // `contentItem` is the default property and accepts only QQuickItem. Keep
+    // internal QObject/QWindow helpers on explicit object properties so they are
+    // never routed through the popup content contract during type construction.
+    property QtObject _retractTimerObject: Timer {
         id: retractTimer
         interval: Math.max(1, Appearance.animation.elementMoveEnter.duration + 16)
         repeat: false
@@ -162,7 +165,7 @@ LazyLoader {
     // Fullscreen transparent backdrop for Niri to detect clicks outside
     // (same pattern as ContextMenu / SysTrayMenu). It disappears as soon as the
     // semantic popup closes while the visual surface is allowed to retract.
-    PanelWindow {
+    property QtObject _clickOutsideBackdropObject: PanelWindow {
         id: clickOutsideBackdrop
         visible: root.requestedVisible && root.closeOnOutsideClick
         screen: root.QsWindow.window?.screen ?? null

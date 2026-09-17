@@ -11,14 +11,15 @@
 These rules are part of the task, not optional suggestions:
 
 - Work directly on **`dev`** unless the maintainer explicitly asks for another branch.
-- **Refetch the latest `dev` before every significant group of changes.** Concurrent commits frequently land on this branch; never assume the previous SHA is still current.
+- Treat the latest **`dev` as source of truth** for ongoing work; use `stable` only as the behavioral/architectural baseline when comparing regressions or intended behavior.
+- **Refetch the latest `dev` and `stable` before every significant group of changes.** Concurrent commits frequently land on `dev`; never assume the previous SHA is still current.
 - Do **not** create a pull request unless the maintainer explicitly requests one.
 - Do **not** run GitHub Actions / hosted CI for the current work. The repository has exhausted its Actions usage allowance; the maintainer performs the authoritative local test pass.
 - Keep commits focused and fix forward. Do not rewrite shared history.
 - When using ChatGPT, continue in the current chat/GitHub workflow; do not force a Work-mode handoff unless the maintainer asks for it.
 - Maintainer communication is normally in Vietnamese and prefers short progress reports.
 
-Before editing a file, read the current caller/consumer and the current version of the target file from `dev`. Before the next significant write, refetch `dev` again.
+Before editing a file, read the current caller/consumer and the current version of the target file from `dev`. Before the next significant write, refetch both branches again.
 
 ## 2. Product direction
 
@@ -67,6 +68,19 @@ The current connected-popup implementation is built around the existing bar popu
 
 Do not replace this with a new detached `PopupWindow` implementation simply to solve layout or focus problems. Fix the shared connected-surface path instead when the issue belongs there.
 
+### Popup contract and lifecycle invariants
+
+These invariants are intentional and should be checked before changing popup code:
+
+- Anchor a popup from the **actual visual source control / `hoverTarget`**, never from the `LazyLoader` window or another lifecycle wrapper.
+- `StyledPopup.presentationWindow` is the window presented to consumers that need window-level focus/menu ownership. Keep this explicit rather than making consumers discover an implementation window indirectly.
+- Placement must continue to account for output transforms and the popup window's effective `devicePixelRatio`; top/bottom/left/right bars, vertical bars, fractional scaling and transformed outputs are all supported cases.
+- Keep layer-shell keyboard focus through `WlrLayershell.keyboardFocus`. Hyprland additionally uses `CompositorFocusGrab`; Niri relies on the layer-shell focus path plus the outside-click backdrop.
+- `closeOnOutsideClick` uses the full-output transparent backdrop. Do not replace it with a detached popup implementation that changes click-through/input ownership semantics.
+- Tray menu delayed-close handling must release focus/grab only for the **exact menu window that actually closed**. If another tray menu became active during the delay, the old close event must not tear down the new menu's grab.
+- Quickshell `PanelWindow` does **not** provide the `active` / `onActiveChanged` API assumed by an earlier regression. Never add `PanelWindow.active`, `PanelWindow.onActiveChanged`, or equivalent guessed focus hooks without verifying the current Quickshell API first.
+- Preserve reverse retract / hover-bridge behavior so moving between the source control and connected body does not introduce a detached-feeling close/reopen cycle.
+
 ## 5. Full Connected Perimeter runtime
 
 Hadalis also contains the broader `iiPerimeter` composition runtime with topology, per-output placement, module adapters and guarded cutover/fallback policy.
@@ -85,6 +99,19 @@ Do not couple ordinary bar-popup behavior to the full perimeter cutover.
 The shared connected geometry is active in `StyledPopup.qml`. The host supports top/bottom/left/right attachment, source-aware placement, reveal/retract morphing, seam overlap and shape-aware input masking.
 
 Continue improving visual continuity toward the Caelestia reference, but keep the existing popup contents and behaviors.
+
+### Compatibility-only type shims
+
+Two compatibility types currently exist only to keep surviving callers loadable while retired feature runtimes stay removed:
+
+- `modules/pill/IslandPanel.qml` is a minimal alias to `RicelinSurface` and is exported by `modules/pill/qmldir`. It exists for legacy callers such as sidebar/overview paths that still import the old type name. **Do not rebuild the former Pill architecture around it.**
+- `services/MascotChaos.qml` is a disabled no-op singleton (`enabled: false`) exported by `services/qmldir`. It preserves the old signal/function surface for background-widget callers only. **Do not restore mascot state, physics, presentation or runtime behavior.**
+
+If another `Type X is unavailable` error appears, trace the dependency chain to the concrete missing/invalid type first. Add only the narrowest compatibility shim necessary for compilation; do not revive a retired subsystem.
+
+### Settings > Bar compatibility route
+
+`SettingsPageRegistry.qml` deliberately routes the public Bar page to `modules/settings/BarConfigHugOnly.qml`. The older `BarConfig.qml` remains only as a compatibility implementation for persisted configuration parsing. Hug is the sole supported Classic Bar surface geometry; retired Float/Rectangle/Card controls must not reappear through Settings routing.
 
 ### Media popup equalizer
 
@@ -168,26 +195,30 @@ For the current development cycle:
 
 High-value local checks include:
 
-- open connected popups from top, bottom, left and right bar positions;
-- verify connector/body remain visually joined throughout animation;
-- confirm transparent full-output popup regions remain click-through;
-- verify Media Popup equalizer starts/stops with playback and does not spawn unnecessary CAVA work while inactive;
-- switch MPRIS players while the Media Popup is open;
-- test multi-monitor and fractional scaling;
-- exercise tray menus, fullscreen, suspend/resume and lock/unlock;
+- open **Settings > Bar** and confirm the Hug-only page loads without exposing retired corner-style renderers;
+- open **Sidebar Left**, **Sidebar Right**, **Overview** and **Waffle** entry paths and confirm no `Type ... unavailable` dependency failure;
+- open connected popups from **top, bottom, left and right** bar positions, with extra attention to bottom-right anchors;
+- verify connector/body remain visually joined throughout animation and reverse retract;
+- confirm transparent full-output popup regions remain click-through while outside-click close still works;
+- exercise keyboard focus/Escape/outside-click behavior on both **Niri** and **Hyprland**;
+- open tray context menus, switch directly between tray items, reopen menus, and confirm a delayed close from an old menu cannot release the current menu's focus grab;
+- verify Media Popup equalizer starts/stops with playback, switch MPRIS players, close the popup, then reopen it via keyboard and confirm initial focus is usable;
+- test multi-monitor ownership, fractional scaling, transformed outputs and vertical bars;
+- exercise fullscreen, suspend/resume and lock/unlock;
 - verify supported themes still render correctly.
 
 ## 11. AI-agent checklist before every change
 
-1. Fetch the latest `dev` branch SHA.
-2. Read the current target file from `dev`.
-3. Read its caller/consumer or the nearest shared abstraction before changing architecture.
-4. Make the smallest coherent change that advances the requested UX.
-5. Commit directly to `dev`.
-6. Refetch `dev` before starting the next significant change.
-7. Do not open a PR unless explicitly asked.
-8. Do not run hosted CI while the current usage-limit instruction remains in effect.
-9. Report the changed file(s), commit SHA and practical effect concisely.
+1. Fetch the latest `dev` and `stable` branch SHAs.
+2. Treat current `dev` as source of truth and `stable` only as behavioral/architectural baseline.
+3. Read the current target file from `dev`.
+4. Read its caller/consumer or the nearest shared abstraction before changing architecture.
+5. Make the smallest coherent change that advances the requested UX.
+6. Commit directly to `dev`.
+7. Refetch both branches before starting the next significant change.
+8. Do not open a PR unless explicitly asked.
+9. Do not run hosted CI while the current usage-limit instruction remains in effect.
+10. Report the changed file(s), commit SHA and practical effect concisely.
 
 ## 12. Historical integration note
 
@@ -217,11 +248,20 @@ modules/mediaControls/MediaControls.qml
 modules/common/perimeter/
     -> shared connected-surface geometry/render/input primitives
 
+modules/settings/SettingsPageRegistry.qml
+    -> public Settings routing; Bar page points to BarConfigHugOnly.qml
+
 modules/settings/SettingsPageHost.qml
     -> lazy/asynchronous settings page residency
 
 modules/sidebar/SidebarHost.qml
     -> shared sidebar host / role routing / content-sized surface
+
+modules/pill/IslandPanel.qml
+    -> compatibility alias only; do not restore the retired Pill runtime
+
+services/MascotChaos.qml
+    -> disabled compatibility singleton only; do not restore mascot runtime
 ```
 
 If this document conflicts with the maintainer's newest explicit instruction, **the newest maintainer instruction wins**. Otherwise, use this README as the project handoff context before making changes.

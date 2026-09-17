@@ -4,6 +4,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 
@@ -23,9 +24,25 @@ def forbid(text: str, token: str, source: str) -> None:
 
 
 def main() -> None:
+    appearance = APPEARANCE.read_text(encoding="utf-8")
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
 
+    # Runtime must never expose a persisted legacy shell-wide style, even during
+    # singleton initialization before ThemeService has normalized config on disk.
+    require(
+        appearance,
+        'readonly property string globalStyle: "material"',
+        "Appearance.qml",
+    )
+    forbid(
+        appearance,
+        'readonly property string globalStyle: Config?.options?.appearance?.globalStyle ?? "material"',
+        "Appearance.qml",
+    )
+
+    # Persistence migration remains owned by ThemeService: old callers/config may
+    # still reach this compatibility boundary, but every value is clamped to Material.
     for token in (
         'readonly property string supportedGlobalStyle: "material"',
         'function normalizeGlobalStyle(): void',

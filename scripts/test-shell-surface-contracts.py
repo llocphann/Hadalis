@@ -122,6 +122,27 @@ def main() -> None:
     check("active: root.trayOverflowOpen" not in tray,
           "Tray overflow must not bypass the retract lifecycle by overriding LazyLoader.active")
 
+    connected_bar_popouts = {
+        "modules/bar/ClockWidgetTooltip.qml": "StyledPopup {",
+        "modules/bar/TimerIndicatorTooltip.qml": "StyledPopup {",
+        "modules/bar/ShellUpdateIndicator.qml": "StyledPopup {",
+        "modules/bar/BatteryPopup.qml": "StyledPopup {",
+        "modules/bar/ResourcesPopup.qml": "StyledPopup {",
+    }
+    for path, connected_shell in connected_bar_popouts.items():
+        source = read(path)
+        check(connected_shell in source,
+              f"{path} must use the shared connected bar popout shell")
+        check("PopupWindow" not in source,
+              f"{path} must not restore a detached PopupWindow surface")
+
+    bar_runtime = read("modules/bar/Bar.qml")
+    check('Config.setNestedValue("bar.cornerStyle", 0)' in bar_runtime,
+          "Classic Bar startup must normalize persisted legacy corner styles to Hug")
+    for retired_runtime_token in ("effectiveCornerStyle", "floatStyleShadow", "barFillInner"):
+        check(retired_runtime_token not in bar_runtime,
+              f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")
+
     bar_settings = read("modules/settings/BarConfigHugOnly.qml")
     quick_settings = read("modules/settings/QuickConfigHugOnly.qml")
     check('Translation.tr("Corner style")' in bar_settings

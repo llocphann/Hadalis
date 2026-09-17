@@ -181,12 +181,13 @@ QtObject {
         ? bodyRect.x + bodyRect.width / 2
         : bodyRect.y + bodyRect.height / 2
 
-    // A Caelestia-like connected surface starts at roughly the source control's
-    // width, then broadens into the popup body. The connector's body-side extent
-    // therefore includes rounded shoulders instead of remaining a thin stem.
+    // Every connected popup uses the same token-backed neck width. The source
+    // control may be wider or narrower, but it must not resize the connector;
+    // only an unusually narrow popup body is allowed to clamp it. The body-side
+    // shoulder still flares by the shared outer radius so the join stays organic.
     readonly property real connectorSourceExtent: snapSize(Math.min(
         bodyTangentExtent,
-        Math.max(Math.max(0, connectorWidth), anchorTangentExtent)))
+        Math.max(0, connectorWidth)))
     readonly property real connectorBodyExtent: snapSize(Math.min(
         bodyTangentExtent,
         connectorSourceExtent + Math.max(0, outerRadius) * 2))

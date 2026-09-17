@@ -34,6 +34,9 @@ Singleton {
     function isRetiredGlobalStyleEntry(entry): bool {
         if (!entry || entry.pageIndex !== root.themesPageIndex)
             return false
+        if (entry.section === Translation.tr("Global Style")
+                || entry.label === Translation.tr("Global Style"))
+            return true
         const words = [entry.section ?? "", entry.label ?? "", entry.description ?? ""]
             .concat(Array.isArray(entry.keywords) ? entry.keywords : [])
             .join(" ")

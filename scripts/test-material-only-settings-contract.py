@@ -22,6 +22,8 @@ def main() -> None:
     for token in (
         "readonly property int themesPageIndex: 4",
         'component: "modules/settings/ThemesConfigMaterial.qml"',
+        'entry.section === Translation.tr("Global Style")',
+        'entry.label === Translation.tr("Global Style")',
         ".filter(entry => !root.isRetiredGlobalStyleEntry(entry))",
     ):
         require(registry, token, "SettingsPageRegistry.qml")

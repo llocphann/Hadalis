@@ -57,46 +57,9 @@ StyledPopup {
             root.close()
     }
 
-    Connections {
-        target: root.anchorItem
-        enabled: root.previewOpen
-        function onToplevelsChanged() {
-            if ((root.anchorItem?.toplevels?.length ?? 0) === 0)
-                root.close()
-        }
-    }
-
-    Connections {
-        target: ToplevelManager.toplevels
-        function onValuesChanged() {
-            if (!root.previewOpen || !root.appEntry)
-                return
-            const appId = root.appEntry.appId
-            if (!appId)
-                return
-            const allToplevels = CompositorService.sortedToplevels
-                    && CompositorService.sortedToplevels.length
-                ? CompositorService.sortedToplevels
-                : ToplevelManager.toplevels.values
-            const current = allToplevels.filter(t => {
-                const id = AppSearch.resolveWindowIdentity(t)
-                return id && id.toLowerCase() === appId
-            })
-            if (current.length === 0)
-                root.close()
-            else
-                root.appEntry = Object.assign({}, root.appEntry, { toplevels: current })
-        }
-    }
-
-    // Gives the pointer time to travel across the connected shoulder from the
-    // taskbar button into the preview content without collapsing the surface.
-    Timer {
-        interval: 250
-        running: root.previewOpen && !root.popupHovered && !root.dockHovered
-        onTriggered: root.close()
-    }
-
+    // StyledPopup's default content property is an Item. Keep every non-visual
+    // helper under the content Item's `data` list so Connections/Timer are not
+    // accidentally assigned to StyledPopup.contentItem during type creation.
     Item {
         id: previewContent
         clip: true
@@ -106,6 +69,46 @@ StyledPopup {
         implicitHeight: root.isVertical
             ? windowsLayout.implicitHeight
             : Math.min(144, windowsLayout.implicitHeight)
+
+        Connections {
+            target: root.anchorItem
+            enabled: root.previewOpen
+            function onToplevelsChanged() {
+                if ((root.anchorItem?.toplevels?.length ?? 0) === 0)
+                    root.close()
+            }
+        }
+
+        Connections {
+            target: ToplevelManager.toplevels
+            function onValuesChanged() {
+                if (!root.previewOpen || !root.appEntry)
+                    return
+                const appId = root.appEntry.appId
+                if (!appId)
+                    return
+                const allToplevels = CompositorService.sortedToplevels
+                        && CompositorService.sortedToplevels.length
+                    ? CompositorService.sortedToplevels
+                    : ToplevelManager.toplevels.values
+                const current = allToplevels.filter(t => {
+                    const id = AppSearch.resolveWindowIdentity(t)
+                    return id && id.toLowerCase() === appId
+                })
+                if (current.length === 0)
+                    root.close()
+                else
+                    root.appEntry = Object.assign({}, root.appEntry, { toplevels: current })
+            }
+        }
+
+        // Gives the pointer time to travel across the connected shoulder from the
+        // taskbar button into the preview content without collapsing the surface.
+        Timer {
+            interval: 250
+            running: root.previewOpen && !root.popupHovered && !root.dockHovered
+            onTriggered: root.close()
+        }
 
         // Horizontal bar: previews side by side. Vertical bar: previews stacked.
         GridLayout {

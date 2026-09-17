@@ -18,6 +18,11 @@ LazyLoader {
     default property Item contentItem
     property real popupBackgroundMargin: 0
 
+    // Presentation-only handle for the lazily-created connected surface. This is
+    // useful to presentation peers such as the tray focus grab; feature/backend
+    // state never depends on this window object.
+    property var presentationWindow: null
+
     readonly property bool _barVertical: Config.options?.bar?.vertical ?? false
     readonly property bool _trailingEdge: Config.options?.bar?.bottom ?? false
     readonly property string _attachmentEdge: root._barVertical
@@ -37,6 +42,7 @@ LazyLoader {
         ? root._anchorWindow.screen : null
     readonly property bool _anchorReady: root.hoverTarget !== null
         && root._anchorWindow !== null
+        && root._anchorScreen !== null
         && root.hoverTarget.width > 0
         && root.hoverTarget.height > 0
 
@@ -147,18 +153,19 @@ LazyLoader {
         const target = root.hoverTarget
         const host = target ? target.QsWindow : null
         const hostWindow = root._anchorWindow
-        if (!target || !host || !hostWindow
+        if (!target || !host || !hostWindow || !root._anchorScreen
                 || target.width <= 0 || target.height <= 0
                 || outputWidth <= 0 || outputHeight <= 0)
             return Qt.rect(0, 0, 0, 0)
 
-        // Explicitly touch the target geometry so this binding is refreshed when
-        // bar modules are rearranged or resized. mapFromItem() then supplies the
-        // precise tangent coordinate inside the owning bar window.
+        // mapFromItem() is intentionally non-reactive in Quickshell. Touch both
+        // the item geometry and QsWindow.windowTransform so monitor transforms,
+        // bar moves, scale changes and hotplug force this binding to recompute.
         target.x
         target.y
         target.width
         target.height
+        hostWindow.windowTransform
         const mapped = host.mapFromItem(target, 0, 0)
         let x = mapped.x
         let y = mapped.y
@@ -219,6 +226,12 @@ LazyLoader {
         WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
+        Component.onCompleted: root.presentationWindow = popupWindow
+        Component.onDestruction: {
+            if (root.presentationWindow === popupWindow)
+                root.presentationWindow = null
+        }
+
         // Hyprland still needs an explicit grab for keyboard-driven popouts;
         // Niri uses the layer-shell focus mode above. Keep the behavior inside
         // the shared popup so focused surfaces (notably Media) do not fall back
@@ -242,7 +255,7 @@ LazyLoader {
                     + root._contentPadding * 2 + Math.max(0, root.popupBackgroundMargin)))
             outerRadius: root._surfaceRadius
             progress: root.revealProgress
-            devicePixelRatio: popupWindow.screen?.devicePixelRatio ?? 1
+            devicePixelRatio: popupWindow.devicePixelRatio
         }
 
         ConnectedSurfaceFrame {

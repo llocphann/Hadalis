@@ -20,8 +20,7 @@ PanelWindow {
     readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
     readonly property var route: routeState.route
     readonly property bool routeOwned: routeState.routeOwned
-    readonly property color surfaceColor: Appearance.inirEverywhere
-        ? Appearance.inir.colLayer1 : Appearance.colors.colLayer0
+    readonly property color surfaceColor: Appearance.colors.colLayer0
 
     screen: root.sourceScreen ?? Quickshell.screens[0]
     color: "transparent"
@@ -93,9 +92,8 @@ PanelWindow {
         anchors.fill: parent
         geometry: geometry
         fillColor: root.surfaceColor
-        borderColor: Appearance.inirEverywhere
-            ? Appearance.inir.colBorder : "transparent"
-        borderWidth: Appearance.inirEverywhere ? 1 : 0
+        borderColor: "transparent"
+        borderWidth: 0
     }
 
     ConnectedSurfaceContentHost {
@@ -116,7 +114,7 @@ PanelWindow {
 
             WeatherPopupContent {
                 id: weatherContent
-                compact: geometry.maximumBodyWidth < compactBreakpoint
+                compact: geometry.maximumBodyWidth < weatherContent.compactBreakpoint
                 x: Math.max(0,
                     (weatherViewport.width - implicitWidth) / 2)
                 y: Math.max(0,

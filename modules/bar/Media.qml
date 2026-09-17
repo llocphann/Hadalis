@@ -89,17 +89,13 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.volumePopupValue === 0 ? "volume_off" : "volume_up"
                 iconSize: Appearance.font.pixelSize.normal
-                color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                    : Appearance.inirEverywhere ? Appearance.inir.colText
-                    : Appearance.colors.colOnLayer0
+                color: Appearance.colors.colOnLayer0
             }
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Math.round(root.volumePopupValue * 100) + "%"
                 font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                    : Appearance.inirEverywhere ? Appearance.inir.colText
-                    : Appearance.colors.colOnLayer0
+                color: Appearance.colors.colOnLayer0
             }
         }
     }
@@ -195,28 +191,16 @@ Item {
         Item {
             id: compactMediaGlyph
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: Appearance.zzzEverywhere && !root.showVerboseLabel ? 30 : 22
+            implicitWidth: 22
             implicitHeight: implicitWidth
-
-            ZzzPlate {
-                anchors.fill: parent
-                visible: Appearance.zzzEverywhere && !root.showVerboseLabel
-                fillColor: Appearance.zzz.paperAlt
-                strokeColor: Appearance.zzz.hairline
-                strokeWidth: 1
-                chamfer: Math.min(Appearance.zzz.cutCorner, 8)
-            }
 
             ClippedFilledCircularProgress {
                 id: mediaCircProg
                 anchors.centerIn: parent
-                lineWidth: Appearance.zzzEverywhere ? 2 : Appearance.rounding.unsharpen
+                lineWidth: Appearance.rounding.unsharpen
                 value: (activePlayer && activePlayer.length > 0) ? (activePlayer.position / activePlayer.length) : 0
-                implicitSize: Appearance.zzzEverywhere && !root.showVerboseLabel ? 22 : 22
-                colPrimary: Appearance.zzzEverywhere ? Appearance.zzz.accent
-                    : Appearance.inirEverywhere ? Appearance.inir.colPrimary
-                    : Appearance.auroraEverywhere ? Appearance.colors.colPrimary
-                    : Appearance.colors.colOnLayer0
+                implicitSize: 22
+                colPrimary: Appearance.colors.colOnLayer0
                 enableAnimation: activePlayer?.playbackState === MprisPlaybackState.Playing
 
                 Item {
@@ -229,10 +213,7 @@ Item {
                         fill: 1
                         text: activePlayer?.isPlaying ? "pause" : "music_note"
                         iconSize: Appearance.font.pixelSize.normal
-                        color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                            : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary
-                            : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer0
-                            : Appearance.colors.colOnLayer0
+                        color: Appearance.colors.colOnLayer0
                         Behavior on color {
                             enabled: Appearance.animationsEnabled
                             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -276,10 +257,7 @@ Item {
                     animateChange: true
                     animationDistanceX: root.effectiveTrackAnimationDirection * 10
                     animationDistanceY: 0
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                        : Appearance.inirEverywhere ? Appearance.inir.colText
-                        : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer0
-                        : Appearance.colors.colOnLayer1
+                    color: Appearance.colors.colOnLayer1
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

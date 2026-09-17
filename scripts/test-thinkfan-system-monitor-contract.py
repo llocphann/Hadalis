@@ -17,9 +17,7 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
-    thinkfan_module = read("modules/perimeter/ThinkFanModule.qml")
     bar_settings = read("modules/settings/BarConfigHugOnly.qml")
-    perimeter_qmldir = read("modules/perimeter/qmldir")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
     thinkfan_docs = read("docs/THINKFAN.md")
 
@@ -42,11 +40,8 @@ def main() -> None:
         "AnchorPublisher",
         'surface: "thinkfan"',
     ):
-        check(forbidden not in thinkfan_module,
-              f"ThinkFan perimeter indicator must not own a standalone popup route: {forbidden}")
-
-    check("Accessible.role: Accessible.StaticText" in thinkfan_module,
-          "Non-interactive ThinkFan perimeter telemetry must expose static-text accessibility semantics")
+        check(forbidden not in resources_popup,
+              f"System Monitor ThinkFan UI must not revive a standalone popup route: {forbidden}")
 
     for token in (
         'title: Translation.tr("System Monitor & Thermals")',
@@ -57,14 +52,15 @@ def main() -> None:
         check(token in bar_settings,
               f"Bar Settings must expose the shared ThinkFan profile control: {token}")
 
-    check("ThinkFanConnectedSurface" not in perimeter_qmldir,
-          "Retired standalone ThinkFan connected surface must not remain exported")
-    check("ThinkFanPopupContent" not in perimeter_qmldir,
-          "Retired standalone ThinkFan popup content must not remain exported")
-    check(not (ROOT / "modules/perimeter/ThinkFanConnectedSurface.qml").exists(),
-          "Retired standalone ThinkFan connected surface file must be removed")
-    check(not (ROOT / "modules/perimeter/ThinkFanPopupContent.qml").exists(),
-          "Retired standalone ThinkFan popup content file must be removed")
+    check(not (ROOT / "modules/perimeter").exists(),
+          "Retired broad perimeter module must stay absent")
+    for path in (
+        "modules/perimeter/ThinkFanModule.qml",
+        "modules/perimeter/ThinkFanConnectedSurface.qml",
+        "modules/perimeter/ThinkFanPopupContent.qml",
+    ):
+        check(not (ROOT / path).exists(),
+              f"Retired standalone ThinkFan surface must stay removed: {path}")
 
     for token in (
         "function setup_thinkfan_helper()",

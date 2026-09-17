@@ -77,6 +77,7 @@ These invariants are intentional and should be checked before changing popup cod
 - Placement must continue to account for output transforms and the popup window's effective `devicePixelRatio`; top/bottom/left/right bars, vertical bars, fractional scaling and transformed outputs are all supported cases.
 - Keep layer-shell keyboard focus through `WlrLayershell.keyboardFocus`. Hyprland additionally uses `CompositorFocusGrab`; Niri relies on the layer-shell focus path plus the outside-click backdrop.
 - `closeOnOutsideClick` uses the full-output transparent backdrop. Do not replace it with a detached popup implementation that changes click-through/input ownership semantics.
+- A fullscreen/backdrop `PanelWindow` that belongs to a per-output popup must bind its `screen` to the popup/output owner (`root.screen`, `popupWindow.screen`, or the resolved anchor screen). Do not leave that ownership implicit: with no screen selected, layer-shell may let the compositor choose a different output, which breaks multi-monitor outside-click behavior.
 - Tray menu delayed-close handling must release focus/grab only for the **exact menu window that actually closed**. If another tray menu became active during the delay, the old close event must not tear down the new menu's grab.
 - Quickshell `PanelWindow` does **not** provide the `active` / `onActiveChanged` API assumed by an earlier regression. Never add `PanelWindow.active`, `PanelWindow.onActiveChanged`, or equivalent guessed focus hooks without verifying the current Quickshell API first.
 - Preserve reverse retract / hover-bridge behavior so moving between the source control and connected body does not introduce a detached-feeling close/reopen cycle.
@@ -102,12 +103,21 @@ Continue improving visual continuity toward the Caelestia reference, but keep th
 
 ### Compatibility-only type shims
 
-Two compatibility types currently exist only to keep surviving callers loadable while retired feature runtimes stay removed:
+Two compatibility types keep surviving callers loadable while retired feature runtimes stay removed:
 
-- `modules/pill/IslandPanel.qml` is a minimal alias to `RicelinSurface` and is exported by `modules/pill/qmldir`. It exists for legacy callers such as sidebar/overview paths that still import the old type name. **Do not rebuild the former Pill architecture around it.**
-- `services/MascotChaos.qml` is a disabled no-op singleton (`enabled: false`) exported by `services/qmldir`. It preserves the old signal/function surface for background-widget callers only. **Do not restore mascot state, physics, presentation or runtime behavior.**
+- `modules/pill/IslandPanel.qml` is a minimal alias to `RicelinSurface` and is exported by `modules/pill/qmldir`. This alias is **still an active presentation dependency** for `SidebarLeftContent.qml`, `SidebarRightContent.qml` and `CompactSidebarRightContent.qml` when the surviving sidebar `island` surface dialect is selected. Keep the alias narrow; **do not rebuild the former Pill architecture around it** and do not remove it merely because the full Pill runtime is retired.
+- `services/MascotChaos.qml` is a disabled no-op singleton (`enabled: false`) exported by `services/qmldir`. `AbstractBackgroundWidget.qml` still contains compatibility hooks, but geometry reporting and impact handling are hard-gated by `MascotChaos.enabled`; with the singleton disabled they remain inert. **Do not restore mascot state, physics, presentation or runtime behavior.**
 
 If another `Type X is unavailable` error appears, trace the dependency chain to the concrete missing/invalid type first. Add only the narrowest compatibility shim necessary for compilation; do not revive a retired subsystem.
+
+### Niri outside-click output ownership
+
+Fullscreen transparent click-catcher surfaces must stay on the same output as the popup they serve. Current fixes on `dev` make this explicit for both tray menus and shared context menus:
+
+- `modules/bar/SysTrayMenu.qml` binds its backdrop to `root.screen`;
+- `modules/common/widgets/ContextMenu.qml` binds its backdrop to `popupWindow.screen`.
+
+Keep this invariant when adding or refactoring fullscreen click-catchers, especially on multi-monitor setups.
 
 ### Settings > Bar compatibility route
 
@@ -130,6 +140,8 @@ This has now been corrected on `dev` in commit **`577839ec`** (`fix(media): rest
 - `PlayerControl.visualizerPoints` receives the live CAVA point stream;
 - the existing `WaveVisualizer` remains the renderer, so no duplicate equalizer component was added.
 
+The bar-mode media popup also rearms its initial keyboard focus when requested visibility or its presentation window changes. Keep this consumer-side lifecycle behavior; do not reintroduce invalid `PanelWindow.active`/`onActiveChanged` hooks.
+
 This still requires the maintainer's local/live desktop validation.
 
 ### Dock cleanup
@@ -140,9 +152,11 @@ The old user-facing Dock renderer/style choices were removed/neutralized. The ac
 
 Settings already uses asynchronous page loading/LRU-style residency in `SettingsPageHost.qml`. Preserve lazy/deferred loading and avoid rebuilding large settings pages eagerly when fixing UI issues.
 
-### Sidebars
+### Sidebars and panel-family routing
 
 Sidebar roles use the shared `SidebarHost` path and are content-sized. Preserve role routing, open/close state, compositor ownership, resize/edit behavior and fallback semantics while adjusting visuals.
+
+`ShellIiPanels.qml` loads the ii implementation only for the ii family, while `ShellWafflePanels.qml` loads the Waffle implementation only for Waffle. The root `shell.qml` selects only one family tree at a time. Waffle intentionally reuses selected shared modules such as Overview; this is not a path back into the retired Pill runtime.
 
 ## 7. Current priorities
 
@@ -196,11 +210,12 @@ For the current development cycle:
 High-value local checks include:
 
 - open **Settings > Bar** and confirm the Hug-only page loads without exposing retired corner-style renderers;
-- open **Sidebar Left**, **Sidebar Right**, **Overview** and **Waffle** entry paths and confirm no `Type ... unavailable` dependency failure;
+- open **Sidebar Left**, **Sidebar Right** (both normal and Compact, including island style), **Overview** and **Waffle** entry paths and confirm no `Type ... unavailable` dependency failure;
 - open connected popups from **top, bottom, left and right** bar positions, with extra attention to bottom-right anchors;
 - verify connector/body remain visually joined throughout animation and reverse retract;
 - confirm transparent full-output popup regions remain click-through while outside-click close still works;
 - exercise keyboard focus/Escape/outside-click behavior on both **Niri** and **Hyprland**;
+- on a multi-monitor Niri session, open tray/context menus on a non-primary output and confirm the outside-click catcher appears on and closes from that same output;
 - open tray context menus, switch directly between tray items, reopen menus, and confirm a delayed close from an old menu cannot release the current menu's focus grab;
 - verify Media Popup equalizer starts/stops with playback, switch MPRIS players, close the popup, then reopen it via keyboard and confirm initial focus is usable;
 - test multi-monitor ownership, fractional scaling, transformed outputs and vertical bars;
@@ -229,10 +244,19 @@ A large cleanup/refactor batch was previously merged from `dev` to `stable` thro
 ```text
 modules/bar/Media.qml
     -> opens existing StyledPopup for bar-mode media
+    -> rearms initial keyboard focus on popup reopen/presentation-window creation
 
 modules/bar/StyledPopup.qml
     -> shared source-anchored connected popup host
     -> ConnectedSurfaceGeometry / Frame / Mask / ContentHost
+
+modules/bar/SysTray.qml + SysTrayItem.qml + SysTrayMenu.qml
+    -> exact-window delayed-close focus ownership
+    -> Niri click-catcher bound to the tray menu output
+
+modules/common/widgets/ContextMenu.qml
+    -> shared context-menu outside-click surface
+    -> Niri backdrop bound to popupWindow.screen
 
 modules/mediaControls/BarMediaPopup.qml
     -> content for bar-attached expanded media
@@ -257,11 +281,16 @@ modules/settings/SettingsPageHost.qml
 modules/sidebar/SidebarHost.qml
     -> shared sidebar host / role routing / content-sized surface
 
+modules/sidebarLeft/SidebarLeftContent.qml
+modules/sidebarRight/SidebarRightContent.qml
+modules/sidebarRight/CompactSidebarRightContent.qml
+    -> surviving sidebar island-style callers of the IslandPanel compatibility name
+
 modules/pill/IslandPanel.qml
-    -> compatibility alias only; do not restore the retired Pill runtime
+    -> minimal compatibility alias to RicelinSurface; do not restore the retired Pill runtime
 
 services/MascotChaos.qml
-    -> disabled compatibility singleton only; do not restore mascot runtime
+    -> disabled compatibility singleton only; AbstractBackgroundWidget hooks remain gated by enabled=false
 ```
 
 If this document conflicts with the maintainer's newest explicit instruction, **the newest maintainer instruction wins**. Otherwise, use this README as the project handoff context before making changes.

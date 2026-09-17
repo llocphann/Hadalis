@@ -91,11 +91,10 @@ DockButton {
         return false
     }
     property bool hasWindows: toplevels.length > 0
-    surfaceDialect: Appearance.surfaceDialectFor(
-        Config.options?.dock?.style === "island" ? "island" : "")
-    property bool pillStyle: Config.options?.dock?.style === "pill" && !root.zzzStyle
+    surfaceDialect: Appearance.surfaceDialectFor("")
+    property bool pillStyle: false
     property bool islandStyle: root.surfaceDialect === "island"
-    property bool macosStyle: Config.options?.dock?.style === "macos" && !root.zzzStyle
+    property bool macosStyle: false
 
     readonly property int notificationCount: {
         if (root.isSeparator || (Config.options?.dock?.notificationBadge ?? true) === false)

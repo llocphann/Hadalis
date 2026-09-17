@@ -12,5 +12,3 @@ MediaConnectedSurface 1.0 MediaConnectedSurface.qml
 SidebarModule 1.0 SidebarModule.qml
 DockModule 1.0 DockModule.qml
 ThinkFanModule 1.0 ThinkFanModule.qml
-ThinkFanConnectedSurface 1.0 ThinkFanConnectedSurface.qml
-ThinkFanPopupContent 1.0 ThinkFanPopupContent.qml

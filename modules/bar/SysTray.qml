@@ -75,22 +75,19 @@ Item {
         if (unpinnedItems.length == 0) root.closeOverflowMenu();
     }
 
-    function grabFocus() {
-        focusGrab.active = true;
-    }
-
     function setExtraWindowAndGrabFocus(window) {
+        // Keep CompositorFocusGrab.active declarative. Imperatively assigning the
+        // bound property would detach it from trayOverflowOpen/activeMenu and make
+        // subsequent connected-surface opens lose focus-grab tracking.
         root.activeMenu = window;
-        root.grabFocus();
     }
 
     function releaseFocus() {
-        focusGrab.active = false;
+        root.activeMenu = null;
     }
 
     function closeOverflowMenu() {
         root.trayOverflowOpen = false;
-        focusGrab.active = false;
     }
 
     // The overflow is now a lazy full-output connected surface rather than a

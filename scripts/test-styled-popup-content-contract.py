@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Guard StyledPopup's Item-only default content contract.
+"""Guard the connected bar-popup presentation contract.
 
-StyledPopup declares `default property Item contentItem`. Non-visual QML objects such as
-Connections, Timer, or PanelWindow therefore cannot be direct children of either a
-StyledPopup consumer or the StyledPopup implementation root: QML will try to assign
-them to contentItem and reject the entire type graph at startup. Keep consumer helpers
-inside the popup content Item and bind implementation helpers through explicit object
-properties instead of the default property.
+The feature/backend objects stay where they are. StyledPopup owns only the presentation
+shell: it hosts exactly one visual Item, resolves output ownership from the real visual
+anchor, renders into one full-output layer surface, and limits input to the connected
+surface mask. These checks catch the QML type-graph mistakes that otherwise make the
+entire Bar/VerticalBar unavailable at startup.
 """
 
 from __future__ import annotations
@@ -16,10 +15,16 @@ import subprocess
 from pathlib import Path
 
 STYLED_POPUP_PATH = Path("modules/bar/StyledPopup.qml")
+TASKBAR_PATH = Path("modules/bar/BarTaskbar.qml")
+TASKBAR_PREVIEW_PATH = Path("modules/bar/BarTaskbarPreview.qml")
+SETTINGS_QMLDIR_PATH = Path("modules/settings/qmldir")
+SETTINGS_REGISTRY_PATH = Path("modules/settings/SettingsPageRegistry.qml")
+
 CONSUMER_ROOT_RE = re.compile(r"^\s*StyledPopup\s*\{")
 IMPLEMENTATION_ROOT_RE = re.compile(r"^\s*LazyLoader\s*\{")
 NON_VISUAL_RE = re.compile(
-    r"^\s*(Connections|Timer|Binding|Component|QtObject|Instantiator|PanelWindow)\s*\{"
+    r"^\s*(Connections|Timer|Binding|Component|QtObject|Instantiator|PanelWindow|"
+    r"PopupWindow|Process|FileView|Socket)\s*\{"
 )
 
 
@@ -80,29 +85,91 @@ def brace_delta(line: str, state: dict[str, object]) -> int:
     return delta
 
 
-def violations(path: Path) -> list[tuple[int, str]]:
+def direct_child_violations(path: Path) -> list[tuple[int, str]]:
+    """Find non-visual direct children of every StyledPopup block in a file."""
     lines = path.read_text(encoding="utf-8").splitlines()
     state: dict[str, object] = {"quote": None, "block_comment": False}
     depth = 0
-    styled_root = False
+    direct_depths: list[int] = []
     found: list[tuple[int, str]] = []
-    root_re = IMPLEMENTATION_ROOT_RE if path == STYLED_POPUP_PATH else CONSUMER_ROOT_RE
 
     for line_no, line in enumerate(lines, 1):
-        if not styled_root and depth == 0 and root_re.match(line):
-            styled_root = True
+        if path == STYLED_POPUP_PATH:
+            if depth == 0 and IMPLEMENTATION_ROOT_RE.match(line):
+                direct_depths.append(1)
+        elif CONSUMER_ROOT_RE.match(line):
+            direct_depths.append(depth + 1)
 
-        if styled_root and depth == 1:
+        if direct_depths and depth in direct_depths:
             match = NON_VISUAL_RE.match(line)
             if match:
                 found.append((line_no, match.group(1)))
 
         depth += brace_delta(line, state)
-
-        if styled_root and depth <= 0:
-            break
+        direct_depths = [direct_depth for direct_depth in direct_depths if depth >= direct_depth]
 
     return found
+
+
+def require(text: str, needle: str, label: str, failures: list[str]) -> None:
+    if needle not in text:
+        failures.append(f"{label}: missing required contract `{needle}`")
+
+
+def forbid(text: str, needle: str, label: str, failures: list[str]) -> None:
+    if needle in text:
+        failures.append(f"{label}: forbidden legacy/invalid contract `{needle}`")
+
+
+def source_contract_failures() -> list[str]:
+    failures: list[str] = []
+    styled = STYLED_POPUP_PATH.read_text(encoding="utf-8")
+    taskbar = TASKBAR_PATH.read_text(encoding="utf-8")
+    preview = TASKBAR_PREVIEW_PATH.read_text(encoding="utf-8")
+    settings_qmldir = SETTINGS_QMLDIR_PATH.read_text(encoding="utf-8")
+    settings_registry = SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8")
+
+    # Output/window ownership must come from the actual bar control. LazyLoader is
+    # not a visual child of the bar and must never be used as geometry authority.
+    require(styled, "root.hoverTarget.QsWindow.window", str(STYLED_POPUP_PATH), failures)
+    require(styled, "screen: root._anchorScreen", str(STYLED_POPUP_PATH), failures)
+    require(styled, "mask: connectedMask", str(STYLED_POPUP_PATH), failures)
+    require(styled, "exclusionMode: ExclusionMode.Ignore", str(STYLED_POPUP_PATH), failures)
+    forbid(styled, "const host = root.QsWindow", str(STYLED_POPUP_PATH), failures)
+    forbid(styled, "WlrLayershell.exclusionMode", str(STYLED_POPUP_PATH), failures)
+
+    # Historical taskbar callers may still provide anchor.window. If present, the
+    # compatibility group must have a statically known type; `property QtObject`
+    # cannot expose its dynamically declared `window` member to grouped syntax.
+    if "anchor.window:" in taskbar:
+        require(preview, "component LegacyAnchor: QtObject", str(TASKBAR_PREVIEW_PATH), failures)
+        require(preview, "property LegacyAnchor anchor: LegacyAnchor", str(TASKBAR_PREVIEW_PATH), failures)
+    forbid(preview, "property QtObject anchor: QtObject", str(TASKBAR_PREVIEW_PATH), failures)
+
+    # Public settings routes intentionally expose Hug-only facades. Their base
+    # types and facades must be registered in the settings module or Loader will
+    # fail with a blank/error page before any controls are created.
+    for registration in (
+        "QuickConfig 1.0 QuickConfig.qml",
+        "QuickConfigHugOnly 1.0 QuickConfigHugOnly.qml",
+        "BarConfig 1.0 BarConfig.qml",
+        "BarConfigHugOnly 1.0 BarConfigHugOnly.qml",
+    ):
+        require(settings_qmldir, registration, str(SETTINGS_QMLDIR_PATH), failures)
+    require(
+        settings_registry,
+        'component: "modules/settings/BarConfigHugOnly.qml"',
+        str(SETTINGS_REGISTRY_PATH),
+        failures,
+    )
+    require(
+        settings_registry,
+        'component: "modules/settings/QuickConfigHugOnly.qml"',
+        str(SETTINGS_REGISTRY_PATH),
+        failures,
+    )
+
+    return failures
 
 
 def main() -> int:
@@ -114,23 +181,28 @@ def main() -> int:
         if path != STYLED_POPUP_PATH and "StyledPopup" not in text:
             continue
         scanned += 1
-        for line_no, object_type in violations(path):
+        for line_no, object_type in direct_child_violations(path):
             failures.append(
                 f"{path}:{line_no}: direct {object_type} child violates "
                 "StyledPopup default property Item contentItem"
             )
 
+    failures.extend(source_contract_failures())
+
     if failures:
-        print("StyledPopup content contract failed:")
+        print("Connected StyledPopup contract failed:")
         for failure in failures:
             print(f"  - {failure}")
         print(
-            "Move consumer helpers inside the popup content Item, or bind StyledPopup "
-            "implementation helpers through explicit object properties."
+            "Keep feature helpers inside the popup content Item (or explicit object "
+            "properties), and keep output ownership on the real visual anchor."
         )
         return 1
 
-    print(f"StyledPopup content contract passed ({scanned} candidate QML files scanned).")
+    print(
+        f"Connected StyledPopup contract passed ({scanned} candidate QML files scanned; "
+        "anchor/mask/settings contracts verified)."
+    )
     return 0
 
 

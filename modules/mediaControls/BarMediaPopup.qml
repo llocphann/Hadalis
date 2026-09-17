@@ -34,6 +34,20 @@ Item {
     property var _playerCache: []
     property bool _cacheValid: false
     readonly property var _visiblePlayers: root._cacheValid ? root._playerCache : (root.meaningfulPlayers ?? [])
+    readonly property bool visualizerActive: root.visible
+        && root._visiblePlayers.length > 0
+        && MprisController.isPlaying
+
+    // Keep the bar-attached media popup feature-parity with the dock/global
+    // media surface. PlayerControl already owns the WaveVisualizer; the bar
+    // popup only needs to provide the same live CAVA point stream instead of
+    // the historical empty array.
+    CavaProcess {
+        id: cavaProcess
+        active: root.visualizerActive
+    }
+
+    property list<real> visualizerPoints: cavaProcess.points
 
     function _samePlayerOrder(a, b): bool {
         if ((a?.length ?? 0) !== (b?.length ?? 0)) return false
@@ -150,7 +164,7 @@ Item {
                     anchors.leftMargin: root._visiblePlayers.length > 1
                         ? Appearance.sizes.elevationMargin : 0
                     player: modelData
-                    visualizerPoints: []
+                    visualizerPoints: root.visualizerPoints
                     radius: root.popupRounding
                     screenX: root.screenX + playerDelegate.x + playerControl.x
                     screenY: root.screenY + playerDelegate.y + playerControl.y

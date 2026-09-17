@@ -62,10 +62,15 @@ def main() -> None:
               f"{path} must not bypass the shared route lifecycle state")
         check("(routeState.revealProgress - 0.18) / 0.82" in source,
               f"{path} content must follow the connected-surface reveal threshold")
+        check("CompositorService.isNiri" in source
+              and 'SurfaceRouteController.dismiss(root.outputName, "focus-loss")' in source,
+              f"{path} must dismiss its semantic route after Niri focus loss")
 
     weather = read("modules/perimeter/WeatherConnectedSurface.qml")
     check("devicePixelRatio: root.sourceScreen?.devicePixelRatio ?? 1" in weather,
           "Weather connected geometry must snap against the owning output scale")
+    check("weatherViewport.forceActiveFocus()" in weather,
+          "Weather connected surface must request focus so Niri can observe focus loss")
 
     if failures:
         print("Connected route lifecycle regression(s):")

@@ -14,6 +14,7 @@ PanelWindow {
 
     property var perimeterContext: null
     property var sourceScreen: null
+    property bool _niriFocusSeen: false
 
     readonly property string outputName: root.perimeterContext?.outputName ?? ""
     readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
@@ -44,6 +45,33 @@ PanelWindow {
         outputName: root.outputName
         instanceId: root.instanceId
         surfaceName: "weather"
+    }
+
+    onRouteOwnedChanged: {
+        if (!root.routeOwned) {
+            root._niriFocusSeen = false
+            return
+        }
+        Qt.callLater(() => {
+            if (!root.routeOwned)
+                return
+            weatherViewport.forceActiveFocus()
+            if (CompositorService.isNiri && root.active)
+                root._niriFocusSeen = true
+        })
+    }
+
+    onActiveChanged: {
+        if (!CompositorService.isNiri || !root.routeOwned)
+            return
+        if (root.active) {
+            root._niriFocusSeen = true
+            return
+        }
+        if (root._niriFocusSeen) {
+            root._niriFocusSeen = false
+            SurfaceRouteController.dismiss(root.outputName, "focus-loss")
+        }
     }
 
     ConnectedSurfaceGeometry {

@@ -21,6 +21,7 @@ def main() -> None:
         "qs.modules.common.perimeter",
         "ConnectedSurfaceGeometry",
         "ConnectedSurfaceFrame",
+        "ConnectedSurfaceContentHost",
         "ConnectedSurfaceMask",
         "mask: connectedMask",
         "ExclusionMode.Ignore",
@@ -71,6 +72,11 @@ def main() -> None:
         check(token in geometry,
               f"ConnectedSurfaceGeometry missing seam/morph geometry contract: {token}")
 
+    content_host = read("modules/common/perimeter/ConnectedSurfaceContentHost.qml")
+    for token in ("geometry.animatedBodyRect", "effectivePadding", "clip: true"):
+        check(token in content_host,
+              f"ConnectedSurfaceContentHost must centralize live padded body placement: {token}")
+
     connector = read("modules/common/perimeter/ConnectedSurfaceConnector.qml")
     check("Canvas {" in connector,
           "ConnectedSurfaceConnector must render a shaped shoulder rather than a rectangular stem")
@@ -95,6 +101,17 @@ def main() -> None:
               f"ConnectedSurfaceMask must track the flared connector rather than its full bounding box: {token}")
     check("item: root.active ? root.connectorItem" not in mask,
           "ConnectedSurfaceMask must not make the transparent connector bounding box fully interactive")
+
+    media_surface = read("modules/perimeter/MediaConnectedSurface.qml")
+    weather_surface = read("modules/perimeter/WeatherConnectedSurface.qml")
+    for path, source in (
+        ("modules/perimeter/MediaConnectedSurface.qml", media_surface),
+        ("modules/perimeter/WeatherConnectedSurface.qml", weather_surface),
+    ):
+        check("ConnectedSurfaceContentHost {" in source,
+              f"{path} must use the shared connected content host")
+        check("geometry.offsetX" not in source and "geometry.offsetY" not in source,
+              f"{path} must not reference retired connected geometry offsets")
 
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,

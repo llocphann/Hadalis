@@ -97,14 +97,10 @@ PanelWindow {
         borderWidth: Appearance.inirEverywhere ? 1 : 0
     }
 
-    Item {
+    ConnectedSurfaceContentHost {
         id: popupBody
-        x: geometry.bodyRect.x + geometry.offsetX + 12
-        y: geometry.bodyRect.y + geometry.offsetY + 12
-        width: Math.max(0, geometry.bodyRect.width - 24)
-        height: Math.max(0, geometry.bodyRect.height - 24)
-        visible: root.routeOwned
-        clip: true
+        geometry: geometry
+        padding: 12
 
         Flickable {
             id: mediaViewport

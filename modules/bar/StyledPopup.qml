@@ -239,18 +239,14 @@ LazyLoader {
             connectorBorderWidth: 0
         }
 
-        Item {
+        ConnectedSurfaceContentHost {
             id: popupContentHost
-            x: geometry.animatedBodyRect.x + root._contentPadding
-            y: geometry.animatedBodyRect.y + root._contentPadding
-            width: Math.max(0, geometry.animatedBodyRect.width - root._contentPadding * 2)
-            height: Math.max(0, geometry.animatedBodyRect.height - root._contentPadding * 2)
-            visible: geometry.valid && geometry.progress > 0
+            geometry: geometry
+            padding: root._contentPadding
             // Let the surface deform first, then bring content in as the body has
             // enough area. This keeps the enter motion from reading as card fade.
             opacity: Math.max(0, Math.min(1,
                 (geometry.revealProgress - 0.18) / 0.82))
-            clip: true
             children: [root.contentItem]
 
             HoverHandler {

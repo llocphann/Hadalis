@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import qs
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import Quickshell
@@ -15,6 +16,8 @@ Scope {
 
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property int innerRadius: Math.max(thickness,
+        Math.round(Appearance.rounding.screenRounding))
 
     component EdgeWindow: PanelWindow {
         required property ShellScreen modelData
@@ -65,6 +68,73 @@ Scope {
         }
     }
 
+    // The four edge bands intentionally stay rectangular so their physical-screen
+    // geometry remains exact. These transparent corner overlays only paint the
+    // concave quarter-corners on the wallpaper-facing side of that frame.
+    component InnerCornerWindow: PanelWindow {
+        required property ShellScreen modelData
+        required property int corner
+
+        readonly property string outputName: String(modelData?.name ?? "")
+        readonly property bool isTop: corner === RoundCorner.CornerEnum.TopLeft
+            || corner === RoundCorner.CornerEnum.TopRight
+        readonly property bool isLeft: corner === RoundCorner.CornerEnum.TopLeft
+            || corner === RoundCorner.CornerEnum.BottomLeft
+        readonly property string cornerName: isTop
+            ? (isLeft ? "top-left" : "top-right")
+            : (isLeft ? "bottom-left" : "bottom-right")
+        readonly property bool fullscreenCovered: outputName.length > 0
+            && GameMode.hasFullscreenOnOutput(outputName)
+        readonly property bool mapped: Config.ready
+            && !GlobalStates.screenLocked
+            && !fullscreenCovered
+
+        screen: modelData
+        visible: mapped
+        updatesEnabled: mapped
+        color: "transparent"
+        exclusiveZone: 0
+        exclusionMode: ExclusionMode.Ignore
+
+        implicitWidth: root.thickness + root.innerRadius
+        implicitHeight: root.thickness + root.innerRadius
+
+        WlrLayershell.namespace: "hadalis:screen-edge-corner-" + cornerName
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+        anchors {
+            top: isTop
+            bottom: !isTop
+            left: isLeft
+            right: !isLeft
+        }
+
+        Item {
+            id: emptyCornerInput
+            width: 0
+            height: 0
+            visible: false
+        }
+        mask: Region { item: emptyCornerInput }
+
+        RoundCorner {
+            implicitSize: root.innerRadius
+            corner: parent.corner
+            color: Appearance.colors.colLayer1
+            anchors {
+                top: parent.isTop ? parent.top : undefined
+                bottom: parent.isTop ? undefined : parent.bottom
+                left: parent.isLeft ? parent.left : undefined
+                right: parent.isLeft ? undefined : parent.right
+                topMargin: parent.isTop ? root.thickness : 0
+                bottomMargin: parent.isTop ? 0 : root.thickness
+                leftMargin: parent.isLeft ? root.thickness : 0
+                rightMargin: parent.isLeft ? 0 : root.thickness
+            }
+        }
+    }
+
     Variants {
         model: Quickshell.screens
         EdgeWindow { edge: "top" }
@@ -80,5 +150,22 @@ Scope {
     Variants {
         model: Quickshell.screens
         EdgeWindow { edge: "right" }
+    }
+
+    Variants {
+        model: Quickshell.screens
+        InnerCornerWindow { corner: RoundCorner.CornerEnum.TopLeft }
+    }
+    Variants {
+        model: Quickshell.screens
+        InnerCornerWindow { corner: RoundCorner.CornerEnum.TopRight }
+    }
+    Variants {
+        model: Quickshell.screens
+        InnerCornerWindow { corner: RoundCorner.CornerEnum.BottomLeft }
+    }
+    Variants {
+        model: Quickshell.screens
+        InnerCornerWindow { corner: RoundCorner.CornerEnum.BottomRight }
     }
 }

@@ -441,11 +441,10 @@ Item {
         }
     }
 
-    // ─── Preview popup (PopupWindow anchored to bar) ────────────────
+    // ─── Preview popout (connected to the hovered taskbar button) ───
     BarTaskbarPreview {
         id: previewPopup
         dockHovered: root.buttonHovered
         barPosition: root.barPosition
-        anchor.window: root.parentWindow
     }
 }

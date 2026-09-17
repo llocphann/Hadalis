@@ -18,6 +18,15 @@ This document records the stabilization contracts that should be checked during 
 - Media volume HUD, expanded bar Media controls, tray overflow, taskbar window previews, and the existing battery/resources/weather/clock/timer/update popouts all use the shared connected path. Context menus remain context menus rather than being forced into this presentation contract.
 - Connected popup presentation does not require enabling the broad `iiPerimeter` composition cutover.
 
+## Classic Bar geometry
+
+- Hug is the only supported Classic Bar corner/surface geometry.
+- Float, Rectangle, and Card are retired choices and must not be exposed as user-selectable Bar styles.
+- The persisted `bar.cornerStyle` key is compatibility-only. Startup normalizes any legacy non-zero value to `0` (Hug), including before the Settings page is opened.
+- Runtime Bar layout must not branch on `cornerStyle`, `floatStyleShadow`, or any retired Float/Card geometry path.
+- Global visual themes may still change color, material, blur, and rounding tokens, but they do not switch the Classic Bar away from Hug geometry.
+- Connected bar popouts inherit the Hug-owned surface contract and must not reintroduce a retired corner-style branch.
+
 ## Dock
 
 - Panel is the only supported user-facing Dock style.
@@ -55,8 +64,9 @@ For the final local pass, verify at minimum:
 6. at fractional scaling, inspect the source/shoulder/body joins for a transparent one-pixel seam;
 7. verify clicks in transparent areas outside the visible popup shape are not captured by the full-output host window;
 8. verify expanded Media still receives keyboard focus/Escape correctly on the compositor in use;
-9. restart with a legacy `dock.style` value and verify the persisted value is normalized to `panel` and only Panel UI is shown;
-10. verify Waffle behavior is unchanged and is not presented as a Dock style;
-11. restart with a legacy `language.ui` value and verify the shell remains English and normalizes it to `en_US`.
+9. restart with a legacy non-zero `bar.cornerStyle` and verify it normalizes to `0`, the Bar remains Hug, and Settings does not offer Float/Rectangle/Card;
+10. restart with a legacy `dock.style` value and verify the persisted value is normalized to `panel` and only Panel UI is shown;
+11. verify Waffle behavior is unchanged and is not presented as a Dock style;
+12. restart with a legacy `language.ui` value and verify the shell remains English and normalizes it to `en_US`.
 
 If a full `iiPerimeter` composition is tested separately, keep fallback coverage in scope: do not treat loss of legacy-only functionality as an acceptable connected-surface result.

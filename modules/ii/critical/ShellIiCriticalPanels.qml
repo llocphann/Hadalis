@@ -17,6 +17,13 @@ Item {
             && extraCondition
     }
 
+    // Screen edge is shell chrome, not a replacement runtime. Keep it on a URL
+    // boundary so a presentation regression cannot make the critical root fail.
+    LazyLoader {
+        active: Config.ready
+        source: Qt.resolvedUrl("../../screenCorners/ScreenEdges.qml")
+    }
+
     CriticalPanelLoader {
         identifier: "iiBackground"
         source: Qt.resolvedUrl("../../background/Background.qml")

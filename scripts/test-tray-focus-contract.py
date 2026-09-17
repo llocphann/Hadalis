@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Guard tray focus-grab state for connected popouts and context menus."""
+"""Guard tray focus-grab state and Niri menu output ownership."""
 
 from pathlib import Path
 import re
 
 TRAY_PATH = Path("modules/bar/SysTray.qml")
 TRAY_ITEM_PATH = Path("modules/bar/SysTrayItem.qml")
+TRAY_MENU_PATH = Path("modules/bar/SysTrayMenu.qml")
+CONTEXT_MENU_PATH = Path("modules/common/widgets/ContextMenu.qml")
 
 
 def main() -> int:
     text = TRAY_PATH.read_text(encoding="utf-8")
     item_text = TRAY_ITEM_PATH.read_text(encoding="utf-8")
+    tray_menu_text = TRAY_MENU_PATH.read_text(encoding="utf-8")
+    context_menu_text = CONTEXT_MENU_PATH.read_text(encoding="utf-8")
     failures: list[str] = []
 
     required = (
@@ -35,6 +39,14 @@ def main() -> int:
         if needle not in item_text:
             failures.append(f"missing tray-item close identity contract: {needle}")
 
+    # Full-output Niri click catchers must stay on the same output as the popup.
+    # Leaving PanelWindow.screen null lets the compositor choose an output, which
+    # can put the backdrop on the wrong monitor in multi-output sessions.
+    if "screen: root.screen" not in tray_menu_text:
+        failures.append("tray Niri backdrop must bind screen to the owning popup")
+    if "screen: popupWindow.screen" not in context_menu_text:
+        failures.append("context-menu Niri backdrop must bind screen to the owning popup")
+
     # QML imperative assignment to a bound property removes that binding. The
     # focus-grab active state must therefore remain derived from popup/menu state.
     if re.search(r"\bfocusGrab\.active\s*=", text):
@@ -56,12 +68,12 @@ def main() -> int:
         failures.append("tray menu close handlers must forward the closing window identity")
 
     if failures:
-        print("Tray focus contract failures:")
+        print("Tray/menu focus-output contract failures:")
         for failure in failures:
             print(f"  - {failure}")
         return 1
 
-    print("Tray focus contract: PASS")
+    print("Tray/menu focus-output contract: PASS")
     return 0
 
 

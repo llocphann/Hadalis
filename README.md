@@ -6,7 +6,7 @@
 > **Target:** `1.0`  
 > **Primary development branch:** `dev`  
 > **Stable baseline:** `stable`  
-> **Scope refresh:** 2026-09-17
+> **Scope refresh:** 2026-09-18
 
 ## 1. Source-of-truth and workflow
 
@@ -249,43 +249,43 @@ To avoid future contradictions:
 
 If the maintainer gives a newer explicit instruction, that instruction supersedes this document and this README should be refreshed to match it.
 
-## 11. Current source-side handoff
+## 11. Current source-side handoff (2026-09-18)
 
 This section records the **current source implementation state**, not local/runtime validation. Keep release-gate checkboxes above unchecked until the maintainer performs the authoritative local pass.
 
 Source work already present on `dev`:
 
-- persistent Screen Edge surfaces exist in `modules/screenCorners/ScreenEdges.qml`; the intended behavior is visible while idle/normal/maximized and hidden only for the explicit fullscreen/lock cases;
-- Screen Edge width is exposed through the active Bar Settings path rather than a retired renderer path;
+- persistent Screen Edge surfaces exist in `modules/screenCorners/ScreenEdges.qml`; they are intended to remain visible while idle/normal/maximized and hide only for explicit fullscreen/lock cases;
+- Screen Edge width is exposed through the active Bar Settings path, and the edge now paints wallpaper-facing rounded inner corners without changing the rectangular physical edge bands;
 - connected popup connector width is centralized through the shared perimeter tokens/geometry instead of expanding to each source control width;
 - `modules/sidebar/SidebarEdgeConnectors.qml` connects Left/Right Sidebar presentation to the corresponding vertical Screen Edge, independent of top/bottom Bar placement;
-- the critical ii shell no longer boots the broad `PerimeterRuntime` cutover to own Bar/VerticalBar/Dock;
-- Thinkfan standalone connected-surface/content files have been removed from normal UX and Thinkfan controls/state are integrated into the existing System Monitor/resources popup path, with a dedicated regression contract;
+- the broad legacy `modules/perimeter` runtime/topology/adapters have been retired and removed after caller auditing; the old cutover policy was removed as well, and regression contracts were aligned with the supported connected-surface architecture;
+- shared connected-popup primitives remain active and protected under `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml`, and `modules/bar/StyledPopup.qml`; do not recreate the retired broad runtime to solve popup issues;
+- Thinkfan standalone connected-surface/content files have been removed from normal UX; Thinkfan controls/state are integrated into the existing System Monitor/resources popup and Settings, and repo-managed installs provision the Hadalis Thinkfan helper/polkit bridge;
 - `Settings > Bar` has a real supported v1.0 facade/content path instead of the previous blank route;
-- public Global Theme Settings are constrained to Material, with legacy style UI hidden and persisted legacy values normalized through the supported Material path;
+- public Global Theme Settings are constrained to Material, persisted legacy style values normalize to Material, and retired Global Style search entries are hidden;
 - the Calendar/Weather composition has source implementation for the requested Serpantinum-inspired left/center presentation while retaining Hadalis detailed weather ownership/content on the right;
-- Media Popup owns the existing CAVA -> `PlayerControl` -> `WaveVisualizer` path and now gates visualizer activity by popup presentation/playback lifecycle; a regression contract protects that lifecycle;
+- Media Popup owns the existing CAVA -> `PlayerControl` -> `WaveVisualizer` path and gates visualizer activity by popup presentation/playback lifecycle;
 - tray/context-menu output ownership, popup focus lifecycle, reverse retract and exact-menu delayed-close protections remain part of the connected-surface contract.
 
 Still open / must be treated as unfinished until audited or locally validated:
 
-1. **Broad `modules/perimeter` cleanup.** `PerimeterRuntime` ownership was retired from the critical shell, but the broad module still contains self-contained topology/adapters/settings/test residue. Do not delete it wholesale until exact current callers are re-audited. In particular, recent Weather work still touched `modules/perimeter/WeatherConnectedSurface.qml`, so verify whether that adapter is active or residue before removal.
-2. **Perimeter Settings residue.** Re-check `ShellLayoutConfig.qml` and all `test-perimeter-*` contracts. Any user-facing “Connected Perimeter runtime” switch with no active runtime effect must be removed, and stale tests that require the retired cutover must be rewritten or removed in the same cleanup.
-3. **Shared primitives must survive cleanup.** Never remove `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml`, or other shared geometry/routing pieces that still have active popup/sidebar consumers merely because the broad runtime is being retired.
-4. **Material-only runtime cleanup is not finished merely because the selector is hidden.** Continue searching for non-Material runtime branches/assets/imports and remove only those with no supported caller; retain only narrow persisted-value migration to Material.
-5. **CAVA packaging/dependency still needs confirmation.** Source lifecycle is wired, but the supported install/package path must ensure `cava` is actually available or document/install it explicitly.
-6. **Calendar/Weather and Thinkfan need live UX validation.** Source contracts exist, but sizing, scaling, missing-service behavior and interaction must be tested in the maintainer's environment.
-7. **No authoritative local pass has been run for this source state.** Do not claim completion until `bash scripts/validate-maintainer-local.sh` plus the live Niri/Hyprland smoke matrix has been run by the maintainer.
+1. **Material-only cleanup still needs a final active-tree audit.** Search current runtime/assets/imports/tests/docs for non-Material Global Theme residue. Remove only dead live paths; retain only the minimal persisted-value migration needed to normalize old values to Material. Waffle remains supported.
+2. **Packaging/runtime dependency audit is still open.** Confirm supported install/package paths cover `cava`, the Hadalis Thinkfan helper/polkit bridge plus its underlying runtime requirements, and weather dependencies. Source wiring alone is not sufficient.
+3. **Thinkfan uninstall ownership symmetry needs review.** Repo-managed uninstall should clean up only Hadalis-owned helper/policy artifacts when appropriate; it must not remove the upstream Thinkfan package/service/config or interfere with package-manager ownership.
+4. **Regression/docs residue needs a final pass after perimeter retirement.** Remove or rewrite stale contracts/documentation that still assume the deleted broad runtime, retired Global Styles or unsupported APIs. Do not change supported runtime behavior merely to satisfy stale tests.
+5. **Connected-surface/Settings final source review remains.** Re-check active `StyledPopup` consumers, connector/anchor/focus/mask consistency, Settings routing, multi-output ownership and recent Screen Edge corner work for source-level inconsistencies before declaring a candidate.
+6. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan missing-service behavior, CAVA lifecycle, Screen Edge rounded corners and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
 Recommended next source-side sequence:
 
-1. refetch `dev` and `stable`;
-2. inspect commits that landed since the previous turn before editing anything;
-3. finish the broad `iiPerimeter` audit/cleanup, beginning with dead Settings UI and stale `test-perimeter-*` contracts, while preserving shared connected-surface primitives and any proven active Weather/System Monitor caller;
-4. audit all current Python/shell regression contracts for assumptions about retired APIs/runtime, fixing tests to match supported behavior rather than changing runtime to satisfy stale tests;
-5. audit packaging/install manifests for `cava`, Thinkfan helper/runtime requirements and weather dependencies;
-6. perform final source review for Material-only live references, popup connector consistency and Settings routing;
-7. hand the resulting exact candidate SHA to the maintainer for the single authoritative local test pass.
+1. refetch `dev` and `stable`, inspect every commit that landed since the previous turn, and re-read README/targets on the latest HEAD before editing;
+2. finish the Material-only active-tree audit and remove only proven-dead non-Material runtime/assets/imports/tests/docs;
+3. audit package/install manifests for `cava`, Thinkfan helper/runtime requirements and weather dependencies, then close any concrete packaging gap;
+4. audit repo-managed Thinkfan uninstall ownership symmetry without touching upstream Thinkfan package/service/config ownership;
+5. remove/update stale regression contracts and docs left by the broad perimeter/Global Style retirement;
+6. perform a final source review of connected-popup geometry/focus/output ownership, Settings routing and Screen Edge corner behavior;
+7. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 
 ## 12. New-conversation continuation prompt
 
@@ -294,31 +294,32 @@ Copy/paste the following into a new conversation when continuing Hadalis work:
 ```text
 Bạn đang tiếp tục phát triển repo GitHub `llocphann/Hadalis` cho Hadalis 1.0.
 
-Hãy đọc README.md trên branch `dev` trước vì đó là development contract + handoff hiện tại. Làm trực tiếp trên branch `dev`, không tạo PR trừ khi tôi yêu cầu. Trước mỗi nhóm thay đổi quan trọng và ngay trước mỗi write có khả năng conflict, phải refetch cả `dev` và `stable`, rồi đọc lại target file/caller trên đúng HEAD mới nhất. Repo có thể có commit concurrent nên tuyệt đối không sửa dựa trên snapshot cũ.
+Hãy đọc `README.md` trên branch `dev` trước vì đó là development contract + handoff hiện tại. Làm trực tiếp trên `dev`, không tạo PR trừ khi tôi yêu cầu. Trước mỗi nhóm thay đổi quan trọng và ngay trước mỗi write có khả năng conflict, phải refetch cả `dev` và `stable`, kiểm tra commit mới, rồi đọc lại target file/caller trên đúng HEAD mới nhất. Repo có thể có commit concurrent nên tuyệt đối không sửa dựa trên snapshot cũ, không force push và không rewrite shared history.
 
-Không chạy/check GitHub Actions/CI vì usage limit đã hết. Tôi sẽ chạy `bash scripts/validate-maintainer-local.sh` và live-test một lượt cuối trên máy local. Không được nói rằng test đã pass nếu chưa thực sự có local result từ tôi.
+Không chạy/check GitHub Actions/CI vì usage limit đã hết. Tôi sẽ chạy `bash scripts/validate-maintainer-local.sh` và live-test Niri/Quickshell một lượt cuối trên máy local. Không được nói test/release đã pass nếu chưa có local result từ tôi.
 
-Mục tiêu UI/UX: giữ kiến trúc/functionality iNiR hiện có nhưng làm connected surfaces theo hướng Caelestia. Không build popup framework mới. Existing bar popups vẫn đi qua `modules/bar/StyledPopup.qml` + `modules/common/perimeter/ConnectedSurface*` + `PerimeterTokens.qml`. Không reintroduce `PanelWindow.active/onActiveChanged`, Pill/Mascot runtime, retired Bar/Dock renderers, Orbit/workspace experiments hay non-Material Global Themes. Waffle vẫn là panel family được support.
+Mục tiêu UI/UX: giữ kiến trúc/functionality iNiR hiện có nhưng làm connected surfaces theo hướng Caelestia. Không build popup framework mới. Existing bar popups vẫn đi qua `modules/bar/StyledPopup.qml` + `modules/common/perimeter/ConnectedSurface*` + `PerimeterTokens.qml`. Không reintroduce guessed `PanelWindow.active/onActiveChanged`, Pill/Mascot runtime, retired Bar/Dock renderers, Orbit/workspace experiments hay non-Material Global Themes. Waffle vẫn là panel family được support.
 
 Trạng thái source hiện tại đã có:
-- persistent Screen Edge + width setting;
+- persistent Screen Edge + width setting; Screen Edge hiện có wallpaper-facing rounded inner corners;
 - connector width dùng shared contract;
-- Left/Right Sidebar có edge connector riêng;
-- critical ii shell không còn boot full `PerimeterRuntime` cutover;
-- Thinkfan đã tích hợp vào System Monitor/resources popup, standalone Thinkfan connected surface/content đã được bỏ khỏi normal UX;
+- Left/Right Sidebar có vertical edge connector riêng;
+- broad legacy `modules/perimeter` runtime/topology/adapters và cutover policy đã được retire/xóa; regression contracts liên quan đã được chỉnh theo architecture hiện tại;
+- TUYỆT ĐỐI không dựng lại broad perimeter runtime: giữ các shared primitives đang active ở `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml` và `modules/bar/StyledPopup.qml`;
+- Thinkfan đã tích hợp vào System Monitor/resources popup + Settings, standalone Thinkfan surface/content đã bỏ khỏi normal UX, repo-managed install đã provision Hadalis helper/polkit bridge;
 - Bar Settings có facade/content thật;
-- public Global Theme Settings là Material-only và legacy style value được normalize về Material;
-- Calendar/Weather đã có composition Serpantinum-inspired cho left/center nhưng giữ detailed Hadalis weather ở right;
-- Media Popup dùng CAVA -> PlayerControl -> WaveVisualizer và lifecycle đã được gate theo popup presentation/playback;
-- tray/context-menu output ownership và popup focus/close contracts đã được sửa trước đó.
+- public Global Theme Settings là Material-only, legacy value normalize về Material và retired Global Style search entries đã được ẩn;
+- Calendar/Weather có composition Serpantinum-inspired cho left/center nhưng giữ detailed Hadalis weather ở right;
+- Media Popup dùng CAVA -> PlayerControl -> WaveVisualizer và lifecycle đã gate theo popup presentation/playback;
+- tray/context-menu output ownership và popup focus/close contracts đã được harden.
 
-Việc ưu tiên tiếp theo:
-1. Audit và hoàn tất cleanup broad `modules/perimeter`: runtime cutover đã retire nhưng topology/adapters/settings/tests residue còn tồn tại. Bắt đầu từ `ShellLayoutConfig.qml` và toàn bộ `test-perimeter-*`. Xóa user-facing Connected Perimeter switch nếu không còn effect. Chỉ xóa broad runtime/adapters sau khi chứng minh không còn active caller. Recent Weather work có chạm `modules/perimeter/WeatherConnectedSurface.qml`, nên phải kiểm tra exact caller trước khi xóa.
-2. TUYỆT ĐỐI giữ `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml` và shared routing/geometry còn consumer; full iiPerimeter runtime và shared popup primitives là hai thứ khác nhau.
-3. Tiếp tục Material-only cleanup ở runtime/assets/imports, nhưng chỉ xóa non-Material code không còn supported caller; giữ migration shim tối thiểu để normalize persisted legacy value về Material.
-4. Audit regression tests để tìm contract stale (đặc biệt assumptions về retired runtime/API). Sửa test theo supported runtime, không làm runtime regress chỉ để chiều test cũ.
-5. Audit package/install dependency cho `cava`, Thinkfan helper/runtime và weather; source wiring không đủ nếu package thiếu.
-6. Rà final connector/settings routing và chuẩn bị source state cho một local test duy nhất của tôi.
+Ưu tiên tiếp theo, theo thứ tự:
+1. Final Material-only active-tree audit: tìm non-Material runtime/assets/imports/tests/docs còn live; chỉ xóa khi chứng minh không còn supported caller, giữ migration shim tối thiểu để normalize persisted legacy value về Material.
+2. Audit packaging/runtime dependency cho `cava`, Hadalis Thinkfan helper/polkit + upstream runtime requirements, và weather. Nếu có gap cụ thể thì sửa installer/package manifests/docs + regression contract tương ứng.
+3. Audit Thinkfan uninstall ownership symmetry: repo-managed uninstall chỉ dọn artifact Hadalis-owned khi đúng context; không remove/disable upstream Thinkfan package/service/config và không phá package-manager ownership.
+4. Audit stale regression contracts/docs còn giả định broad perimeter runtime, retired Global Style hoặc unsupported API; sửa contract theo supported runtime, không làm runtime regress để chiều test cũ.
+5. Final source review `StyledPopup` consumers, connector/anchor/focus/mask, Settings routes, multi-output ownership và Screen Edge corner behavior. Chỉ patch khi tìm được inconsistency/root cause cụ thể; tránh speculative UI churn.
+6. Khi source đã sạch, báo exact candidate SHA để tôi tự chạy `bash scripts/validate-maintainer-local.sh` rồi live-test Niri/Hyprland. Không tự đánh dấu release gate là pass.
 
-Luôn ưu tiên root cause, patch nhỏ/atomic, commit trực tiếp lên `dev`, và báo cáo ngắn gọn sau mỗi nhóm thay đổi. Nếu không tìm thấy bug/source inconsistency cụ thể thì đừng churn UI/speculative code.
+Sau mỗi nhóm thay đổi: refetch trước write, giữ patch nhỏ/atomic, commit trực tiếp lên `dev`, xác nhận HEAD sau commit và báo ngắn gọn root cause/goal, file đã đổi, SHA, source-level contract thay đổi và phần local/runtime validation còn lại.
 ```

@@ -82,8 +82,11 @@ Item {
         root.activeMenu = window;
     }
 
-    function releaseFocus() {
-        root.activeMenu = null;
+    function releaseFocus(window) {
+        // Menu close animations are asynchronous. Ignore a delayed close from a
+        // superseded menu so it cannot clear the focus grab of the current menu.
+        if (root.activeMenu === window)
+            root.activeMenu = null;
     }
 
     function closeOverflowMenu() {
@@ -190,7 +193,7 @@ Item {
                             trayParent: root
                             Layout.fillHeight: !root.vertical
                             Layout.fillWidth: root.vertical
-                            onMenuClosed: root.releaseFocus();
+                            onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
                             onMenuOpened: (qsWindow) => root.setExtraWindowAndGrabFocus(qsWindow);
                         }
                     }
@@ -209,7 +212,7 @@ Item {
                 trayParent: root
                 Layout.fillHeight: !root.vertical
                 Layout.fillWidth: root.vertical
-                onMenuClosed: root.releaseFocus();
+                onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
                 onMenuOpened: (qsWindow) => {
                     root.setExtraWindowAndGrabFocus(qsWindow);
                 }

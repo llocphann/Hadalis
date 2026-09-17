@@ -23,9 +23,15 @@ def audit_all() -> int:
     if not isinstance(data, dict):
         raise SystemExit("translations/en_US.json must contain a JSON object")
 
-    invalid = [key for key, value in data.items() if not isinstance(key, str) or not isinstance(value, str)]
-    if invalid:
-        raise SystemExit(f"English catalog contains non-string entries: {invalid[:10]!r}")
+    empty_keys = [key for key in data if not isinstance(key, str) or not key]
+    if empty_keys:
+        raise SystemExit(f"English catalog contains empty/non-string keys: {empty_keys[:10]!r}")
+
+    invalid_values = [key for key, value in data.items() if not isinstance(value, str)]
+    if invalid_values:
+        raise SystemExit(
+            f"English catalog contains non-string values for: {invalid_values[:10]!r}"
+        )
 
     print(f"English catalog OK: {len(data)} entries")
     return 0

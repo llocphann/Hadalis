@@ -14,20 +14,35 @@ assert_contains() {
     grep -Fq -- "$needle" <<<"$text" || fail "$message"
 }
 
-scanner_block="$(sed -n '/component TranslationScanner: Process {/,/    Timer {/p' "$service")"
-generated_block="$(sed -n '/id: scanGeneratedLanguagesProcess/,/^    }/p' "$service")"
+assert_not_contains() {
+    local needle="$1" text="$2" message="$3"
+    if grep -Fq -- "$needle" <<<"$text"; then
+        fail "$message"
+    fi
+}
 
-[[ -n "$scanner_block" ]] || fail 'TranslationScanner component is missing'
-assert_contains 'property var fallbackLanguages: ["en_US"]' "$scanner_block" 'bundled scanner fallback must retain en_US'
-assert_contains 'property bool startObserved: false' "$scanner_block" 'scanner startup guard state is missing'
-assert_contains 'onRunningChanged:' "$scanner_block" 'scanner startup failure path is missing'
-assert_contains 'translationScanner.startObserved = false' "$scanner_block" 'new launch must reset startup observation'
-assert_contains 'if (translationScanner.startObserved)' "$scanner_block" 'normal process completion must not be treated as a failed spawn'
-assert_contains 'onStarted: translationScanner.startObserved = true' "$scanner_block" 'successful scanner start must be observed'
+service_text="$(cat "$service")"
 
-fallback_count="$(grep -Fc 'translationScanner.languagesScanned([...translationScanner.fallbackLanguages]);' <<<"$scanner_block")"
-[[ "$fallback_count" -ge 2 ]] || fail 'failed spawn and nonzero exit must both publish fallback languages'
+assert_contains 'readonly property var availableLanguages: ["en_US"]' "$service_text" \
+    'runtime must expose only canonical en_US'
+assert_contains 'readonly property string languageCode: "en_US"' "$service_text" \
+    'runtime languageCode must remain canonical en_US'
+assert_contains 'path: `${Quickshell.shellPath("translations")}/en_US.json`' "$service_text" \
+    'runtime must load the canonical en_US catalog directly'
+assert_contains 'property bool isLoading: translationFileView.loadPending' "$service_text" \
+    'runtime must preserve translation load state'
+assert_contains 'root.translations?.[key] ?? key' "$service_text" \
+    'missing English entries must continue to fall back to source strings'
 
-assert_contains 'fallbackLanguages: []' "$generated_block" 'generated scanner must fail closed to an empty generated catalog list'
+for retired in \
+    'TranslationScanner' \
+    'scanGeneratedLanguagesProcess' \
+    'availableGeneratedLanguages' \
+    'allAvailableLanguages' \
+    'isScanning' \
+    'Process {'; do
+    assert_not_contains "$retired" "$service_text" \
+        "English-only runtime must not retain multilingual scanner machinery: $retired"
+done
 
-printf 'translation scanner lifecycle guards: ok\n'
+printf 'translation English-only lifecycle guards: ok\n'

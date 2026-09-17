@@ -9,10 +9,7 @@ Singleton {
     id: root
 
     readonly property var availableLanguages: ["en_US"]
-    readonly property var availableGeneratedLanguages: []
-    readonly property var allAvailableLanguages: ["en_US"]
     readonly property string languageCode: "en_US"
-    readonly property bool isScanning: false
     property bool isLoading: translationFileView.loadPending
     readonly property string translationKeepSuffix: "/*keep*/"
     property var translations: ({})

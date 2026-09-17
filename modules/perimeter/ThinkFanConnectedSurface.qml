@@ -12,7 +12,6 @@ PanelWindow {
 
     property var perimeterContext: null
     property var sourceScreen: null
-    property bool _niriFocusSeen: false
 
     readonly property string outputName: root.perimeterContext?.outputName ?? ""
     readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
@@ -46,30 +45,12 @@ PanelWindow {
     }
 
     onRouteOwnedChanged: {
-        if (!root.routeOwned) {
-            root._niriFocusSeen = false
+        if (!root.routeOwned)
             return
-        }
         Qt.callLater(() => {
-            if (!root.routeOwned)
-                return
-            thinkFanContent.focusInitialControl()
-            if (CompositorService.isNiri && root.active)
-                root._niriFocusSeen = true
+            if (root.routeOwned)
+                thinkFanContent.focusInitialControl()
         })
-    }
-
-    onActiveChanged: {
-        if (!CompositorService.isNiri || !root.routeOwned)
-            return
-        if (root.active) {
-            root._niriFocusSeen = true
-            return
-        }
-        if (root._niriFocusSeen) {
-            root._niriFocusSeen = false
-            SurfaceRouteController.dismiss(root.outputName, "focus-loss")
-        }
     }
 
     ConnectedSurfaceGeometry {

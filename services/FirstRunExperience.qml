@@ -14,8 +14,20 @@ Singleton {
     property string firstRunNotifBody: "Hit Super+/ for a list of keybinds"
     property string defaultWallpaperPath: ""
     property bool _pendingFirstRun: false
+    property bool _dockStyleNormalized: false
+
+    function _normalizeDockStyle(): void {
+        if (root._dockStyleNormalized || !Config.ready)
+            return
+
+        root._dockStyleNormalized = true
+        if ((Config.options?.dock?.style ?? "panel") !== "panel")
+            Config.setNestedValue("dock.style", "panel")
+    }
 
     function load() {
+        root._normalizeDockStyle()
+
         if (checkFirstRunProc.running || listWallpapersProc.running)
             return;
 
@@ -74,6 +86,14 @@ Singleton {
         if (root._pendingFirstRun) {
             root._persistAndHandleFirstRun()
             root._pendingFirstRun = false
+        }
+    }
+
+    Connections {
+        target: Config
+        function onReadyChanged(): void {
+            if (Config.ready)
+                root._normalizeDockStyle()
         }
     }
 

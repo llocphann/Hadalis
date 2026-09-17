@@ -18,3 +18,4 @@ ConnectedSurfaceConnector 1.0 ConnectedSurfaceConnector.qml
 ConnectedSurfaceFrame 1.0 ConnectedSurfaceFrame.qml
 ConnectedSurfaceContentHost 1.0 ConnectedSurfaceContentHost.qml
 ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml
+ConnectedSurfaceRouteState 1.0 ConnectedSurfaceRouteState.qml

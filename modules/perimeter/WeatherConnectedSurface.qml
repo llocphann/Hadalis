@@ -17,22 +17,20 @@ PanelWindow {
 
     readonly property string outputName: root.perimeterContext?.outputName ?? ""
     readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
-    readonly property var route: SurfaceRouteController.current(root.outputName)
-    readonly property bool routeOwned: root.route !== null
-        && root.route.family === "perimeter"
-        && root.route.surface === "weather"
-        && root.route.sourceInstance === root.instanceId
+    readonly property var route: routeState.route
+    readonly property bool routeOwned: routeState.routeOwned
     readonly property color surfaceColor: Appearance.inirEverywhere
         ? Appearance.inir.colLayer1 : Appearance.colors.colLayer0
 
     screen: root.sourceScreen ?? Quickshell.screens[0]
     color: "transparent"
     exclusiveZone: 0
-    visible: root.routeOwned && root.sourceScreen !== null
+    visible: routeState.visualVisible && root.sourceScreen !== null
 
     WlrLayershell.namespace: "hadalis:perimeter-weather"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.routeOwned
+        ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     anchors {
         top: true
@@ -41,16 +39,25 @@ PanelWindow {
         right: true
     }
 
+    ConnectedSurfaceRouteState {
+        id: routeState
+        outputName: root.outputName
+        instanceId: root.instanceId
+        surfaceName: "weather"
+    }
+
     ConnectedSurfaceGeometry {
         id: geometry
         edge: root.route?.edge ?? "top"
         alignment: PerimeterTopology.alignmentForSlot(
             root.route?.slot ?? "top.center")
         outputRect: Qt.rect(0, 0, root.width, root.height)
+        devicePixelRatio: root.sourceScreen?.devicePixelRatio ?? 1
         anchorRect: root.route?.anchorRect ?? Qt.rect(0, 0, 0, 0)
         bodySize: Qt.size(
             Math.max(320, weatherContent.implicitWidth + 24),
             Math.max(220, weatherContent.implicitHeight + 24))
+        progress: routeState.revealProgress
     }
 
     ConnectedSurfaceFrame {
@@ -67,6 +74,8 @@ PanelWindow {
         id: popupBody
         geometry: geometry
         padding: 12
+        opacity: Math.max(0, Math.min(1,
+            (routeState.revealProgress - 0.18) / 0.82))
 
         Flickable {
             id: weatherViewport

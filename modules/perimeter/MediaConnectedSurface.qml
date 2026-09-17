@@ -17,28 +17,33 @@ PanelWindow {
 
     readonly property string outputName: root.perimeterContext?.outputName ?? ""
     readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
-    readonly property var route: SurfaceRouteController.current(root.outputName)
-    readonly property bool routeOwned: root.route !== null
-        && root.route.family === "perimeter"
-        && root.route.surface === "media"
-        && root.route.sourceInstance === root.instanceId
+    readonly property var route: routeState.route
+    readonly property bool routeOwned: routeState.routeOwned
     readonly property color surfaceColor: Appearance.inirEverywhere
         ? Appearance.inir.colLayer1 : Appearance.colors.colLayer0
 
     screen: root.sourceScreen ?? Quickshell.screens[0]
     color: "transparent"
     exclusiveZone: 0
-    visible: root.routeOwned && root.sourceScreen !== null
+    visible: routeState.visualVisible && root.sourceScreen !== null
 
     WlrLayershell.namespace: "hadalis:perimeter-media"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.routeOwned
+        ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     anchors {
         top: true
         bottom: true
         left: true
         right: true
+    }
+
+    ConnectedSurfaceRouteState {
+        id: routeState
+        outputName: root.outputName
+        instanceId: root.instanceId
+        surfaceName: "media"
     }
 
     onRouteOwnedChanged: {
@@ -85,6 +90,7 @@ PanelWindow {
             Math.max(360, mediaPopup.implicitWidth + 24),
             Math.max(220, Math.min(Math.max(220, root.height - 32),
                 mediaPopup.implicitHeight + 24)))
+        progress: routeState.revealProgress
     }
 
     ConnectedSurfaceFrame {
@@ -101,6 +107,8 @@ PanelWindow {
         id: popupBody
         geometry: geometry
         padding: 12
+        opacity: Math.max(0, Math.min(1,
+            (routeState.revealProgress - 0.18) / 0.82))
 
         Flickable {
             id: mediaViewport

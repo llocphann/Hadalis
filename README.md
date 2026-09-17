@@ -42,9 +42,10 @@ Required direction:
 - prefer shared fixes in existing abstractions over per-popup forks;
 - **do not build a second popup framework**;
 - Niri remains the primary compositor target; preserve existing Hyprland compatibility;
-- Waffle remains a supported separate panel family and must not be removed as part of ii/perimeter cleanup.
+- Waffle remains a supported separate panel family and must not be removed as part of ii/perimeter cleanup;
+- **Material is the only supported Global Theme for v1.0.** All other Global Theme families, selectors, runtime branches and stale compatibility paths must be removed unless a narrow migration shim is required only to normalize old persisted values to Material.
 
-Supported global theme dialects must continue to work. Retired per-component renderer/style experiments must not be revived merely to preserve obsolete configuration values.
+Retired per-component renderer/style experiments must not be revived merely to preserve obsolete configuration values.
 
 ## 3. v1.0 release blockers
 
@@ -85,6 +86,7 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 - [ ] Settings page loading remains lazy/deferred enough to avoid large synchronous rebuilds.
 - [ ] Screen Edge width and Thinkfan controls are reachable through the normal Settings navigation.
 - [ ] No user-facing setting remains that points to a removed runtime with no effect.
+- [ ] Global Theme UI exposes **Material only**; no removed theme can still be selected, previewed or routed through Settings.
 
 ### E. Media Popup equalizer — P0
 
@@ -100,10 +102,22 @@ Adapt the useful part of the Serpantinum reference without copying its right-sid
 - [ ] **Left:** calendar/date presentation based on the Serpantinum reference.
 - [ ] **Center:** large digital time plus the hourly weather arc/timeline concept from Serpantinum.
 - [ ] **Right:** use Hadalis' existing detailed weather presentation/data, not Serpantinum's simplified right panel.
-- [ ] Preserve Hadalis weather data/service ownership, units, refresh behavior, location/error states and theme behavior.
+- [ ] Preserve Hadalis weather data/service ownership, units, refresh behavior, location/error states and Material theme behavior.
 - [ ] Layout remains usable across supported screen sizes/scales and does not depend on hard-coded screenshot dimensions.
 
-### G. Full `iiPerimeter` runtime cleanup — P0
+### G. Material-only Global Theme cleanup — P0
+
+Material is the **single canonical Global Theme** for Hadalis 1.0.
+
+- [ ] Remove every non-Material Global Theme option from Settings, menus, previews and any user-facing theme selector.
+- [ ] Remove non-Material Global Theme runtime branches, loaders, delegates, theme registries and alternate token/palette routing that are no longer required by Material.
+- [ ] Remove dead non-Material theme assets and imports when no active Material path or supported panel family consumes them.
+- [ ] Remove or update stale tests, docs and configuration examples that imply multiple Global Themes remain supported.
+- [ ] Normalize old persisted non-Material theme values to Material safely; do not resurrect an old renderer/theme only to honor a legacy value.
+- [ ] Keep only the minimal migration compatibility needed to read an old value and resolve it to Material, then delete compatibility code that no current caller needs.
+- [ ] Material must remain visually correct across Bar, Screen Edge, popups, Sidebars, Overview, Settings and Waffle after the cleanup.
+
+### H. Full `iiPerimeter` runtime cleanup — P0
 
 The broad `iiPerimeter` composition runtime and the shared connected-popup primitives are **not the same thing**.
 
@@ -113,12 +127,12 @@ The broad `iiPerimeter` composition runtime and the shared connected-popup primi
 - [ ] **Do not remove** `modules/common/perimeter/ConnectedSurface*` / `PerimeterTokens.qml` merely because the broader runtime is removed; those are shared primitives used by connected popups.
 - [ ] No ordinary bar popup may depend on enabling a broad perimeter cutover.
 
-### H. Legacy/compatibility cleanup — P1
+### I. Legacy/compatibility cleanup — P1
 
 - [ ] Remove active reads/routes for retired renderer/style families when they no longer serve migration compatibility.
 - [ ] Keep compatibility shims only where a current supported caller still needs the type/config name.
-- [ ] Do not restore retired Pill/Mascot runtime behavior, historical Dock renderer families, Orbit/workspace experiments or similar dead presentation systems.
-- [ ] Old persisted values must degrade safely to the supported v1.0 behavior instead of resurrecting removed renderers.
+- [ ] Do not restore retired Pill/Mascot runtime behavior, historical Dock renderer families, Orbit/workspace experiments, removed Global Themes or similar dead presentation systems.
+- [ ] Old persisted values must degrade safely to the supported v1.0 behavior instead of resurrecting removed renderers or themes.
 - [ ] Keep Waffle separate and supported.
 
 ## 4. Connected-surface architecture contract
@@ -157,7 +171,7 @@ Rules:
 - multi-output routing and source-screen ownership;
 - fullscreen, lock, suspend/resume and compositor transitions;
 - Niri primary behavior and existing Hyprland compatibility;
-- supported global theme dialects;
+- Material theme tokens, palette and component rendering;
 - Waffle family routing.
 
 ## 6. v1.0 hardening tasks — P1
@@ -170,6 +184,7 @@ Rules:
 - [ ] Verify fullscreen transparent surfaces never land on the wrong output.
 - [ ] Verify suspend/resume, lock/unlock and output hotplug do not leave stale popup/focus state.
 - [ ] Audit packaging/runtime dependencies required by media visualization, Thinkfan and weather.
+- [ ] Search the active tree for removed Global Theme names and eliminate live references outside intentional migration code/history.
 
 ## 7. Local release validation — P0 gate
 
@@ -188,11 +203,12 @@ Then perform live desktop checks:
 - [ ] System Monitor contains Thinkfan functionality and no duplicate Thinkfan popup remains in normal UX.
 - [ ] Media Popup equalizer works through play/pause, player switch, close/reopen and keyboard open.
 - [ ] Calendar/Weather composition matches the intended left/center structure while keeping Hadalis detailed weather on the right.
+- [ ] Only **Material** is available as a Global Theme; an old persisted non-Material value resolves safely to Material.
+- [ ] Material renders correctly across Bar, Screen Edge, popups, Sidebars, Overview, Settings and Waffle.
 - [ ] Tray/context menus work on a non-primary output.
 - [ ] Multi-monitor, fractional scaling, transformed outputs and vertical bars are usable.
 - [ ] Niri full pass; Hyprland compatibility smoke test.
 - [ ] Fullscreen, lock/unlock and suspend/resume do not leave broken shell surfaces.
-- [ ] Supported themes render without missing/retired renderer dependencies.
 
 ## 8. v1.0 definition of done
 
@@ -202,9 +218,10 @@ Hadalis can be called **1.0** only when:
 - no known empty/broken Settings route remains for supported features;
 - connected surfaces visually read as one coherent bar/edge continuation, not detached cards;
 - no required behavior depends on a dead/half-enabled renderer or undocumented migration path;
+- **Material is the only active Global Theme**, with non-Material values removed from normal runtime/UI and legacy values safely normalized;
 - the broad `iiPerimeter` runtime is either removed or retained only for a clearly documented active responsibility;
 - media visualization, Thinkfan and weather dependencies are packaged/documented correctly;
-- supported panel families, themes and compositor targets pass the release smoke matrix;
+- supported panel families, the Material theme and compositor targets pass the release smoke matrix;
 - release notes / `CHANGELOG.md` describe user-visible 1.0 behavior after the implementation stabilizes.
 
 ## 9. Explicit non-goals for 1.0
@@ -214,6 +231,7 @@ Do not spend the 1.0 cycle on:
 - a new popup framework parallel to `StyledPopup`;
 - reviving retired renderer/style experiments;
 - rebuilding the old Pill or Mascot runtime;
+- preserving or reintroducing multiple Global Theme families after the Material-only cleanup;
 - copying Serpantinum's right-side weather panel;
 - cosmetic documentation history that does not help implement or validate 1.0;
 - hosted-CI cleanup while Actions usage is intentionally not part of the maintainer validation loop.
@@ -223,9 +241,10 @@ Do not spend the 1.0 cycle on:
 To avoid future contradictions:
 
 - keep this README focused on **current** v1.0 requirements, invariants and release gates;
+- treat the Material-only Global Theme rule as canonical anywhere older documentation still describes multiple Global Themes;
 - do not pin transient implementation status to old commit hashes here;
 - put historical changes in `CHANGELOG.md` / Git history;
-- when code removes a feature/runtime, remove or update its user-facing setting and stale documentation in the same change where practical;
+- when code removes a feature/runtime/theme, remove or update its user-facing setting and stale documentation in the same change where practical;
 - when an older document conflicts with the newest maintainer instruction or this active v1.0 contract, update/remove the stale statement instead of maintaining two competing rules.
 
 If the maintainer gives a newer explicit instruction, that instruction supersedes this document and this README should be refreshed to match it.

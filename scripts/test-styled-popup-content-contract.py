@@ -18,6 +18,7 @@ STYLED_POPUP_PATH = Path("modules/bar/StyledPopup.qml")
 TASKBAR_PATH = Path("modules/bar/BarTaskbar.qml")
 TASKBAR_PREVIEW_PATH = Path("modules/bar/BarTaskbarPreview.qml")
 TRAY_PATH = Path("modules/bar/SysTray.qml")
+MEDIA_PATH = Path("modules/bar/Media.qml")
 SETTINGS_QMLDIR_PATH = Path("modules/settings/qmldir")
 SETTINGS_REGISTRY_PATH = Path("modules/settings/SettingsPageRegistry.qml")
 
@@ -168,6 +169,7 @@ def source_contract_failures() -> list[str]:
     taskbar = TASKBAR_PATH.read_text(encoding="utf-8")
     preview = TASKBAR_PREVIEW_PATH.read_text(encoding="utf-8")
     tray = TRAY_PATH.read_text(encoding="utf-8")
+    media = MEDIA_PATH.read_text(encoding="utf-8")
     settings_qmldir = SETTINGS_QMLDIR_PATH.read_text(encoding="utf-8")
     settings_registry = SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8")
 
@@ -203,6 +205,27 @@ def source_contract_failures() -> list[str]:
     # must use the explicit handle rather than QsWindow on the StyledPopup loader.
     require(tray, "overflowPopup.presentationWindow", str(TRAY_PATH), failures)
     forbid(tray, "overflowPopup.QsWindow", str(TRAY_PATH), failures)
+
+    # The bar media popup can reverse/reopen while StyledPopup's lazily-created
+    # presentation window is still resident. Initial keyboard focus therefore has
+    # to rearm on both requested visibility and presentation-window creation,
+    # rather than only once when BarMediaPopup is first constructed.
+    require(media, "function restoreInitialFocus(): void", str(MEDIA_PATH), failures)
+    require(media, "onRequestedVisibleChanged:", str(MEDIA_PATH), failures)
+    require(media, "onPresentationWindowChanged:", str(MEDIA_PATH), failures)
+    require(
+        media,
+        "barMediaPopup.requestedVisible && barMediaPopup.presentationWindow",
+        str(MEDIA_PATH),
+        failures,
+    )
+    require(media, "mediaPopupContent.focusInitialControl()", str(MEDIA_PATH), failures)
+    forbid(
+        media,
+        "Component.onCompleted: Qt.callLater(() => mediaPopupContent.focusInitialControl())",
+        str(MEDIA_PATH),
+        failures,
+    )
 
     # Public settings routes intentionally expose Hug-only facades. Their base
     # types and facades must be registered in the settings module or Loader will

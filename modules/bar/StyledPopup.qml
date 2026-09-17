@@ -182,6 +182,8 @@ LazyLoader {
     component: PanelWindow {
         id: popupWindow
 
+        property bool _niriFocusSeen: false
+
         screen: root.QsWindow.window?.screen ?? null
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
@@ -200,6 +202,42 @@ LazyLoader {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+        // Niri has no HyprlandFocusGrab equivalent. Close only after this focused
+        // popup has actually become active once; that avoids treating its initial
+        // inactive construction state as a focus-loss dismissal.
+        onActiveChanged: {
+            if (!CompositorService.isNiri || !root.keyboardFocus)
+                return
+            if (!root.requestedVisible) {
+                popupWindow._niriFocusSeen = false
+                return
+            }
+            if (popupWindow.active) {
+                popupWindow._niriFocusSeen = true
+                return
+            }
+            if (popupWindow._niriFocusSeen) {
+                popupWindow._niriFocusSeen = false
+                root.requestClose()
+            }
+        }
+
+        Connections {
+            target: root
+            function onRequestedVisibleChanged() {
+                if (!root.requestedVisible) {
+                    popupWindow._niriFocusSeen = false
+                    return
+                }
+                if (!root.keyboardFocus || !CompositorService.isNiri)
+                    return
+                Qt.callLater(() => {
+                    if (root.requestedVisible && popupWindow.active)
+                        popupWindow._niriFocusSeen = true
+                })
+            }
+        }
 
         // Hyprland still needs an explicit grab for keyboard-driven popouts;
         // Niri uses the layer-shell focus mode above. Keep the behavior inside

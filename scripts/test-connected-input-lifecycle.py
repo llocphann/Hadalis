@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression checks for connected popup pointer-input lifecycle."""
+"""Regression checks for connected popup pointer/focus lifecycle."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,18 +34,34 @@ def main() -> None:
           and "onHoveredChanged: root.popupHovered = hovered" in popup,
           "Hover popouts must retain the body hover bridge during visual linger")
 
+    for token in (
+        "property bool _niriFocusSeen: false",
+        "onActiveChanged:",
+        "CompositorService.isNiri",
+        "popupWindow._niriFocusSeen = true",
+        "root.requestClose()",
+        "function onRequestedVisibleChanged()",
+    ):
+        check(token in popup,
+              f"Focused connected popup must preserve Niri focus-loss lifecycle: {token}")
+    check("if (!root.requestedVisible)" in popup
+          and "popupWindow._niriFocusSeen = false" in popup,
+          "Niri focus tracking must reset as soon as semantic popup state closes")
+    check("if (!root.keyboardFocus || !CompositorService.isNiri)" in popup,
+          "Niri focus-loss dismissal must be limited to keyboard-focused popups")
+
     check("hoverActivates: false" in media
           and "closeOnOutsideClick: true" in media
           and "keyboardFocus: true" in media,
-          "Expanded Media must remain a click-activated focused popup covered by the input policy")
+          "Expanded Media must remain a click-activated focused popup covered by the input/focus policy")
 
     if failures:
-        print("Connected popup input lifecycle regression(s):")
+        print("Connected popup input/focus lifecycle regression(s):")
         for failure in failures:
             print(f"  - {failure}")
         raise SystemExit(1)
 
-    print("Connected popup input lifecycle: OK")
+    print("Connected popup input/focus lifecycle: OK")
 
 
 if __name__ == "__main__":

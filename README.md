@@ -1,296 +1,231 @@
-# Hadalis — Development Context / AI Handoff
+# Hadalis — v1.0 Release Plan / Development Contract
 
-> This README is intentionally a **working context and handoff document** for maintainers and AI coding agents. It replaces the previous project-facing README while the current UI/runtime refactor is in progress.
+> This README is the current product and execution contract for completing **Hadalis 1.0**.
+> It intentionally contains only active requirements, release blockers, architecture constraints and validation gates. Historical implementation notes, one-off commit hashes and stale migration narratives belong in Git history / `CHANGELOG.md`, not here.
 >
-> **Last context refresh:** 2026-09-17  
+> **Target:** `1.0`  
 > **Primary development branch:** `dev`  
-> **Stable branch:** `stable`
+> **Stable baseline:** `stable`  
+> **Scope refresh:** 2026-09-17
 
-## 1. Maintainer workflow contract
+## 1. Source-of-truth and workflow
 
-These rules are part of the task, not optional suggestions:
+Requirement precedence:
 
-- Work directly on **`dev`** unless the maintainer explicitly asks for another branch.
-- Treat the latest **`dev` as source of truth** for ongoing work; use `stable` only as the behavioral/architectural baseline when comparing regressions or intended behavior.
-- **Refetch the latest `dev` and `stable` before every significant group of changes.** Concurrent commits frequently land on `dev`; never assume the previous SHA is still current.
-- Do **not** create a pull request unless the maintainer explicitly requests one.
-- Do **not** run GitHub Actions / hosted CI for the current work. The repository has exhausted its Actions usage allowance; the maintainer performs the authoritative local test pass.
+1. the maintainer's newest explicit instruction;
+2. this README's active v1.0 scope and architecture constraints;
+3. the current implementation on `dev`;
+4. `stable` only as a behavioral/architectural comparison baseline;
+5. older docs, historical notes and retired implementation details.
+
+Working rules:
+
+- Work directly on **`dev`** unless the maintainer explicitly requests another branch.
+- Refetch the latest **`dev` and `stable`** before every significant group of changes and immediately before a write that may conflict with concurrent work.
+- Re-read the current target file and its caller/consumer before changing architecture.
+- Do **not** create a pull request unless explicitly requested.
+- Do **not** depend on GitHub Actions for the current development cycle; the maintainer performs the authoritative local test pass.
 - Keep commits focused and fix forward. Do not rewrite shared history.
-- When using ChatGPT, continue in the current chat/GitHub workflow; do not force a Work-mode handoff unless the maintainer asks for it.
-- Maintainer communication is normally in Vietnamese and prefers short progress reports.
+- Canonical local validator: `bash scripts/validate-maintainer-local.sh`.
+- A task is not release-complete merely because code exists. Runtime-sensitive items remain open until locally validated on the intended desktop environment.
 
-Before editing a file, read the current caller/consumer and the current version of the target file from `dev`. Before the next significant write, refetch both branches again.
+## 2. v1.0 product direction
 
-## 2. Product direction
+Hadalis remains a Quickshell desktop shell built on the existing iNiR architecture. The v1.0 priority is **UI/UX quality without throwing away working iNiR behavior**.
 
-Hadalis is a Quickshell desktop shell derived from the existing iNiR architecture. The highest priority is **UI/UX**, with Caelestia used as the visual/composition reference for connected surfaces.
+Required direction:
 
-The required direction is:
+- preserve existing iNiR services, state, routing, popup contents and proven interaction behavior;
+- use **Caelestia as the visual/composition reference** for connected edge surfaces;
+- make popups appear to grow/morph from their real source surface instead of looking like detached floating cards;
+- keep keyboard focus, Escape close, outside-click close, hover transfer, multi-output ownership and compositor behavior intact;
+- prefer shared fixes in existing abstractions over per-popup forks;
+- **do not build a second popup framework**;
+- Niri remains the primary compositor target; preserve existing Hyprland compatibility;
+- Waffle remains a supported separate panel family and must not be removed as part of ii/perimeter cleanup.
 
-- preserve the existing iNiR component architecture, services, routing, state and functionality;
-- make popups and edge surfaces feel physically connected to the bar/screen edge, similar to Caelestia;
-- morph/extrude an existing surface from its real source control instead of presenting a detached floating card where practical;
-- preserve keyboard focus, outside-click close, hover behavior, multi-monitor ownership and compositor behavior;
-- prefer incremental refactors of existing components over parallel replacements.
+Supported global theme dialects must continue to work. Retired per-component renderer/style experiments must not be revived merely to preserve obsolete configuration values.
 
-**Do not build a second popup framework.** Existing iNiR popup/component functionality must be reused and refactored.
+## 3. v1.0 release blockers
 
-## 3. Visual/theme rules
+Checkboxes below are **release gates**, not an assertion that no partial implementation exists. Check an item only after source review and the relevant local/runtime validation.
 
-Global theme dialects are supported product features and must remain intact:
+### A. Screen Edge and connected surfaces — P0
 
-- ZZZ
-- Regalia
-- Aurora
-- Angel
-- iNiR
-- normal Material behavior where applicable
+- [ ] **Screen Edge exists both while idle and while a window is maximized.** It must not disappear simply because no maximized window is present.
+- [ ] **Screen Edge width is configurable in Settings.** The setting must use one canonical configuration field, have a safe default/range and update the active edge without requiring an alternate renderer.
+- [ ] **All connected popups use one shared connector width/thickness contract.** No popup should invent a narrower stem or a private gap value.
+- [ ] **No visible gap between bar/Screen Edge and popup body.** Shared geometry must own seam overlap so fractional scaling, animation and antialiasing do not expose a slit.
+- [ ] **Left and right Sidebars connect to the vertical Screen Edge**, not to the top bar or bottom screen edge.
+- [ ] Connected surfaces behave correctly for top/bottom/left/right bar placement, transformed outputs and fractional scale.
+- [ ] Reverse retract / hover bridge keeps the source and popup visually and interactively continuous during close/reopen transitions.
 
-These global themes are **not** the retired per-component renderer/style systems.
+### B. Popup interaction correctness — P0
 
-Legacy/unwanted renderer families and presentation switches such as old Dock Style, Bar Style, Orbit/Workspace Strip-style experiments, Mascot presentation hooks and similar renderer forks should not be revived. Compatibility fields may remain only when required for migration/backward compatibility; they must be inert if the active runtime no longer supports that renderer.
+- [ ] Existing bar popups continue to use `modules/bar/StyledPopup.qml` and the shared connected-surface primitives.
+- [ ] Popup placement anchors from the real visual source control / `hoverTarget`, not a loader or lifecycle wrapper.
+- [ ] Keyboard focus, initial focus, Escape close and compositor focus-grab behavior remain correct.
+- [ ] Outside-click close works without stealing input from transparent regions.
+- [ ] Full-output click-catchers are owned by the same output as their popup on multi-monitor setups.
+- [ ] Tray menu delayed-close logic cannot release the focus/grab of a newer active tray menu.
+- [ ] No guessed `PanelWindow.active` / `onActiveChanged` style APIs are introduced without verifying the current Quickshell API.
 
-Waffle is a separate supported panel family, not a Dock style and not a legacy ii renderer.
+### C. Thinkfan + System Monitor — P0
 
-## 4. Connected popup architecture — keep using this
+- [ ] **Thinkfan UI is integrated into the existing System Monitor popup** instead of living as a separate standalone popup.
+- [ ] **Thinkfan settings are exposed in Settings** in the appropriate system-monitor/thermal area.
+- [ ] Reuse the existing Thinkfan helper/service path; do not create a duplicate fan-control backend.
+- [ ] Unsupported/missing Thinkfan environments fail gracefully and do not break System Monitor or Settings loading.
+- [ ] Fan status/control state stays synchronized between Settings and the System Monitor popup.
 
-The current connected-popup implementation is built around the existing bar popup abstraction:
+### D. Settings correctness — P0
 
-- `modules/bar/StyledPopup.qml`
-- `modules/common/perimeter/ConnectedSurfaceGeometry.qml`
-- `modules/common/perimeter/ConnectedSurfaceConnector.qml`
-- `modules/common/perimeter/ConnectedSurfaceFrame.qml`
-- `modules/common/perimeter/ConnectedSurfaceContentHost.qml`
-- `modules/common/perimeter/ConnectedSurfaceMask.qml`
-- `modules/common/perimeter/PerimeterTokens.qml`
+- [ ] **Settings > Bar renders real content** and no longer presents an empty page.
+- [ ] Bar settings expose only supported v1.0 behavior; retired Dock/Bar renderer switches must not reappear through routing.
+- [ ] Settings page loading remains lazy/deferred enough to avoid large synchronous rebuilds.
+- [ ] Screen Edge width and Thinkfan controls are reachable through the normal Settings navigation.
+- [ ] No user-facing setting remains that points to a removed runtime with no effect.
 
-`StyledPopup.qml` remains the popup entry point for existing bar popouts. It resolves placement from the **real source item/window**, owns the full-output transparent host, and uses connected geometry + shaped input regions so the visible body/connector behaves as one surface.
+### E. Media Popup equalizer — P0
 
-Do not replace this with a new detached `PopupWindow` implementation simply to solve layout or focus problems. Fix the shared connected-surface path instead when the issue belongs there.
+- [ ] The bar-attached Media Popup renders the existing **CAVA -> `PlayerControl` -> `WaveVisualizer`** path instead of an empty visualizer input.
+- [ ] Confirm the required CAVA runtime/package is present in the supported install/package paths, or document/install it where currently missing.
+- [ ] Visualizer lifecycle is efficient: start only when needed, stop when unused, and survive pause/resume, player switching and popup close/reopen.
+- [ ] MPRIS controls, seek, volume and keyboard behavior do not regress while the visualizer is active.
 
-### Popup contract and lifecycle invariants
+### F. Calendar / Weather v1.0 composition — P0
 
-These invariants are intentional and should be checked before changing popup code:
+Adapt the useful part of the Serpantinum reference without copying its right-side weather presentation.
 
-- Anchor a popup from the **actual visual source control / `hoverTarget`**, never from the `LazyLoader` window or another lifecycle wrapper.
-- `StyledPopup.presentationWindow` is the window presented to consumers that need window-level focus/menu ownership. Keep this explicit rather than making consumers discover an implementation window indirectly.
-- Placement must continue to account for output transforms and the popup window's effective `devicePixelRatio`; top/bottom/left/right bars, vertical bars, fractional scaling and transformed outputs are all supported cases.
-- Keep layer-shell keyboard focus through `WlrLayershell.keyboardFocus`. Hyprland additionally uses `CompositorFocusGrab`; Niri relies on the layer-shell focus path plus the outside-click backdrop.
-- `closeOnOutsideClick` uses the full-output transparent backdrop. Do not replace it with a detached popup implementation that changes click-through/input ownership semantics.
-- A fullscreen/backdrop `PanelWindow` that belongs to a per-output popup must bind its `screen` to the popup/output owner (`root.screen`, `popupWindow.screen`, or the resolved anchor screen). Do not leave that ownership implicit: with no screen selected, layer-shell may let the compositor choose a different output, which breaks multi-monitor outside-click behavior.
-- Tray menu delayed-close handling must release focus/grab only for the **exact menu window that actually closed**. If another tray menu became active during the delay, the old close event must not tear down the new menu's grab.
-- Quickshell `PanelWindow` does **not** provide the `active` / `onActiveChanged` API assumed by an earlier regression. Never add `PanelWindow.active`, `PanelWindow.onActiveChanged`, or equivalent guessed focus hooks without verifying the current Quickshell API first.
-- Preserve reverse retract / hover-bridge behavior so moving between the source control and connected body does not introduce a detached-feeling close/reopen cycle.
+- [ ] **Left:** calendar/date presentation based on the Serpantinum reference.
+- [ ] **Center:** large digital time plus the hourly weather arc/timeline concept from Serpantinum.
+- [ ] **Right:** use Hadalis' existing detailed weather presentation/data, not Serpantinum's simplified right panel.
+- [ ] Preserve Hadalis weather data/service ownership, units, refresh behavior, location/error states and theme behavior.
+- [ ] Layout remains usable across supported screen sizes/scales and does not depend on hard-coded screenshot dimensions.
 
-## 5. Full Connected Perimeter runtime
+### G. Full `iiPerimeter` runtime cleanup — P0
 
-Hadalis also contains the broader `iiPerimeter` composition runtime with topology, per-output placement, module adapters and guarded cutover/fallback policy.
+The broad `iiPerimeter` composition runtime and the shared connected-popup primitives are **not the same thing**.
 
-Important distinction:
+- [ ] Audit every active consumer of the full `iiPerimeter` runtime, topology, adapters, cutover/fallback flags and configuration.
+- [ ] If the full runtime no longer owns required v1.0 behavior, remove it completely: runtime wiring, dead settings, adapters, tests and stale docs.
+- [ ] If a required active consumer still exists, reduce the runtime to that concrete responsibility and document why it remains.
+- [ ] **Do not remove** `modules/common/perimeter/ConnectedSurface*` / `PerimeterTokens.qml` merely because the broader runtime is removed; those are shared primitives used by connected popups.
+- [ ] No ordinary bar popup may depend on enabling a broad perimeter cutover.
 
-- **Connected bar popups** already use the shared connected-surface primitives and do not depend on broad `iiPerimeter` ownership.
-- The **full perimeter composition cutover** remains guarded until it has enough parity with the legacy panel graph.
+### H. Legacy/compatibility cleanup — P1
 
-Do not couple ordinary bar-popup behavior to the full perimeter cutover.
+- [ ] Remove active reads/routes for retired renderer/style families when they no longer serve migration compatibility.
+- [ ] Keep compatibility shims only where a current supported caller still needs the type/config name.
+- [ ] Do not restore retired Pill/Mascot runtime behavior, historical Dock renderer families, Orbit/workspace experiments or similar dead presentation systems.
+- [ ] Old persisted values must degrade safely to the supported v1.0 behavior instead of resurrecting removed renderers.
+- [ ] Keep Waffle separate and supported.
 
-## 6. Current implementation status
+## 4. Connected-surface architecture contract
 
-### Connected bar popups
-
-The shared connected geometry is active in `StyledPopup.qml`. The host supports top/bottom/left/right attachment, source-aware placement, reveal/retract morphing, seam overlap and shape-aware input masking.
-
-Continue improving visual continuity toward the Caelestia reference, but keep the existing popup contents and behaviors.
-
-### Compatibility-only type shims
-
-Two compatibility types keep surviving callers loadable while retired feature runtimes stay removed:
-
-- `modules/pill/IslandPanel.qml` is a minimal alias to `RicelinSurface` and is exported by `modules/pill/qmldir`. This alias is **still an active presentation dependency** for `SidebarLeftContent.qml`, `SidebarRightContent.qml` and `CompactSidebarRightContent.qml` when the surviving sidebar `island` surface dialect is selected. Keep the alias narrow; **do not rebuild the former Pill architecture around it** and do not remove it merely because the full Pill runtime is retired.
-- `services/MascotChaos.qml` is a disabled no-op singleton (`enabled: false`) exported by `services/qmldir`. `AbstractBackgroundWidget.qml` still contains compatibility hooks, but geometry reporting and impact handling are hard-gated by `MascotChaos.enabled`; with the singleton disabled they remain inert. **Do not restore mascot state, physics, presentation or runtime behavior.**
-
-If another `Type X is unavailable` error appears, trace the dependency chain to the concrete missing/invalid type first. Add only the narrowest compatibility shim necessary for compilation; do not revive a retired subsystem.
-
-### Niri outside-click output ownership
-
-Fullscreen transparent click-catcher surfaces must stay on the same output as the popup they serve. Current fixes on `dev` make this explicit for both tray menus and shared context menus:
-
-- `modules/bar/SysTrayMenu.qml` binds its backdrop to `root.screen`;
-- `modules/common/widgets/ContextMenu.qml` binds its backdrop to `popupWindow.screen`.
-
-Keep this invariant when adding or refactoring fullscreen click-catchers, especially on multi-monitor setups.
-
-### Settings > Bar compatibility route
-
-`SettingsPageRegistry.qml` deliberately routes the public Bar page to `modules/settings/BarConfigHugOnly.qml`. The older `BarConfig.qml` remains only as a compatibility implementation for persisted configuration parsing. Hug is the sole supported Classic Bar surface geometry; retired Float/Rectangle/Card controls must not reappear through Settings routing.
-
-### Media popup equalizer
-
-The bar-attached Media Popup previously rendered `PlayerControl` with:
-
-```qml
-visualizerPoints: []
-```
-
-while the dock/global media path already fed live CAVA points into the same `PlayerControl`/`WaveVisualizer` implementation.
-
-This has now been corrected on `dev` in commit **`577839ec`** (`fix(media): restore equalizer in bar popup`):
-
-- `BarMediaPopup.qml` owns a `CavaProcess` while media is playing;
-- the process is inactive when the popup/player does not need visualization;
-- `PlayerControl.visualizerPoints` receives the live CAVA point stream;
-- the existing `WaveVisualizer` remains the renderer, so no duplicate equalizer component was added.
-
-The bar-mode media popup also rearms its initial keyboard focus when requested visibility or its presentation window changes. Keep this consumer-side lifecycle behavior; do not reintroduce invalid `PanelWindow.active`/`onActiveChanged` hooks.
-
-This still requires the maintainer's local/live desktop validation.
-
-### Dock cleanup
-
-The old user-facing Dock renderer/style choices were removed/neutralized. The active Dock runtime should not switch among Pill/macOS/Island/M3 renderer families based on `dock.style`. Compatibility data may exist for migration, but it must not reactivate those renderers.
-
-### Settings/runtime performance
-
-Settings already uses asynchronous page loading/LRU-style residency in `SettingsPageHost.qml`. Preserve lazy/deferred loading and avoid rebuilding large settings pages eagerly when fixing UI issues.
-
-### Sidebars and panel-family routing
-
-Sidebar roles use the shared `SidebarHost` path and are content-sized. Preserve role routing, open/close state, compositor ownership, resize/edit behavior and fallback semantics while adjusting visuals.
-
-`ShellIiPanels.qml` loads the ii implementation only for the ii family, while `ShellWafflePanels.qml` loads the Waffle implementation only for Waffle. The root `shell.qml` selects only one family tree at a time. Waffle intentionally reuses selected shared modules such as Overview; this is not a path back into the retired Pill runtime.
-
-## 7. Current priorities
-
-Work in this order unless the maintainer changes priorities:
-
-1. **UI/UX correctness of connected surfaces** — popups should visually read as a continuation of the bar/screen edge, not a nearby independent card.
-2. **Media Popup validation** — confirm the newly restored equalizer/CAVA stream works in the bar popup, including pause/resume, player switching and popup close/reopen.
-3. **Popup interaction regressions** — keyboard focus, outside click, hover transfer, reverse close/open morph, tray menus and multi-monitor anchoring.
-4. **Surface continuity** — remove visible gaps, detached stems, clipping, incorrect corner ownership and fractional-scale seams.
-5. **Settings responsiveness** — keep page construction incremental/lazy and avoid regressions from large synchronous component trees.
-6. **Compatibility cleanup** — remove active reads of retired renderer/style features without breaking migrations or supported global themes.
-
-## 8. Functionality that must not regress
-
-When changing UI geometry or presentation, retain existing behavior wherever it already exists:
-
-- MPRIS player switching, play/pause, previous/next, seek and volume;
-- CAVA/visualizer behavior where currently supported;
-- keyboard navigation/focus and Escape close;
-- click-outside close;
-- hover-open/hover-transfer behavior;
-- system tray and nested tray-menu behavior;
-- drag/reorder flows in Dock/task surfaces;
-- multi-output routing and correct source-screen ownership;
-- fullscreen, lock, suspend/resume and compositor transitions;
-- Niri as the primary compositor target, with existing Hyprland compatibility preserved;
-- global style dialect behavior.
-
-## 9. Reference strategy
-
-Caelestia is a **behavior and composition reference**, not a codebase to merge wholesale.
-
-Useful Caelestia concepts include:
-
-- one coherent edge/window composition;
-- popouts that deform/grow from the bar instead of appearing detached;
-- shared surface/background ownership;
-- connected geometry that remains attached throughout enter/exit animation.
-
-Hadalis must keep its own services, state model, feature components, configuration and lifecycle.
-
-## 10. Validation policy
-
-For the current development cycle:
-
-- **Do not rely on GitHub Actions.**
-- The maintainer will perform a local test pass after the implementation batch is complete.
-- Static reasoning/source inspection is still expected before committing.
-- A change is not considered live-validated merely because the QML is structurally correct.
-
-High-value local checks include:
-
-- open **Settings > Bar** and confirm the Hug-only page loads without exposing retired corner-style renderers;
-- open **Sidebar Left**, **Sidebar Right** (both normal and Compact, including island style), **Overview** and **Waffle** entry paths and confirm no `Type ... unavailable` dependency failure;
-- open connected popups from **top, bottom, left and right** bar positions, with extra attention to bottom-right anchors;
-- verify connector/body remain visually joined throughout animation and reverse retract;
-- confirm transparent full-output popup regions remain click-through while outside-click close still works;
-- exercise keyboard focus/Escape/outside-click behavior on both **Niri** and **Hyprland**;
-- on a multi-monitor Niri session, open tray/context menus on a non-primary output and confirm the outside-click catcher appears on and closes from that same output;
-- open tray context menus, switch directly between tray items, reopen menus, and confirm a delayed close from an old menu cannot release the current menu's focus grab;
-- verify Media Popup equalizer starts/stops with playback, switch MPRIS players, close the popup, then reopen it via keyboard and confirm initial focus is usable;
-- test multi-monitor ownership, fractional scaling, transformed outputs and vertical bars;
-- exercise fullscreen, suspend/resume and lock/unlock;
-- verify supported themes still render correctly.
-
-## 11. AI-agent checklist before every change
-
-1. Fetch the latest `dev` and `stable` branch SHAs.
-2. Treat current `dev` as source of truth and `stable` only as behavioral/architectural baseline.
-3. Read the current target file from `dev`.
-4. Read its caller/consumer or the nearest shared abstraction before changing architecture.
-5. Make the smallest coherent change that advances the requested UX.
-6. Commit directly to `dev`.
-7. Refetch both branches before starting the next significant change.
-8. Do not open a PR unless explicitly asked.
-9. Do not run hosted CI while the current usage-limit instruction remains in effect.
-10. Report the changed file(s), commit SHA and practical effect concisely.
-
-## 12. Historical integration note
-
-A large cleanup/refactor batch was previously merged from `dev` to `stable` through PR #12. The stable merge commit was `8bfbce8c`. Treat that only as historical context; **always inspect current `dev`** for ongoing work because development continues after that merge.
-
-## 13. Source map for the current task
+The existing popup path remains authoritative:
 
 ```text
-modules/bar/Media.qml
-    -> opens existing StyledPopup for bar-mode media
-    -> rearms initial keyboard focus on popup reopen/presentation-window creation
-
 modules/bar/StyledPopup.qml
-    -> shared source-anchored connected popup host
-    -> ConnectedSurfaceGeometry / Frame / Mask / ContentHost
-
-modules/bar/SysTray.qml + SysTrayItem.qml + SysTrayMenu.qml
-    -> exact-window delayed-close focus ownership
-    -> Niri click-catcher bound to the tray menu output
-
-modules/common/widgets/ContextMenu.qml
-    -> shared context-menu outside-click surface
-    -> Niri backdrop bound to popupWindow.screen
-
-modules/mediaControls/BarMediaPopup.qml
-    -> content for bar-attached expanded media
-    -> now owns live CavaProcess points for equalizer
-
-modules/mediaControls/PlayerControl.qml
-    -> existing player UI and WaveVisualizer renderer
-
-modules/mediaControls/MediaControls.qml
-    -> dock/global media presentation
-    -> useful reference for CavaProcess lifecycle
-
-modules/common/perimeter/
-    -> shared connected-surface geometry/render/input primitives
-
-modules/settings/SettingsPageRegistry.qml
-    -> public Settings routing; Bar page points to BarConfigHugOnly.qml
-
-modules/settings/SettingsPageHost.qml
-    -> lazy/asynchronous settings page residency
-
-modules/sidebar/SidebarHost.qml
-    -> shared sidebar host / role routing / content-sized surface
-
-modules/sidebarLeft/SidebarLeftContent.qml
-modules/sidebarRight/SidebarRightContent.qml
-modules/sidebarRight/CompactSidebarRightContent.qml
-    -> surviving sidebar island-style callers of the IslandPanel compatibility name
-
-modules/pill/IslandPanel.qml
-    -> minimal compatibility alias to RicelinSurface; do not restore the retired Pill runtime
-
-services/MascotChaos.qml
-    -> disabled compatibility singleton only; AbstractBackgroundWidget hooks remain gated by enabled=false
+modules/common/perimeter/ConnectedSurfaceGeometry.qml
+modules/common/perimeter/ConnectedSurfaceConnector.qml
+modules/common/perimeter/ConnectedSurfaceFrame.qml
+modules/common/perimeter/ConnectedSurfaceContentHost.qml
+modules/common/perimeter/ConnectedSurfaceMask.qml
+modules/common/perimeter/PerimeterTokens.qml
 ```
 
-If this document conflicts with the maintainer's newest explicit instruction, **the newest maintainer instruction wins**. Otherwise, use this README as the project handoff context before making changes.
+Rules:
+
+- `StyledPopup.qml` remains the entry point for existing bar popouts.
+- Shared geometry/tokens own connector thickness, seam overlap, corner ownership and attachment behavior.
+- Consumers provide content and source ownership; they should not duplicate connector geometry.
+- Keep source-aware placement and shaped input regions.
+- Preserve top/bottom/left/right attachment and output ownership.
+- Fix shared geometry when the defect is systemic; do not paper over the same seam bug in every popup.
+
+## 5. Required functionality that must not regress
+
+- MPRIS player switching, play/pause, previous/next, seek and volume;
+- CAVA / visualizer behavior where supported;
+- keyboard navigation, initial focus and Escape close;
+- click-outside close and transparent-region click-through semantics;
+- hover-open / hover-transfer behavior;
+- system tray and nested tray menus;
+- Dock/task drag and reorder flows;
+- Sidebar role routing, resize/edit behavior and open/close state;
+- multi-output routing and source-screen ownership;
+- fullscreen, lock, suspend/resume and compositor transitions;
+- Niri primary behavior and existing Hyprland compatibility;
+- supported global theme dialects;
+- Waffle family routing.
+
+## 6. v1.0 hardening tasks — P1
+
+- [ ] Audit every `StyledPopup` consumer for connector, anchor, focus and mask consistency.
+- [ ] Test bottom-right and vertical-bar anchors explicitly; these expose clipping/placement errors easily.
+- [ ] Remove fractional-scale seams and one-pixel antialiasing gaps without per-popup magic numbers.
+- [ ] Confirm Settings remains responsive while visiting all heavy pages repeatedly.
+- [ ] Confirm no `Type ... unavailable` failures through Sidebar Left/Right, Compact Sidebar, Overview, Waffle and Settings routes.
+- [ ] Verify fullscreen transparent surfaces never land on the wrong output.
+- [ ] Verify suspend/resume, lock/unlock and output hotplug do not leave stale popup/focus state.
+- [ ] Audit packaging/runtime dependencies required by media visualization, Thinkfan and weather.
+
+## 7. Local release validation — P0 gate
+
+The maintainer's local pass is authoritative. At minimum, validate the exact candidate SHA with:
+
+```bash
+bash scripts/validate-maintainer-local.sh
+```
+
+Then perform live desktop checks:
+
+- [ ] Screen Edge visible when idle and maximized; width setting updates correctly.
+- [ ] Connected popups from top, bottom, left and right positions have no visible gap and use a consistent connector width.
+- [ ] Left/right Sidebars connect to the correct Screen Edge.
+- [ ] Settings > Bar renders; Thinkfan and Screen Edge controls are reachable.
+- [ ] System Monitor contains Thinkfan functionality and no duplicate Thinkfan popup remains in normal UX.
+- [ ] Media Popup equalizer works through play/pause, player switch, close/reopen and keyboard open.
+- [ ] Calendar/Weather composition matches the intended left/center structure while keeping Hadalis detailed weather on the right.
+- [ ] Tray/context menus work on a non-primary output.
+- [ ] Multi-monitor, fractional scaling, transformed outputs and vertical bars are usable.
+- [ ] Niri full pass; Hyprland compatibility smoke test.
+- [ ] Fullscreen, lock/unlock and suspend/resume do not leave broken shell surfaces.
+- [ ] Supported themes render without missing/retired renderer dependencies.
+
+## 8. v1.0 definition of done
+
+Hadalis can be called **1.0** only when:
+
+- every P0 release blocker above is completed and locally validated;
+- no known empty/broken Settings route remains for supported features;
+- connected surfaces visually read as one coherent bar/edge continuation, not detached cards;
+- no required behavior depends on a dead/half-enabled renderer or undocumented migration path;
+- the broad `iiPerimeter` runtime is either removed or retained only for a clearly documented active responsibility;
+- media visualization, Thinkfan and weather dependencies are packaged/documented correctly;
+- supported panel families, themes and compositor targets pass the release smoke matrix;
+- release notes / `CHANGELOG.md` describe user-visible 1.0 behavior after the implementation stabilizes.
+
+## 9. Explicit non-goals for 1.0
+
+Do not spend the 1.0 cycle on:
+
+- a new popup framework parallel to `StyledPopup`;
+- reviving retired renderer/style experiments;
+- rebuilding the old Pill or Mascot runtime;
+- copying Serpantinum's right-side weather panel;
+- cosmetic documentation history that does not help implement or validate 1.0;
+- hosted-CI cleanup while Actions usage is intentionally not part of the maintainer validation loop.
+
+## 10. Documentation hygiene
+
+To avoid future contradictions:
+
+- keep this README focused on **current** v1.0 requirements, invariants and release gates;
+- do not pin transient implementation status to old commit hashes here;
+- put historical changes in `CHANGELOG.md` / Git history;
+- when code removes a feature/runtime, remove or update its user-facing setting and stale documentation in the same change where practical;
+- when an older document conflicts with the newest maintainer instruction or this active v1.0 contract, update/remove the stale statement instead of maintaining two competing rules.
+
+If the maintainer gives a newer explicit instruction, that instruction supersedes this document and this README should be refreshed to match it.

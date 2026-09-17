@@ -117,11 +117,26 @@ Item {
         popupBackgroundMargin: Appearance.sizes.elevationMargin
         onRequestClose: root.barMediaPopupVisible = false
 
+        function restoreInitialFocus(): void {
+            Qt.callLater(() => {
+                if (barMediaPopup.requestedVisible && barMediaPopup.presentationWindow)
+                    mediaPopupContent.focusInitialControl()
+            })
+        }
+
+        onRequestedVisibleChanged: {
+            if (requestedVisible)
+                restoreInitialFocus()
+        }
+        onPresentationWindowChanged: {
+            if (requestedVisible && presentationWindow)
+                restoreInitialFocus()
+        }
+
         BarMediaPopup {
             id: mediaPopupContent
             focus: true
             onCloseRequested: root.barMediaPopupVisible = false
-            Component.onCompleted: Qt.callLater(() => mediaPopupContent.focusInitialControl())
         }
     }
 

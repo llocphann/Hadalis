@@ -2,9 +2,11 @@
 """Guard StyledPopup's Item-only default content contract.
 
 StyledPopup declares `default property Item contentItem`. Non-visual QML objects such as
-Connections or Timer therefore cannot be direct children of a StyledPopup root: QML
-will try to assign them to contentItem and reject the entire type graph at startup.
-Keep such helpers inside the popup's content Item (where Item.data accepts QtObject).
+Connections, Timer, or PanelWindow therefore cannot be direct children of either a
+StyledPopup consumer or the StyledPopup implementation root: QML will try to assign
+them to contentItem and reject the entire type graph at startup. Keep consumer helpers
+inside the popup content Item and bind implementation helpers through explicit object
+properties instead of the default property.
 """
 
 from __future__ import annotations
@@ -13,9 +15,11 @@ import re
 import subprocess
 from pathlib import Path
 
-ROOT_RE = re.compile(r"^\s*StyledPopup\s*\{")
+STYLED_POPUP_PATH = Path("modules/bar/StyledPopup.qml")
+CONSUMER_ROOT_RE = re.compile(r"^\s*StyledPopup\s*\{")
+IMPLEMENTATION_ROOT_RE = re.compile(r"^\s*LazyLoader\s*\{")
 NON_VISUAL_RE = re.compile(
-    r"^\s*(Connections|Timer|Binding|Component|QtObject|Instantiator)\s*\{"
+    r"^\s*(Connections|Timer|Binding|Component|QtObject|Instantiator|PanelWindow)\s*\{"
 )
 
 
@@ -82,9 +86,10 @@ def violations(path: Path) -> list[tuple[int, str]]:
     depth = 0
     styled_root = False
     found: list[tuple[int, str]] = []
+    root_re = IMPLEMENTATION_ROOT_RE if path == STYLED_POPUP_PATH else CONSUMER_ROOT_RE
 
     for line_no, line in enumerate(lines, 1):
-        if not styled_root and depth == 0 and ROOT_RE.match(line):
+        if not styled_root and depth == 0 and root_re.match(line):
             styled_root = True
 
         if styled_root and depth == 1:
@@ -106,7 +111,7 @@ def main() -> int:
 
     for path in tracked_qml_files():
         text = path.read_text(encoding="utf-8")
-        if "StyledPopup" not in text:
+        if path != STYLED_POPUP_PATH and "StyledPopup" not in text:
             continue
         scanned += 1
         for line_no, object_type in violations(path):
@@ -119,7 +124,10 @@ def main() -> int:
         print("StyledPopup content contract failed:")
         for failure in failures:
             print(f"  - {failure}")
-        print("Move non-visual helpers inside the popup content Item's data list.")
+        print(
+            "Move consumer helpers inside the popup content Item, or bind StyledPopup "
+            "implementation helpers through explicit object properties."
+        )
         return 1
 
     print(f"StyledPopup content contract passed ({scanned} candidate QML files scanned).")

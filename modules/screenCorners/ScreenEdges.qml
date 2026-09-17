@@ -72,6 +72,8 @@ Scope {
     // geometry remains exact. These transparent corner overlays only paint the
     // concave quarter-corners on the wallpaper-facing side of that frame.
     component InnerCornerWindow: PanelWindow {
+        id: cornerWindow
+
         required property ShellScreen modelData
         required property int corner
 
@@ -120,17 +122,17 @@ Scope {
 
         RoundCorner {
             implicitSize: root.innerRadius
-            corner: parent.corner
+            corner: cornerWindow.corner
             color: Appearance.colors.colLayer1
             anchors {
-                top: parent.isTop ? parent.top : undefined
-                bottom: parent.isTop ? undefined : parent.bottom
-                left: parent.isLeft ? parent.left : undefined
-                right: parent.isLeft ? undefined : parent.right
-                topMargin: parent.isTop ? root.thickness : 0
-                bottomMargin: parent.isTop ? 0 : root.thickness
-                leftMargin: parent.isLeft ? root.thickness : 0
-                rightMargin: parent.isLeft ? 0 : root.thickness
+                top: cornerWindow.isTop ? parent.top : undefined
+                bottom: cornerWindow.isTop ? undefined : parent.bottom
+                left: cornerWindow.isLeft ? parent.left : undefined
+                right: cornerWindow.isLeft ? undefined : parent.right
+                topMargin: cornerWindow.isTop ? root.thickness : 0
+                bottomMargin: cornerWindow.isTop ? 0 : root.thickness
+                leftMargin: cornerWindow.isLeft ? root.thickness : 0
+                rightMargin: cornerWindow.isLeft ? 0 : root.thickness
             }
         }
     }

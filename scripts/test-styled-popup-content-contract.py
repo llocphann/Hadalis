@@ -188,12 +188,15 @@ def source_contract_failures() -> list[str]:
     forbid(styled, "const host = root.QsWindow", str(STYLED_POPUP_PATH), failures)
     forbid(styled, "WlrLayershell.exclusionMode", str(STYLED_POPUP_PATH), failures)
 
-    # Historical taskbar callers may still provide anchor.window. If present, the
-    # compatibility group must have a statically known type; `property QtObject`
-    # cannot expose its dynamically declared `window` member to grouped syntax.
-    if "anchor.window:" in taskbar:
-        require(preview, "component LegacyAnchor: QtObject", str(TASKBAR_PREVIEW_PATH), failures)
-        require(preview, "property LegacyAnchor anchor: LegacyAnchor", str(TASKBAR_PREVIEW_PATH), failures)
+    # The taskbar preview is now source-item-only: the real taskbar button is the
+    # geometry/output authority for the connected surface. A synthetic window
+    # anchor or compatibility group would reintroduce detached-window semantics.
+    require(preview, "hoverTarget: root.anchorItem", str(TASKBAR_PREVIEW_PATH), failures)
+    require(preview, "property Item anchorItem", str(TASKBAR_PREVIEW_PATH), failures)
+    forbid(taskbar, "anchor.window:", str(TASKBAR_PATH), failures)
+    forbid(preview, "anchor.window", str(TASKBAR_PREVIEW_PATH), failures)
+    forbid(preview, "component LegacyAnchor", str(TASKBAR_PREVIEW_PATH), failures)
+    forbid(preview, "property LegacyAnchor anchor", str(TASKBAR_PREVIEW_PATH), failures)
     forbid(preview, "property QtObject anchor: QtObject", str(TASKBAR_PREVIEW_PATH), failures)
 
     # Presentation peers that need the lazily-created surface (tray focus grab)

@@ -16,16 +16,20 @@ for file in "$critical" "$deferred" "$media" "$weather"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
-# No active QML outside the legacy broad/common perimeter implementation may
-# revive the full cutover runtime or its registry bootstrap.
+if [[ -e "$root/modules/perimeter" ]]; then
+    fail 'retired broad perimeter implementation must be absent from the active source tree'
+fi
+
+# The full cutover runtime is retired. Shared connected-surface primitives live
+# under modules/common/perimeter and remain supported, but no active QML may
+# revive the old module import, runtime authority, registry or policy objects.
 unexpected="$(git -C "$root" grep -n -E \
-    'import[[:space:]]+qs\.modules\.perimeter|PerimeterRuntime|PerimeterFeatureRegistry' \
+    'import[[:space:]]+qs\.modules\.perimeter|PerimeterRuntime|PerimeterFeatureRegistry|PerimeterPresentationPolicy|PerimeterReservationPolicy' \
     -- '*.qml' \
-    ':(exclude)modules/perimeter/**' \
     ':(exclude)modules/common/perimeter/**' || true)"
 if [[ -n "$unexpected" ]]; then
     printf '%s\n' "$unexpected" >&2
-    fail 'tracked QML outside the legacy perimeter implementation still references broad cutover runtime symbols'
+    fail 'tracked QML still references retired broad perimeter runtime symbols'
 fi
 
 for target in \
@@ -44,4 +48,4 @@ grep -Fq 'StyledPopup {' "$media" \
 grep -Fq 'GlobalStates.openSidebarRight' "$weather" \
     || fail 'normal Weather click route must stay on right-sidebar Weather UX'
 
-printf 'PASS: broad perimeter runtime has no tracked external QML caller in the supported shell paths\n'
+printf 'PASS: broad perimeter runtime is absent; supported shell routes remain authoritative\n'

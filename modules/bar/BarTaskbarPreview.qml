@@ -19,12 +19,14 @@ StyledPopup {
     property Item anchorItem
     property bool previewOpen: false
 
-    // BarTaskbar historically supplied anchor.window to the old PopupWindow.
-    // Keep that grouped property as a no-op compatibility input while placement
-    // now comes exclusively from StyledPopup + the real anchorItem geometry.
-    property QtObject anchor: QtObject {
+    // BarTaskbar still writes the historical `anchor.window` grouped property.
+    // Keep it as a typed, presentation-only compatibility input so QML can
+    // resolve `.window` statically. Connected placement deliberately ignores it:
+    // StyledPopup derives the owning output from the real anchorItem/QsWindow.
+    component LegacyAnchor: QtObject {
         property var window: null
     }
+    property LegacyAnchor anchor: LegacyAnchor {}
 
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
 

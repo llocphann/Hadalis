@@ -90,6 +90,43 @@ def main() -> None:
     check("connectorSourceExtent" in connector,
           "ConnectedSurfaceConnector must narrow toward the real bar anchor")
 
+    screen_edge = read("modules/screenCorners/ScreenEdges.qml")
+    check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
+          "Screen Edge must default to 10px while remaining user-adjustable")
+    check("screenEdge?.enable" not in screen_edge,
+          "Screen Edge must not be disabled by stale persisted enable flags")
+    check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
+          "Screen Edge must stay mapped normally and hide only for lock/fullscreen coverage")
+    check("mask: Region { item: emptyInput }" in screen_edge,
+          "Screen Edge must remain completely click-through")
+    for edge in ("top", "bottom", "left", "right"):
+        check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
+              f"Screen Edge must render the persistent {edge} output edge")
+
+    sidebar_bridges = read("modules/sidebar/SidebarEdgeConnectors.qml")
+    for token in (
+        "ConnectedSurfaceConnector",
+        'panelId: isLeftEdge ? "iiSidebarLeft" : "iiSidebarRight"',
+        "GlobalStates.sidebarLeftPresentationOutput",
+        "GlobalStates.sidebarRightPresentationOutput",
+        'BridgeWindow { edge: "left" }',
+        'BridgeWindow { edge: "right" }',
+        "PerimeterTokens.seamOverlap",
+    ):
+        check(token in sidebar_bridges,
+              f"Sidebar Screen Edge bridge contract missing: {token}")
+    check("Config.options?.bar" not in sidebar_bridges
+          and "barVertical" not in sidebar_bridges,
+          "Sidebar edge bridges must never depend on Bar position or orientation")
+
+    critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
+    check('../../screenCorners/ScreenEdges.qml' in critical_panels,
+          "ii critical shell must load persistent Screen Edge chrome")
+    check('../../sidebar/SidebarEdgeConnectors.qml' in critical_panels,
+          "ii critical shell must load semantic sidebar edge bridges")
+    check("PerimeterRuntime.qml" not in critical_panels,
+          "Full iiPerimeter runtime must not be booted by the critical shell")
+
     frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
     check("property real connectorBorderWidth: 0" in frame,
           "ConnectedSurfaceFrame must default the connector outline off at the seam")
@@ -172,8 +209,15 @@ def main() -> None:
           "Public Bar settings must suppress retired corner-style and float-shadow controls")
     check('Translation.tr("Bar style")' in quick_settings,
           "Quick settings must suppress the retired Bar style selector")
-    check("_hugUiReady" in bar_settings and "_hugUiReady" in quick_settings,
-          "Hug-only settings facades must prune retired controls before first paint")
+    check("_hugUiReady" not in bar_settings
+          and "opacity: root._hugUiReady" not in bar_settings
+          and "onTriggered: root._applyHugOnlyUi(root)" in bar_settings,
+          "Public Bar settings must remain visible while the compatibility pruning pass runs")
+    check("_hugUiReady" in quick_settings,
+          "Quick settings may keep its pre-paint Hug pruning gate")
+    check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
+          "Bar settings must expose persistent Screen Edge width with a 10px default")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()

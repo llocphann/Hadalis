@@ -93,10 +93,16 @@ Item {
         focusGrab.active = false;
     }
 
+    // The overflow is now a lazy full-output connected surface rather than a
+    // visual child window. Track the presentation window explicitly; QsWindow on
+    // the StyledPopup loader describes the loader's own visual ancestry and is
+    // not the lazily-created overlay surface.
     CompositorFocusGrab {
         id: focusGrab
-        active: (root.trayOverflowOpen && overflowPopup.QsWindow?.window != null) || root.activeMenu !== null
-        windows: [overflowPopup.QsWindow?.window, root.activeMenu]
+        active: (root.trayOverflowOpen && overflowPopup.presentationWindow !== null)
+            || root.activeMenu !== null
+        windows: [overflowPopup.presentationWindow, root.activeMenu]
+            .filter(window => window !== null)
         onCleared: {
             if (root.activeMenu) {
                 root.activeMenu.close();

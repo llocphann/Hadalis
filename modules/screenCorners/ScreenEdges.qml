@@ -13,7 +13,6 @@ import Quickshell.Wayland
 Scope {
     id: root
 
-    readonly property bool enabled: Config.options?.appearance?.screenEdge?.enable ?? true
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 
@@ -26,7 +25,6 @@ Scope {
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
-            && root.enabled
             && !GlobalStates.screenLocked
             && !fullscreenCovered
 
@@ -68,19 +66,19 @@ Scope {
     }
 
     Variants {
-        model: root.enabled ? Quickshell.screens : []
+        model: Quickshell.screens
         EdgeWindow { edge: "top" }
     }
     Variants {
-        model: root.enabled ? Quickshell.screens : []
+        model: Quickshell.screens
         EdgeWindow { edge: "bottom" }
     }
     Variants {
-        model: root.enabled ? Quickshell.screens : []
+        model: Quickshell.screens
         EdgeWindow { edge: "left" }
     }
     Variants {
-        model: root.enabled ? Quickshell.screens : []
+        model: Quickshell.screens
         EdgeWindow { edge: "right" }
     }
 }

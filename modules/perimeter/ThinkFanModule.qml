@@ -1,9 +1,11 @@
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 Item {
     id: root
@@ -14,6 +16,9 @@ Item {
     readonly property bool presented: PerimeterPresentationPolicy.barPresented
     readonly property bool vertical:
         (root.perimeterContext?.orientation ?? "horizontal") === "vertical"
+    readonly property string outputName: root.perimeterContext?.outputName ?? ""
+    readonly property string instanceId: root.perimeterContext?.instanceId ?? ""
+    readonly property string slotId: root.perimeterContext?.slotId ?? ""
     readonly property string statusText: {
         if (ThinkFanService.busy)
             return "…"
@@ -40,8 +45,33 @@ Item {
                     && event.key !== Qt.Key_Enter
                     && event.key !== Qt.Key_Space))
             return
-        ThinkFanService.refresh()
+        root.requestExpanded()
         event.accepted = true
+    }
+
+    function requestExpanded(): void {
+        if (!root.presented || !(root.perimeterContext?.valid ?? false))
+            return
+        if (!anchorPublisher.publish())
+            return
+        SurfaceRouteController.toggle({
+            output: root.outputName,
+            family: "perimeter",
+            surface: "thinkfan",
+            sourceInstance: root.instanceId,
+            slot: root.slotId
+        })
+    }
+
+    AnchorPublisher {
+        id: anchorPublisher
+        sourceItem: root
+        outputName: root.outputName
+        slotId: root.slotId
+        instanceId: root.instanceId
+        moduleId: "thinkfan"
+        surfaceName: "thinkfan"
+        preferredExtent: Qt.size(344, 300)
     }
 
     Loader {
@@ -107,9 +137,22 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        acceptedButtons: Qt.LeftButton
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: ThinkFanService.refresh()
+        onClicked: mouse => {
+            if (!root.presented)
+                return
+            if (mouse.button === Qt.RightButton) {
+                ThinkFanService.refresh()
+                return
+            }
+            root.requestExpanded()
+        }
+    }
+
+    ThinkFanConnectedSurface {
+        perimeterContext: root.perimeterContext
+        sourceScreen: root.QsWindow.window?.screen ?? null
     }
 }

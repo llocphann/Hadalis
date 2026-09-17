@@ -16,7 +16,7 @@ MouseArea {
     property bool keyboardMenuMode: false
 
     signal menuOpened(qsWindow: var)
-    signal menuClosed()
+    signal menuClosed(qsWindow: var)
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -127,7 +127,11 @@ MouseArea {
             onMenuOpened: (window) => root.menuOpened(window);
             onMenuClosed: {
                 root.keyboardMenuMode = false;
-                root.menuClosed();
+                // Preserve the closing window identity until after the parent has
+                // reconciled focus state. A delayed close from an older menu must
+                // never release the focus grab held by a newer menu.
+                const window = menu.item;
+                root.menuClosed(window);
                 menu.active = false;
             }
         }

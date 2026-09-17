@@ -1,4 +1,4 @@
-import qs
+import qs.modules.common
 import QtQuick
 
 Rectangle {

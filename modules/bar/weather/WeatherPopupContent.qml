@@ -13,8 +13,9 @@ ColumnLayout {
     readonly property real compactBreakpoint: 1180
     property date now: new Date()
 
-    spacing: 10
+    spacing: 0
     implicitWidth: composition.implicitWidth
+    implicitHeight: composition.implicitHeight
 
     function firstDayOffset(): int {
         const first = new Date(root.now.getFullYear(), root.now.getMonth(), 1)
@@ -125,7 +126,7 @@ ColumnLayout {
             radius: Appearance.rounding.large
             color: "transparent"
             implicitWidth: 430
-            implicitHeight: 300
+            implicitHeight: 270
             Layout.fillWidth: root.compact
             Layout.preferredWidth: root.compact ? 360 : implicitWidth
             Layout.alignment: Qt.AlignTop
@@ -134,8 +135,8 @@ ColumnLayout {
                 id: orbitalTimeline
                 anchors.fill: parent
                 anchors.margins: 8
-                anchors.topMargin: -4
-                anchors.bottomMargin: 20
+                anchors.topMargin: -12
+                anchors.bottomMargin: 0
 
                 // Serpantinum-inspired frontend: the clock is the visual center
                 // and Hadalis hourly data is distributed around an ellipse.
@@ -177,7 +178,7 @@ ColumnLayout {
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -18
+                    anchors.verticalCenterOffset: -24
                     spacing: 1
                     z: 2
 
@@ -186,7 +187,7 @@ ColumnLayout {
                         text: DateTime.timeDisplay
                         font {
                             weight: Font.Black
-                            pixelSize: Math.round(Appearance.font.pixelSize.large * 2.0)
+                            pixelSize: Math.round(Appearance.font.pixelSize.large * 1.55)
                         }
                         color: Appearance.colors.colOnSurface
                     }
@@ -311,7 +312,7 @@ ColumnLayout {
 
                 StyledText {
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: 82
+                    anchors.verticalCenterOffset: 72
                     visible: orbitalTimeline.hours.length === 0
                     text: Translation.tr("Hourly forecast unavailable")
                     font.pixelSize: Appearance.font.pixelSize.smaller

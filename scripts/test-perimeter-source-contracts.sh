@@ -81,22 +81,34 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/Ve
 
 grep -Fq 'connectorVisible: false' "$styled_popup" \
     || fail 'StyledPopup must not paint a connector stem'
-grep -Fq 'joinLeft: directEdgeAttachment.atLeft' "$styled_popup" \
-    || fail 'StyledPopup must square the body where it joins the left Screen Edge'
-grep -Fq 'joinRight: directEdgeAttachment.atRight' "$styled_popup" \
-    || fail 'StyledPopup must square the body where it joins the right Screen Edge'
-grep -Fq 'joinTop: directEdgeAttachment.atTop' "$styled_popup" \
-    || fail 'StyledPopup must square the body where it joins the top Screen Edge'
-grep -Fq 'joinBottom: directEdgeAttachment.atBottom' "$styled_popup" \
-    || fail 'StyledPopup must square the body where it joins the bottom Screen Edge'
+grep -Fq 'readonly property real _popupScreenMargin: Math.max(0,' "$styled_popup" \
+    || fail 'StyledPopup Screen Edge clamping must be placement-driven for every Bar module'
+if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \
+    | grep -Fq 'connectAdjacentScreenEdge'; then
+    fail 'StyledPopup direct-edge detection must not be gated by a module opt-in'
+fi
+grep -Fq 'joinLeft: root._attachmentEdge === "left"' "$styled_popup" \
+    || fail 'StyledPopup must square its Bar-facing left edge'
+grep -Fq '|| directEdgeAttachment.atLeft' "$styled_popup" \
+    || fail 'StyledPopup must also square a touched left Screen Edge'
+grep -Fq 'joinTop: root._attachmentEdge === "top"' "$styled_popup" \
+    || fail 'StyledPopup must square its Bar-facing top edge'
+grep -Fq '|| directEdgeAttachment.atTop' "$styled_popup" \
+    || fail 'StyledPopup must also square a touched top Screen Edge'
+grep -Fq 'shadowTop: !frame.joinTop' "$styled_popup" \
+    || fail 'StyledPopup shadow must stop at every joined top edge'
+grep -Fq 'shadowLeft: !frame.joinLeft' "$styled_popup" \
+    || fail 'StyledPopup shadow must stop at every joined left edge'
 grep -Fq 'property bool joinLeft: false' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must expose direct-edge join state'
 grep -Fq 'topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must remove rounded-card notches at joined corners'
-grep -Fq 'shadowLeft: root._attachmentEdge !== "left"' "$styled_popup" \
-    || fail 'StyledPopup must suppress duplicate shadow on an attached edge'
-grep -Fq 'shadowRight: root._attachmentEdge !== "right"' "$styled_popup" \
-    || fail 'StyledPopup must keep Screen Edge-compatible free-side shadow routing'
+    || fail 'ConnectedSurfaceFrame must remove radius from attached corners'
+grep -Fq 'id: shadowClip' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must clip radius-following shadow at attached edges'
+grep -Fq 'topLeftRadius: body.topLeftRadius' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame shadow source must follow the body corner silhouette'
+grep -Fq 'layer.effect: MultiEffect {' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must derive shadow from the popup silhouette'
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'
 grep -Fq 'Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

@@ -147,6 +147,16 @@ for policy in \
         fail "$policy must not restore password-gated administrator authorization"
     fi
 done
+
+for migration in \
+    sdata/migrations/037-battery-charge-limit-helper.sh \
+    sdata/migrations/041-thinkfan-helper-bridge.sh; do
+    require_contains 'cmp -s "' "$migration" \
+        "$migration must compare installed privileged payloads against current repository assets"
+    require_contains 'pkg_sudo install -Dm644' "$migration" \
+        "$migration must refresh the root-owned polkit action when the repository policy changes"
+done
+
 for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
     for marker in \
         'assets/applications/inir-settings.desktop' \

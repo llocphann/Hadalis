@@ -235,7 +235,10 @@ Scope {
             }
 
             ConnectedSurfaceConnector {
-                z: -0.5
+                // Render above the dashboard body so seamOverlap can cover the
+                // body's bottom outline at the attachment point. This mirrors
+                // ConnectedSurfaceFrame's body-then-connector stacking contract.
+                z: 1
                 geometry: overviewBottomConnectorGeometry
                 fillColor: dashboardPanel.item?.connectedSurfaceColor
                     ?? Appearance.colors.colBackgroundSurfaceContainer

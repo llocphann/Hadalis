@@ -87,16 +87,27 @@ assert_contains 'TlpPowerSettings {' "$general" \
     'System settings must embed the TLP power controls'
 assert_contains 'visible: root.activeSection === "power"' "$general" \
     'embedded TLP controls must only be visible in the Power task'
-assert_contains 'root.selectTlpCategory("battery-care")' "$general" \
-    'charge-care deep links must select the battery-care TLP category'
+assert_contains 'tlpPowerSettings.navigationCategories' "$general" \
+    'TLP deep links must use the visible category model after battery-care integration'
+if grep -Fq 'root.selectTlpCategory("battery-care")' "$general"; then
+    fail 'charge-care deep links must land on the merged Power card, not a retired category tab'
+fi
 assert_contains 'SettingsPageRegistry.consumeLegacyTlpPowerRedirect()' "$general" \
     'legacy page-28 state must land on the Power task instead of Audio'
 assert_contains 'property string settingsTaskSection: "power"' "$power" \
     'TLP controls must identify themselves as part of the Power task'
 assert_contains 'title: Translation.tr("Battery and TLP power management")' "$power" \
     'the primary TLP card title must remain a stable search target'
-assert_contains 'title: Translation.tr("Hardware-aware charge care")' "$power" \
-    'battery charge care must remain a stable search target'
+assert_contains '.filter(category => String(category?.id ?? "") !== "battery-care")' "$power" \
+    'Configuration categories must exclude the battery-care tab after merging it into Battery'
+assert_contains 'columns: 5' "$power" \
+    'Configuration categories must render five tabs per row'
+assert_contains 'rows: 2' "$power" \
+    'Configuration categories must stay at two rows'
+assert_contains 'model: root.navigationCategories' "$power" \
+    'Configuration categories must consume the filtered ten-category model'
+assert_contains 'BatteryChargeLimitSettings {' "$power" \
+    'battery charge care must be integrated into the primary Battery/TLP card'
 assert_contains 'import Quickshell' "$registry" \
     'SettingsPageRegistry must import the Quickshell Singleton type or shell startup will fail'
 assert_contains 'readonly property int retiredTlpPageIndex: 28' "$registry" \
@@ -117,12 +128,10 @@ assert_contains 'function consumeLegacyTlpPowerRedirect(): bool' "$registry" \
     'legacy current-page migration must expose a one-shot Power landing hint'
 assert_contains 'redirected.pageIndex = root.systemPageIndex' "$registry" \
     'legacy TLP search entries must redirect to System'
-assert_contains 'Translation.tr("Power") + " · " + Translation.tr("Battery Care")' "$registry" \
-    'charge-care search must activate Power and identify its TLP category'
-assert_contains 'Translation.tr("Battery and TLP power management")' "$registry" \
-    'TLP search must target the actual embedded power-management card'
-assert_contains 'Translation.tr("Hardware-aware charge care")' "$registry" \
-    'charge-care search must target the actual embedded charge-care card'
+assert_contains 'redirected.section = Translation.tr("Power")' "$registry" \
+    'charge-care search must land on the merged Power section'
+assert_contains 'redirected.label = Translation.tr("Battery and TLP power management")' "$registry" \
+    'all retired TLP search entries must target the merged Battery/TLP card'
 assert_contains 'keywords.concat(["system", "settings", "power"])' "$registry" \
     'redirected TLP search must stay discoverable through System settings terms'
 assert_contains 'hidden.push(root.retiredTlpPageIndex)' "$arrangement" \

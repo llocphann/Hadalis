@@ -238,9 +238,21 @@ if grep -Fq 'id: contextMenuAnchor' "$waffle_bar_content"; then
     fail 'Waffle Bar background menu must not retain a synthetic 1x1 anchor item'
 fi
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
-    || fail 'OSK must use shared perimeter seam tokens'
-grep -Fq 'Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
-    || fail 'OSK body must overlap the Screen Edge directly'
+    || fail 'OSK must use shared perimeter join primitives'
+for token in \
+    'targetY = 0' \
+    'targetY = ph - kh' \
+    'y: parent ? parent.height - height : 0' \
+    'ConnectedSurfaceJoinFlares {' \
+    'flareRadius: PerimeterTokens.joinFlareRadius' \
+    'joinTop: oskRoot.snappedEdge === "top"' \
+    'joinBottom: oskRoot.snappedEdge === "bottom"'; do
+    grep -Fq "$token" "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
+        || fail "OSK must underlap and flare into the physical top/bottom Screen Edge: $token"
+done
+if grep -Fq 'screenAttachInset' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml"; then
+    fail 'OSK must not stop at the inner Screen Edge boundary'
+fi
 if grep -Fq 'id: oskConnectorGeometry' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml"; then
     fail 'OSK must not recreate a detached connector stem'
 fi

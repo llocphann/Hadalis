@@ -19,8 +19,10 @@ Scope { // Scope
     property bool keepOnTop: Config.options?.osk?.keepOnTop ?? false
     readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    readonly property real screenAttachInset:
-        Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)
+    // The keyboard owns the Screen Edge segment beneath its body while open.
+    // Underlap the full top/bottom edge band instead of stopping at its inner
+    // boundary; this guarantees a continuous surface even when edge/body color
+    // rasterization differs at fractional scale.
     readonly property bool screenEdgeShadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
@@ -114,10 +116,10 @@ Scope { // Scope
                 let targetY
                 if (cy < ph / 2) {
                     oskRoot.snappedEdge = "top"
-                    targetY = root.screenAttachInset
+                    targetY = 0
                 } else {
                     oskRoot.snappedEdge = "bottom"
-                    targetY = ph - kh - root.screenAttachInset
+                    targetY = ph - kh
                 }
 
                 oskBackground.animatePosition = true
@@ -158,7 +160,7 @@ Scope { // Scope
             }
 
             // Use the same configurable shadow contract as Screen Edge/Bar.
-            // The body itself overlaps the edge seam; no separate stem exists.
+            // The body itself underlaps the full edge band; no separate stem exists.
             StyledRectangularShadow {
                 target: oskBackground
                 blur: root.screenEdgeShadowSize
@@ -169,6 +171,16 @@ Scope { // Scope
                 joinTop: oskRoot.snappedEdge === "top"
                 joinBottom: oskRoot.snappedEdge === "bottom"
             }
+            ConnectedSurfaceJoinFlares {
+                anchors.fill: parent
+                bodyItem: oskBackground
+                fillColor: oskBackground.color
+                flareRadius: PerimeterTokens.joinFlareRadius
+                progress: 1
+                joinTop: oskRoot.snappedEdge === "top"
+                joinBottom: oskRoot.snappedEdge === "bottom"
+            }
+
             Rectangle {
                 id: oskBackground
                 property bool animatePosition: false
@@ -177,10 +189,11 @@ Scope { // Scope
                 width: oskRowLayout.implicitWidth + padding * 2
                 height: oskRowLayout.implicitHeight + padding * 2
 
-                // Initial position: bottom center, directly overlapped with the
-                // inner Screen Edge boundary (Caelestia-style, no connector stem).
+                // Initial position: bottom center. The body reaches the physical
+                // display edge and covers the persistent Screen Edge band beneath
+                // it, while the shared shoulders flare into that edge surface.
                 x: parent ? (parent.width - width) / 2 : 0
-                y: parent ? parent.height - height - root.screenAttachInset : 0
+                y: parent ? parent.height - height : 0
 
                 color: Appearance.zzzEverywhere ? Appearance.zzz.bg0 : Appearance.colors.colLayer0
                 radius: Appearance.rounding.windowRounding

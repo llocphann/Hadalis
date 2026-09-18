@@ -138,6 +138,21 @@ def main() -> None:
         check(retired not in sidebar_host,
               f"Sidebar must not stop at an inner-edge inset or restore a connector: {retired}")
 
+    osk = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
+    for token in (
+        "targetY = 0",
+        "targetY = ph - kh",
+        "y: parent ? parent.height - height : 0",
+        "ConnectedSurfaceJoinFlares {",
+        "flareRadius: PerimeterTokens.joinFlareRadius",
+        'joinTop: oskRoot.snappedEdge === "top"',
+        'joinBottom: oskRoot.snappedEdge === "bottom"',
+    ):
+        check(token in osk,
+              f"OSK physical Screen Edge attachment contract missing: {token}")
+    check("screenAttachInset" not in osk,
+          "OSK must not stop at the inner Screen Edge boundary")
+
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
           "ii critical shell must load persistent Screen Edge chrome")

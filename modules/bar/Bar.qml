@@ -92,10 +92,10 @@ Scope {
                     && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
                 readonly property int edgeShadowExtent: edgeShadowEnabled
                     ? Math.max(0, Math.min(32,
-                        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+                        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
                     : 0
                 readonly property real edgeShadowOpacity: Math.max(0, Math.min(0.60,
-                    Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+                    Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
                 readonly property color edgeShadowColor:
                     ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
                 readonly property real inwardDecoratorAllowance:
@@ -411,6 +411,29 @@ Scope {
                             readonly property color solidColor: showBarBackground
                                 ? Appearance.colors.colLayer0
                                 : "transparent"
+
+                            // Paint the two physical Screen Edge contact strips
+                            // inside the Bar's own layer surface. Previously these
+                            // 10px columns were left transparent and depended on
+                            // compositor ordering with separate left/right edge
+                            // windows, so the contacts could disappear entirely.
+                            Rectangle {
+                                id: leftScreenEdgeContact
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                width: barRoot.screenEdgeThickness
+                                color: hugDecorators.solidColor
+                            }
+
+                            Rectangle {
+                                id: rightScreenEdgeContact
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                width: barRoot.screenEdgeThickness
+                                color: hugDecorators.solidColor
+                            }
                             
                                     // Left corner - solid Material Hug surface.
                             RoundCorner {

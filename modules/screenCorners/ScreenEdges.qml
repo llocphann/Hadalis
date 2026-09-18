@@ -19,8 +19,10 @@ Scope {
 
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    // Caelestia BorderConfig defaults to rounding=25 independently from
+    // component/card rounding. Keep the physical frame on that exact geometry.
     readonly property int innerRadius: Math.max(thickness,
-        Math.round(Appearance.rounding.screenRounding))
+        Math.round(PerimeterTokens.frameRadius))
     readonly property bool shadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property int shadowSize: Math.max(0, Math.min(32,

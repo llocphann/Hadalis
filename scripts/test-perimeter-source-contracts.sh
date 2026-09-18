@@ -50,6 +50,14 @@ grep -A10 -F 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qm
     | grep -Fq 'z: 1' \
     || fail 'Sidebar connector must render above the body so seam overlap can erase the attachment border'
 
+for sidebar_surface in \
+    "$root/modules/sidebarLeft/SidebarLeftContent.qml" \
+    "$root/modules/sidebarRight/SidebarRightContent.qml" \
+    "$root/modules/sidebarRight/CompactSidebarRightContent.qml"; do
+    grep -Fq 'border.width: 0 // Screen Edge seam owns the outer boundary' "$sidebar_surface" \
+        || fail "${sidebar_surface#$root/} must not draw an outer border against Screen Edge"
+done
+
 grep -Fq 'property JsonObject screenEdge: JsonObject {' "$root/modules/common/Config.qml" \
     || fail 'Config schema must persist appearance.screenEdge values'
 grep -Fq '"screenEdge": {' "$root/defaults/config.json" \

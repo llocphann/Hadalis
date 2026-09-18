@@ -841,19 +841,9 @@ Item {
              : auroraEverywhere ? ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
              : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
 
-        border.width: (gameModeMinimal || islandStyle) ? 0 : (zzzEverywhere ? 0 : (angelEverywhere ? Appearance.angel.panelBorderWidth : 1))
-        Behavior on border.width {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-        }
-        border.color: zzzEverywhere ? Appearance.zzz.hairline
-                    : angelEverywhere  ? Appearance.angel.colPanelBorder
-                    : inirEverywhere   ? Appearance.inir.colBorder
-                    : Appearance.colors.colLayer0Border
-        Behavior on border.color {
-            enabled: Appearance.animationsEnabled
-            ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-        }
+        // Compact and default sidebars share one borderless Screen Edge seam.
+        border.width: 0 // Screen Edge seam owns the outer boundary
+        border.color: "transparent"
 
         radius: zzzEverywhere ? Appearance.zzz.panelRadius
               : angelEverywhere  ? Appearance.angel.roundingNormal

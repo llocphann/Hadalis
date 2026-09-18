@@ -103,16 +103,6 @@ ColumnLayout {
                         wrapMode: Text.WordWrap
                     }
 
-                    StyledText {
-                        visible: TlpSettingsService.configAvailable
-                            || TlpSettingsService.managedConfigPresent
-                        Layout.fillWidth: true
-                        text: Translation.tr("Config: %1").arg(TlpSettingsService.configFile)
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        font.family: Appearance.font.family.monospace
-                        elide: Text.ElideMiddle
-                    }
                 }
 
                 DialogButton {

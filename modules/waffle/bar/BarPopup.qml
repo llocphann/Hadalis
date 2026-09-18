@@ -28,6 +28,9 @@ Loader {
     signal focusCleared()
 
     property Item anchorItem: parent
+    // Optional rect in anchorItem-local coordinates. Ownership/output remains
+    // tied to the real Bar control; the rect only narrows tangent placement.
+    property var anchorRect: null
     // Compatibility knobs retained for callers. visualMargin no longer creates
     // a detached gap; it controls only the free-side shadow extent.
     property real visualMargin: Looks.dp(12)
@@ -92,11 +95,15 @@ Loader {
         target.height
         hostWindow.windowTransform
 
-        const mapped = host.mapFromItem(target, 0, 0)
+        const localX = Number(root.anchorRect?.x ?? 0)
+        const localY = Number(root.anchorRect?.y ?? 0)
+        const localWidth = Math.max(1,
+            Number(root.anchorRect?.width ?? target.width))
+        const mapped = host.mapFromItem(target, localX, localY)
         const barY = root._attachmentEdge === "bottom"
             ? Math.max(0, outputHeight - root._barSurfaceThickness) : 0
         return Qt.rect(mapped.x, barY,
-            Math.max(1, target.width), root._barSurfaceThickness)
+            localWidth, root._barSurfaceThickness)
     }
 
     active: false

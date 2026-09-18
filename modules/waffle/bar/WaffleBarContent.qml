@@ -29,28 +29,29 @@ Rectangle {
     clip: true
     implicitHeight: Looks.scaledBar(48, panelScreen)
 
-    // Right-click context menu anchor (invisible, positioned at click)
-    Item {
-        id: contextMenuAnchor
-        width: 1
-        height: 1
-    }
+    property Item contextMenuSource: null
+    property rect contextMenuRect: Qt.rect(0, 0, 1, 1)
 
-    // Right-click context menu
+    // Right-click context menu. Keep the full Bar MouseArea as the output/source
+    // authority and pass only the click point as tangent placement geometry.
     MouseArea {
+        id: barContextArea
         anchors.fill: parent
         acceptedButtons: Qt.RightButton
+        hoverEnabled: true
         z: -1  // Below other elements so they can handle their own right-clicks
         onClicked: (mouse) => {
-            contextMenuAnchor.x = mouse.x
-            contextMenuAnchor.y = 0
+            root.contextMenuSource = barContextArea
+            root.contextMenuRect = Qt.rect(mouse.x, mouse.y, 1, 1)
             taskbarContextMenu.active = true
         }
     }
 
     BarMenu {
         id: taskbarContextMenu
-        anchorItem: contextMenuAnchor
+        anchorItem: root.contextMenuSource ?? root
+        anchorRect: root.contextMenuRect
+        anchorHovered: root.contextMenuSource?.containsMouse ?? false
         closeOnHoverLostDelay: 500  // Slower close to give time to click
 
         model: [

@@ -15,6 +15,7 @@ bar_content="$root/modules/bar/BarContent.qml"
 vertical_bar_content="$root/modules/verticalBar/VerticalBarContent.qml"
 vertical_media="$root/modules/verticalBar/VerticalMedia.qml"
 waffle_bar_popup="$root/modules/waffle/bar/BarPopup.qml"
+waffle_bar_content="$root/modules/waffle/bar/WaffleBarContent.qml"
 overview="$root/modules/overview/Overview.qml"
 overview_dashboard="$root/modules/overview/OverviewDashboard.qml"
 
@@ -23,7 +24,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$waffle_bar_popup" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$waffle_bar_popup" "$waffle_bar_content" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -207,6 +208,22 @@ grep -Fq 'property bool focusGrabRequested: false' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup must keep explicit focus re-grab state'
 if grep -Eq 'focusGrab\.active[[:space:]]*=' "$waffle_bar_popup"; then
     fail 'Waffle BarPopup must not imperatively detach the focusGrab.active binding'
+fi
+for token in \
+    'property var anchorRect: null' \
+    'Number(root.anchorRect?.x ?? 0)' \
+    'host.mapFromItem(target, localX, localY)'; do
+    grep -Fq "$token" "$waffle_bar_popup" \
+        || fail "Waffle BarPopup must support source-local tangent placement: $token"
+done
+grep -Fq 'root.contextMenuSource = barContextArea' "$waffle_bar_content" \
+    || fail 'Waffle Bar background menu must keep the real Bar control as source anchor'
+grep -Fq 'root.contextMenuRect = Qt.rect(mouse.x, mouse.y, 1, 1)' "$waffle_bar_content" \
+    || fail 'Waffle Bar background menu must place tangent geometry at click point'
+grep -Fq 'anchorItem: root.contextMenuSource ?? root' "$waffle_bar_content" \
+    || fail 'Waffle Bar menu must anchor to the real clicked Bar surface'
+if grep -Fq 'id: contextMenuAnchor' "$waffle_bar_content"; then
+    fail 'Waffle Bar background menu must not retain a synthetic 1x1 anchor item'
 fi
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'

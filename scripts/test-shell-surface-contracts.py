@@ -327,6 +327,21 @@ def main() -> None:
     check("item: root.active ? root.connectorItem" not in mask,
           "ConnectedSurfaceMask must not make the transparent connector bounding box fully interactive")
 
+    bar_runtime = read("modules/bar/Bar.qml")
+    vertical_bar_runtime = read("modules/verticalBar/VerticalBar.qml")
+    bar_content = read("modules/bar/BarContent.qml")
+    vertical_bar_content = read("modules/verticalBar/VerticalBarContent.qml")
+    for runtime in (bar_runtime, vertical_bar_runtime):
+        check("readonly property bool showBarBackground: true" in runtime,
+              "Supported Hug Bar chrome must remain structurally present")
+        check("Appearance.animation.elementMove.duration" in runtime
+              and "Appearance.animation.elementMove.bezierCurve" in runtime,
+              "Bar auto-hide slide must use the default-spatial motion token")
+    check("visible: !gameModeMinimal" in bar_content,
+          "Horizontal Hug body must not disappear because of legacy showBackground state")
+    check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,
+          "Vertical Hug body must not disappear because of legacy showBackground state")
+
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,
           "Bar Media must not restore detached PopupWindow surfaces")
@@ -412,16 +427,23 @@ def main() -> None:
           "Legacy UI locales must normalize to canonical en_US")
     check('Config.setNestedValue("bar.cornerStyle", 0)' in settings_registry,
           "Legacy Classic Bar corner styles must normalize to Hug")
+    check('Config.setNestedValue("bar.showBackground", true)' in settings_registry,
+          "Legacy transparent Classic Bar state must normalize to the structural Hug surface")
     check('Config.setNestedValue("sidebar.style", "panel")' in settings_registry
           and 'Config.setNestedValue("sidebar.cardStyle", false)' in settings_registry,
           "Legacy Sidebar Island/Card values must normalize to Panel/non-card")
     check('component: "modules/settings/BarConfigHugOnly.qml"' in settings_registry,
           "Public Bar settings must route through the Hug-only facade")
+    bar_hug_config = read("modules/settings/BarConfigHugOnly.qml")
+    check('text === Translation.tr("Show background")' in bar_hug_config,
+          "Hug-only Bar settings must hide the retired transparent-background toggle")
     check('component: "modules/settings/QuickConfigHugOnly.qml"' in settings_registry,
           "Public Quick settings must route through the Hug-only facade")
     check('entry.label !== Translation.tr("Corner style")' in settings_registry,
           "Settings search must not expose the retired Bar corner-style selector")
     settings_registry_data = read("modules/settings/SettingsPageRegistryData.qml")
+    check('label: Translation.tr("Bar background")' not in settings_registry_data,
+          "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
 

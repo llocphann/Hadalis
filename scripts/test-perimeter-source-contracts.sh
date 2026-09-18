@@ -132,7 +132,7 @@ for token in \
 done
 grep -Fq 'BarContextMenu {' "$bar_taskbar_button" \
     || fail 'Bar taskbar right-click menu must use BarContextMenu'
-if grep -Fq 'ContextMenu {' "$bar_taskbar_button"; then
+if grep -Eq '^[[:space:]]*ContextMenu[[:space:]]*\{' "$bar_taskbar_button"; then
     fail 'Bar taskbar must not fall back to detached generic ContextMenu'
 fi
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

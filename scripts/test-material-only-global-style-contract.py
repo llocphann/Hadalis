@@ -31,6 +31,7 @@ FONT_SELECTOR = ROOT / "modules" / "common" / "widgets" / "FontSelector.qml"
 ICON_THEME_SELECTOR = ROOT / "modules" / "common" / "widgets" / "IconThemeSelector.qml"
 CONFIG_SELECTION_ARRAY = ROOT / "modules" / "common" / "widgets" / "ConfigSelectionArray.qml"
 CONFIG_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "ConfigSpinBox.qml"
+STYLED_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "StyledSpinBox.qml"
 SETTINGS_SWITCH = ROOT / "modules" / "common" / "widgets" / "SettingsSwitch.qml"
 SETTINGS_NOTE = ROOT / "modules" / "common" / "widgets" / "SettingsNote.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
@@ -83,6 +84,7 @@ def main() -> None:
     icon_theme_selector = ICON_THEME_SELECTOR.read_text(encoding="utf-8")
     config_selection_array = CONFIG_SELECTION_ARRAY.read_text(encoding="utf-8")
     config_spin_box = CONFIG_SPIN_BOX.read_text(encoding="utf-8")
+    styled_spin_box = STYLED_SPIN_BOX.read_text(encoding="utf-8")
     settings_switch = SETTINGS_SWITCH.read_text(encoding="utf-8")
     settings_note = SETTINGS_NOTE.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
@@ -733,6 +735,28 @@ def main() -> None:
         "Appearance.colors.colSubtext",
     ):
         require(settings_note, token, "SettingsNote.qml")
+
+    for token in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.regalia.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "RegaliaControlFace {",
+    ):
+        forbid(styled_spin_box, token, "StyledSpinBox.qml")
+    for token in (
+        "property real baseHeight: 35",
+        "property real radius: Appearance.rounding.small",
+        "property real innerButtonRadius: Appearance.rounding.unsharpen",
+        "color: Appearance.colors.colLayer2",
+        "color: Appearance.colors.colOnLayer2",
+        "iconSize: 20",
+        "root.down.pressed ? Appearance.colors.colLayer2Active",
+        "root.up.pressed ? Appearance.colors.colLayer2Active",
+    ):
+        require(styled_spin_box, token, "StyledSpinBox.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

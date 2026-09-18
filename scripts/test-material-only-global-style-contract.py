@@ -114,6 +114,38 @@ def main() -> None:
         require(settings_card, token, "SettingsOverlay.qml outer Settings card")
     forbid(settings_overlay, "Themes · Global Style", "SettingsOverlay.qml")
 
+    identity_start = settings_overlay.index("id: overlayHeaderIdentity")
+    search_start = settings_overlay.index("id: overlaySearchContainer", identity_start)
+    actions_start = settings_overlay.index("id: overlayHeaderActions", search_start)
+    identity_chrome = settings_overlay[identity_start:search_start]
+    search_chrome = settings_overlay[search_start:actions_start]
+    for source, chrome in (
+        ("SettingsOverlay.qml identity chrome", identity_chrome),
+        ("SettingsOverlay.qml search chrome", search_chrome),
+    ):
+        for token in (
+            "Appearance.zzzEverywhere",
+            "Appearance.regaliaEverywhere",
+            "Appearance.angelEverywhere",
+            "Appearance.inirEverywhere",
+            "Appearance.auroraEverywhere",
+        ):
+            forbid(chrome, token, source)
+    forbid(identity_chrome, "RegaliaControlFace {", "SettingsOverlay.qml identity chrome")
+    for token in (
+        "radius: width / 2",
+        "color: Appearance.colors.colLayer1",
+        "border.width: 1",
+    ):
+        require(identity_chrome, token, "SettingsOverlay.qml identity chrome")
+    for token in (
+        "? Appearance.colors.colLayer1",
+        ": Appearance.colors.colSurfaceContainerLow",
+        "border.width: overlaySearchField.activeFocus ? 2 : 1",
+        ": Appearance.colors.colOutlineVariant",
+    ):
+        require(search_chrome, token, "SettingsOverlay.qml search chrome")
+
     print("Material-only global style contract: PASS")
 
 

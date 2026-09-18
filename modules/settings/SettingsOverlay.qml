@@ -717,21 +717,10 @@ Scope {
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall : width / 2
-                                        color: Appearance.regaliaEverywhere ? "transparent"
-                                            : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                            : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                            : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                            : Appearance.colors.colLayer1
-                                        border.width: Appearance.regaliaEverywhere ? 0 : 1
+                                        radius: width / 2
+                                        color: Appearance.colors.colLayer1
+                                        border.width: 1
                                         border.color: Appearance.colors.colPrimary
-
-                                        RegaliaControlFace {
-                                            anchors.fill: parent
-                                            visible: Appearance.regaliaEverywhere
-                                            fillColor: Appearance.regalia.controlPlate
-                                            radius: parent.radius
-                                        }
                                     }
 
                                     Rectangle {
@@ -739,7 +728,7 @@ Scope {
                                         anchors.centerIn: parent
                                         width: 34
                                         height: 34
-                                        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundVerySmall : width / 2
+                                        radius: width / 2
                                         visible: false
                                     }
 
@@ -822,21 +811,12 @@ Scope {
                             anchors.bottomMargin: root.navEditMode ? 10 : 4
                             radius: Appearance.rounding.full
                             color: overlaySearchField.activeFocus
-                                ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                  : Appearance.colors.colLayer1)
-                                : (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                                  : Appearance.colors.colSurfaceContainerLow)
-                            border.width: overlaySearchField.activeFocus ? 2
-                                : (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1)
+                                ? Appearance.colors.colLayer1
+                                : Appearance.colors.colSurfaceContainerLow
+                            border.width: overlaySearchField.activeFocus ? 2 : 1
                             border.color: overlaySearchField.activeFocus
                                 ? Appearance.colors.colPrimary
-                                : (Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                                  : Appearance.inirEverywhere ? Appearance.inir.colBorderMuted
-                                  : Appearance.colors.colOutlineVariant)
+                                : Appearance.colors.colOutlineVariant
 
                             Behavior on color {
                                 enabled: Appearance.animationsEnabled

@@ -26,7 +26,10 @@ GeneralConfigCore {
     // search can land on the correct tab before it scrolls to a control.
     function activateSettingsSearchSection(section: string): void {
         const value = String(section ?? "").toLowerCase()
-        if (value.includes("power") || value.includes("battery")
+        if (value.includes("fan") || value.includes("thinkfan")
+                || value.includes("thermal") || value.includes("cooling")) {
+            root.activeSection = "fan"
+        } else if (value.includes("power") || value.includes("battery")
                 || value.includes("charge") || value.includes("tlp")) {
             root.activeSection = "power"
             if (value.includes("battery care") || value.includes("charge care")

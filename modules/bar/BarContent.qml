@@ -1143,59 +1143,20 @@ Item {
             implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
             implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
 
-            buttonRadius: root.regaliaEverywhere ? Appearance.regalia.controlRadius
-                : root.zzzEverywhere ? Appearance.zzz.controlRadius
-                : Appearance.rounding.full
+            buttonRadius: Appearance.rounding.full
             colBackground: buttonHovered
-                ? (root.zzzEverywhere ? "transparent"
-                    : root.auroraEverywhere
-                        ? Appearance.aurora.colSubSurfaceHover
-                        : Appearance.colors.colLayer1Hover)
+                ? Appearance.colors.colLayer1Hover
                 : "transparent"
-            colBackgroundHover: root.zzzEverywhere ? "transparent"
-                : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                : Appearance.colors.colLayer1Hover
-            colRipple: root.zzzEverywhere
-                ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.20)
-                : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
-                : Appearance.colors.colLayer1Active
-            colBackgroundToggled: root.regaliaEverywhere ? Appearance.regalia.primaryPlate
-                : root.zzzEverywhere ? "transparent"
-                : root.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                : Appearance.colors.colSecondaryContainer
-            colBackgroundToggledHover: root.regaliaEverywhere
-                ? Appearance.regalia.primaryPlateHover
-                : root.zzzEverywhere ? "transparent"
-                : root.auroraEverywhere ? Appearance.aurora.colElevatedSurfaceHover
-                : Appearance.colors.colSecondaryContainerHover
-            colRippleToggled: root.zzzEverywhere
-                ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.20)
-                : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
-                : Appearance.colors.colSecondaryContainerActive
-
-            ZzzPlate {
-                anchors.fill: parent
-                visible: root.zzzEverywhere
-                chamfer: (rightSidebarButton.buttonHovered || rightSidebarButton.toggled)
-                    ? Appearance.zzz.cutCorner * 0.7
-                    : Appearance.zzz.cutCorner * 0.35
-                fillColor: rightSidebarButton.toggled ? Appearance.zzz.accentSoft
-                    : rightSidebarButton.buttonHovered ? Appearance.zzz.sticker
-                    : "transparent"
-                strokeColor: rightSidebarButton.toggled ? "transparent"
-                    : rightSidebarButton.buttonHovered ? Appearance.zzz.accentSoft
-                    : "transparent"
-                strokeWidth: 1
-                z: -1
-            }
+            colBackgroundHover: Appearance.colors.colLayer1Hover
+            colRipple: Appearance.colors.colLayer1Active
+            colBackgroundToggled: Appearance.colors.colSecondaryContainer
+            colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+            colRippleToggled: Appearance.colors.colSecondaryContainerActive
 
             toggled: ShellLayoutController.sidebarOpenAtSlot("right")
-            property color colText: root.regaliaEverywhere
-                ? (toggled ? Appearance.regalia.primaryPlateInk : Appearance.regalia.onColor)
-                : root.zzzEverywhere
-                    ? (toggled ? Appearance.zzz.onAccentSoft : Appearance.zzz.ink)
-                    : toggled ? Appearance.colors.colOnSecondaryContainer
-                    : Appearance.colors.colOnLayer0
+            property color colText: toggled
+                ? Appearance.colors.colOnSecondaryContainer
+                : Appearance.colors.colOnLayer0
 
             Behavior on colText {
                 enabled: Appearance.animationsEnabled

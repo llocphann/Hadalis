@@ -53,7 +53,7 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### A. Screen Edge and connected surfaces — P0
 
-> **Source status on `dev`: Bar popup attachment is substantially implemented. The latest maintainer runtime pass exposed remaining Screen Edge attachment defects for Sidebars and the On-Screen Keyboard; source now makes both families underlap the full persistent edge band, and OSK additionally uses shared join shoulders.** Both fixes await maintainer live revalidation. Ordinary Bar popups still use placement-driven joins with square attached corners, rounded free corners and shared shadow clipping. Do not reintroduce connector stems or private gaps.
+> **Latest maintainer correction (2026-09-18): connected surfaces are still visually incomplete.** A connected popup must slide *under* its owning Bar/Screen Edge, not over it; every attachment endpoint must show Caelestia-style concave/flared shoulders; and every free side must carry the same configured Screen Edge/Bar shadow language. Left/right Sidebars need the same flared endpoint treatment. Dashboard must behave as a bottom-connected popup with slide-under motion, flares and matching shadow. Do not reintroduce connector stems or private gaps.
 
 - [ ] **Screen Edge exists both while idle and while a window is maximized.** It must not disappear simply because no maximized window is present.
 - [ ] **Screen Edge width is configurable in Settings.** The setting must use one canonical configuration field, have a safe default/range and update the active edge without requiring an alternate renderer.
@@ -65,7 +65,7 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### B. Popup interaction correctness — P0
 
-> **Latest maintainer runtime finding (2026-09-18):** the shared popup reveal read as shrink/scale. Source now keeps the connected body at full size and translates it by one shared edge-relative slide distance during reveal/retract. Focus, outside-click, hover bridge and retract residency remain unchanged. Live motion validation is pending.
+> **Latest maintainer correction (2026-09-18):** direction-only translation is insufficient. During reveal/retract the popup body must remain full-size, translate toward/away from the owning edge, and be clipped at the resting attachment boundary so the hidden portion is visually underneath the Bar/Screen Edge. The connected body must not scale/shrink.
 
 - [ ] Existing bar popups continue to use `modules/bar/StyledPopup.qml` and the shared connected-surface primitives.
 - [ ] Popup placement anchors from the real visual source control / `hoverTarget`, not a loader or lifecycle wrapper.
@@ -94,7 +94,7 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### E. Media Popup equalizer — P0
 
-> **Latest maintainer runtime finding (2026-09-18):** the 10-band UI was visible but reported `malformed-band-response`. Source now avoids version-dependent channel-scoped EasyEffects band queries and uses the Serpantinum-compatible 10-to-32-band preset-load path inside the existing `EqualizerService`. The preset grid is compacted and Previous/Play-Pause/Next hover tooltips are removed. Live native/Flatpak EasyEffects revalidation is still required.
+> **Latest maintainer correction (2026-09-18):** keep the existing version-compatible 10-to-32-band preset backend, but the Equalizer presentation must also reproduce Serpantinum's preset-change electricity/lightning sweep across the ten bands. This remains presentation-only; do not create a second DSP backend.
 
 - [ ] The bar-attached Media Popup renders the existing **CAVA -> `PlayerControl` -> `WaveVisualizer`** path instead of an empty visualizer input.
 - [ ] The same Media Popup includes a **10-band DSP Equalizer** below the player card, using the existing optional `EqualizerService` / EasyEffects backend rather than a second ad-hoc equalizer process. User-facing bands are 31/63/125/250/500/1k/2k/4k/8k/16k Hz with the Serpantinum Flat/Bass/Treble/Vocal/Pop/Rock/Jazz/Classic curves.
@@ -149,10 +149,13 @@ The broad `iiPerimeter` composition runtime and the shared connected-popup primi
 The following issues were reproduced visually/runtime-side on 2026-09-18 and remain open until revalidated after source fixes:
 
 - Media transport controls: source fix removes hover text tooltips for Previous / Pause-Play / Next; live hover validation remains.
-- Media DSP: source fix replaces version-dependent channel-scoped band access with the Serpantinum-compatible preset-generation/load path and compacts the eight preset buttons; live native/Flatpak EasyEffects validation remains.
-- Shared popup motion: source fix now uses full-size directional slide/retract from the connected edge; live motion validation remains.
+- Media DSP: backend compatibility fix remains, but preset changes still need the Serpantinum-style electricity/lightning sweep across the ten bands.
+- Shared popup motion: full-size translation must be clipped at the resting attachment boundary so the body slides underneath—not over—the Bar/Screen Edge.
+- Connected popup silhouette: every Bar/Screen Edge attachment endpoint must render Caelestia-style concave/flared shoulders.
+- Connected popup shadow: every free popup side must visibly use the same configured Screen Edge/Bar shadow size/opacity contract; attached sides remain shadow-free.
 - Weather center timeline: source fix reduces hour-cell size and widens the orbit slightly; live spacing/scaling validation remains.
-- Left/Right Sidebars: source now extends the visible body through the entire Screen Edge band to the physical display edge while preserving the previous inward/free edge coordinate; live left/right validation remains.
+- Left/Right Sidebars: physical-edge underlap remains, but both attachment endpoints still need Caelestia-style concave/flared shoulders.
+- Dashboard: treat the bottom-connected dashboard as a popup for motion/silhouette—slide underneath the bottom Bar/Screen Edge, add endpoint flares, and use the shared shadow contract.
 - On-Screen Keyboard: source now snaps the visible body to the physical top/bottom display edge, underlaps the full Screen Edge band, and adds shared concave join shoulders; live drag/pin/top/bottom validation remains.
 
 ## 4. Connected-surface architecture contract

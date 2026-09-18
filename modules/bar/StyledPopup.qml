@@ -152,30 +152,29 @@ LazyLoader {
                 || outputWidth <= 0 || outputHeight <= 0)
             return Qt.rect(0, 0, 0, 0)
 
-        // The source control supplies only the tangent coordinate. Caelestia's
-        // popouts are not joined by a narrow control-sized stem: the whole popup
-        // side meets the actual bar edge. Expand the cross-axis anchor to the
-        // real bar thickness so the shared geometry starts flush with that edge.
+        // Explicitly touch the target geometry so this binding is refreshed when
+        // bar modules are rearranged or resized. mapFromItem() then supplies the
+        // precise tangent coordinate inside the owning bar window.
         target.x
         target.y
         target.width
         target.height
         const mapped = host.mapFromItem(target, 0, 0)
-        const thickness = root._barVertical
-            ? Appearance.sizes.verticalBarWidth
-            : Appearance.sizes.barHeight
+        let x = mapped.x
+        let y = mapped.y
 
+        // Horizontal bars already span the output width, while vertical bars
+        // span its height. Translate the cross-axis coordinate for bottom/right
+        // placement so ConnectedSurfaceGeometry always receives output-local
+        // coordinates, independent of the layer-shell window's anchored edge.
         if (root._barVertical) {
-            const x = root._trailingEdge
-                ? Math.max(0, outputWidth - thickness)
-                : 0
-            return Qt.rect(x, mapped.y, thickness, target.height)
+            if (root._trailingEdge)
+                x += Math.max(0, outputWidth - Number(hostWindow.width ?? 0))
+        } else if (root._trailingEdge) {
+            y += Math.max(0, outputHeight - Number(hostWindow.height ?? 0))
         }
 
-        const y = root._trailingEdge
-            ? Math.max(0, outputHeight - thickness)
-            : 0
-        return Qt.rect(mapped.x, y, target.width, thickness)
+        return Qt.rect(x, y, target.width, target.height)
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside
@@ -242,8 +241,6 @@ LazyLoader {
                 Math.max(1, (root.contentItem?.implicitHeight ?? 0)
                     + root._contentPadding * 2 + Math.max(0, root.popupBackgroundMargin)))
             outerRadius: root._surfaceRadius
-            // No detached gap/stem: overlap the popup directly into the bar.
-            connectorLength: 0
             progress: root.revealProgress
             devicePixelRatio: popupWindow.screen?.devicePixelRatio ?? 1
         }
@@ -255,8 +252,8 @@ LazyLoader {
             fillColor: root._surfaceColor
             borderColor: root._borderColor
             borderWidth: root._borderWidth
-            // Use the Caelestia-like smooth contact only for bar popouts.
-            edgeContactMode: true
+            // The connector owns the join. Leaving its outline off lets the
+            // shoulder merge into both bar and body instead of drawing a stem.
             connectorBorderWidth: 0
         }
 

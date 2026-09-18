@@ -300,6 +300,17 @@ LazyLoader {
             id: popupRevealClip
             geometry: geometry
 
+            // Hover ownership belongs to the complete connected surface, not
+            // only to the padded content host. Tracking just the content left a
+            // 14px perimeter dead zone at the Bar/Screen Edge join; crossing it
+            // cleared both source-hover and popup-hover, causing the popup to
+            // retract/reopen repeatedly under the pointer.
+            HoverHandler {
+                id: popupHoverHandler
+                enabled: root.active
+                onHoveredChanged: root.popupHovered = hovered
+            }
+
             ConnectedSurfaceFrame {
                 id: frame
                 anchors.fill: parent
@@ -335,12 +346,6 @@ LazyLoader {
                 // Pure slide-under motion: no scale/shrink and no staged fade.
                 opacity: 1
                 children: [root.contentItem]
-
-                HoverHandler {
-                    id: popupHoverHandler
-                    enabled: root.active
-                    onHoveredChanged: root.popupHovered = hovered
-                }
             }
         }
 

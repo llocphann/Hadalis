@@ -57,9 +57,9 @@ The media player widget appears in:
 
 `rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself. Hadalis therefore keeps Media on its normal MPRIS boundary and uses `mpd-mpris` as the bridge. Arch audio/full-experience packages include `mpd-mpris`; existing repo-managed Arch installs receive it through required migration `042-mpd-mpris-bridge` on `inir update`/migration. Its default user service connects to MPD on `localhost:6600`.
 
-Hadalis probes for a local MPD process and the `mpd-mpris` binary at startup, and also watches PipeWire for an MPD output stream. If MPD is present but no `org.mpris.MediaPlayer2.mpd` player exists, it starts `mpd-mpris.service`. This covers both PipeWire-backed MPD and direct-ALSA output. The bridge then appears through the same Quickshell MPRIS service as every other player, so the Bar, Media popup and Sidebars need no MPD-specific UI path. If the bridge package/service is unavailable, MPD playback continues normally and only Hadalis Media integration stays unavailable.
+Hadalis probes for the `mpd-mpris` binary and watches the MPD/PipeWire session. For the normal local endpoint (`localhost/127.0.0.1:6600`) it starts the distro-provided `mpd-mpris.service` when needed. If Left Sidebar Music is configured for another host, port, or Unix socket, Hadalis launches a shell-owned `mpd-mpris` instance named `org.mpris.MediaPlayer2.mpd.hadalis` with that exact endpoint instead of reusing an unrelated default bridge. The bridge then appears through the same Quickshell MPRIS service as every other player, so the Bar, Media popup and Sidebars observe one playback session. If the bridge binary/service is unavailable, MPD protocol playback remains usable and only MPRIS-wide shell integration is reduced.
 
-For a non-default MPD host, port, password, or Unix socket, configure the `mpd-mpris` user service for that MPD instance. NixOS/Home Manager users should enable their `services.mpd-mpris` module rather than expecting Hadalis to create a system service.
+NixOS/Home Manager users can still manage their normal MPD/MPRIS services through `services.mpd-mpris`; Hadalis does not overwrite those unit definitions.
 
 ### Player prioritization
 
@@ -75,7 +75,7 @@ The left sidebar **Music** tab is a frontend for the user's MPD library. MPD own
 
 Songs come from MPD `listallinfo`; saved MPD playlists, folder collections and the live MPD queue are selectable directly in the sidebar. Starting a song or collection replaces the MPD queue with those database URIs. Database refresh calls MPD `update`.
 
-Normal transport integration uses the existing `mpd-mpris` bridge: play/pause, previous/next, seeking, volume and shuffle prefer the `org.mpris.MediaPlayer2.mpd` player exposed through `MprisController`. Direct MPD commands are only a graceful fallback or are used for MPD-only operations such as queue replacement/database update. Bar, Media Popup and other media surfaces therefore observe the same session.
+Normal transport integration uses the endpoint-matched `mpd-mpris` bridge: play/pause, previous/next, seeking, volume and shuffle prefer the MPD MPRIS player exposed through `MprisController`. Direct MPD commands are only a graceful fallback or are used for MPD-only operations such as queue replacement/database update. Bar, Media Popup and other media surfaces therefore observe the same session.
 
 The historical `YtMusic` source remains only as compatibility code and is no longer routed from the Left Sidebar or its Settings UI.
 

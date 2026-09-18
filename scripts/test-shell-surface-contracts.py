@@ -106,6 +106,21 @@ def main() -> None:
     check("connectorSourceExtent" in connector,
           "ConnectedSurfaceConnector must narrow toward the real bar anchor")
 
+    join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
+    for token in (
+        "readonly property point bodyOrigin:",
+        "root.bodyItem.mapToItem(root, 0, 0)",
+        "root.bodyOrigin.x",
+        "root.bodyOrigin.y",
+    ):
+        check(token in join_flares,
+              f"Join flares must map nested body coordinates into their host: {token}")
+
+    check("Hover ownership belongs to the complete connected surface" in styled_popup
+          and styled_popup.index("id: popupHoverHandler")
+              < styled_popup.index("ConnectedSurfaceFrame {"),
+          "StyledPopup hover bridge must cover the full connected reveal surface, including padding")
+
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")
@@ -179,13 +194,18 @@ def main() -> None:
 
     for token in (
         "id: innerCornerCanvas",
-        "if (!cornerWindow.isLeft)",
-        "if (!cornerWindow.isTop)",
-        "ctx.scale(-1, 1)",
-        "ctx.scale(1, -1)",
+        "readonly property bool topSide:",
+        "readonly property bool leftSide:",
+        "onTopSideChanged: requestPaint()",
+        "onLeftSideChanged: requestPaint()",
+        "if (topSide && leftSide)",
+        "else if (!topSide && leftSide)",
     ):
         check(token in screen_edge,
-              f"Screen Edge must mirror one canonical inner-corner silhouette: {token}")
+              f"Screen Edge must paint all four inner-corner orientations explicitly: {token}")
+    check("ctx.scale(-1, 1)" not in screen_edge
+          and "ctx.scale(1, -1)" not in screen_edge,
+          "Screen Edge inner corners must not depend on first-paint mirror transforms")
 
     for token in (
         "id: sidebarEdgeFlares",
@@ -202,6 +222,12 @@ def main() -> None:
     check("No active player" not in media_popup
           and "Make sure your player has MPRIS support" not in media_popup,
           "Bar media popup must not append an inactive-player text card below Equalizer")
+
+    compact_sidebar = read("modules/sidebarRight/CompactSidebarRightContent.qml")
+    check("import qs.modules.mediaControls" in compact_sidebar
+          and "EqualizerPanel {" in compact_sidebar
+          and "active: root.panelVisible" in compact_sidebar,
+          "Compact right Sidebar Media section must render the shared Equalizer below the player")
 
     resources_popup = read("modules/bar/ResourcesPopup.qml")
     check('Translation.tr("RPM:")' in resources_popup
@@ -226,6 +252,17 @@ def main() -> None:
         ):
             check(token in settings_surface,
                   f"{settings_path} must be a bottom-connected popup below Polkit: {token}")
+
+    settings_overlay = read("modules/settings/SettingsOverlay.qml")
+    settings_focus = read("modules/settings/SettingsFocus.qml")
+    check("1600" in settings_overlay
+          and "settingsPanel.width * 0.90" in settings_overlay
+          and "settingsPanel.height * 0.92" in settings_overlay,
+          "Rail Settings overlay must use the enlarged bottom-connected footprint")
+    check("1560" in settings_focus
+          and "settingsPanel.width * 0.88" in settings_focus
+          and "settingsPanel.height * 0.92" in settings_focus,
+          "Focus Settings overlay must use the enlarged bottom-connected footprint")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
@@ -337,12 +374,23 @@ def main() -> None:
           "Legacy UI locales must normalize to canonical en_US")
     check('Config.setNestedValue("bar.cornerStyle", 0)' in settings_registry,
           "Legacy Classic Bar corner styles must normalize to Hug")
+    check('Config.setNestedValue("sidebar.style", "panel")' in settings_registry
+          and 'Config.setNestedValue("sidebar.cardStyle", false)' in settings_registry,
+          "Legacy Sidebar Island/Card values must normalize to Panel/non-card")
     check('component: "modules/settings/BarConfigHugOnly.qml"' in settings_registry,
           "Public Bar settings must route through the Hug-only facade")
     check('component: "modules/settings/QuickConfigHugOnly.qml"' in settings_registry,
           "Public Quick settings must route through the Hug-only facade")
     check('entry.label !== Translation.tr("Corner style")' in settings_registry,
           "Settings search must not expose the retired Bar corner-style selector")
+    check('entry.label !== Translation.tr("Sidebar style")' in settings_registry,
+          "Settings search must not expose the retired Sidebar surface selector")
+
+    sidebars_config = read("modules/settings/SidebarsConfig.qml")
+    check('Translation.tr("Use Card style")' not in sidebars_config
+          and 'Translation.tr("Island")' not in sidebars_config
+          and 'Config.setNestedValue("sidebar.style"' not in sidebars_config,
+          "Sidebar General settings must not expose Island or Card surface choices")
 
     shell = read("shell.qml")
     check("DevNavigation.registerSettingsPages(SettingsPageRegistry.pages)" in shell,

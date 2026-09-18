@@ -34,7 +34,7 @@ Singleton {
             key: "system",
             name: Translation.tr("System"),
             icon: "browse",
-            desc: Translation.tr("Audio, battery, language, lock"),
+            desc: Translation.tr("Audio, power, fan control, language, lock"),
             essential: true,
             component: "modules/settings/GeneralConfig.qml"
         },
@@ -433,6 +433,13 @@ Singleton {
             label: Translation.tr("Charge limit"),
             description: Translation.tr("Limit maximum charge to preserve battery health"),
             keywords: ["battery", "charge", "limit", "health", "threshold", "conservation", "sysfs"]
+        },
+        {
+            pageIndex: 1, pageName: root.pages[1].name,
+            section: Translation.tr("Fan Control"),
+            label: Translation.tr("Fan Control"),
+            description: Translation.tr("ThinkFan ownership, fan status and cooling controls"),
+            keywords: ["fan", "fan control", "thinkfan", "thermal", "cooling", "rpm", "temperature", "system"]
         },
         {
             pageIndex: 1, pageName: root.pages[1].name,

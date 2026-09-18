@@ -428,6 +428,7 @@ Scope {
             panelScreen: sidebarRoot.screen ?? null
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
             onPluginViewActiveChanged: root.pluginViewActive = pluginViewActive
         }
     }
@@ -441,6 +442,7 @@ Scope {
             panelScreen: sidebarRoot.screen ?? null
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
         }
     }
 
@@ -453,6 +455,7 @@ Scope {
             panelScreen: sidebarRoot.screen ?? null
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
         }
     }
 

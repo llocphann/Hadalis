@@ -152,12 +152,8 @@ Item {
                     width: 3
                     radius: 2
                     color: isActive
-                        ? (Appearance.zzzEverywhere ? Appearance.zzz.accent
-                            : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
-                        : (Appearance.zzzEverywhere ? Appearance.zzz.bg3
-                            : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colLayer2 : Appearance.colors.colLayer2)
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colLayer2
                     
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
@@ -186,10 +182,7 @@ Item {
                     color: "transparent"
                     radius: root.popupRounding
                     border.width: 2
-                    border.color: Appearance.zzzEverywhere ? Appearance.zzz.accent
-                        : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                        : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colPrimary
-                        : Appearance.colors.colPrimary
+                    border.color: Appearance.colors.colPrimary
                     z: 2
                 }
                 
@@ -237,33 +230,22 @@ Item {
                 anchors.centerIn: parent
                 width: Math.min(implicitWidth,
                     Math.max(0, parent.width - Appearance.sizes.elevationMargin))
-                color: Appearance.zzzEverywhere ? Appearance.zzz.bg0
-                    : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colLayer1
-                    : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.aurora.colPopupSurface
-                     : Appearance.colors.colLayer0
-                radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
-                    : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                    : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.roundingNormal : root.popupRounding
+                color: Appearance.colors.colLayer0
+                radius: root.popupRounding
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
-                border.width: Appearance.zzzEverywhere ? 1 : (Appearance.angelEverywhere ? 0 : ((Appearance.inirEverywhere || Appearance.auroraEverywhere) ? 1 : 0))
+                border.width: 0
                 Behavior on border.width {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
-                border.color: Appearance.zzzEverywhere ? Appearance.zzz.borderColor
-                            : Appearance.angelEverywhere ? "transparent"
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colBorder
-                            : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.aurora.colPopupBorder
-                            : "transparent"
+                border.color: "transparent"
                 Behavior on border.color {
                     enabled: Appearance.animationsEnabled
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
                 property real padding: 20
 
-                AngelPartialBorder { targetRadius: placeholderBackground.radius; coverage: 0.5 }
                 implicitWidth: placeholderLayout.implicitWidth + padding * 2
                 implicitHeight: placeholderLayout.implicitHeight + padding * 2
 
@@ -278,11 +260,7 @@ Item {
                         wrapMode: Text.Wrap
                         text: Translation.tr("No active player")
                         font.pixelSize: Appearance.font.pixelSize.large
-                        color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                            : Appearance.angelEverywhere ? Appearance.angel.colText
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colText
-                            : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.colors.colOnLayer0
-                            : Appearance.colors.colOnLayer0
+                        color: Appearance.colors.colOnLayer0
                         Behavior on color {
                             enabled: Appearance.animationsEnabled
                             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -292,11 +270,7 @@ Item {
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.Wrap
-                        color: Appearance.zzzEverywhere ? Appearance.zzz.ghostInk
-                            : Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colTextSecondary
-                            : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.aurora.colTextSecondary
-                            : Appearance.colors.colSubtext
+                        color: Appearance.colors.colSubtext
                         Behavior on color {
                             enabled: Appearance.animationsEnabled
                             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

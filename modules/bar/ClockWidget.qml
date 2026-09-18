@@ -25,8 +25,7 @@ Item {
                 ? root._timeFontFamily : Appearance.font.family.main
             font.pixelSize: root._timePixelSize > 0
                 ? root._timePixelSize : Appearance.font.pixelSize.large
-            color: Appearance.angelEverywhere ? Appearance.angel.colText
-                : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+            color: Appearance.colors.colOnLayer1
             text: DateTime.timeDisplay
         }
 
@@ -34,8 +33,7 @@ Item {
             reveal: root.showDate
             StyledText {
                 font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-                    : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+                color: Appearance.colors.colOnLayer1
                 text: "•"
             }
         }
@@ -47,8 +45,7 @@ Item {
                     ? root._dateFontFamily : Appearance.font.family.main
                 font.pixelSize: root._datePixelSize > 0
                     ? root._datePixelSize : Appearance.font.pixelSize.small
-                color: Appearance.angelEverywhere ? Appearance.angel.colText
-                    : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+                color: Appearance.colors.colOnLayer1
                 text: DateTime.date
             }
         }

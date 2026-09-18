@@ -53,7 +53,7 @@ LazyLoader {
     readonly property real _edgeShadowOpacity: Math.max(0, Math.min(0.60,
         Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
     readonly property color _edgeShadowColor:
-        ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)
+        ColorUtils.applyAlpha(Appearance.colors.colShadow, root._edgeShadowOpacity)
 
     // The visual anchor is the authority for output/window ownership. StyledPopup
     // itself is a LazyLoader and is not a visual child of the bar, so resolving

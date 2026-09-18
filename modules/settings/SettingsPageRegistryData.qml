@@ -997,13 +997,6 @@ Singleton {
         {
             pageIndex: 23, pageName: root.pages[23].name,
             section: Translation.tr("Sidebars"),
-            label: Translation.tr("Sidebar style"),
-            description: Translation.tr("Panel or island (gradient card) sidebar surface"),
-            keywords: ["sidebar", "style", "island", "panel", "card", "gradient"]
-        },
-        {
-            pageIndex: 23, pageName: root.pages[23].name,
-            section: Translation.tr("Sidebars"),
             label: Translation.tr("Collapse notifications when empty"),
             description: Translation.tr("Shrink the right sidebar when there are no notifications"),
             keywords: ["sidebar", "notifications", "collapse", "empty", "compact", "shrink"]

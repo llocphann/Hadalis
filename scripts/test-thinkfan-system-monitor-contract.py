@@ -42,7 +42,6 @@ def main() -> None:
         'Translation.tr("Speed:")',
         'Translation.tr("Level:")',
         "thinkFanCanApply",
-        "connectAdjacentScreenEdge: true",
         "font.pixelSize: Appearance.font.pixelSize.small",
         "thinkFanApplyErrorMessage",
     ):
@@ -54,6 +53,7 @@ def main() -> None:
         "SurfaceRouteController",
         "AnchorPublisher",
         'surface: "thinkfan"',
+        "connectAdjacentScreenEdge: true",
     ):
         check(forbidden not in resources_popup,
               f"System Monitor ThinkFan UI must not revive a standalone popup route: {forbidden}")

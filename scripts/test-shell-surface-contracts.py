@@ -502,6 +502,13 @@ def main() -> None:
               and "ColorUtils.applyAlpha(Appearance.colors.colShadow" not in connected_shadow_source,
               f"{connected_shadow_path} must use canonical connected shadow ink")
 
+    osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
+    check("visible: root._oskResident" in osk_shadow
+          and "root.screenEdgeShadowEnabled" in osk_shadow
+          and "root.screenEdgeShadowSize > 0" in osk_shadow
+          and "root.screenEdgeShadowOpacity > 0" in osk_shadow,
+          "OSK connected shadow must remain resident through the whole enter/exit slide")
+
     sidebars_config = read("modules/settings/SidebarsConfig.qml")
     check('Translation.tr("Use Card style")' not in sidebars_config
           and 'Translation.tr("Island")' not in sidebars_config

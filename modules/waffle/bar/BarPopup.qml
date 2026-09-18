@@ -135,7 +135,8 @@ Loader {
 
         property real revealProgress: 0
         property bool focusGrabRequested: false
-        readonly property bool popupContainsMouse: popupHoverHandler.hovered
+        readonly property bool popupContainsMouse:
+            frame.bodyHovered || popupHoverHandler.hovered
         property alias popupHoverArea: popupHoverHandler
 
         Component.onCompleted: {
@@ -262,6 +263,9 @@ Loader {
                 borderWidth: Math.max(0, root.ambientShadowWidth)
                 connectorBorderWidth: 0
                 connectorVisible: false
+                // Keep hover ownership on the whole connected body (including
+                // padding) while retaining popupHoverArea for old Waffle callers.
+                hoverEnabled: root.active
                 shadowEnabled: Looks.effectsEnabled
                     && root.visualMargin > 0
                 shadowExtent: Math.max(0, root.visualMargin)

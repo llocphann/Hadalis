@@ -14,6 +14,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.common.perimeter
 
 Scope {
     id: bar
@@ -76,6 +77,7 @@ Scope {
                     && (!(Config.options?.bar?.autoHide?.enable ?? false) || mustShow)
                 readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+                readonly property real frameRadius: PerimeterTokens.frameRadius
                 readonly property bool edgeShadowEnabled: bar.showBarBackground
                     && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
                 readonly property int edgeShadowExtent: edgeShadowEnabled
@@ -87,7 +89,7 @@ Scope {
                 readonly property color edgeShadowColor:
                     ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
                 readonly property real inwardDecoratorAllowance:
-                    Math.max(Appearance.rounding.screenRounding, edgeShadowExtent)
+                    Math.max(frameRadius, edgeShadowExtent)
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
@@ -163,11 +165,11 @@ Scope {
                                 ? autoHideEdgeBand.x - barRoot.edgeShadowExtent
                                 : autoHideEdgeBand.x + autoHideEdgeBand.width
                             y: barRoot.screenEdgeThickness
-                                + Appearance.rounding.screenRounding
+                                + barRoot.frameRadius
                             width: barRoot.edgeShadowExtent
                             height: Math.max(0, parent.height
                                 - 2 * (barRoot.screenEdgeThickness
-                                    + Appearance.rounding.screenRounding))
+                                    + barRoot.frameRadius))
                             color: "transparent"
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
@@ -185,7 +187,7 @@ Scope {
                         }
 
                         RoundCorner {
-                            implicitSize: Appearance.rounding.screenRounding
+                            implicitSize: barRoot.frameRadius
                             color: Appearance.colors.colLayer0
                             corner: (Config.options?.bar?.bottom ?? false)
                                 ? RoundCorner.CornerEnum.TopRight
@@ -200,7 +202,7 @@ Scope {
                             }
                         }
                         RoundCorner {
-                            implicitSize: Appearance.rounding.screenRounding
+                            implicitSize: barRoot.frameRadius
                             color: Appearance.colors.colLayer0
                             corner: (Config.options?.bar?.bottom ?? false)
                                 ? RoundCorner.CornerEnum.BottomRight
@@ -320,7 +322,7 @@ Scope {
                             left: barContent.right
                             right: undefined
                         }
-                        width: Appearance.rounding.screenRounding
+                        width: barRoot.frameRadius
                         active: showBarBackground
 
                         states: State {
@@ -339,7 +341,7 @@ Scope {
 
                         sourceComponent: Item {
                             id: hugDecorators
-                            implicitHeight: Appearance.rounding.screenRounding
+                            implicitHeight: barRoot.frameRadius
 
                             readonly property bool isRight: Config.options?.bar?.bottom ?? false
                             // Color must match the Material bar background exactly.
@@ -357,7 +359,7 @@ Scope {
                                     topMargin: barRoot.screenEdgeThickness
                                 }
 
-                                implicitSize: Appearance.rounding.screenRounding
+                                implicitSize: barRoot.frameRadius
                                 color: hugDecorators.solidColor
 
                                 corner: RoundCorner.CornerEnum.TopLeft
@@ -379,7 +381,7 @@ Scope {
                                     left: !hugDecorators.isRight ? parent.left : undefined
                                     right: hugDecorators.isRight ? parent.right : undefined
                                 }
-                                implicitSize: Appearance.rounding.screenRounding
+                                implicitSize: barRoot.frameRadius
                                 color: hugDecorators.solidColor
 
                                 corner: RoundCorner.CornerEnum.BottomLeft

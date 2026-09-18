@@ -170,6 +170,14 @@ def main() -> None:
           "Screen Edge must stay mapped normally and hide only for lock/fullscreen coverage")
     check("mask: Region { item: emptyInput }" in screen_edge,
           "Screen Edge must remain completely click-through")
+    check("import QtQuick.Effects" in screen_edge
+          and "layer.effect: MultiEffect {" in screen_edge
+          and "blurMax: Math.max(1, root.shadowExtent)" in screen_edge,
+          "Screen Edge must shadow its complete band/corner alpha silhouette like Caelestia")
+    check("root.thickness + root.innerRadius + root.shadowExtent" in screen_edge,
+          "Horizontal Screen Edge host must reserve room for curve plus inward shadow")
+    check("id: edgeShadow" not in screen_edge,
+          "Screen Edge must not regress to clipped straight gradient shadow strips")
     for edge in ("top", "bottom", "left", "right"):
         check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must render the persistent {edge} output edge")
@@ -423,6 +431,12 @@ def main() -> None:
           "Horizontal Bar endpoint fillets must use Caelestia's 25px frame radius")
     check("frameRadius: PerimeterTokens.frameRadius" in vertical_bar_runtime,
           "Vertical Bar endpoint fillets must use Caelestia's 25px frame radius")
+    check("id: leftScreenEdgeContact" in bar_runtime
+          and "id: rightScreenEdgeContact" in bar_runtime,
+          "Horizontal Bar must own both physical Screen Edge contact strips")
+    check("id: topScreenEdgeContact" in vertical_bar_runtime
+          and "id: bottomScreenEdgeContact" in vertical_bar_runtime,
+          "Vertical Bar must own both physical Screen Edge contact strips")
     for runtime in (bar_runtime, vertical_bar_runtime):
         check("readonly property bool showBarBackground: true" in runtime,
               "Supported Hug Bar chrome must remain structurally present")
@@ -528,6 +542,10 @@ def main() -> None:
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
+    check('screenEdge?.shadow?.size ?? 15' in bar_settings
+          and 'screenEdge?.shadow?.opacity ?? 0.70' in bar_settings
+          and 'to: 100' in bar_settings,
+          "Bar settings must expose the Caelestia Screen Edge shadow baseline and full opacity range")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()
@@ -548,6 +566,10 @@ def main() -> None:
           "Legacy Classic Bar corner styles must normalize to Hug")
     check('Config.setNestedValue("bar.showBackground", true)' in settings_registry,
           "Legacy transparent Classic Bar state must normalize to the structural Hug surface")
+    check("_migrateLegacyScreenEdgeShadow" in settings_registry
+          and 'Config.setNestedValue("appearance.screenEdge.shadow.size", 15)' in settings_registry
+          and 'Config.setNestedValue("appearance.screenEdge.shadow.opacity", 0.70)' in settings_registry,
+          "Legacy 12px/24% Screen Edge shadow must migrate to the Caelestia 15px/70% baseline")
     check('Config.setNestedValue("sidebar.style", "panel")' in settings_registry
           and 'Config.setNestedValue("sidebar.cardStyle", false)' in settings_registry,
           "Legacy Sidebar Island/Card values must normalize to Panel/non-card")

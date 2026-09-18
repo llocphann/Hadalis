@@ -10,7 +10,7 @@ ColumnLayout {
     id: root
 
     property bool compact: false
-    readonly property real compactBreakpoint: 900
+    readonly property real compactBreakpoint: 1180
     property date now: new Date()
 
     spacing: 10
@@ -122,168 +122,198 @@ ColumnLayout {
 
         Rectangle {
             id: timeWeatherPanel
-            radius: Appearance.rounding.small
-            color: Appearance.colors.colSurfaceContainerHigh
-            implicitWidth: 330
-            implicitHeight: centerColumn.implicitHeight + 28
+            radius: Appearance.rounding.large
+            color: "transparent"
+            implicitWidth: 430
+            implicitHeight: 350
             Layout.fillWidth: root.compact
             Layout.preferredWidth: root.compact ? 360 : implicitWidth
             Layout.alignment: Qt.AlignTop
 
-            ColumnLayout {
-                id: centerColumn
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    top: parent.top
-                    margins: 14
-                }
-                spacing: 4
+            Item {
+                id: orbitalTimeline
+                anchors.fill: parent
+                anchors.margins: 8
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: DateTime.timeDisplay
-                    font {
-                        weight: Font.DemiBold
-                        pixelSize: Math.round(Appearance.font.pixelSize.large * 2.4)
+                // Serpantinum-inspired frontend: the clock is the visual center
+                // and Hadalis hourly data is distributed around an ellipse.
+                readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
+                readonly property real radiusX: Math.max(118, (width - 92) / 2)
+                readonly property real radiusY: Math.max(88, (height - 126) / 2)
+
+                Canvas {
+                    id: orbitGuide
+                    anchors.centerIn: parent
+                    width: Math.max(1, orbitalTimeline.radiusX * 2)
+                    height: Math.max(1, orbitalTimeline.radiusY * 2)
+                    opacity: 0.42
+
+                    onWidthChanged: requestPaint()
+                    onHeightChanged: requestPaint()
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.clearRect(0, 0, width, height)
+                        ctx.beginPath()
+                        const rx = Math.max(1, width / 2 - 2)
+                        const ry = Math.max(1, height / 2 - 2)
+                        for (let angle = 0; angle <= Math.PI * 2 + 0.01; angle += 0.05) {
+                            const x = width / 2 + Math.cos(angle) * rx
+                            const y = height / 2 + Math.sin(angle) * ry
+                            if (angle === 0)
+                                ctx.moveTo(x, y)
+                            else
+                                ctx.lineTo(x, y)
+                        }
+                        ctx.strokeStyle = Appearance.colors.colPrimary
+                        ctx.globalAlpha = 0.5
+                        ctx.lineWidth = 1.5
+                        ctx.setLineDash([4, 9])
+                        ctx.stroke()
+                        ctx.globalAlpha = 1
                     }
-                    color: Appearance.colors.colOnSurface
                 }
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: DateTime.date
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
-
-                RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 7
-
-                    MaterialSymbol {
-                        text: Icons.getWeatherIcon(Weather.data.wCode, Weather.isNightNow()) ?? "cloud"
-                        iconSize: Appearance.font.pixelSize.large
-                        color: Appearance.colors.colPrimary
-                    }
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    anchors.verticalCenterOffset: -2
+                    spacing: 1
+                    z: 2
 
                     StyledText {
-                        text: Weather.data.temp
+                        Layout.alignment: Qt.AlignHCenter
+                        text: DateTime.timeDisplay
                         font {
-                            weight: Font.Medium
-                            pixelSize: Appearance.font.pixelSize.large
+                            weight: Font.Black
+                            pixelSize: Math.round(Appearance.font.pixelSize.large * 3.2)
                         }
                         color: Appearance.colors.colOnSurface
                     }
 
                     StyledText {
-                        text: Weather.data.description
-                        font.pixelSize: Appearance.font.pixelSize.small
+                        Layout.alignment: Qt.AlignHCenter
+                        text: Qt.formatDate(root.now, "dddd, MMM d")
+                        font {
+                            weight: Font.DemiBold
+                            pixelSize: Appearance.font.pixelSize.small
+                        }
                         color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: 3
+                        spacing: 5
+
+                        MaterialSymbol {
+                            text: Icons.getWeatherIcon(
+                                Weather.data?.wCode,
+                                Weather.isNightNow()) ?? "cloud"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colPrimary
+                        }
+
+                        StyledText {
+                            text: Weather.data?.temp ?? "--°"
+                            font {
+                                weight: Font.DemiBold
+                                pixelSize: Appearance.font.pixelSize.normal
+                            }
+                            color: Appearance.colors.colOnSurface
+                        }
+
+                        StyledText {
+                            text: Weather.data?.description ?? ""
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnSurfaceVariant
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 120
+                        }
                     }
                 }
 
-                Item {
-                    id: hourlyTimeline
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 150
-                    Layout.topMargin: 8
+                Repeater {
+                    id: orbitHours
+                    model: orbitalTimeline.hours
 
-                    readonly property var hours: Weather.data.hourly.slice(0, 5)
+                    delegate: Item {
+                        id: hourPoint
+                        required property int index
+                        required property var modelData
 
-                    Shape {
-                        anchors.fill: parent
+                        readonly property int count: Math.max(1, orbitHours.count)
+                        readonly property real angle: (-Math.PI / 2)
+                            + index * (Math.PI * 2 / count)
+                        readonly property bool highlighted: index === 0
 
-                        ShapePath {
-                            fillColor: "transparent"
-                            strokeColor: Appearance.colors.colPrimary
-                            strokeWidth: 2
-                            capStyle: ShapePath.RoundCap
-                            startX: 24
-                            startY: 88
+                        width: 58
+                        height: 72
+                        x: orbitalTimeline.width / 2
+                            + Math.cos(angle) * orbitalTimeline.radiusX - width / 2
+                        y: orbitalTimeline.height / 2
+                            + Math.sin(angle) * orbitalTimeline.radiusY - height / 2
+                        z: highlighted ? 3 : 1
 
-                            PathQuad {
-                                x: Math.max(24, hourlyTimeline.width - 24)
-                                y: 88
-                                controlX: hourlyTimeline.width / 2
-                                controlY: 24
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.large
+                            color: hourPoint.highlighted
+                                ? Appearance.colors.colPrimaryContainer
+                                : Appearance.colors.colSurfaceContainerHigh
+                            border.width: 1
+                            border.color: hourPoint.highlighted
+                                ? Appearance.colors.colPrimary
+                                : Appearance.colors.colOutlineVariant
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 1
+
+                                StyledText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: hourPoint.modelData?.label ?? ""
+                                    font {
+                                        weight: Font.DemiBold
+                                        pixelSize: Appearance.font.pixelSize.smaller
+                                    }
+                                    color: hourPoint.highlighted
+                                        ? Appearance.colors.colOnPrimaryContainer
+                                        : Appearance.colors.colOnSurfaceVariant
+                                }
+
+                                MaterialSymbol {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: Icons.getWeatherIcon(
+                                        hourPoint.modelData?.code,
+                                        hourPoint.modelData?.isNight) ?? "cloud"
+                                    iconSize: Appearance.font.pixelSize.normal
+                                    color: hourPoint.highlighted
+                                        ? Appearance.colors.colOnPrimaryContainer
+                                        : Appearance.colors.colOnSurface
+                                }
+
+                                StyledText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: hourPoint.modelData?.temp ?? ""
+                                    font {
+                                        weight: Font.DemiBold
+                                        pixelSize: Appearance.font.pixelSize.smaller
+                                    }
+                                    color: hourPoint.highlighted
+                                        ? Appearance.colors.colOnPrimaryContainer
+                                        : Appearance.colors.colOnSurface
+                                }
                             }
                         }
                     }
+                }
 
-                    Repeater {
-                        model: hourlyTimeline.hours
-
-                        delegate: Item {
-                            id: hourPoint
-                            required property int index
-                            required property var modelData
-                            readonly property int count: Math.max(1, hourlyTimeline.hours.length)
-                            readonly property real centerIndex: (count - 1) / 2
-                            readonly property real normalized: centerIndex > 0
-                                ? (index - centerIndex) / centerIndex : 0
-                            width: 52
-                            height: 92
-                            x: count <= 1
-                                ? (hourlyTimeline.width - width) / 2
-                                : 24 + index * ((hourlyTimeline.width - 48) / (count - 1)) - width / 2
-                            y: 20 + 56 * normalized * normalized
-
-                            Rectangle {
-                                id: hourDot
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                y: 34
-                                width: 9
-                                height: 9
-                                radius: width / 2
-                                color: Appearance.colors.colPrimary
-                            }
-
-                            StyledText {
-                                anchors {
-                                    horizontalCenter: parent.horizontalCenter
-                                    bottom: hourDot.top
-                                    bottomMargin: 3
-                                }
-                                text: hourPoint.modelData.label
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnSurfaceVariant
-                            }
-
-                            MaterialSymbol {
-                                id: hourIcon
-                                anchors {
-                                    horizontalCenter: parent.horizontalCenter
-                                    top: hourDot.bottom
-                                    topMargin: 4
-                                }
-                                text: Icons.getWeatherIcon(
-                                    hourPoint.modelData.code,
-                                    hourPoint.modelData.isNight) ?? "cloud"
-                                iconSize: Appearance.font.pixelSize.normal
-                                color: Appearance.colors.colOnSurface
-                            }
-
-                            StyledText {
-                                anchors {
-                                    horizontalCenter: parent.horizontalCenter
-                                    top: hourIcon.bottom
-                                    topMargin: 1
-                                }
-                                text: hourPoint.modelData.temp
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnSurfaceVariant
-                            }
-                        }
-                    }
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        visible: hourlyTimeline.hours.length === 0
-                        text: "—"
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        color: Appearance.colors.colOnSurfaceVariant
-                    }
+                StyledText {
+                    anchors.centerIn: parent
+                    anchors.verticalCenterOffset: 82
+                    visible: orbitalTimeline.hours.length === 0
+                    text: Translation.tr("Hourly forecast unavailable")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colOnSurfaceVariant
                 }
             }
         }

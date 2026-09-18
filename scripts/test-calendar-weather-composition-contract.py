@@ -5,7 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTENT = ROOT / "modules" / "bar" / "weather" / "WeatherPopupContent.qml"
-SURFACE = ROOT / "modules" / "perimeter" / "WeatherConnectedSurface.qml"
+POPUP = ROOT / "modules" / "bar" / "weather" / "WeatherPopup.qml"
+CLOCK = ROOT / "modules" / "bar" / "ClockWidget.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -20,18 +21,31 @@ def forbid(text: str, token: str, source: str) -> None:
 
 def main() -> None:
     content = CONTENT.read_text(encoding="utf-8")
-    surface = SURFACE.read_text(encoding="utf-8")
+    popup = POPUP.read_text(encoding="utf-8")
+    clock = CLOCK.read_text(encoding="utf-8")
+
+    forbid(clock, "ClockWidgetTooltip {", "ClockWidget.qml")
 
     for token in (
-        "readonly property real compactBreakpoint: 900",
+        "StyledPopup {",
+        "id: weatherContent",
+        "root.presentationWindow?.width",
+        "compact: (root.presentationWindow?.width ?? 1920) < weatherContent.compactBreakpoint",
+    ):
+        require(popup, token, "WeatherPopup.qml")
+
+    for token in (
+        "readonly property real compactBreakpoint: 1180",
         "columns: root.compact ? 1 : 3",
         "id: calendarPanel",
         "function calendarDay(index): int",
         "id: timeWeatherPanel",
+        "id: orbitalTimeline",
+        "(Weather.data?.hourly ?? []).slice(0, 8)",
+        "Math.cos(angle)",
+        "Math.sin(angle)",
+        "id: orbitGuide",
         "text: DateTime.timeDisplay",
-        "id: hourlyTimeline",
-        "Weather.data.hourly.slice(0, 5)",
-        "PathQuad {",
         "id: detailPanel",
         'title: Translation.tr("UV Index")',
         'title: Translation.tr("Wind")',
@@ -42,17 +56,8 @@ def main() -> None:
     ):
         require(content, token, "WeatherPopupContent.qml")
 
-    for token in (
-        "Math.max(320, weatherContent.implicitWidth + 24)",
-        "Math.max(220, weatherContent.implicitHeight + 24)",
-        "compact: geometry.maximumBodyWidth < weatherContent.compactBreakpoint",
-        "readonly property color surfaceColor: Appearance.colors.colLayer0",
-        'borderColor: "transparent"',
-        "borderWidth: 0",
-    ):
-        require(surface, token, "WeatherConnectedSurface.qml")
-
-    forbid(surface, "Appearance.inirEverywhere", "WeatherConnectedSurface.qml")
+    forbid(content, "id: hourlyTimeline", "WeatherPopupContent.qml")
+    forbid(content, "Weather.data.hourly.slice(0, 5)", "WeatherPopupContent.qml")
 
     print("Calendar / Weather v1.0 composition contract: PASS")
 

@@ -12,13 +12,26 @@ def main() -> None:
     required = (
         "columns: root.compact ? 1 : 3",
         "(Weather.data?.hourly ?? []).slice(0, 8)",
-        "anchors.verticalCenterOffset: -10",
-        "pixelSize: Math.round(Appearance.font.pixelSize.large * 2.6)",
+        "implicitHeight: composition.implicitHeight",
+        "implicitHeight: 270",
+        "anchors.topMargin: -12",
+        "anchors.bottomMargin: 0",
+        "anchors.verticalCenterOffset: -24",
+        "pixelSize: Math.round(Appearance.font.pixelSize.large * 1.55)",
         'text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)',
     )
     for token in required:
         if token not in source:
             raise AssertionError(f"Weather popup missing compact composition token: {token!r}")
+
+    for forbidden in (
+        "implicitHeight: 300",
+        "anchors.bottomMargin: 20",
+        "pixelSize: Math.round(Appearance.font.pixelSize.large * 2.0)",
+        "pixelSize: Math.round(Appearance.font.pixelSize.large * 2.6)",
+    ):
+        if forbidden in source:
+            raise AssertionError(f"Weather popup still contains oversized/loose layout token: {forbidden!r}")
 
     refresh_token = 'text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)'
     if source.count(refresh_token) != 1:

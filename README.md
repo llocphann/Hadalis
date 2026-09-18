@@ -55,7 +55,7 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 - [ ] **Screen Edge exists both while idle and while a window is maximized.** It must not disappear simply because no maximized window is present.
 - [ ] **Screen Edge width is configurable in Settings.** The setting must use one canonical configuration field, have a safe default/range and update the active edge without requiring an alternate renderer.
-- [ ] **All connected popups use one shared connector width/thickness contract.** No popup should invent a narrower stem or a private gap value.
+- [ ] **All connected surfaces use one shared direct-attachment contract.** No popup may draw a connector/stem or invent a private gap. Shared geometry owns seam overlap, joined-edge corner ownership, concave union shoulders and shadow clipping.
 - [ ] **No visible gap between bar/Screen Edge and popup body.** Shared geometry must own seam overlap so fractional scaling, animation and antialiasing do not expose a slit.
 - [ ] **Left and right Sidebars connect to the vertical Screen Edge**, not to the top bar or bottom screen edge.
 - [ ] Connected surfaces behave correctly for top/bottom/left/right bar placement, transformed outputs and fractional scale.
@@ -143,7 +143,7 @@ The existing popup path remains authoritative:
 ```text
 modules/bar/StyledPopup.qml
 modules/common/perimeter/ConnectedSurfaceGeometry.qml
-modules/common/perimeter/ConnectedSurfaceConnector.qml
+modules/common/perimeter/ConnectedSurfaceJoinFlares.qml
 modules/common/perimeter/ConnectedSurfaceFrame.qml
 modules/common/perimeter/ConnectedSurfaceContentHost.qml
 modules/common/perimeter/ConnectedSurfaceMask.qml
@@ -153,8 +153,8 @@ modules/common/perimeter/PerimeterTokens.qml
 Rules:
 
 - `StyledPopup.qml` remains the entry point for existing bar popouts.
-- Shared geometry/tokens own connector thickness, seam overlap, corner ownership and attachment behavior.
-- Consumers provide content and source ownership; they should not duplicate connector geometry.
+- Shared geometry/tokens own seam overlap, placement-driven edge attachment, joined-edge corner ownership, concave union shoulders and shadow clipping.
+- Consumers provide content and source ownership; they must not recreate connector/stem geometry or private edge gaps.
 - Keep source-aware placement and shaped input regions.
 - Preserve top/bottom/left/right attachment and output ownership.
 - Fix shared geometry when the defect is systemic; do not paper over the same seam bug in every popup.
@@ -198,7 +198,7 @@ bash scripts/validate-maintainer-local.sh
 Then perform live desktop checks:
 
 - [ ] Screen Edge visible when idle and maximized; width setting updates correctly.
-- [ ] Connected popups from top, bottom, left and right positions have no visible gap and use a consistent connector width.
+- [ ] Connected popups from top, bottom, left and right positions have no visible gap; attached edges are square and shadow-free, while only unattached outer corners remain rounded and shadowed.
 - [ ] Left/right Sidebars connect to the correct Screen Edge.
 - [ ] Settings > Bar renders; Thinkfan and Screen Edge controls are reachable.
 - [ ] System Monitor contains Thinkfan functionality and no duplicate Thinkfan popup remains in normal UX.
@@ -258,7 +258,7 @@ Source work already present on `dev`:
 
 - persistent Screen Edge surfaces exist in `modules/screenCorners/ScreenEdges.qml`; they are intended to remain visible while idle/normal/maximized and hide only for explicit fullscreen/lock cases;
 - Screen Edge width is exposed through the active Bar Settings path, and the edge now paints wallpaper-facing rounded inner corners without changing the rectangular physical edge bands;
-- connected popup connector width is centralized through the shared perimeter tokens/geometry instead of expanding to each source control width;
+- connected popups use shared direct-body attachment geometry: seam overlap, placement-driven touched-edge joins, concave union shoulders and joined-edge shadow clipping are centralized instead of drawing connector stems;
 - `modules/sidebar/SidebarHost.qml` now attaches the Left/Right sidebar body directly to the inner vertical Screen Edge boundary using the shared seam overlap; both the old standalone bridge window and the later in-window connector stem are retired;
 - the broad legacy `modules/perimeter` runtime/topology/adapters have been retired and removed after caller auditing; the old cutover policy was removed as well, and regression contracts were aligned with the supported connected-surface architecture;
 - the dead common perimeter host/config/cutover/route compatibility cluster has also been removed; `PerimeterTopology.qml` remains only as the small edge utility used by `ConnectedSurfaceGeometry.qml`;
@@ -326,7 +326,7 @@ Mục tiêu UI/UX: giữ kiến trúc/functionality iNiR hiện có nhưng làm 
 
 Trạng thái source hiện tại đã có:
 - persistent Screen Edge + width setting; Screen Edge có wallpaper-facing rounded inner corners;
-- connector width dùng shared contract;
+- direct attachment dùng shared seam/join/shadow contract; không có connector stem trong normal popup UX;
 - broad legacy `modules/perimeter` runtime/topology/adapters và cutover policy đã được retire/xóa; TUYỆT ĐỐI không dựng lại broad perimeter runtime;
 - shared connected-surface primitives đang active ở `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml` và `modules/bar/StyledPopup.qml`;
 - Thinkfan đã tích hợp vào System Monitor/resources popup + Settings; fresh repo-managed install provision helper/polkit bridge và required migration `041-thinkfan-helper-bridge` tự reconcile bridge bị thiếu/outdated trên repo-managed update mà không chạm upstream Thinkfan package/service/config;
@@ -339,7 +339,7 @@ Trạng thái source hiện tại đã có:
 - workspace hover preview đã reuse `BarTaskbarPreview` + `BarTaskbarWindowPreview` + WindowPreviewService cho cả Niri/Hyprland, không dựng preview framework mới.
 
 Maintainer-reported việc còn phải sửa:
-1. Connected popup geometry phải liền với Bar/Screen Edge kiểu Caelestia; connector/body phải align đúng.
+1. Connected popup geometry phải liền trực tiếp với Bar/Screen Edge kiểu Caelestia: không connector stem; edge tiếp xúc không radius và không shadow; chỉ các cạnh ngoài mới giữ radius/shadow.
 2. Nếu Bar chiếm một edge thì không render Screen Edge trên cùng edge đó; Screen Edge dùng cùng surface color contract với Bar.
 3. Media Popup phải thực sự hiển thị Equalizer/CAVA.
 4. Bỏ hover popup riêng của Time & Date; merge hover vào Weather/Calendar và làm frontend left/center sát Serpantinum hơn, vẫn giữ detailed Hadalis weather ở right.

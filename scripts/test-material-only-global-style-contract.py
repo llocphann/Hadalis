@@ -65,6 +65,7 @@ ON_SCREEN_KEYBOARD = ROOT / "modules" / "onScreenKeyboard" / "OnScreenKeyboard.q
 OSK_KEY = ROOT / "modules" / "onScreenKeyboard" / "OskKey.qml"
 SCREEN_CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
 SIDEBAR_LEFT_CONTENT = ROOT / "modules" / "sidebarLeft" / "SidebarLeftContent.qml"
+SIDEBAR_RIGHT_CONTENT = ROOT / "modules" / "sidebarRight" / "SidebarRightContent.qml"
 VERTICAL_BAR_CONTENT = ROOT / "modules" / "verticalBar" / "VerticalBarContent.qml"
 VERTICAL_CLOCK_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalClockWidget.qml"
 VERTICAL_DATE_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalDateWidget.qml"
@@ -158,6 +159,7 @@ def main() -> None:
     osk_key = OSK_KEY.read_text(encoding="utf-8")
     screen_corners = SCREEN_CORNERS.read_text(encoding="utf-8")
     sidebar_left_content = SIDEBAR_LEFT_CONTENT.read_text(encoding="utf-8")
+    sidebar_right_content = SIDEBAR_RIGHT_CONTENT.read_text(encoding="utf-8")
     vertical_bar_content = VERTICAL_BAR_CONTENT.read_text(encoding="utf-8")
     vertical_clock_widget = VERTICAL_CLOCK_WIDGET.read_text(encoding="utf-8")
     vertical_date_widget = VERTICAL_DATE_WIDGET.read_text(encoding="utf-8")
@@ -1457,6 +1459,63 @@ def main() -> None:
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+
+    # Default SidebarRightContent is the primary right-sidebar content tree.
+    # Keep connected-edge geometry, explicit island skin, section reordering/
+    # resizing, dialogs and quick-toggle routing while collapsing chrome to Material.
+    for token in legacy_style_tokens:
+        forbid(sidebar_right_content, token, "sidebarRight/SidebarRightContent.qml")
+    for token in (
+        "zzzEverywhere",
+        "regaliaEverywhere",
+        "angelEverywhere",
+        "inirEverywhere",
+        "auroraEverywhere",
+        "RegaliaPlate {",
+        "ZzzPanelBackdrop {",
+        "AngelPartialBorder {",
+    ):
+        forbid(sidebar_right_content, token, "sidebarRight/SidebarRightContent.qml")
+    for token in (
+        "readonly property color connectedSurfaceColor: sidebarRightBackground.color",
+        'readonly property bool islandStyle: surfaceDialect === "island"',
+        "IslandPanel {",
+        "visible: sidebarRightBackground.islandStyle",
+        "color: (gameModeMinimal || islandStyle) ? \"transparent\"",
+        "Appearance.colors.colLayer1",
+        "Appearance.colors.colLayer0",
+        "radius: cardStyle",
+        'joinLeft: root.attachedEdge === "left"',
+        'joinRight: root.attachedEdge === "right"',
+        'topLeftRadius: root.attachedEdge === "left" ? 0 : radius',
+        'topRightRadius: root.attachedEdge === "right" ? 0 : radius',
+        'Config.setNestedValue("sidebar.right.sectionOrder", newOrder)',
+        "startSectionDrag(",
+        "updateSectionDrag(",
+        "endSectionDrag()",
+        "startSectionResize(",
+        "updateSectionResize(",
+        "endSectionResize()",
+        "Config.setNestedValues({",
+        "radius: Appearance.rounding.verysmall",
+        "Appearance.colors.colLayer1Hover",
+        "Appearance.colors.colPrimaryContainer",
+        "Appearance.colors.colOutlineVariant",
+        "Appearance.colors.colOnLayer2",
+        "SidebarProfileHeader {",
+        "surfaceDialect: sidebarRightBackground.surfaceDialect",
+        "QuickSliders {}",
+        "ClassicQuickPanel {}",
+        "AndroidQuickPanel { editMode: root.editMode }",
+        "CenterWidgetGroup { collapsed: root.notifsCollapsed }",
+        "BottomWidgetGroup {}",
+        "ToggleDialog {",
+        "Network.rescanWifi()",
+        "Bluetooth.defaultAdapter.discovering = true",
+        "root.requestReload()",
+        "root.openSettings()",
+    ):
+        require(sidebar_right_content, token, "sidebarRight/SidebarRightContent.qml")
 
     # SidebarLeftContent is hosted by the shared physical-edge SidebarHost.
     # Keep its explicit Ricelin island skin, connected-edge geometry and all

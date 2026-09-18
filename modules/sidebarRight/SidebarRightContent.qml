@@ -11,7 +11,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Hyprland
-import QtQuick.Effects
 import Qt5Compat.GraphicalEffects as GE
 
 import qs.modules.sidebarRight.quickToggles
@@ -446,56 +445,22 @@ Item {
         implicitHeight: Math.max(0, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
         implicitWidth: sidebarWidth - Appearance.sizes.hyprlandGapsOut * 2
         property bool cardStyle: Config.options?.sidebar?.cardStyle ?? false
-        // Resolve one owner for the complete surface. Explicit Ricelin islands
-        // override the global worldview; otherwise the selected global style owns it.
+        // Ricelin island mode remains an explicit supported sidebar skin;
+        // otherwise the sidebar uses the canonical Material surface.
         readonly property string surfaceDialect: Appearance.surfaceDialectFor(
             (Config.options?.sidebar?.style ?? "panel") === "island" ? "island" : "")
         readonly property bool islandStyle: surfaceDialect === "island"
-        readonly property bool zzzEverywhere: surfaceDialect === "zzz"
-        readonly property bool regaliaEverywhere: surfaceDialect === "regalia"
-        readonly property bool angelEverywhere: surfaceDialect === "angel"
-        readonly property bool auroraEverywhere: surfaceDialect === "aurora" || angelEverywhere
-        readonly property bool inirEverywhere: surfaceDialect === "inir"
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
-        readonly property string wallpaperUrl: {
-            const _dep1 = WallpaperListener.multiMonitorEnabled
-            const _dep2 = WallpaperListener.effectivePerMonitor
-            const _dep3 = Wallpapers.effectiveWallpaperUrl
-            return WallpaperListener.wallpaperUrlForScreen(root.panelScreen)
-        }
-        readonly property bool useWallpaperBackdrop: root.panelVisible
-            && auroraEverywhere
-            && !inirEverywhere
-            && !gameModeMinimal
-            && wallpaperUrl.length > 0
-
-        ColorQuantizer {
-            id: sidebarRightWallpaperQuantizer
-            source: sidebarRightBackground.auroraEverywhere ? sidebarRightBackground.wallpaperUrl : ""
-            depth: 0
-            rescaleSize: 10
-        }
-
-        readonly property color wallpaperDominantColor: (sidebarRightWallpaperQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary)
-        readonly property QtObject blendedColors: AdaptedMaterialScheme {
-            color: ColorUtils.mix(sidebarRightBackground.wallpaperDominantColor, Appearance.colors.colPrimaryContainer, 0.8) || Appearance.colors.colSecondaryContainer
-        }
 
         color: (gameModeMinimal || islandStyle) ? "transparent"
-            : zzzEverywhere ? Appearance.zzz.chrome
-            : regaliaEverywhere ? "transparent"
-            : inirEverywhere ? (cardStyle ? Appearance.inir.colLayer1 : Appearance.inir.colLayer0)
-            : auroraEverywhere ? ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
             : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
         // Screen Edge owns the outer shell boundary. Drawing a second outline
         // here makes the edge/sidebar join read as two stacked cards.
         border.width: 0 // Screen Edge seam owns the outer boundary
         border.color: "transparent"
-        radius: zzzEverywhere ? Appearance.zzz.panelRadius
-            : regaliaEverywhere ? Appearance.regalia.panelRadius
-            : angelEverywhere ? Appearance.angel.roundingNormal
-            : inirEverywhere ? (cardStyle ? Appearance.inir.roundingLarge : Appearance.inir.roundingNormal)
-            : cardStyle ? Appearance.rounding.normal : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+        radius: cardStyle
+            ? Appearance.rounding.normal
+            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         topLeftRadius: root.attachedEdge === "left" ? 0 : radius
         bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
         topRightRadius: root.attachedEdge === "right" ? 0 : radius
@@ -508,17 +473,6 @@ Item {
         Behavior on color {
             enabled: Appearance.animationsEnabled
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-        }
-
-        RegaliaPlate {
-            anchors.fill: parent
-            visible: sidebarRightBackground.regaliaEverywhere
-            fillColor: sidebarRightBackground.cardStyle ? Appearance.regalia.chassis1 : Appearance.regalia.bg0
-            radius: sidebarRightBackground.radius
-            inset: Appearance.regalia.panelInset
-            elevated: sidebarRightBackground.cardStyle
-            deepFrame: !sidebarRightBackground.cardStyle
-            glassEnabled: true
         }
 
         clip: true
@@ -535,92 +489,6 @@ Item {
                 topRightRadius: sidebarRightBackground.topRightRadius
                 bottomLeftRadius: sidebarRightBackground.bottomLeftRadius
                 bottomRightRadius: sidebarRightBackground.bottomRightRadius
-            }
-        }
-
-        Image {
-            id: sidebarRightBlurredWallpaper
-            x: -(root.screenWidth - sidebarRightBackground.width - Appearance.sizes.hyprlandGapsOut)
-            y: -Appearance.sizes.hyprlandGapsOut
-            width: root.screenWidth ?? 1920
-            height: root.screenHeight ?? 1080
-            visible: sidebarRightBackground.useWallpaperBackdrop
-            source: sidebarRightBackground.useWallpaperBackdrop ? sidebarRightBackground.wallpaperUrl : ""
-            fillMode: Image.PreserveAspectCrop
-            cache: true
-            sourceSize.width: root.screenWidth ?? 1920
-            sourceSize.height: root.screenHeight ?? 1080
-            asynchronous: true
-
-            // OPTIMIZATION: Release FBO when sidebar is hidden (saves ~16 MiB VRAM)
-            layer.enabled: Appearance.effectsEnabled && sidebarRightBackground.useWallpaperBackdrop && root.panelVisible
-            layer.effect: MultiEffect {
-                source: sidebarRightBlurredWallpaper
-                anchors.fill: source
-                saturation: sidebarRightBackground.angelEverywhere
-                    ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
-                    : (Appearance.effectsEnabled ? 0.2 : 0)
-                blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
-                blur: Appearance.effectsEnabled
-                    ? (sidebarRightBackground.angelEverywhere ? Appearance.angel.blurIntensity : 1)
-                    : 0
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                color: sidebarRightBackground.angelEverywhere
-                    ? ColorUtils.transparentize((sidebarRightBackground.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.angel.overlayOpacity * Appearance.angel.panelTransparentize)
-                    : ColorUtils.transparentize((sidebarRightBackground.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.aurora.overlayTransparentize)
-            }
-        }
-
-        // Angel inset glow — top edge
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Appearance.angel.insetGlowHeight
-            visible: sidebarRightBackground.angelEverywhere
-            color: Appearance.angel.colInsetGlow
-            z: 10
-        }
-
-        // Angel partial border — elegant half-borders
-        AngelPartialBorder {
-            visible: sidebarRightBackground.angelEverywhere
-            targetRadius: sidebarRightBackground.radius
-            z: 10
-        }
-
-        ZzzPanelBackdrop {
-            anchors.fill: parent
-            visible: sidebarRightBackground.zzzEverywhere && opacity > 0
-            label: "SYSTEM"
-            index: "R"
-            ghostText: "RIGHT"
-            accentColor: Appearance.zzz.accent
-            showTicks: false
-            showBurst: false
-            showGrid: true
-            horizontalBias: 0.18
-            verticalBias: 0.04
-            ghostWidthFactor: 0.86
-            ghostStrength: 0.7
-            z: 0
-        }
-
-        // ZZZ content wash: stepped tile plate lifts content off the bare chrome
-        // so cards/text read cleanly while structural hairlines stay. Low-alpha
-        // so chrome + ghost marks still breathe.
-        Rectangle {
-            anchors.fill: parent
-            visible: sidebarRightBackground.zzzEverywhere
-            color: ColorUtils.applyAlpha(Appearance.zzz.tile, 0.55)
-            z: 0
-            Behavior on color {
-                enabled: Appearance.animationsEnabled
-                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
         }
 
@@ -699,7 +567,7 @@ Item {
                         anchors.rightMargin: 12
                         height: 3
                         radius: 1.5
-                        color: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
+                        color: Appearance.colors.colPrimary
                         opacity: sectionLoader.isDropTarget && root.sectionHoverIndex < root.sectionDragIndex ? 0.85 : 0
                         visible: opacity > 0
                         z: 10
@@ -712,7 +580,7 @@ Item {
                         anchors.rightMargin: 12
                         height: 3
                         radius: 1.5
-                        color: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
+                        color: Appearance.colors.colPrimary
                         opacity: sectionLoader.isDropTarget && root.sectionHoverIndex > root.sectionDragIndex ? 0.85 : 0
                         visible: opacity > 0
                         z: 10
@@ -729,18 +597,18 @@ Item {
                         width: 30
                         height: 22
                         z: 20
-                        radius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.verysmall
+                        radius: Appearance.rounding.verysmall
                         color: sectionHandleArea.containsMouse || sectionLoader.isBeingDragged
-                            ? (Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover : Appearance.colors.colLayer1Hover)
-                            : (Appearance.inirEverywhere ? Appearance.inir.colLayer1 : Appearance.colors.colLayer1)
-                        border.width: Appearance.inirEverywhere ? 1 : 0
-                        border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent"
+                            ? Appearance.colors.colLayer1Hover
+                            : Appearance.colors.colLayer1
+                        border.width: 0
+                        border.color: "transparent"
 
                         MaterialSymbol {
                             anchors.centerIn: parent
                             text: "drag_indicator"
                             iconSize: 14
-                            color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
+                            color: Appearance.colors.colOnLayer1
                         }
 
                         MouseArea {
@@ -783,12 +651,12 @@ Item {
                         z: 22
                         radius: height / 2
                         color: resizeHandleArea.containsMouse || sectionLoader.isBeingResized
-                            ? (Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimaryContainer)
-                            : (Appearance.inirEverywhere ? Appearance.inir.colLayer1 : Appearance.colors.colLayer2)
+                            ? Appearance.colors.colPrimaryContainer
+                            : Appearance.colors.colLayer2
                         border.width: 1
                         border.color: sectionLoader.isBeingResized
-                            ? (Appearance.inirEverywhere ? Appearance.inir.colBorderAccent : Appearance.colors.colPrimary)
-                            : (Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colOutlineVariant)
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colOutlineVariant
 
                         Row {
                             anchors.centerIn: parent
@@ -797,13 +665,13 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "height"
                                 iconSize: 12
-                                color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer2
+                                color: Appearance.colors.colOnLayer2
                             }
                             StyledText {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: Math.round(root.sectionWeight(sectionLoader.modelData) * 50) + "%"
                                 font.pixelSize: Appearance.font.pixelSize.smallest
-                                color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer2
+                                color: Appearance.colors.colOnLayer2
                             }
                         }
 
@@ -1033,29 +901,22 @@ Item {
                 bottom: parent.bottom
                 left: parent.left
             }
-            color: Appearance.zzzEverywhere ? "transparent"
-                : sidebarRightBackground.angelEverywhere ? Appearance.angel.colGlassCard
-                : sidebarRightBackground.auroraEverywhere
-                ? Appearance.aurora.colSubSurface
-                : Appearance.colors.colLayer1
+            color: Appearance.colors.colLayer1
             Behavior on color {
                 enabled: Appearance.animationsEnabled
                 ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
-            radius: Appearance.zzzEverywhere ? Appearance.zzz.cardRadius
-                : sidebarRightBackground.angelEverywhere ? Appearance.angel.roundingSmall : height / 2
+            radius: height / 2
             Behavior on radius {
                 enabled: Appearance.animationsEnabled
                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
-            border.width: Appearance.zzzEverywhere ? 0
-                : sidebarRightBackground.angelEverywhere ? Appearance.angel.cardBorderWidth : 0
+            border.width: 0
             Behavior on border.width {
                 enabled: Appearance.animationsEnabled
                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
-            border.color: Appearance.zzzEverywhere ? "transparent"
-                : sidebarRightBackground.angelEverywhere ? Appearance.angel.colCardBorder : "transparent"
+            border.color: "transparent"
             Behavior on border.color {
                 enabled: Appearance.animationsEnabled
                 ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -1074,8 +935,7 @@ Item {
                     height: 25
                     source: SystemInfo.distroIcon
                     colorize: true
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                        : Appearance.angelEverywhere ? Appearance.angel.colText : Appearance.colors.colOnLayer0
+                    color: Appearance.colors.colOnLayer0
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -1084,11 +944,10 @@ Item {
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     font.pixelSize: Appearance.font.pixelSize.normal
-                    font.family: Appearance.zzzEverywhere ? Appearance.font.family.numbers : Appearance.font.family.main
-                    font.weight: Appearance.zzzEverywhere ? Font.Black : Font.Normal
-                    font.italic: Appearance.zzzEverywhere
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                        : Appearance.angelEverywhere ? Appearance.angel.colText : Appearance.colors.colOnLayer0
+                    font.family: Appearance.font.family.main
+                    font.weight: Font.Normal
+                    font.italic: false
+                    color: Appearance.colors.colOnLayer0
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -1106,11 +965,7 @@ Item {
                 bottom: parent.bottom
                 right: parent.right
             }
-            color: Appearance.zzzEverywhere ? "transparent"
-                : sidebarRightBackground.angelEverywhere ? Appearance.angel.colGlassCard
-                : sidebarRightBackground.auroraEverywhere
-                ? Appearance.aurora.colSubSurface
-                : Appearance.colors.colLayer1
+            color: Appearance.colors.colLayer1
             Behavior on color {
                 enabled: Appearance.animationsEnabled
                 ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

@@ -26,7 +26,16 @@ Singleton {
     function flushWrites(): void {
         fileWriteTimer.stop();
         fileReloadTimer.stop();
+        if (!root.ready) {
+            root._pendingWrite = true;
+            return;
+        }
+        if (root._writeInFlight) {
+            root._pendingWrite = true;
+            return;
+        }
         root._prepareCustomInject();
+        root._pendingWrite = false;
         root._writeInFlight = true;
         root._writeRetries = 0;
         root._writeMirrorToDisk();

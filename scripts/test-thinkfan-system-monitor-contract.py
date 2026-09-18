@@ -18,6 +18,10 @@ def check(condition: bool, message: str) -> None:
 def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
     styled_popup = read("modules/bar/StyledPopup.qml")
+    config_schema = read("modules/common/Config.qml")
+    default_config = read("defaults/config.json")
+    thinkfan_service = read("services/ThinkFanService.qml")
+    thinkfan_helper = read("assets/helpers/inir-thinkfan")
     system_settings = read("modules/settings/GeneralConfigCore.qml")
     system_facade = read("modules/settings/GeneralConfig.qml")
     settings_registry = read("modules/settings/SettingsPageRegistryData.qml")
@@ -72,12 +76,63 @@ def main() -> None:
               f"StyledPopup must support the opt-in adjacent Screen Edge join: {token}")
 
     for token in (
+        "property JsonObject fanControl: JsonObject {",
+        "property bool enabled: false",
+        "property int powerSaver: 0",
+        "property int balanced: 0",
+        "property int performance: 0",
+    ):
+        check(token in config_schema,
+              f"Config schema must persist safe per-profile fan levels: {token}")
+
+    for token in (
+        '"fanControl": {',
+        '"powerSaver": 0',
+        '"balanced": 0',
+        '"performance": 0',
+    ):
+        check(token in default_config,
+              f"Default config must keep per-profile fan levels on Auto: {token}")
+
+    for token in (
+        "import Quickshell.Services.UPower",
+        "property bool directControlAvailable: false",
+        "readonly property string activePowerProfileKey:",
+        "readonly property int configuredActiveFanLevel:",
+        "function applyFanLevel(requestedLevel): bool",
+        "function applyConfiguredPowerProfileFanLevel(): bool",
+        'root.lastApplyError = "managed-control-active"',
+        "root._profileFollowArmed",
+    ):
+        check(token in thinkfan_service,
+              f"ThinkFan service must own guarded power-profile fan levels: {token}")
+
+    for token in (
+        "fan_control_path=/sys/module/thinkpad_acpi/parameters/fan_control",
+        "direct_control_available()",
+        "--set-level auto|1..7",
+        "set_fan_level()",
+        "auto|1|2|3|4|5|6|7",
+        "stop ThinkFan managed control before setting a fixed fan level",
+        "level auto",
+    ):
+        check(token in thinkfan_helper,
+              f"Privileged helper must guard direct fan-level control: {token}")
+
+    for token in (
         'settingsTaskSection: "fan"',
         'title: Translation.tr("Fan Control")',
         'text: Translation.tr("ThinkFan managed control")',
         "ThinkFanService.applyProfile(",
         "checked: root.thinkFanManaged",
         '{ displayName: Translation.tr("Fan Control"), icon: "mode_fan", value: "fan" }',
+        'text: Translation.tr("Follow power profile fan level")',
+        'text: Translation.tr("Power Saver fan level")',
+        'text: Translation.tr("Balanced fan level")',
+        'text: Translation.tr("Performance fan level")',
+        "ThinkFanService.directControlAvailable",
+        "root.setProfileFanLevel(",
+        "ThinkFanService.applyConfiguredPowerProfileFanLevel()",
     ):
         check(token in system_settings,
               f"System Settings must own the shared ThinkFan profile control: {token}")

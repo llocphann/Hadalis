@@ -308,7 +308,7 @@ def main() -> None:
         check("Appearance.animation.elementMove.duration" in settings_surface
               and "Appearance.animation.elementMove.bezierCurve" in settings_surface,
               "Connected Settings overlays must use the Caelestia-style default-spatial slide")
-        check("Appearance.m3colors.m3shadow" in settings_surface
+        check("Appearance.colors.colShadow" in settings_surface
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface,
               "Connected Settings overlays must share the Screen Edge shadow contract")
@@ -326,9 +326,9 @@ def main() -> None:
     check("Appearance.animation.elementMove.duration" in dashboard
           and "Appearance.animation.elementMove.bezierCurve" in dashboard,
           "Dashboard connected slide must use the default-spatial motion token")
-    check("Appearance.m3colors.m3shadow" in dashboard
-          and "Appearance.colors.colShadow" not in dashboard,
-          "Dashboard connected shadow must use canonical Material shadow ink")
+    check("Appearance.colors.colShadow" in dashboard
+          and "Appearance.m3colors.m3shadow" not in dashboard,
+          "Dashboard connected shadow must use the same themed shadow ink as Screen Edge and Bar")
     check("import qs.modules.mediaControls" in dashboard
           and "EqualizerPanel {" in dashboard
           and "id: dashboardEqualizer" in dashboard,
@@ -360,9 +360,8 @@ def main() -> None:
           and "HoverHandler {" in frame,
           "ConnectedSurfaceFrame must expose body-scoped hover ownership for popup hand-off")
     generic_shadow = read("modules/common/widgets/StyledRectangularShadow.qml")
-    check("Appearance.m3colors.m3shadow" in generic_shadow
-          and "Appearance.colors.colShadow" not in generic_shadow,
-          "Shared rectangular shadow must not disappear with transparent Material surfaces")
+    check("property color color: Appearance.colors.colShadow" in generic_shadow,
+          "Shared rectangular shadow must default to the themed shell shadow source")
     check("cached: !(root.joinTop || root.joinBottom" in generic_shadow,
           "Joined connected shadows must render live while translated")
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
@@ -543,9 +542,9 @@ def main() -> None:
         "modules/onScreenKeyboard/OnScreenKeyboard.qml",
     ):
         connected_shadow_source = read(connected_shadow_path)
-        check("Appearance.m3colors.m3shadow" in connected_shadow_source
-              and "ColorUtils.applyAlpha(Appearance.colors.colShadow" not in connected_shadow_source,
-              f"{connected_shadow_path} must use canonical connected shadow ink")
+        check("ColorUtils.applyAlpha(Appearance.colors.colShadow" in connected_shadow_source
+              and "Appearance.m3colors.m3shadow" not in connected_shadow_source,
+              f"{connected_shadow_path} must use the same themed shadow ink as Screen Edge and Bar")
 
     osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     check("visible: root._oskResident" in osk_shadow

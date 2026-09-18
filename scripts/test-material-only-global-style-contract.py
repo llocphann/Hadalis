@@ -12,6 +12,7 @@ CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
+STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
 FONT_SELECTOR = ROOT / "modules" / "common" / "widgets" / "FontSelector.qml"
 ICON_THEME_SELECTOR = ROOT / "modules" / "common" / "widgets" / "IconThemeSelector.qml"
@@ -43,6 +44,7 @@ def main() -> None:
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
+    styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
     font_selector = FONT_SELECTOR.read_text(encoding="utf-8")
     icon_theme_selector = ICON_THEME_SELECTOR.read_text(encoding="utf-8")
@@ -375,6 +377,28 @@ def main() -> None:
         "color: Appearance.colors.colOnLayer0",
     ):
         require(ripple_button, token, "RippleButton.qml")
+
+    # StyledRectangularShadow is shared by active Media/Overview/Settings
+    # surfaces. Keep caller-facing knobs, but render only the Material shadow.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.cookieEverywhere",
+        "Appearance.regalia.",
+        "Appearance.angel.",
+        "Appearance.cookie.",
+    ):
+        forbid(styled_rectangular_shadow, token, "StyledRectangularShadow.qml")
+    for token in (
+        "property bool hovered: false",
+        "property real spread: 1",
+        "property color color: Appearance.colors.colShadow",
+        "property vector2d offset: Qt.vector2d(0.0, 1.0)",
+        "visible: !Appearance.gameModeMinimal && Appearance.effectsEnabled",
+        "radius: root.radius + root.blur * 0.75",
+    ):
+        require(styled_rectangular_shadow, token, "StyledRectangularShadow.qml")
 
     # StyledComboBox is active Settings/shared control chrome. Preserve its
     # public ComboBox/search contract while rendering only the Material fallback.

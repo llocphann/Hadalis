@@ -158,42 +158,45 @@ StyledPopup {
             root.close()
     }
 
-    Connections {
-        target: ToplevelManager.toplevels
-        function onValuesChanged(): void {
-            root._refreshPreviewToplevels()
-        }
-    }
-
-    Connections {
-        target: CompositorService
-        function onSortedToplevelsChanged(): void {
-            if (root.previewMode === "app")
-                root._refreshAppToplevels()
-        }
-    }
-
-    Connections {
-        target: NiriService
-        enabled: CompositorService.isNiri
-        function onWindowsChanged(): void {
-            root._refreshWorkspaceToplevels()
-        }
-        function onAllWorkspacesChanged(): void {
-            root._refreshWorkspaceToplevels()
-        }
-    }
-
-    Connections {
-        target: Hyprland.toplevels
-        enabled: CompositorService.isHyprland
-        function onValuesChanged(): void {
-            root._refreshWorkspaceToplevels()
-        }
-    }
-
     Item {
         id: previewContent
+
+        // StyledPopup's default property is Item-only. Keep all non-visual
+        // listeners inside the one visual content Item so QML never tries to
+        // assign Connections objects to contentItem.
+        Connections {
+            target: ToplevelManager.toplevels
+            function onValuesChanged(): void {
+                root._refreshPreviewToplevels()
+            }
+        }
+
+        Connections {
+            target: CompositorService
+            function onSortedToplevelsChanged(): void {
+                if (root.previewMode === "app")
+                    root._refreshAppToplevels()
+            }
+        }
+
+        Connections {
+            target: NiriService
+            enabled: CompositorService.isNiri
+            function onWindowsChanged(): void {
+                root._refreshWorkspaceToplevels()
+            }
+            function onAllWorkspacesChanged(): void {
+                root._refreshWorkspaceToplevels()
+            }
+        }
+
+        Connections {
+            target: Hyprland.toplevels
+            enabled: CompositorService.isHyprland
+            function onValuesChanged(): void {
+                root._refreshWorkspaceToplevels()
+            }
+        }
 
         clip: true
         implicitWidth: root.isVertical

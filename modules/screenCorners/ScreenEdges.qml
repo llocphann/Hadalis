@@ -283,9 +283,6 @@ Scope {
                 top: edge === "top" ? edgeBand.bottom : undefined
                 bottom: edge === "bottom" ? edgeBand.top : undefined
             }
-            cornerRadius: root.innerRadius
-            shadowExtent: root.shadowExtent
-            shadowColor: root.shadowColor
             corner: edge === "top"
                 ? RoundCorner.CornerEnum.TopLeft
                 : RoundCorner.CornerEnum.BottomLeft
@@ -303,9 +300,6 @@ Scope {
                 top: edge === "top" ? edgeBand.bottom : undefined
                 bottom: edge === "bottom" ? edgeBand.top : undefined
             }
-            cornerRadius: root.innerRadius
-            shadowExtent: root.shadowExtent
-            shadowColor: root.shadowColor
             corner: edge === "top"
                 ? RoundCorner.CornerEnum.TopRight
                 : RoundCorner.CornerEnum.BottomRight

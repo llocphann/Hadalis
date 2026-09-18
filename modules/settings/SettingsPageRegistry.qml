@@ -25,6 +25,7 @@ Singleton {
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
     property bool _legacyBarCornerStyleMigrationDone: false
+    property bool _legacyBarBackgroundMigrationDone: false
     property bool _legacySidebarSurfaceMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
@@ -136,6 +137,18 @@ Singleton {
             Config.setNestedValue("bar.cornerStyle", 0)
     }
 
+    function _migrateLegacyBarBackground(): void {
+        if (root._legacyBarBackgroundMigrationDone || !Config.ready)
+            return
+
+        root._legacyBarBackgroundMigrationDone = true
+        // The supported Hug Bar is a structural connected surface. A legacy
+        // transparent-bar value removes both its endpoint shoulders and the
+        // shared inward shadow, leaving popups visually detached.
+        if (!(Config.options?.bar?.showBackground ?? true))
+            Config.setNestedValue("bar.showBackground", true)
+    }
+
     function _migrateLegacySidebarSurface(): void {
         if (root._legacySidebarSurfaceMigrationDone || !Config.ready)
             return
@@ -193,6 +206,7 @@ Singleton {
         root._migrateLegacyDockStyle()
         root._migrateLegacyUiLocale()
         root._migrateLegacyBarCornerStyle()
+        root._migrateLegacyBarBackground()
         root._migrateLegacySidebarSurface()
     }
 
@@ -211,6 +225,7 @@ Singleton {
                 root._migrateLegacyDockStyle()
                 root._migrateLegacyUiLocale()
                 root._migrateLegacyBarCornerStyle()
+                root._migrateLegacyBarBackground()
                 root._migrateLegacySidebarSurface()
             }
         }

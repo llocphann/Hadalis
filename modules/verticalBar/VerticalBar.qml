@@ -260,7 +260,7 @@ Scope {
                                 ? Appearance.colors.colLayer0
                                 : "transparent"
 
-                            // Top corner - solid for Material/Inir
+                            // Top Material corner.
                             RoundCorner {
                                 id: topCorner
                                 anchors {
@@ -282,7 +282,7 @@ Scope {
                                 }
                             }
 
-                            // Bottom corner - solid for Material/Inir
+                            // Bottom Material corner.
                             RoundCorner {
                                 id: bottomCorner
                                 anchors {
@@ -301,8 +301,6 @@ Scope {
                                         bottomCorner.corner: RoundCorner.CornerEnum.BottomRight
                                     }
                                 }
-                            }
-
                             }
                         }
                     }

@@ -176,8 +176,11 @@ for shadow_source in \
     "$root/modules/bar/Bar.qml" \
     "$root/modules/verticalBar/VerticalBar.qml" \
     "$styled_popup"; do
-    grep -Fq 'Appearance.m3colors.m3shadow' "$shadow_source" \
-        || fail "${shadow_source#$root/} must use the canonical perimeter shadow ink"
+    grep -Fq 'Appearance.colors.colShadow' "$shadow_source" \
+        || fail "${shadow_source#$root/} must use the shared themed perimeter shadow ink"
+    if grep -Fq 'Appearance.m3colors.m3shadow' "$shadow_source"; then
+        fail "${shadow_source#$root/} must not bypass the shared themed shadow source"
+    fi
 done
 grep -Fq 'exclusiveZone: mapped ? root.thickness : 0' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge thickness must define the compositor layout boundary'

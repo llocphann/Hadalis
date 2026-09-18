@@ -17,44 +17,8 @@ StyledPopup {
         && ThinkFanService.serviceInstalled
         && !ThinkFanService.busy
         && (popup.thinkFanManaged || ThinkFanService.available)
-    readonly property string thinkFanStatusMessage: {
-        if (ThinkFanService.busy)
-            return Translation.tr("Applying fan control profile…")
-        if (!ThinkFanService.stateKnown)
-            return popup.describeThinkFanStatus(ThinkFanService.statusReason)
-        if (ThinkFanService.statusReason.length > 0)
-            return popup.describeThinkFanStatus(ThinkFanService.statusReason)
-        return popup.thinkFanManaged
-            ? Translation.tr("ThinkFan is managing the fan")
-            : Translation.tr("Firmware controls the fan")
-    }
     readonly property string thinkFanApplyErrorMessage:
         popup.describeThinkFanApplyError(ThinkFanService.lastApplyError)
-
-    function describeThinkFanStatus(reason): string {
-        switch (String(reason ?? "")) {
-        case "":
-            return Translation.tr("Checking ThinkFan status…")
-        case "thinkfan-unavailable":
-            return Translation.tr("ThinkFan is unavailable")
-        case "service-unavailable":
-            return Translation.tr("thinkfan.service is unavailable")
-        case "firmware-control":
-            return Translation.tr("Firmware controls the fan")
-        case "invalid-status":
-            return Translation.tr("ThinkFan returned invalid status")
-        case "unsupported-status-schema":
-            return Translation.tr("ThinkFan status schema is unsupported")
-        case "helper-unavailable":
-            return Translation.tr("ThinkFan helper is unavailable")
-        case "status-timeout":
-            return Translation.tr("ThinkFan status check timed out")
-        case "status-failed":
-            return Translation.tr("ThinkFan status check failed")
-        default:
-            return Translation.tr("ThinkFan status unavailable: %1").arg(reason)
-        }
-    }
 
     function describeThinkFanApplyError(error): string {
         switch (String(error ?? "")) {
@@ -161,11 +125,6 @@ StyledPopup {
                         value: (ResourceUsage.memoryUsed / (1024 * 1024)).toFixed(1) + " GB"
                     }
                     ResourceItem {
-                        icon: "check_circle"
-                        label: Translation.tr("Free:")
-                        value: (ResourceUsage.memoryFree / (1024 * 1024)).toFixed(1) + " GB"
-                    }
-                    ResourceItem {
                         icon: "empty_dashboard"
                         label: Translation.tr("Total:")
                         value: (ResourceUsage.memoryTotal / (1024 * 1024)).toFixed(1) + " GB"
@@ -235,31 +194,20 @@ StyledPopup {
             MaterialSymbol {
                 text: "mode_fan"
                 fill: popup.thinkFanManaged ? 1 : 0
-                iconSize: Appearance.font.pixelSize.huge
+                iconSize: Appearance.font.pixelSize.large
                 color: popup.thinkFanManaged
                     ? Appearance.colors.colPrimary
                     : Appearance.colors.colOnSurfaceVariant
-                Layout.alignment: Qt.AlignTop
+                Layout.alignment: Qt.AlignVCenter
             }
 
-            ColumnLayout {
+            StyledText {
                 Layout.fillWidth: true
-                spacing: 2
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("ThinkFan")
-                    font.weight: Font.DemiBold
-                    font.pixelSize: Appearance.font.pixelSize.large
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: popup.thinkFanStatusMessage
-                    wrapMode: Text.WordWrap
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
+                text: Translation.tr("ThinkFan")
+                font.weight: Font.Medium
+                font.pixelSize: Appearance.font.pixelSize.normal
+                color: Appearance.colors.colOnSurfaceVariant
+                verticalAlignment: Text.AlignVCenter
             }
 
             StyledSwitch {
@@ -280,7 +228,7 @@ StyledPopup {
 
         GridLayout {
             Layout.fillWidth: true
-            columns: 3
+            columns: 2
             columnSpacing: 16
 
             ColumnLayout {
@@ -314,23 +262,6 @@ StyledPopup {
                 }
             }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 1
-                StyledText {
-                    text: Translation.tr("Service")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                }
-                StyledText {
-                    text: ThinkFanService.serviceInstalled
-                        ? (ThinkFanService.active
-                            ? Translation.tr("Active")
-                            : Translation.tr("Inactive"))
-                        : Translation.tr("Unavailable")
-                    font.weight: Font.Medium
-                }
-            }
         }
 
         NoticeBox {

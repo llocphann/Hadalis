@@ -13,6 +13,7 @@ import Quickshell.Services.UPower
 Item {
     id: root
     property bool borderless: Config.options?.bar?.borderless ?? false
+    property bool vertical: false
     readonly property color neutralIconColor: Appearance.colors.colOnLayer2
     readonly property color dangerIconColor: Appearance.colors.colError
     // Exact content width — self-inflating (+spacing*2) made every group that
@@ -21,10 +22,12 @@ Item {
     implicitWidth: rowLayout.implicitWidth
     implicitHeight: rowLayout.implicitHeight
 
-    RowLayout {
+    GridLayout {
         id: rowLayout
 
-        spacing: 4
+        columns: root.vertical ? 1 : Math.max(1, children.length)
+        columnSpacing: root.vertical ? 0 : 4
+        rowSpacing: root.vertical ? 4 : 0
         anchors.centerIn: parent
 
         Loader {

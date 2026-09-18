@@ -144,10 +144,14 @@ grep -Fq 'import qs.modules.common.perimeter' "$root/modules/screenCorners/Scree
     || fail 'Screen Edge must import the shared perimeter corner shadow module'
 grep -Fq 'PerimeterCornerShadow 1.0 PerimeterCornerShadow.qml' "$root/modules/common/perimeter/qmldir" \
     || fail 'shared perimeter corner shadow must be exported by the module'
-grep -Fq 'GE.RadialGradient {' "$corner_shadow" \
-    || fail 'shared perimeter corner shadow must remain radius-aware'
-grep -Fq '1 - root.shadowExtent / Math.max(1, root.cornerRadius)' "$corner_shadow" \
-    || fail 'shared corner shadow inner stop must derive from configured extent and radius'
+grep -Fq 'Canvas {' "$corner_shadow" \
+    || fail 'shared perimeter corner shadow must render a clipped quarter-disc'
+grep -Fq 'ctx.createRadialGradient' "$corner_shadow" \
+    || fail 'shared corner shadow must retain a radius-aware falloff'
+grep -Fq 'ctx.arc(cx, cy, r, start, end, false)' "$corner_shadow" \
+    || fail 'shared corner shadow must clip paint to the matching quarter-circle'
+grep -Fq 'const inner = Math.max(0, r - extent)' "$corner_shadow" \
+    || fail 'shared corner shadow inner falloff must derive from configured extent'
 grep -Fq 'required property int corner' "$corner_shadow" \
     || fail 'shared corner shadow must follow the same RoundCorner orientation'
 grep -Fq 'id: leadingCornerShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
@@ -473,8 +477,9 @@ for token in \
     'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' \
     'blur: root.screenEdgeShadowSize' \
     'bottomLeftRadius: root.directBottomAttachment ? 0 : radius' \
-    'fallbackColor: Appearance.colors.colLayer0' \
-    'wallpaperBackdropEnabled: root.useWallpaperBackdrop'; do
+    'color: Appearance.colors.colLayer0' \
+    'id: dashboardEqualizer' \
+    'EqualizerPanel {'; do
     grep -Fq "$token" "$overview_dashboard" \
         || fail "OverviewDashboard popup contract missing: $token"
 done

@@ -9,7 +9,7 @@ GeneralConfigCore {
 
     function selectTlpCategory(categoryId: string): bool {
         const wanted = String(categoryId ?? "")
-        const categories = TlpSettingsService._array(TlpSettingsService.navigationCategories)
+        const categories = TlpSettingsService._array(tlpPowerSettings.navigationCategories)
         for (let i = 0; i < categories.length; i++) {
             if (String(categories[i]?.id ?? "") !== wanted)
                 continue
@@ -32,9 +32,8 @@ GeneralConfigCore {
         } else if (value.includes("power") || value.includes("battery")
                 || value.includes("charge") || value.includes("tlp")) {
             root.activeSection = "power"
-            if (value.includes("battery care") || value.includes("charge care")
-                    || value.includes("charge limit"))
-                root.selectTlpCategory("battery-care")
+            // Battery care now lives in the primary Battery/TLP card, so the
+            // Power task itself is the deep-link destination.
         } else if (value.includes("audio") || value.includes("sound")) {
             root.activeSection = "audio"
         } else if (value.includes("language") || value.includes("locale")

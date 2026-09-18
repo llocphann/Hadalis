@@ -31,7 +31,9 @@ ContentPage {
             "workspaces": "modules",
             "system tray": "modules",
             "utility buttons": "modules",
-            "notifications": "modules"
+            "notifications": "modules",
+            "system": "system",
+            "fan control": "system"
         }
         const target = sections[label] ?? ""
         if (!target)
@@ -63,14 +65,15 @@ ContentPage {
         icon: "toolbar"
         title: Translation.tr("Classic Bar")
         description: Translation.tr("Position, surface, behavior, spectrum and modules for the Classic bar.")
-        summary: Translation.tr("Appearance · Spectrum · Behavior · Modules")
+        summary: Translation.tr("Appearance · Spectrum · Behavior · Modules · System")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
         options: [
             { displayName: Translation.tr("Appearance"), icon: "style", value: "appearance" },
             { displayName: Translation.tr("Audio spectrum"), icon: "graphic_eq", value: "spectrum" },
             { displayName: Translation.tr("Behavior & clock"), icon: "visibility", value: "behavior" },
-            { displayName: Translation.tr("Modules"), icon: "widgets", value: "modules" }
+            { displayName: Translation.tr("Modules"), icon: "widgets", value: "modules" },
+            { displayName: Translation.tr("System"), icon: "tune", value: "system" }
         ]
     }
 

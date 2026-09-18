@@ -27,9 +27,9 @@ Item {
     readonly property bool screenEdgeShadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
-    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
-        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
     readonly property real connectedDecorationMargin: root.directBottomAttachment
         ? Math.max(Appearance.sizes.elevationMargin,
             PerimeterTokens.joinFlareRadius, root.screenEdgeShadowSize + 2)

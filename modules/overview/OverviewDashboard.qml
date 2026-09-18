@@ -200,7 +200,8 @@ Item {
         offset: Qt.vector2d(0, 0)
         color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
             root.screenEdgeShadowOpacity)
-        opacity: root.revealProgress
+        // Move the full shadow with the connected body; do not fade it during
+        // reveal/retract or it diverges from Bar/StyledPopup depth.
         joinBottom: root.directBottomAttachment
     }
 

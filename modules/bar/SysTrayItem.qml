@@ -111,19 +111,9 @@ MouseArea {
         sourceComponent: SysTrayMenu {
             Component.onCompleted: this.open();
             trayItemMenuHandle: root.item.menu
+            anchorItem: root
             anchorHovered: root.containsMouse
             keyboardMode: root.keyboardMenuMode
-            anchor {
-                item: root
-                edges: (Config.options?.bar?.vertical ?? false)
-                    ? ((Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right)
-                    : ((Config.options?.bar?.bottom ?? false) ? Edges.Top : Edges.Bottom)
-                gravity: (Config.options?.bar?.vertical ?? false)
-                    ? ((Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right)
-                    : ((Config.options?.bar?.bottom ?? false) ? Edges.Top : Edges.Bottom)
-                adjustment: (Config.options?.bar?.vertical ?? false)
-                    ? PopupAdjustment.SlideY : PopupAdjustment.SlideX
-            }
             onMenuOpened: (window) => root.menuOpened(window);
             onMenuClosed: {
                 root.keyboardMenuMode = false;

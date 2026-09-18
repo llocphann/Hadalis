@@ -39,11 +39,28 @@ def main() -> int:
         if needle not in item_text:
             failures.append(f"missing tray-item close identity contract: {needle}")
 
-    # Full-output Niri click catchers must stay on the same output as the popup.
-    # Leaving PanelWindow.screen null lets the compositor choose an output, which
-    # can put the backdrop on the wrong monitor in multi-output sessions.
-    if "screen: root.screen" not in tray_menu_text:
-        failures.append("tray Niri backdrop must bind screen to the owning popup")
+    # Tray menus must use the same source-owned connected surface as other Bar
+    # popups. StyledPopup owns the full-output backdrop on the anchor's output.
+    tray_connected_required = (
+        "StyledPopup {",
+        "hoverTarget: root.anchorItem",
+        "alternativeVisibleCondition: root.menuRequestedOpen",
+        "closeOnOutsideClick: true",
+        "keyboardFocus: root.keyboardMode",
+        "root.menuOpened(presentationWindow)",
+    )
+    for needle in tray_connected_required:
+        if needle not in tray_menu_text:
+            failures.append(f"missing connected tray-menu contract: {needle}")
+    if "PopupWindow {" in tray_menu_text or "PanelWindow {" in tray_menu_text:
+        failures.append("tray menu must not own a detached PopupWindow/PanelWindow presentation")
+    if "anchorItem: root" not in item_text:
+        failures.append("tray item must hand its real visual anchor to the connected menu")
+    if "anchor {" in item_text[item_text.find("sourceComponent: SysTrayMenu {"):]:
+        failures.append("tray item must not recreate compositor popup-anchor geometry")
+
+    # Shared ContextMenu still owns its own PopupWindow for now; its Niri catcher
+    # must remain on the same output until it is migrated separately.
     if "screen: popupWindow.screen" not in context_menu_text:
         failures.append("context-menu Niri backdrop must bind screen to the owning popup")
 

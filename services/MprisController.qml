@@ -71,6 +71,10 @@ Singleton {
 			_manualPlayerSelection = false;
 			trackedPlayer = players[0] ?? null;
 		}
+		if (root._hasMpdMprisPlayer()) {
+			root._mpdBridgeStartAttempted = false
+			_mpdBridgeRetry.stop()
+		}
 	}
 
 	function _samePlayerOrder(a, b): bool {
@@ -84,6 +88,83 @@ Singleton {
 	property MprisPlayer trackedPlayer: null;
 	property bool _manualPlayerSelection: false;
 	property var _streamMetadataById: ({})
+	property bool _mpdBridgeStartAttempted: false
+
+	function _hasMpdMprisPlayer(): bool {
+		for (const player of Mpris.players.values) {
+			const name = String(player?.dbusName ?? "")
+			if (name === "org.mpris.MediaPlayer2.mpd"
+					|| name.startsWith("org.mpris.MediaPlayer2.mpd."))
+				return true
+		}
+		return false
+	}
+
+	function _mpdPlaybackStreamPresent(): bool {
+		for (const key of Object.keys(root._streamMetadataById ?? {})) {
+			const meta = root._streamMetadataById[key] ?? {}
+			const identity = [
+				meta.appName, meta.appId, meta.binary, meta.nodeName
+			].map(value => String(value ?? "").toLowerCase()).join(" ")
+			if (identity.includes("music player daemon")
+					|| /(^|[^a-z0-9])mpd([^a-z0-9]|$)/.test(identity))
+				return true
+		}
+		return false
+	}
+
+	function _maybeStartMpdMprisBridge(): void {
+		if (root._hasMpdMprisPlayer()) {
+			root._mpdBridgeStartAttempted = false
+			_mpdBridgeRetry.stop()
+			return
+		}
+		if (!root._mpdPlaybackStreamPresent()
+				|| root._mpdBridgeStartAttempted
+				|| _mpdMprisStartProc.running)
+			return
+
+		root._mpdBridgeStartAttempted = true
+		_mpdMprisStartProc.running = true
+	}
+
+	// rmpc is an MPD client, not an MPRIS provider. When MPD starts producing
+	// audio, opportunistically start the distro-provided mpd-mpris user service
+	// so the normal Quickshell MPRIS path can discover it. No custom MPD protocol
+	// implementation lives in the shell; if the bridge is absent, playback keeps
+	// working and only the media-control integration remains unavailable.
+	Process {
+		id: _mpdMprisStartProc
+		running: false
+		command: ["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]
+		onExited: (exitCode, _exitStatus) => {
+			if (exitCode === 0) {
+				_mpdBridgeSettle.restart()
+				return
+			}
+			_mpdBridgeRetry.restart()
+		}
+	}
+
+	Timer {
+		id: _mpdBridgeSettle
+		interval: 700
+		repeat: false
+		onTriggered: {
+			root._rebuildPlayerList()
+			_streamMetadataRefresh.restart()
+		}
+	}
+
+	Timer {
+		id: _mpdBridgeRetry
+		interval: 30000
+		repeat: false
+		onTriggered: {
+			root._mpdBridgeStartAttempted = false
+			root._maybeStartMpdMprisBridge()
+		}
+	}
 
 	Timer {
 		id: _streamMetadataRefresh
@@ -120,6 +201,7 @@ Singleton {
 					}
 				}
 				root._streamMetadataById = next
+				root._maybeStartMpdMprisBridge()
 			} catch (e) {
 				console.warn("[MprisController] Failed to parse PipeWire stream metadata:", e)
 			}

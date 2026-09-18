@@ -1,6 +1,6 @@
 pkgname=inir-meta
 pkgver=2.29.3
-pkgrel=4
+pkgrel=5
 pkgdesc='Full Hadalis desktop experience meta-package'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -44,6 +44,7 @@ depends=(
   mission-center
   mpv
   mpv-mpris
+  mpd-mpris
   nautilus
   otf-space-grotesk
   pacman-contrib

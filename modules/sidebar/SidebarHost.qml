@@ -4,7 +4,6 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.perimeter
 import qs.modules.sidebarLeft
 import qs.modules.sidebarRight
 import QtQuick
@@ -59,13 +58,11 @@ Scope {
         root.roleId, sidebarRoot.screen?.name ?? "")
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
-    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    // Caelestia-style direct attachment: the sidebar body itself reaches the
-    // inner Screen Edge boundary. One device-independent seam overlap hides
-    // fractional-scale antialiasing without introducing a connector/stem.
-    readonly property real directEdgeInset: Math.max(0,
-        root.screenEdgeThickness - PerimeterTokens.seamOverlap)
+    // The owning Overlay surface is anchored to the physical display edge.
+    // Let the visible body underlap the entire persistent Screen Edge band,
+    // rather than stopping at its inner boundary with only a 2px seam overlap.
+    // Its inward/free edge stays at the exact same coordinate because the body
+    // grows only toward the attached physical edge.
     // Perimeter sidebars are content-sized by definition. Preserve explicit
     // custom height, but treat legacy/full layout state as fit-to-content.
     readonly property string configuredSizeMode:
@@ -619,8 +616,9 @@ Scope {
             right: !root.isLeftEdge
         }
 
-        // No connector is rendered here. The content loader below is inset by
-        // directEdgeInset so its own surface overlaps the Screen Edge seam.
+        // No connector is rendered here. The content loader itself extends to
+        // the physical attached edge, covering the Screen Edge band underneath
+        // this Overlay surface so color/raster differences cannot form a gap.
         Region {
             id: sidebarInputRegion
             item: sidebarContentLoader
@@ -755,7 +753,6 @@ Scope {
 
             active: root._contentResident
             width: Math.max(0, root.effectiveSidebarWidth
-                - root.directEdgeInset
                 - Appearance.sizes.elevationMargin)
             height: root.effectiveContentHeight
             onStatusChanged: {
@@ -787,9 +784,9 @@ Scope {
                 right: root.isLeftEdge ? undefined : parent.right
                 rightMargin: root.isLeftEdge
                     ? Appearance.sizes.elevationMargin
-                    : root.directEdgeInset
+                    : 0
                 leftMargin: root.isLeftEdge
-                    ? root.directEdgeInset
+                    ? 0
                     : Appearance.sizes.elevationMargin
             }
 

@@ -47,14 +47,21 @@ grep -Fq 'property real connectorWidth: PerimeterTokens.connectorWidth' "$common
 grep -Fq 'readonly property real connectorWidth: 40' "$common/PerimeterTokens.qml" \
     || fail 'shared connector width token changed unexpectedly'
 for token in \
-    'import qs.modules.common.perimeter' \
-    'readonly property real directEdgeInset:' \
-    'root.screenEdgeThickness - PerimeterTokens.seamOverlap' \
+    'width: Math.max(0, root.effectiveSidebarWidth' \
+    '- Appearance.sizes.elevationMargin)' \
     'rightMargin: root.isLeftEdge' \
-    'leftMargin: root.isLeftEdge'; do
-    grep -Fq "$token" "$sidebar" \
-        || fail "SidebarHost must directly overlap the left/right Screen Edge: $token"
+    '? Appearance.sizes.elevationMargin' \
+    ': 0' \
+    'leftMargin: root.isLeftEdge' \
+    '? 0' \
+    ': Appearance.sizes.elevationMargin'; do
+    grep -Fq -- "$token" "$sidebar" \
+        || fail "SidebarHost must underlap the full attached Screen Edge band: $token"
 done
+if grep -Fq 'directEdgeInset' "$sidebar" \
+        || grep -Fq 'screenEdgeThickness' "$sidebar"; then
+    fail 'SidebarHost must not stop the body at the inner Screen Edge boundary'
+fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$sidebar" \
         || grep -Fq 'ConnectedSurfaceConnector {' "$sidebar"; then
     fail 'SidebarHost must not retain a visible connector-shaped bridge'

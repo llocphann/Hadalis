@@ -55,10 +55,14 @@ done
 if grep -Fq 'SidebarEdgeConnectors.qml' "$critical"; then
     fail 'critical shell must not load the retired standalone sidebar bridge window'
 fi
-grep -Fq 'readonly property real directEdgeInset:' "$root/modules/sidebar/SidebarHost.qml" \
-    || fail 'SidebarHost must derive a direct Screen Edge body inset'
-grep -Fq 'root.screenEdgeThickness - PerimeterTokens.seamOverlap' "$root/modules/sidebar/SidebarHost.qml" \
-    || fail 'Sidebar body must overlap the inner Screen Edge boundary by the shared seam token'
+grep -Fq 'width: Math.max(0, root.effectiveSidebarWidth' "$root/modules/sidebar/SidebarHost.qml" \
+    || fail 'SidebarHost must keep its visible body width tied to the host edge surface'
+grep -Fq -- '- Appearance.sizes.elevationMargin)' "$root/modules/sidebar/SidebarHost.qml" \
+    || fail 'Sidebar body must reserve margin only on its free inward side'
+if grep -Fq 'directEdgeInset' "$root/modules/sidebar/SidebarHost.qml" \
+        || grep -Fq 'screenEdgeThickness' "$root/modules/sidebar/SidebarHost.qml"; then
+    fail 'Sidebar body must extend through the full Screen Edge band to the physical edge'
+fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$root/modules/sidebar/SidebarHost.qml"; then
     fail 'SidebarHost must not retain connector bridge geometry'
 fi

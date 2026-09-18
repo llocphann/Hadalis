@@ -115,19 +115,28 @@ def main() -> None:
 
     sidebar_host = read("modules/sidebar/SidebarHost.qml")
     for token in (
-        "ConnectedSurfaceConnector",
-        "sidebarBridgeGeometry",
         "GlobalStates.sidebarLeftPresentationOutput",
         "GlobalStates.sidebarRightPresentationOutput",
-        "Config.options?.appearance?.screenEdge?.width ?? 10",
-        "Math.max(root.screenEdgeThickness, Appearance.sizes.hyprlandGapsOut)",
-        "PerimeterTokens.seamOverlap",
+        "PanelWindow {",
+        "width: Math.max(0, root.effectiveSidebarWidth",
+        "- Appearance.sizes.elevationMargin)",
+        "rightMargin: root.isLeftEdge",
+        "? Appearance.sizes.elevationMargin",
+        ": 0",
+        "leftMargin: root.isLeftEdge",
+        "? 0",
+        ": Appearance.sizes.elevationMargin",
     ):
         check(token in sidebar_host,
-              f"Sidebar Screen Edge bridge contract missing: {token}")
-    check("PanelWindow" in sidebar_host
-          and "geometry: sidebarBridgeGeometry" in sidebar_host,
-          "Sidebar edge bridge must live inside the owning SidebarHost surface")
+              f"Sidebar physical-edge underlap contract missing: {token}")
+    for retired in (
+        "ConnectedSurfaceConnector",
+        "sidebarBridgeGeometry",
+        "directEdgeInset",
+        "screenEdgeThickness",
+    ):
+        check(retired not in sidebar_host,
+              f"Sidebar must not stop at an inner-edge inset or restore a connector: {retired}")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
@@ -214,8 +223,10 @@ def main() -> None:
           and "opacity: root._hugUiReady" not in bar_settings
           and "onTriggered: root._applyHugOnlyUi(root)" in bar_settings,
           "Public Bar settings must remain visible while the compatibility pruning pass runs")
-    check("_hugUiReady" in quick_settings,
-          "Quick settings may keep its pre-paint Hug pruning gate")
+    check("_hugUiReady" not in quick_settings
+          and "opacity: root._hugUiReady" not in quick_settings
+          and "onTriggered: root._applyHugOnlyUi(root)" in quick_settings,
+          "Quick settings must remain visible while the Hug compatibility pruning pass runs")
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
           "Bar settings must expose persistent Screen Edge width with a 10px default")

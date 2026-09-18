@@ -23,6 +23,7 @@ Item {
     readonly property bool auroraStyle: Appearance.auroraEverywhere
     readonly property bool zzzStyle: Appearance.zzzEverywhere
     property bool panelVisible: true
+    property bool directBottomAttachment: false
     readonly property bool useWallpaperBackdrop: root.panelVisible && (root.angelStyle || root.auroraStyle) && !root.inirStyle && root.wallpaperUrl.length > 0
 
     // ── Screen & wallpaper for blur (angel/aurora) ──
@@ -176,6 +177,7 @@ Item {
         target: dashContainer
         visible: !root.inirStyle && !root.auroraStyle
         blur: 0.32 * Appearance.sizes.elevationMargin
+        joinBottom: root.directBottomAttachment
     }
 
     // ── Inline component: Blurred wallpaper card background (angel/aurora) ──
@@ -247,6 +249,10 @@ Item {
         implicitHeight: Math.min(mainCol.implicitHeight + 24, root.dashboardSafeHeight)
         height: implicitHeight
         radius: root.containerRadius
+        topLeftRadius: radius
+        topRightRadius: radius
+        bottomLeftRadius: root.directBottomAttachment ? 0 : radius
+        bottomRightRadius: root.directBottomAttachment ? 0 : radius
         fallbackColor: Appearance.zzzEverywhere ? "transparent" : Appearance.colors.colBackgroundSurfaceContainer
         inirColor: root.inirStyle ? Appearance.inir.colLayer1 : root.colCardBg
         auroraTransparency: Math.max(0.16, Appearance.aurora.popupTransparentize - 0.12)

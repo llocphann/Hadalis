@@ -89,17 +89,29 @@ def main() -> None:
     ):
         require(warning_contract, token, "Appearance.qml warning tokens")
 
-    colors_success_start = appearance.index("property color colSuccess:")
-    rounding_start = appearance.index("rounding: QtObject {", colors_success_start)
-    colors_success = appearance[colors_success_start:rounding_start]
-    for token in ("regaliaEverywhere", "zzzEverywhere"):
-        forbid(colors_success, token, "Appearance.qml success/warning colors")
+    colors_start = appearance.index("colors: QtObject {")
+    rounding_start = appearance.index("rounding: QtObject {", colors_start)
+    colors_contract = appearance[colors_start:rounding_start]
     for token in (
+        "regaliaEverywhere",
+        "cookieEverywhere",
+        "zzzEverywhere",
+        "angelEverywhere",
+        "inirEverywhere",
+        "auroraEverywhere",
+    ):
+        forbid(colors_contract, token, "Appearance.qml colors")
+    for token in (
+        "readonly property bool _needsHighContrast: false",
+        "property color colLayer1Base: m3colors.m3surfaceContainerLow",
+        "property color colPrimary: m3colors.m3primary",
+        "property color colOnSurface: m3colors.m3onSurface",
+        "property color colOutline: m3colors.m3outline",
+        "property color colError: m3colors.m3error",
         "property color colSuccess: m3colors.m3success",
         "property color colWarningContainer: m3colors.m3tertiaryContainer",
-        "property color colOnWarningContainer: m3colors.m3onTertiaryContainer",
     ):
-        require(colors_success, token, "Appearance.qml success/warning colors")
+        require(colors_contract, token, "Appearance.qml colors")
 
     typography_start = appearance.index("// Typography scale factor from config", rounding_start)
     rounding_contract = appearance[rounding_start:typography_start]

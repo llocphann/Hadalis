@@ -386,156 +386,169 @@ Singleton {
     }
 
     colors: QtObject {
-        // Ink colors for aurora light mode - sumi-e inspired (Japanese ink wash)
-        // Warm, muted tones instead of pure gray/black
-        readonly property color _inkPrimary: "#2b2622"      // Warm charcoal - main text
-        readonly property color _inkSecondary: "#5c534a"    // Warm gray - secondary text
-        readonly property color _inkMuted: "#8a7f73"        // Warm taupe - inactive/disabled
+        // Keep the historical helper properties stable for callers, but the
+        // v1.0 palette itself is Material-only.
+        readonly property color _inkPrimary: "#2b2622"
+        readonly property color _inkSecondary: "#5c534a"
+        readonly property color _inkMuted: "#8a7f73"
+        readonly property bool _needsHighContrast: false
 
-        // Aurora Mode Contrast Boost Logic
-        // If we are in Aurora Dark mode (glass), we CANNOT use dark variants for text.
-        // We must force lighter text to ensure readability against the blurred backdrop.
-        readonly property bool _needsHighContrast: auroraEverywhere && !root._auroraLightMode
-        
-        // Base text colors from Material theme
         readonly property color _baseOnSurface: m3colors.m3onSurface
         readonly property color _baseOnSurfaceVariant: m3colors.m3onSurfaceVariant
-        
-        property color colSubtext: root.regaliaEverywhere ? root.regalia.onMuted : root.cookieEverywhere ? root.cookie.inkMuted : root.zzzEverywhere ? root.zzz.inkMuted : ColorUtils.ensureReadable(
-            ColorUtils.mix(
-                _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkSecondary : _baseOnSurfaceVariant),
-                colLayer1Base,
-                0.45
-            ),
+
+        property color colSubtext: ColorUtils.ensureReadable(
+            ColorUtils.mix(_baseOnSurfaceVariant, colLayer1Base, 0.45),
             colLayer1Base,
             5.5
         )
-            
+
         // Layer 0
-        property color colLayer0Base: root.regaliaEverywhere ? root.regalia.bg0 : root.cookieEverywhere ? root.cookie.bg0 : root.zzzEverywhere ? root.zzz.bg0 : (m3colors.transparent ? "transparent" : ColorUtils.mix(m3colors.m3background, m3colors.m3primary, Config?.options?.appearance?.extraBackgroundTint ? 0.99 : 1))
-        property color colLayer0: root.regaliaEverywhere ? colLayer0Base
-            : ColorUtils.transparentize(colLayer0Base, root.backgroundTransparency)
-        property color colOnLayer0: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            root._auroraLightMode ? _inkPrimary : _baseOnSurface,
-            colLayer0Base,
-            4.5
-        )
-        property color colLayer0Hover: root.regaliaEverywhere ? root.regalia.hoverPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.9), root.contentTransparency)
-        property color colLayer0Active: root.regaliaEverywhere ? root.regalia.pressPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.8), root.contentTransparency)
-        property color colLayer0Border: root.regaliaEverywhere ? "transparent" : root.cookieEverywhere ? root.cookie.hairline : root.zzzEverywhere ? root.zzz.borderColor : ColorUtils.mix(root.m3colors.m3outlineVariant, colLayer0, 0.4)
+        property color colLayer0Base: m3colors.transparent
+            ? "transparent"
+            : ColorUtils.mix(m3colors.m3background, m3colors.m3primary,
+                Config?.options?.appearance?.extraBackgroundTint ? 0.99 : 1)
+        property color colLayer0: ColorUtils.transparentize(colLayer0Base, root.backgroundTransparency)
+        property color colOnLayer0: ColorUtils.ensureReadable(_baseOnSurface, colLayer0Base, 4.5)
+        property color colLayer0Hover: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer0, colOnLayer0, 0.9), root.contentTransparency)
+        property color colLayer0Active: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer0, colOnLayer0, 0.8), root.contentTransparency)
+        property color colLayer0Border: ColorUtils.mix(root.m3colors.m3outlineVariant, colLayer0, 0.4)
+
         // Layer 1
-        property color colLayer1Base: root.regaliaEverywhere ? root.regalia.bg1 : root.cookieEverywhere ? root.cookie.bg1 : root.zzzEverywhere ? root.zzz.bg1 : m3colors.m3surfaceContainerLow
-        property color colLayer1: root.regaliaEverywhere ? colLayer1Base
-            : auroraEverywhere ? ColorUtils.transparentize(m3colors.m3surfaceContainerLow, root.aurora.layerTransparentize)
-            : ColorUtils.solveOverlayColor(colLayer0Base, colLayer1Base, 1 - root.contentTransparency)
-        property color colOnLayer1: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkPrimary : _baseOnSurfaceVariant),
-            colLayer1Base,
-            4.5
-        )
-        property color colOnLayer1Inactive: ColorUtils.readableSubtext(colOnLayer1, colLayer1Base, 0.55)
-        property color colLayer1Hover: root.regaliaEverywhere ? root.regalia.hoverPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.92), root.contentTransparency)
-        property color colLayer1Active: root.regaliaEverywhere ? root.regalia.pressPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.85), root.contentTransparency)
+        property color colLayer1Base: m3colors.m3surfaceContainerLow
+        property color colLayer1: ColorUtils.solveOverlayColor(
+            colLayer0Base, colLayer1Base, 1 - root.contentTransparency)
+        property color colOnLayer1: ColorUtils.ensureReadable(
+            _baseOnSurfaceVariant, colLayer1Base, 4.5)
+        property color colOnLayer1Inactive: ColorUtils.readableSubtext(
+            colOnLayer1, colLayer1Base, 0.55)
+        property color colLayer1Hover: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer1, colOnLayer1, 0.92), root.contentTransparency)
+        property color colLayer1Active: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer1, colOnLayer1, 0.85), root.contentTransparency)
+
         // Layer 2
-        property color colLayer2Base: root.regaliaEverywhere ? root.regalia.bg2 : root.cookieEverywhere ? root.cookie.bg2 : root.zzzEverywhere ? root.zzz.bg2 : m3colors.m3surfaceContainer
-        property color colLayer2: root.regaliaEverywhere ? colLayer2Base
-            : auroraEverywhere ? ColorUtils.transparentize(m3colors.m3surfaceContainer, root.aurora.layerTransparentize)
-            : ColorUtils.solveOverlayColor(colLayer1Base, colLayer2Base, 1 - root.contentTransparency)
-        property color colLayer2Hover: root.regaliaEverywhere ? root.regalia.controlPlateHover
-            : ColorUtils.solveOverlayColor(colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.90), 1 - root.contentTransparency)
-        property color colLayer2Active: root.regaliaEverywhere ? root.regalia.controlPlateActive
-            : ColorUtils.solveOverlayColor(colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.80), 1 - root.contentTransparency)
-        property color colLayer2Disabled: ColorUtils.solveOverlayColor(colLayer1Base, ColorUtils.mix(colLayer2Base, m3colors.m3background, 0.8), 1 - root.contentTransparency)
-        property color colOnLayer2: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkPrimary : _baseOnSurface),
-            colLayer2Base,
-            4.5
-        )
-        property color colOnLayer2Disabled: ColorUtils.readableSubtext(colOnLayer2, colLayer2Base, 0.4)
+        property color colLayer2Base: m3colors.m3surfaceContainer
+        property color colLayer2: ColorUtils.solveOverlayColor(
+            colLayer1Base, colLayer2Base, 1 - root.contentTransparency)
+        property color colLayer2Hover: ColorUtils.solveOverlayColor(
+            colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.90),
+            1 - root.contentTransparency)
+        property color colLayer2Active: ColorUtils.solveOverlayColor(
+            colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.80),
+            1 - root.contentTransparency)
+        property color colLayer2Disabled: ColorUtils.solveOverlayColor(
+            colLayer1Base, ColorUtils.mix(colLayer2Base, m3colors.m3background, 0.8),
+            1 - root.contentTransparency)
+        property color colOnLayer2: ColorUtils.ensureReadable(
+            _baseOnSurface, colLayer2Base, 4.5)
+        property color colOnLayer2Disabled: ColorUtils.readableSubtext(
+            colOnLayer2, colLayer2Base, 0.4)
+
         // Layer 3
-        property color colLayer3Base: root.regaliaEverywhere ? root.regalia.bg3 : root.cookieEverywhere ? root.cookie.bg3 : root.zzzEverywhere ? root.zzz.bg3 : m3colors.m3surfaceContainerHigh
-        property color colLayer3: root.regaliaEverywhere ? colLayer3Base
-            : auroraEverywhere ? ColorUtils.transparentize(m3colors.m3surfaceContainerHigh, root.aurora.layerTransparentize)
-            : ColorUtils.solveOverlayColor(colLayer2Base, colLayer3Base, 1 - root.contentTransparency)
-        property color colLayer3Hover: root.regaliaEverywhere ? root.regalia.chassis3
-            : ColorUtils.solveOverlayColor(colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.90), 1 - root.contentTransparency)
-        property color colLayer3Active: root.regaliaEverywhere ? root.regalia.pressPlateElevated
-            : ColorUtils.solveOverlayColor(colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.80), 1 - root.contentTransparency)
-        property color colOnLayer3: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkPrimary : _baseOnSurface),
-            colLayer3Base,
-            4.5
-        )
+        property color colLayer3Base: m3colors.m3surfaceContainerHigh
+        property color colLayer3: ColorUtils.solveOverlayColor(
+            colLayer2Base, colLayer3Base, 1 - root.contentTransparency)
+        property color colLayer3Hover: ColorUtils.solveOverlayColor(
+            colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.90),
+            1 - root.contentTransparency)
+        property color colLayer3Active: ColorUtils.solveOverlayColor(
+            colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.80),
+            1 - root.contentTransparency)
+        property color colOnLayer3: ColorUtils.ensureReadable(
+            _baseOnSurface, colLayer3Base, 4.5)
+
         // Layer 4
-        property color colLayer4Base: root.regaliaEverywhere ? root.regalia.bg4 : root.cookieEverywhere ? root.cookie.bg4 : root.zzzEverywhere ? root.zzz.bg4 : m3colors.m3surfaceContainerHighest
-        property color colLayer4: root.regaliaEverywhere ? colLayer4Base
-            : ColorUtils.solveOverlayColor(colLayer3Base, colLayer4Base, 1 - root.contentTransparency)
-        property color colLayer4Hover: root.regaliaEverywhere ? root.regalia.chassis2
-            : ColorUtils.solveOverlayColor(colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.90), 1 - root.contentTransparency)
-        property color colLayer4Active: root.regaliaEverywhere ? root.regalia.pressPlateElevated
-            : ColorUtils.solveOverlayColor(colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.80), 1 - root.contentTransparency)
-        property color colOnLayer4: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            root._auroraLightMode ? _inkPrimary : _baseOnSurface,
-            colLayer4Base,
-            4.5
-        )
+        property color colLayer4Base: m3colors.m3surfaceContainerHighest
+        property color colLayer4: ColorUtils.solveOverlayColor(
+            colLayer3Base, colLayer4Base, 1 - root.contentTransparency)
+        property color colLayer4Hover: ColorUtils.solveOverlayColor(
+            colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.90),
+            1 - root.contentTransparency)
+        property color colLayer4Active: ColorUtils.solveOverlayColor(
+            colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.80),
+            1 - root.contentTransparency)
+        property color colOnLayer4: ColorUtils.ensureReadable(
+            _baseOnSurface, colLayer4Base, 4.5)
+
         // Primary
-        property color colPrimary: root.regaliaEverywhere ? root.regalia.hardwarePrimary : root.zzzEverywhere ? root.zzz.accent : m3colors.m3primary
-        property color colOnPrimary: root.regaliaEverywhere ? root.regalia.hardwarePrimaryInk : root.zzzEverywhere ? root.zzz.onAccent : m3colors.m3onPrimary
-        property color colPrimaryHover: root.regaliaEverywhere ? root.regalia.hardwarePrimaryHover : ColorUtils.mix(colors.colPrimary, colLayer1Hover, 0.87)
-        property color colPrimaryActive: root.regaliaEverywhere ? root.regalia.hardwarePrimaryActive : ColorUtils.mix(colors.colPrimary, colLayer1Active, 0.7)
-        property color colPrimaryContainer: root.regaliaEverywhere ? root.regalia.primaryPlate : root.cookieEverywhere ? root.cookie.primaryFace : root.zzzEverywhere ? ColorUtils.mix(root.zzz.bg3, root.zzz.sticker, 0.20) : m3colors.m3primaryContainer
-        property color colPrimaryContainerHover: root.regaliaEverywhere ? root.regalia.primaryPlateHover : ColorUtils.mix(colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.9)
-        property color colPrimaryContainerActive: root.regaliaEverywhere ? root.regalia.primaryPlateActive : ColorUtils.mix(colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.8)
-        property color colOnPrimaryContainer: root.regaliaEverywhere ? root.regalia.primaryPlateInk : root.cookieEverywhere ? root.cookie.onFace : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onPrimaryContainer
+        property color colPrimary: m3colors.m3primary
+        property color colOnPrimary: m3colors.m3onPrimary
+        property color colPrimaryHover: ColorUtils.mix(colors.colPrimary, colLayer1Hover, 0.87)
+        property color colPrimaryActive: ColorUtils.mix(colors.colPrimary, colLayer1Active, 0.7)
+        property color colPrimaryContainer: m3colors.m3primaryContainer
+        property color colPrimaryContainerHover: ColorUtils.mix(
+            colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.9)
+        property color colPrimaryContainerActive: ColorUtils.mix(
+            colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.8)
+        property color colOnPrimaryContainer: m3colors.m3onPrimaryContainer
+
         // Secondary
-        property color colSecondary: root.regaliaEverywhere ? root.regalia.hardwareSecondary : root.zzzEverywhere ? root.zzz.secondary : m3colors.m3secondary
-        property color colSecondaryHover: root.regaliaEverywhere ? root.regalia.hardwareSecondaryHover : ColorUtils.mix(colSecondary, colLayer1Hover, 0.85)
-        property color colSecondaryActive: root.regaliaEverywhere ? root.regalia.hardwareSecondaryActive : ColorUtils.mix(colSecondary, colLayer1Active, 0.4)
-        property color colOnSecondary: root.regaliaEverywhere ? root.regalia.hardwareSecondaryInk : root.zzzEverywhere ? root.zzz.onSecondary : m3colors.m3onSecondary
-        property color colSecondaryContainer: root.regaliaEverywhere ? root.regalia.secondaryPlate : root.cookieEverywhere ? root.cookie.secondaryFace : root.zzzEverywhere ? ColorUtils.mix(root.zzz.bg3, root.zzz.secondary, 0.18) : m3colors.m3secondaryContainer
-        property color colSecondaryContainerHover: root.regaliaEverywhere ? root.regalia.secondaryPlateHover : ColorUtils.mix(colSecondaryContainer, colOnSecondaryContainer, 0.90)
-        property color colSecondaryContainerActive: root.regaliaEverywhere ? root.regalia.secondaryPlateActive : ColorUtils.mix(colSecondaryContainer, colOnSecondaryContainer, 0.54)
-        property color colOnSecondaryContainer: root.regaliaEverywhere ? root.regalia.secondaryPlateInk : root.cookieEverywhere ? root.cookie.onFace : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onSecondaryContainer
+        property color colSecondary: m3colors.m3secondary
+        property color colSecondaryHover: ColorUtils.mix(colSecondary, colLayer1Hover, 0.85)
+        property color colSecondaryActive: ColorUtils.mix(colSecondary, colLayer1Active, 0.4)
+        property color colOnSecondary: m3colors.m3onSecondary
+        property color colSecondaryContainer: m3colors.m3secondaryContainer
+        property color colSecondaryContainerHover: ColorUtils.mix(
+            colSecondaryContainer, colOnSecondaryContainer, 0.90)
+        property color colSecondaryContainerActive: ColorUtils.mix(
+            colSecondaryContainer, colOnSecondaryContainer, 0.54)
+        property color colOnSecondaryContainer: m3colors.m3onSecondaryContainer
+
         // Tertiary
-        property color colTertiary: root.regaliaEverywhere ? root.regalia.hardwareTertiary : root.zzzEverywhere ? root.zzz.tertiary : m3colors.m3tertiary
-        property color colTertiaryHover: root.regaliaEverywhere ? root.regalia.hardwareTertiaryHover : ColorUtils.mix(colTertiary, colLayer1Hover, 0.85)
-        property color colTertiaryActive: root.regaliaEverywhere ? root.regalia.hardwareTertiaryActive : ColorUtils.mix(colTertiary, colLayer1Active, 0.4)
-        property color colTertiaryContainer: root.regaliaEverywhere ? root.regalia.tertiaryPlate : root.cookieEverywhere ? root.cookie.tertiaryFace : root.zzzEverywhere ? ColorUtils.mix(root.zzz.bg3, root.zzz.tertiary, 0.18) : m3colors.m3tertiaryContainer
-        property color colTertiaryContainerHover: root.regaliaEverywhere ? root.regalia.tertiaryPlateHover : ColorUtils.mix(colTertiaryContainer, colOnTertiaryContainer, 0.90)
-        property color colTertiaryContainerActive: root.regaliaEverywhere ? root.regalia.tertiaryPlateActive : ColorUtils.mix(colTertiaryContainer, colLayer1Active, 0.54)
-        property color colOnTertiary: root.regaliaEverywhere ? root.regalia.hardwareTertiaryInk : root.zzzEverywhere ? root.zzz.onAccent : m3colors.m3onTertiary
-        property color colOnTertiaryContainer: root.regaliaEverywhere ? root.regalia.tertiaryPlateInk : root.cookieEverywhere ? root.cookie.onFace : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onTertiaryContainer
+        property color colTertiary: m3colors.m3tertiary
+        property color colTertiaryHover: ColorUtils.mix(colTertiary, colLayer1Hover, 0.85)
+        property color colTertiaryActive: ColorUtils.mix(colTertiary, colLayer1Active, 0.4)
+        property color colTertiaryContainer: m3colors.m3tertiaryContainer
+        property color colTertiaryContainerHover: ColorUtils.mix(
+            colTertiaryContainer, colOnTertiaryContainer, 0.90)
+        property color colTertiaryContainerActive: ColorUtils.mix(
+            colTertiaryContainer, colLayer1Active, 0.54)
+        property color colOnTertiary: m3colors.m3onTertiary
+        property color colOnTertiaryContainer: m3colors.m3onTertiaryContainer
+
         // Surface
-        property color colBackgroundSurfaceContainer: root.regaliaEverywhere ? root.regalia.bg2 : root.cookieEverywhere ? root.cookie.bg2 : root.zzzEverywhere ? root.zzz.bg2 : ColorUtils.transparentize(m3colors.m3surfaceContainer, root.backgroundTransparency)
-        property color colSurfaceContainerLow: root.regaliaEverywhere ? root.regalia.bg1 : root.cookieEverywhere ? root.cookie.bg1 : root.zzzEverywhere ? root.zzz.bg1 : ColorUtils.solveOverlayColor(m3colors.m3background, m3colors.m3surfaceContainerLow, 1 - root.contentTransparency)
-        property color colSurfaceContainer: root.regaliaEverywhere ? root.regalia.bg2 : root.cookieEverywhere ? root.cookie.bg2 : root.zzzEverywhere ? root.zzz.bg2 : ColorUtils.solveOverlayColor(m3colors.m3surfaceContainerLow, m3colors.m3surfaceContainer, 1 - root.contentTransparency)
-        property color colSurfaceContainerHigh: root.regaliaEverywhere ? root.regalia.bg3 : root.cookieEverywhere ? root.cookie.bg3 : root.zzzEverywhere ? root.zzz.bg3 : ColorUtils.solveOverlayColor(m3colors.m3surfaceContainer, m3colors.m3surfaceContainerHigh, 1 - root.contentTransparency)
-        property color colSurfaceContainerHighest: root.regaliaEverywhere ? root.regalia.bg4 : root.cookieEverywhere ? root.cookie.bg4 : root.zzzEverywhere ? root.zzz.bg4 : ColorUtils.solveOverlayColor(m3colors.m3surfaceContainerHigh, m3colors.m3surfaceContainerHighest, 1 - root.contentTransparency)
-        property color colSurfaceContainerHighestHover: root.regaliaEverywhere ? root.regalia.hoverPlateElevated : ColorUtils.mix(colSurfaceContainerHighest, colOnSurface, 0.95)
-        property color colSurfaceContainerHighestActive: root.regaliaEverywhere ? root.regalia.pressPlateElevated : ColorUtils.mix(colSurfaceContainerHighest, colOnSurface, 0.85)
-        property color colOnSurface: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onSurface
-        property color colOnSurfaceVariant: root.regaliaEverywhere ? root.regalia.onMuted : root.cookieEverywhere ? root.cookie.inkMuted : root.zzzEverywhere ? ColorUtils.applyAlpha(root.zzz.onColor, 0.78) : m3colors.m3onSurfaceVariant
+        property color colBackgroundSurfaceContainer: ColorUtils.transparentize(
+            m3colors.m3surfaceContainer, root.backgroundTransparency)
+        property color colSurfaceContainerLow: ColorUtils.solveOverlayColor(
+            m3colors.m3background, m3colors.m3surfaceContainerLow,
+            1 - root.contentTransparency)
+        property color colSurfaceContainer: ColorUtils.solveOverlayColor(
+            m3colors.m3surfaceContainerLow, m3colors.m3surfaceContainer,
+            1 - root.contentTransparency)
+        property color colSurfaceContainerHigh: ColorUtils.solveOverlayColor(
+            m3colors.m3surfaceContainer, m3colors.m3surfaceContainerHigh,
+            1 - root.contentTransparency)
+        property color colSurfaceContainerHighest: ColorUtils.solveOverlayColor(
+            m3colors.m3surfaceContainerHigh, m3colors.m3surfaceContainerHighest,
+            1 - root.contentTransparency)
+        property color colSurfaceContainerHighestHover: ColorUtils.mix(
+            colSurfaceContainerHighest, colOnSurface, 0.95)
+        property color colSurfaceContainerHighestActive: ColorUtils.mix(
+            colSurfaceContainerHighest, colOnSurface, 0.85)
+        property color colOnSurface: m3colors.m3onSurface
+        property color colOnSurfaceVariant: m3colors.m3onSurfaceVariant
+
         // Misc
-        property color colTooltip: root.regaliaEverywhere ? root.regalia.primaryPlate : root.zzzEverywhere ? root.zzz.contrastPlate : m3colors.m3inverseSurface
-        property color colOnTooltip: root.regaliaEverywhere ? root.regalia.primaryPlateInk : root.zzzEverywhere ? root.zzz.onContrastPlate : m3colors.m3inverseOnSurface
-        property color colScrim: root.regaliaEverywhere ? root.regalia.scrim : ColorUtils.transparentize(m3colors.m3scrim, 0.5)
-        property color colShadow: root.regaliaEverywhere ? root.regalia.shadow
-            : (m3colors.transparent ? "transparent" : ColorUtils.transparentize(m3colors.m3shadow, 0.7))
-        property color colOutline: root.regaliaEverywhere ? root.regalia.separatorStrong : root.cookieEverywhere ? root.cookie.borderColor : root.zzzEverywhere ? root.zzz.borderColor : (_needsHighContrast ? ColorUtils.transparentize(m3colors.m3onSurface, 0.8) : m3colors.m3outline) // Brighter border in Aurora Dark
-        property color colOutlineVariant: root.regaliaEverywhere ? root.regalia.separator : root.cookieEverywhere ? root.cookie.hairline : root.zzzEverywhere ? root.zzz.hairlineStrong : (_needsHighContrast ? ColorUtils.transparentize(m3colors.m3onSurface, 0.9) : m3colors.m3outlineVariant)
-        property color colError: root.regaliaEverywhere ? root.regalia.error : m3colors.m3error
+        property color colTooltip: m3colors.m3inverseSurface
+        property color colOnTooltip: m3colors.m3inverseOnSurface
+        property color colScrim: ColorUtils.transparentize(m3colors.m3scrim, 0.5)
+        property color colShadow: m3colors.transparent
+            ? "transparent"
+            : ColorUtils.transparentize(m3colors.m3shadow, 0.7)
+        property color colOutline: m3colors.m3outline
+        property color colOutlineVariant: m3colors.m3outlineVariant
+        property color colError: m3colors.m3error
         property color colErrorHover: ColorUtils.mix(colError, colLayer1Hover, 0.85)
         property color colErrorActive: ColorUtils.mix(colError, colLayer1Active, 0.7)
-        property color colOnError: root.regaliaEverywhere ? root.regalia.errorInk : m3colors.m3onError
-        property color colErrorContainer: root.regaliaEverywhere ? root.regalia.signalPlate : m3colors.m3errorContainer
-        property color colErrorContainerHover: ColorUtils.mix(colErrorContainer, colOnErrorContainer, 0.90)
-        property color colErrorContainerActive: ColorUtils.mix(colErrorContainer, colOnErrorContainer, 0.70)
-        property color colOnErrorContainer: root.regaliaEverywhere ? root.regalia.signalPlateInk : m3colors.m3onErrorContainer
+        property color colOnError: m3colors.m3onError
+        property color colErrorContainer: m3colors.m3errorContainer
+        property color colErrorContainerHover: ColorUtils.mix(
+            colErrorContainer, colOnErrorContainer, 0.90)
+        property color colErrorContainerActive: ColorUtils.mix(
+            colErrorContainer, colOnErrorContainer, 0.70)
+        property color colOnErrorContainer: m3colors.m3onErrorContainer
 
         property color colSuccess: m3colors.m3success
         property color colOnSuccess: m3colors.m3onSuccess

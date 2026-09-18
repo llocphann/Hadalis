@@ -182,6 +182,7 @@ Scope {
                 width: horizontal ? parent.width : root.thickness
                 height: horizontal ? root.thickness : parent.height
                 color: root.edgeColor
+                z: 2
             }
 
             // Straight portions use an explicit in-window gradient. This is
@@ -190,7 +191,7 @@ Scope {
             // disappear entirely on the user's Niri/Qt path.
             Rectangle {
                 id: edgeShadow
-                z: -2
+                z: 0
                 visible: root.shadowEnabled
                     && root.shadowExtent > 0
                     && root.shadowOpacity > 0
@@ -232,6 +233,7 @@ Scope {
             // circular boundary instead of stopping at the straight segment.
             RoundCorner {
                 id: leadingCorner
+                z: 2
                 visible: horizontal && !root.barOwnsEdge(outputName, "left")
                 implicitSize: root.innerRadius
                 color: root.edgeColor
@@ -251,6 +253,7 @@ Scope {
 
             RoundCorner {
                 id: trailingCorner
+                z: 2
                 visible: horizontal && !root.barOwnsEdge(outputName, "right")
                 implicitSize: root.innerRadius
                 color: root.edgeColor

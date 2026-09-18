@@ -66,6 +66,7 @@ OSK_KEY = ROOT / "modules" / "onScreenKeyboard" / "OskKey.qml"
 SCREEN_CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
 SIDEBAR_LEFT_CONTENT = ROOT / "modules" / "sidebarLeft" / "SidebarLeftContent.qml"
 SIDEBAR_RIGHT_CONTENT = ROOT / "modules" / "sidebarRight" / "SidebarRightContent.qml"
+COMPACT_SIDEBAR_RIGHT_CONTENT = ROOT / "modules" / "sidebarRight" / "CompactSidebarRightContent.qml"
 VERTICAL_BAR_CONTENT = ROOT / "modules" / "verticalBar" / "VerticalBarContent.qml"
 VERTICAL_CLOCK_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalClockWidget.qml"
 VERTICAL_DATE_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalDateWidget.qml"
@@ -160,6 +161,7 @@ def main() -> None:
     screen_corners = SCREEN_CORNERS.read_text(encoding="utf-8")
     sidebar_left_content = SIDEBAR_LEFT_CONTENT.read_text(encoding="utf-8")
     sidebar_right_content = SIDEBAR_RIGHT_CONTENT.read_text(encoding="utf-8")
+    compact_sidebar_right_content = COMPACT_SIDEBAR_RIGHT_CONTENT.read_text(encoding="utf-8")
     vertical_bar_content = VERTICAL_BAR_CONTENT.read_text(encoding="utf-8")
     vertical_clock_widget = VERTICAL_CLOCK_WIDGET.read_text(encoding="utf-8")
     vertical_date_widget = VERTICAL_DATE_WIDGET.read_text(encoding="utf-8")
@@ -1459,6 +1461,43 @@ def main() -> None:
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+
+    # CompactSidebarRightContent is selected by SidebarHost when sidebar.layout
+    # is compact. Preserve its connected surface, explicit island skin, rail/nav,
+    # controls ordering, dialogs, notifications and quick actions while using
+    # only Material Global Theme chrome.
+    for token in legacy_style_tokens:
+        forbid(compact_sidebar_right_content, token, "sidebarRight/CompactSidebarRightContent.qml")
+    for token in (
+        "zzzEverywhere", "angelEverywhere", "inirEverywhere", "auroraEverywhere",
+        "ZzzPlate {", "ZzzPanelBackdrop {", "AngelPartialBorder {",
+    ):
+        forbid(compact_sidebar_right_content, token, "sidebarRight/CompactSidebarRightContent.qml")
+    for token in (
+        "readonly property color connectedSurfaceColor: bg.color",
+        'readonly property bool islandStyle: surfaceDialect === "island"',
+        "IslandPanel {", "visible: bg.islandStyle",
+        "readonly property color colDarkSurface:",
+        "ColorUtils.transparentize(Appearance.colors.colLayer1, 0.22)",
+        "readonly property color colDarkSurfaceHover:",
+        "readonly property color colDarkSurfaceActive:",
+        "Appearance.colors.colPrimary", "Appearance.colors.colOnLayer1",
+        "Appearance.colors.colSecondaryContainer", "Appearance.colors.colOnSecondaryContainer",
+        'joinLeft: root.attachedEdge === "left"', 'joinRight: root.attachedEdge === "right"',
+        'topLeftRadius: root.attachedEdge === "left" ? 0 : radius',
+        'topRightRadius: root.attachedEdge === "right" ? 0 : radius',
+        "property var controlsSectionOrder:",
+        "function moveSectionUp(index: int): void", "function moveSectionDown(index: int): void",
+        'Config.setNestedValue("sidebar.right.controlsSectionOrder", order)',
+        "WheelHandler {", "ClassicQuickPanel {", "AndroidQuickPanel { editMode: root.editMode }",
+        "CalendarWidget {", "WeatherDetailWidget {",
+        "Notifications.discardAllNotifications()", "Notifications.silent = !Notifications.silent",
+        "Network.rescanWifi()", "Bluetooth.defaultAdapter.discovering = true",
+        "function doReload()", "function doSettings()",
+        '"region", "screenshot"', '"region", "record"', '"region", "ocr"', '"region", "search"',
+        '"/usr/bin/hyprpicker"', '["xdg-open", Quickshell.env("HOME")]',
+    ):
+        require(compact_sidebar_right_content, token, "sidebarRight/CompactSidebarRightContent.qml")
 
     # Default SidebarRightContent is the primary right-sidebar content tree.
     # Keep connected-edge geometry, explicit island skin, section reordering/

@@ -9,7 +9,7 @@
 //   1 = Notifications
 //   2+ = Widgets  (calendar / events / todo / notepad / calc / sysmon / timer)
 //
-// Fully compatible with all global styles: material, aurora, inir, angel, zzz.
+// Global Theme chrome is Material-only; the explicit Ricelin island skin remains supported.
 
 import qs
 import qs.services
@@ -24,7 +24,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Hyprland
-import QtQuick.Effects
 import Qt5Compat.GraphicalEffects as GE
 
 import qs.modules.sidebarRight.quickToggles
@@ -250,15 +249,9 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
-                    readonly property color _colText: bg.inirEverywhere ? Appearance.inir.colText
-                        : bg.angelEverywhere ? Appearance.angel.colText
-                        : Appearance.colors.colOnLayer1
-                    readonly property color _colSub: bg.inirEverywhere ? Appearance.inir.colTextSecondary
-                        : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                        : Appearance.colors.colSubtext
-                    readonly property color _colPrimary: bg.inirEverywhere ? Appearance.inir.colPrimary
-                        : bg.angelEverywhere ? Appearance.angel.colPrimary
-                        : Appearance.colors.colPrimary
+                    readonly property color _colText: Appearance.colors.colOnLayer1
+                    readonly property color _colSub: Appearance.colors.colSubtext
+                    readonly property color _colPrimary: Appearance.colors.colPrimary
 
                     // Merged upcoming events (next 14 days)
                     property int _eventsTrigger: 0
@@ -576,31 +569,19 @@ Item {
         implicitHeight: 48
 
         // Style helpers
-        readonly property color _colPrimary: bg.inirEverywhere ? Appearance.inir.colPrimary
-            : bg.angelEverywhere ? Appearance.angel.colPrimary
-            : Appearance.colors.colPrimary
-        readonly property color _colText: bg.inirEverywhere ? Appearance.inir.colText
-            : bg.angelEverywhere ? Appearance.angel.colText
-            : Appearance.colors.colOnLayer1
-        readonly property color _colSub: bg.inirEverywhere ? Appearance.inir.colTextSecondary
-            : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-            : Appearance.colors.colSubtext
+        readonly property color _colPrimary: Appearance.colors.colPrimary
+        readonly property color _colText: Appearance.colors.colOnLayer1
+        readonly property color _colSub: Appearance.colors.colSubtext
 
         Rectangle {
             id: chipBg
             anchors.fill: parent
-            radius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                : bg.inirEverywhere ? Appearance.inir.roundingSmall
-                : Appearance.rounding.small
+            radius: Appearance.rounding.small
             color: {
                 if (chipMA.containsPress)
-                    return bg.inirEverywhere ? Appearance.inir.colLayer2Active
-                        : bg.angelEverywhere ? Appearance.angel.colGlassCardActive
-                        : bg.colDarkSurfaceActive
+                    return bg.colDarkSurfaceActive
                 if (chipMA.containsMouse)
-                    return bg.inirEverywhere ? Appearance.inir.colLayer2Hover
-                        : bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                        : bg.colDarkSurfaceHover
+                    return bg.colDarkSurfaceHover
                 return "transparent"
             }
             border.width: 0
@@ -774,97 +755,35 @@ Item {
         glassScreenHeight: root.screenHeight
     }
 
-    ZzzPlate {
-        anchors.fill: bg
-        visible: bg.zzzEverywhere && !Appearance.gameModeMinimal
-        fillColor: Appearance.zzz.chrome
-        strokeColor: Appearance.zzz.hairline
-        strokeWidth: Appearance.zzz.hairlineThick
-        chamfer: Appearance.zzz.cutCorner
-    }
-
     Rectangle {
         id: bg
         anchors.fill: parent
 
         property bool cardStyle: Config.options?.sidebar?.cardStyle ?? false
-        // Resolve one owner for the complete surface. Explicit Ricelin islands
-        // override the global worldview; otherwise the selected global style owns it.
+        // Ricelin island mode remains an explicit supported sidebar skin;
+        // otherwise compact right uses the canonical Material surface.
         readonly property string surfaceDialect: Appearance.surfaceDialectFor(
             (Config.options?.sidebar?.style ?? "panel") === "island" ? "island" : "")
         readonly property bool islandStyle: surfaceDialect === "island"
-        readonly property bool zzzEverywhere: surfaceDialect === "zzz"
-        readonly property bool angelEverywhere: surfaceDialect === "angel"
-        readonly property bool auroraEverywhere: surfaceDialect === "aurora" || angelEverywhere
-        readonly property bool inirEverywhere: surfaceDialect === "inir"
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
 
-        readonly property string wallpaperUrl: {
-            const _d1 = WallpaperListener.multiMonitorEnabled
-            const _d2 = WallpaperListener.effectivePerMonitor
-            const _d3 = Wallpapers.effectiveWallpaperUrl
-            return WallpaperListener.wallpaperUrlForScreen(root.panelScreen)
-        }
-        readonly property bool useWallpaperBackdrop: root.panelVisible
-            && auroraEverywhere
-            && !inirEverywhere
-            && !gameModeMinimal
-            && wallpaperUrl.length > 0
-
-        ColorQuantizer {
-            id: bgQuant
-            source: bg.auroraEverywhere ? bg.wallpaperUrl : ""
-            depth: 0
-            rescaleSize: 10
-        }
-        readonly property color wallpaperDominantColor: bgQuant?.colors?.[0] ?? Appearance.colors.colPrimary
-        readonly property QtObject blendedColors: AdaptedMaterialScheme {
-            color: ColorUtils.mix(bg.wallpaperDominantColor, Appearance.colors.colPrimaryContainer, 0.8)
-                   || Appearance.colors.colSecondaryContainer
-        }
-        readonly property color colDarkSurface: angelEverywhere
-            ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.76)
-            : zzzEverywhere ? Appearance.zzz.tile
-            : inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colLayer1, 0.22)
-            : auroraEverywhere ? ColorUtils.transparentize(
-                (blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base),
-                Math.max(0.10, Appearance.aurora.subSurfaceTransparentize - 0.16)
-            )
-            : ColorUtils.transparentize(Appearance.colors.colLayer1, 0.22)
-        readonly property color colDarkSurfaceHover: angelEverywhere
-            ? Appearance.angel.colGlassCardHover
-            : zzzEverywhere ? Appearance.zzz.paperAlt
-            : inirEverywhere ? Appearance.inir.colLayer2Hover
-            : auroraEverywhere ? ColorUtils.transparentize(
-                (blendedColors?.colLayer1 ?? Appearance.colors.colLayer1),
-                Math.max(0.16, Appearance.aurora.subSurfaceTransparentize - 0.10)
-            )
-            : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.20)
-        readonly property color colDarkSurfaceActive: angelEverywhere
-            ? Appearance.angel.colGlassCardActive
-            : zzzEverywhere ? Appearance.zzz.bg3
-            : inirEverywhere ? Appearance.inir.colLayer2Active
-            : auroraEverywhere ? ColorUtils.transparentize(
-                (blendedColors?.colLayer1 ?? Appearance.colors.colLayer1),
-                Math.max(0.12, Appearance.aurora.subSurfaceTransparentize - 0.14)
-            )
-            : ColorUtils.transparentize(Appearance.colors.colLayer1Active, 0.18)
+        readonly property color colDarkSurface:
+            ColorUtils.transparentize(Appearance.colors.colLayer1, 0.22)
+        readonly property color colDarkSurfaceHover:
+            ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.20)
+        readonly property color colDarkSurfaceActive:
+            ColorUtils.transparentize(Appearance.colors.colLayer1Active, 0.18)
 
         color: (gameModeMinimal || islandStyle) ? "transparent"
-             : zzzEverywhere ? "transparent"
-             : inirEverywhere   ? (cardStyle ? Appearance.inir.colLayer1 : Appearance.inir.colLayer0)
-             : auroraEverywhere ? ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
-             : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
+            : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
 
         // Compact and default sidebars share one borderless Screen Edge seam.
         border.width: 0 // Screen Edge seam owns the outer boundary
         border.color: "transparent"
 
-        radius: zzzEverywhere ? Appearance.zzz.panelRadius
-              : angelEverywhere  ? Appearance.angel.roundingNormal
-              : inirEverywhere   ? (cardStyle ? Appearance.inir.roundingLarge : Appearance.inir.roundingNormal)
-              : cardStyle        ? Appearance.rounding.normal
-              : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+        radius: cardStyle
+            ? Appearance.rounding.normal
+            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         topLeftRadius: root.attachedEdge === "left" ? 0 : radius
         bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
         topRightRadius: root.attachedEdge === "right" ? 0 : radius
@@ -888,88 +807,20 @@ Item {
             }
         }
 
-        // Aurora blurred wallpaper
-        Image {
-            id: bgBlurWallpaper
-            x: -(root.screenWidth - bg.width - Appearance.sizes.hyprlandGapsOut)
-            y: -Appearance.sizes.hyprlandGapsOut
-            width:  root.screenWidth  ?? 1920
-            height: root.screenHeight ?? 1080
-            visible: bg.useWallpaperBackdrop
-            source: bg.useWallpaperBackdrop ? bg.wallpaperUrl : ""
-            fillMode: Image.PreserveAspectCrop
-            cache: true; asynchronous: true
-            sourceSize.width: root.screenWidth ?? 1920
-            sourceSize.height: root.screenHeight ?? 1080
-            // OPTIMIZATION: Release FBO when sidebar is hidden (saves ~16 MiB VRAM)
-            layer.enabled: Appearance.effectsEnabled && bg.useWallpaperBackdrop && root.panelVisible
-            layer.effect: MultiEffect {
-                source: bgBlurWallpaper
-                anchors.fill: source
-                saturation: bg.angelEverywhere
-                    ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
-                    : (Appearance.effectsEnabled ? 0.2 : 0)
-                blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
-                blur: Appearance.effectsEnabled
-                    ? (bg.angelEverywhere ? Appearance.angel.blurIntensity : 1) : 0
-            }
-            Rectangle {
-                anchors.fill: parent
-                color: bg.angelEverywhere
-                    ? ColorUtils.transparentize((bg.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base),
-                                               Appearance.angel.overlayOpacity * Appearance.angel.panelTransparentize)
-                    : ColorUtils.transparentize((bg.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base),
-                                               Appearance.aurora.overlayTransparentize)
-            }
-        }
-
-        // Angel inset glow — top edge
-        Rectangle {
-            anchors { top: parent.top; left: parent.left; right: parent.right }
-            height:  Appearance.angel.insetGlowHeight
-            visible: bg.angelEverywhere
-            color:   Appearance.angel.colInsetGlow
-            z: 10
-        }
-
-        AngelPartialBorder { visible: bg.angelEverywhere; targetRadius: bg.radius; z: 10 }
-
-        ZzzPanelBackdrop {
-            anchors.fill: parent
-            visible: bg.zzzEverywhere && opacity > 0
-            label: "SYSTEM"
-            index: "RC"
-            ghostText: "RIGHT"
-            accentColor: Appearance.zzz.accent
-            showTicks: false
-            showBurst: false
-            showGrid: true
-            horizontalBias: 0.10
-            verticalBias: 0.16
-            ghostWidthFactor: 0.6
-            ghostStrength: 0.55
-            z: 0
-        }
-
         // ─────────────────────────────────────────────────────────
         // Two-column layout
         // ─────────────────────────────────────────────────────────
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: root.compactPanelPadding
-            anchors.topMargin: bg.angelEverywhere ? root.compactPanelPadding + 4
-                : bg.inirEverywhere ? root.compactPanelPadding + 6 : root.compactPanelPadding
-            spacing: bg.angelEverywhere ? root.compactPanelPadding + 2
-                : bg.inirEverywhere ? root.compactPanelPadding + 4 : root.compactPanelPadding
+            anchors.topMargin: root.compactPanelPadding
+            spacing: root.compactPanelPadding
 
             Rectangle {
                 id: compactSurface
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: bg.zzzEverywhere ? Appearance.zzz.controlRadius
-                    : bg.angelEverywhere ? Appearance.angel.roundingNormal
-                    : bg.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+                radius: Appearance.rounding.normal
                 Behavior on radius {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -1021,10 +872,7 @@ Item {
                     }
                     width: 0
                     visible: false
-                    color: bg.angelEverywhere  ? ColorUtils.transparentize(Appearance.angel.colCardBorder,  0.62)
-                         : bg.inirEverywhere   ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.45)
-                         : bg.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.78)
-                         : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.72)
+                    color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.72)
                 }
 
                 // ── Sliding selection highlight (declared before ColumnLayout = behind it) ──
@@ -1044,9 +892,7 @@ Item {
                     y: colTop + clampedIdx * (navItemH + navSpacing) + (navItemH - navBgH) / 2
                     width: leftRail.width - colLeft - colRight - navBgLeft
                     height: navBgH
-                    radius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                          : bg.inirEverywhere  ? Appearance.inir.roundingSmall
-                          : Appearance.rounding.small
+                    radius: Appearance.rounding.small
                     // Bgless doctrine: the selected category is signalled by the colored
                     // material symbol + left accent pill (navPill), not a tenuous plate.
                     color: "transparent"
@@ -1070,11 +916,8 @@ Item {
                     y: navIndicator.colTop + navIndicator.clampedIdx * (navIndicator.navItemH + navIndicator.navSpacing) + (navIndicator.navItemH - height) / 2
                     width: 3
                     height: 26
-                    color: bg.zzzEverywhere   ? Appearance.zzz.accent
-                         : bg.inirEverywhere  ? Appearance.inir.colPrimary
-                         : bg.angelEverywhere ? Appearance.angel.colPrimary
-                         : Appearance.colors.colPrimary
-                    radius: bg.zzzEverywhere ? 0 : 2
+                    color: Appearance.colors.colPrimary
+                    radius: 2
                     visible: root.activeSection >= 0 && root.activeSection < root.sections.length
                     Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                     Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
@@ -1129,9 +972,7 @@ Item {
                                     verticalCenter: parent.verticalCenter
                                 }
                                 height: root.compactNavBgHeight
-                                radius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                                      : bg.inirEverywhere  ? Appearance.inir.roundingSmall
-                                      : Appearance.rounding.small
+                                radius: Appearance.rounding.small
 
                                 // Bgless doctrine: no plate at rest, hover or press.
                                 // Feedback lives in the icon colour/weight + accent pill.
@@ -1147,19 +988,8 @@ Item {
                                     text: navItem.modelData.icon
                                     // Bgless: active icon carries the accent itself (no plate behind)
                                     color: navItem.isActive
-                                        ? (bg.zzzEverywhere   ? Appearance.zzz.accent
-                                         : bg.inirEverywhere  ? Appearance.inir.colPrimary
-                                         : bg.angelEverywhere ? Appearance.angel.colPrimary
-                                         : Appearance.colors.colPrimary)
-                                        : (navMA.containsMouse
-                                         ? (bg.zzzEverywhere  ? Appearance.zzz.ink
-                                          : bg.inirEverywhere ? Appearance.inir.colText
-                                          : bg.angelEverywhere ? Appearance.angel.colText
-                                          : Appearance.colors.colOnLayer1)
-                                         : (bg.zzzEverywhere  ? Appearance.zzz.inkMuted
-                                          : bg.inirEverywhere ? Appearance.inir.colTextSecondary
-                                          : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                                          : Appearance.colors.colOnLayer1))
+                                        ? Appearance.colors.colPrimary
+                                        : Appearance.colors.colOnLayer1
                                     Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                                 }
 
@@ -1181,9 +1011,7 @@ Item {
                                     width: Math.max(16, badgeLabel.implicitWidth + 8)
                                     height: 16
                                     radius: 8
-                                    color: bg.inirEverywhere  ? Appearance.inir.colPrimary
-                                         : bg.angelEverywhere ? Appearance.angel.colPrimary
-                                         : Appearance.colors.colPrimary
+                                    color: Appearance.colors.colPrimary
 
                                     StyledText {
                                         id: badgeLabel
@@ -1192,9 +1020,7 @@ Item {
                                         font.pixelSize: 9
                                         font.weight: Font.Bold
                                         font.family: Appearance.font.family.numbers
-                                        color: bg.inirEverywhere  ? Appearance.inir.colOnPrimary
-                                             : bg.angelEverywhere ? Appearance.angel.colOnPrimary
-                                             : Appearance.colors.colOnPrimary
+                                        color: Appearance.colors.colOnPrimary
                                     }
 
                                     // Subtle entrance animation
@@ -1236,10 +1062,7 @@ Item {
                         Layout.rightMargin: 4
                         height: 1
                         visible: false
-                        color: bg.angelEverywhere  ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.68)
-                             : bg.inirEverywhere   ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.5)
-                             : bg.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.80)
-                             : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.76)
+                        color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.76)
                     }
 
                     // ── System action buttons ────────────────────
@@ -1266,9 +1089,7 @@ Item {
                                     verticalCenter: parent.verticalCenter
                                 }
                                 height: root.compactActionBgHeight
-                                radius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                                      : bg.inirEverywhere  ? Appearance.inir.roundingSmall
-                                      : Appearance.rounding.small
+                                radius: Appearance.rounding.small
                                 color: {
                                     if (sysMA.containsPress)
                                         return bg.colDarkSurfaceActive
@@ -1277,19 +1098,14 @@ Item {
                                     return "transparent"
                                 }
                                 border.width: 0
-                                border.color: bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.46)
-                                    : bg.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.36)
-                                    : bg.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.75)
-                                    : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.70)
+                                border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.70)
                                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
 
                                 MaterialSymbol {
                                     anchors.centerIn: parent
                                     iconSize: 20
                                     text: sysItem.modelData.icon
-                                    color: bg.inirEverywhere  ? Appearance.inir.colTextSecondary
-                                         : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                                         : Appearance.colors.colOnLayer1
+                                    color: Appearance.colors.colOnLayer1
                                 }
                                 MouseArea {
                                     id: sysMA
@@ -1317,9 +1133,7 @@ Item {
                                 verticalCenter: parent.verticalCenter
                             }
                             height: root.compactActionBgHeight
-                            radius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                                  : bg.inirEverywhere  ? Appearance.inir.roundingSmall
-                                  : Appearance.rounding.small
+                            radius: Appearance.rounding.small
                             color: {
                                 if (layoutMA.containsPress)
                                     return bg.colDarkSurfaceActive
@@ -1328,19 +1142,14 @@ Item {
                                 return "transparent"
                             }
                             border.width: 0
-                            border.color: bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colCardBorder, 0.46)
-                                : bg.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.36)
-                                : bg.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.75)
-                                : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.70)
+                            border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.70)
                             Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
 
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 iconSize: 18
                                 text: "view_agenda"
-                                color: bg.inirEverywhere  ? Appearance.inir.colPrimary
-                                     : bg.angelEverywhere ? Appearance.angel.colPrimary
-                                     : Appearance.colors.colPrimary
+                                color: Appearance.colors.colPrimary
                             }
                             MouseArea {
                                 id: layoutMA
@@ -1520,9 +1329,7 @@ Item {
                                     }
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Medium
-                                    color: bg.inirEverywhere ? Appearance.inir.colPrimary
-                                        : bg.angelEverywhere ? Appearance.angel.colPrimary
-                                        : Appearance.colors.colPrimary
+                                    color: Appearance.colors.colPrimary
                                 }
                                 
                                 RippleButton {
@@ -1531,11 +1338,9 @@ Item {
                                     enabled: sectionDelegate.index > 0
                                     opacity: enabled ? 1 : 0.3
                                     colBackground: "transparent"
-                                    colBackgroundHover: bg.inirEverywhere ? Appearance.inir.colLayer1Hover
-                                        : bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                        : Appearance.colors.colLayer1Hover
+                                    colBackgroundHover: Appearance.colors.colLayer1Hover
                                     onClicked: root.moveSectionUp(sectionDelegate.index)
-                                    contentItem: MaterialSymbol { anchors.centerIn: parent; text: "arrow_upward"; iconSize: 16; color: bg.inirEverywhere ? Appearance.inir.colText : bg.angelEverywhere ? Appearance.angel.colText : Appearance.colors.colOnLayer1 }
+                                    contentItem: MaterialSymbol { anchors.centerIn: parent; text: "arrow_upward"; iconSize: 16; color: Appearance.colors.colOnLayer1 }
                                     StyledToolTip { text: Translation.tr("Move up") }
                                 }
                                 
@@ -1545,11 +1350,9 @@ Item {
                                     enabled: sectionDelegate.index < root.controlsSectionOrder.length - 1
                                     opacity: enabled ? 1 : 0.3
                                     colBackground: "transparent"
-                                    colBackgroundHover: bg.inirEverywhere ? Appearance.inir.colLayer1Hover
-                                        : bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                        : Appearance.colors.colLayer1Hover
+                                    colBackgroundHover: Appearance.colors.colLayer1Hover
                                     onClicked: root.moveSectionDown(sectionDelegate.index)
-                                    contentItem: MaterialSymbol { anchors.centerIn: parent; text: "arrow_downward"; iconSize: 16; color: bg.inirEverywhere ? Appearance.inir.colText : bg.angelEverywhere ? Appearance.angel.colText : Appearance.colors.colOnLayer1 }
+                                    contentItem: MaterialSymbol { anchors.centerIn: parent; text: "arrow_downward"; iconSize: 16; color: Appearance.colors.colOnLayer1 }
                                     StyledToolTip { text: Translation.tr("Move down") }
                                 }
                             }
@@ -1888,9 +1691,7 @@ Item {
                 text: sectionHeader.headerIcon
                 iconSize: 18
                 fill: 1
-                color: bg.inirEverywhere  ? Appearance.inir.colPrimary
-                     : bg.angelEverywhere ? Appearance.angel.colPrimary
-                     : Appearance.colors.colPrimary
+                color: Appearance.colors.colPrimary
             }
 
             StyledText {
@@ -1898,9 +1699,7 @@ Item {
                 text: sectionHeader.headerText
                 font.pixelSize: Appearance.font.pixelSize.small
                 font.weight: Font.Medium
-                color: bg.inirEverywhere  ? Appearance.inir.colText
-                     : bg.angelEverywhere ? Appearance.angel.colText
-                     : Appearance.colors.colOnLayer0
+                color: Appearance.colors.colOnLayer0
             }
 
             // Badge (notification count)
@@ -1910,9 +1709,7 @@ Item {
                     implicitWidth: Math.max(18, badgeLabelInHeader.implicitWidth + 8)
                     implicitHeight: 18
                     radius: 9
-                    color: bg.inirEverywhere  ? Appearance.inir.colSecondaryContainer
-                         : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.70)
-                         : Appearance.colors.colSecondaryContainer
+                    color: Appearance.colors.colSecondaryContainer
 
                     StyledText {
                         id: badgeLabelInHeader
@@ -1921,9 +1718,7 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.weight: Font.Bold
                         font.family: Appearance.font.family.numbers
-                        color: bg.inirEverywhere  ? Appearance.inir.colOnSecondaryContainer
-                             : bg.angelEverywhere ? Appearance.angel.colOnPrimary
-                             : Appearance.colors.colOnSecondaryContainer
+                        color: Appearance.colors.colOnSecondaryContainer
                     }
                 }
             }
@@ -1933,21 +1728,13 @@ Item {
                 reveal: sectionHeader.showSecondaryAction
             RippleButton {
                 implicitWidth: 28; implicitHeight: 28
-                buttonRadius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                    : bg.inirEverywhere ? Appearance.inir.roundingSmall : 14
-                colBackground: bg.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colLayer1, 0.35)
-                    : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.72)
-                    : bg.auroraEverywhere ? bg.colDarkSurface
-                    : ColorUtils.transparentize(Appearance.colors.colLayer1, 0.68)
-                colBackgroundHover: bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                    : bg.inirEverywhere ? Appearance.inir.colLayer1Hover
-                    : Appearance.colors.colLayer1Hover
+                buttonRadius: 14
+                colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1, 0.68)
+                colBackgroundHover: Appearance.colors.colLayer1Hover
                 onClicked: sectionHeader.secondaryActionClicked()
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent; text: sectionHeader.secondaryActionIcon; iconSize: 16
-                    color: bg.inirEverywhere  ? Appearance.inir.colTextSecondary
-                         : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                         : Appearance.colors.colSubtext
+                    color: Appearance.colors.colSubtext
                 }
                 StyledToolTip {
                     position: "left"
@@ -1961,30 +1748,18 @@ Item {
                 reveal: sectionHeader.showAction
             RippleButton {
                 implicitWidth: 28; implicitHeight: 28
-                buttonRadius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                    : bg.inirEverywhere ? Appearance.inir.roundingSmall : 14
+                buttonRadius: 14
                 colBackground: sectionHeader.actionToggled
-                    ? (bg.inirEverywhere ? Appearance.inir.colSecondaryContainer
-                     : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.60)
-                     : Appearance.colors.colSecondaryContainer)
-                    : (bg.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colLayer1, 0.35)
-                     : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colGlassCard, 0.72)
-                     : bg.auroraEverywhere ? bg.colDarkSurface
-                     : ColorUtils.transparentize(Appearance.colors.colLayer1, 0.68))
-                colBackgroundHover: bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                    : bg.inirEverywhere ? Appearance.inir.colLayer1Hover
-                    : Appearance.colors.colLayer1Hover
+                    ? Appearance.colors.colSecondaryContainer
+                    : ColorUtils.transparentize(Appearance.colors.colLayer1, 0.68)
+                colBackgroundHover: Appearance.colors.colLayer1Hover
                 onClicked: sectionHeader.actionClicked()
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent; text: sectionHeader.actionIcon; iconSize: 16
                     fill: sectionHeader.actionToggled ? 1 : 0; animateFill: true
                     color: sectionHeader.actionToggled
-                        ? (bg.inirEverywhere  ? Appearance.inir.colOnSecondaryContainer
-                         : bg.angelEverywhere ? Appearance.angel.colOnPrimary
-                         : Appearance.colors.colOnSecondaryContainer)
-                        : (bg.inirEverywhere  ? Appearance.inir.colTextSecondary
-                         : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                         : Appearance.colors.colSubtext)
+                        ? Appearance.colors.colOnSecondaryContainer
+                        : Appearance.colors.colSubtext
                 }
                 StyledToolTip {
                     position: "left"
@@ -2020,33 +1795,16 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 implicitHeight: 32
                 implicitWidth: dndChipContent.implicitWidth + 20
-                buttonRadius: bg.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: Notifications.silent
-                    ? (bg.zzzEverywhere ? Appearance.zzz.sticker
-                        : bg.inirEverywhere ? Appearance.inir.colSecondaryContainer
-                        : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.60)
-                        : Appearance.colors.colSecondaryContainer)
-                    : (bg.inirEverywhere ? Appearance.inir.colLayer1
-                        : bg.angelEverywhere ? Appearance.angel.colGlassCard
-                        : bg.colDarkSurface)
+                    ? Appearance.colors.colSecondaryContainer
+                    : bg.colDarkSurface
                 colBackgroundHover: Notifications.silent
-                    ? (bg.zzzEverywhere ? Appearance.colors.colPrimaryHover
-                        : bg.inirEverywhere ? Appearance.inir.colSecondaryContainerHover
-                        : bg.angelEverywhere ? Appearance.angel.colPrimaryHover
-                        : Appearance.colors.colSecondaryContainerHover)
-                    : (bg.zzzEverywhere ? Appearance.colors.colLayer1Hover
-                        : bg.inirEverywhere ? Appearance.inir.colLayer1Hover
-                        : bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                        : bg.colDarkSurfaceHover)
+                    ? Appearance.colors.colSecondaryContainerHover
+                    : bg.colDarkSurfaceHover
                 colRipple: Notifications.silent
-                    ? (bg.zzzEverywhere ? Appearance.colors.colPrimaryActive
-                        : bg.inirEverywhere ? Appearance.inir.colSecondaryContainerActive
-                        : bg.angelEverywhere ? Appearance.angel.colPrimaryActive
-                        : Appearance.colors.colSecondaryContainerActive)
-                    : (bg.zzzEverywhere ? Appearance.colors.colLayer1Active
-                        : bg.inirEverywhere ? Appearance.inir.colLayer1Active
-                        : bg.angelEverywhere ? Appearance.angel.colGlassCardActive
-                        : bg.colDarkSurfaceActive)
+                    ? Appearance.colors.colSecondaryContainerActive
+                    : bg.colDarkSurfaceActive
                 onClicked: Notifications.silent = !Notifications.silent
 
                 contentItem: RowLayout {
@@ -2058,14 +1816,8 @@ Item {
                         text: Notifications.silent ? "notifications_active" : "notifications_off"
                         iconSize: 16
                         color: Notifications.silent
-                            ? (bg.zzzEverywhere ? Appearance.zzz.onSticker
-                                : bg.inirEverywhere ? Appearance.inir.colOnSecondaryContainer
-                                : bg.angelEverywhere ? Appearance.angel.colOnPrimary
-                                : Appearance.colors.colOnSecondaryContainer)
-                            : (bg.zzzEverywhere ? Appearance.colors.colSubtext
-                                : bg.inirEverywhere ? Appearance.inir.colTextSecondary
-                                : bg.angelEverywhere ? Appearance.angel.colTextSecondary
-                                : Appearance.colors.colSubtext)
+                            ? Appearance.colors.colOnSecondaryContainer
+                            : Appearance.colors.colSubtext
                     }
 
                     StyledText {
@@ -2074,14 +1826,8 @@ Item {
                             : Translation.tr("Enable DND")
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         color: Notifications.silent
-                            ? (bg.zzzEverywhere ? Appearance.zzz.onSticker
-                                : bg.inirEverywhere ? Appearance.inir.colOnSecondaryContainer
-                                : bg.angelEverywhere ? Appearance.angel.colOnPrimary
-                                : Appearance.colors.colOnSecondaryContainer)
-                            : (bg.zzzEverywhere ? Appearance.colors.colOnLayer1
-                                : bg.inirEverywhere ? Appearance.inir.colText
-                                : bg.angelEverywhere ? Appearance.angel.colText
-                                : Appearance.colors.colOnLayer1)
+                            ? Appearance.colors.colOnSecondaryContainer
+                            : Appearance.colors.colOnLayer1
                     }
                 }
             }
@@ -2195,9 +1941,7 @@ Item {
             Rectangle {
                 id: bubbleBackground
                 anchors.centerIn: parent
-                color: bg.angelEverywhere ? Appearance.angel.colPrimary
-                    : bg.inirEverywhere ? Appearance.inir.colPrimary
-                    : Appearance.colors.colPrimary
+                color: Appearance.colors.colPrimary
                 radius: Appearance.rounding.full
                 implicitWidth: bubbleLabel.implicitWidth + 24
                 implicitHeight: bubbleLabel.implicitHeight + 10
@@ -2208,9 +1952,7 @@ Item {
                     text: bubble.text
                     font.pixelSize: Appearance.font.pixelSize.small
                     font.weight: Font.Medium
-                    color: bg.angelEverywhere ? Appearance.angel.colOnPrimary
-                        : bg.inirEverywhere ? Appearance.inir.colOnPrimary
-                        : Appearance.colors.colOnPrimary
+                    color: Appearance.colors.colOnPrimary
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -2230,34 +1972,20 @@ Item {
         implicitHeight: 52
 
         // Style helpers
-        readonly property color _colPrimary: bg.inirEverywhere ? Appearance.inir.colPrimary
-            : bg.angelEverywhere ? Appearance.angel.colPrimary
-            : Appearance.colors.colPrimary
-        readonly property color _colText: bg.inirEverywhere ? Appearance.inir.colText
-            : bg.angelEverywhere ? Appearance.angel.colText
-            : Appearance.colors.colOnLayer1
-        readonly property color _colOnToggle: bg.inirEverywhere ? Appearance.inir.colOnSecondaryContainer
-            : bg.angelEverywhere ? Appearance.angel.colOnPrimary
-            : Appearance.colors.colOnSecondaryContainer
-        readonly property color _colToggleBg: bg.inirEverywhere ? Appearance.inir.colSecondaryContainer
-            : bg.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colPrimary, 0.6)
-            : Appearance.colors.colSecondaryContainer
+        readonly property color _colPrimary: Appearance.colors.colPrimary
+        readonly property color _colText: Appearance.colors.colOnLayer1
+        readonly property color _colOnToggle: Appearance.colors.colOnSecondaryContainer
+        readonly property color _colToggleBg: Appearance.colors.colSecondaryContainer
 
         Rectangle {
             id: qaBtnBg
             anchors.fill: parent
-            radius: bg.angelEverywhere ? Appearance.angel.roundingSmall
-                : bg.inirEverywhere ? Appearance.inir.roundingSmall
-                : Appearance.rounding.small
+            radius: Appearance.rounding.small
             color: {
                 if (qaBtnMA.containsPress)
-                    return bg.inirEverywhere ? Appearance.inir.colLayer2Active
-                        : bg.angelEverywhere ? Appearance.angel.colGlassCardActive
-                        : bg.colDarkSurfaceActive
+                    return bg.colDarkSurfaceActive
                 if (qaBtnMA.containsMouse)
-                    return bg.inirEverywhere ? Appearance.inir.colLayer2Hover
-                        : bg.angelEverywhere ? Appearance.angel.colGlassCardHover
-                        : bg.colDarkSurfaceHover
+                    return bg.colDarkSurfaceHover
                 if (qaBtn.toggled)
                     return qaBtn._colToggleBg
                 return "transparent"

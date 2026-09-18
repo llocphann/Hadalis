@@ -1,12 +1,12 @@
 import QtQuick
-import qs.modules.common.widgets
 
-// Concave union shoulders for direct Bar/Screen Edge attachments.
+// Circular smooth-union shoulders for direct Bar/Screen Edge attachments.
 //
-// Caelestia gets this silhouette from its blob-union renderer. Hadalis keeps
-// its connected-surface architecture and composes the same tangent shoulder
-// from the shared inverse-corner primitive. No connector/stem is drawn: each
-// flare only fills the outside corner between already-touching surfaces.
+// Caelestia's blob shader switched from a polynomial/squircle blend to a
+// circular smooth-min in a0acd1a. At a perpendicular join that boundary is a
+// true quarter circle. Draw the fillet directly on Canvas instead of routing it
+// through the generic RoundCorner Shape renderer; that keeps all eight
+// orientations pixel-identical and avoids the lower-corner winding artifacts.
 Item {
     id: root
 
@@ -19,18 +19,12 @@ Item {
     property bool joinLeft: false
     property bool joinRight: false
 
-    // Shadow is structural connected chrome and follows the exact same live
-    // Screen Edge settings as Bar, popup body, Sidebar, Dashboard and Settings.
-    property bool shadowEnabled: false
-    property real shadowExtent: 0
-    property color shadowColor: "transparent"
-
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
     readonly property point bodyOrigin: root.bodyItem
         ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
-    // Keep the shoulder fully formed while the body slides under its owner.
-    // Growing/shrinking the corner during reveal is unlike Caelestia's blob
-    // motion and makes the flare disappear during rapid open/close reversals.
+
+    // Caelestia keeps smoothing independent from the panel corner radius.
+    // Keep the fillet fully formed while the body slides under its owner.
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,
         root.bodyItem?.width / 2 ?? 0,
@@ -39,40 +33,70 @@ Item {
     visible: root.reveal > 0.001 && root.radius > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
-    component Flare: Item {
+    component Flare: Canvas {
         id: flare
 
         required property string flareCorner
         property color flareColor: root.fillColor
         property real r: root.radius
 
-        readonly property int cornerEnum: switch (flareCorner) {
-            // The flare is outside the body endpoint, so the inverse corner is
-            // the opposite tangent orientation from the body-corner label.
-            case "topLeft": return RoundCorner.CornerEnum.TopRight
-            case "topRight": return RoundCorner.CornerEnum.TopLeft
-            case "bottomLeft": return RoundCorner.CornerEnum.BottomRight
-            case "bottomRight": return RoundCorner.CornerEnum.BottomLeft
-            case "leftTop": return RoundCorner.CornerEnum.BottomLeft
-            case "leftBottom": return RoundCorner.CornerEnum.TopLeft
-            case "rightTop": return RoundCorner.CornerEnum.BottomRight
-            case "rightBottom": return RoundCorner.CornerEnum.TopRight
-            default: return RoundCorner.CornerEnum.TopLeft
-        }
-
         width: r
         height: r
         visible: r > 0
+        antialiasing: true
 
-        // Keep the flare itself dependency-free. The connected body owns the
-        // shared Screen Edge shadow; using a separate unresolved corner-shadow
-        // primitive here makes the entire shell fail QML type resolution.
-        RoundCorner {
-            z: 1
-            anchors.fill: parent
-            implicitSize: Math.max(1, Math.round(flare.r))
-            color: flare.flareColor
-            corner: flare.cornerEnum
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onRChanged: requestPaint()
+        onFlareColorChanged: requestPaint()
+        onFlareCornerChanged: requestPaint()
+
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            if (!(width > 0 && height > 0))
+                return
+
+            // Cubic approximation of a circular quarter arc. This is only the
+            // rasterisation primitive; the radius itself is Caelestia's
+            // smoothing radius, not the popup/card outer radius.
+            const k = 0.5522847498
+            const r = Math.min(width, height)
+            const corner = flare.flareCorner
+
+            ctx.beginPath()
+
+            if (corner === "topLeft" || corner === "rightBottom") {
+                // Inverse TopRight.
+                ctx.moveTo(r, 0)
+                ctx.lineTo(r, r)
+                ctx.bezierCurveTo(r, r * (1 - k), r * k, 0, 0, 0)
+                ctx.lineTo(r, 0)
+            } else if (corner === "topRight" || corner === "leftBottom") {
+                // Inverse TopLeft.
+                ctx.moveTo(0, 0)
+                ctx.lineTo(0, r)
+                ctx.bezierCurveTo(0, r * (1 - k), r * (1 - k), 0, r, 0)
+                ctx.lineTo(0, 0)
+            } else if (corner === "bottomLeft" || corner === "rightTop") {
+                // Inverse BottomRight.
+                ctx.moveTo(r, r)
+                ctx.lineTo(r, 0)
+                ctx.bezierCurveTo(r, r * k, r * k, r, 0, r)
+                ctx.lineTo(r, r)
+            } else if (corner === "bottomRight" || corner === "leftTop") {
+                // Inverse BottomLeft.
+                ctx.moveTo(0, r)
+                ctx.lineTo(0, 0)
+                ctx.bezierCurveTo(0, r * k, r * (1 - k), r, r, r)
+                ctx.lineTo(0, r)
+            } else {
+                return
+            }
+
+            ctx.closePath()
+            ctx.fillStyle = flare.flareColor
+            ctx.fill()
         }
     }
 

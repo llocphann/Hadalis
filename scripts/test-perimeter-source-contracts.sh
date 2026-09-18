@@ -8,6 +8,7 @@ media="$root/modules/bar/Media.qml"
 weather="$root/modules/bar/weather/WeatherBar.qml"
 styled_popup="$root/modules/bar/StyledPopup.qml"
 connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
+connected_geometry="$root/modules/common/perimeter/ConnectedSurfaceGeometry.qml"
 join_flares="$root/modules/common/perimeter/ConnectedSurfaceJoinFlares.qml"
 bar_context_menu="$root/modules/bar/BarContextMenu.qml"
 bar_taskbar_button="$root/modules/bar/BarTaskbarButton.qml"
@@ -24,7 +25,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$waffle_bar_popup" "$waffle_bar_content" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$connected_geometry" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$waffle_bar_popup" "$waffle_bar_content" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -179,6 +180,12 @@ grep -Fq 'Behavior on offsetScale {' "$styled_popup" \
     || fail 'StyledPopup must animate the normalized offset scalar directly'
 grep -Fq 'Appearance.animation.elementMove.duration' "$styled_popup" \
     || fail 'StyledPopup must use expressive default-spatial timing for the shared slide'
+grep -Fq 'readonly property real revealProgress: clamp(progress, 0, 1)' "$connected_geometry" \
+    || fail 'connected geometry must clamp semantic reveal progress'
+grep -Fq 'readonly property real motionProgress:' "$connected_geometry" \
+    || fail 'connected geometry must preserve an unclamped spatial motion scalar'
+grep -Fq '(1 - motionProgress) * crossBodyExtent' "$connected_geometry" \
+    || fail 'connected geometry must preserve expressive spatial overshoot during translation'
 grep -Fq 'readonly property real _popupScreenMargin: Math.max(0,' "$styled_popup" \
     || fail 'StyledPopup Screen Edge clamping must be placement-driven for every Bar module'
 if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \

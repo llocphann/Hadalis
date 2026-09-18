@@ -53,6 +53,14 @@ The media player widget appears in:
 - Right sidebar
 - Waffle action center
 
+### MPD and rmpc
+
+`rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself. Hadalis therefore keeps Media on its normal MPRIS boundary and uses `mpd-mpris` as the bridge. On Arch, install the `mpd-mpris` package. Its default user service connects to MPD on `localhost:6600`.
+
+When Hadalis sees an active MPD PipeWire stream but no `org.mpris.MediaPlayer2.mpd` player, it opportunistically starts `mpd-mpris.service`. The bridge then appears through the same Quickshell MPRIS service as every other player, so the Bar, Media popup and Sidebars need no MPD-specific UI path. If the bridge package/service is unavailable, MPD playback continues normally and only Hadalis Media integration stays unavailable.
+
+For a non-default MPD host, port, password, or Unix socket, configure the `mpd-mpris` user service for that MPD instance. NixOS/Home Manager users should enable their `services.mpd-mpris` module rather than expecting Hadalis to create a system service.
+
 ### Player prioritization
 
 When multiple players are active, iNiR picks the most relevant one:

@@ -53,6 +53,8 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### A. Screen Edge and connected surfaces — P0
 
+> **Source status on `dev`: implementation is currently source-fixed; release gates remain unchecked until maintainer live validation.** Bar popups use placement-driven Bar + touched-Screen-Edge joins; attached corners are square, free corners remain rounded, and popup shadow follows the asymmetric body silhouette while clipping at every joined edge. OSK, left/right/compact Sidebars and Overview/dashboard now use the same no-stem direct-edge rule with joined-edge shadow suppression. Do not reintroduce connector geometry or module-specific Screen Edge opt-ins while validating this cluster.
+
 - [ ] **Screen Edge exists both while idle and while a window is maximized.** It must not disappear simply because no maximized window is present.
 - [ ] **Screen Edge width is configurable in Settings.** The setting must use one canonical configuration field, have a safe default/range and update the active edge without requiring an alternate renderer.
 - [ ] **All connected surfaces use one shared direct-attachment contract.** No popup may draw a connector/stem or invent a private gap. Shared geometry owns seam overlap, joined-edge corner ownership, concave union shoulders and shadow clipping.

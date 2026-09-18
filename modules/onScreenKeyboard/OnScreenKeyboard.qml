@@ -64,7 +64,7 @@ Scope { // Scope
         baseHeight: 40
         clickedWidth: baseWidth
         clickedHeight: baseHeight + 10
-        buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.normal
+        buttonRadius: Appearance.rounding.normal
     }
 
     Loader {
@@ -195,14 +195,14 @@ Scope { // Scope
                 x: parent ? (parent.width - width) / 2 : 0
                 y: parent ? parent.height - height : 0
 
-                color: Appearance.zzzEverywhere ? Appearance.zzz.bg0 : Appearance.colors.colLayer0
+                color: Appearance.colors.colLayer0
                 radius: Appearance.rounding.windowRounding
                 topLeftRadius: oskRoot.snappedEdge === "top" ? 0 : radius
                 topRightRadius: oskRoot.snappedEdge === "top" ? 0 : radius
                 bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius
                 bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius
-                border.width: Appearance.zzzEverywhere ? 1 : 0
-                border.color: Appearance.zzzEverywhere ? Appearance.zzz.borderColor : "transparent"
+                border.width: 0
+                border.color: "transparent"
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.width { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }

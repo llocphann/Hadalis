@@ -61,6 +61,8 @@ CONTROL_PANEL_PROFILE = ROOT / "modules" / "controlPanel" / "ProfileHeader.qml"
 CONTROL_PANEL_QUICK_ACTIONS = ROOT / "modules" / "controlPanel" / "QuickActionsSection.qml"
 CONTROL_PANEL_MEDIA = ROOT / "modules" / "controlPanel" / "MediaSection.qml"
 CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent.qml"
+ON_SCREEN_KEYBOARD = ROOT / "modules" / "onScreenKeyboard" / "OnScreenKeyboard.qml"
+OSK_KEY = ROOT / "modules" / "onScreenKeyboard" / "OskKey.qml"
 OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
 OVERVIEW_SEARCH_ITEM = ROOT / "modules" / "overview" / "SearchItem.qml"
 OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
@@ -147,6 +149,8 @@ def main() -> None:
     control_panel_quick_actions = CONTROL_PANEL_QUICK_ACTIONS.read_text(encoding="utf-8")
     control_panel_media = CONTROL_PANEL_MEDIA.read_text(encoding="utf-8")
     control_panel_content = CONTROL_PANEL_CONTENT.read_text(encoding="utf-8")
+    on_screen_keyboard = ON_SCREEN_KEYBOARD.read_text(encoding="utf-8")
+    osk_key = OSK_KEY.read_text(encoding="utf-8")
     overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
     overview_search_item = OVERVIEW_SEARCH_ITEM.read_text(encoding="utf-8")
     overview_search_widget = OVERVIEW_SEARCH_WIDGET.read_text(encoding="utf-8")
@@ -1390,6 +1394,43 @@ def main() -> None:
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
+
+    # OSK is shared by ii and Waffle. Its Screen Edge attachment and key
+    # delivery stay intact while the body/control/keycap chrome uses Material.
+    for source, content in (
+        ("onScreenKeyboard/OnScreenKeyboard.qml", on_screen_keyboard),
+        ("onScreenKeyboard/OskKey.qml", osk_key),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+    for token in (
+        "buttonRadius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer0",
+        "border.width: 0",
+        'border.color: "transparent"',
+        "ConnectedSurfaceJoinFlares {",
+        "flareRadius: PerimeterTokens.joinFlareRadius",
+        'joinTop: oskRoot.snappedEdge === "top"',
+        'joinBottom: oskRoot.snappedEdge === "bottom"',
+        "targetY = 0",
+        "targetY = ph - kh",
+        "Ydotool.releaseAllKeys()",
+        "DragHandler {",
+    ):
+        require(on_screen_keyboard, token, "onScreenKeyboard/OnScreenKeyboard.qml")
+    for token in (
+        "colBackground: shape == \"empty\"",
+        ": Appearance.colors.colLayer1",
+        "colBackgroundToggled: Appearance.colors.colPrimary",
+        "buttonRadius: Appearance.rounding.small",
+        "? Appearance.colors.colOnPrimary",
+        ": Appearance.colors.colOnLayer1",
+        "PhysicalKeyboardFeedback.pressedKeycodes",
+        "Ydotool.press(root.keycode)",
+        "Ydotool.release(root.keycode)",
+        "Ydotool.releaseShiftKeys()",
+    ):
+        require(osk_key, token, "onScreenKeyboard/OskKey.qml")
 
     # Overview cleanup is component-by-component. SearchBar is an active leaf
     # owned by SearchWidget; lock its song-recognition chrome to the existing

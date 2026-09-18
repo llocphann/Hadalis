@@ -14,6 +14,12 @@ Item {
     property int implicitSize: 25
     property color color: "#000000"
 
+    // Optional hairline along only the curved edge. This keeps the component
+    // usable as the classic solid inverse corner while allowing connected
+    // surfaces to reproduce Caelestia's subtle outlined contact fillet.
+    property color arcColor: "transparent"
+    property real arcWidth: 0
+
     implicitWidth: implicitSize
     implicitHeight: implicitSize
 
@@ -25,6 +31,15 @@ Item {
     property bool isBottom: isBottomLeft || isBottomRight
     property bool isLeft: isTopLeft || isBottomLeft
     property bool isRight: isTopRight || isBottomRight
+
+    readonly property real arcCenterX: root.isLeft ? root.implicitSize : 0
+    readonly property real arcCenterY: root.isTop ? root.implicitSize : 0
+    readonly property real arcStartAngle: switch (root.corner) {
+        case RoundCorner.CornerEnum.TopLeft: return 180
+        case RoundCorner.CornerEnum.TopRight: return -90
+        case RoundCorner.CornerEnum.BottomLeft: return 90
+        case RoundCorner.CornerEnum.BottomRight: return 0
+    }
 
     Shape {
         id: shape
@@ -44,30 +59,16 @@ Item {
             fillColor: root.color
             pathHints: ShapePath.PathSolid & ShapePath.PathNonIntersecting
 
-            startX: switch (root.corner) {
-                case RoundCorner.CornerEnum.TopLeft:
-                case RoundCorner.CornerEnum.BottomLeft: return 0;
-                case RoundCorner.CornerEnum.TopRight:
-                case RoundCorner.CornerEnum.BottomRight: return root.implicitSize;
-            }
-            startY: switch (root.corner) {
-                case RoundCorner.CornerEnum.TopLeft:
-                case RoundCorner.CornerEnum.TopRight: return 0;
-                case RoundCorner.CornerEnum.BottomLeft:
-                case RoundCorner.CornerEnum.BottomRight: return root.implicitSize;
-            }
+            startX: root.isLeft ? 0 : root.implicitSize
+            startY: root.isTop ? 0 : root.implicitSize
+
             PathAngleArc {
                 moveToStart: false
-                centerX: root.implicitSize - shapePath.startX
-                centerY: root.implicitSize - shapePath.startY
+                centerX: root.arcCenterX
+                centerY: root.arcCenterY
                 radiusX: root.implicitSize
                 radiusY: root.implicitSize
-                startAngle: switch (root.corner) {
-                    case RoundCorner.CornerEnum.TopLeft: return 180;
-                    case RoundCorner.CornerEnum.TopRight: return -90;
-                    case RoundCorner.CornerEnum.BottomLeft: return 90;
-                    case RoundCorner.CornerEnum.BottomRight: return 0;
-                }
+                startAngle: root.arcStartAngle
                 sweepAngle: 90
             }
             PathLine {
@@ -75,6 +76,21 @@ Item {
                 y: shapePath.startY
             }
         }
-    }
 
+        ShapePath {
+            strokeWidth: root.arcWidth
+            strokeColor: root.arcColor
+            fillColor: "transparent"
+
+            PathAngleArc {
+                moveToStart: true
+                centerX: root.arcCenterX
+                centerY: root.arcCenterY
+                radiusX: Math.max(0, root.implicitSize - root.arcWidth / 2)
+                radiusY: Math.max(0, root.implicitSize - root.arcWidth / 2)
+                startAngle: root.arcStartAngle
+                sweepAngle: 90
+            }
+        }
+    }
 }

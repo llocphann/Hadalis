@@ -596,8 +596,14 @@ Scope {
             Rectangle {
                 id: settingsCard
 
-                readonly property real maxCardWidth: Math.min(1100, Math.max(820, settingsPanel.width * 0.7))
-                readonly property real maxCardHeight: Math.min(840, Math.max(600, settingsPanel.height * 0.82))
+                readonly property real maxCardWidth: Math.min(
+                    1600,
+                    Math.max(900, settingsPanel.width * 0.90),
+                    Math.max(0, settingsPanel.width - 48))
+                readonly property real maxCardHeight: Math.min(
+                    1080,
+                    Math.max(720, settingsPanel.height * 0.92),
+                    Math.max(0, settingsPanel.height - 24))
                 // Keep the Material panel opaque enough for readable content while
                 // allowing the supported overlay background-opacity control to tune it.
                 // This alpha belongs to the panel fill, never Item opacity, so child

@@ -83,12 +83,9 @@ Scope {
             rightVisualMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && cornerPanelWindow.anchors.right) * 1
             bottomVisualMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && cornerPanelWindow.anchors.bottom) * 1
 
-            // Size for fake rounding visual (0 if disabled)
-            // ZZZ square = sharp console silhouette → no fake screen rounding;
-            // ZZZ round (anime) keeps the soft corner like the other styles.
+            // Size for the Material fake-rounding visual (0 if disabled).
             readonly property int roundingSize: cornerPanelWindow.showFakeRounding
-                ? (Appearance.zzzEverywhere ? (Appearance.zzz.round ? Appearance.rounding.screenRounding : 0)
-                                            : Appearance.rounding.screenRounding)
+                ? Appearance.rounding.screenRounding
                 : 0
             // Size for corner open interaction area
             readonly property int cornerOpenWidth: Config.options?.sidebar?.cornerOpen?.cornerRegionWidth ?? 20

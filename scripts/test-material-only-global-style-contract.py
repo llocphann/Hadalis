@@ -63,6 +63,7 @@ CONTROL_PANEL_MEDIA = ROOT / "modules" / "controlPanel" / "MediaSection.qml"
 CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent.qml"
 ON_SCREEN_KEYBOARD = ROOT / "modules" / "onScreenKeyboard" / "OnScreenKeyboard.qml"
 OSK_KEY = ROOT / "modules" / "onScreenKeyboard" / "OskKey.qml"
+SCREEN_CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
 OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
 OVERVIEW_SEARCH_ITEM = ROOT / "modules" / "overview" / "SearchItem.qml"
 OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
@@ -151,6 +152,7 @@ def main() -> None:
     control_panel_content = CONTROL_PANEL_CONTENT.read_text(encoding="utf-8")
     on_screen_keyboard = ON_SCREEN_KEYBOARD.read_text(encoding="utf-8")
     osk_key = OSK_KEY.read_text(encoding="utf-8")
+    screen_corners = SCREEN_CORNERS.read_text(encoding="utf-8")
     overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
     overview_search_item = OVERVIEW_SEARCH_ITEM.read_text(encoding="utf-8")
     overview_search_widget = OVERVIEW_SEARCH_WIDGET.read_text(encoding="utf-8")
@@ -1431,6 +1433,22 @@ def main() -> None:
         "Ydotool.releaseShiftKeys()",
     ):
         require(osk_key, token, "onScreenKeyboard/OskKey.qml")
+
+    # ScreenCorners is shared by ii and Waffle. Fake-rounding chrome follows
+    # Material directly; corner actions/hot-corner/brightness-volume behavior stay intact.
+    for token in legacy_style_tokens:
+        forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
+    for token in (
+        "readonly property int roundingSize: cornerPanelWindow.showFakeRounding",
+        "? Appearance.rounding.screenRounding",
+        "GlobalStates.toggleSidebarLeft",
+        "GlobalStates.toggleSidebarRight",
+        "GlobalStates.openOrbit(",
+        "Brightness.getMonitorForScreen",
+        "Audio.incrementVolume()",
+        "Audio.decrementVolume()",
+    ):
+        require(screen_corners, token, "screenCorners/ScreenCorners.qml")
 
     # Overview cleanup is component-by-component. SearchBar is an active leaf
     # owned by SearchWidget; lock its song-recognition chrome to the existing

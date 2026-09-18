@@ -30,6 +30,7 @@ Item {
     property bool panelVisible: false
     property bool geometryPreviewActive: false
     property string outerSizeMode: "full"
+    property string attachedEdge: "left"
 
     property bool aiChatEnabled: (Config.options?.policies?.ai ?? 0) !== 0
     property bool translatorEnabled: (Config.options?.sidebar?.translator?.enable ?? false)
@@ -291,6 +292,10 @@ Item {
             : angelEverywhere ? Appearance.angel.roundingNormal
             : inirEverywhere ? Appearance.inir.roundingNormal
             : cardStyle ? Appearance.rounding.normal : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+        topLeftRadius: root.attachedEdge === "left" ? 0 : radius
+        bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
+        topRightRadius: root.attachedEdge === "right" ? 0 : radius
+        bottomRightRadius: root.attachedEdge === "right" ? 0 : radius
 
         Behavior on radius {
             enabled: Appearance.animationsEnabled
@@ -325,6 +330,10 @@ Item {
                 width: sidebarLeftBackground.width
                 height: sidebarLeftBackground.height
                 radius: sidebarLeftBackground.radius
+                topLeftRadius: sidebarLeftBackground.topLeftRadius
+                topRightRadius: sidebarLeftBackground.topRightRadius
+                bottomLeftRadius: sidebarLeftBackground.bottomLeftRadius
+                bottomRightRadius: sidebarLeftBackground.bottomRightRadius
             }
         }
 

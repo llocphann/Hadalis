@@ -59,8 +59,11 @@ Scope {
         root.roleId, sidebarRoot.screen?.name ?? "")
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
+    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property real edgeBridgeLength: Math.max(1,
-        Appearance.sizes.hyprlandGapsOut + PerimeterTokens.seamOverlap)
+        Math.max(root.screenEdgeThickness, Appearance.sizes.hyprlandGapsOut)
+            + PerimeterTokens.seamOverlap)
     readonly property real edgeBridgeExtent: Math.max(
         PerimeterTokens.connectorWidth,
         PerimeterTokens.connectorWidth + PerimeterTokens.outerRadius * 2)

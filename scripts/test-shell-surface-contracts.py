@@ -103,27 +103,27 @@ def main() -> None:
         check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must render the persistent {edge} output edge")
 
-    sidebar_bridges = read("modules/sidebar/SidebarEdgeConnectors.qml")
+    sidebar_host = read("modules/sidebar/SidebarHost.qml")
     for token in (
         "ConnectedSurfaceConnector",
-        'panelId: isLeftEdge ? "iiSidebarLeft" : "iiSidebarRight"',
+        "sidebarBridgeGeometry",
         "GlobalStates.sidebarLeftPresentationOutput",
         "GlobalStates.sidebarRightPresentationOutput",
-        'BridgeWindow { edge: "left" }',
-        'BridgeWindow { edge: "right" }',
+        "Config.options?.appearance?.screenEdge?.width ?? 10",
+        "Math.max(root.screenEdgeThickness, Appearance.sizes.hyprlandGapsOut)",
         "PerimeterTokens.seamOverlap",
     ):
-        check(token in sidebar_bridges,
+        check(token in sidebar_host,
               f"Sidebar Screen Edge bridge contract missing: {token}")
-    check("Config.options?.bar" not in sidebar_bridges
-          and "barVertical" not in sidebar_bridges,
-          "Sidebar edge bridges must never depend on Bar position or orientation")
+    check("PanelWindow" in sidebar_host
+          and "geometry: sidebarBridgeGeometry" in sidebar_host,
+          "Sidebar edge bridge must live inside the owning SidebarHost surface")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
           "ii critical shell must load persistent Screen Edge chrome")
-    check('../../sidebar/SidebarEdgeConnectors.qml' in critical_panels,
-          "ii critical shell must load semantic sidebar edge bridges")
+    check('../../sidebar/SidebarEdgeConnectors.qml' not in critical_panels,
+          "ii critical shell must not recreate the retired standalone sidebar bridge window")
     check("PerimeterRuntime.qml" not in critical_panels,
           "Full iiPerimeter runtime must not be booted by the critical shell")
 

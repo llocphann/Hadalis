@@ -491,8 +491,8 @@ Singleton {
                     property int width: 10
                     property JsonObject shadow: JsonObject {
                         property bool enabled: true
-                        property int size: 12
-                        property real opacity: 0.24
+                        property int size: 15
+                        property real opacity: 0.70
                     }
                 }
                 // Shared skin for island surfaces such as dock, sidebars and search.

@@ -28,6 +28,12 @@ LazyLoader {
     readonly property string _attachmentEdge: root._barVertical
         ? (root._trailingEdge ? "right" : "left")
         : (root._trailingEdge ? "bottom" : "top")
+    // Source controls own tangent placement; the Bar owns the cross-axis edge.
+    // This follows the Caelestia composition principle where differently sized
+    // controls point at one panel boundary instead of creating uneven stems.
+    readonly property real _barSurfaceThickness: root._barVertical
+        ? Appearance.sizes.verticalBarWidth
+        : Appearance.sizes.barHeight
     readonly property real _contentPadding: 14
 
     // The visual anchor is the authority for output/window ownership. StyledPopup
@@ -146,21 +152,20 @@ LazyLoader {
         target.height
         hostWindow.windowTransform
         const mapped = host.mapFromItem(target, 0, 0)
-        let x = mapped.x
-        let y = mapped.y
+        const thickness = Math.max(1, Number(root._barSurfaceThickness ?? 1))
 
-        // Horizontal bars already span the output width, while vertical bars
-        // span its height. Translate the cross-axis coordinate for bottom/right
-        // placement so ConnectedSurfaceGeometry always receives output-local
-        // coordinates, independent of the layer-shell window's anchored edge.
+        // Preserve the control's tangent center/extent, but normalize the
+        // cross-axis boundary to the real Bar surface. A small tray button and
+        // a tall Media/Clock module therefore grow from the same physical edge.
         if (root._barVertical) {
-            if (root._trailingEdge)
-                x += Math.max(0, outputWidth - Number(hostWindow.width ?? 0))
-        } else if (root._trailingEdge) {
-            y += Math.max(0, outputHeight - Number(hostWindow.height ?? 0))
+            const barX = root._trailingEdge
+                ? Math.max(0, outputWidth - thickness) : 0
+            return Qt.rect(barX, mapped.y, thickness, target.height)
         }
 
-        return Qt.rect(x, y, target.width, target.height)
+        const barY = root._trailingEdge
+            ? Math.max(0, outputHeight - thickness) : 0
+        return Qt.rect(mapped.x, barY, target.width, thickness)
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside

@@ -33,6 +33,15 @@ grep -Fq 'mask: connectedMask' "$styled" \
     || fail 'StyledPopup must keep the shaped connected input mask'
 grep -Fq 'progress: root.revealProgress' "$styled" \
     || fail 'StyledPopup must keep morphing through shared reveal geometry'
+for token in \
+    'readonly property real _barSurfaceThickness:' \
+    'Appearance.sizes.verticalBarWidth' \
+    'Appearance.sizes.barHeight' \
+    'return Qt.rect(barX, mapped.y, thickness, target.height)' \
+    'return Qt.rect(mapped.x, barY, target.width, thickness)'; do
+    grep -Fq "$token" "$styled" \
+        || fail "StyledPopup must keep control-centered tangent placement while attaching to the physical Bar edge: $token"
+done
 grep -Fq 'property real connectorWidth: PerimeterTokens.connectorWidth' "$common/ConnectedSurfaceGeometry.qml" \
     || fail 'connected geometry must source neck width from PerimeterTokens'
 grep -Fq 'readonly property real connectorWidth: 40' "$common/PerimeterTokens.qml" \

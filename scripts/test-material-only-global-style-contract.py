@@ -17,6 +17,7 @@ RESOURCE = ROOT / "modules" / "bar" / "Resource.qml"
 CLIPPED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "ClippedProgressBar.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
+UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
@@ -59,6 +60,7 @@ def main() -> None:
     clipped_progress_bar = CLIPPED_PROGRESS_BAR.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
+    util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
@@ -544,6 +546,24 @@ def main() -> None:
         "color: Appearance.colors.colLayer0Border",
     ):
         require(shell_update_indicator, token, "ShellUpdateIndicator.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.zzz.",
+        "Appearance.inir.",
+        "Appearance.angel.",
+        "Appearance.aurora.",
+    ):
+        forbid(util_buttons, token, "UtilButtons.qml")
+    for token in (
+        "readonly property color neutralIconColor: Appearance.colors.colOnLayer2",
+        "readonly property color dangerIconColor: Appearance.colors.colError",
+        ": root.neutralIconColor",
+    ):
+        require(util_buttons, token, "UtilButtons.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

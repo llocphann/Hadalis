@@ -88,7 +88,7 @@ status() {
         reason=firmware-control
     fi
 
-    printf '{"schema":1,"available":%s,"serviceInstalled":%s,"active":%s,"enabled":%s,"directControlAvailable":%s,"profile":' \
+    printf '{"schema":1,"available":%s,"serviceInstalled":%s,"active":%s,"enabled":%s,"fanLevelControlSupported":true,"directControlAvailable":%s,"profile":' \
         "$(json_bool "$available")" "$(json_bool "$installed")" \
         "$(json_bool "$active")" "$(json_bool "$enabled")" "$(json_bool "$direct")"
     json_string "$profile"

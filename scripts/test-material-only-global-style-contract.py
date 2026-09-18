@@ -9,6 +9,10 @@ THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 WEATHER_BAR = ROOT / "modules" / "bar" / "weather" / "WeatherBar.qml"
 BAR_MEDIA_POPUP = ROOT / "modules" / "mediaControls" / "BarMediaPopup.qml"
+BATTERY_INDICATOR = ROOT / "modules" / "bar" / "BatteryIndicator.qml"
+CLOCK_WIDGET = ROOT / "modules" / "bar" / "ClockWidget.qml"
+NOTIFICATION_UNREAD_COUNT = ROOT / "modules" / "bar" / "NotificationUnreadCount.qml"
+ACTIVE_WINDOW = ROOT / "modules" / "bar" / "ActiveWindow.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
@@ -43,6 +47,10 @@ def main() -> None:
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
     weather_bar = WEATHER_BAR.read_text(encoding="utf-8")
     bar_media_popup = BAR_MEDIA_POPUP.read_text(encoding="utf-8")
+    battery_indicator = BATTERY_INDICATOR.read_text(encoding="utf-8")
+    clock_widget = CLOCK_WIDGET.read_text(encoding="utf-8")
+    notification_unread_count = NOTIFICATION_UNREAD_COUNT.read_text(encoding="utf-8")
+    active_window = ACTIVE_WINDOW.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
@@ -414,6 +422,43 @@ def main() -> None:
         "color: Appearance.colors.colSubtext",
     ):
         require(bar_media_popup, token, "BarMediaPopup.qml")
+
+    for source, label, forbidden_tokens, required_tokens in (
+        (
+            battery_indicator,
+            "BatteryIndicator.qml",
+            ("Appearance.inirEverywhere", "Appearance.angelEverywhere",
+             "Appearance.inir.", "Appearance.angel."),
+            ("Appearance.colors.colError", "Appearance.colors.colOnLayer0"),
+        ),
+        (
+            clock_widget,
+            "ClockWidget.qml",
+            ("Appearance.inirEverywhere", "Appearance.angelEverywhere",
+             "Appearance.inir.", "Appearance.angel."),
+            ("color: Appearance.colors.colOnLayer1",),
+        ),
+        (
+            notification_unread_count,
+            "NotificationUnreadCount.qml",
+            ("Appearance.inirEverywhere", "Appearance.inir."),
+            ("radius: Math.min(width, height) / 2",
+             "color: Appearance.colors.colOnLayer0",
+             "color: Appearance.colors.colLayer0"),
+        ),
+        (
+            active_window,
+            "ActiveWindow.qml",
+            ("Appearance.inirEverywhere", "Appearance.regaliaEverywhere",
+             "Appearance.inir.", "Appearance.regalia."),
+            ("property color titleColor: Appearance.colors.colOnLayer0",
+             "property color appNameColor: Appearance.colors.colSubtext"),
+        ),
+    ):
+        for token in forbidden_tokens:
+            forbid(source, token, label)
+        for token in required_tokens:
+            require(source, token, label)
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

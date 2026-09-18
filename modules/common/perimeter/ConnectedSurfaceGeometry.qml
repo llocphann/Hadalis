@@ -201,17 +201,10 @@ QtObject {
     readonly property real animatedTangentStart: horizontal ? bodyRect.x : bodyRect.y
     readonly property real animationOffset: snap(
         (1 - revealProgress) * crossBodyExtent)
-    // A body clamped to either tangent boundary is physically in a screen
-    // corner. Reveal it along both axes so corner popups emerge diagonally;
-    // middle-of-edge popups keep the existing straight cross-axis motion.
-    readonly property real tangentBoundaryEpsilon: 1 / pixelScale()
-    readonly property int tangentRevealDirection:
-        Math.abs(tangentStart - tangentMinimum) <= tangentBoundaryEpsilon ? -1
-        : Math.abs(tangentStart - Math.max(tangentMinimum, tangentMaximum))
-            <= tangentBoundaryEpsilon ? 1 : 0
-    readonly property real tangentAnimationOffset: snap(
-        tangentRevealDirection * animationOffset)
-
+    // Caelestia panel wrappers translate only on the attachment axis. Tangent
+    // placement remains fixed even when the resting body is corner-clamped;
+    // this avoids a diagonal drift and keeps the connected shoulder stationary
+    // relative to the source while the whole body slides under the owner.
     // Fixed viewport on the screen-facing side of the resting attachment seam.
     // Rendering inside this rect makes translated pixels disappear underneath
     // the Bar/Screen Edge instead of painting over that compositor surface.
@@ -237,19 +230,19 @@ QtObject {
             outputRect.height)
 
     readonly property rect animatedBodyRect: edge === "top"
-        ? Qt.rect(snap(bodyRect.x + tangentAnimationOffset),
+        ? Qt.rect(snap(bodyRect.x),
             snap(bodyRect.y - animationOffset),
             bodyRect.width, bodyRect.height)
         : edge === "bottom"
-            ? Qt.rect(snap(bodyRect.x + tangentAnimationOffset),
+            ? Qt.rect(snap(bodyRect.x),
                 snap(bodyRect.y + animationOffset),
                 bodyRect.width, bodyRect.height)
         : edge === "left"
             ? Qt.rect(snap(bodyRect.x - animationOffset),
-                snap(bodyRect.y + tangentAnimationOffset),
+                snap(bodyRect.y),
                 bodyRect.width, bodyRect.height)
         : Qt.rect(snap(bodyRect.x + animationOffset),
-            snap(bodyRect.y + tangentAnimationOffset),
+            snap(bodyRect.y),
             bodyRect.width, bodyRect.height)
 
     readonly property real connectorTangentExtent: connectorBodyExtent

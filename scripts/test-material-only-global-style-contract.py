@@ -52,6 +52,8 @@ STYLED_TEXT_INPUT = ROOT / "modules" / "common" / "widgets" / "StyledTextInput.q
 STYLED_SLIDER = ROOT / "modules" / "common" / "widgets" / "StyledSlider.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
+CONTROL_PANEL_DATE_TIME = ROOT / "modules" / "controlPanel" / "DateTimeHeader.qml"
+CONTROL_PANEL_WALLPAPER = ROOT / "modules" / "controlPanel" / "WallpaperSection.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -121,6 +123,8 @@ def main() -> None:
     styled_slider = STYLED_SLIDER.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
+    control_panel_date_time = CONTROL_PANEL_DATE_TIME.read_text(encoding="utf-8")
+    control_panel_wallpaper = CONTROL_PANEL_WALLPAPER.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1325,6 +1329,59 @@ def main() -> None:
         "colBackgroundHover: Appearance.colors.colLayer2",
     ):
         require(results_delegate, token, "settings.qml search result delegate")
+
+    # Small active Control Panel leaves are safe to collapse independently of
+    # the larger panel shell. Lock them to the Material fallbacks that were
+    # already the terminal branches of their old Global Theme conditionals.
+    legacy_style_tokens = (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+        "Appearance.zzz.",
+        "Appearance.regalia.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "Appearance.cookie.",
+    )
+    for source, content in (
+        ("controlPanel/DateTimeHeader.qml", control_panel_date_time),
+        ("controlPanel/WallpaperSection.qml", control_panel_wallpaper),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+
+    forbid(
+        control_panel_date_time,
+        "AngelPartialBorder {",
+        "controlPanel/DateTimeHeader.qml",
+    )
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer1",
+        "border.width: 0",
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOnLayer1",
+        "color: Appearance.colors.colSubtext",
+        "running: GlobalStates.controlPanelOpen",
+    ):
+        require(control_panel_date_time, token, "controlPanel/DateTimeHeader.qml")
+
+    for token in (
+        "radiusOverride: islandSkin ? -1 : Appearance.rounding.normal",
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOnLayer1",
+        "buttonRadius: Appearance.rounding.full",
+        "colBackgroundHover: Appearance.colors.colLayer2Hover",
+        "color: Appearance.colors.colSubtext",
+        "radius: Appearance.rounding.small",
+        "onClicked: Wallpapers.randomFromCurrentFolder()",
+        'GlobalActions.runLauncher(["wallpaperSelector", "toggle"])',
+    ):
+        require(control_panel_wallpaper, token, "controlPanel/WallpaperSection.qml")
 
     print("Material-only global style contract: PASS")
 

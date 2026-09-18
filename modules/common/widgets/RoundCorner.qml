@@ -11,7 +11,7 @@ Item {
     property alias rightVisualMargin: shape.anchors.rightMargin
     property alias bottomVisualMargin: shape.anchors.bottomMargin
 
-    property int implicitSize: 25
+    property real implicitSize: 25
     property color color: "#000000"
 
     implicitWidth: implicitSize
@@ -26,8 +26,44 @@ Item {
     property bool isLeft: isTopLeft || isBottomLeft
     property bool isRight: isTopRight || isBottomRight
 
+    readonly property real _r: Math.max(0, root.implicitSize)
+    readonly property real _k: 0.5522847498307936
+
+    readonly property point _wedgeStart: root.isTopLeft ? Qt.point(0, 0)
+        : root.isTopRight ? Qt.point(root._r, 0)
+        : root.isBottomLeft ? Qt.point(0, root._r)
+        : Qt.point(root._r, root._r)
+
+    readonly property point _arcStart: root.isTopLeft ? Qt.point(0, root._r)
+        : root.isTopRight ? Qt.point(root._r, root._r)
+        : root.isBottomLeft ? Qt.point(0, 0)
+        : Qt.point(root._r, 0)
+
+    readonly property point _arcEnd: root.isTopLeft ? Qt.point(root._r, 0)
+        : root.isTopRight ? Qt.point(0, 0)
+        : root.isBottomLeft ? Qt.point(root._r, root._r)
+        : Qt.point(0, root._r)
+
+    readonly property point _control1: root.isTopLeft
+        ? Qt.point(0, root._r * (1 - root._k))
+        : root.isTopRight
+            ? Qt.point(root._r, root._r * (1 - root._k))
+        : root.isBottomLeft
+            ? Qt.point(0, root._r * root._k)
+        : Qt.point(root._r, root._r * root._k)
+
+    readonly property point _control2: root.isTopLeft
+        ? Qt.point(root._r * (1 - root._k), 0)
+        : root.isTopRight
+            ? Qt.point(root._r * root._k, 0)
+        : root.isBottomLeft
+            ? Qt.point(root._r * (1 - root._k), root._r)
+        : Qt.point(root._r * root._k, root._r)
+
     Shape {
         id: shape
+        width: root._r
+        height: root._r
         anchors {
             top: root.isTop ? parent.top : undefined
             bottom: root.isBottom ? parent.bottom : undefined
@@ -38,43 +74,34 @@ Item {
         layer.smooth: true
         preferredRendererType: Shape.CurveRenderer
 
+        // Render all four inverse corners from the same cubic quarter-circle
+        // construction. This avoids the renderer-dependent bottom-corner
+        // triangle/winding artifact from PathAngleArc and keeps the popup/bar
+        // contact shoulders visually identical in every orientation.
         ShapePath {
-            id: shapePath
+            id: fillPath
             strokeWidth: 0
             fillColor: root.color
             pathHints: ShapePath.PathSolid & ShapePath.PathNonIntersecting
+            startX: root._wedgeStart.x
+            startY: root._wedgeStart.y
 
-            startX: switch (root.corner) {
-                case RoundCorner.CornerEnum.TopLeft:
-                case RoundCorner.CornerEnum.BottomLeft: return 0;
-                case RoundCorner.CornerEnum.TopRight:
-                case RoundCorner.CornerEnum.BottomRight: return root.implicitSize;
+            PathLine {
+                x: root._arcStart.x
+                y: root._arcStart.y
             }
-            startY: switch (root.corner) {
-                case RoundCorner.CornerEnum.TopLeft:
-                case RoundCorner.CornerEnum.TopRight: return 0;
-                case RoundCorner.CornerEnum.BottomLeft:
-                case RoundCorner.CornerEnum.BottomRight: return root.implicitSize;
-            }
-            PathAngleArc {
-                moveToStart: false
-                centerX: root.implicitSize - shapePath.startX
-                centerY: root.implicitSize - shapePath.startY
-                radiusX: root.implicitSize
-                radiusY: root.implicitSize
-                startAngle: switch (root.corner) {
-                    case RoundCorner.CornerEnum.TopLeft: return 180;
-                    case RoundCorner.CornerEnum.TopRight: return -90;
-                    case RoundCorner.CornerEnum.BottomLeft: return 90;
-                    case RoundCorner.CornerEnum.BottomRight: return 0;
-                }
-                sweepAngle: 90
+            PathCubic {
+                control1X: root._control1.x
+                control1Y: root._control1.y
+                control2X: root._control2.x
+                control2Y: root._control2.y
+                x: root._arcEnd.x
+                y: root._arcEnd.y
             }
             PathLine {
-                x: shapePath.startX
-                y: shapePath.startY
+                x: root._wedgeStart.x
+                y: root._wedgeStart.y
             }
         }
     }
-
 }

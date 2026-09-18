@@ -24,7 +24,8 @@ BarConfig {
         const text = String(item.text ?? "")
 
         if (title === Translation.tr("Corner style")
-                || text === Translation.tr("Float shadow")) {
+                || text === Translation.tr("Float shadow")
+                || text === Translation.tr("Show background")) {
             item.visible = false
             return
         }

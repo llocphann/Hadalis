@@ -145,6 +145,11 @@ grep -Fq 'id: shadowClip' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must clip radius-following shadow at attached edges'
 grep -Fq 'RectangularShadow {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must use the stable radius-aware shell shadow renderer'
+grep -Fq 'import QtQuick.Effects' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame RectangularShadow must import QtQuick.Effects'
+if grep -Fq 'import Qt5Compat.GraphicalEffects' "$connected_frame"; then
+    fail 'ConnectedSurfaceFrame must not import RectangularShadow from Qt5Compat.GraphicalEffects'
+fi
 if grep -Fq 'layer.effect: MultiEffect {' "$connected_frame"; then
     fail 'ConnectedSurfaceFrame must not depend on the blank-prone MultiEffect popup shadow path'
 fi

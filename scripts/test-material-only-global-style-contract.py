@@ -11,6 +11,7 @@ BAR = ROOT / "modules" / "bar" / "Bar.qml"
 VERTICAL_BAR = ROOT / "modules" / "verticalBar" / "VerticalBar.qml"
 WEATHER_BAR = ROOT / "modules" / "bar" / "weather" / "WeatherBar.qml"
 BAR_MEDIA_POPUP = ROOT / "modules" / "mediaControls" / "BarMediaPopup.qml"
+PLAYER_CONTROL = ROOT / "modules" / "mediaControls" / "PlayerControl.qml"
 BATTERY_INDICATOR = ROOT / "modules" / "bar" / "BatteryIndicator.qml"
 CLOCK_WIDGET = ROOT / "modules" / "bar" / "ClockWidget.qml"
 NOTIFICATION_UNREAD_COUNT = ROOT / "modules" / "bar" / "NotificationUnreadCount.qml"
@@ -75,6 +76,7 @@ def main() -> None:
     vertical_bar = VERTICAL_BAR.read_text(encoding="utf-8")
     weather_bar = WEATHER_BAR.read_text(encoding="utf-8")
     bar_media_popup = BAR_MEDIA_POPUP.read_text(encoding="utf-8")
+    player_control = PLAYER_CONTROL.read_text(encoding="utf-8")
     battery_indicator = BATTERY_INDICATOR.read_text(encoding="utf-8")
     clock_widget = CLOCK_WIDGET.read_text(encoding="utf-8")
     notification_unread_count = NOTIFICATION_UNREAD_COUNT.read_text(encoding="utf-8")
@@ -858,6 +860,36 @@ def main() -> None:
         "color: Appearance.colors.colSurfaceContainerLow",
     ):
         require(bar_taskbar_window_preview, token, "BarTaskbarWindowPreview.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+        "Appearance.zzz.",
+        "Appearance.regalia.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "Appearance.cookie.",
+        "root.inir",
+    ):
+        forbid(player_control, token, "PlayerControl.qml")
+    for token in (
+        "property real radius: Appearance.rounding.large",
+        "StyledRectangularShadow { target: card }",
+        "radius: root.radius",
+        "border.width: 0",
+        'border.color: "transparent"',
+        "font.weight: Font.Medium",
+        "font.italic: false",
+        "buttonRadius: Appearance.rounding.full",
+        "highlightColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary",
+        "trackColor: blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer",
+    ):
+        require(player_control, token, "PlayerControl.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

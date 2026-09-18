@@ -13,10 +13,8 @@ import Quickshell.Services.UPower
 Item {
     id: root
     property bool borderless: Config.options?.bar?.borderless ?? false
-    readonly property color neutralIconColor: Appearance.zzzEverywhere ? Appearance.zzz.ink
-        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer2
-    readonly property color dangerIconColor: Appearance.zzzEverywhere ? Appearance.zzz.signal
-        : Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError
+    readonly property color neutralIconColor: Appearance.colors.colOnLayer2
+    readonly property color dangerIconColor: Appearance.colors.colError
     // Exact content width — self-inflating (+spacing*2) made every group that
     // ends with these buttons read asymmetric: the group's own padding is the
     // spacing authority, modules must not add their own.
@@ -228,11 +226,7 @@ Item {
                         iconSize: Appearance.font.pixelSize.large
                         color: micButton.isInUse && !micButton.isMuted
                             ? root.dangerIconColor
-                            : (Appearance.angelEverywhere ? Appearance.angel.colText
-                             : Appearance.inirEverywhere ? Appearance.inir.colOnLayer2
-                             : Appearance.zzzEverywhere ? Appearance.zzz.accent
-                             : Appearance.auroraEverywhere ? Appearance.colors.colOnSurface
-                             : Appearance.colors.colOnLayer2)
+                            : root.neutralIconColor
                     }
 
                     Rectangle {

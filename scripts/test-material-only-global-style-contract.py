@@ -39,6 +39,7 @@ FONT_SELECTOR = ROOT / "modules" / "common" / "widgets" / "FontSelector.qml"
 ICON_THEME_SELECTOR = ROOT / "modules" / "common" / "widgets" / "IconThemeSelector.qml"
 CONFIG_SELECTION_ARRAY = ROOT / "modules" / "common" / "widgets" / "ConfigSelectionArray.qml"
 CONFIG_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "ConfigSpinBox.qml"
+CONFIG_SWITCH = ROOT / "modules" / "common" / "widgets" / "ConfigSwitch.qml"
 STYLED_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "StyledSpinBox.qml"
 SETTINGS_SWITCH = ROOT / "modules" / "common" / "widgets" / "SettingsSwitch.qml"
 SETTINGS_NOTE = ROOT / "modules" / "common" / "widgets" / "SettingsNote.qml"
@@ -101,6 +102,7 @@ def main() -> None:
     icon_theme_selector = ICON_THEME_SELECTOR.read_text(encoding="utf-8")
     config_selection_array = CONFIG_SELECTION_ARRAY.read_text(encoding="utf-8")
     config_spin_box = CONFIG_SPIN_BOX.read_text(encoding="utf-8")
+    config_switch = CONFIG_SWITCH.read_text(encoding="utf-8")
     styled_spin_box = STYLED_SPIN_BOX.read_text(encoding="utf-8")
     settings_switch = SETTINGS_SWITCH.read_text(encoding="utf-8")
     settings_note = SETTINGS_NOTE.read_text(encoding="utf-8")
@@ -969,6 +971,15 @@ def main() -> None:
         "enabled: root.expanded",
     ):
         require(settings_card_section, token, "SettingsCardSection.qml")
+
+    for token in (
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.angel.",
+        "Appearance.inir.",
+    ):
+        forbid(config_switch, token, "ConfigSwitch.qml")
+    require(config_switch, "color: Appearance.colors.colOnSurface", "ConfigSwitch.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

@@ -21,6 +21,11 @@ Canvas {
         if (root.visible)
             root.requestPaint()
     }
+    // Canvas does not repaint just because these scalar bindings change. When
+    // playback pauses CAVA can stop emitting points immediately, so clear the
+    // last live waveform explicitly; likewise redraw when adaptive scaling moves.
+    onLiveChanged: requestPaint()
+    onMaxVisualizerValueChanged: requestPaint()
     onFillOpacityChanged: requestPaint()
     onColorChanged: requestPaint()
 

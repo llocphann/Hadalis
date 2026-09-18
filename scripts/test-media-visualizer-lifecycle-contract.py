@@ -19,6 +19,7 @@ def main() -> None:
     popup = read("modules/mediaControls/BarMediaPopup.qml")
     player = read("modules/mediaControls/PlayerControl.qml")
     cava = read("modules/common/widgets/CavaProcess.qml")
+    wave = read("modules/common/widgets/WaveVisualizer.qml")
 
     check(
         "readonly property bool presentationActive: root.QsWindow.window?.visible ?? false" in popup,
@@ -55,6 +56,14 @@ def main() -> None:
         "maxVisualizerValue: Math.max(1, root.visualizerMaxValue)" in player
         and "maxVisualizerValue: 1000" not in player,
         "PlayerControl must scale the wave against the adaptive signal ceiling instead of a fixed 1000",
+    )
+    check(
+        "onLiveChanged: requestPaint()" in wave,
+        "WaveVisualizer must repaint when playback lifecycle clears/restores the live waveform",
+    )
+    check(
+        "onMaxVisualizerValueChanged: requestPaint()" in wave,
+        "WaveVisualizer must repaint when the adaptive CAVA normalization ceiling changes",
     )
     check(
         "CavaService.subscribe(root.sampleCount)" in cava,

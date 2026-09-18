@@ -58,6 +58,12 @@ grep -Fq 'appearance.screenEdge.shadow.enabled' "$root/modules/settings/BarConfi
     || fail 'Bar Settings must expose Screen Edge shadow controls'
 grep -Fq 'readonly property color shadowColor:' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge runtime must paint the configured inward shadow'
+grep -Fq 'exclusiveZone: mapped ? root.thickness : 0' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge thickness must define the compositor layout boundary'
+grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
+    || fail 'horizontal Bar shadow must share Screen Edge shadow settings'
+grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
+    || fail 'vertical Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared connected-surface primitives'
 grep -Fq 'id: oskConnectorGeometry' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

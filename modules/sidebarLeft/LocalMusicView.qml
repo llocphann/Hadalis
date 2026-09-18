@@ -93,15 +93,19 @@ Item {
                 color: Appearance.colors.colLayer2
                 clip: true
                 Image {
+                    id: coverImage
                     anchors.fill: parent
                     source: String(trackRow.track?.art ?? "")
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
-                    visible: source.toString().length > 0
+                    cache: true
+                    sourceSize.width: 72
+                    sourceSize.height: 72
+                    visible: status === Image.Ready
                 }
                 MaterialSymbol {
                     anchors.centerIn: parent
-                    visible: String(trackRow.track?.art ?? "").length === 0
+                    visible: coverImage.status !== Image.Ready
                     text: trackRow.active && LocalMusic.playing ? "graphic_eq" : "music_note"
                     iconSize: 20
                     color: trackRow.active ? Appearance.colors.colPrimary : Appearance.colors.colSubtext

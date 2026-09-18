@@ -7,6 +7,7 @@ controls are routed through mpd-mpris whenever that MPRIS player is available.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import socket
@@ -16,6 +17,7 @@ from typing import Any
 
 ART_NAMES = ("cover", "folder", "front", "album", "artwork")
 ART_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".avif")
+ART_CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "hadalis" / "music-covers"
 
 
 class MpdError(RuntimeError):
@@ -75,6 +77,72 @@ class MpdClient:
             if text.startswith("ACK "):
                 raise MpdError(text)
             result.append(text)
+
+    def binary(self, name: str, uri: str) -> tuple[bytes, str] | None:
+        """Read MPD albumart/readpicture binary chunks without a second backend."""
+        if self.stream is None:
+            raise MpdError("not_connected")
+
+        data = bytearray()
+        mime = ""
+        offset = 0
+
+        def read_exact(size: int) -> bytes:
+            chunks = bytearray()
+            while len(chunks) < size:
+                chunk = self.stream.read(size - len(chunks))
+                if not chunk:
+                    raise MpdError("connection_closed")
+                chunks.extend(chunk)
+            return bytes(chunks)
+
+        while True:
+            line = f"{name} {_quote(uri)} {_quote(offset)}\n"
+            self.stream.write(line.encode("utf-8"))
+            total_size: int | None = None
+            chunk_size = 0
+
+            while True:
+                raw = self.stream.readline()
+                if not raw:
+                    raise MpdError("connection_closed")
+                if raw.startswith(b"ACK "):
+                    if offset == 0:
+                        return None
+                    raise MpdError(raw.decode("utf-8", errors="replace").strip())
+
+                text = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+                if text == "OK":
+                    break
+                if ": " not in text:
+                    continue
+                key, value = text.split(": ", 1)
+                lower = key.lower()
+                if lower == "size":
+                    try:
+                        total_size = int(value)
+                    except ValueError:
+                        total_size = None
+                elif lower == "type":
+                    mime = value.strip()
+                elif lower == "binary":
+                    try:
+                        chunk_size = max(0, int(value))
+                    except ValueError as exc:
+                        raise MpdError("invalid_binary_size") from exc
+                    if chunk_size > 0:
+                        data.extend(read_exact(chunk_size))
+                        terminator = read_exact(1)
+                        if terminator != b"\n":
+                            raise MpdError("invalid_binary_terminator")
+
+            if chunk_size <= 0 or total_size is None or len(data) >= total_size:
+                break
+            offset = len(data)
+
+        if not data:
+            return None
+        return bytes(data), mime
 
 
 def _pairs(lines: list[str]) -> dict[str, str]:
@@ -164,8 +232,106 @@ def _folder_art(path_text: str) -> str:
         for ext in ART_EXTENSIONS:
             candidate = entries.get(base + ext)
             if candidate is not None:
-                return str(candidate.resolve())
+                try:
+                    return candidate.resolve().as_uri()
+                except ValueError:
+                    return str(candidate.resolve())
     return ""
+
+
+def _art_cache_key(track: dict[str, Any]) -> str:
+    album_artist = str(track.get("albumArtist") or track.get("artist") or "").strip()
+    album = str(track.get("album") or "").strip()
+    folder = str(track.get("folder") or "").strip()
+    uri = str(track.get("uri") or "").strip()
+    if album:
+        identity = ("album", album_artist, album, folder)
+    else:
+        identity = ("folder", folder or str(Path(uri).parent))
+    payload = "\x1f".join(identity).encode("utf-8", errors="replace")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _cached_art(track: dict[str, Any]) -> str:
+    key = _art_cache_key(track)
+    try:
+        matches = sorted(ART_CACHE_DIR.glob(key + ".*"))
+    except OSError:
+        return ""
+    for candidate in matches:
+        if not candidate.is_file() or candidate.stat().st_size <= 0:
+            continue
+        try:
+            return candidate.resolve().as_uri()
+        except ValueError:
+            return str(candidate.resolve())
+    return ""
+
+
+def _art_extension(data: bytes, mime: str) -> str:
+    value = mime.lower().strip()
+    if "png" in value or data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if "webp" in value or (len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP"):
+        return ".webp"
+    if "gif" in value or data.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    return ".jpg"
+
+
+def _write_cached_art(track: dict[str, Any], data: bytes, mime: str) -> str:
+    if not data:
+        return ""
+    ART_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    key = _art_cache_key(track)
+    target = ART_CACHE_DIR / (key + _art_extension(data, mime))
+    temp = target.with_suffix(target.suffix + ".tmp")
+    temp.write_bytes(data)
+    os.replace(temp, target)
+    try:
+        return target.resolve().as_uri()
+    except ValueError:
+        return str(target.resolve())
+
+
+def _fetch_mpd_art(client: MpdClient, uri: str) -> tuple[bytes, str] | None:
+    if not uri:
+        return None
+    for command in ("albumart", "readpicture"):
+        try:
+            payload = client.binary(command, uri)
+        except (MpdError, OSError):
+            payload = None
+        if payload is not None and payload[0]:
+            return payload
+    return None
+
+
+def _populate_library_art(client: MpdClient, tracks: list[dict[str, Any]]) -> None:
+    """Resolve one MPD cover per album/folder group and cache it for the UI."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for track in tracks:
+        if track.get("art"):
+            continue
+        cached = _cached_art(track)
+        if cached:
+            track["art"] = cached
+            continue
+        groups.setdefault(_art_cache_key(track), []).append(track)
+
+    for group in groups.values():
+        representative = group[0]
+        payload = _fetch_mpd_art(client, str(representative.get("uri") or ""))
+        if payload is None:
+            continue
+        try:
+            art_url = _write_cached_art(representative, payload[0], payload[1])
+        except OSError:
+            continue
+        if not art_url:
+            continue
+        for track in group:
+            track["art"] = art_url
 
 
 def _track(record: dict[str, Any], music_root: str) -> dict[str, Any]:
@@ -178,7 +344,7 @@ def _track(record: dict[str, Any], music_root: str) -> dict[str, Any]:
     folder = str(Path(uri).parent)
     if folder == ".":
         folder = ""
-    return {
+    track = {
         "uri": uri,
         "path": path,
         "title": title,
@@ -191,10 +357,12 @@ def _track(record: dict[str, Any], music_root: str) -> dict[str, Any]:
         "genre": _first(record, "genre"),
         "date": _first(record, "date"),
         "folder": folder,
-        "art": _folder_art(path),
+        "art": "",
         "queueId": _int_prefix(_first(record, "id")),
         "queuePos": _int_prefix(_first(record, "pos")),
     }
+    track["art"] = _folder_art(path) or _cached_art(track)
+    return track
 
 
 def _music_root(client: MpdClient, override: str) -> str:
@@ -235,6 +403,7 @@ def snapshot(client: MpdClient, override_root: str) -> dict[str, Any]:
             str(item["uri"]).casefold(),
         )
     )
+    _populate_library_art(client, tracks)
 
     playlist_names = [
         value

@@ -34,6 +34,12 @@ grep -Fq 'removable: true' "$view" || fail 'Queue rows must expose their remove 
 grep -Fq 'onRemoveRequested: LocalMusic.removeQueueTrack(index)' "$view" || fail 'Queue remove UI must target MPD queue state'
 grep -Fq 'onClicked: LocalMusic.clearQueue()' "$view" || fail 'Queue must expose a Clear action'
 grep -Fq 'implicitHeight: 50' "$view" || fail 'Song/queue rows must retain compact desktop-player density'
+grep -Fq 'def binary(self, name: str, uri: str)' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must read binary artwork without a private player backend'
+grep -Fq 'for command in ("albumart", "readpicture")' "$root/scripts/local_music_mpd.py" || fail 'Music covers must prefer MPD albumart and fall back to embedded readpicture'
+grep -Fq '_populate_library_art(client, tracks)' "$root/scripts/local_music_mpd.py" || fail 'MPD library snapshot must hydrate cover art'
+grep -Fq '.resolve().as_uri()' "$root/scripts/local_music_mpd.py" || fail 'local cover paths must be emitted as QML-safe file URLs'
+grep -Fq 'id: coverImage' "$view" || fail 'Song rows must render their resolved cover image'
+grep -Fq 'visible: coverImage.status !== Image.Ready' "$view" || fail 'Song rows must keep a fallback icon until cover decoding succeeds'
 if grep -Eq 'mpvPath|local_music_ipc|local_music_scan|--input-ipc-server' "$service"; then
     fail 'LocalMusic must not regress to a private mpv player'
 fi

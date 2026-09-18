@@ -15,6 +15,11 @@ import Qt5Compat.GraphicalEffects
 Item {
     id: root
     property bool vertical: false
+    readonly property string barPosition: root.vertical
+        ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
+        : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
+    property Item lastHoveredWorkspaceButton: null
+    property bool workspaceButtonHovered: false
     property bool borderless: Config.options?.bar?.borderless ?? false
     readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(root.QsWindow.window?.screen) : null
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
@@ -152,6 +157,25 @@ Item {
             NiriService.switchToWorkspaceById(ws.id)
         else
             NiriService.switchToWorkspace(root.workspaceIndexForSlot(slotNumber))
+    }
+
+    function workspacePreviewId(slotNumber) {
+        if (CompositorService.isNiri)
+            return root.workspaceForSlot(slotNumber)?.id ?? null
+        if (CompositorService.isHyprland)
+            return slotNumber
+        return null
+    }
+
+    function showWorkspacePreview(slotNumber, button) {
+        if (Config.options?.dock?.hoverPreview === false)
+            return
+        const workspaceId = root.workspacePreviewId(slotNumber)
+        if (workspaceId === null || workspaceId === undefined) {
+            workspacePreviewPopup.close()
+            return
+        }
+        workspacePreviewPopup.showWorkspace(workspaceId, button)
     }
 
     // Scroll behavior: "workspace" = switch workspaces, "column" = cycle windows left/right in same workspace
@@ -495,15 +519,47 @@ Item {
             Button {
                 id: button
                 property int workspaceValue: workspaceGroup * root.workspacesShown + index + 1
+                hoverEnabled: true
                 implicitHeight: vertical ? Appearance.sizes.verticalBarWidth : Appearance.sizes.barHeight
                 implicitWidth: vertical ? Appearance.sizes.verticalBarWidth : Appearance.sizes.verticalBarWidth
                 onPressed: {
+                    workspaceHoverDelay.stop()
+                    workspacePreviewPopup.close()
                     if (CompositorService.isNiri) {
                         root.switchToSlot(workspaceValue)
                     } else if (CompositorService.isHyprland) {
                         Hyprland.dispatch(`workspace ${workspaceValue}`)
                     }
                 }
+
+                onHoveredChanged: {
+                    if (hovered) {
+                        root.lastHoveredWorkspaceButton = button
+                        root.workspaceButtonHovered = true
+                        if (root.workspaceOccupied[index]
+                                && Config.options?.dock?.hoverPreview !== false) {
+                            workspaceHoverDelay.restart()
+                        } else {
+                            workspaceHoverDelay.stop()
+                            workspacePreviewPopup.close()
+                        }
+                    } else {
+                        workspaceHoverDelay.stop()
+                        if (root.lastHoveredWorkspaceButton === button)
+                            root.workspaceButtonHovered = false
+                    }
+                }
+
+                Timer {
+                    id: workspaceHoverDelay
+                    interval: Config.options?.dock?.hoverPreviewDelay ?? 400
+                    repeat: false
+                    onTriggered: {
+                        if (button.hovered && root.workspaceOccupied[index])
+                            root.showWorkspacePreview(button.workspaceValue, button)
+                    }
+                }
+
                 width: vertical ? undefined : workspaceButtonWidth
                 height: vertical ? workspaceButtonWidth : undefined
 
@@ -672,6 +728,17 @@ Item {
 
         }
 
+    }
+
+    BarTaskbarPreview {
+        id: workspacePreviewPopup
+        dockHovered: root.workspaceButtonHovered
+        barPosition: root.barPosition
+    }
+
+    onColumnModeChanged: {
+        if (root.columnMode)
+            workspacePreviewPopup.close()
     }
 
     // Column mode - background (same style as workspace mode)

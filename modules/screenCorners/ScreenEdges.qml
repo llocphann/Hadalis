@@ -8,6 +8,7 @@ import qs.modules.common.perimeter
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -26,9 +27,9 @@ Scope {
     readonly property bool shadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property int shadowSize: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
-    readonly property real shadowOpacity: Math.max(0, Math.min(0.60,
-        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+    readonly property real shadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
     readonly property int shadowExtent: shadowEnabled ? shadowSize : 0
     readonly property bool waffleFamily:
         (Config.options?.panelFamily ?? "ii") === "waffle"
@@ -113,17 +114,8 @@ Scope {
 
         readonly property string outputName: String(modelData?.name ?? "")
         readonly property bool horizontal: edge === "top" || edge === "bottom"
-        // Keep the proven pre-corner-shadow contract: straight inward shadows
-        // stop before a free inverse-corner footprint, but may run to the edge
-        // when the adjacent Bar owns that side.
-        readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
-        readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
-        readonly property real leadingShadowInset:
-            root.barOwnsEdge(outputName, leadingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
-        readonly property real trailingShadowInset:
-            root.barOwnsEdge(outputName, trailingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
+        // The whole visible edge surface is shadowed as one alpha silhouette,
+        // matching Caelestia's single BlobGroup + MultiEffect composition.
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -142,8 +134,11 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
 
         implicitWidth: horizontal ? 1 : root.thickness + root.shadowExtent
+        // Horizontal edges need room for both the 25px inverse corner and the
+        // inward 15px Caelestia-style shadow; using max() clipped the shadow at
+        // the curved endpoints and made the lower edge look flat/unshadowed.
         implicitHeight: horizontal
-            ? root.thickness + Math.max(root.shadowExtent, root.innerRadius)
+            ? root.thickness + root.innerRadius + root.shadowExtent
             : 1
 
         WlrLayershell.namespace: "hadalis:screen-edge-" + edge
@@ -167,87 +162,71 @@ Scope {
         }
         mask: Region { item: emptyInput }
 
-        Rectangle {
-            id: edgeBand
-            x: horizontal ? 0 : (edge === "left" ? 0 : parent.width - root.thickness)
-            y: horizontal ? (edge === "top" ? 0 : parent.height - root.thickness) : 0
-            width: horizontal ? parent.width : root.thickness
-            height: horizontal ? root.thickness : parent.height
-            color: root.edgeColor
-        }
+        // Render band + inverse corners into one offscreen alpha surface and
+        // apply one shadow to that silhouette. This is the closest QtQuick
+        // analogue to Caelestia's ContentWindow BlobGroup layer effect and,
+        // unlike four independent linear gradients, keeps the shadow continuous
+        // through the bottom corners and the two side edges that meet the Bar.
+        Item {
+            id: edgeSurface
+            anchors.fill: parent
 
-        Rectangle {
-            id: edgeShadow
-            visible: root.shadowExtent > 0 && root.shadowOpacity > 0
-            x: horizontal ? leadingShadowInset
-                : (edge === "left" ? root.thickness : 0)
-            y: horizontal
-                ? (edge === "top"
-                    ? root.thickness
-                    : parent.height - root.thickness - root.shadowExtent)
-                : leadingShadowInset
-            width: horizontal
-                ? Math.max(0, parent.width - leadingShadowInset - trailingShadowInset)
-                : root.shadowExtent
-            height: horizontal
-                ? root.shadowExtent
-                : Math.max(0, parent.height - leadingShadowInset - trailingShadowInset)
-            color: "transparent"
-            gradient: Gradient {
-                orientation: horizontal ? Gradient.Vertical : Gradient.Horizontal
-                GradientStop {
-                    position: 0
-                    color: (edge === "top" || edge === "left")
-                        ? root.shadowColor : "transparent"
+            layer.enabled: root.shadowEnabled
+                && root.shadowExtent > 0
+                && root.shadowOpacity > 0
+            layer.smooth: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                blurMax: Math.max(1, root.shadowExtent)
+                shadowColor: root.shadowColor
+            }
+
+            Rectangle {
+                id: edgeBand
+                x: horizontal ? 0
+                    : (edge === "left" ? 0 : parent.width - root.thickness)
+                y: horizontal
+                    ? (edge === "top" ? 0 : parent.height - root.thickness)
+                    : 0
+                width: horizontal ? parent.width : root.thickness
+                height: horizontal ? root.thickness : parent.height
+                color: root.edgeColor
+            }
+
+            // Horizontal EdgeWindow owns the free endpoint curves. Vertical
+            // edges are straight because the Bar (when present) or the
+            // horizontal edge surface owns the adjoining inverse corner.
+            RoundCorner {
+                id: leadingCorner
+                visible: horizontal && !root.barOwnsEdge(outputName, "left")
+                implicitSize: root.innerRadius
+                color: root.edgeColor
+                anchors {
+                    left: parent.left
+                    leftMargin: root.thickness
+                    top: edge === "top" ? edgeBand.bottom : undefined
+                    bottom: edge === "bottom" ? edgeBand.top : undefined
                 }
-                GradientStop {
-                    position: 1
-                    color: (edge === "top" || edge === "left")
-                        ? "transparent" : root.shadowColor
+                corner: edge === "top"
+                    ? RoundCorner.CornerEnum.TopLeft
+                    : RoundCorner.CornerEnum.BottomLeft
+            }
+
+            RoundCorner {
+                id: trailingCorner
+                visible: horizontal && !root.barOwnsEdge(outputName, "right")
+                implicitSize: root.innerRadius
+                color: root.edgeColor
+                anchors {
+                    right: parent.right
+                    rightMargin: root.thickness
+                    top: edge === "top" ? edgeBand.bottom : undefined
+                    bottom: edge === "bottom" ? edgeBand.top : undefined
                 }
+                corner: edge === "top"
+                    ? RoundCorner.CornerEnum.TopRight
+                    : RoundCorner.CornerEnum.BottomRight
             }
-        }
-
-
-
-
-
-        // Match Bar.qml's Hug composition: the solid horizontal band and its
-        // wallpaper-facing inverse corners are one layer surface. This removes
-        // compositor ordering between an edge shadow and four independent
-        // corner PanelWindows, which was the source of the lower white wedges.
-        RoundCorner {
-            id: leadingCorner
-            visible: horizontal && !root.barOwnsEdge(outputName, "left")
-            implicitSize: root.innerRadius
-            color: root.edgeColor
-            z: 2
-            anchors {
-                left: parent.left
-                leftMargin: root.thickness
-                top: edge === "top" ? edgeBand.bottom : undefined
-                bottom: edge === "bottom" ? edgeBand.top : undefined
-            }
-            corner: edge === "top"
-                ? RoundCorner.CornerEnum.TopLeft
-                : RoundCorner.CornerEnum.BottomLeft
-        }
-
-        RoundCorner {
-            id: trailingCorner
-            visible: horizontal && !root.barOwnsEdge(outputName, "right")
-            implicitSize: root.innerRadius
-            color: root.edgeColor
-            z: 2
-            anchors {
-                right: parent.right
-                rightMargin: root.thickness
-                top: edge === "top" ? edgeBand.bottom : undefined
-                bottom: edge === "bottom" ? edgeBand.top : undefined
-            }
-            corner: edge === "top"
-                ? RoundCorner.CornerEnum.TopRight
-                : RoundCorner.CornerEnum.BottomRight
         }
     }
 

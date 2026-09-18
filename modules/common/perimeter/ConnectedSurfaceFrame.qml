@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 
 Item {
     id: root
@@ -60,67 +61,48 @@ Item {
         visible: root.visible && width > 0 && height > 0
     }
 
-    // Caelestia-style direct-edge surfaces have no separate neck shadow. Draw
-    // the same one-sided gradient used by Screen Edge only on the popup's free
-    // sides, leaving attached Bar/Screen-Edge seams shadow-free.
-    Rectangle {
+    // Shadow is generated from the same asymmetric rounded silhouette as the
+    // body, then clipped at every attached edge. This prevents shadow from
+    // painting across Bar/Screen Edge seams and keeps the free-corner falloff
+    // aligned with the popup border radius.
+    Item {
+        id: shadowClip
         z: -1
-        visible: root.shadowEnabled && root.shadowTop
-            && root.shadowExtent > 0 && body.visible
-        x: body.x
-        y: body.y - root.shadowExtent
+        visible: root.shadowEnabled && root.shadowExtent > 0 && body.visible
+            && (root.shadowTop || root.shadowBottom
+                || root.shadowLeft || root.shadowRight)
+        x: body.x - (root.shadowLeft ? root.shadowExtent : 0)
+        y: body.y - (root.shadowTop ? root.shadowExtent : 0)
         width: body.width
-        height: root.shadowExtent
-        color: "transparent"
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0; color: "transparent" }
-            GradientStop { position: 1; color: root.shadowColor }
-        }
-    }
-    Rectangle {
-        z: -1
-        visible: root.shadowEnabled && root.shadowBottom
-            && root.shadowExtent > 0 && body.visible
-        x: body.x
-        y: body.y + body.height
-        width: body.width
-        height: root.shadowExtent
-        color: "transparent"
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0; color: root.shadowColor }
-            GradientStop { position: 1; color: "transparent" }
-        }
-    }
-    Rectangle {
-        z: -1
-        visible: root.shadowEnabled && root.shadowLeft
-            && root.shadowExtent > 0 && body.visible
-        x: body.x - root.shadowExtent
-        y: body.y
-        width: root.shadowExtent
+            + (root.shadowLeft ? root.shadowExtent : 0)
+            + (root.shadowRight ? root.shadowExtent : 0)
         height: body.height
-        color: "transparent"
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: "transparent" }
-            GradientStop { position: 1; color: root.shadowColor }
-        }
-    }
-    Rectangle {
-        z: -1
-        visible: root.shadowEnabled && root.shadowRight
-            && root.shadowExtent > 0 && body.visible
-        x: body.x + body.width
-        y: body.y
-        width: root.shadowExtent
-        height: body.height
-        color: "transparent"
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: root.shadowColor }
-            GradientStop { position: 1; color: "transparent" }
+            + (root.shadowTop ? root.shadowExtent : 0)
+            + (root.shadowBottom ? root.shadowExtent : 0)
+        clip: true
+
+        Rectangle {
+            id: shadowShape
+            x: body.x - shadowClip.x
+            y: body.y - shadowClip.y
+            width: body.width
+            height: body.height
+            radius: body.surfaceRadius
+            topLeftRadius: body.topLeftRadius
+            topRightRadius: body.topRightRadius
+            bottomLeftRadius: body.bottomLeftRadius
+            bottomRightRadius: body.bottomRightRadius
+            color: root.fillColor
+
+            layer.enabled: shadowClip.visible
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowBlur: 1.0
+                blurMax: Math.max(1, Math.round(root.shadowExtent))
+                shadowColor: root.shadowColor
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 0
+            }
         }
     }
 

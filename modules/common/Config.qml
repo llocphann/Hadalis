@@ -814,6 +814,12 @@ Singleton {
             property JsonObject powerProfiles: JsonObject {
                 property bool restoreOnStart: true
                 property string preferredProfile: ""
+                property JsonObject fanControl: JsonObject {
+                    property bool enabled: false
+                    property int powerSaver: 0
+                    property int balanced: 0
+                    property int performance: 0
+                }
             }
 
             property JsonObject idle: JsonObject {

@@ -62,6 +62,7 @@ def main() -> None:
         "readonly property real smoothUnionRadius: 20",
         "readonly property real popupRadius: 28",
         "readonly property real joinFlareRadius: smoothUnionRadius",
+        "readonly property real joinFlareCrossScale: 0.55",
     ):
         check(token in perimeter_tokens,
               f"Caelestia geometry token missing: {token}")
@@ -109,6 +110,8 @@ def main() -> None:
     check("tangentAnimationOffset" not in geometry
           and "tangentRevealDirection" not in geometry,
           "Connected popup slide must remain on the attachment axis like Caelestia wrappers")
+    check("seamOverlap: 0" in styled_popup,
+          "Bar popup must start exactly at the attachment boundary so the flat shoulder is fully visible")
     check("ConnectedSurfaceRevealClip {" in styled_popup
           and "opacity: 1" in styled_popup,
           "Connected popup must use pure slide-under clipping instead of staged fade/scale")
@@ -158,26 +161,32 @@ def main() -> None:
     ):
         check(token in round_corner,
               f"RoundCorner must preserve all four orientations: {token}")
+    check("id: shadowCanvas" in round_corner
+          and "ctx.arc(" in round_corner
+          and "property real shadowExtent: 0" in round_corner,
+          "RoundCorner must carry the inward shadow around the circular arc")
 
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")
-    check("PerimeterTokens.frameRadius" in screen_edge,
-          "Screen Edge must use Caelestia's independent 25px frame rounding")
+    check("Config.options?.appearance?.screenEdge?.radius" in screen_edge
+          and "PerimeterTokens.frameRadius" in screen_edge,
+          "Screen Edge radius must be user-configurable with Caelestia 25px fallback")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
     check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
           "Screen Edge must stay mapped normally and hide only for lock/fullscreen coverage")
     check("mask: Region { item: emptyInput }" in screen_edge,
           "Screen Edge must remain completely click-through")
-    check("import QtQuick.Effects" in screen_edge
-          and "layer.effect: MultiEffect {" in screen_edge
-          and "blurMax: Math.max(1, root.shadowExtent)" in screen_edge,
-          "Screen Edge must shadow its complete band/corner alpha silhouette like Caelestia")
+    check("id: edgeShadow" in screen_edge
+          and "gradient: Gradient {" in screen_edge
+          and "shadowEnabled: root.shadowEnabled" in screen_edge
+          and "shadowExtent: root.shadowExtent" in screen_edge,
+          "Screen Edge must combine deterministic straight and curved in-window shadows")
+    check("layer.effect: MultiEffect {" not in screen_edge,
+          "Screen Edge shadow must not depend on compositor-sensitive layer-effect padding")
     check("root.thickness + root.innerRadius + root.shadowExtent" in screen_edge,
           "Horizontal Screen Edge host must reserve room for curve plus inward shadow")
-    check("id: edgeShadow" not in screen_edge,
-          "Screen Edge must not regress to clipped straight gradient shadow strips")
     for edge in ("top", "bottom", "left", "right"):
         check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must render the persistent {edge} output edge")
@@ -408,6 +417,10 @@ def main() -> None:
           and "property real shadowExtent" not in join_flares
           and "property color shadowColor" not in join_flares,
           "Rejected RoundCorner/corner-shadow flare rewrite must stay reverted")
+    check("root.radius * Math.max(0.20, Math.min(1, root.crossScale))" in join_flares
+          and "width: root.radius" in join_flares
+          and "height: root.depth" in join_flares,
+          "Bar popup shoulder must keep Caelestia's broad tangent / compressed cross-axis contact")
     check(") * root.reveal" not in join_flares,
           "Caelestia shoulder radius must stay fully formed during reveal")
 
@@ -427,10 +440,12 @@ def main() -> None:
               and "shadowTangentInset" not in runtime
               and "shadowSeamOverlap" not in runtime,
               "Rejected curved Bar shadow stitching must stay reverted")
-    check("frameRadius: PerimeterTokens.frameRadius" in bar_runtime,
-          "Horizontal Bar endpoint fillets must use Caelestia's 25px frame radius")
-    check("frameRadius: PerimeterTokens.frameRadius" in vertical_bar_runtime,
-          "Vertical Bar endpoint fillets must use Caelestia's 25px frame radius")
+    check("screenEdge?.radius" in bar_runtime
+          and "PerimeterTokens.frameRadius" in bar_runtime,
+          "Horizontal Bar endpoint fillets must follow the configurable Screen Edge radius")
+    check("screenEdge?.radius" in vertical_bar_runtime
+          and "PerimeterTokens.frameRadius" in vertical_bar_runtime,
+          "Vertical Bar endpoint fillets must follow the configurable Screen Edge radius")
     check("id: leftScreenEdgeContact" in bar_runtime
           and "id: rightScreenEdgeContact" in bar_runtime,
           "Horizontal Bar must own both physical Screen Edge contact strips")
@@ -542,6 +557,10 @@ def main() -> None:
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
+    check('Config.options?.appearance?.screenEdge?.radius ?? 25' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.radius", value)' in bar_settings
+          and 'Translation.tr("Border radius (px)")' in bar_settings,
+          "Bar settings must expose Screen Edge / Bar border radius")
     check('screenEdge?.shadow?.size ?? 15' in bar_settings
           and 'screenEdge?.shadow?.opacity ?? 0.70' in bar_settings
           and 'to: 100' in bar_settings,

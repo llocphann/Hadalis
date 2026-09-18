@@ -5,7 +5,7 @@ QtObject {
     readonly property real neckRadius: 14
     // Concave shoulder used where a directly attached body meets Bar/Screen Edge.
     // This approximates Caelestia's smooth blob union without reviving a stem.
-    readonly property real joinFlareRadius: 18
+    readonly property real joinFlareRadius: outerRadius
     // Shared popup reveal is a short directional slide from the owning edge.
     readonly property real revealSlideDistance: 18
     readonly property real connectorWidth: 40

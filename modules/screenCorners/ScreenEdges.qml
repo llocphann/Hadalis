@@ -4,6 +4,7 @@ import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.common.perimeter
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick

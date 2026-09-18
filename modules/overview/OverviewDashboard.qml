@@ -198,7 +198,7 @@ Item {
         blur: root.screenEdgeShadowSize
         spread: 0
         offset: Qt.vector2d(0, 0)
-        color: ColorUtils.applyAlpha(Appearance.colors.colShadow,
+        color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
             root.screenEdgeShadowOpacity)
         opacity: root.revealProgress
         joinBottom: root.directBottomAttachment

@@ -108,7 +108,7 @@ assert_contains 'SettingsPageRegistry.consumeLegacyTlpPowerRedirect()' "$general
     'legacy page-28 state must land on the Power task instead of Audio'
 assert_contains 'property string settingsTaskSection: "power"' "$power" \
     'TLP controls must identify themselves as part of the Power task'
-assert_contains 'title: Translation.tr("Battery and TLP power management")' "$power" \
+assert_contains 'title: Translation.tr("Battery & TLP")' "$power" \
     'the primary TLP card title must remain a stable search target'
 assert_not_contains 'settingsTaskSection: "power"' "$general_core" \
     'System settings must not render a second standalone Battery card'
@@ -118,6 +118,10 @@ assert_contains 'text: Translation.tr("Automatic suspend")' "$power" \
     'automatic suspend controls must live in the merged Battery/TLP card'
 assert_contains 'text: Translation.tr("Full warning")' "$power" \
     'full-battery warning controls must live in the merged Battery/TLP card'
+assert_not_contains 'text: Translation.tr("Battery care")' "$power" \
+    'the merged Battery/TLP card must not add a redundant Battery care heading'
+assert_contains 'showStatus: false' "$power" \
+    'inline charge-limit controls must stay on the Automatic suspend row without a status sub-row'
 assert_contains '.filter(category => String(category?.id ?? "") !== "battery-care")' "$power" \
     'Configuration categories must exclude the battery-care tab after merging it into Battery'
 assert_contains 'columns: 5' "$power" \
@@ -170,7 +174,7 @@ assert_contains 'redirected.pageIndex = root.systemPageIndex' "$registry" \
     'legacy TLP search entries must redirect to System'
 assert_contains 'redirected.section = Translation.tr("Power")' "$registry" \
     'charge-care search must land on the merged Power section'
-assert_contains 'redirected.label = Translation.tr("Battery and TLP power management")' "$registry" \
+assert_contains 'redirected.label = Translation.tr("Battery & TLP")' "$registry" \
     'all retired TLP search entries must target the merged Battery/TLP card'
 assert_contains 'keywords.concat(["system", "settings", "power"])' "$registry" \
     'redirected TLP search must stay discoverable through System settings terms'

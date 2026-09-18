@@ -240,6 +240,8 @@ Scope {
                         anchors {
                             left: parent.left
                             right: parent.right
+                            leftMargin: barRoot.hugCorners ? barRoot.roundDecoratorAllowance : 0
+                            rightMargin: barRoot.hugCorners ? barRoot.roundDecoratorAllowance : 0
                             top: !(Config.options?.bar?.bottom ?? false) ? barContent.bottom : undefined
                             bottom: (Config.options?.bar?.bottom ?? false) ? barContent.top : undefined
                         }

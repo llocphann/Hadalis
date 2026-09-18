@@ -84,7 +84,9 @@ Scope {
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-                readonly property real frameRadius: PerimeterTokens.frameRadius
+                readonly property real frameRadius: Math.max(0, Math.min(96,
+                    Number(Config.options?.appearance?.screenEdge?.radius
+                        ?? PerimeterTokens.frameRadius)))
                 readonly property bool hugCorners: bar.showBarBackground
                 readonly property real roundDecoratorAllowance: hugCorners
                     ? frameRadius : 0
@@ -245,6 +247,9 @@ Scope {
                         RoundCorner {
                             implicitSize: barRoot.roundDecoratorAllowance
                             color: Appearance.colors.colLayer0
+                            shadowEnabled: barRoot.edgeShadowEnabled
+                            shadowExtent: barRoot.edgeShadowExtent
+                            shadowColor: barRoot.edgeShadowColor
                             corner: (Config.options?.bar?.bottom ?? false)
                                 ? RoundCorner.CornerEnum.BottomLeft
                                 : RoundCorner.CornerEnum.TopLeft
@@ -260,6 +265,9 @@ Scope {
                         RoundCorner {
                             implicitSize: barRoot.roundDecoratorAllowance
                             color: Appearance.colors.colLayer0
+                            shadowEnabled: barRoot.edgeShadowEnabled
+                            shadowExtent: barRoot.edgeShadowExtent
+                            shadowColor: barRoot.edgeShadowColor
                             corner: (Config.options?.bar?.bottom ?? false)
                                 ? RoundCorner.CornerEnum.BottomRight
                                 : RoundCorner.CornerEnum.TopRight
@@ -328,9 +336,8 @@ Scope {
                         anchors {
                             left: parent.left
                             right: parent.right
-                            // Reference junction contract: the straight segment
-                            // beneath Hug shoulders; later RoundCorner paint
-                            // occludes the outside footprint into a curved edge.
+                            leftMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
+                            rightMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
                             top: !(Config.options?.bar?.bottom ?? false) ? barContent.bottom : undefined
                             bottom: (Config.options?.bar?.bottom ?? false) ? barContent.top : undefined
                         }
@@ -447,6 +454,10 @@ Scope {
 
                                 implicitSize: barRoot.frameRadius
                                 color: hugDecorators.solidColor
+                                shadowEnabled: barRoot.edgeShadowEnabled
+                                    && barRoot.surfacePresented
+                                shadowExtent: barRoot.edgeShadowExtent
+                                shadowColor: barRoot.edgeShadowColor
 
                                 corner: RoundCorner.CornerEnum.TopLeft
                                 states: State {
@@ -469,6 +480,10 @@ Scope {
                                 }
                                 implicitSize: barRoot.frameRadius
                                 color: hugDecorators.solidColor
+                                shadowEnabled: barRoot.edgeShadowEnabled
+                                    && barRoot.surfacePresented
+                                shadowExtent: barRoot.edgeShadowExtent
+                                shadowColor: barRoot.edgeShadowColor
 
                                 corner: RoundCorner.CornerEnum.TopRight
                                 states: State {

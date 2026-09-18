@@ -5358,5 +5358,11 @@
   "No more results for this search.": "No more results for this search.",
   "No wallpapers found for these tags and filters.": "No wallpapers found for these tags and filters.",
   "Wallhaven rate limit reached. Wait a moment and try again.": "Wallhaven rate limit reached. Wait a moment and try again.",
-  "Wallhaven request failed (HTTP %1).": "Wallhaven request failed (HTTP %1)."
+  "Wallhaven request failed (HTTP %1).": "Wallhaven request failed (HTTP %1).",
+  "Effective TLP values": "Effective TLP values",
+  "Apply saves staged changes with one authorization.": "Apply saves staged changes with one authorization.",
+  "Reset removes the invalid iNiR TLP override.": "Reset removes the invalid iNiR TLP override.",
+  "Reset clears the iNiR TLP overrides.": "Reset clears the iNiR TLP overrides.",
+  "Overrides: %1": "Overrides: %1",
+  "Battery care": "Battery care"
 }

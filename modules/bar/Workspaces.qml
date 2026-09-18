@@ -27,12 +27,8 @@ Item {
     property var numberMap: []
     property bool forceMaterialStyle: false
     property bool syncGlobalWorkspaceConfig: true
-    readonly property bool useZzzStyle: Appearance.zzzEverywhere && !root.forceMaterialStyle
-    readonly property bool useAngelStyle: Appearance.angelEverywhere && !root.forceMaterialStyle
-    readonly property bool useAuroraStyle: Appearance.auroraEverywhere && !root.forceMaterialStyle
     readonly property color workspaceThemePrimary: root.forceMaterialStyle ? Appearance.m3colors.m3primary : Appearance.colors.colPrimary
-    readonly property color workspaceThemeIndicator: root.useZzzStyle ? Appearance.zzz.accentSoft
-        : root.useAngelStyle ? Appearance.angel.colPrimary : root.workspaceThemePrimary
+    readonly property color workspaceThemeIndicator: root.workspaceThemePrimary
     readonly property bool automaticIndicatorColor: Config.options?.bar?.workspaces?.automaticIndicatorColor ?? true
     readonly property string configuredIndicatorColor: Config.options?.bar?.workspaces?.indicatorColor ?? ""
     readonly property color workspaceIndicatorColor: {
@@ -423,26 +419,15 @@ Item {
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 property bool previousOccupied: (workspaceOccupied[index-1] ?? false) && !(!activeWindow?.activated && currentWorkspaceNumber === index)
                 property bool rightOccupied: (workspaceOccupied[index+1] ?? false) && !(!activeWindow?.activated && currentWorkspaceNumber === index+2)
-                property real radiusPrev: root.useZzzStyle ? Appearance.zzz.cornerRadius
-                    : root.useAngelStyle ? Appearance.angel.roundingSmall : (previousOccupied ? 0 : (width / 2))
-                property real radiusNext: root.useZzzStyle ? Appearance.zzz.cornerRadius
-                    : root.useAngelStyle ? Appearance.angel.roundingSmall : (rightOccupied ? 0 : (width / 2))
+                property real radiusPrev: previousOccupied ? 0 : (width / 2)
+                property real radiusNext: rightOccupied ? 0 : (width / 2)
 
                 topLeftRadius: radiusPrev
                 bottomLeftRadius: root.vertical ? radiusNext : radiusPrev
                 topRightRadius: root.vertical ? radiusPrev : radiusNext
                 bottomRightRadius: radiusNext
                 
-                // ZZZ: drop this occupied-cell fill entirely — the active plate
-                // (ZzzPlate, generated accent) is the only workspace background,
-                // so the active cell no longer stacks two fills.
-                color: root.useZzzStyle
-                    ? "transparent"
-                    : root.useAngelStyle
-                    ? Appearance.angel.colGlassCard
-                    : root.useAuroraStyle
-                    ? Appearance.aurora.colSubSurface
-                    : ColorUtils.transparentize(root.workspaceSecondaryContainer, 0.4)
+                color: ColorUtils.transparentize(root.workspaceSecondaryContainer, 0.4)
                 opacity: (workspaceOccupied[index] && !(!activeWindow?.activated && currentWorkspaceNumber === index+1)) ? 1 : 0
 
                 Behavior on opacity {
@@ -467,19 +452,10 @@ Item {
         z: 2
         visible: !root.columnMode
         // Make active ws indicator, which has a brighter color, smaller to look like it is of the same size as ws occupied highlight
-        radius: root.useZzzStyle ? Appearance.zzz.cornerRadius
-            : root.useAngelStyle ? Appearance.angel.roundingSmall : Math.min(width, height) / 2
-        // ZZZ shows a chamfered signal plate (geometry) instead of the rounded fill.
-        color: root.useZzzStyle ? "transparent" : root.workspaceIndicatorColor
-        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot } }
+        radius: Math.min(width, height) / 2
+        color: root.workspaceIndicatorColor
+        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
         Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-
-        ZzzPlate {
-            anchors.fill: parent
-            visible: root.useZzzStyle
-            chamfer: Appearance.zzz.cutCorner * 0.4
-            fillColor: root.workspaceIndicatorColor
-        }
 
         anchors {
             verticalCenter: vertical ? undefined : parent.verticalCenter
@@ -576,14 +552,10 @@ Item {
                             return typeof label === "string" ? label : ""
                         }
                         elide: Text.ElideRight
-                        color: (currentWorkspaceNumber == button.workspaceValue) ?
-                            root.workspaceOnPrimaryReadable :
-                            // ZZZ: occupied cells have no plate (transparent), so the dark
-                            // onSecondary ink read black-on-black — use light zzz inks instead.
-                            root.useZzzStyle
-                                ? (workspaceOccupied[index] ? Appearance.zzz.onColor : Appearance.zzz.onMuted)
-                                : (workspaceOccupied[index] ? root.workspaceOnSecondaryReadable :
-                                    root.workspaceInactiveReadable)
+                        color: (currentWorkspaceNumber == button.workspaceValue)
+                            ? root.workspaceOnPrimaryReadable
+                            : (workspaceOccupied[index] ? root.workspaceOnSecondaryReadable
+                                : root.workspaceInactiveReadable)
 
                         Behavior on opacity {
                             animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -599,10 +571,8 @@ Item {
                         anchors.centerIn: parent
                         readonly property color markerColor: (currentWorkspaceNumber == button.workspaceValue)
                             ? root.workspaceOnPrimaryReadable
-                            : root.useZzzStyle
-                                ? (workspaceOccupied[index] ? Appearance.zzz.onColor : Appearance.zzz.onMuted)
-                                : (workspaceOccupied[index] ? root.workspaceOnSecondaryReadable
-                                    : root.workspaceInactiveReadable)
+                            : (workspaceOccupied[index] ? root.workspaceOnSecondaryReadable
+                                : root.workspaceInactiveReadable)
                         sourceComponent: root.indicatorStyle === "icon" ? workspaceIconMarker : workspaceDotMarker
 
                         Component {
@@ -726,17 +696,15 @@ Item {
                 // occupied-cell Rectangle above about the interceptor warning.
                 property bool previousExists: index > 0
                 property bool nextExists: index < root.currentWorkspaceWindows.length - 1
-                property real radiusPrev: root.useZzzStyle ? Appearance.zzz.cornerRadius : (previousExists ? 0 : (width / 2))
-                property real radiusNext: root.useZzzStyle ? Appearance.zzz.cornerRadius : (nextExists ? 0 : (width / 2))
+                property real radiusPrev: previousExists ? 0 : (width / 2)
+                property real radiusNext: nextExists ? 0 : (width / 2)
 
                 topLeftRadius: radiusPrev
                 bottomLeftRadius: root.vertical ? radiusNext : radiusPrev
                 topRightRadius: root.vertical ? radiusPrev : radiusNext
                 bottomRightRadius: radiusNext
                 
-                color: root.useAuroraStyle
-                    ? Appearance.aurora.colSubSurface
-                    : ColorUtils.transparentize(root.workspaceSecondaryContainer, 0.4)
+                color: ColorUtils.transparentize(root.workspaceSecondaryContainer, 0.4)
 
                 Behavior on radiusPrev {
                     animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
@@ -752,10 +720,9 @@ Item {
     Rectangle {
         z: 2
         visible: root.columnMode && root.currentWindowIndex >= 0
-        radius: root.useZzzStyle ? Appearance.zzz.cornerRadius
-            : root.useAngelStyle ? Appearance.angel.roundingSmall : Math.min(width, height) / 2
-        color: root.useAngelStyle ? Appearance.angel.colPrimary : root.workspacePrimary
-        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot } }
+        radius: Math.min(width, height) / 2
+        color: root.workspacePrimary
+        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
         Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
 
         anchors {

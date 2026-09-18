@@ -646,6 +646,10 @@ Scope {
         }
 
         ConnectedSurfaceConnector {
+            // The body content is declared later in this PanelWindow. Keep the
+            // bridge above it so seamOverlap can actually cover the body's
+            // attachment-edge border instead of being painted underneath it.
+            z: 1
             geometry: sidebarBridgeGeometry
             fillColor: root.edgeBridgeColor
             strokeColor: "transparent"

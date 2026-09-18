@@ -2014,7 +2014,13 @@
     "knownPanels": [],
     "powerProfiles": {
         "restoreOnStart": true,
-        "preferredProfile": ""
+        "preferredProfile": "",
+        "fanControl": {
+            "enabled": false,
+            "powerSaver": 0,
+            "balanced": 0,
+            "performance": 0
+        }
     },
     "voiceSearch": {
         "duration": 5,

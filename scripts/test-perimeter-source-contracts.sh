@@ -251,6 +251,10 @@ if grep -Fq 'sourceEdgeMargin' "$waffle_bar_popup"; then
 fi
 grep -Fq 'property bool focusGrabRequested: false' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup must keep explicit focus re-grab state'
+grep -Fq 'frame.bodyHovered || popupHoverHandler.hovered' "$waffle_bar_popup" \
+    || fail 'Waffle BarPopup hover ownership must include the complete connected body'
+grep -Fq 'hoverEnabled: root.active' "$waffle_bar_popup" \
+    || fail 'Waffle BarPopup must enable shared full-body hover tracking'
 if grep -Eq 'focusGrab\.active[[:space:]]*=' "$waffle_bar_popup"; then
     fail 'Waffle BarPopup must not imperatively detach the focusGrab.active binding'
 fi
@@ -324,7 +328,8 @@ for token in \
     'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' \
     'blur: root.screenEdgeShadowSize' \
     'bottomLeftRadius: root.directBottomAttachment ? 0 : radius' \
-    'fallbackColor: Appearance.colors.colLayer0'; do
+    'fallbackColor: Appearance.colors.colLayer0' \
+    'wallpaperBackdropEnabled: root.useWallpaperBackdrop'; do
     grep -Fq "$token" "$overview_dashboard" \
         || fail "OverviewDashboard popup contract missing: $token"
 done

@@ -23,24 +23,20 @@ Item {
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
 
-    Item {
-        id: barContextMenuAnchor
-        width: 1
-        height: 1
-    }
+    property Item barContextMenuSource: null
+    property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
 
     function openBarContextMenu(clickX, clickY, mouseArea) {
-        const mapped = mouseArea.mapToItem(root, clickX, clickY)
-        barContextMenuAnchor.x = mapped.x
-        barContextMenuAnchor.y = (Config.options?.bar?.bottom ?? false) ? 0 : root.height
+        root.barContextMenuSource = mouseArea
+        root.barContextMenuRect = Qt.rect(clickX, clickY, 1, 1)
         barContextMenu.requestOpen()
     }
 
-    ContextMenu {
+    BarContextMenu {
         id: barContextMenu
-        anchorItem: barContextMenuAnchor
-        popupAbove: Config.options?.bar?.bottom ?? false
-        closeOnFocusLost: true
+        anchorItem: root.barContextMenuSource ?? root
+        anchorRect: root.barContextMenuRect
+        anchorHovered: root.barContextMenuSource?.hovered ?? false
         closeOnHoverLost: true
 
         model: [

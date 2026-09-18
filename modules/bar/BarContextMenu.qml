@@ -19,6 +19,7 @@ Item {
 
     property var model: []
     required property Item anchorItem
+    property var anchorRect: null
     property bool anchorHovered: false
     property bool active: false
     property bool closeOnHoverLost: true
@@ -73,6 +74,7 @@ Item {
         id: connectedPopup
 
         hoverTarget: root.anchorItem
+        anchorRect: root.anchorRect
         hoverActivates: false
         alternativeVisibleCondition: root.active
         closeOnOutsideClick: true

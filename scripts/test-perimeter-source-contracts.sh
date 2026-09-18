@@ -11,6 +11,7 @@ connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
 join_flares="$root/modules/common/perimeter/ConnectedSurfaceJoinFlares.qml"
 bar_context_menu="$root/modules/bar/BarContextMenu.qml"
 bar_taskbar_button="$root/modules/bar/BarTaskbarButton.qml"
+bar_content="$root/modules/bar/BarContent.qml"
 overview="$root/modules/overview/Overview.qml"
 overview_dashboard="$root/modules/overview/OverviewDashboard.qml"
 
@@ -19,7 +20,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -134,6 +135,24 @@ grep -Fq 'BarContextMenu {' "$bar_taskbar_button" \
     || fail 'Bar taskbar right-click menu must use BarContextMenu'
 if grep -Eq '^[[:space:]]*ContextMenu[[:space:]]*\{' "$bar_taskbar_button"; then
     fail 'Bar taskbar must not fall back to detached generic ContextMenu'
+fi
+for token in \
+    'property var anchorRect: null' \
+    'Number(root.anchorRect?.x ?? 0)' \
+    'host.mapFromItem(target, localX, localY)'; do
+    grep -Fq "$token" "$styled_popup" \
+        || fail "StyledPopup must support source-local tangent sub-rect placement: $token"
+done
+grep -Fq 'anchorRect: root.anchorRect' "$bar_context_menu" \
+    || fail 'BarContextMenu must forward source-local anchorRect into StyledPopup'
+grep -Fq 'BarContextMenu {' "$bar_content" \
+    || fail 'Bar background right-click menu must use the connected BarContextMenu'
+grep -Fq 'root.barContextMenuSource = mouseArea' "$bar_content" \
+    || fail 'Bar background menu must retain the real clicked Bar control as ownership anchor'
+grep -Fq 'root.barContextMenuRect = Qt.rect(clickX, clickY, 1, 1)' "$bar_content" \
+    || fail 'Bar background menu must place tangent geometry at the click point'
+if grep -Eq '^[[:space:]]*ContextMenu[[:space:]]*\{' "$bar_content"; then
+    fail 'BarContent must not keep a detached generic ContextMenu'
 fi
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'

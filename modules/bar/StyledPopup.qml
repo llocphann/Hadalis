@@ -10,6 +10,10 @@ LazyLoader {
     id: root
 
     property Item hoverTarget
+    // Optional rect in hoverTarget-local coordinates. The target itself remains
+    // the real visual/source control for output ownership; this rect only narrows
+    // tangent placement (for example a right-click point inside a broad Bar zone).
+    property var anchorRect: null
     property bool hoverActivates: true
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
@@ -166,21 +170,28 @@ LazyLoader {
         target.width
         target.height
         hostWindow.windowTransform
-        const mapped = host.mapFromItem(target, 0, 0)
+
+        const localX = Number(root.anchorRect?.x ?? 0)
+        const localY = Number(root.anchorRect?.y ?? 0)
+        const localWidth = Math.max(1,
+            Number(root.anchorRect?.width ?? target.width))
+        const localHeight = Math.max(1,
+            Number(root.anchorRect?.height ?? target.height))
+        const mapped = host.mapFromItem(target, localX, localY)
         const thickness = Math.max(1, Number(root._barSurfaceThickness ?? 1))
 
-        // Preserve the control's tangent center/extent, but normalize the
-        // cross-axis boundary to the real Bar surface. A small tray button and
-        // a tall Media/Clock module therefore grow from the same physical edge.
+        // Preserve the source/sub-rect tangent center/extent, but normalize the
+        // cross-axis boundary to the real Bar surface. A click-point rect can
+        // therefore position a context menu without becoming the ownership anchor.
         if (root._barVertical) {
             const barX = root._trailingEdge
                 ? Math.max(0, outputWidth - thickness) : 0
-            return Qt.rect(barX, mapped.y, thickness, target.height)
+            return Qt.rect(barX, mapped.y, thickness, localHeight)
         }
 
         const barY = root._trailingEdge
             ? Math.max(0, outputHeight - thickness) : 0
-        return Qt.rect(mapped.x, barY, target.width, thickness)
+        return Qt.rect(mapped.x, barY, localWidth, thickness)
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside

@@ -280,7 +280,9 @@ Item {
         topRightRadius: radius
         bottomLeftRadius: root.directBottomAttachment ? 0 : radius
         bottomRightRadius: root.directBottomAttachment ? 0 : radius
-        fallbackColor: Appearance.colors.colBackgroundSurfaceContainer
+        // Use the same Material layer as Bar/Screen Edge connected popups so
+        // the body, shoulders and owning edge read as one continuous surface.
+        fallbackColor: Appearance.colors.colLayer0
         wallpaperBackdropEnabled: root.panelVisible
         border.width: 0
         border.color: root.colBorder

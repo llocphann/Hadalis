@@ -81,7 +81,7 @@ Scope {
                 readonly property real edgeShadowOpacity: Math.max(0, Math.min(0.60,
                     Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
                 readonly property color edgeShadowColor:
-                    ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
+                    ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, edgeShadowOpacity)
                 readonly property real inwardDecoratorAllowance:
                     Math.max(Appearance.rounding.screenRounding, edgeShadowExtent)
                 exclusionMode: ExclusionMode.Ignore
@@ -173,7 +173,6 @@ Scope {
                         visible: barRoot.edgeShadowEnabled
                             && barRoot.edgeShadowExtent > 0
                             && barRoot.edgeShadowOpacity > 0
-                            && barRoot.surfacePresented
                         anchors {
                             top: parent.top
                             bottom: parent.bottom

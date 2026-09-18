@@ -41,7 +41,7 @@ Item {
     // second Canvas implementation and guarantees identical shoulders for Bar,
     // popup, Settings, Sidebar and Screen Edge connected surfaces.
     component Flare: RoundCorner {
-        required property string corner
+        required property string flareCorner
         property color flareColor: root.fillColor
         property real r: root.radius
 
@@ -51,7 +51,7 @@ Item {
         color: flareColor
         visible: r > 0
 
-        corner: switch (corner) {
+        corner: switch (flareCorner) {
             case "topLeft": return RoundCorner.CornerEnum.TopLeft
             case "topRight": return RoundCorner.CornerEnum.TopRight
             case "bottomLeft": return RoundCorner.CornerEnum.BottomLeft
@@ -68,25 +68,25 @@ Item {
 
     // Horizontal attachments: flare tangent-wise beyond the body endpoints.
     Flare {
-        corner: "topLeft"
+        flareCorner: "topLeft"
         visible: root.joinTop && !root.joinLeft && r > 0
         x: root.bodyOrigin.x - r
         y: root.bodyOrigin.y
     }
     Flare {
-        corner: "topRight"
+        flareCorner: "topRight"
         visible: root.joinTop && !root.joinRight && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width
         y: root.bodyOrigin.y
     }
     Flare {
-        corner: "bottomLeft"
+        flareCorner: "bottomLeft"
         visible: root.joinBottom && !root.joinLeft && r > 0
         x: root.bodyOrigin.x - r
         y: root.bodyOrigin.y + root.bodyItem.height - r
     }
     Flare {
-        corner: "bottomRight"
+        flareCorner: "bottomRight"
         visible: root.joinBottom && !root.joinRight && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width
         y: root.bodyOrigin.y + root.bodyItem.height - r
@@ -94,25 +94,25 @@ Item {
 
     // Vertical attachments: flare above/below the body endpoints.
     Flare {
-        corner: "leftTop"
+        flareCorner: "leftTop"
         visible: root.joinLeft && !root.joinTop && r > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y - r
     }
     Flare {
-        corner: "leftBottom"
+        flareCorner: "leftBottom"
         visible: root.joinLeft && !root.joinBottom && r > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y + root.bodyItem.height
     }
     Flare {
-        corner: "rightTop"
+        flareCorner: "rightTop"
         visible: root.joinRight && !root.joinTop && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width - r
         y: root.bodyOrigin.y - r
     }
     Flare {
-        corner: "rightBottom"
+        flareCorner: "rightBottom"
         visible: root.joinRight && !root.joinBottom && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width - r
         y: root.bodyOrigin.y + root.bodyItem.height

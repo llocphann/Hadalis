@@ -238,6 +238,18 @@ grep -Fq 'import qs.modules.common.widgets' "$join_flares" \
     || fail 'join flares must reuse the common Hug corner primitive'
 grep -Fq 'component Flare: RoundCorner {' "$join_flares" \
     || fail 'connected shoulders must render through RoundCorner'
+for mapping in \
+    'case "topLeft": return RoundCorner.CornerEnum.TopRight' \
+    'case "topRight": return RoundCorner.CornerEnum.TopLeft' \
+    'case "bottomLeft": return RoundCorner.CornerEnum.BottomRight' \
+    'case "bottomRight": return RoundCorner.CornerEnum.BottomLeft' \
+    'case "leftTop": return RoundCorner.CornerEnum.BottomLeft' \
+    'case "leftBottom": return RoundCorner.CornerEnum.TopLeft' \
+    'case "rightTop": return RoundCorner.CornerEnum.BottomRight' \
+    'case "rightBottom": return RoundCorner.CornerEnum.TopRight'; do
+    grep -Fq "$mapping" "$join_flares" \
+        || fail "connected shoulder orientation drifted: $mapping"
+done
 if grep -Fq 'component Flare: Canvas {' "$join_flares"; then
     fail 'connected shoulders must not keep a second Canvas corner renderer'
 fi

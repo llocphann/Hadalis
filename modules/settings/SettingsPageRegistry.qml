@@ -21,7 +21,6 @@ Singleton {
     readonly property int barPageIndex: 2
     readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
-    readonly property var retiredGlobalStyleKeywords: ["cards", "aurora", "inir", "angel", "regalia", "zzz", "cookie"]
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
@@ -29,19 +28,6 @@ Singleton {
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
-    }
-
-    function isRetiredGlobalStyleEntry(entry): bool {
-        if (!entry || entry.pageIndex !== root.themesPageIndex)
-            return false
-        if (entry.section === Translation.tr("Global Style")
-                || entry.label === Translation.tr("Global Style"))
-            return true
-        const words = [entry.section ?? "", entry.label ?? "", entry.description ?? ""]
-            .concat(Array.isArray(entry.keywords) ? entry.keywords : [])
-            .join(" ")
-            .toLowerCase()
-        return root.retiredGlobalStyleKeywords.some(keyword => words.includes(keyword))
     }
 
     readonly property var pages: SettingsPageRegistryData.pages.map((page, index) => {
@@ -66,9 +52,8 @@ Singleton {
         }
         if (index === root.themesPageIndex) {
             return Object.assign({}, page, {
-                // ThemesConfig.qml remains the compatibility implementation for
-                // the mature Material color/font/motion controls. The public
-                // facade removes the retired shell-wide Global Style selector.
+                // Public v1.0 theme settings expose the supported Material
+                // color, typography, motion and advanced tooling only.
                 component: "modules/settings/ThemesConfigMaterial.qml",
                 desc: Translation.tr("Material colors, typography and motion")
             })
@@ -165,7 +150,6 @@ Singleton {
     function searchIndex(): var {
         return SettingsPageRegistryData.searchIndex()
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
-            .filter(entry => !root.isRetiredGlobalStyleEntry(entry))
             .filter(entry => entry.pageIndex !== root.barPageIndex
                 || entry.label !== Translation.tr("Corner style"))
             .map(entry => {

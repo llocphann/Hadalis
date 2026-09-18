@@ -709,48 +709,6 @@ Singleton {
         },
         {
             pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Global Style"),
-            description: Translation.tr("Material, Cards, Aurora glass effect, Inir TUI style"),
-            keywords: ["global", "style", "aurora", "inir", "material", "cards", "glass", "tui", "transparency", "blur"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Aurora"),
-            description: Translation.tr("Glass effect with wallpaper blur behind panels"),
-            keywords: ["aurora", "glass", "blur", "transparency", "style", "translucent"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Regalia"),
-            description: Translation.tr("Luxury layered surfaces with optional wallpaper glass"),
-            keywords: ["regalia", "glass", "blur", "luxury", "layered", "surface", "rounding"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Inir"),
-            description: Translation.tr("TUI-inspired style with accent borders"),
-            keywords: ["inir", "tui", "terminal", "borders", "style", "minimal"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Material"),
-            description: Translation.tr("Material Design solid backgrounds"),
-            keywords: ["material", "solid", "style", "default", "google"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Cards"),
-            description: Translation.tr("Card-style elevated containers"),
-            keywords: ["cards", "card", "style", "elevated", "shadow"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
             section: Translation.tr("Color Themes"),
             label: Translation.tr("Theme Presets"),
             description: Translation.tr("Predefined color themes like Gruvbox, Catppuccin, Nord, Dracula"),

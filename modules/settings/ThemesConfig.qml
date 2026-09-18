@@ -74,13 +74,12 @@ ContentPage {
     SettingsTaskNavigator {
         icon: "palette"
         title: Translation.tr("Themes")
-        description: Translation.tr("Choose colors and the global visual language first; typography, motion and expert theme tooling stay in their own focused views.")
-        summary: Translation.tr("Colors · style · typography · motion · advanced")
+        description: Translation.tr("Tune Material colors first; typography, motion and expert theme tooling stay in their own focused views.")
+        summary: Translation.tr("Colors · typography · motion · advanced")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
         options: [
             { displayName: Translation.tr("Colors"), icon: "palette", value: "colors" },
-            { displayName: Translation.tr("Style"), icon: "style", value: "style" },
             { displayName: Translation.tr("Type"), icon: "text_format", value: "type" },
             { displayName: Translation.tr("Motion"), icon: "animation", value: "motion" },
             { displayName: Translation.tr("Advanced"), icon: "construction", value: "advanced" }
@@ -1557,124 +1556,6 @@ ContentPage {
                     id: applyTerminalColorsProcess
                     command: ["/usr/bin/bash", Directories.scriptsPath + "/colors/applycolor.sh"]
                 }
-            }
-        }
-    }
-
-    SettingsCardSection {
-        settingsTaskSection: "style"
-        visible: root.activeSection === "style"
-        expanded: true
-        icon: "style"
-        title: Translation.tr("Global Style")
-
-        SettingsGroup {
-            id: globalStyleGroup
-            readonly property bool cardsEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && ((Config.options?.bar?.cornerStyle ?? 0) === 3)
-
-            readonly property string derivedStyle: cardsEverywhere ? "cards" : "material"
-            readonly property string currentStyle: (Config.options?.appearance?.globalStyle ?? "").length > 0
-                ? Config.options?.appearance?.globalStyle ?? "material"
-                : derivedStyle
-
-            ContentSubsection {
-                title: Translation.tr("Style")
-
-                ConfigSelectionArray {
-                    currentValue: globalStyleGroup.currentStyle
-                    onSelected: (newValue) => {
-                        _log("[GlobalStyle] selected", newValue)
-                        ThemeService.setGlobalStyle(newValue)
-                    }
-                    options: [
-                        { displayName: Translation.tr("Material"), icon: "tune", value: "material" },
-                        { displayName: Translation.tr("Cards"), icon: "branding_watermark", value: "cards" },
-                        { displayName: Translation.tr("Aurora"), icon: "blur_on", value: "aurora" },
-                        { displayName: Translation.tr("Inir"), icon: "terminal", value: "inir" },
-                        { displayName: Translation.tr("Angel"), icon: "raven", value: "angel" },
-                        { displayName: Translation.tr("Regalia"), icon: "event_seat", value: "regalia" },
-                        { displayName: Translation.tr("ZZZ"), icon: "bolt", value: "zzz" },
-                        { displayName: Translation.tr("Cookie Shapes"), icon: "cookie", value: "cookie" }
-                    ]
-                }
-            }
-
-            SettingsNote {
-                icon: "palette"
-                text: Translation.tr("Restyles every surface in the shell. Applies instantly.")
-            }
-
-        }
-    }
-
-    SettingsCardSection {
-        id: auroraStyleEditorSection
-        settingsTaskSection: "style"
-        visible: root.activeSection === "style" && Appearance.auroraEverywhere && !Appearance.angelEverywhere
-        expanded: true
-        icon: "blur_on"
-        title: Translation.tr("Aurora Style Editor")
-
-        SettingsGroup {
-            Loader {
-                Layout.fillWidth: true
-                active: root.activeSection === "style" && auroraStyleEditorSection.expanded
-                    && Appearance.auroraEverywhere && !Appearance.angelEverywhere
-                source: "AuroraStyleEditor.qml"
-            }
-        }
-    }
-
-    SettingsCardSection {
-        id: angelStyleEditorSection
-        settingsTaskSection: "style"
-        visible: root.activeSection === "style" && Appearance.angelEverywhere
-        expanded: true
-        icon: "raven"
-        title: Translation.tr("Angel Style Editor")
-
-        SettingsGroup {
-            Loader {
-                Layout.fillWidth: true
-                active: root.activeSection === "style" && angelStyleEditorSection.expanded
-                    && Appearance.angelEverywhere
-                source: "AngelStyleEditor.qml"
-            }
-        }
-    }
-
-    SettingsCardSection {
-        id: regaliaStyleEditorSection
-        settingsTaskSection: "style"
-        visible: root.activeSection === "style" && Appearance.regaliaEverywhere
-        expanded: true
-        icon: "event_seat"
-        title: Translation.tr("Regalia Style Editor")
-
-        SettingsGroup {
-            Loader {
-                Layout.fillWidth: true
-                active: root.activeSection === "style" && regaliaStyleEditorSection.expanded
-                    && Appearance.regaliaEverywhere
-                source: "RegaliaStyleEditor.qml"
-            }
-        }
-    }
-
-    SettingsCardSection {
-        id: zzzStyleEditorSection
-        settingsTaskSection: "style"
-        visible: root.activeSection === "style" && Appearance.zzzEverywhere
-        expanded: true
-        icon: "bolt"
-        title: Translation.tr("ZZZ Style Editor")
-
-        SettingsGroup {
-            Loader {
-                Layout.fillWidth: true
-                active: root.activeSection === "style" && zzzStyleEditorSection.expanded
-                    && Appearance.zzzEverywhere
-                source: "ZzzStyleEditor.qml"
             }
         }
     }

@@ -51,17 +51,19 @@ Item {
         color: flareColor
         visible: r > 0
 
+        // The flare lives outside the body, so its inverse-corner orientation
+        // is the opposite horizontal/vertical corner from the body endpoint name.
+        // These mappings reproduce the former Canvas silhouettes exactly while
+        // using the same RoundCorner renderer as the Hug Bar.
         corner: switch (flareCorner) {
-            case "topLeft": return RoundCorner.CornerEnum.TopLeft
-            case "topRight": return RoundCorner.CornerEnum.TopRight
-            case "bottomLeft": return RoundCorner.CornerEnum.BottomLeft
-            case "bottomRight": return RoundCorner.CornerEnum.BottomRight
-            // Vertical joins use the same four silhouettes, rotated by which
-            // two solid edges meet inside the r×r shoulder square.
-            case "leftTop": return RoundCorner.CornerEnum.BottomRight
-            case "leftBottom": return RoundCorner.CornerEnum.TopRight
-            case "rightTop": return RoundCorner.CornerEnum.BottomLeft
-            case "rightBottom": return RoundCorner.CornerEnum.TopLeft
+            case "topLeft": return RoundCorner.CornerEnum.TopRight
+            case "topRight": return RoundCorner.CornerEnum.TopLeft
+            case "bottomLeft": return RoundCorner.CornerEnum.BottomRight
+            case "bottomRight": return RoundCorner.CornerEnum.BottomLeft
+            case "leftTop": return RoundCorner.CornerEnum.BottomLeft
+            case "leftBottom": return RoundCorner.CornerEnum.TopLeft
+            case "rightTop": return RoundCorner.CornerEnum.BottomRight
+            case "rightBottom": return RoundCorner.CornerEnum.TopRight
             default: return RoundCorner.CornerEnum.TopLeft
         }
     }

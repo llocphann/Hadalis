@@ -46,8 +46,10 @@ LazyLoader {
     readonly property real _contentPadding: 14
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    readonly property real _popupScreenMargin: Math.max(0,
-        root._screenEdgeThickness - PerimeterTokens.seamOverlap)
+    // Caelestia clamps panel tangent placement to the physical border's inner
+    // boundary. The old -seamOverlap inset made corner-attached popups sit 2 px
+    // inside the frame and changed the apparent fillet geometry.
+    readonly property real _popupScreenMargin: root._screenEdgeThickness
     readonly property bool _edgeShadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,
@@ -95,7 +97,8 @@ LazyLoader {
     readonly property color _surfaceColor: Appearance.colors.colLayer0
     readonly property color _borderColor: Appearance.colors.colLayer0Border
     readonly property real _borderWidth: 0
-    readonly property real _surfaceRadius: Appearance.rounding.large
+    // Caelestia PanelBg uses Tokens.rounding.extraLarge (28px at scale 1).
+    readonly property real _surfaceRadius: PerimeterTokens.popupRadius
 
     signal requestClose()
 

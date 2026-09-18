@@ -64,6 +64,12 @@ def main() -> None:
         "AngelStyleEditor.qml",
         "RegaliaStyleEditor.qml",
         "ZzzStyleEditor.qml",
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
     ):
         forbid(themes, token, "ThemesConfig.qml")
 

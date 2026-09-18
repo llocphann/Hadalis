@@ -823,7 +823,7 @@ ContentPage {
             RippleButton {
                 Layout.fillWidth: true
                 implicitHeight: 36
-                buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
+                buttonRadius: Appearance.rounding.small
                 colBackground: Appearance.colors.colLayer1
                 colBackgroundHover: Appearance.colLayer1Hover
                 colRipple: Appearance.colLayer1Active
@@ -1515,10 +1515,10 @@ ContentPage {
                 visible: Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true
                 implicitWidth: applyNowRow.implicitWidth + 20
                 implicitHeight: 36
-                buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
-                colBackground: Appearance.zzzEverywhere ? Appearance.zzz.sticker : Appearance.colors.colPrimaryContainer
-                colBackgroundHover: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryHover : Appearance.colors.colPrimaryContainerHover
-                colRipple: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryActive : Appearance.colors.colPrimaryContainerActive
+                buttonRadius: Appearance.rounding.small
+                colBackground: Appearance.colors.colPrimaryContainer
+                colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                colRipple: Appearance.colors.colPrimaryContainerActive
 
                 contentItem: RowLayout {
                     id: applyNowRow
@@ -1528,7 +1528,7 @@ ContentPage {
                     MaterialSymbol {
                         text: "sync"
                         iconSize: 16
-                        color: Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimaryContainer
+                        color: Appearance.colors.colOnPrimaryContainer
                         Behavior on color {
                             enabled: Appearance.animationsEnabled
                             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
@@ -1538,7 +1538,7 @@ ContentPage {
                     StyledText {
                         text: Translation.tr("Apply to open terminals")
                         font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimaryContainer
+                        color: Appearance.colors.colOnPrimaryContainer
                         Behavior on color {
                             enabled: Appearance.animationsEnabled
                             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }

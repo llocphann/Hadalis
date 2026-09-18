@@ -191,7 +191,7 @@ Singleton {
                 // Battery care is integrated into the primary Power card;
                 // legacy charge-limit searches land on that same visible target.
                 redirected.section = Translation.tr("Power")
-                redirected.label = Translation.tr("Battery and TLP power management")
+                redirected.label = Translation.tr("Battery & TLP")
                 redirected.keywords = keywords.concat(["system", "settings", "power"])
                 return redirected
             })

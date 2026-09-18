@@ -12,6 +12,8 @@ join_flares="$root/modules/common/perimeter/ConnectedSurfaceJoinFlares.qml"
 bar_context_menu="$root/modules/bar/BarContextMenu.qml"
 bar_taskbar_button="$root/modules/bar/BarTaskbarButton.qml"
 bar_content="$root/modules/bar/BarContent.qml"
+vertical_bar_content="$root/modules/verticalBar/VerticalBarContent.qml"
+vertical_media="$root/modules/verticalBar/VerticalMedia.qml"
 overview="$root/modules/overview/Overview.qml"
 overview_dashboard="$root/modules/overview/OverviewDashboard.qml"
 
@@ -20,7 +22,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -153,6 +155,32 @@ grep -Fq 'root.barContextMenuRect = Qt.rect(clickX, clickY, 1, 1)' "$bar_content
     || fail 'Bar background menu must place tangent geometry at the click point'
 if grep -Eq '^[[:space:]]*ContextMenu[[:space:]]*\{' "$bar_content"; then
     fail 'BarContent must not keep a detached generic ContextMenu'
+fi
+grep -Fq 'Bar.BarContextMenu {' "$vertical_bar_content" \
+    || fail 'Vertical Bar background right-click menu must use connected BarContextMenu'
+grep -Fq 'root.barContextMenuSource = mouseArea' "$vertical_bar_content" \
+    || fail 'Vertical Bar context menu must retain its real clicked Bar control'
+if grep -Eq '^[[:space:]]*ContextMenu[[:space:]]*\{' "$vertical_bar_content"; then
+    fail 'VerticalBarContent must not keep a detached generic ContextMenu'
+fi
+for token in \
+    'Bar.StyledPopup {' \
+    'alternativeVisibleCondition:' \
+    'root.barMediaPopupVisible && root.popupMode === "bar"' \
+    'closeOnOutsideClick: true' \
+    'keyboardFocus: true' \
+    'mediaPopupContent.focusInitialControl()'; do
+    grep -Fq "$token" "$vertical_media" \
+        || fail "Vertical Media expanded popup must use shared connected surface: $token"
+done
+if grep -Fq 'PopupWindow {' "$vertical_media"; then
+    fail 'VerticalMedia must not retain a detached PopupWindow'
+fi
+if grep -Fq 'sourceComponent: PanelWindow {' "$vertical_media"; then
+    fail 'VerticalMedia must not own a private outside-click PanelWindow'
+fi
+if grep -Fq 'active: (root.volumePopupVisible || root.containsMouse)' "$vertical_media"; then
+    fail 'VerticalMedia volume HUD must not override StyledPopup LazyLoader.active'
 fi
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'

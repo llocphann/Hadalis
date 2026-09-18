@@ -27,32 +27,24 @@ Item { // Bar content region
         && (Config.options?.bar?.showBackground ?? true)
         && !root.gameModeMinimal
 
-    // Right-click context menu anchor (invisible, positioned at click)
-    Item {
-        id: barContextMenuAnchor
-        width: 1
-        height: 1
-    }
+    property Item barContextMenuSource: null
+    property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
 
     // For vertical bar: bottom config means bar is on the RIGHT side
     // (same config key reused for different meaning in vertical mode)
     readonly property bool barOnRight: Config.options?.bar?.bottom ?? false
 
     function openBarContextMenu(clickX, clickY, mouseArea) {
-        // Position anchor at bar edge for correct horizontal popup positioning
-        // If bar on right: anchor at left edge (x=0), popup goes left via popupSide=Edges.Left
-        // If bar on left: anchor at right edge (x=width), popup goes right via popupSide=Edges.Right
-        const mapped = mouseArea.mapToItem(root, clickX, clickY)
-        barContextMenuAnchor.x = root.barOnRight ? 0 : root.width
-        barContextMenuAnchor.y = mapped.y
+        root.barContextMenuSource = mouseArea
+        root.barContextMenuRect = Qt.rect(clickX, clickY, 1, 1)
         barContextMenu.requestOpen()
     }
 
-    ContextMenu {
+    Bar.BarContextMenu {
         id: barContextMenu
-        anchorItem: barContextMenuAnchor
-        popupSide: root.barOnRight ? Edges.Left : Edges.Right
-        closeOnFocusLost: true
+        anchorItem: root.barContextMenuSource ?? root
+        anchorRect: root.barContextMenuRect
+        anchorHovered: root.barContextMenuSource?.hovered ?? false
         closeOnHoverLost: true
 
         model: [

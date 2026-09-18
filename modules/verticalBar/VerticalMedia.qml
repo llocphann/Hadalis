@@ -9,7 +9,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Mpris
-import Quickshell.Wayland
 
 import qs.modules.bar as Bar
 
@@ -91,10 +90,15 @@ MouseArea {
         }
     }
 
-    // Volume popup (shows on hover or scroll)
+    // Volume HUD uses the semantic visibility contract of the shared Bar popup;
+    // never override LazyLoader.active from the caller.
     Bar.StyledPopup {
         hoverTarget: root
-        active: (root.volumePopupVisible || root.containsMouse) && !GlobalStates.mediaControlsOpen && !root.barMediaPopupVisible
+        hoverActivates: false
+        alternativeVisibleCondition:
+            (root.volumePopupVisible || root.containsMouse)
+            && !GlobalStates.mediaControlsOpen
+            && !root.barMediaPopupVisible
 
         Row {
             anchors.centerIn: parent
@@ -112,53 +116,41 @@ MouseArea {
         }
     }
 
-    // Backdrop for click-outside-to-close (Niri)
-    Loader {
-        active: root.barMediaPopupVisible && root.popupMode === "bar" && CompositorService.isNiri
-        sourceComponent: PanelWindow {
-            anchors { top: true; bottom: true; left: true; right: true }
-            color: "transparent"
-            exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "quickshell:mediaBackdrop"
+    // Expanded media controls use the same connected surface as Horizontal Bar.
+    // StyledPopup owns output routing, outside-click catcher and keyboard focus.
+    Bar.StyledPopup {
+        id: barMediaPopup
 
-            MouseArea {
-                anchors.fill: parent
-                onClicked: root.barMediaPopupVisible = false
-            }
+        hoverTarget: root
+        hoverActivates: false
+        alternativeVisibleCondition:
+            root.barMediaPopupVisible && root.popupMode === "bar"
+        closeOnOutsideClick: true
+        keyboardFocus: true
+        popupBackgroundMargin: Appearance.sizes.elevationMargin
+        onRequestClose: root.barMediaPopupVisible = false
+
+        function restoreInitialFocus(): void {
+            Qt.callLater(() => {
+                if (barMediaPopup.requestedVisible
+                        && barMediaPopup.presentationWindow)
+                    mediaPopupContent.focusInitialControl()
+            })
         }
-    }
 
-    // Bar-anchored media controls popup (when popupMode === "bar")
-    Loader {
-        id: barMediaPopupLoader
-        active: root.barMediaPopupVisible && root.popupMode === "bar"
-        sourceComponent: PopupWindow {
-            id: barMediaPopup
-            visible: true
-            color: "transparent"
-            anchor {
-                window: root.QsWindow.window
-                item: root
-                // For vertical bar: popup appears to the right (left bar) or left (right bar)
-                edges: (Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right
-                gravity: (Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right
-            }
-            implicitWidth: mediaPopupContent.width + Appearance.sizes.elevationMargin * 2
-            implicitHeight: mediaPopupContent.height + Appearance.sizes.elevationMargin * 2
+        onRequestedVisibleChanged: {
+            if (requestedVisible)
+                restoreInitialFocus()
+        }
+        onPresentationWindowChanged: {
+            if (requestedVisible && presentationWindow)
+                restoreInitialFocus()
+        }
 
-            // Click outside to close
-            MouseArea {
-                anchors.fill: parent
-                onClicked: root.barMediaPopupVisible = false
-                z: -1
-            }
-
-            BarMediaPopup {
-                id: mediaPopupContent
-                anchors.centerIn: parent
-                onCloseRequested: root.barMediaPopupVisible = false
-            }
+        BarMediaPopup {
+            id: mediaPopupContent
+            focus: true
+            onCloseRequested: root.barMediaPopupVisible = false
         }
     }
 }

@@ -306,6 +306,12 @@ LazyLoader {
             // Caelestia composes popouts directly into the edge surface. Keep
             // the shared geometry, but remove the detached neck/gap entirely.
             connectorLength: 0
+            // Separate layer-shell surfaces cannot reproduce Caelestia's SDF
+            // border sink by overlapping under the Bar: the reveal clip would
+            // cut that overlap away and leave a pinched shoulder. Start the
+            // popup exactly at the attachment boundary so the flattened flare
+            // owns the full visible contact width.
+            seamOverlap: 0
             progress: root.revealProgress
             devicePixelRatio: popupWindow.devicePixelRatio
         }

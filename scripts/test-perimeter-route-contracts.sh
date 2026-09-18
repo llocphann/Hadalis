@@ -36,8 +36,11 @@ grep -Fq 'GlobalStates.sidebarRightRequestedWidget = "weather"' "$weather_bar" \
     || fail 'Weather primary activation must target the right-sidebar Weather tab'
 grep -Fq 'GlobalStates.openSidebarRight' "$weather_bar" \
     || fail 'Weather primary activation must use the supported right-sidebar route'
-grep -Fq 'ConnectedSurfaceConnector {' "$sidebar" \
-    || fail 'left/right SidebarHost surfaces must retain semantic connected edge routes'
+grep -Fq 'readonly property real directEdgeInset:' "$sidebar" \
+    || fail 'left/right SidebarHost surfaces must directly overlap Screen Edge'
+if grep -Fq 'ConnectedSurfaceConnector {' "$sidebar"; then
+    fail 'left/right SidebarHost surfaces must not use connector stems'
+fi
 
 for file in "$media" "$weather_bar" "$weather_popup" "$sidebar"; do
     if grep -Fq 'SurfaceRouteController' "$file" || grep -Fq 'qs.modules.perimeter' "$file"; then

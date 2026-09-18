@@ -61,15 +61,11 @@ Scope {
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
     readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    readonly property real edgeBridgeLength: Math.max(1,
-        Math.max(root.screenEdgeThickness, Appearance.sizes.hyprlandGapsOut)
-            + PerimeterTokens.seamOverlap)
-    readonly property real edgeBridgeExtent: Math.max(
-        PerimeterTokens.connectorWidth,
-        PerimeterTokens.connectorWidth + PerimeterTokens.outerRadius * 2)
-    readonly property color edgeBridgeColor:
-        (Config.options?.sidebar?.cardStyle ?? false)
-            ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
+    // Caelestia-style direct attachment: the sidebar body itself reaches the
+    // inner Screen Edge boundary. One device-independent seam overlap hides
+    // fractional-scale antialiasing without introducing a connector/stem.
+    readonly property real directEdgeInset: Math.max(0,
+        root.screenEdgeThickness - PerimeterTokens.seamOverlap)
     // Perimeter sidebars are content-sized by definition. Preserve explicit
     // custom height, but treat legacy/full layout state as fit-to-content.
     readonly property string configuredSizeMode:
@@ -620,42 +616,8 @@ Scope {
             right: !root.isLeftEdge
         }
 
-        // Keep the edge bridge inside the same native layer surface as the
-        // sidebar. A separate PanelWindow can drift in stacking/mapping timing
-        // and expose a seam even when both surfaces are nominally centered.
-        QtObject {
-            id: sidebarBridgeGeometry
-            readonly property string edge: root.edge
-            readonly property real extent: Math.min(
-                sidebarRoot.height, root.edgeBridgeExtent)
-            readonly property rect connectorRect: Qt.rect(
-                root.isLeftEdge ? 0 : sidebarRoot.width - root.edgeBridgeLength,
-                Math.max(0, (sidebarRoot.height - extent) / 2),
-                root.edgeBridgeLength,
-                extent)
-            readonly property real connectorSourceExtent:
-                PerimeterTokens.connectorWidth
-            readonly property real connectorWidth:
-                PerimeterTokens.connectorWidth
-            readonly property real borderWidth: 0
-            readonly property bool valid: root.roleOpen
-                && root._sidebarShown
-                && !GlobalStates.screenLocked
-                && !root.fullscreenCovered
-            readonly property real progress: valid ? 1 : 0
-        }
-
-        ConnectedSurfaceConnector {
-            // The body content is declared later in this PanelWindow. Keep the
-            // bridge above it so seamOverlap can actually cover the body's
-            // attachment-edge border instead of being painted underneath it.
-            z: 1
-            geometry: sidebarBridgeGeometry
-            fillColor: root.edgeBridgeColor
-            strokeColor: "transparent"
-            strokeWidth: 0
-        }
-
+        // No connector is rendered here. The content loader below is inset by
+        // directEdgeInset so its own surface overlaps the Screen Edge seam.
         Region {
             id: sidebarInputRegion
             item: sidebarContentLoader
@@ -790,7 +752,7 @@ Scope {
 
             active: root._contentResident
             width: Math.max(0, root.effectiveSidebarWidth
-                - Appearance.sizes.hyprlandGapsOut
+                - root.directEdgeInset
                 - Appearance.sizes.elevationMargin)
             height: root.effectiveContentHeight
             onStatusChanged: {
@@ -822,9 +784,9 @@ Scope {
                 right: root.isLeftEdge ? undefined : parent.right
                 rightMargin: root.isLeftEdge
                     ? Appearance.sizes.elevationMargin
-                    : Appearance.sizes.hyprlandGapsOut
+                    : root.directEdgeInset
                 leftMargin: root.isLeftEdge
-                    ? Appearance.sizes.hyprlandGapsOut
+                    ? root.directEdgeInset
                     : Appearance.sizes.elevationMargin
             }
 

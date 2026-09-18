@@ -10,8 +10,6 @@ import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.bar as Bar
-import QtQuick.Effects
-import Qt5Compat.GraphicalEffects as GE
 
 Item { // Bar content region
     id: root
@@ -29,10 +27,6 @@ Item { // Bar content region
 
     property Item barContextMenuSource: null
     property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
-
-    // For vertical bar: bottom config means bar is on the RIGHT side
-    // (same config key reused for different meaning in vertical mode)
-    readonly property bool barOnRight: Config.options?.bar?.bottom ?? false
 
     function openBarContextMenu(clickX, clickY, mouseArea) {
         root.barContextMenuSource = mouseArea
@@ -68,28 +62,11 @@ Item { // Bar content region
         ]
     }
     readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && (Config.options?.bar?.cornerStyle === 3)
-    readonly property color separatorColor: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong : Appearance.colors.colOutlineVariant
-    readonly property bool inirEverywhere: Appearance.inirEverywhere
-    readonly property bool auroraEverywhere: Appearance.auroraEverywhere
-    readonly property bool zzzEverywhere: Appearance.zzzEverywhere
+    readonly property color separatorColor: Appearance.colors.colOutlineVariant
     readonly property bool gameModeMinimal: Appearance.gameModeMinimal
 
     readonly property string barAppearance: Config.options?.bar?.appearanceStyle ?? "classic"
     readonly property bool isIslands: root.barAppearance === "islands"
-
-    readonly property string wallpaperUrl: Wallpapers.effectiveWallpaperUrl
-
-    ColorQuantizer {
-        id: wallpaperColorQuantizer
-        source: (Appearance.auroraEverywhere || Appearance.angelEverywhere) ? root.wallpaperUrl : ""
-        depth: 0 // 2^0 = 1 color
-        rescaleSize: 10
-    }
-
-    readonly property color wallpaperDominantColor: (wallpaperColorQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary)
-    readonly property QtObject blendedColors: AdaptedMaterialScheme {
-        color: ColorUtils.mix(root.wallpaperDominantColor, Appearance.colors.colPrimaryContainer, 0.8) || Appearance.colors.colSecondaryContainer
-    }
 
     component HorizontalBarSeparator: Rectangle {
         Layout.leftMargin: Appearance.sizes.baseBarHeight / 3
@@ -99,11 +76,11 @@ Item { // Bar content region
         color: root.separatorColor
     }
 
-    // Background shadow - for floating styles or always for angel
+    // Background shadow for supported floating/card styles.
     Loader {
         active: (Config.options?.bar?.showBackground ?? true) && !root.gameModeMinimal
             && !root.isIslands
-            && (Appearance.angelEverywhere || ((Config.options?.bar?.cornerStyle ?? 0) === 1 || (Config.options?.bar?.cornerStyle ?? 0) === 3))
+            && ((Config.options?.bar?.cornerStyle ?? 0) === 1 || (Config.options?.bar?.cornerStyle ?? 0) === 3)
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined // The loader's anchors act on this, and this should not have any anchor
@@ -124,40 +101,21 @@ Item { // Bar content region
             margins: floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
         }
         visible: (Config.options?.bar?.showBackground ?? true) && !root.gameModeMinimal && !root.isIslands
-        color: {
-            if (root.zzzEverywhere) return Appearance.zzz.bg0
-            if (root.angelEverywhere) {
-                const base = root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
-                if (root.nativeBlurActive)
-                    return ColorUtils.transparentize(base, Appearance.angel.compositorPanelTransparentize)
-                return ColorUtils.applyAlpha(base, 1)
-            }
-            if (root.inirEverywhere) return Appearance.inir.colLayer0
-            if (root.auroraEverywhere) {
-                const base = root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
-                if (root.nativeBlurActive)
-                    return ColorUtils.transparentize(base, Appearance.aurora.compositorOverlayTransparentize)
-                return ColorUtils.applyAlpha(base, 1)
-            }
-            return root.cardStyleEverywhere ? Appearance.colors.colLayer1 : ((Config.options?.bar?.cornerStyle ?? 0) === 3 ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
-        }
-        radius: root.zzzEverywhere ? 0
-            : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-            : root.inirEverywhere ? Appearance.inir.roundingNormal
-            : floatingStyle ? ((Config.options?.bar?.cornerStyle ?? 0) === 3 ? Appearance.rounding.normal : Appearance.rounding.windowRounding) : 0
+        color: root.cardStyleEverywhere
+            ? Appearance.colors.colLayer1
+            : ((Config.options?.bar?.cornerStyle ?? 0) === 3
+                ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
+        radius: floatingStyle
+            ? ((Config.options?.bar?.cornerStyle ?? 0) === 3
+                ? Appearance.rounding.normal : Appearance.rounding.windowRounding)
+            : 0
         // No Behavior on the base radius — the per-corner radii below own the
         // corners, and a second interceptor on radius is unsupported (Qt warn).
 
-        // ZZZ round mode: a FLUSH vertical bar softens only its INNER edge (facing
-        // into the screen); a FLOATING bar rounds all four. bar.bottom doubles as the
-        // side toggle here — false = left edge (inner = right), true = right edge.
-        readonly property bool isRightBar: Config.options?.bar?.bottom ?? false
-        readonly property real zzzRoundEdge: (root.zzzEverywhere && Appearance.zzz.round) ? Appearance.zzz.panelRadius : -1
-        readonly property bool zzzAllCorners: zzzRoundEdge >= 0 && floatingStyle
-        topLeftRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || isRightBar)) ? zzzRoundEdge : radius
-        bottomLeftRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || isRightBar)) ? zzzRoundEdge : radius
-        topRightRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || !isRightBar)) ? zzzRoundEdge : radius
-        bottomRightRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || !isRightBar)) ? zzzRoundEdge : radius
+        topLeftRadius: radius
+        bottomLeftRadius: radius
+        topRightRadius: radius
+        bottomRightRadius: radius
         Behavior on topRightRadius {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -166,15 +124,12 @@ Item { // Bar content region
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
-        border.width: root.zzzEverywhere ? 1 : (Appearance.angelEverywhere ? 0 : (root.inirEverywhere ? 1 : (floatingStyle ? 1 : 0)))
+        border.width: floatingStyle ? 1 : 0
         Behavior on border.width {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
-        border.color: root.zzzEverywhere ? Appearance.zzz.borderColor
-            : Appearance.angelEverywhere ? "transparent"
-            : root.inirEverywhere ? Appearance.inir.colBorder
-            : Appearance.colors.colLayer0Border
+        border.color: Appearance.colors.colLayer0Border
         Behavior on border.color {
             enabled: Appearance.animationsEnabled
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -182,81 +137,6 @@ Item { // Bar content region
 
         clip: true
 
-        // Angel inset glow — top edge
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Appearance.angel.insetGlowHeight
-            visible: Appearance.angelEverywhere
-            color: Appearance.angel.colInsetGlow
-        }
-
-        // Angel partial border
-        AngelPartialBorder {
-            targetRadius: barBackground.radius
-        }
-    }
-
-    // Aurora/Angel blur layer — rendered as sibling of barBackground so the blur
-    // is applied over the full screen-sized wallpaper image (not the narrow
-    // clipped bar region). Placed right after barBackground in z-order so it
-    // sits between background and content.
-    Item {
-        id: auroraBlurLayer
-        anchors.fill: barBackground
-        visible: root.auroraEverywhere && !root.inirEverywhere && !root.gameModeMinimal
-            && (Config.options?.bar?.showBackground ?? true) && !root.nativeBlurActive
-            && !root.isIslands
-
-        // Clip + mask to barBackground shape
-        clip: true
-        layer.enabled: visible
-        layer.effect: GE.OpacityMask {
-            maskSource: Rectangle {
-                width: auroraBlurLayer.width
-                height: auroraBlurLayer.height
-                radius: barBackground.radius
-            }
-        }
-
-        Image {
-            id: blurredWallpaper
-            // Position relative to screen — uses screen-sized source so the
-            // wallpaper portion shown matches corner decorators exactly.
-            readonly property real barMargin: barBackground.floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
-            x: root.barOnRight
-                ? (-(root.screen?.width ?? 1920) + auroraBlurLayer.width + barMargin)
-                : -barMargin
-            y: -barMargin
-            width: root.screen?.width ?? 1920
-            height: root.screen?.height ?? 1080
-            source: root.nativeBlurActive ? "" : root.wallpaperUrl
-            fillMode: Image.PreserveAspectCrop
-            cache: true
-            sourceSize.width: root.screen?.width ?? 1920
-            sourceSize.height: root.screen?.height ?? 1080
-            asynchronous: true
-
-            layer.enabled: Appearance.effectsEnabled && root.auroraEverywhere && !root.inirEverywhere && !root.nativeBlurActive
-            layer.effect: MultiEffect {
-                source: blurredWallpaper
-                anchors.fill: source
-                saturation: Appearance.angelEverywhere
-                    ? Appearance.angel.blurSaturation
-                    : (Appearance.effectsEnabled ? 0.2 : 0)
-                blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
-                blur: Appearance.effectsEnabled ? 1 : 0
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                color: Appearance.angelEverywhere
-                    ? ColorUtils.transparentize((root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.angel.overlayOpacity)
-                    : ColorUtils.transparentize((root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.aurora.overlayTransparentize)
-            }
-        }
     }
 
     FocusedScrollMouseArea { // Top section | scroll to change brightness
@@ -487,17 +367,17 @@ Item { // Bar content region
                 implicitHeight: indicatorsColumnLayout.implicitHeight + 4 * 2
                 implicitWidth: indicatorsColumnLayout.implicitWidth + 6 * 2
 
-                buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: buttonHovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
                 colBackgroundHover: Appearance.colors.colLayer1Hover
                 colRipple: Appearance.colors.colLayer1Active
-                colBackgroundToggled: Appearance.zzzEverywhere ? Appearance.zzz.sticker : Appearance.colors.colSecondaryContainer
-                colBackgroundToggledHover: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                colRippleToggled: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
+                colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+                colRippleToggled: Appearance.colors.colSecondaryContainerActive
                 toggled: GlobalStates.sidebarRightOpen
                     && GlobalStates.sidebarRightPresentationOutput === (root.screen?.name ?? "")
                 property color colText: toggled
-                    ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnSecondaryContainer)
+                    ? Appearance.colors.colOnSecondaryContainer
                     : Appearance.colors.colOnLayer0
 
                 Behavior on colText {

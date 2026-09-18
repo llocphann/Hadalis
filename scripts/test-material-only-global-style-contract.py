@@ -64,6 +64,7 @@ CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent
 ON_SCREEN_KEYBOARD = ROOT / "modules" / "onScreenKeyboard" / "OnScreenKeyboard.qml"
 OSK_KEY = ROOT / "modules" / "onScreenKeyboard" / "OskKey.qml"
 SCREEN_CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
+VERTICAL_BAR_CONTENT = ROOT / "modules" / "verticalBar" / "VerticalBarContent.qml"
 VERTICAL_CLOCK_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalClockWidget.qml"
 VERTICAL_DATE_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalDateWidget.qml"
 OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
@@ -155,6 +156,7 @@ def main() -> None:
     on_screen_keyboard = ON_SCREEN_KEYBOARD.read_text(encoding="utf-8")
     osk_key = OSK_KEY.read_text(encoding="utf-8")
     screen_corners = SCREEN_CORNERS.read_text(encoding="utf-8")
+    vertical_bar_content = VERTICAL_BAR_CONTENT.read_text(encoding="utf-8")
     vertical_clock_widget = VERTICAL_CLOCK_WIDGET.read_text(encoding="utf-8")
     vertical_date_widget = VERTICAL_DATE_WIDGET.read_text(encoding="utf-8")
     overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
@@ -1453,6 +1455,48 @@ def main() -> None:
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+
+    # VerticalBarContent owns the supported ii vertical bar chrome. Keep the
+    # independent islands/cornerStyle/cardStyle, compositor blur and connected
+    # BarContextMenu behavior while removing retired Global Theme routing.
+    for token in legacy_style_tokens:
+        forbid(vertical_bar_content, token, "verticalBar/VerticalBarContent.qml")
+    for token in (
+        "root.angelEverywhere",
+        "root.inirEverywhere",
+        "root.auroraEverywhere",
+        "root.zzzEverywhere",
+        "AngelPartialBorder {",
+    ):
+        forbid(vertical_bar_content, token, "verticalBar/VerticalBarContent.qml")
+    for token in (
+        'readonly property bool isIslands: root.barAppearance === "islands"',
+        "readonly property bool cardStyleEverywhere:",
+        'Appearance.useCompositorBlur("bar", root.nativeBlurTopology)',
+        "readonly property color separatorColor: Appearance.colors.colOutlineVariant",
+        "color: root.cardStyleEverywhere",
+        "Appearance.colors.colLayer0",
+        "Appearance.colors.colLayer1",
+        "Appearance.rounding.windowRounding",
+        "Appearance.rounding.normal",
+        "border.width: floatingStyle ? 1 : 0",
+        "border.color: Appearance.colors.colLayer0Border",
+        "Bar.BarContextMenu {",
+        "barContextMenu.requestOpen()",
+        "Bar.BarTaskbar {",
+        "Bar.SysTray {",
+        "buttonRadius: Appearance.rounding.full",
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "GlobalStates.toggleSidebarLeft(root.screen?.name ?? \"\")",
+        "GlobalStates.toggleSidebarRight(root.screen?.name ?? \"\")",
+        "GlobalStates.toggleOverview(root.screen?.name ?? \"\")",
+        "Audio.decrementVolume()",
+        "Audio.incrementVolume()",
+        "root.brightnessMonitor.setBrightness",
+    ):
+        require(vertical_bar_content, token, "verticalBar/VerticalBarContent.qml")
 
     # VerticalBar clock/date leaves are shared by both taskbar layouts.
     # Keep DateTime formatting/layout intact while locking text/stroke chrome to Material.

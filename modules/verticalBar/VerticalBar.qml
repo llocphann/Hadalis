@@ -17,7 +17,9 @@ import qs.modules.common.functions
 
 Scope {
     id: bar
-    property bool showBarBackground: Config.options?.bar?.showBackground ?? true
+    // Vertical Hug uses the same structural connected surface as horizontal
+    // Bar; legacy transparent-bar state must not remove its shoulders/shadow.
+    readonly property bool showBarBackground: true
 
     Variants {
         // For each monitor
@@ -141,10 +143,10 @@ Scope {
                             rightMargin: 0
                         }
                         Behavior on anchors.leftMargin {
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                            animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
                         }
                         Behavior on anchors.rightMargin {
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                            animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
                         }
 
                         states: State {

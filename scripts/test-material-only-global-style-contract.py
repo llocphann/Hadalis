@@ -20,6 +20,7 @@ SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
 LEFT_SIDEBAR_BUTTON = ROOT / "modules" / "bar" / "LeftSidebarButton.qml"
 BAR_CONTENT = ROOT / "modules" / "bar" / "BarContent.qml"
+WORKSPACES = ROOT / "modules" / "bar" / "Workspaces.qml"
 SYS_TRAY = ROOT / "modules" / "bar" / "SysTray.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
@@ -75,6 +76,7 @@ def main() -> None:
     right_sidebar_end = bar_content.find("\n    Component {", right_sidebar_start + 1)
     right_sidebar_block = bar_content[right_sidebar_start:
         right_sidebar_end if right_sidebar_end >= 0 else len(bar_content)]
+    workspaces = WORKSPACES.read_text(encoding="utf-8")
     sys_tray = SYS_TRAY.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
@@ -655,6 +657,31 @@ def main() -> None:
         "color: Appearance.colors.colSubtext",
     ):
         require(sys_tray, token, "SysTray.qml")
+
+    for token in (
+        "useZzzStyle",
+        "useAngelStyle",
+        "useAuroraStyle",
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+        "Appearance.aurora.",
+        "ZzzPlate {",
+        "Appearance.animationCurves.zzzOvershoot",
+    ):
+        forbid(workspaces, token, "Workspaces.qml")
+    for token in (
+        "property bool forceMaterialStyle: false",
+        "readonly property color workspaceThemeIndicator: root.workspaceThemePrimary",
+        "ColorUtils.transparentize(root.workspaceSecondaryContainer, 0.4)",
+        "radius: Math.min(width, height) / 2",
+        "color: root.workspaceIndicatorColor",
+        "color: root.workspacePrimary",
+        "Appearance.animation.elementMoveFast.bezierCurve",
+    ):
+        require(workspaces, token, "Workspaces.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

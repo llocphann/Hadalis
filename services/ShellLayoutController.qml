@@ -264,21 +264,10 @@ Singleton {
                 // reserve its visual extent, not only the exclusive-zone core.
                 thickness = Appearance.sizes.barHeight + Appearance.rounding.screenRounding
             } else {
-                const showBackground = Config.options?.bar?.showBackground ?? true
-                const cornerStyle = Config.options?.bar?.cornerStyle ?? 0
-                const detachedZzz = Appearance.zzzEverywhere
-                    && Appearance.zzz.round
-                    && appearanceStyle === "classic"
-                    && showBackground
-                    && ([1, 3].includes(cornerStyle))
-                const hugCorners = !Appearance.zzzEverywhere
-                    && appearanceStyle === "classic"
-                    && showBackground
-                    && cornerStyle === 0
-                thickness = detachedZzz
-                    ? Appearance.sizes.baseBarHeight + Appearance.sizes.elevationMargin * 2
-                    : Appearance.sizes.barHeight
-                        + (hugCorners ? Appearance.rounding.screenRounding : 0)
+                // Classic Bar has one supported geometry: Hug. Reserve the
+                // structural body plus its inverse-corner shoulder extent.
+                thickness = Appearance.sizes.barHeight
+                    + Appearance.rounding.screenRounding
             }
             result.barEdge = barState.ok ? barState.slot : ""
             root._applyInset(result, result.barEdge, thickness)

@@ -489,6 +489,7 @@ Singleton {
                 property string globalStyle: "material"
                 property JsonObject screenEdge: JsonObject {
                     property int width: 10
+                    property int radius: 25
                     property JsonObject shadow: JsonObject {
                         property bool enabled: true
                         property int size: 15

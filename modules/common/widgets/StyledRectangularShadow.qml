@@ -56,7 +56,11 @@ Item {
             offset: root.offset
             spread: root.spread
             color: root.color
-            cached: true
+            // Connected surfaces translate/reverse while their joined edge is
+            // clipped. Keep those shadows live so a stale cached FBO cannot
+            // blink or lag behind the body; stationary card shadows may cache.
+            cached: !(root.joinTop || root.joinBottom
+                || root.joinLeft || root.joinRight)
         }
     }
 }

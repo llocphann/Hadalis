@@ -137,6 +137,14 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must share Screen Edge shadow settings'
+grep -Fq 'leftMargin: barRoot.hugCorners ? barRoot.roundDecoratorAllowance : 0' "$root/modules/bar/Bar.qml" \
+    || fail 'horizontal Bar shadow must stop before the left Hug corner shoulder'
+grep -Fq 'rightMargin: barRoot.hugCorners ? barRoot.roundDecoratorAllowance : 0' "$root/modules/bar/Bar.qml" \
+    || fail 'horizontal Bar shadow must stop before the right Hug corner shoulder'
+grep -Fq 'topMargin: showBarBackground ? Appearance.rounding.screenRounding : 0' "$root/modules/verticalBar/VerticalBar.qml" \
+    || fail 'vertical Bar shadow must stop before the top Hug corner shoulder'
+grep -Fq 'bottomMargin: showBarBackground ? Appearance.rounding.screenRounding : 0' "$root/modules/verticalBar/VerticalBar.qml" \
+    || fail 'vertical Bar shadow must stop before the bottom Hug corner shoulder'
 grep -Fq 'readonly property bool showBarBackground: true' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Hug structural chrome must not disappear with legacy background state'
 grep -Fq 'readonly property bool showBarBackground: true' "$root/modules/verticalBar/VerticalBar.qml" \

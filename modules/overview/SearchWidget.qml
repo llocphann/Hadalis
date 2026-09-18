@@ -20,12 +20,8 @@ Item { // Wrapper
     property bool panelVisible: true
     property bool applicationDragActive: false
     property real availableHeight: root.QsWindow?.window?.height ?? (root.QsWindow?.window?.screen?.height ?? 1080)
-    readonly property bool zzzEverywhere: Appearance.zzzEverywhere
-    // Island: the search surface wears the Ricelin gradient card; the glass
-    // fill, wallpaper backdrop and per-style borders step aside. zzz keeps its
-    // own plate doctrine.
-    // Explicit island opt-in outranks the zzz chrome (same rule as the islands
-    // bar, dock and sidebars).
+    // Island is an explicit supported search-surface skin. It remains
+    // independent from the retired shell-wide Global Theme families.
     readonly property bool islandStyle: (Config.options?.search?.style ?? "default") === "island"
     readonly property bool actionMode: searchingText.startsWith(root.prefixAction)
     readonly property string actionQuery: actionMode ? StringUtils.cleanPrefix(searchingText, root.prefixAction) : ""
@@ -454,28 +450,13 @@ Item { // Wrapper
         radius: root.islandStyle
             ? (root.showResults ? (Config.options?.appearance?.island?.radius ?? 18)
                 : searchBar.height / 2 + searchBar.verticalPadding)
-            : root.zzzEverywhere ? Appearance.zzz.panelRadius
-            : Appearance.regaliaEverywhere
-                ? (root.showResults ? Appearance.regalia.panelRadius : Appearance.regalia.roundLarge)
-                : searchBar.height / 2 + searchBar.verticalPadding
-        // Collapsed zzz search: let ZzzGraphicPlate own the (chamfered/rounded) fill so
-        // the GlassBackground's rounded rect doesn't escape behind it. Results surface
-        // still needs the paper fill (its backdrop is decoration only).
-        fallbackColor: root.islandStyle || Appearance.regaliaEverywhere ? "transparent"
-            : root.zzzEverywhere ? (root.showResults ? Appearance.zzz.paper : "transparent") : Appearance.colors.colBackgroundSurfaceContainer
-        inirColor: root.islandStyle ? "transparent" : Appearance.inir.colLayer1
-        auroraTransparency: Appearance.aurora.popupTransparentize
-        wallpaperBackdropEnabled: root.panelVisible && !root.zzzEverywhere
-            && !Appearance.regaliaEverywhere && !root.islandStyle
-        // Collapsed ZZZ search keeps its integrated plate border, while the
-        // expanded results surface uses the shared panel backdrop + real border.
-        border.width: root.islandStyle || Appearance.regaliaEverywhere ? 0
-            : root.zzzEverywhere
-            ? (root.showResults ? Appearance.zzz.borderThick : 0)
-            : auroraEverywhere || inirEverywhere ? 1 : 0
-        border.color: root.zzzEverywhere ? Appearance.zzz.hairline
-            : Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-            : inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
+            : searchBar.height / 2 + searchBar.verticalPadding
+        fallbackColor: root.islandStyle
+            ? "transparent"
+            : Appearance.colors.colBackgroundSurfaceContainer
+        wallpaperBackdropEnabled: root.panelVisible && !root.islandStyle
+        border.width: 0
+        border.color: Appearance.colors.colLayer0Border
         Behavior on radius {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -483,42 +464,6 @@ Item { // Wrapper
         Behavior on border.color {
             enabled: Appearance.animationsEnabled
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-        }
-
-        RegaliaPlate {
-            anchors.fill: parent
-            visible: Appearance.regaliaEverywhere && !root.islandStyle
-            fillColor: root.showResults ? Appearance.regalia.bg1 : Appearance.regalia.barSurfaceFloating
-            radius: searchWidgetContent.radius
-            inset: root.showResults ? Appearance.regalia.surfaceInset : Appearance.regalia.controlInset
-            elevated: true
-            glassEnabled: true
-        }
-
-        // Collapsed search: a CLEAN plate (just the left category accent bar). The
-        // search field is a small control — no ghost text, tape or frame labels.
-        ZzzGraphicPlate {
-            anchors.fill: parent
-            visible: root.zzzEverywhere && !root.showResults && !root.islandStyle
-            accentColor: Appearance.zzz.accent
-        }
-
-        // Expanded results: a large surface, so a restrained backdrop is welcome —
-        // a faint ghost mark only, no ticks/burst noise.
-        ZzzPanelBackdrop {
-            anchors.fill: parent
-            visible: root.zzzEverywhere && root.showResults && !root.islandStyle
-            label: "RESULTS"
-            index: "RX"
-            ghostText: "RESULT"
-            accentColor: Appearance.zzz.accent
-            showTicks: false
-            showBurst: false
-            showGrid: false
-            horizontalBias: 0.1
-            verticalBias: 0.04
-            ghostWidthFactor: 0.8
-            ghostStrength: 0.7
         }
 
         Behavior on implicitHeight {
@@ -553,10 +498,10 @@ Item { // Wrapper
                 id: searchBar
                 property real verticalPadding: 4
                 Layout.fillWidth: true
-                Layout.leftMargin: root.zzzEverywhere ? 18 : 10
-                Layout.rightMargin: root.zzzEverywhere ? 14 : 4
-                Layout.topMargin: root.zzzEverywhere ? 10 : verticalPadding
-                Layout.bottomMargin: root.zzzEverywhere ? 10 : verticalPadding
+                Layout.leftMargin: 10
+                Layout.rightMargin: 4
+                Layout.topMargin: verticalPadding
+                Layout.bottomMargin: verticalPadding
                 searchingText: root.searchingText
                 onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
             }
@@ -566,9 +511,7 @@ Item { // Wrapper
                 visible: root.showResults && !root.actionMode
                 Layout.fillWidth: true
                 height: 1
-                color: root.zzzEverywhere ? Appearance.zzz.hairline
-                    : Appearance.regaliaEverywhere ? Appearance.regalia.separator
-                    : Appearance.colors.colOutlineVariant
+                color: Appearance.colors.colOutlineVariant
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
             }
 

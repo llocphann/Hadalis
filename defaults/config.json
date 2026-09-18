@@ -117,7 +117,7 @@
         "recentThemes": [],
         "favoriteThemes": [],
         "globalStyleCornerStyles": {
-            "material": 1,
+            "material": 0,
             "cards": 3,
             "aurora": 0,
             "inir": 1,
@@ -807,7 +807,7 @@
         },
         "borderless": true,
         "bottom": false,
-        "cornerStyle": 1,
+        "cornerStyle": 0,
         "customRounding": -1,
         "floatStyleShadow": true,
         "height": 40,

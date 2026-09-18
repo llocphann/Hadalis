@@ -624,8 +624,14 @@ Scope {
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: settingsPanel.height - height
                     + (1 - root._surfaceReveal) * height
-                width: Math.min(1040, Math.max(780, settingsPanel.width * 0.66))
-                height: Math.min(840, Math.max(600, settingsPanel.height * 0.82))
+                width: Math.min(
+                    1560,
+                    Math.max(900, settingsPanel.width * 0.88),
+                    Math.max(0, settingsPanel.width - 48))
+                height: Math.min(
+                    1080,
+                    Math.max(720, settingsPanel.height * 0.92),
+                    Math.max(0, settingsPanel.height - 24))
                 radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
                       : Appearance.regaliaEverywhere ? Appearance.regalia.panelRadius
                       : Appearance.angelEverywhere ? Appearance.angel.roundingLarge

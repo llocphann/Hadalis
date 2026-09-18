@@ -36,6 +36,28 @@ Scope {
                 GlobalStates.overviewPresentationOutput === (root.modelData?.name ?? "")
             readonly property bool shouldShow: GlobalStates.overviewOpen
                 && (taskViewMode ? isTargetOutput : (!activeScreenOnly || isTargetOutput))
+            readonly property string outputName: String(root.modelData?.name ?? "")
+            readonly property bool iiFamily:
+                (Config.options?.panelFamily ?? "ii") === "ii"
+            readonly property bool bottomBarConfigured: root.iiFamily
+                && !(Config.options?.bar?.vertical ?? false)
+                && (Config.options?.bar?.bottom ?? false)
+                && (Config.options?.enabledPanels ?? []).includes("iiBar")
+                && GlobalStates.barOpen
+            readonly property bool bottomBarTargetsOutput: {
+                if (!root.bottomBarConfigured || root.outputName.length === 0)
+                    return false
+                const list = Config.options?.bar?.screenList ?? []
+                if (!list || list.length === 0)
+                    return true
+                const matched = Quickshell.screens.filter(screen => {
+                    const screenName = String(screen?.name ?? "")
+                    return screenName.length > 0 && list.includes(screenName)
+                })
+                return matched.length === 0 || list.includes(root.outputName)
+            }
+            readonly property bool bottomBarOwnsEdge:
+                root.bottomBarConfigured && root.bottomBarTargetsOutput
             readonly property bool applicationDragActive: searchWidget.applicationDragActive
                 || (allAppsGridLoader.item?.applicationDragActive ?? false)
             screen: modelData
@@ -186,8 +208,10 @@ Scope {
                     PerimeterTokens.connectorWidth + PerimeterTokens.outerRadius * 2)
                 readonly property real bodyStartY:
                     bodyAnchor.y - PerimeterTokens.seamOverlap
+                readonly property real attachmentThickness:
+                    root.bottomBarOwnsEdge ? Appearance.sizes.barHeight : edgeThickness
                 readonly property real edgeJoinY:
-                    root.height - edgeThickness + PerimeterTokens.seamOverlap
+                    root.height - attachmentThickness + PerimeterTokens.seamOverlap
                 readonly property real connectorX: Math.max(0, Math.min(
                     root.width - bodyExtent,
                     bodyAnchor.x - bodyExtent / 2))
@@ -201,7 +225,8 @@ Scope {
                 readonly property real connectorWidth:
                     PerimeterTokens.connectorWidth
                 readonly property real borderWidth: 0
-                readonly property bool valid: root._presentedOpen
+                readonly property bool valid: root.iiFamily
+                    && root._presentedOpen
                     && dashboardPanel.visible
                     && dashboardPanel.item !== null
                     && connectorRect.width > 0

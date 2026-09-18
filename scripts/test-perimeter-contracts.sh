@@ -60,6 +60,11 @@ for token in \
     'import qs.modules.common.perimeter' \
     'id: overviewBottomConnectorGeometry' \
     'readonly property string edge: "bottom"' \
+    'readonly property bool bottomBarOwnsEdge:' \
+    'Config.options?.bar?.screenList' \
+    'readonly property real attachmentThickness:' \
+    'root.bottomBarOwnsEdge ? Appearance.sizes.barHeight : edgeThickness' \
+    'readonly property bool valid: root.iiFamily' \
     'PerimeterTokens.seamOverlap' \
     'ConnectedSurfaceConnector {' \
     'dashboard.connectedSurfaceRect'; do

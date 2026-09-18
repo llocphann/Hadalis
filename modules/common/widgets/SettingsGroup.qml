@@ -13,8 +13,7 @@ Rectangle {
 
     radius: SettingsMaterialPreset.groupRadius
     color: SettingsMaterialPreset.groupColor
-    border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-        : Appearance.zzzEverywhere ? 0 : 0
+    border.width: 0
     border.color: SettingsMaterialPreset.groupBorderColor
 
     Behavior on color {

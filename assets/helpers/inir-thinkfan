@@ -1,9 +1,11 @@
 #!/bin/sh
 
 service_name=thinkfan.service
+fan_path=/proc/acpi/ibm/fan
+fan_control_path=/sys/module/thinkpad_acpi/parameters/fan_control
 
 usage() {
-    printf '%s\n' 'Usage: inir-thinkfan --status | --apply managed | --apply firmware' >&2
+    printf '%s\n' 'Usage: inir-thinkfan --status | --apply managed | --apply firmware | --set-level auto|1..7' >&2
     exit 2
 }
 
@@ -25,8 +27,18 @@ service_installed() {
 
 read_fan_value() {
     key=$1
-    [ -r /proc/acpi/ibm/fan ] || return 0
-    sed -n "s/^${key}:[[:space:]]*//p" /proc/acpi/ibm/fan | head -n 1
+    [ -r "$fan_path" ] || return 0
+    sed -n "s/^${key}:[[:space:]]*//p" "$fan_path" | head -n 1
+}
+
+direct_control_available() {
+    [ -r "$fan_path" ] || return 1
+    [ -r "$fan_control_path" ] || return 1
+    control=$(cat "$fan_control_path" 2>/dev/null || true)
+    case "$control" in
+        Y|y|1) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 status() {
@@ -35,6 +47,7 @@ status() {
     installed=0
     active=0
     enabled=0
+    direct=0
     reason=""
     rpm=""
     level=""
@@ -42,22 +55,30 @@ status() {
     config=""
 
     [ -n "$binary" ] && available=1
+    direct_control_available && direct=1
     if service_installed; then
         installed=1
         systemctl is-active --quiet "$service_name" && active=1
         systemctl is-enabled --quiet "$service_name" && enabled=1
     fi
-    [ "$active" -eq 0 ] || profile=managed
+
+    rpm=$(read_fan_value speed)
+    level=$(read_fan_value level)
+    case "$rpm" in ''|*[!0-9]*) rpm="" ;; esac
+
+    if [ "$active" -eq 1 ]; then
+        profile=managed
+    elif [ "$direct" -eq 1 ]; then
+        case "$level" in
+            1|2|3|4|5|6|7) profile=manual ;;
+        esac
+    fi
 
     if [ -r /etc/thinkfan.yaml ]; then
         config=/etc/thinkfan.yaml
     elif [ -r /etc/thinkfan.conf ]; then
         config=/etc/thinkfan.conf
     fi
-
-    rpm=$(read_fan_value speed)
-    level=$(read_fan_value level)
-    case "$rpm" in ''|*[!0-9]*) rpm="" ;; esac
 
     if [ "$available" -eq 0 ]; then
         reason=thinkfan-unavailable
@@ -67,9 +88,9 @@ status() {
         reason=firmware-control
     fi
 
-    printf '{"schema":1,"available":%s,"serviceInstalled":%s,"active":%s,"enabled":%s,"profile":' \
+    printf '{"schema":1,"available":%s,"serviceInstalled":%s,"active":%s,"enabled":%s,"directControlAvailable":%s,"profile":' \
         "$(json_bool "$available")" "$(json_bool "$installed")" \
-        "$(json_bool "$active")" "$(json_bool "$enabled")"
+        "$(json_bool "$active")" "$(json_bool "$enabled")" "$(json_bool "$direct")"
     json_string "$profile"
     printf ',"fanRpm":%s,"fanLevel":' "${rpm:-null}"
     json_string "$level"
@@ -80,12 +101,16 @@ status() {
     printf '}\n'
 }
 
-apply_profile() {
-    profile=$1
+require_root() {
     [ "$(id -u)" -eq 0 ] || {
-        printf '%s\n' 'inir-thinkfan: privileged apply requires polkit/root' >&2
+        printf '%s\n' 'inir-thinkfan: privileged fan control requires polkit/root' >&2
         exit 77
     }
+}
+
+apply_profile() {
+    profile=$1
+    require_root
 
     service_installed || {
         printf '%s\n' 'inir-thinkfan: thinkfan.service is not installed' >&2
@@ -118,9 +143,43 @@ apply_profile() {
                 printf '%s\n' 'inir-thinkfan: service remained enabled after disable' >&2
                 exit 70
             fi
+            # If direct ThinkPad ACPI control is available, always return the
+            # hardware to automatic control when leaving a managed/manual mode.
+            if direct_control_available; then
+                printf '%s\n' 'level auto' > "$fan_path" || {
+                    printf '%s\n' 'inir-thinkfan: failed to restore automatic fan control' >&2
+                    exit 70
+                }
+            fi
             ;;
         *) usage ;;
     esac
+
+    status
+}
+
+set_fan_level() {
+    level=$1
+    case "$level" in
+        auto|1|2|3|4|5|6|7) ;;
+        *) usage ;;
+    esac
+
+    require_root
+    direct_control_available || {
+        printf '%s\n' 'inir-thinkfan: direct ThinkPad fan control is unavailable (requires thinkpad_acpi fan_control=1)' >&2
+        exit 69
+    }
+
+    if service_installed && systemctl is-active --quiet "$service_name"; then
+        printf '%s\n' 'inir-thinkfan: stop ThinkFan managed control before setting a fixed fan level' >&2
+        exit 70
+    fi
+
+    printf 'level %s\n' "$level" > "$fan_path" || {
+        printf '%s\n' 'inir-thinkfan: failed to write the requested fan level' >&2
+        exit 70
+    }
 
     status
 }
@@ -133,6 +192,10 @@ case "${1:-}" in
     --apply)
         [ "$#" -eq 2 ] || usage
         apply_profile "$2"
+        ;;
+    --set-level)
+        [ "$#" -eq 2 ] || usage
+        set_fan_level "$2"
         ;;
     *) usage ;;
 esac

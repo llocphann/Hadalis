@@ -46,6 +46,10 @@ fi
 grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qml" \
     || fail 'SidebarHost must own the active sidebar edge connector'
 
+grep -A10 -F 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qml" \
+    | grep -Fq 'z: 1' \
+    || fail 'Sidebar connector must render above the body so seam overlap can erase the attachment border'
+
 grep -Fq 'property JsonObject screenEdge: JsonObject {' "$root/modules/common/Config.qml" \
     || fail 'Config schema must persist appearance.screenEdge values'
 grep -Fq '"screenEdge": {' "$root/defaults/config.json" \

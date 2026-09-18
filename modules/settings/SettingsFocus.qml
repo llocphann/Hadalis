@@ -606,7 +606,7 @@ Scope {
                 spread: 0
                 offset: Qt.vector2d(0, 0)
                 color: (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    ? ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
+                    ? ColorUtils.applyAlpha(Appearance.colors.colShadow,
                         Math.max(0, Math.min(0.60,
                             Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24))))
                     : "transparent"

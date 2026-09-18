@@ -55,6 +55,10 @@ Rectangle {
             width: root.width
             height: root.height
             radius: root.radius
+            topLeftRadius: root.topLeftRadius
+            topRightRadius: root.topRightRadius
+            bottomLeftRadius: root.bottomLeftRadius
+            bottomRightRadius: root.bottomRightRadius
         }
     }
     

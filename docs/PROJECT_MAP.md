@@ -312,11 +312,11 @@ The practical contributor rule is:
 
 ## 4. Appearance is the visual contract for the ii family
 
-`modules/common/Appearance.qml` is the theme and visual token singleton for the shared/ii side of the shell.
+`modules/common/Appearance.qml` is the visual-token singleton for the shared/ii side of the shell.
 
 It defines the reactive visual system for:
 
-- style detection
+- the canonical Material runtime boundary
 - color tokens
 - transparency behavior
 - rounding
@@ -325,14 +325,7 @@ It defines the reactive visual system for:
 - GameMode-aware effect suppression
 - wallpaper-informed visual adaptation
 
-It also centralizes style dispatch for the six supported styles:
-
-- material
-- cards
-- aurora
-- inir
-- angel
-- zzz
+For Hadalis 1.0, `Appearance.globalStyle` is hard-clamped to `material`. Some legacy/local token objects may remain while exact callers are audited, but they are **not** selectable or supported shell-wide Global Themes and must not gain new routing.
 
 Its impact is very broad because modules rely on it for visual consistency rather than defining their own local token systems.
 
@@ -410,7 +403,7 @@ It also invokes the wallpaper switch script and updates config for per-monitor w
 This means wallpaper changes affect:
 
 - background rendering
-- aurora/glass visual consistency
+- wallpaper-backed blur/glass visual consistency
 - dynamic theme generation
 - per-monitor behavior
 - thumbnail and cache generation
@@ -578,7 +571,7 @@ Touch this when:
 Expect impact on:
 
 - many ii/shared modules at once
-- visual regressions across styles
+- visual regressions across Material/shared surfaces
 - GameMode-related visual behavior
 
 ## `GlobalStates.qml`
@@ -618,7 +611,7 @@ Touch this when:
 Expect impact on:
 
 - a feature surface
-- family- and style-specific rendering behavior
+- family-specific and supported local rendering behavior
 - config and service contracts already in use
 
 ## `scripts/`

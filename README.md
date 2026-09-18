@@ -270,6 +270,7 @@ Source work already present on `dev`:
 - the Calendar/Weather composition has source implementation for the requested Serpantinum-inspired left/center presentation while retaining Hadalis detailed weather ownership/content on the right;
 - Media Popup owns the existing CAVA -> `PlayerControl` -> `WaveVisualizer` path and gates visualizer activity by popup presentation/playback lifecycle;
 - the source-side runtime dependency audit now matches callers to packaging: CAVA is covered by distro/Nix paths plus generic guidance, Weather's hard dependency is `curl` with optional Geoclue GPS fallback, and Thinkfan remains an explicitly optional hardware capability whose upstream executable/service/config are never fabricated by Hadalis;
+- the stale regression/docs audit found no positive regression dependency on retired Global Style/perimeter/Clock/guessed PanelWindow APIs across the 69 `scripts/test-*` guards; canonical architecture/performance/wallpaper/surface docs and localized READMEs now describe Material as the only Global Theme;
 - tray/context-menu output ownership, popup focus lifecycle, reverse retract and exact-menu delayed-close protections remain part of the connected-surface contract.
 
 Maintainer-reported follow-up checklist below is **source-side only**. A checked item means the source condition has been addressed or already exists on current `dev`; it does **not** mark the corresponding release/runtime gate as passed:
@@ -286,7 +287,7 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 
 Still open / must be treated as unfinished until audited or locally validated:
 
-1. **Regression/docs residue is narrowed but still open.** Perimeter docs/tests match the retired broad runtime, the dead common host/config/cutover/route cluster is gone, and the shell-surface regression no longer requires the retired Clock tooltip to exist. Continue the final stale-doc/test pass outside this cluster (especially retired Global Style/API assumptions) without changing supported runtime behavior merely to satisfy stale tests.
+1. **Material-only active-tree residue remains.** `Appearance.globalStyle` is runtime-clamped and public Settings routing is Material-only, but large Settings chrome files still contain dead legacy `Appearance.*Everywhere` presentation branches. Audit/remove those in small, exact Material-fallback groups; do not mass-delete or revive old themes.
 2. **All maintainer-reported follow-up items now have source-side fixes.** Connected popup geometry, Media waveform visibility, Weather/Calendar sizing/hover, Overview bottom attachment, Sidebar connectors and same-edge Screen Edge ownership/color remain runtime-sensitive and require the maintainer's live desktop pass.
 3. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
@@ -296,7 +297,7 @@ Recommended next source-side sequence:
 2. live-validate the source-fixed connected-surface cluster later; do not rebuild the retired broad perimeter runtime;
 3. live-validate the source-fixed Media Popup CAVA/WaveVisualizer scaling later;
 4. live-validate the source-fixed Weather/Calendar hover composition later;
-5. finish the remaining stale regression/docs audit outside the cleaned perimeter cluster, especially retired Global Style/API assumptions;
+5. audit/remove the remaining dead non-Material Settings chrome branches in small exact-fallback groups; avoid broad mechanical rewrites;
 6. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 
 ## 12. New-conversation continuation prompt

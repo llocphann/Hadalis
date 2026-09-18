@@ -4,27 +4,22 @@ iNiR has two completely separate UI families that share the same services and co
 
 ## Material ii
 
-The default family. Material Design language with six style variants that form a spectrum from structured to expressive.
+The default family. Hadalis 1.0 exposes **Material as the only shell-wide Global Theme**. Wallpaper-derived palettes, named color presets, motion settings, and local component presentation options are independent of that Global Theme boundary.
 
-### Styles
+### Global theme
 
-| Style | Character |
-|-------|-----------|
-| **material** | Clean Google-standard Material 3. Solid surfaces, standard elevation. The baseline. |
-| **cards** | Material variant with a card-based layout. Same colors, different structure. |
-| **aurora** | Professional glass transparency. Blur-backed surfaces, frosted panels. |
-| **inir** | TUI-inspired elegance. Border and text hierarchy, muted tones, monospace accents. |
-| **angel** | The flagship. Neo-brutalism meets glass. Offset shadows, partial borders, inset glow, warm golden palette. |
-| **zzz** | Zenless Zone Zero poster UI: wallpaper-generated signal colors, black console surfaces, technical grid frames, cut-corner plates, sticker badges, segmented metrics, halftone texture, and Oxanium type. |
+| Global Theme | Contract |
+|---|---|
+| **Material** | Canonical ii runtime language for v1.0. Shared surfaces consume the Material palette, rounding, typography, motion and connected-surface tokens. |
 
-Style dispatch priority: **zzz > angel > inir > aurora > material**. This means if you're checking which style to apply, check zzz first:
+`Appearance.globalStyle` is runtime-clamped to `material`. Persisted legacy Global Theme values are normalized by `ThemeService`; they are not selectable renderers and must not gain new runtime branches.
+
+Use the canonical Material tokens for ordinary ii surfaces:
 
 ```qml
-color: Appearance.zzzEverywhere ? Appearance.colors.colLayer1
-     : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-     : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-     : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-     : Appearance.colors.colLayer1
+color: Appearance.colors.colLayer1
+radius: Appearance.rounding.normal
+font.family: Appearance.font.main
 ```
 
 ### Layout
@@ -45,7 +40,7 @@ radius: Appearance.rounding.normal
 font.family: Appearance.font.main
 ```
 
-Never hardcode colors, radii, or font sizes. The entire point of the token system is that switching styles, themes, or wallpapers changes everything at once.
+Never hardcode colors, radii, or font sizes. The token system keeps Material palette changes, supported local appearance options, and wallpaper-derived theming consistent across the shell.
 
 ### Panels
 

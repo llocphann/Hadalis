@@ -111,7 +111,7 @@ Je voulais que mon bureau ressemble et fonctionne d'une certaine façon, et rien
 ## Fonctionnalités
 
 **Deux familles de panneaux**, interchangeables à la volée avec `Super+Shift+W` :
-- **Material ii** — barre flottante, barres latérales, dock, 6 styles visuels (material, cards, aurora, inir, angel, zzz)
+- **Material ii** — barre flottante, barres latérales, dock ; Material est le seul thème visuel global
 - **Waffle** — barre des tâches style Windows 11, menu démarrer, centre d'actions, centre de notifications
 
 **Thématisation automatique** — choisissez un fond d'écran et tout s'adapte :
@@ -128,7 +128,7 @@ Je voulais que mon bureau ressemble et fonctionne d'une certaine façon, et rien
 
 Choisissez un fond d'écran et tout le système suit — shell, apps GTK/Qt, terminaux, Firefox, Discord, écran de connexion SDDM. Entièrement automatique.
 
-- **6 styles visuels** — Material (uni), Cards, Aurora (flou de verre), iNiR (inspiré TUI), Angel (néo-brutalisme), ZZZ
+- **Thème visuel global** — Material uniquement ; les palettes de couleurs et les options locales des composants restent indépendantes
 - **Couleurs dynamiques du fond d'écran** via Material You — propagées à tout le système
 - **10 outils de terminal auto-thématisés** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
 - **Thématisation d'apps** — GTK3/4, Qt (via plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)

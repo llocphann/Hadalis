@@ -113,7 +113,7 @@ Wayland ← GPU
 ## الميزات
 
 **عائلتان من اللوحات**، قابلة للتبديل أثناء التشغيل بـ `Super+Shift+W`:
-- **Material ii** — شريط عائم، أشرطة جانبية، رصيف، 5 أنماط بصرية (material، cards، aurora، inir، angel)
+- **Material ii** — شريط عائم، أشرطة جانبية، رصيف؛ Material هو السمة البصرية العامة الوحيدة
 - **Waffle** — شريط مهام بأسلوب Windows 11، قائمة ابدأ، مركز الإجراءات، مركز الإشعارات
 
 **سمات تلقائية** — اختر خلفية ويتكيف كل شيء:
@@ -130,7 +130,7 @@ Wayland ← GPU
 
 اختر خلفية والنظام بأكمله يتبع — الواجهة، تطبيقات GTK/Qt، المحطات الطرفية، Firefox، Discord، شاشة تسجيل الدخول SDDM. تلقائياً بالكامل.
 
-- **5 أنماط بصرية** — Material (صلب)، Cards، Aurora (ضبابية زجاجية)، iNiR (مستوحى من TUI)، Angel (وحشية جديدة)
+- **السمة البصرية العامة** — Material فقط؛ تبقى لوحات الألوان وخيارات المكونات المحلية مستقلة
 - **ألوان ديناميكية من الخلفية** عبر Material You — تنتشر في كل النظام
 - **10 أدوات طرفية تلقائية السمات** — foot، kitty، alacritty، starship، fuzzel، pywalfox، btop، lazygit، yazi
 - **سمات التطبيقات** — GTK3/4، Qt (عبر plasma-integration + darkly)، Firefox (MaterialFox)، Discord/Vesktop (System24)

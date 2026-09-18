@@ -111,7 +111,7 @@ Queria que meu desktop tivesse uma cara e funcionasse de um jeito, e nada mais f
 ## Funcionalidades
 
 **Duas famílias de painéis**, alternáveis em tempo real com `Super+Shift+W`:
-- **Material ii** — barra flutuante, sidebars, dock, 6 estilos visuais (material, cards, aurora, inir, angel, zzz)
+- **Material ii** — barra flutuante, sidebars, dock; Material é o único tema visual global
 - **Waffle** — barra de tarefas estilo Windows 11, menu iniciar, centro de ações, centro de notificações
 
 **Tematização automática** — escolha um wallpaper e tudo se adapta:
@@ -128,7 +128,7 @@ Queria que meu desktop tivesse uma cara e funcionasse de um jeito, e nada mais f
 
 Escolha um wallpaper e o sistema inteiro acompanha — shell, apps GTK/Qt, terminais, Firefox, Discord, tela de login SDDM. Tudo automático.
 
-- **6 estilos visuais** — Material (sólido), Cards, Aurora (blur de vidro), iNiR (inspirado em TUI), Angel (neo-brutalismo), ZZZ
+- **Tema visual global** — apenas Material; paletas de cores e opções locais de componentes permanecem independentes
 - **Cores dinâmicas do wallpaper** via Material You — propagadas para todo o sistema
 - **10 ferramentas de terminal com tema automático** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
 - **Tematização de apps** — GTK3/4, Qt (via plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)

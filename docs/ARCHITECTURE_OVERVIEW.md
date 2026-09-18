@@ -34,7 +34,7 @@ Total cold start to panels visible: under 2 seconds on decent hardware.
 
 The shell has two completely separate visual identities that share the same services layer:
 
-**Material ii** uses Material Design language with the active material, cards, aurora, inir, angel, zzz, and cookie style options. Its Classic Bar supports top, bottom, left, and right placement. Sidebars open from the edges. Overview provides the launcher/task-navigation surface.
+**Material ii** uses Material Design language with **Material as the only shell-wide Global Theme** for Hadalis 1.0. Color presets, wallpaper-derived Material palettes, and supported per-feature presentation options remain separate from the Global Theme boundary. Its Classic Bar supports top, bottom, left, and right placement. Sidebars open from the edges. Overview provides the launcher/task-navigation surface.
 
 **Waffle** uses Windows 11 Fluent Design. Taskbar at the bottom. Start menu. Action center. Notification center.
 

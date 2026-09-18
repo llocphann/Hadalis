@@ -51,7 +51,7 @@ Each monitor can have its own wallpaper. Configure per-monitor wallpapers in Set
 Per-monitor config includes:
 - Wallpaper path
 - Optional workspace range (for Niri's scrolling workspaces)
-- Optional backdrop path (for glass blur effects in Aurora/Angel styles)
+- Optional backdrop path (for supported wallpaper-backed blur/glass effects)
 
 ## Video wallpapers
 
@@ -64,7 +64,7 @@ Options:
 
 ## Backdrop system
 
-The Aurora and Angel styles use frosted glass effects. The "backdrop" is a separate wallpaper (or the main wallpaper with heavy blur) that renders behind glass surfaces. This lets you have a sharp wallpaper on the desktop and a blurred version showing through transparent panels.
+The "backdrop" is a separate wallpaper (or the main wallpaper with heavy blur) used by supported surfaces that intentionally request wallpaper-backed blur/glass presentation. It is an effect input, not a selectable Global Theme. This lets the desktop keep a sharp wallpaper while compatible translucent surfaces can render against a blurred source.
 
 ## Auto-cycling
 

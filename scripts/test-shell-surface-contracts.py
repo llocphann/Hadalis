@@ -71,6 +71,7 @@ def main() -> None:
         "animatedTangentExtent",
         "animatedCrossExtent",
         "revealProgress",
+        "motionProgress",
         "connectorRectForBody",
         "animatedBodyRect",
     ):
@@ -80,8 +81,11 @@ def main() -> None:
           "ConnectedSurfaceGeometry must source popup connector width from the shared perimeter token")
     check("Math.max(Math.max(0, connectorWidth), anchorTangentExtent)" not in geometry,
           "Connected popup neck width must not expand or shrink with the source control width")
-    check("(1 - revealProgress) * crossBodyExtent" in geometry,
-          "Connected popup reveal must translate the complete body under its owning edge")
+    check("(1 - motionProgress) * crossBodyExtent" in geometry,
+          "Connected popup motion must translate the complete body with the expressive spatial scalar")
+    check("readonly property real revealProgress: clamp(progress, 0, 1)" in geometry
+          and "readonly property real motionProgress:" in geometry,
+          "Connected popup must clamp semantic reveal while preserving spatial overshoot for translation")
     check("readonly property rect revealClipRect:" in geometry,
           "Connected popup reveal must expose a fixed resting-edge clip")
     check("readonly property rect visibleBodyRect:" in geometry,

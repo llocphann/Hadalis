@@ -6,28 +6,33 @@ import Quickshell
 import Quickshell.Io
 
 /**
- * Optional Equalizer capability facade.
+ * Optional 10-band DSP Equalizer facade for the Media Popup.
  *
- * The service stays disabled until a Media consumer registers. EasyEffects is
- * the backend; socat is used only as an optional transport to EasyEffects'
- * local control socket. Missing backend or transport degrades to an unavailable
- * capability and never affects playback. The Media popup consumes the fixed
- * 10-band DSP facade below while backend discovery remains 1-32 bands.
+ * Hadalis keeps one EqualizerService/backend boundary, but deliberately avoids
+ * direct per-channel EasyEffects local-server band properties. Those properties
+ * are version-dependent. The DSP facade instead mirrors Serpantinum's proven
+ * model: persist ten gains, render them into one 32-band EasyEffects preset,
+ * then load that preset through EasyEffects' generic local-server command.
  */
 Singleton {
     id: root
 
     property bool enabled: false
     readonly property string backendName: "EasyEffects"
-    readonly property bool backendAvailable: root.enabled && EasyEffects.available && root._transportAvailable
+    readonly property bool backendAvailable:
+        root.enabled && EasyEffects.available && root._transportAvailable
     readonly property bool backendRunning: root.enabled && EasyEffects.active
-    readonly property bool available: root.backendAvailable && root.backendRunning && root._equalizerAvailable
-    readonly property real minimumBandGain: -36
-    readonly property real maximumBandGain: 36
+    readonly property bool available:
+        root.backendAvailable && root.backendRunning && root._stateReady
+
+    readonly property real minimumBandGain: -12
+    readonly property real maximumBandGain: 12
     readonly property real dspMinimumBandGain: -12
     readonly property real dspMaximumBandGain: 12
-    readonly property var dspFrequencies: [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
-    readonly property var dspLabels: ["31", "63", "125", "250", "500", "1k", "2k", "4k", "8k", "16k"]
+    readonly property var dspFrequencies:
+        [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+    readonly property var dspLabels:
+        ["31", "63", "125", "250", "500", "1k", "2k", "4k", "8k", "16k"]
     readonly property var dspPresetCurves: ({
         "Flat":    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         "Bass":    [5, 7, 5, 2, 1, 0, 0, 0, 1, 2],
@@ -38,48 +43,43 @@ Singleton {
         "Jazz":    [3, 3, 1, 1, 1, 1, 2, 1, 2, 3],
         "Classic": [0, 1, 2, 2, 2, 2, 1, 2, 3, 4]
     })
-    readonly property bool bandControlAvailable: {
-        if (!root.available || root.bands.length === 0)
-            return false
-        for (let i = 0; i < root.bands.length; ++i) {
-            if (root.bands[i]?.synced !== true)
-                return false
-        }
-        return true
-    }
-    readonly property var dspBands: root._buildDspBands()
-    readonly property bool dspControlAvailable: {
-        if (!root.bandControlAvailable || root.bands.length < root.dspFrequencies.length
-                || root.dspBands.length !== root.dspFrequencies.length)
-            return false
-        for (let i = 0; i < root.dspBands.length; ++i) {
-            if (root.dspBands[i].backendIndex < 0 || root.dspBands[i].synced !== true)
-                return false
-        }
-        return true
-    }
-    readonly property string dspPresetName: root._inferDspPreset()
-    readonly property bool busy: root._mutationBusy
 
     property string error: ""
-    property list<string> presets: []
-    property string activePreset: ""
-    // Band count, frequencies and gains are discovered from the running
-    // EasyEffects equalizer. EasyEffects supports a configurable 1-32 bands.
-    property var bands: []
+    // Compatibility aliases retained for callers that used the earlier facade.
+    property list<string> presets:
+        ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
+    readonly property string activePreset: root._presetName
+    readonly property var bands: root.dspBands
 
     property int _consumerCount: 0
-    property var _dspPresetQueue: []
-    property bool _dspPresetApplying: false
     property bool _transportChecked: false
     property bool _transportAvailable: false
-    property bool _equalizerAvailable: false
-    property string _pendingPreset: ""
-    property int _pendingBandIndex: -1
-    property real _pendingBandGain: 0
+    property bool _stateReady: false
+    property var _dspGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    property string _presetName: "Flat"
+    property var _pendingGains: []
+    property string _pendingPresetName: ""
     property int _lifecycleGeneration: 0
-    readonly property bool _mutationBusy: root._dspPresetApplying
-        || applyPresetProc.running || setBandProc.running || resetProc.running
+
+    readonly property bool busy: applyProc.running
+    readonly property bool bandControlAvailable: root.dspControlAvailable
+    readonly property bool dspControlAvailable:
+        root.available && !root.busy
+    readonly property string dspPresetName: root._presetName
+    readonly property var dspBands: {
+        const result = []
+        for (let i = 0; i < root.dspFrequencies.length; ++i) {
+            result.push({
+                dspIndex: i,
+                backendIndex: i,
+                frequency: root.dspFrequencies[i],
+                label: root.dspLabels[i],
+                gain: Number(root._dspGains[i]) || 0,
+                synced: root._stateReady
+            })
+        }
+        return result
+    }
 
     function registerConsumer() {
         root._consumerCount++
@@ -108,209 +108,62 @@ Singleton {
         return true
     }
 
-    function _buildDspBands() {
-        const result = []
-        const source = root.bands ?? []
-        const used = ({})
-        for (let dspIndex = 0; dspIndex < root.dspFrequencies.length; ++dspIndex) {
-            const target = root.dspFrequencies[dspIndex]
-            let bestIndex = -1
-            let bestDistance = Number.POSITIVE_INFINITY
-            for (let backendIndex = 0; backendIndex < source.length; ++backendIndex) {
-                if (used[backendIndex] === true)
-                    continue
-                const frequency = Number(source[backendIndex]?.frequency)
-                if (!isFinite(frequency) || frequency <= 0)
-                    continue
-                const distance = Math.abs(Math.log(frequency / target))
-                if (distance < bestDistance) {
-                    bestDistance = distance
-                    bestIndex = backendIndex
-                }
-            }
-            if (bestIndex >= 0)
-                used[bestIndex] = true
-            const backendBand = bestIndex >= 0 ? source[bestIndex] : null
-            result.push({
-                dspIndex: dspIndex,
-                backendIndex: bestIndex,
-                frequency: target,
-                label: root.dspLabels[dspIndex],
-                gain: backendBand ? Number(backendBand.gain) || 0 : 0,
-                synced: backendBand?.synced === true
-            })
-        }
-        return result
-    }
-
-    function _inferDspPreset() {
-        if (!root.dspControlAvailable)
-            return ""
-        const names = ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
-        for (let nameIndex = 0; nameIndex < names.length; ++nameIndex) {
-            const name = names[nameIndex]
-            const curve = root.dspPresetCurves[name]
-            let matches = true
-            for (let i = 0; i < curve.length; ++i) {
-                if (Math.abs(Number(root.dspBands[i]?.gain) - curve[i]) > 0.15) {
-                    matches = false
-                    break
-                }
-            }
-            if (matches)
-                return name
-        }
-        return "Custom"
-    }
-
-    function _markBandsUnsynced() {
-        root.bands = root.bands.map(band => Object.assign({}, band, { synced: false }))
-    }
-
-    function _cancelReadProcesses() {
-        presetScanProc.running = false
-        activePresetProc.running = false
-        bandRefreshProc.running = false
-    }
-
-    function _cancelBackendProcesses() {
-        backendRefreshTimer.stop()
-        root._cancelReadProcesses()
-        applyPresetProc.running = false
-        setBandProc.running = false
-        resetProc.running = false
-        root._dspPresetQueue = []
-        root._dspPresetApplying = false
-        root._pendingPreset = ""
-        root._pendingBandIndex = -1
-    }
-
-    function _cancelProcesses() {
-        root._cancelBackendProcesses()
-        transportProbe.running = false
-    }
-
-    function _beginMutation() {
-        // Any read already in flight describes state before this mutation.
-        // Invalidate it before stopping the process so late callbacks cannot
-        // publish stale data over the mutation result.
-        root._lifecycleGeneration++
-        root._cancelReadProcesses()
-        return root._lifecycleGeneration
-    }
-
-    function _setProcessError(message, generation) {
-        if (!root.enabled || generation !== root._lifecycleGeneration)
-            return
-        root.error = message
-    }
-
-    function _errorForExit(exitCode, fallback) {
-        if (exitCode === 65)
-            return "backend-not-running"
-        if (exitCode === 127) {
-            root._transportAvailable = false
-            root._equalizerAvailable = false
-            return "transport-unavailable"
-        }
-        return fallback
-    }
-
-    function _clearRecoveredBackendError() {
-        switch (root.error) {
-        case "transport-probe-failed":
-        case "transport-unavailable":
-        case "backend-unavailable":
-        case "backend-not-running":
-        case "equalizer-unavailable":
-        case "band-query-failed":
-        case "malformed-band-response":
-            root.error = ""
-            break
-        default:
-            break
-        }
-    }
-
-    function _scheduleReconcile() {
-        if (root.enabled && root.backendAvailable && root.backendRunning)
-            backendRefreshTimer.restart()
-    }
-
-    function _startTransportProbe() {
-        if (transportProbe.running)
-            return
-        root._transportChecked = false
-        transportProbe.generation = root._lifecycleGeneration
-        transportProbe.running = true
-    }
-
-    function _retryStaleTransportProbe(generation) {
-        if (!root.enabled || generation === root._lifecycleGeneration || root._transportChecked)
-            return
-        Qt.callLater(() => {
-            if (root.enabled && !root._transportChecked)
-                root._startTransportProbe()
-        })
-    }
-
-    function _refreshBackendState() {
-        if (!root.enabled)
-            return
-        if (!root._transportChecked || !root._transportAvailable) {
-            root._startTransportProbe()
-            return
-        }
-        if (!EasyEffects.available) {
-            root._equalizerAvailable = false
-            root.activePreset = ""
-            root.bands = []
-            root.error = "backend-unavailable"
-            return
-        }
-
-        EasyEffects.fetchActiveState()
-        if (!EasyEffects.active) {
-            root._equalizerAvailable = false
-            root.activePreset = ""
-            root._markBandsUnsynced()
-            root.error = "backend-not-running"
-            return
-        }
-
-        root._refreshData()
-    }
-
-    function _refreshData() {
-        if (!root.backendAvailable || !root.backendRunning || root._mutationBusy)
-            return
-        const generation = root._lifecycleGeneration
-        if (!presetScanProc.running) {
-            presetScanProc.generation = generation
-            presetScanProc.running = true
-        }
-        if (!activePresetProc.running) {
-            activePresetProc.generation = generation
-            activePresetProc.running = true
-        }
-        if (!bandRefreshProc.running) {
-            bandRefreshProc.generation = generation
-            bandRefreshProc.running = true
-        }
-    }
-
     function refresh() {
         if (!root.enabled)
             return
         EasyEffects.fetchAvailability()
-        if (!root._transportChecked || !root._transportAvailable) {
-            root._startTransportProbe()
+        if (!root._transportChecked) {
+            transportProbe.generation = root._lifecycleGeneration
+            transportProbe.running = true
             return
         }
         root._refreshBackendState()
     }
 
-    function _canMutate(allowDspPresetContinuation) {
+    function _refreshBackendState() {
+        if (!root.enabled)
+            return
+        if (!root._transportAvailable) {
+            root.error = "transport-unavailable"
+            root._stateReady = false
+            return
+        }
+        if (!EasyEffects.available) {
+            root.error = "backend-unavailable"
+            root._stateReady = false
+            return
+        }
+        EasyEffects.fetchActiveState()
+        if (!EasyEffects.active) {
+            root.error = "backend-not-running"
+            root._stateReady = false
+            return
+        }
+        root._readState()
+    }
+
+    function _readState() {
+        if (!root.enabled || stateReadProc.running)
+            return
+        stateReadProc.generation = root._lifecycleGeneration
+        stateReadProc.running = true
+    }
+
+    function _normalizeGains(values) {
+        if (!values || values.length !== root.dspFrequencies.length)
+            return null
+        const result = []
+        for (let i = 0; i < values.length; ++i) {
+            const value = Number(values[i])
+            if (!isFinite(value))
+                return null
+            result.push(Math.max(root.dspMinimumBandGain,
+                Math.min(root.dspMaximumBandGain, value)))
+        }
+        return result
+    }
+
+    function _applyState(gains, presetName) {
         if (!root.enabled) {
             root.error = "feature-disabled"
             return false
@@ -327,64 +180,40 @@ Singleton {
             root.error = "backend-not-running"
             return false
         }
-        if (root._mutationBusy) {
-            const continuationAllowed = allowDspPresetContinuation === true
-                && root._dspPresetApplying
-                && !applyPresetProc.running && !setBandProc.running && !resetProc.running
-            if (!continuationAllowed) {
-                root.error = "backend-busy"
-                return false
-            }
-        }
-        return true
-    }
-
-    function applyPreset(name) {
-        const preset = String(name ?? "").trim()
-        if (!root._canMutate())
-            return false
-        if (preset.length === 0 || preset.includes(":") || preset.includes("\n") || preset.includes("\r")) {
-            root.error = "invalid-preset"
+        if (root.busy) {
+            root.error = "backend-busy"
             return false
         }
 
-        const generation = root._beginMutation()
-        root._equalizerAvailable = false
-        root._markBandsUnsynced()
-        root._pendingPreset = preset
+        const normalized = root._normalizeGains(gains)
+        if (!normalized) {
+            root.error = "invalid-dsp-state"
+            return false
+        }
+
+        const label = String(presetName ?? "Custom").trim()
+        if (label.length === 0 || label.includes(":")
+                || label.includes("\n") || label.includes("\r")) {
+            root.error = "invalid-dsp-preset"
+            return false
+        }
+
+        root._pendingGains = normalized
+        root._pendingPresetName = label
         root.error = ""
-        applyPresetProc.generation = generation
-        applyPresetProc.command = ["/usr/bin/env", "sh", "-c",
-            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; printf '%s\\n' \"$1\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null",
-            "sh", "load_preset:output:" + preset]
-        applyPresetProc.running = true
-        return true
-    }
 
-    function setBandGain(index, gain, dspPresetContinuation) {
-        const bandIndex = Number(index)
-        const requestedGain = Number(gain)
-        const internalContinuation = dspPresetContinuation === true
-        if (!root._canMutate(internalContinuation))
-            return false
-        if (!isFinite(bandIndex) || Math.floor(bandIndex) !== bandIndex
-                || !isFinite(requestedGain) || bandIndex < 0 || bandIndex >= root.bands.length
-                || (!internalContinuation && root.bands[bandIndex]?.synced !== true)) {
-            root.error = "invalid-band"
-            return false
-        }
+        const command = [
+            Quickshell.shellPath("scripts/equalizer-control.sh"),
+            "apply",
+            EasyEffects.nativeInstalled ? "native" : "flatpak",
+            label
+        ]
+        for (const gain of normalized)
+            command.push(String(gain))
 
-        const clampedGain = Math.max(root.minimumBandGain, Math.min(root.maximumBandGain, requestedGain))
-        const generation = internalContinuation
-            ? root._lifecycleGeneration : root._beginMutation()
-        root._pendingBandIndex = bandIndex
-        root._pendingBandGain = clampedGain
-        root.error = ""
-        setBandProc.generation = generation
-        setBandProc.command = ["/usr/bin/env", "sh", "-c",
-            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; for side in left right; do printf 'set_property:output:equalizer:0:%s:band%sGain:%s\\n' \"$side\" \"$1\" \"$2\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null || exit $?; done",
-            "sh", String(bandIndex), String(clampedGain)]
-        setBandProc.running = true
+        applyProc.generation = root._lifecycleGeneration
+        applyProc.command = command
+        applyProc.running = true
         return true
     }
 
@@ -392,37 +221,19 @@ Singleton {
         const dspIndex = Number(index)
         const requestedGain = Number(gain)
         if (!root.dspControlAvailable) {
-            root.error = "dsp-unavailable"
+            root.error = root.backendRunning ? "dsp-unavailable" : "backend-not-running"
             return false
         }
         if (!isFinite(dspIndex) || Math.floor(dspIndex) !== dspIndex
-                || dspIndex < 0 || dspIndex >= root.dspBands.length
+                || dspIndex < 0 || dspIndex >= root.dspFrequencies.length
                 || !isFinite(requestedGain)) {
             root.error = "invalid-dsp-band"
             return false
         }
-        const clampedGain = Math.max(root.dspMinimumBandGain,
+        const next = root._dspGains.slice()
+        next[dspIndex] = Math.max(root.dspMinimumBandGain,
             Math.min(root.dspMaximumBandGain, requestedGain))
-        return root.setBandGain(root.dspBands[dspIndex].backendIndex, clampedGain)
-    }
-
-    function _continueDspPreset() {
-        if (!root._dspPresetApplying)
-            return
-        if (root._dspPresetQueue.length === 0) {
-            root._dspPresetApplying = false
-            root.error = ""
-            root._scheduleReconcile()
-            return
-        }
-        const next = root._dspPresetQueue[0]
-        root._dspPresetQueue = root._dspPresetQueue.slice(1)
-        if (!root.setBandGain(next.backendIndex, next.gain, true)) {
-            root._dspPresetQueue = []
-            root._dspPresetApplying = false
-            root._equalizerAvailable = false
-            root._scheduleReconcile()
-        }
+        return root._applyState(next, "Custom")
     }
 
     function applyDspPreset(name) {
@@ -432,56 +243,37 @@ Singleton {
             root.error = "invalid-dsp-preset"
             return false
         }
-        if (!root._canMutate())
-            return false
-        if (!root.dspControlAvailable) {
-            root.error = "dsp-unavailable"
-            return false
-        }
+        return root._applyState(curve, preset)
+    }
 
-        const queue = []
-        for (let i = 0; i < curve.length; ++i) {
-            queue.push({
-                backendIndex: root.dspBands[i].backendIndex,
-                gain: curve[i]
-            })
-        }
+    // Compatibility functions map onto the supported ten-band facade.
+    function applyPreset(name) {
+        return root.applyDspPreset(name)
+    }
 
-        root._beginMutation()
-        root._equalizerAvailable = false
-        root._markBandsUnsynced()
-        root.error = ""
-        root._dspPresetQueue = queue
-        root._dspPresetApplying = true
-        root._continueDspPreset()
-        return true
+    function setBandGain(index, gain) {
+        return root.setDspBandGain(index, gain)
     }
 
     function reset() {
-        if (!root._canMutate())
-            return false
-        const generation = root._beginMutation()
-        root._equalizerAvailable = false
-        root._markBandsUnsynced()
-        root.error = ""
-        resetProc.generation = generation
-        resetProc.running = true
-        return true
+        return root.applyDspPreset("Flat")
     }
 
     onEnabledChanged: {
         root._lifecycleGeneration++
+        transportProbe.running = false
+        stateReadProc.running = false
+        applyProc.running = false
+        root._pendingGains = []
+        root._pendingPresetName = ""
+
         if (root.enabled) {
             root.refresh()
         } else {
-            root._cancelProcesses()
             root.error = ""
-            root.activePreset = ""
-            root.presets = []
             root._transportChecked = false
             root._transportAvailable = false
-            root._equalizerAvailable = false
-            root.bands = []
+            root._stateReady = false
         }
     }
 
@@ -490,11 +282,10 @@ Singleton {
 
         function onAvailableChanged() {
             root._lifecycleGeneration++
-            root._cancelBackendProcesses()
+            applyProc.running = false
+            stateReadProc.running = false
             if (!EasyEffects.available) {
-                root._equalizerAvailable = false
-                root.activePreset = ""
-                root.bands = []
+                root._stateReady = false
                 root.error = "backend-unavailable"
                 return
             }
@@ -504,62 +295,40 @@ Singleton {
 
         function onActiveChanged() {
             root._lifecycleGeneration++
-            root._cancelBackendProcesses()
+            applyProc.running = false
+            stateReadProc.running = false
             if (!root.enabled)
                 return
             if (!EasyEffects.active) {
-                root._equalizerAvailable = false
-                root.activePreset = ""
-                root._markBandsUnsynced()
-                if (root.backendAvailable)
+                root._stateReady = false
+                if (root._transportAvailable)
                     root.error = "backend-not-running"
                 return
             }
-            root._equalizerAvailable = false
             backendRefreshTimer.restart()
         }
     }
 
     Timer {
         id: backendRefreshTimer
-        interval: 300
+        interval: 350
         repeat: false
         onTriggered: root._refreshBackendState()
     }
 
     Process {
         id: transportProbe
-        property bool startObserved: false
         property int generation: 0
-        command: ["/usr/bin/env", "sh", "-c", "command -v socat >/dev/null 2>&1"]
-        onRunningChanged: {
-            if (running) {
-                startObserved = false
-                return
-            }
-            if (startObserved)
-                return
-            if (generation !== root._lifecycleGeneration) {
-                root._retryStaleTransportProbe(generation)
-                return
-            }
-            root._transportChecked = true
-            root._transportAvailable = false
-            root._equalizerAvailable = false
-            root._setProcessError("transport-probe-failed", generation)
-        }
-        onStarted: startObserved = true
+        command: ["/usr/bin/env", "sh", "-c",
+            "command -v socat >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1"]
+
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled)
+            if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
-            if (generation !== root._lifecycleGeneration) {
-                root._retryStaleTransportProbe(generation)
-                return
-            }
             root._transportChecked = true
-            root._transportAvailable = (exitCode === 0)
+            root._transportAvailable = exitCode === 0
             if (!root._transportAvailable) {
-                root._equalizerAvailable = false
+                root._stateReady = false
                 root.error = "transport-unavailable"
                 return
             }
@@ -568,319 +337,69 @@ Singleton {
     }
 
     Process {
-        id: presetScanProc
-        property bool startObserved: false
+        id: stateReadProc
         property int generation: 0
-        command: ["/usr/bin/env", "sh", "-c",
-            "for d in \"${XDG_DATA_HOME:-$HOME/.local/share}/easyeffects/output\" \"$HOME/.config/easyeffects/output\" \"$HOME/.var/app/com.github.wwmm.easyeffects/data/easyeffects/output\" \"$HOME/.var/app/com.github.wwmm.easyeffects/config/easyeffects/output\"; do [ -d \"$d\" ] || continue; for f in \"$d\"/*.json \"$d\"/*/*.json; do [ -f \"$f\" ] || continue; n=\"${f##*/}\"; n=\"${n%.json}\"; printf '%s\\n' \"$n\"; done; done | sort -u"]
-        stdout: StdioCollector { id: presetCollector }
-        onRunningChanged: {
-            if (running) {
-                startObserved = false
-                return
-            }
-            if (startObserved)
-                return
-            root._setProcessError("preset-scan-failed", generation)
+        command: [Quickshell.shellPath("scripts/equalizer-control.sh"), "get"]
+        stdout: StdioCollector {
+            id: stateCollector
         }
-        onStarted: startObserved = true
+
         onExited: (exitCode, exitStatus) => {
             if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {
-                root.error = "preset-scan-failed"
+                root._stateReady = false
+                root.error = "dsp-state-read-failed"
                 return
             }
-            const seen = []
-            const next = []
-            for (const line of (presetCollector.text ?? "").split("\n")) {
-                const name = line.trim()
-                if (name.length === 0 || seen.includes(name))
-                    continue
-                seen.push(name)
-                next.push(name)
-            }
-            root.presets = next
-            if (root.error === "preset-scan-failed")
-                root.error = ""
-        }
-    }
-
-    Process {
-        id: activePresetProc
-        property bool startObserved: false
-        property int generation: 0
-        command: ["/usr/bin/env", "sh", "-c",
-            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; printf 'get_last_loaded_preset:output\\n' | socat -T 2 - UNIX-CONNECT:\"$sock\""]
-        stdout: StdioCollector { id: activePresetCollector }
-        onRunningChanged: {
-            if (running) {
-                startObserved = false
-                return
-            }
-            if (startObserved)
-                return
-            root._setProcessError("preset-query-failed", generation)
-        }
-        onStarted: startObserved = true
-        onExited: (exitCode, exitStatus) => {
-            if (!root.enabled || generation !== root._lifecycleGeneration)
-                return
-            if (exitCode !== 0) {
-                root.activePreset = ""
-                root.error = root._errorForExit(exitCode, "preset-query-failed")
-                return
-            }
-            if (!root.backendRunning) {
-                root.activePreset = ""
-                root.error = "backend-not-running"
-                return
-            }
-            root.activePreset = (activePresetCollector.text ?? "").trim()
-            if (root.error === "preset-query-failed")
-                root.error = ""
-        }
-    }
-
-    Process {
-        id: bandRefreshProc
-        property bool startObserved: false
-        property int generation: 0
-        command: ["/usr/bin/env", "sh", "-c",
-            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; count=\"$(printf 'get_property:output:equalizer:0:numBands\\n' | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; case \"$count\" in ''|*[!0-9]*) exit 66;; esac; [ \"$count\" -ge 1 ] && [ \"$count\" -le 32 ] || exit 66; printf 'count=%s\\n' \"$count\"; i=0; while [ \"$i\" -lt \"$count\" ]; do lg=\"$(printf 'get_property:output:equalizer:0:left:band%sGain\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; rg=\"$(printf 'get_property:output:equalizer:0:right:band%sGain\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; lf=\"$(printf 'get_property:output:equalizer:0:left:band%sFrequency\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; rf=\"$(printf 'get_property:output:equalizer:0:right:band%sFrequency\\n' \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; printf '%s=%s|%s|%s|%s\\n' \"$i\" \"$lg\" \"$rg\" \"$lf\" \"$rf\"; i=$((i + 1)); done"]
-        stdout: StdioCollector { id: bandCollector }
-        onRunningChanged: {
-            if (running) {
-                startObserved = false
-                return
-            }
-            if (startObserved)
-                return
-            if (generation !== root._lifecycleGeneration)
-                return
-            root._equalizerAvailable = false
-            root._markBandsUnsynced()
-            root._setProcessError("band-query-failed", generation)
-        }
-        onStarted: startObserved = true
-        onExited: (exitCode, exitStatus) => {
-            if (!root.enabled || generation !== root._lifecycleGeneration)
-                return
-            if (exitCode !== 0) {
-                root._equalizerAvailable = false
-                root._markBandsUnsynced()
-                root.error = exitCode === 66 ? "malformed-band-response"
-                    : root._errorForExit(exitCode, "equalizer-unavailable")
-                return
-            }
-            if (!root.backendRunning) {
-                root._equalizerAvailable = false
-                root._markBandsUnsynced()
-                root.error = "backend-not-running"
-                return
-            }
-
-            let count = -1
-            const rows = []
-            for (const rawLine of (bandCollector.text ?? "").split("\n")) {
-                const line = rawLine.trim()
-                if (line.startsWith("count=")) {
-                    const parsedCount = Number(line.slice(6))
-                    if (isFinite(parsedCount) && parsedCount >= 1 && parsedCount <= 32
-                            && Math.floor(parsedCount) === parsedCount)
-                        count = parsedCount
-                    continue
-                }
-                const separator = line.indexOf("=")
-                if (separator <= 0)
-                    continue
-                const index = Number(line.slice(0, separator))
-                const values = line.slice(separator + 1).split("|")
-                if (values.length !== 4 || !isFinite(index) || Math.floor(index) !== index)
-                    continue
-                if (values.some(value => value.trim().length === 0))
-                    continue
-                const leftGain = Number(values[0])
-                const rightGain = Number(values[1])
-                const leftFrequency = Number(values[2])
-                const rightFrequency = Number(values[3])
-                if (!isFinite(leftGain) || !isFinite(rightGain)
-                        || !isFinite(leftFrequency) || !isFinite(rightFrequency))
-                    continue
-                rows.push({
-                    index: index,
-                    frequency: leftFrequency,
-                    rightFrequency: rightFrequency,
-                    gain: leftGain,
-                    rightGain: rightGain,
-                    linked: Math.abs(leftGain - rightGain) < 0.001
-                        && Math.abs(leftFrequency - rightFrequency) < 0.001,
-                    synced: true
-                })
-            }
-
-            if (count < 1 || rows.length !== count) {
-                root._equalizerAvailable = false
-                root._markBandsUnsynced()
-                root.error = "malformed-band-response"
-                return
-            }
-            rows.sort((a, b) => a.index - b.index)
-            for (let i = 0; i < rows.length; ++i) {
-                if (rows[i].index !== i) {
-                    root._equalizerAvailable = false
-                    root._markBandsUnsynced()
-                    root.error = "malformed-band-response"
+            try {
+                const state = JSON.parse(stateCollector.text ?? "")
+                const normalized = root._normalizeGains(state?.gains)
+                if (!normalized) {
+                    root._stateReady = false
+                    root.error = "malformed-dsp-state"
                     return
                 }
+                root._dspGains = normalized
+                const label = String(state?.preset ?? "Custom").trim()
+                root._presetName = label.length > 0 ? label : "Custom"
+                root._stateReady = true
+                root.error = ""
+            } catch (error) {
+                root._stateReady = false
+                root.error = "malformed-dsp-state"
             }
-            root.bands = rows
-            root._equalizerAvailable = true
-            root._clearRecoveredBackendError()
         }
     }
 
     Process {
-        id: applyPresetProc
-        property bool startObserved: false
+        id: applyProc
         property int generation: 0
-        onRunningChanged: {
-            if (running) {
-                startObserved = false
-                return
-            }
-            if (startObserved)
-                return
-            root._pendingPreset = ""
-            root._setProcessError("preset-apply-failed", generation)
-            if (root.enabled && generation === root._lifecycleGeneration)
-                root._scheduleReconcile()
-        }
-        onStarted: startObserved = true
-        onExited: (exitCode, exitStatus) => {
-            if (!root.enabled || generation !== root._lifecycleGeneration)
-                return
-            const preset = root._pendingPreset
-            root._pendingPreset = ""
-            if (exitCode !== 0) {
-                root.error = root._errorForExit(exitCode, "preset-apply-failed")
-                root._scheduleReconcile()
-                return
-            }
-            if (!root.backendRunning) {
-                root.error = "backend-not-running"
-                return
-            }
-            root.activePreset = preset
-            root.error = ""
-            root._scheduleReconcile()
-        }
-    }
 
-    Process {
-        id: setBandProc
-        property bool startObserved: false
-        property int generation: 0
-        onRunningChanged: {
-            if (running) {
-                startObserved = false
-                return
-            }
-            if (startObserved)
-                return
-            root._pendingBandIndex = -1
-            root._dspPresetQueue = []
-            root._dspPresetApplying = false
-            root._setProcessError("band-apply-failed", generation)
-            if (root.enabled && generation === root._lifecycleGeneration) {
-                root._equalizerAvailable = false
-                root._markBandsUnsynced()
-                root._scheduleReconcile()
-            }
-        }
-        onStarted: startObserved = true
         onExited: (exitCode, exitStatus) => {
             if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
-            const index = root._pendingBandIndex
-            const gain = root._pendingBandGain
-            root._pendingBandIndex = -1
             if (exitCode !== 0) {
-                root._dspPresetQueue = []
-                root._dspPresetApplying = false
-                root._equalizerAvailable = false
-                root._markBandsUnsynced()
-                root.error = root._errorForExit(exitCode, "band-apply-failed")
-                root._scheduleReconcile()
+                root._pendingGains = []
+                root._pendingPresetName = ""
+                if (exitCode === 65)
+                    root.error = "backend-not-running"
+                else if (exitCode === 127) {
+                    root._transportAvailable = false
+                    root.error = "transport-unavailable"
+                } else
+                    root.error = "dsp-apply-failed"
                 return
             }
-            if (!root.backendRunning) {
-                root._dspPresetQueue = []
-                root._dspPresetApplying = false
-                root._equalizerAvailable = false
-                root.error = "backend-not-running"
-                return
-            }
-            root._equalizerAvailable = !root._dspPresetApplying
-            if (index >= 0 && index < root.bands.length) {
-                root.bands = root.bands.map((band, bandIndex) => bandIndex === index
-                    ? Object.assign({}, band, {
-                        gain: gain,
-                        rightGain: gain,
-                        linked: Math.abs((band.frequency ?? 0) - (band.rightFrequency ?? 0)) < 0.001,
-                        synced: true
-                    }) : band)
-            }
-            root.error = ""
-            if (root._dspPresetApplying) {
-                root._continueDspPreset()
-                return
-            }
-            root._scheduleReconcile()
-        }
-    }
 
-    Process {
-        id: resetProc
-        property bool startObserved: false
-        property int generation: 0
-        command: ["/usr/bin/env", "sh", "-c",
-            "sock=\"${XDG_RUNTIME_DIR:-}/EasyEffectsServer\"; [ -n \"${XDG_RUNTIME_DIR:-}\" ] && [ -S \"$sock\" ] || exit 65; count=\"$(printf 'get_property:output:equalizer:0:numBands\\n' | socat -T 2 - UNIX-CONNECT:\"$sock\")\" || exit $?; case \"$count\" in ''|*[!0-9]*) exit 66;; esac; [ \"$count\" -ge 1 ] && [ \"$count\" -le 32 ] || exit 66; i=0; while [ \"$i\" -lt \"$count\" ]; do for side in left right; do printf 'set_property:output:equalizer:0:%s:band%sGain:0\\n' \"$side\" \"$i\" | socat -T 2 - UNIX-CONNECT:\"$sock\" >/dev/null || exit $?; done; i=$((i + 1)); done"]
-        onRunningChanged: {
-            if (running) {
-                startObserved = false
-                return
-            }
-            if (startObserved)
-                return
-            root._setProcessError("reset-failed", generation)
-            if (root.enabled && generation === root._lifecycleGeneration)
-                root._scheduleReconcile()
-        }
-        onStarted: startObserved = true
-        onExited: (exitCode, exitStatus) => {
-            if (!root.enabled || generation !== root._lifecycleGeneration)
-                return
-            if (exitCode !== 0) {
-                root._equalizerAvailable = false
-                root.error = exitCode === 66 ? "malformed-band-response"
-                    : root._errorForExit(exitCode, "reset-failed")
-                root._scheduleReconcile()
-                return
-            }
-            if (!root.backendRunning) {
-                root._equalizerAvailable = false
-                root.error = "backend-not-running"
-                return
-            }
-            root._equalizerAvailable = true
-            root.bands = root.bands.map(band => Object.assign({}, band, {
-                gain: 0,
-                rightGain: 0,
-                synced: true
-            }))
+            const normalized = root._normalizeGains(root._pendingGains)
+            if (normalized)
+                root._dspGains = normalized
+            root._presetName = root._pendingPresetName || "Custom"
+            root._pendingGains = []
+            root._pendingPresetName = ""
+            root._stateReady = true
             root.error = ""
-            root._scheduleReconcile()
         }
     }
 }

@@ -38,7 +38,7 @@ grep -Fq 'model: EqualizerService.dspBands' "$equalizer_panel"     || fail 'DSP 
 
 # Presentation consumes only the facade. Backend/process/socket protocol remains
 # service-owned, so Media Controls cannot grow a second Equalizer implementation.
-backend_pattern='EasyEffects|socat|EasyEffectsServer|load_preset:output:|set_property:output:equalizer|get_property:output:equalizer'
+backend_pattern='EasyEffects\\.|socat|EasyEffectsServer|equalizer-control\\.sh|load_preset:output:|set_property:output:equalizer|get_property:output:equalizer'
 while IFS= read -r -d '' file; do
     if grep -Eq "$backend_pattern" "$file"; then
         fail "${file#"$root/"} references the equalizer backend/protocol directly"

@@ -12,7 +12,7 @@ Item {
 
     property bool active: false
     property bool _registered: false
-    implicitHeight: 236
+    implicitHeight: 214
 
     function syncRegistration(): void {
         if (root.active && !root._registered) {
@@ -39,6 +39,11 @@ Item {
             return "socat unavailable"
         case "dsp-unavailable":
             return "10-band DSP unavailable"
+        case "dsp-state-read-failed":
+        case "malformed-dsp-state":
+            return "DSP state unavailable"
+        case "dsp-apply-failed":
+            return "Apply failed"
         default:
             return EqualizerService.error.length > 0 ? EqualizerService.error : "Loading…"
         }
@@ -98,7 +103,7 @@ Item {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 132
+            Layout.preferredHeight: 118
             Layout.leftMargin: 4
             Layout.rightMargin: 4
 
@@ -212,20 +217,24 @@ Item {
 
         GridLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 4
-            Layout.rightMargin: 4
+            Layout.leftMargin: 6
+            Layout.rightMargin: 6
+            Layout.topMargin: 1
             columns: 4
-            columnSpacing: 6
-            rowSpacing: 5
+            uniformCellWidths: true
+            columnSpacing: 4
+            rowSpacing: 4
 
             Repeater {
                 model: ["Flat", "Bass", "Treble", "Vocal",
                         "Pop", "Rock", "Jazz", "Classic"]
 
                 delegate: RippleButton {
+                    id: presetButton
                     required property string modelData
                     Layout.fillWidth: true
-                    implicitHeight: 25
+                    implicitHeight: 24
+                    horizontalPadding: 4
                     buttonText: modelData
                     buttonRadius: Appearance.rounding.small
                     enabled: EqualizerService.dspControlAvailable
@@ -233,9 +242,20 @@ Item {
                     toggled: EqualizerService.dspPresetName === modelData
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover
-                    colBackgroundToggled: Appearance.colors.colPrimary
-                    colBackgroundToggledHover: Appearance.colors.colPrimaryHover
+                    colBackgroundToggled: Appearance.colors.colPrimaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colPrimaryContainer
                     onClicked: EqualizerService.applyDspPreset(modelData)
+
+                    contentItem: StyledText {
+                        text: presetButton.modelData
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: presetButton.toggled ? Font.DemiBold : Font.Normal
+                        color: presetButton.toggled
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : Appearance.colors.colOnLayer1
+                    }
                 }
             }
         }

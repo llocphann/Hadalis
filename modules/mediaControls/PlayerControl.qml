@@ -383,7 +383,6 @@ Item {
                                 }
                             }
                         }
-                        StyledToolTip { text: Translation.tr("Previous") }
                     }
 
                     RippleButton {
@@ -408,7 +407,6 @@ Item {
                                 }
                             }
                         }
-                        StyledToolTip { text: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play") }
                     }
 
                     RippleButton {
@@ -432,7 +430,6 @@ Item {
                                 }
                             }
                         }
-                        StyledToolTip { text: Translation.tr("Next") }
                     }
 
                     Item { Layout.fillWidth: true }

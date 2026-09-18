@@ -45,6 +45,8 @@ STYLED_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "StyledSpinBox.qml"
 SETTINGS_SWITCH = ROOT / "modules" / "common" / "widgets" / "SettingsSwitch.qml"
 SETTINGS_NOTE = ROOT / "modules" / "common" / "widgets" / "SettingsNote.qml"
 SETTINGS_CARD_SECTION = ROOT / "modules" / "common" / "widgets" / "SettingsCardSection.qml"
+SETTINGS_GROUP = ROOT / "modules" / "common" / "widgets" / "SettingsGroup.qml"
+STYLED_TEXT_INPUT = ROOT / "modules" / "common" / "widgets" / "StyledTextInput.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -109,6 +111,8 @@ def main() -> None:
     settings_switch = SETTINGS_SWITCH.read_text(encoding="utf-8")
     settings_note = SETTINGS_NOTE.read_text(encoding="utf-8")
     settings_card_section = SETTINGS_CARD_SECTION.read_text(encoding="utf-8")
+    settings_group = SETTINGS_GROUP.read_text(encoding="utf-8")
+    styled_text_input = STYLED_TEXT_INPUT.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -1009,6 +1013,26 @@ def main() -> None:
     ):
         forbid(config_switch, token, "ConfigSwitch.qml")
     require(config_switch, "color: Appearance.colors.colOnSurface", "ConfigSwitch.qml")
+
+    for token in (
+        "Appearance.angelEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.angel.",
+        "Appearance.zzz.",
+    ):
+        forbid(settings_group, token, "SettingsGroup.qml")
+    require(settings_group, "border.width: 0", "SettingsGroup.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.zzz.",
+    ):
+        forbid(styled_text_input, token, "StyledTextInput.qml")
+    for token in (
+        "color: Appearance.colors.colOnLayer1",
+        "selectionColor: Appearance.colors.colSecondaryContainer",
+    ):
+        require(styled_text_input, token, "StyledTextInput.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

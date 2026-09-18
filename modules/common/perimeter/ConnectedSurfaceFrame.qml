@@ -85,7 +85,7 @@ Item {
         visible: root.edgeContactMode && body.visible && root.contactRadius > 0
         width: root.contactRadius
         height: root.contactRadius
-        implicitSize: Math.round(root.contactRadius)
+        implicitSize: root.contactRadius
         color: root.fillColor
         arcColor: root.borderColor
         arcWidth: root.borderWidth
@@ -122,7 +122,7 @@ Item {
         visible: root.edgeContactMode && body.visible && root.contactRadius > 0
         width: root.contactRadius
         height: root.contactRadius
-        implicitSize: Math.round(root.contactRadius)
+        implicitSize: root.contactRadius
         color: root.fillColor
         arcColor: root.borderColor
         arcWidth: root.borderWidth

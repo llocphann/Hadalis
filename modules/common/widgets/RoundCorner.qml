@@ -14,6 +14,13 @@ Item {
     property real implicitSize: 25
     property color color: "#000000"
 
+    // Optional inward shadow which follows the inverse quarter-circle itself.
+    // This is used by Screen Edge/Bar chrome so depth does not stop where a
+    // straight gradient reaches a rounded corner.
+    property bool shadowEnabled: false
+    property color shadowColor: "transparent"
+    property real shadowExtent: 0
+
     implicitWidth: implicitSize
     implicitHeight: implicitSize
 
@@ -74,10 +81,6 @@ Item {
         layer.smooth: true
         preferredRendererType: Shape.CurveRenderer
 
-        // Render all four inverse corners from the same cubic quarter-circle
-        // construction. This avoids the renderer-dependent bottom-corner
-        // triangle/winding artifact from PathAngleArc and keeps the popup/bar
-        // contact shoulders visually identical in every orientation.
         ShapePath {
             id: fillPath
             strokeWidth: 0
@@ -102,6 +105,71 @@ Item {
                 x: root._wedgeStart.x
                 y: root._wedgeStart.y
             }
+        }
+    }
+
+    // Draw the falloff *inside* the transparent/workspace side of the inverse
+    // corner. Repeated one-pixel arcs are intentionally simple and deterministic
+    // on Qt/Wayland, unlike layer-effect padding which can be clipped by a
+    // layer-shell surface.
+    Canvas {
+        id: shadowCanvas
+        z: -1
+        anchors.fill: shape
+        visible: root.shadowEnabled
+            && root.shadowExtent > 0
+            && root._r > 0
+            && Qt.color(root.shadowColor).a > 0
+        antialiasing: true
+
+        onVisibleChanged: requestPaint()
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        Connections {
+            target: root
+            function onCornerChanged() { shadowCanvas.requestPaint() }
+            function onShadowColorChanged() { shadowCanvas.requestPaint() }
+            function onShadowExtentChanged() { shadowCanvas.requestPaint() }
+            function onShadowEnabledChanged() { shadowCanvas.requestPaint() }
+            function onImplicitSizeChanged() { shadowCanvas.requestPaint() }
+        }
+
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            if (!visible)
+                return
+
+            const r = root._r
+            const extent = Math.max(1, Math.min(root.shadowExtent, r))
+            let cx = 0
+            let cy = 0
+            let a0 = 0
+            let a1 = 0
+
+            if (root.isTopLeft) {
+                cx = r; cy = r; a0 = Math.PI; a1 = Math.PI * 1.5
+            } else if (root.isTopRight) {
+                cx = 0; cy = r; a0 = Math.PI * 1.5; a1 = Math.PI * 2
+            } else if (root.isBottomLeft) {
+                cx = r; cy = 0; a0 = Math.PI * 0.5; a1 = Math.PI
+            } else {
+                cx = 0; cy = 0; a0 = 0; a1 = Math.PI * 0.5
+            }
+
+            ctx.strokeStyle = root.shadowColor
+            ctx.lineWidth = 1.4
+            const steps = Math.max(1, Math.ceil(extent))
+            for (let i = 0; i < steps; i++) {
+                const t = i / steps
+                const rr = Math.max(0.5, r - i - 0.5)
+                // Strongest next to the chrome, then a smooth quadratic fade.
+                ctx.globalAlpha = (1 - t) * (1 - t)
+                ctx.beginPath()
+                ctx.arc(cx, cy, rr, a0, a1, false)
+                ctx.stroke()
+            }
+            ctx.globalAlpha = 1
         }
     }
 }

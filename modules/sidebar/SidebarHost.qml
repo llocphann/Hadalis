@@ -4,6 +4,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.modules.sidebarLeft
 import qs.modules.sidebarRight
 import QtQuick
@@ -58,6 +59,14 @@ Scope {
         root.roleId, sidebarRoot.screen?.name ?? "")
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
+    readonly property real edgeBridgeLength: Math.max(1,
+        Appearance.sizes.hyprlandGapsOut + PerimeterTokens.seamOverlap)
+    readonly property real edgeBridgeExtent: Math.max(
+        PerimeterTokens.connectorWidth,
+        PerimeterTokens.connectorWidth + PerimeterTokens.outerRadius * 2)
+    readonly property color edgeBridgeColor:
+        (Config.options?.sidebar?.cardStyle ?? false)
+            ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
     // Perimeter sidebars are content-sized by definition. Preserve explicit
     // custom height, but treat legacy/full layout state as fit-to-content.
     readonly property string configuredSizeMode:
@@ -606,6 +615,38 @@ Scope {
         anchors {
             left: root.isLeftEdge
             right: !root.isLeftEdge
+        }
+
+        // Keep the edge bridge inside the same native layer surface as the
+        // sidebar. A separate PanelWindow can drift in stacking/mapping timing
+        // and expose a seam even when both surfaces are nominally centered.
+        QtObject {
+            id: sidebarBridgeGeometry
+            readonly property string edge: root.edge
+            readonly property real extent: Math.min(
+                sidebarRoot.height, root.edgeBridgeExtent)
+            readonly property rect connectorRect: Qt.rect(
+                root.isLeftEdge ? 0 : sidebarRoot.width - root.edgeBridgeLength,
+                Math.max(0, (sidebarRoot.height - extent) / 2),
+                root.edgeBridgeLength,
+                extent)
+            readonly property real connectorSourceExtent:
+                PerimeterTokens.connectorWidth
+            readonly property real connectorWidth:
+                PerimeterTokens.connectorWidth
+            readonly property real borderWidth: 0
+            readonly property bool valid: root.roleOpen
+                && root._sidebarShown
+                && !GlobalStates.screenLocked
+                && !root.fullscreenCovered
+            readonly property real progress: valid ? 1 : 0
+        }
+
+        ConnectedSurfaceConnector {
+            geometry: sidebarBridgeGeometry
+            fillColor: root.edgeBridgeColor
+            strokeColor: "transparent"
+            strokeWidth: 0
         }
 
         Region {

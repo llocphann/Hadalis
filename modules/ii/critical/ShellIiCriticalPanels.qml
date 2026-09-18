@@ -24,14 +24,9 @@ Item {
         source: Qt.resolvedUrl("../../screenCorners/ScreenEdges.qml")
     }
 
-    // Sidebar bridges are presentation-only and use the same connected-surface
-    // primitive as bar popups. They stay independent from Bar position and only
-    // appear while the semantic left/right sidebar owns the matching output.
-    LazyLoader {
-        active: Config.ready
-        source: Qt.resolvedUrl("../../sidebar/SidebarEdgeConnectors.qml")
-    }
-
+    // Sidebar edge bridges live inside SidebarHost so connector and card share
+    // one native surface/output/lifecycle instead of compositor-stitching two
+    // independent PanelWindows.
     CriticalPanelLoader {
         identifier: "iiBackground"
         source: Qt.resolvedUrl("../../background/Background.qml")

@@ -34,7 +34,6 @@ fi
 
 for target in \
     '../../screenCorners/ScreenEdges.qml' \
-    '../../sidebar/SidebarEdgeConnectors.qml' \
     '../../background/Background.qml' \
     '../../bar/Bar.qml' \
     '../../verticalBar/VerticalBar.qml' \
@@ -42,6 +41,12 @@ for target in \
     grep -Fq "source: Qt.resolvedUrl(\"$target\")" "$critical" \
         || fail "critical ii shell must source-load supported target $target"
 done
+
+if grep -Fq 'SidebarEdgeConnectors.qml' "$critical"; then
+    fail 'critical shell must not load the retired standalone sidebar bridge window'
+fi
+grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qml" \
+    || fail 'SidebarHost must own the active sidebar edge connector'
 
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'normal Media UX must stay on StyledPopup'

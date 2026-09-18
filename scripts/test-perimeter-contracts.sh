@@ -4,7 +4,7 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 common="$root/modules/common/perimeter"
 styled="$root/modules/bar/StyledPopup.qml"
-sidebar="$root/modules/sidebar/SidebarEdgeConnectors.qml"
+sidebar="$root/modules/sidebar/SidebarHost.qml"
 screen_edge="$root/modules/screenCorners/ScreenEdges.qml"
 
 fail() {
@@ -35,8 +35,15 @@ grep -Fq 'property real connectorWidth: PerimeterTokens.connectorWidth' "$common
     || fail 'connected geometry must source neck width from PerimeterTokens'
 grep -Fq 'readonly property real connectorWidth: 40' "$common/PerimeterTokens.qml" \
     || fail 'shared connector width token changed unexpectedly'
-grep -Fq 'ConnectedSurfaceConnector' "$sidebar" \
-    || fail 'left/right sidebar bridges must remain shared connected-surface consumers'
+for token in \
+    'import qs.modules.common.perimeter' \
+    'id: sidebarBridgeGeometry' \
+    'PerimeterTokens.seamOverlap' \
+    'ConnectedSurfaceConnector {' \
+    'fillColor: root.edgeBridgeColor'; do
+    grep -Fq "$token" "$sidebar" \
+        || fail "SidebarHost must own its left/right edge bridge on the shared connector primitive: $token"
+done
 
 for token in \
     'readonly property color edgeColor: Appearance.colors.colLayer0' \

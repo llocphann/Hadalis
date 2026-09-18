@@ -27,7 +27,7 @@ def main() -> None:
         "mask: connectedMask",
         "ExclusionMode.Ignore",
         "Appearance.colors.colLayer0",
-        "Appearance.rounding.large",
+        "PerimeterTokens.popupRadius",
         "geometry.revealProgress",
         "CompositorFocusGrab",
         "WlrKeyboardFocus.OnDemand",
@@ -55,6 +55,16 @@ def main() -> None:
     check("Appearance.zzz.chromeAlt" not in styled_popup
           and "Appearance.regalia.barSurfaceFloating" not in styled_popup,
           "Connected bar popouts must use the Hug surface family only")
+
+    perimeter_tokens = read("modules/common/perimeter/PerimeterTokens.qml")
+    for token in (
+        "readonly property real frameRadius: 25",
+        "readonly property real smoothUnionRadius: 20",
+        "readonly property real popupRadius: 28",
+        "readonly property real joinFlareRadius: smoothUnionRadius",
+    ):
+        check(token in perimeter_tokens,
+              f"Caelestia geometry token missing: {token}")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
     for edge in ("top", "bottom", "left", "right"):
@@ -127,8 +137,9 @@ def main() -> None:
               f"Join flares must map nested body coordinates into their host: {token}")
 
     check("hoverEnabled: root.active" in styled_popup
-          and "onBodyHoveredChanged: root.popupHovered = bodyHovered" in styled_popup,
-          "StyledPopup hover bridge must track the complete popup body instead of padded content")
+          and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in styled_popup
+          and "readonly property bool popupHovered: root._bodyHovered || root._contentHovered" in styled_popup,
+          "StyledPopup hover bridge must track body and content without a seam-triggered retract")
     check("property QtObject _hoverTransferTimerObject: Timer {" in styled_popup
           and "interval: 90" in styled_popup
           and "hoverTransferTimer.restart()" in styled_popup,
@@ -137,6 +148,8 @@ def main() -> None:
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")
+    check("PerimeterTokens.frameRadius" in screen_edge,
+          "Screen Edge must use Caelestia's independent 25px frame rounding")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
     check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
@@ -335,8 +348,9 @@ def main() -> None:
           "ConnectedSurfaceFrame must default the connector outline off at the seam")
     check("strokeWidth: root.connectorBorderWidth" in frame,
           "ConnectedSurfaceFrame must route connector outline width through its seam policy")
-    check("flared connector" in frame,
-          "ConnectedSurfaceFrame must preserve the flared body/connector seam contract")
+    check("ConnectedSurfaceJoinFlares {" in frame
+          and "flareRadius: root.joinFlareRadius" in frame,
+          "ConnectedSurfaceFrame must preserve the circular direct-edge shoulder contract")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
     check("property bool hoverEnabled: false" in frame

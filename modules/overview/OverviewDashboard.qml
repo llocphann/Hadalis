@@ -260,10 +260,6 @@ Item {
         bodyItem: dashContainer
         fillColor: dashContainer.color
         flareRadius: PerimeterTokens.joinFlareRadius
-        shadowEnabled: root.screenEdgeShadowEnabled
-        shadowExtent: root.screenEdgeShadowSize
-        shadowColor: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
-            root.screenEdgeShadowOpacity)
         progress: root.revealProgress > 0.001 ? 1 : 0
         joinBottom: root.directBottomAttachment
     }

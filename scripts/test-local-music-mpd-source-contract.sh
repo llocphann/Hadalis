@@ -23,6 +23,10 @@ grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Music UI must expose MPD
 if grep -Eq 'mpvPath|local_music_ipc|local_music_scan|--input-ipc-server' "$service"; then
     fail 'LocalMusic must not regress to a private mpv player'
 fi
+[[ ! -e "$root/scripts/local_music_ipc.py" ]] \
+    || fail 'retired private mpv IPC helper must stay removed'
+[[ ! -e "$root/scripts/local_music_scan.py" ]] \
+    || fail 'retired filesystem scanner must stay removed; MPD owns the library database'
 grep -Fq '"wallhaven", "news", "music", "tools", "software"' "$schema" \
     || fail 'canonical sidebar schema order must use music instead of ytmusic'
 grep -Fq '"music"' "$defaults" \

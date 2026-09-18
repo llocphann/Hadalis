@@ -11,6 +11,7 @@ SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
+RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -37,6 +38,7 @@ def main() -> None:
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
+    ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -339,6 +341,32 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # RippleButton is a shell-wide primitive. Its public knobs stay stable, but
+    # the renderer itself must follow the sole Material Global Theme.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+        "RegaliaControlFace {",
+        "CookieFace {",
+    ):
+        forbid(ripple_button, token, "RippleButton.qml")
+    for token in (
+        "property int rippleDuration: 1200",
+        "property bool rippleEnabled: true",
+        'property color colBackground: "transparent"',
+        "property color colBackgroundHover: Appearance.colLayer1Hover",
+        "property color colBackgroundToggled: Appearance.colors.colPrimary",
+        "border.width: root.visualFocus ? 1 : 0",
+        'border.color: root.visualFocus ? Appearance.colors.colPrimary : "transparent"',
+        "radius: root.buttonEffectiveRadius",
+        "color: Appearance.colors.colOnLayer0",
+    ):
+        require(ripple_button, token, "RippleButton.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

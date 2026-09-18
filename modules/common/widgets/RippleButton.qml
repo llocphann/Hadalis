@@ -19,32 +19,16 @@ Button {
     property string buttonText
     Accessible.name: root.buttonText.length > 0 ? root.buttonText : root.text
     property bool pointingHandCursor: true
-    property real buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-        : Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius
-        : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-        : (Appearance?.rounding?.small ?? 4)
+    property real buttonRadius: Appearance?.rounding?.small ?? 4
     property real buttonRadiusPressed: buttonRadius
     property real buttonEffectiveRadius: root.down ? root.buttonRadiusPressed : root.buttonRadius
-    property int rippleDuration: Appearance.regaliaEverywhere ? Appearance.regalia.pressDuration
-        : Appearance.cookieEverywhere ? Appearance.animation.elementMoveFast.duration
-        : Appearance.zzzEverywhere ? Appearance.zzz.overshootDuration : 1200
-    // Regalia uses material compression + metal edge feedback, not a Material ripple.
-    property bool rippleEnabled: !Appearance.regaliaEverywhere
+    property int rippleDuration: 1200
+    property bool rippleEnabled: true
     property bool stateTransitionsEnabled: true
     property bool pressScaleEnabled: true
-    // Expensive organic morph is explicit. Generic buttons remain familiar
-    // pills; compact semantic controls can opt in and keep one persistent face.
+    // Retained as a compatibility knob for callers that still assign it. The
+    // Material-only v1.0 renderer has no alternate organic face to activate.
     property bool cookieMorphing: false
-    // Cookie made EVERY button rectangle a full pill. On a compact control that
-    // is the point, but on a wide row — a clipboard entry, a list item — a
-    // height/2 radius is an enormous stadium and the content spills out of it.
-    // Pill only within CookieFace's own control aspect range; past it, cookie's
-    // plate radius.
-    readonly property real _cookieRadius: {
-        const w = Math.max(width, 1), h = Math.max(height, 1)
-        const withinControlAspect = w / h <= 2.2 && h / w <= 2.2
-        return withinControlAspect ? h / 2 : Appearance.cookie.roundNormal
-    }
     property var downAction // When left clicking (down)
     property var releaseAction // When left clicking (release)
     property var cancelAction // When the press is canceled before release
@@ -55,14 +39,10 @@ Button {
     property int pointerDragThreshold: 10
     readonly property bool pointerDragActive: buttonMouseArea.drag.active
 
-    property color colBackground: Appearance.regaliaEverywhere ? Appearance.regalia.controlPlate
-        : Appearance.zzzEverywhere ? "transparent"
-        : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : "transparent"
-    property color colBackgroundHover: Appearance.regaliaEverywhere ? Appearance.regalia.controlPlateHover : Appearance.colLayer1Hover
-    property color colBackgroundToggled: Appearance.regaliaEverywhere ? Appearance.regalia.primaryPlate
-        : Appearance.zzzEverywhere ? Appearance.zzz.sticker : Appearance.colors.colPrimary
-    property color colBackgroundToggledHover: Appearance.regaliaEverywhere ? Appearance.regalia.primaryPlateHover : Appearance.colors.colPrimaryHover
+    property color colBackground: "transparent"
+    property color colBackgroundHover: Appearance.colLayer1Hover
+    property color colBackgroundToggled: Appearance.colors.colPrimary
+    property color colBackgroundToggledHover: Appearance.colors.colPrimaryHover
     property color colRipple: Appearance.colLayer1Active
     property color colRippleToggled: Appearance.colors.colPrimaryActive
 
@@ -204,23 +184,12 @@ Button {
 
     background: Rectangle {
         id: buttonBackground
-        implicitHeight: Appearance.regaliaEverywhere ? Appearance.regalia.compactControlHeight : 30
+        implicitHeight: 30
 
-        color: (Appearance.cookieEverywhere && root.cookieMorphing) || Appearance.regaliaEverywhere
-            ? "transparent" : root.buttonColor
-        radius: Appearance.cookieEverywhere ? root._cookieRadius : root.buttonEffectiveRadius
-        // Cookie and Regalia draw focus on their own semantic faces. Other
-        // themes use the background border so keyboard focus stays visible.
-        border.width: Appearance.cookieEverywhere || Appearance.regaliaEverywhere ? 0
-            : (root.visualFocus || Appearance.angelEverywhere ? 1 : 0)
-        border.color: root.visualFocus
-            ? (Appearance.zzzEverywhere ? Appearance.zzz.accent
-                : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                : Appearance.inirEverywhere ? Appearance.inir.colPrimary
-                : Appearance.colors.colPrimary)
-            : (Appearance.angelEverywhere
-                ? (root.buttonHovered ? Appearance.angel.colBorderHover : "transparent")
-                : "transparent")
+        color: root.buttonColor
+        radius: root.buttonEffectiveRadius
+        border.width: root.visualFocus ? 1 : 0
+        border.color: root.visualFocus ? Appearance.colors.colPrimary : "transparent"
         Behavior on border.color {
             enabled: Appearance.animationsEnabled && root.stateTransitionsEnabled
             animation: ColorAnimation { duration: Appearance.animation.stateChange.duration; easing.type: Appearance.animation.stateChange.type; easing.bezierCurve: Appearance.animation.stateChange.bezierCurve }
@@ -232,13 +201,11 @@ Button {
         readonly property real _pressScale: {
             const w = Math.max(width, 1);
             const h = Math.max(height, 1);
-            if (Appearance.regaliaEverywhere)
-                return Appearance.regalia.pressScale;
-            const inset = Appearance.cookieEverywhere ? 3 : 2;
+            const inset = 2;
             return Math.max(0.94, Math.min(0.995,
                 1 - inset / Math.max(w, h)));
         }
-        scale: root.down && root.enabled && root.pressScaleEnabled && !Appearance.regaliaEverywhere ? _pressScale : 1
+        scale: root.down && root.enabled && root.pressScaleEnabled ? _pressScale : 1
         Behavior on scale {
             enabled: Appearance.animationsEnabled && root.stateTransitionsEnabled
             NumberAnimation {
@@ -248,52 +215,14 @@ Button {
             }
         }
 
-        RegaliaControlFace {
-            anchors.fill: parent
-            visible: Appearance.regaliaEverywhere
-            fillColor: root.buttonColor
-            radius: root.buttonEffectiveRadius
-            selected: root.toggled
-            focused: root.visualFocus
-        }
-
-        Loader {
-            anchors.fill: parent
-            active: Appearance.cookieEverywhere && root.cookieMorphing
-            // Focus is a ring on the same silhouette, not a plate underneath: a
-            // filled face behind a host with a transparent fill (the dock) shows
-            // through as a solid accent blob. visualFocus, not activeFocus —
-            // clicking a dock icon must not leave it ringed.
-            sourceComponent: CookieFace {
-                role: "control"
-                selected: root.toggled
-                color: root.buttonColor
-                strokeColor: root.visualFocus ? Appearance.colors.colPrimary : "transparent"
-                strokeWidth: root.visualFocus ? 2 : 0
-            }
-        }
 
         layer.enabled: ripple.opacity > 0
         layer.effect: OpacityMask {
-            maskSource: Item {
+            maskSource: Rectangle {
                 width: buttonBackground.width
                 height: buttonBackground.height
-
-                Rectangle {
-                    anchors.fill: parent
-                    visible: !Appearance.cookieEverywhere || !root.cookieMorphing
-                    radius: Appearance.cookieEverywhere ? root._cookieRadius : root.buttonEffectiveRadius
-                    color: "white"
-                }
-                Loader {
-                    anchors.fill: parent
-                    active: Appearance.cookieEverywhere && root.cookieMorphing
-                    sourceComponent: CookieFace {
-                        role: "control"
-                        selected: root.toggled
-                        color: "white"
-                    }
-                }
+                radius: root.buttonEffectiveRadius
+                color: "white"
             }
         }
 
@@ -330,10 +259,6 @@ Button {
 
     contentItem: StyledText {
         text: root.buttonText
-        color: Appearance.regaliaEverywhere
-            ? (root.toggled ? Appearance.regalia.primaryPlateInk : Appearance.regalia.onColor)
-            : Appearance.zzzEverywhere
-                ? (root.toggled ? Appearance.zzz.onSticker : Appearance.zzz.onColor)
-                : Appearance.colors.colOnLayer0
+        color: Appearance.colors.colOnLayer0
     }
 }

@@ -84,6 +84,10 @@ for token in \
         || fail "SidebarHost must own visible flared Screen Edge endpoints: $token"
 done
 
+grep -Fq 'root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0' \
+    "$root/modules/sidebar/SidebarHost.qml" \
+    || fail 'SidebarHost must reserve native endpoint room for the configured Screen Edge shadow'
+
 for sidebar_surface in \
     "$root/modules/sidebarLeft/SidebarLeftContent.qml" \
     "$root/modules/sidebarRight/SidebarRightContent.qml" \

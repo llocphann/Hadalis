@@ -105,55 +105,23 @@ Scope {
         return iiOwned || waffleOwned
     }
 
-    function adjacentShadowInset(outputName, edge) {
-        const seam = PerimeterTokens.shadowSeamOverlap
-        if (!root.barOwnsEdge(outputName, edge))
-            return Math.max(root.thickness,
-                root.thickness + root.innerRadius - seam)
-
-        // A visible Classic Bar replaces the physical Screen Edge on its edge.
-        // The adjacent straight Screen Edge shadow therefore starts only after
-        // the Bar body plus the shared inverse-corner box. Let that curved Bar
-        // corner own the whole junction instead of drawing a perpendicular
-        // vertical/horizontal shadow strip through it.
-        const iiOwns = root.iiBarPanelEnabled
-            && edge === root.iiBarEdge
-            && root.iiBarTargetsOutput(outputName)
-        if (iiOwns) {
-            // Auto-hide keeps a physical Screen Edge fallback underneath the
-            // moving Bar. Adjacent edge shadows must meet that fallback at the
-            // normal Screen Edge corner even while the Bar is temporarily shown.
-            if (Config.options?.bar?.autoHide?.enable ?? false)
-                return Math.max(root.thickness,
-                    root.thickness + root.innerRadius - seam)
-            const barThickness = root.barVertical
-                ? Appearance.sizes.verticalBarWidth
-                : Appearance.sizes.barHeight
-            return Math.max(barThickness,
-                barThickness + root.innerRadius - seam)
-        }
-
-        // Waffle is a separate family; keep its junction clear of the physical
-        // edge corner even though it does not consume Classic Bar geometry.
-        return Math.max(root.thickness,
-            root.thickness + root.innerRadius - seam)
-    }
-
     component EdgeWindow: PanelWindow {
         required property ShellScreen modelData
         required property string edge
 
         readonly property string outputName: String(modelData?.name ?? "")
         readonly property bool horizontal: edge === "top" || edge === "bottom"
-        // Straight edge shadows terminate at the R×R inverse-corner box.
-        // CornerShadow below owns that box with a radial falloff whose tangent
-        // profiles exactly match the straight horizontal/vertical gradients.
+        // Keep the proven pre-corner-shadow contract: straight inward shadows
+        // stop before a free inverse-corner footprint, but may run to the edge
+        // when the adjacent Bar owns that side.
         readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
         readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
         readonly property real leadingShadowInset:
-            root.adjacentShadowInset(outputName, leadingAdjacentEdge)
+            root.barOwnsEdge(outputName, leadingAdjacentEdge)
+                ? 0 : root.thickness + root.innerRadius
         readonly property real trailingShadowInset:
-            root.adjacentShadowInset(outputName, trailingAdjacentEdge)
+            root.barOwnsEdge(outputName, trailingAdjacentEdge)
+                ? 0 : root.thickness + root.innerRadius
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -238,45 +206,9 @@ Scope {
             }
         }
 
-        PerimeterCornerShadow {
-            id: leadingCornerShadow
-            visible: horizontal
-                && root.shadowExtent > 0
-                && root.shadowOpacity > 0
-                && !root.barOwnsEdge(outputName, "left")
-            cornerRadius: root.innerRadius
-            shadowExtent: root.shadowExtent
-            shadowColor: root.shadowColor
-            corner: edge === "top"
-                ? RoundCorner.CornerEnum.TopLeft
-                : RoundCorner.CornerEnum.BottomLeft
-            anchors {
-                left: parent.left
-                leftMargin: root.thickness
-                top: edge === "top" ? edgeBand.bottom : undefined
-                bottom: edge === "bottom" ? edgeBand.top : undefined
-            }
-        }
 
-        PerimeterCornerShadow {
-            id: trailingCornerShadow
-            visible: horizontal
-                && root.shadowExtent > 0
-                && root.shadowOpacity > 0
-                && !root.barOwnsEdge(outputName, "right")
-            cornerRadius: root.innerRadius
-            shadowExtent: root.shadowExtent
-            shadowColor: root.shadowColor
-            corner: edge === "top"
-                ? RoundCorner.CornerEnum.TopRight
-                : RoundCorner.CornerEnum.BottomRight
-            anchors {
-                right: parent.right
-                rightMargin: root.thickness
-                top: edge === "top" ? edgeBand.bottom : undefined
-                bottom: edge === "bottom" ? edgeBand.top : undefined
-            }
-        }
+
+
 
         // Match Bar.qml's Hug composition: the solid horizontal band and its
         // wallpaper-facing inverse corners are one layer surface. This removes

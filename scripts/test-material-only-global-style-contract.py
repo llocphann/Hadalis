@@ -45,6 +45,48 @@ def main() -> None:
         "Appearance.qml",
     )
 
+    for token in (
+        "readonly property bool inirEverywhere: false",
+        "readonly property bool angelEverywhere: false",
+        "readonly property bool auroraEverywhere: false",
+        "readonly property bool regaliaEverywhere: false",
+        "readonly property bool zzzEverywhere: false",
+        "readonly property bool cookieEverywhere: false",
+        "readonly property bool _auroraLightMode: false",
+    ):
+        require(appearance, token, "Appearance.qml compatibility boundary")
+    for token in (
+        'globalStyle === "inir"',
+        'globalStyle === "angel"',
+        'globalStyle === "aurora"',
+        'globalStyle === "regalia"',
+        'globalStyle === "cookie"',
+    ):
+        forbid(appearance, token, "Appearance.qml")
+
+    motion_start = appearance.index("property QtObject motion: QtObject {")
+    motion_end = appearance.index("m3colors: QtObject {", motion_start)
+    motion_contract = appearance[motion_start:motion_end]
+    for token in (
+        "regaliaEverywhere",
+        "cookieEverywhere",
+        "zzzEverywhere",
+        "angelEverywhere",
+        "inirEverywhere",
+        "auroraEverywhere",
+    ):
+        forbid(motion_contract, token, "Appearance.qml popup reveal")
+    for token in (
+        "property bool enableFade: root.contextualMotionProfile",
+        "property bool enableScale: root.contextualMotionProfile",
+        "property real closedScale: root.contextualMotionProfile ? 0.90 : 1.0",
+        "property list<real> enterBezierCurve: root.animation.elementMoveEnter.bezierCurve",
+    ):
+        require(motion_contract, token, "Appearance.qml popup reveal")
+
+    require(appearance, "Behavior on shapeT {", "Appearance.qml")
+    require(appearance, "enabled: false", "Appearance.qml legacy shape behavior")
+
     blur_start = appearance.index("function blurBackendFor(")
     blur_end = appearance.index("function useCompositorBlur(", blur_start)
     blur_contract = appearance[blur_start:blur_end]

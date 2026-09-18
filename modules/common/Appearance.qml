@@ -77,17 +77,14 @@ Singleton {
     readonly property string globalStyle: "material"
     readonly property string iiMotionProfile: Config?.options?.appearance?.iiMotionProfile ?? "classic"
     readonly property bool contextualMotionProfile: iiMotionProfile === "contextual"
-    readonly property bool inirEverywhere: globalStyle === "inir"
-    // angelEverywhere - flagship neo-brutalism glass style (superset of aurora)
-    readonly property bool angelEverywhere: globalStyle === "angel"
-    // auroraEverywhere controls blur/glass backgrounds — angel inherits aurora blur
-    readonly property bool auroraEverywhere: globalStyle === "aurora" || globalStyle === "angel"
-    // Regalia - engineered luxury: obsidian structure, warm ivory, antique gold, oxblood detail.
-    readonly property bool regaliaEverywhere: globalStyle === "regalia"
-    // zzzEverywhere - Zenless Zone Zero urban graphic identity (poster palette + sharp + bold)
-    readonly property bool zzzEverywhere: globalStyle === "zzz"
-    // cookieEverywhere - Material Expressive organic silhouettes and state morphing
-    readonly property bool cookieEverywhere: globalStyle === "cookie"
+    // Compatibility aliases for old callers. Material is the only runtime
+    // Global Theme in v1.0, so these can never become active.
+    readonly property bool inirEverywhere: false
+    readonly property bool angelEverywhere: false
+    readonly property bool auroraEverywhere: false
+    readonly property bool regaliaEverywhere: false
+    readonly property bool zzzEverywhere: false
+    readonly property bool cookieEverywhere: false
     
     // Explicit surface dialects such as islands/Ricelin own their complete
     // surface. Otherwise the selected global worldview owns it. Consumers use
@@ -96,9 +93,7 @@ Singleton {
         return explicitDialect.length > 0 ? explicitDialect : root.globalStyle
     }
 
-    // Aurora light mode: when aurora + light theme, use ink-colored text for contrast
-    // Ink colors are muted dark tones (not pure black) that work well over light/transparent backgrounds
-    readonly property bool _auroraLightMode: auroraEverywhere && !(m3colors?.darkmode ?? true)
+    readonly property bool _auroraLightMode: false
 
     // GameMode integration - disable effects/animations when fullscreen detected
     property bool _gameModeActive: GameMode?.active ?? false
@@ -285,27 +280,10 @@ Singleton {
 
     property QtObject motion: QtObject {
         property QtObject popupReveal: QtObject {
-            // ZZZ generalizes the AiModelSelector reveal: every shared popup/menu
-            // grows from its anchored origin with a punchy back-out. The enter
-            // curve under zzz is already animationCurves.zzzOvershoot (see
-            // elementMoveEnter), so a deeper closedScale reads as a console plate
-            // snapping into place rather than a soft material fade.
-            property bool enableFade: root.regaliaEverywhere || root.cookieEverywhere || root.zzzEverywhere || root.contextualMotionProfile
-            property bool enableScale: !root.regaliaEverywhere && (root.zzzEverywhere || root.contextualMotionProfile)
-            // 0.97 read as "barely there" in practice — bumped to match zzz's proven-visible
-            // 0.90 pop so Classic (hard snap, no fade) vs Contextual (fade + grow) is unmistakable
-            // on tray menu / context menu / combobox dropdown / widget gear menu.
-            property real closedScale: root.regaliaEverywhere ? 1.0
-                : root.zzzEverywhere ? 0.90
-                : (root.contextualMotionProfile ? 0.90 : 1.0)
-            // Popup windows have fixed geometry. Cookie's spatial spring exceeds
-            // 1.0, so using it for opacity, scale, or an anchored margin makes
-            // the content collide with and get clipped by that fixed boundary.
-            // Keep the spring for free-moving shell elements and use a bounded
-            // deceleration curve for popup reveals.
-            property list<real> enterBezierCurve: root.cookieEverywhere
-                ? root.animationCurves.emphasizedDecel
-                : root.animation.elementMoveEnter.bezierCurve
+            property bool enableFade: root.contextualMotionProfile
+            property bool enableScale: root.contextualMotionProfile
+            property real closedScale: root.contextualMotionProfile ? 0.90 : 1.0
+            property list<real> enterBezierCurve: root.animation.elementMoveEnter.bezierCurve
         }
     }
 
@@ -1478,7 +1456,7 @@ Singleton {
         // carries the same mechanical punch as the cookie clock and popups.
         property real shapeT: round ? 1.0 : 0.0
         Behavior on shapeT {
-            enabled: root.animationsEnabled && root.zzzEverywhere
+            enabled: false
             NumberAnimation {
                 duration: root.zzz.overshootDuration
                 easing.type: Easing.BezierSpline

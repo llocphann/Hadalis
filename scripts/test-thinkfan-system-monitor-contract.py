@@ -19,6 +19,7 @@ def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
     styled_popup = read("modules/bar/StyledPopup.qml")
     bar_settings = read("modules/settings/BarConfigHugOnly.qml")
+    bar_config = read("modules/settings/BarConfig.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
     thinkfan_migration = read("sdata/migrations/041-thinkfan-helper-bridge.sh")
     uninstall_lib = read("sdata/lib/uninstall.sh")
@@ -68,13 +69,21 @@ def main() -> None:
               f"StyledPopup must support the opt-in adjacent Screen Edge join: {token}")
 
     for token in (
-        'title: Translation.tr("System Monitor & Thermals")',
+        'settingsTaskSection: "system"',
+        'title: Translation.tr("Fan Control")',
         'text: Translation.tr("ThinkFan managed control")',
         "ThinkFanService.applyProfile(",
         "checked: root.thinkFanManaged",
     ):
         check(token in bar_settings,
               f"Bar Settings must expose the shared ThinkFan profile control: {token}")
+
+    for token in (
+        '{ displayName: Translation.tr("System"), icon: "tune", value: "system" }',
+        '"fan control": "system"',
+    ):
+        check(token in bar_config,
+              f"Bar settings navigation must route Fan Control through System: {token}")
 
     check(not (ROOT / "modules/perimeter").exists(),
           "Retired broad perimeter module must stay absent")

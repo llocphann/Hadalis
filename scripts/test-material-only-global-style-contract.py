@@ -30,6 +30,7 @@ STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml
 FONT_SELECTOR = ROOT / "modules" / "common" / "widgets" / "FontSelector.qml"
 ICON_THEME_SELECTOR = ROOT / "modules" / "common" / "widgets" / "IconThemeSelector.qml"
 CONFIG_SELECTION_ARRAY = ROOT / "modules" / "common" / "widgets" / "ConfigSelectionArray.qml"
+CONFIG_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "ConfigSpinBox.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -79,6 +80,7 @@ def main() -> None:
     font_selector = FONT_SELECTOR.read_text(encoding="utf-8")
     icon_theme_selector = ICON_THEME_SELECTOR.read_text(encoding="utf-8")
     config_selection_array = CONFIG_SELECTION_ARRAY.read_text(encoding="utf-8")
+    config_spin_box = CONFIG_SPIN_BOX.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -692,6 +694,15 @@ def main() -> None:
 
     forbid(config_selection_array, "Appearance.regaliaEverywhere", "ConfigSelectionArray.qml")
     require(config_selection_array, "spacing: 2", "ConfigSelectionArray.qml")
+
+    for token in (
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.angel.",
+        "Appearance.inir.",
+    ):
+        forbid(config_spin_box, token, "ConfigSpinBox.qml")
+    require(config_spin_box, "color: Appearance.colors.colOnSurface", "ConfigSpinBox.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

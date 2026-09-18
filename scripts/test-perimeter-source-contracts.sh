@@ -58,6 +58,14 @@ grep -Fq 'appearance.screenEdge.shadow.enabled' "$root/modules/settings/BarConfi
     || fail 'Bar Settings must expose Screen Edge shadow controls'
 grep -Fq 'readonly property color shadowColor:' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge runtime must paint the configured inward shadow'
+grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
+    || fail 'OSK must use shared connected-surface primitives'
+grep -Fq 'id: oskConnectorGeometry' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
+    || fail 'OSK must expose Screen Edge connector geometry'
+grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
+    || fail 'OSK must render a shared Screen Edge connector'
+grep -Fq 'root.screenAttachInset' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
+    || fail 'OSK snap position must account for Screen Edge attachment'
 
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'normal Media UX must stay on StyledPopup'

@@ -8,6 +8,7 @@ import Quickshell.Hyprland
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.services
 import qs.services.deferred
 
@@ -15,6 +16,11 @@ Scope { // Scope
     id: root
     property bool pinned: Config.options?.osk.pinnedOnStartup ?? false
     property bool keepOnTop: Config.options?.osk?.keepOnTop ?? false
+    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property real screenAttachInset:
+        screenEdgeThickness + PerimeterTokens.connectorLength
+            - PerimeterTokens.seamOverlap
 
     // Aggregated competing-overlay signal. Whenever any of these toggles, this
     // value changes and the inner PanelWindow re-stacks itself on top of its
@@ -65,6 +71,7 @@ Scope { // Scope
             // Brief unmap window used by restack() to recreate the wlr-layer-shell
             // surface, which puts it back on top of the Overlay layer.
             property bool _remapping: false
+            property string snappedEdge: "bottom"
             visible: oskLoader.active && !GlobalStates.screenLocked && !_remapping
 
             // Full-screen overlay — mask limits input to keyboard area only
@@ -80,7 +87,8 @@ Scope { // Scope
             }
 
             function snapToNearestEdge() {
-                const margin = Appearance.sizes.elevationMargin
+                const margin = Math.max(Appearance.sizes.elevationMargin,
+                    root.screenEdgeThickness + PerimeterTokens.screenMargin)
                 const kw = oskBackground.width
                 const kh = oskBackground.height
                 const pw = oskRoot.width
@@ -96,8 +104,13 @@ Scope { // Scope
 
                 // Vertical: snap to top or bottom
                 let targetY
-                if (cy < ph / 2) targetY = margin
-                else targetY = ph - kh - margin
+                if (cy < ph / 2) {
+                    oskRoot.snappedEdge = "top"
+                    targetY = root.screenAttachInset
+                } else {
+                    oskRoot.snappedEdge = "bottom"
+                    targetY = ph - kh - root.screenAttachInset
+                }
 
                 oskBackground.animatePosition = true
                 oskBackground.x = targetX
@@ -136,6 +149,45 @@ Scope { // Scope
                 item: oskBackground
             }
 
+            QtObject {
+                id: oskConnectorGeometry
+                readonly property string edge: oskRoot.snappedEdge
+                readonly property real extent: Math.min(oskBackground.width,
+                    PerimeterTokens.connectorWidth
+                        + PerimeterTokens.outerRadius * 2)
+                readonly property real centerX:
+                    oskBackground.x + oskBackground.width / 2
+                readonly property real overlap: PerimeterTokens.seamOverlap
+                readonly property real sourceY: edge === "top"
+                    ? root.screenEdgeThickness - overlap
+                    : oskRoot.height - root.screenEdgeThickness + overlap
+                readonly property real bodyY: edge === "top"
+                    ? oskBackground.y + overlap
+                    : oskBackground.y + oskBackground.height - overlap
+                readonly property rect connectorRect: Qt.rect(
+                    Math.max(0, centerX - extent / 2),
+                    Math.min(sourceY, bodyY),
+                    extent,
+                    Math.max(0, Math.abs(bodyY - sourceY)))
+                readonly property real connectorSourceExtent:
+                    Math.min(extent, PerimeterTokens.connectorWidth)
+                readonly property real connectorWidth:
+                    PerimeterTokens.connectorWidth
+                readonly property real borderWidth: 0
+                readonly property bool valid: oskRoot.visible
+                    && !oskDragHandler.active
+                    && (edge === "top" || edge === "bottom")
+                readonly property real progress: valid ? 1 : 0
+            }
+
+            ConnectedSurfaceConnector {
+                z: 2
+                geometry: oskConnectorGeometry
+                fillColor: Appearance.colors.colLayer0
+                strokeColor: "transparent"
+                strokeWidth: 0
+            }
+
             // Background shadow follows keyboard
             StyledRectangularShadow {
                 target: oskBackground
@@ -148,9 +200,10 @@ Scope { // Scope
                 width: oskRowLayout.implicitWidth + padding * 2
                 height: oskRowLayout.implicitHeight + padding * 2
 
-                // Initial position: bottom center (binding breaks on first drag)
+                // Initial position: bottom center, attached to the inner Screen
+                // Edge boundary through the shared connector contract.
                 x: parent ? (parent.width - width) / 2 : 0
-                y: parent ? parent.height - height - Appearance.sizes.elevationMargin : 0
+                y: parent ? parent.height - height - root.screenAttachInset : 0
 
                 color: Appearance.zzzEverywhere ? Appearance.zzz.bg0 : Appearance.colors.colLayer0
                 radius: Appearance.rounding.windowRounding

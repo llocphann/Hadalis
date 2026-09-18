@@ -99,6 +99,10 @@ Scope {
                     ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, edgeShadowOpacity)
                 readonly property real inwardDecoratorAllowance:
                     Math.max(roundDecoratorAllowance, edgeShadowExtent)
+                readonly property real shadowTangentInset: Math.max(
+                    screenEdgeThickness,
+                    screenEdgeThickness + roundDecoratorAllowance
+                        - PerimeterTokens.shadowSeamOverlap)
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
@@ -217,13 +221,12 @@ Scope {
                             visible: barRoot.edgeShadowEnabled
                                 && barRoot.edgeShadowExtent > 0
                                 && barRoot.edgeShadowOpacity > 0
-                            x: barRoot.screenEdgeThickness + barRoot.roundDecoratorAllowance
+                            x: barRoot.shadowTangentInset
                             y: (Config.options?.bar?.bottom ?? false)
                                 ? autoHideEdgeBand.y - barRoot.edgeShadowExtent
                                 : autoHideEdgeBand.y + autoHideEdgeBand.height
                             width: Math.max(0, parent.width
-                                - 2 * (barRoot.screenEdgeThickness
-                                    + barRoot.roundDecoratorAllowance))
+                                - 2 * barRoot.shadowTangentInset)
                             height: barRoot.edgeShadowExtent
                             color: "transparent"
                             gradient: Gradient {
@@ -358,10 +361,8 @@ Scope {
                         anchors {
                             left: parent.left
                             right: parent.right
-                            leftMargin: barRoot.screenEdgeThickness
-                                + barRoot.roundDecoratorAllowance
-                            rightMargin: barRoot.screenEdgeThickness
-                                + barRoot.roundDecoratorAllowance
+                            leftMargin: barRoot.shadowTangentInset
+                            rightMargin: barRoot.shadowTangentInset
                             // Reference junction contract: the straight segment
                             // beneath Hug shoulders; later RoundCorner paint
                             // occludes the outside footprint into a curved edge.

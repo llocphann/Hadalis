@@ -17,6 +17,52 @@ Scope { // Scope
     id: root
     property bool pinned: Config.options?.osk.pinnedOnStartup ?? false
     property bool keepOnTop: Config.options?.osk?.keepOnTop ?? false
+    // Keep the layer-shell surface resident for the exit slide. Mapping it
+    // directly to oskOpen used to tear the window down in the same frame.
+    property bool _oskResident: GlobalStates.oskOpen
+    property real _oskRevealProgress: GlobalStates.oskOpen ? 1 : 0
+
+    Behavior on _oskRevealProgress {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: GlobalStates.oskOpen
+                ? Appearance.animation.elementMoveEnter.duration
+                : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: GlobalStates.oskOpen
+                ? Appearance.animationCurves.emphasizedDecel
+                : Appearance.animationCurves.emphasizedAccel
+        }
+    }
+
+    Timer {
+        id: oskUnloadTimer
+        interval: Appearance.animation.elementMoveExit.duration + 40
+        repeat: false
+        onTriggered: {
+            if (!GlobalStates.oskOpen)
+                root._oskResident = false
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onOskOpenChanged(): void {
+            if (GlobalStates.oskOpen) {
+                oskUnloadTimer.stop()
+                root._oskResident = true
+                root._oskRevealProgress = 0
+                Qt.callLater(() => {
+                    if (GlobalStates.oskOpen)
+                        root._oskRevealProgress = 1
+                })
+            } else {
+                root._oskRevealProgress = 0
+                oskUnloadTimer.restart()
+                Ydotool.releaseAllKeys()
+            }
+        }
+    }
     readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     // The keyboard owns the Screen Edge segment beneath its body while open.
@@ -69,7 +115,7 @@ Scope { // Scope
 
     Loader {
         id: oskLoader
-        active: GlobalStates.oskOpen
+        active: root._oskResident
         onActiveChanged: {
             if (!oskLoader.active) {
                 Ydotool.releaseAllKeys();
@@ -82,7 +128,10 @@ Scope { // Scope
             // surface, which puts it back on top of the Overlay layer.
             property bool _remapping: false
             property string snappedEdge: "bottom"
-            visible: oskLoader.active && !GlobalStates.screenLocked && !_remapping
+            visible: root._oskResident && !GlobalStates.screenLocked && !_remapping
+            readonly property real revealOffsetY:
+                (snappedEdge === "top" ? -oskBackground.height : oskBackground.height)
+                    * (1 - root._oskRevealProgress)
 
             // Full-screen overlay — mask limits input to keyboard area only
             anchors {
@@ -163,6 +212,7 @@ Scope { // Scope
             // The body itself underlaps the full edge band; no separate stem exists.
             StyledRectangularShadow {
                 target: oskBackground
+                transform: Translate { y: oskRoot.revealOffsetY }
                 blur: root.screenEdgeShadowSize
                 spread: 0
                 offset: Qt.vector2d(0, 0)
@@ -176,7 +226,8 @@ Scope { // Scope
                 bodyItem: oskBackground
                 fillColor: oskBackground.color
                 flareRadius: PerimeterTokens.joinFlareRadius
-                progress: 1
+                progress: root._oskRevealProgress
+                transform: Translate { y: oskRoot.revealOffsetY }
                 joinTop: oskRoot.snappedEdge === "top"
                 joinBottom: oskRoot.snappedEdge === "bottom"
             }
@@ -203,6 +254,8 @@ Scope { // Scope
                 bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius
                 border.width: 0
                 border.color: "transparent"
+                enabled: GlobalStates.oskOpen
+                transform: Translate { y: oskRoot.revealOffsetY }
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.width { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }

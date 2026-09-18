@@ -597,12 +597,6 @@ Scope {
                 bodyItem: settingsCard
                 fillColor: settingsCard.color
                 flareRadius: PerimeterTokens.joinFlareRadius
-                shadowEnabled: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
-                shadowExtent: Math.max(0, Math.min(32,
-                    Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
-                shadowColor: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
-                    Math.max(0, Math.min(0.60,
-                        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24))))
                 progress: root._surfaceReveal
                 joinBottom: true
                 z: 2

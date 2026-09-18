@@ -108,6 +108,12 @@ grep -Fq 'appearance.screenEdge.shadow.enabled' "$root/modules/settings/BarConfi
     || fail 'Bar Settings must expose Screen Edge shadow controls'
 grep -Fq 'readonly property color shadowColor:' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge runtime must paint the configured inward shadow'
+grep -Fq 'readonly property real leadingShadowInset:' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge straight shadows must leave the rounded corner footprint unobscured'
+grep -Fq 'parent.width - leadingShadowInset - trailingShadowInset' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'horizontal Screen Edge shadow must stop before both rounded corner overlays'
+grep -Fq 'parent.height - leadingShadowInset - trailingShadowInset' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'vertical Screen Edge shadow must stop before both rounded corner overlays'
 for shadow_source in \
     "$root/modules/screenCorners/ScreenEdges.qml" \
     "$root/modules/bar/Bar.qml" \

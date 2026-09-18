@@ -94,7 +94,7 @@ Scope {
                     ? Math.max(0, Math.min(32,
                         Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
                     : 0
-                readonly property real edgeShadowOpacity: Math.max(0, Math.min(0.60,
+                readonly property real edgeShadowOpacity: Math.max(0, Math.min(1.0,
                     Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
                 readonly property color edgeShadowColor:
                     ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)

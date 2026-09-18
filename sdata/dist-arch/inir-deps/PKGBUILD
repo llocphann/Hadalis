@@ -104,6 +104,7 @@ depends=(
   pavucontrol
   mpv
   mpv-mpris
+  mpd
   mpd-mpris
   yt-dlp
   python-ytmusicapi

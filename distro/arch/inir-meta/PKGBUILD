@@ -1,6 +1,6 @@
 pkgname=inir-meta
 pkgver=2.29.3
-pkgrel=5
+pkgrel=6
 pkgdesc='Full Hadalis desktop experience meta-package'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -42,6 +42,7 @@ depends=(
   libdbusmenu-gtk3
   libqalculate
   mission-center
+  mpd
   mpd-mpris
   mpv
   mpv-mpris

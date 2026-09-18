@@ -1,7 +1,7 @@
 pkgbase = inir-meta
 	pkgdesc = Full Hadalis desktop experience meta-package
 	pkgver = 2.29.3
-	pkgrel = 5
+	pkgrel = 6
 	url = https://github.com/llocphann/Hadalis
 	arch = any
 	license = GPL-3.0-only
@@ -39,6 +39,7 @@ pkgbase = inir-meta
 	depends = libdbusmenu-gtk3
 	depends = libqalculate
 	depends = mission-center
+	depends = mpd
 	depends = mpd-mpris
 	depends = mpv
 	depends = mpv-mpris

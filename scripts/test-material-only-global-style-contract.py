@@ -195,6 +195,19 @@ def main() -> None:
     ):
         require(content_chrome, token, "SettingsOverlay.qml content container")
 
+    # SettingsOverlay is active v1.0 runtime. Once each scoped chrome
+    # block has been collapsed to its Material fallback, no shell-wide legacy
+    # style predicate may remain anywhere in the file.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+    ):
+        forbid(settings_overlay, token, "SettingsOverlay.qml")
+
     print("Material-only global style contract: PASS")
 
 

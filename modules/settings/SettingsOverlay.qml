@@ -1582,15 +1582,9 @@ Scope {
                         width: noResultsRow.implicitWidth + 32
                         height: 44
                         radius: Math.min(width, height) / 2
-                        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                             : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                             : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                             : Appearance.colors.colSurfaceContainerHigh
-                        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                    : Appearance.inirEverywhere ? 1 : 0
-                        border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                                    : Appearance.inirEverywhere ? Appearance.inir.colBorderMuted
-                                    : "transparent"
+                        color: Appearance.colors.colSurfaceContainerHigh
+                        border.width: 0
+                        border.color: "transparent"
 
                         Behavior on _pillOpacity {
                             enabled: Appearance.animationsEnabled
@@ -1658,18 +1652,10 @@ Scope {
                         }
                         anchors.top: parent.top
                         anchors.topMargin: 56
-                        radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                             : Appearance.rounding.normal
-                        color: Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer1Base
-                            : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                            : Appearance.colors.colLayer1
-                        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                    : Appearance.inirEverywhere ? 1 : 1
-                        border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                            : Appearance.colors.colOutlineVariant
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colors.colLayer1
+                        border.width: 1
+                        border.color: Appearance.colors.colOutlineVariant
 
                         ListView {
                             id: overlayResultsList
@@ -1755,15 +1741,9 @@ Scope {
                                     buttonRadius: Appearance.rounding.small
 
                                     colBackground: resultDelegate.ListView.isCurrentItem
-                                        ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                          : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                          : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                                          : Appearance.colors.colLayer2)
+                                        ? Appearance.colors.colLayer2
                                         : "transparent"
-                                    colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                                      : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-                                                      : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                                      : Appearance.colors.colLayer2
+                                    colBackgroundHover: Appearance.colors.colLayer2
 
                                     Keys.forwardTo: [overlayResultsList]
                                     onClicked: root.openOverlaySearchResult(resultDelegate.modelData)

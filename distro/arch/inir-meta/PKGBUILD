@@ -42,9 +42,9 @@ depends=(
   libdbusmenu-gtk3
   libqalculate
   mission-center
+  mpd-mpris
   mpv
   mpv-mpris
-  mpd-mpris
   nautilus
   otf-space-grotesk
   pacman-contrib

@@ -44,6 +44,16 @@ Singleton {
         return root.activeDeviceSummary() || Translation.tr("Bluetooth connected");
     }
 
+    function setEnabled(value: bool): void {
+        const adapter = Bluetooth.defaultAdapter
+        if (adapter)
+            adapter.enabled = value
+    }
+
+    function toggle(): void {
+        root.setEnabled(!root.enabled)
+    }
+
     function _materialIconForDevice(device: BluetoothDevice): string {
         const xdg = (device?.icon ?? "").toLowerCase();
         if (xdg.length === 0) return "bluetooth_connected";

@@ -120,6 +120,18 @@ Singleton {
                 property bool manualActive: false
             }
 
+            // Last observed hardware/privacy state. "Known" flags deliberately
+            // separate an existing preference from schema defaults so upgrading
+            // Hadalis never powers radios or changes mic mute on the first run.
+            property JsonObject deviceState: JsonObject {
+                property bool wifiKnown: false
+                property bool wifiEnabled: true
+                property bool bluetoothKnown: false
+                property bool bluetoothEnabled: true
+                property bool micKnown: false
+                property bool micMuted: false
+            }
+
             property JsonObject orbit: JsonObject {
                 property list<string> stashEntries: []
             }

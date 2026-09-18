@@ -61,11 +61,21 @@ def main() -> None:
     for forbidden in (
         'Translation.tr("Free:")',
         'Translation.tr("Service")',
+        'Translation.tr("ThinkFan")',
+        'Translation.tr("Fan speed")',
+        'Translation.tr("Fan level")',
         "thinkFanStatusMessage",
         "describeThinkFanStatus",
     ):
         check(forbidden not in resources_popup,
               f"System Monitor popup must keep the compact metrics contract: {forbidden}")
+
+    fan_pos = resources_popup.index('Translation.tr("Fan")')
+    speed_pos = resources_popup.index('Translation.tr("Speed:")')
+    level_pos = resources_popup.index('Translation.tr("Level:")')
+    notice_pos = resources_popup.index("NoticeBox {", level_pos)
+    check(fan_pos < speed_pos < level_pos < notice_pos,
+          "ThinkFan monitor controls/metrics must remain one inline row before error feedback")
 
     for token in (
         "property bool connectAdjacentScreenEdge: false",

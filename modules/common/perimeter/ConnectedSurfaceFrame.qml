@@ -47,6 +47,7 @@ Item {
 
     Rectangle {
         id: body
+        z: 1
         x: root.geometry.animatedBodyRect.x
         y: root.geometry.animatedBodyRect.y
         width: root.geometry.animatedBodyRect.width
@@ -74,7 +75,7 @@ Item {
     // every free side keeps the configured Screen Edge/Bar falloff.
     Item {
         id: shadowClip
-        z: -1
+        z: 0
         visible: root.shadowEnabled && root.shadowExtent > 0 && body.visible
             && (root.shadowTop || root.shadowBottom
                 || root.shadowLeft || root.shadowRight)
@@ -98,7 +99,9 @@ Item {
             spread: 0
             offset: Qt.vector2d(0, 0)
             color: root.shadowColor
-            cached: true
+            // Connected bodies translate every frame and can reverse mid-slide.
+            // Keep the shadow live so cached FBO state cannot blink or lag.
+            cached: false
         }
     }
 
@@ -112,6 +115,9 @@ Item {
         fillColor: root.fillColor
         flareRadius: root.joinFlareRadius
         progress: root.geometry.revealProgress ?? root.geometry.progress ?? 1
+        shadowEnabled: root.shadowEnabled
+        shadowExtent: root.shadowExtent
+        shadowColor: root.shadowColor
         joinTop: root.joinTop
         joinBottom: root.joinBottom
         joinLeft: root.joinLeft

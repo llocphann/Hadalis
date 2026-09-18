@@ -4,6 +4,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.modules.sidebarLeft
 import qs.modules.sidebarRight
 import QtQuick
@@ -71,9 +72,13 @@ Scope {
         root.configuredSizeMode === "custom" ? "custom" : "fit"
     readonly property int customHeight: Math.round(
         root.roleLayoutState?.customHeight ?? 720)
+    // Reserve transparent vertical room for the two concave endpoint shoulders.
+    // The visible sidebar body remains content-sized and centered in this host.
+    readonly property real edgeDecorationMargin: Math.max(
+        Appearance.sizes.hyprlandGapsOut, PerimeterTokens.joinFlareRadius)
     readonly property real availableContentHeight: Math.max(0,
         (sidebarRoot.screen?.height ?? 1080)
-            - Appearance.sizes.hyprlandGapsOut * 2)
+            - root.edgeDecorationMargin * 2)
     readonly property real reportedPreferredHeight:
         sidebarContentLoader.item?.preferredContentHeight ?? -1
     readonly property real reportedMinimumHeight:
@@ -423,6 +428,7 @@ Scope {
             screenWidth: sidebarRoot.screen?.width ?? 1920
             screenHeight: sidebarRoot.screen?.height ?? 1080
             panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
             attachedEdge: root.edge
@@ -437,6 +443,7 @@ Scope {
             screenWidth: sidebarRoot.screen?.width ?? 1920
             screenHeight: sidebarRoot.screen?.height ?? 1080
             panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
             attachedEdge: root.edge
@@ -450,6 +457,7 @@ Scope {
             screenWidth: sidebarRoot.screen?.width ?? 1920
             screenHeight: sidebarRoot.screen?.height ?? 1080
             panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
             attachedEdge: root.edge
@@ -477,6 +485,9 @@ Scope {
                 activeContentItem?.notifsCollapsed ?? false
             readonly property bool bottomCollapsed:
                 activeContentItem?.bottomGroupCollapsed ?? false
+            readonly property color connectedSurfaceColor:
+                activeContentItem?.connectedSurfaceColor
+                    ?? Appearance.colors.colLayer0
 
             FadeLoader {
                 id: defaultSystemLoader
@@ -588,7 +599,7 @@ Scope {
         exclusiveZone: 0
         implicitWidth: Math.ceil(root.effectiveSidebarWidth)
         implicitHeight: Math.ceil(root.effectiveContentHeight
-            + Appearance.sizes.hyprlandGapsOut * 2)
+            + root.edgeDecorationMargin * 2)
         WlrLayershell.namespace: root.isLeftEdge
             ? "quickshell:sidebarLeft" : "quickshell:sidebarRight"
         WlrLayershell.layer: WlrLayer.Overlay
@@ -1042,6 +1053,9 @@ Scope {
                         ?? roleContentItem?.contentFitActive ?? false
                 readonly property bool bottomCollapsed:
                     roleContentItem?.bottomCollapsed ?? false
+                readonly property color connectedSurfaceColor:
+                    roleContentItem?.connectedSurfaceColor
+                        ?? Appearance.colors.colLayer0
 
                 Item {
                     id: revealViewport
@@ -1065,6 +1079,25 @@ Scope {
                     }
                 }
             }
+        }
+
+        // Caelestia-style concave shoulders where the content-sized sidebar
+        // terminates against the persistent vertical Screen Edge. Render these
+        // in the host (outside revealViewport clipping) so both endpoints remain
+        // visible for slide/reveal animation modes.
+        ConnectedSurfaceJoinFlares {
+            z: 9000
+            anchors.fill: parent
+            bodyItem: sidebarContentLoader
+            fillColor: sidebarContentLoader.item?.connectedSurfaceColor
+                ?? Appearance.colors.colLayer0
+            flareRadius: PerimeterTokens.joinFlareRadius
+            // SidebarHost owns independent slide/reveal transforms. Keep the
+            // shoulders tied to the settled connected body so they never ghost
+            // at a stale endpoint while that body is in flight.
+            progress: root.presentationOpen && !sidebarContentLoader.animating ? 1 : 0
+            joinLeft: root.isLeftEdge
+            joinRight: !root.isLeftEdge
         }
 
         ShellEditSurfaceFrame {

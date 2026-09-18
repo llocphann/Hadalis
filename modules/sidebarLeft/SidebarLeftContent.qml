@@ -27,6 +27,8 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
+    property real panelScreenY: Appearance.sizes.hyprlandGapsOut
+    readonly property color connectedSurfaceColor: sidebarLeftBackground.color
     property bool panelVisible: false
     property bool geometryPreviewActive: false
     property string outerSizeMode: "full"
@@ -228,7 +230,7 @@ Item {
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null
         glassScreenX: Appearance.sizes.hyprlandGapsOut
-        glassScreenY: Appearance.sizes.hyprlandGapsOut
+        glassScreenY: root.panelScreenY
         glassScreenWidth: root.screenWidth
         glassScreenHeight: root.screenHeight
     }

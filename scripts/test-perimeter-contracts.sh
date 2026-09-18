@@ -73,6 +73,18 @@ fi
 
 for token in \
     'import qs.modules.common.perimeter' \
+    'readonly property real edgeDecorationMargin:' \
+    'PerimeterTokens.joinFlareRadius' \
+    'ConnectedSurfaceJoinFlares {' \
+    'bodyItem: sidebarContentLoader' \
+    'joinLeft: root.isLeftEdge' \
+    'joinRight: !root.isLeftEdge'; do
+    grep -Fq "$token" "$sidebar" \
+        || fail "SidebarHost must render Caelestia-style Screen Edge endpoint flares: $token"
+done
+
+for token in \
+    'import qs.modules.common.perimeter' \
     'id: overviewBottomConnectorGeometry' \
     'readonly property string edge: "bottom"' \
     'readonly property bool bottomBarOwnsEdge:' \

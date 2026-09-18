@@ -70,6 +70,18 @@ if grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qml
     fail 'SidebarHost must attach its body directly instead of rendering a connector stem'
 fi
 
+for token in \
+    'readonly property real edgeDecorationMargin:' \
+    'PerimeterTokens.joinFlareRadius' \
+    'ConnectedSurfaceJoinFlares {' \
+    'bodyItem: sidebarContentLoader' \
+    'fillColor: sidebarContentLoader.item?.connectedSurfaceColor' \
+    'joinLeft: root.isLeftEdge' \
+    'joinRight: !root.isLeftEdge'; do
+    grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
+        || fail "SidebarHost must own visible flared Screen Edge endpoints: $token"
+done
+
 for sidebar_surface in \
     "$root/modules/sidebarLeft/SidebarLeftContent.qml" \
     "$root/modules/sidebarRight/SidebarRightContent.qml" \
@@ -84,6 +96,8 @@ for sidebar_surface in \
         || fail "${sidebar_surface#$root/} must stop shadow at a joined right Screen Edge"
     grep -Fq 'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' "$sidebar_surface" \
         || fail "${sidebar_surface#$root/} must share Screen Edge shadow enable state"
+    grep -Fq 'readonly property color connectedSurfaceColor:' "$sidebar_surface" \
+        || fail "${sidebar_surface#"$root/"} must expose its real surface color to host-owned flares"
 done
 
 grep -Fq 'property JsonObject screenEdge: JsonObject {' "$root/modules/common/Config.qml" \

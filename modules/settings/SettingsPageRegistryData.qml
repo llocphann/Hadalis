@@ -541,13 +541,6 @@ Singleton {
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("Appearance & Layout"),
-            label: Translation.tr("Bar background"),
-            description: Translation.tr("Show or hide bar background"),
-            keywords: ["bar", "background", "transparent", "show", "hide"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Screen Edge"),
             label: Translation.tr("Screen edge width (px)"),
             description: Translation.tr("Set the persistent connected screen-edge thickness"),

@@ -7,7 +7,6 @@ import qs.modules.common.functions
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
-import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Wayland
 
@@ -105,38 +104,28 @@ Scope {
         return iiOwned || waffleOwned
     }
 
-    // Shadow for an inverse corner. The curve itself is a quarter circle, so
-    // its shadow must be radial rather than the union of two linear rectangles.
-    // At each tangent this radial profile reduces to the exact same linear
-    // falloff as the adjacent straight Screen Edge shadow.
-    component CornerShadow: GE.RadialGradient {
-        id: cornerShadow
-        required property int corner
+    function adjacentShadowInset(outputName, edge) {
+        if (!root.barOwnsEdge(outputName, edge))
+            return root.thickness + root.innerRadius
 
-        readonly property bool isTop:
-            corner === RoundCorner.CornerEnum.TopLeft
-            || corner === RoundCorner.CornerEnum.TopRight
-        readonly property bool isLeft:
-            corner === RoundCorner.CornerEnum.TopLeft
-            || corner === RoundCorner.CornerEnum.BottomLeft
-        readonly property real innerStop: Math.max(0, Math.min(1,
-            1 - root.shadowExtent / Math.max(1, root.innerRadius)))
-
-        width: root.innerRadius
-        height: root.innerRadius
-        horizontalRadius: root.innerRadius
-        verticalRadius: root.innerRadius
-        horizontalOffset: isLeft ? width / 2 : -width / 2
-        verticalOffset: isTop ? height / 2 : -height / 2
-        visible: root.shadowExtent > 0 && root.shadowOpacity > 0
-        cached: true
-        z: 1
-
-        gradient: Gradient {
-            GradientStop { position: 0; color: "transparent" }
-            GradientStop { position: cornerShadow.innerStop; color: "transparent" }
-            GradientStop { position: 1; color: root.shadowColor }
+        // A visible Classic Bar replaces the physical Screen Edge on its edge.
+        // The adjacent straight Screen Edge shadow therefore starts only after
+        // the Bar body plus the shared inverse-corner box. Let that curved Bar
+        // corner own the whole junction instead of drawing a perpendicular
+        // vertical/horizontal shadow strip through it.
+        const iiOwns = root.iiBarPanelEnabled
+            && edge === root.iiBarEdge
+            && root.iiBarTargetsOutput(outputName)
+        if (iiOwns) {
+            const barThickness = root.barVertical
+                ? Appearance.sizes.verticalBarWidth
+                : Appearance.sizes.barHeight
+            return barThickness + root.innerRadius
         }
+
+        // Waffle is a separate family; keep its junction clear of the physical
+        // edge corner even though it does not consume Classic Bar geometry.
+        return root.thickness + root.innerRadius
     }
 
     component EdgeWindow: PanelWindow {
@@ -151,11 +140,9 @@ Scope {
         readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
         readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
         readonly property real leadingShadowInset:
-            root.barOwnsEdge(outputName, leadingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
+            root.adjacentShadowInset(outputName, leadingAdjacentEdge)
         readonly property real trailingShadowInset:
-            root.barOwnsEdge(outputName, trailingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
+            root.adjacentShadowInset(outputName, trailingAdjacentEdge)
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -240,12 +227,15 @@ Scope {
             }
         }
 
-        CornerShadow {
+        PerimeterCornerShadow {
             id: leadingCornerShadow
             visible: horizontal
                 && root.shadowExtent > 0
                 && root.shadowOpacity > 0
                 && !root.barOwnsEdge(outputName, "left")
+            cornerRadius: root.innerRadius
+            shadowExtent: root.shadowExtent
+            shadowColor: root.shadowColor
             corner: edge === "top"
                 ? RoundCorner.CornerEnum.TopLeft
                 : RoundCorner.CornerEnum.BottomLeft
@@ -257,12 +247,15 @@ Scope {
             }
         }
 
-        CornerShadow {
+        PerimeterCornerShadow {
             id: trailingCornerShadow
             visible: horizontal
                 && root.shadowExtent > 0
                 && root.shadowOpacity > 0
                 && !root.barOwnsEdge(outputName, "right")
+            cornerRadius: root.innerRadius
+            shadowExtent: root.shadowExtent
+            shadowColor: root.shadowColor
             corner: edge === "top"
                 ? RoundCorner.CornerEnum.TopRight
                 : RoundCorner.CornerEnum.BottomRight
@@ -290,6 +283,9 @@ Scope {
                 top: edge === "top" ? edgeBand.bottom : undefined
                 bottom: edge === "bottom" ? edgeBand.top : undefined
             }
+            cornerRadius: root.innerRadius
+            shadowExtent: root.shadowExtent
+            shadowColor: root.shadowColor
             corner: edge === "top"
                 ? RoundCorner.CornerEnum.TopLeft
                 : RoundCorner.CornerEnum.BottomLeft
@@ -307,6 +303,9 @@ Scope {
                 top: edge === "top" ? edgeBand.bottom : undefined
                 bottom: edge === "bottom" ? edgeBand.top : undefined
             }
+            cornerRadius: root.innerRadius
+            shadowExtent: root.shadowExtent
+            shadowColor: root.shadowColor
             corner: edge === "top"
                 ? RoundCorner.CornerEnum.TopRight
                 : RoundCorner.CornerEnum.BottomRight

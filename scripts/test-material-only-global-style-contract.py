@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
+WEATHER_BAR = ROOT / "modules" / "bar" / "weather" / "WeatherBar.qml"
+BAR_MEDIA_POPUP = ROOT / "modules" / "mediaControls" / "BarMediaPopup.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
@@ -39,6 +41,8 @@ def main() -> None:
     appearance = APPEARANCE.read_text(encoding="utf-8")
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
+    weather_bar = WEATHER_BAR.read_text(encoding="utf-8")
+    bar_media_popup = BAR_MEDIA_POPUP.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
@@ -377,6 +381,39 @@ def main() -> None:
         "color: Appearance.colors.colOnLayer0",
     ):
         require(ripple_button, token, "RippleButton.qml")
+
+    # Active Bar controls must not reintroduce frozen Global Theme routing.
+    for token in (
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.angel.",
+        "Appearance.inir.",
+    ):
+        forbid(weather_bar, token, "WeatherBar.qml")
+    require(weather_bar, "color: Appearance.colors.colOnLayer1", "WeatherBar.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "AngelPartialBorder {",
+    ):
+        forbid(bar_media_popup, token, "BarMediaPopup.qml")
+    for token in (
+        "Appearance.colors.colPrimary",
+        "Appearance.colors.colLayer2",
+        "color: Appearance.colors.colLayer0",
+        "radius: root.popupRounding",
+        'border.color: "transparent"',
+        "color: Appearance.colors.colOnLayer0",
+        "color: Appearance.colors.colSubtext",
+    ):
+        require(bar_media_popup, token, "BarMediaPopup.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

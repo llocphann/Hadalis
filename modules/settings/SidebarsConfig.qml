@@ -274,12 +274,10 @@ ContentPage {
 
                 SettingsSwitch {
                     buttonIcon: "library_music"
-                    text: Translation.tr("YT Music")
-                    checked: Config.options.sidebar?.ytmusic?.enable ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Search and play music from YouTube using yt-dlp")
-                    }
+                    text: Translation.tr("Music")
+                    checked: Config.options.sidebar?.music?.enable ?? false
+                    onCheckedChanged: Config.setNestedValue("sidebar.music.enable", checked)
+                    StyledToolTip { text: LocalMusic.libraryFolder }
                 }
 
                 // DISABLED: webapps — requires quickshell-webengine rebuild
@@ -597,62 +595,41 @@ ContentPage {
 
         SettingsGroup {
             ContentSubsection {
-                title: Translation.tr("YT Music")
-                tooltip: Translation.tr("Control how next-track notifications behave")
-                visible: Config.options.sidebar?.ytmusic?.enable ?? false
+                title: Translation.tr("Music")
+                tooltip: LocalMusic.libraryFolder
+                visible: Config.options.sidebar?.music?.enable ?? false
 
-                SettingsSwitch {
-                    buttonIcon: "sync"
-                    text: Translation.tr("Reconnect account on launch")
-                    checked: Config.options.sidebar?.ytmusic?.autoConnect ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.autoConnect", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Re-reads your browser's YouTube session on startup so a stale login heals itself.")
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    MaterialTextField {
+                        Layout.fillWidth: true
+                        readOnly: true
+                        text: LocalMusic.libraryFolder
                     }
-                }
 
-                SettingsSwitch {
-                    buttonIcon: "music_note"
-                    text: Translation.tr("Up Next notifications")
-                    checked: Config.options.sidebar?.ytmusic?.upNextNotifications ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.upNextNotifications", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Show a desktop notification with the upcoming track when playback auto-advances")
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "sports_esports"
-                    text: Translation.tr("Mute while fullscreen or GameMode")
-                    enabled: Config.options.sidebar?.ytmusic?.upNextNotifications ?? true
-                    checked: Config.options.sidebar?.ytmusic?.suppressUpNextInFullscreen ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.suppressUpNextInFullscreen", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Suppress Up Next notifications when a fullscreen app is active or GameMode is enabled")
-                    }
-                }
-
-                ConfigSelectionArray {
-                    options: [
-                        { displayName: Translation.tr("Best"), icon: "high_quality", value: "best" },
-                        { displayName: Translation.tr("Medium (≤128 kbps)"), icon: "graphic_eq", value: "medium" },
-                        { displayName: Translation.tr("Low"), icon: "data_saver_on", value: "low" }
-                    ]
-                    currentValue: Config.options.sidebar?.ytmusic?.audioQuality ?? "best"
-                    onSelected: (newValue) => Config.setNestedValue("sidebar.ytmusic.audioQuality", newValue)
-                    StyledToolTip {
-                        text: Translation.tr("Audio quality for playback — lower quality uses less bandwidth")
+                    RippleButton {
+                        implicitWidth: 44
+                        implicitHeight: 44
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: Appearance.colors.colLayer2
+                        onClicked: musicFolderDialog.open()
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "folder_open"
+                            iconSize: 21
+                            color: Appearance.colors.colOnLayer2
+                        }
+                        StyledToolTip { text: Translation.tr("Folder") }
                     }
                 }
 
                 SettingsSwitch {
                     buttonIcon: "graphic_eq"
                     text: Translation.tr("Normalize loudness")
-                    checked: Config.options.sidebar?.ytmusic?.normalizeVolume ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.normalizeVolume", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Even out volume across tracks (EBU R128, like YouTube Music). Disable for the unprocessed stream.")
-                    }
+                    checked: Config.options.sidebar?.music?.normalizeVolume ?? false
+                    onCheckedChanged: Config.setNestedValue("sidebar.music.normalizeVolume", checked)
                 }
             }
 
@@ -991,6 +968,17 @@ ContentPage {
                 }
             }
         }
+    }
+
+    FolderDialog {
+        id: musicFolderDialog
+        title: Translation.tr("Music")
+        onAccepted: LocalMusic.setLibraryFolder(String(selectedFolder))
+    }
+
+    SettingsNativeDialogGuard {
+        dialog: musicFolderDialog
+        dialogKey: "sidebar-local-music-folder"
     }
 
 }

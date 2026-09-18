@@ -8,7 +8,6 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.pill
 import qs.modules.sidebarLeft.animeSchedule
-import qs.modules.sidebarLeft.innertune
 import qs.modules.sidebarLeft.news
 // DISABLED: webapps — requires quickshell-webengine rebuild, re-enable when ready
 // import qs.modules.sidebarLeft.plugins
@@ -44,7 +43,7 @@ Item {
     property bool widgetsEnabled: Config.options?.sidebar?.widgets?.enable ?? true
     property bool toolsEnabled: Config.options?.sidebar?.tools?.enable ?? false
     property bool softwareEnabled: Config.options?.sidebar?.software?.enable ?? false
-    property bool ytMusicEnabled: Config.options?.sidebar?.ytmusic?.enable ?? false
+    property bool musicEnabled: Config.options?.sidebar?.music?.enable ?? false
     // DISABLED: webapps — requires quickshell-webengine
     property bool pluginsEnabled: false // Config.options?.sidebar?.plugins?.enable ?? false
 
@@ -95,13 +94,14 @@ Item {
 
     readonly property var _tabDefaultOrder: [
         "widgets", "ai", "translator", "anime", "animeSchedule",
-        "wallhaven", "news", "ytmusic", "tools", "software"
+        "wallhaven", "news", "music", "tools", "software"
     ]
     readonly property var resolvedTabOrder: {
         const result = []
         const saved = Config.options?.sidebar?.left?.tabOrder ?? root._tabDefaultOrder
         for (let i = 0; i < saved.length; i++) {
-            const id = saved[i]
+            const savedId = saved[i]
+            const id = savedId === "ytmusic" ? "music" : savedId
             if (root._tabDefaultOrder.includes(id) && !result.includes(id)) result.push(id)
         }
         for (let i = 0; i < root._tabDefaultOrder.length; i++) {
@@ -123,7 +123,7 @@ Item {
         if (root.animeScheduleEnabled) result.push({ id: "animeSchedule", icon: "calendar_month", name: Translation.tr("Schedule") })
         if (root.wallhavenEnabled) result.push({ id: "wallhaven", icon: "collections", name: Translation.tr("Wallpapers") })
         if (root.newsEnabled) result.push({ id: "news", icon: "newspaper", name: Translation.tr("News") })
-        if (root.ytMusicEnabled) result.push({ id: "ytmusic", icon: "library_music", name: Translation.tr("YT Music") })
+        if (root.musicEnabled) result.push({ id: "music", icon: "library_music", name: Translation.tr("Music") })
         if (root.toolsEnabled) result.push({ id: "tools", icon: "build", name: Translation.tr("Tools") })
         if (root.softwareEnabled) result.push({ id: "software", icon: "store", name: Translation.tr("Software") })
         // DISABLED: webapps — requires quickshell-webengine rebuild
@@ -178,7 +178,8 @@ Item {
         const iconByView = {
             "widgets": "widgets", "ai": "neurology", "translator": "translate",
             "anime": "bookmark_heart", "anime-schedule": "calendar_month",
-            "wallhaven": "collections", "news": "newspaper", "ytmusic": "library_music",
+            "wallhaven": "collections", "news": "newspaper", "music": "library_music",
+            "ytmusic": "library_music", // legacy dev-navigation alias
             "tools": "build", "software": "store"
         }
         const icon = iconByView[view] ?? ""
@@ -409,7 +410,7 @@ Item {
                                     case "calendar_month": return animeScheduleComp
                                     case "collections": return wallhavenComp
                                     case "newspaper": return newsComp
-                                    case "library_music": return ytMusicComp
+                                    case "library_music": return musicComp
                                     case "build": return toolsComp
                                     case "store": return softwareComp
                                     // DISABLED: webapps
@@ -447,7 +448,7 @@ Item {
             }
         }
         Component { id: newsComp; NewsView {} }
-        Component { id: ytMusicComp; InnerTuneView {} }
+        Component { id: musicComp; LocalMusicView {} }
         Component { id: toolsComp; ToolsView {} }
         Component { id: softwareComp; SoftwareView {} }
         // DISABLED: webapps — requires quickshell-webengine rebuild

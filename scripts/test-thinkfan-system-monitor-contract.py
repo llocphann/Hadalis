@@ -17,6 +17,7 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
+    styled_popup = read("modules/bar/StyledPopup.qml")
     bar_settings = read("modules/settings/BarConfigHugOnly.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
     thinkfan_migration = read("sdata/migrations/041-thinkfan-helper-bridge.sh")
@@ -31,8 +32,9 @@ def main() -> None:
         'Translation.tr("ThinkFan")',
         'Translation.tr("Fan speed")',
         'Translation.tr("Fan level")',
-        'Translation.tr("Service")',
         "thinkFanCanApply",
+        "connectAdjacentScreenEdge: true",
+        "font.pixelSize: Appearance.font.pixelSize.normal",
         "thinkFanApplyErrorMessage",
     ):
         check(token in resources_popup,
@@ -46,6 +48,24 @@ def main() -> None:
     ):
         check(forbidden not in resources_popup,
               f"System Monitor ThinkFan UI must not revive a standalone popup route: {forbidden}")
+
+    for forbidden in (
+        'Translation.tr("Free:")',
+        'Translation.tr("Service")',
+        "thinkFanStatusMessage",
+        "describeThinkFanStatus",
+    ):
+        check(forbidden not in resources_popup,
+              f"System Monitor popup must keep the compact metrics contract: {forbidden}")
+
+    for token in (
+        "property bool connectAdjacentScreenEdge: false",
+        "id: adjacentScreenEdgeGeometry",
+        "screenMargin: root._popupScreenMargin",
+        "ConnectedSurfaceConnector {",
+    ):
+        check(token in styled_popup,
+              f"StyledPopup must support the opt-in adjacent Screen Edge join: {token}")
 
     for token in (
         'title: Translation.tr("System Monitor & Thermals")',

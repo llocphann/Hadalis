@@ -246,14 +246,14 @@ StyledPopup {
                     spacing: 4
 
                     StyledText {
-                        text: Translation.tr("Speed:")
+                        text: Translation.tr("RPM:")
                         font.pixelSize: Appearance.font.pixelSize.small
                         color: Appearance.colors.colOnSurfaceVariant
                     }
 
                     StyledText {
                         text: ThinkFanService.fanRpm >= 0
-                            ? Translation.tr("%1 RPM").arg(ThinkFanService.fanRpm)
+                            ? String(ThinkFanService.fanRpm)
                             : "—"
                         font.weight: Font.Medium
                         font.pixelSize: Appearance.font.pixelSize.small

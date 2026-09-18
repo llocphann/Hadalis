@@ -30,6 +30,8 @@ AbstractQuickPanel {
         spacing: root.compactMode ? root.compactSpacing : 12
         
         NetworkToggle {
+            // Compact Right Sidebar already exposes Network in ControlsCard.
+            visible: !root.compactMode
             altAction: () => root.openWifiDialog()
         }
 
@@ -38,10 +40,14 @@ AbstractQuickPanel {
         }
 
         BluetoothToggle {
+            // Compact Right Sidebar already exposes Bluetooth in ControlsCard.
+            visible: !root.compactMode
             altAction: () => root.openBluetoothDialog()
         }
         
         NightLight {
+            // Compact Right Sidebar already exposes Night Light in ControlsCard.
+            visible: !root.compactMode
             altAction: () => root.openNightLightDialog()
         }
         
@@ -51,7 +57,10 @@ AbstractQuickPanel {
         
         IdleInhibitor {}
         
-        GameMode {}
+        GameMode {
+            // Compact Right Sidebar already exposes Game Mode in ControlsCard.
+            visible: !root.compactMode
+        }
         
         CloudflareWarp {}
     }

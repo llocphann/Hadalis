@@ -11,6 +11,7 @@ ColumnLayout {
 
     property bool compact: false
     readonly property real compactBreakpoint: 1180
+    readonly property real panelHeight: 270
     property date now: new Date()
 
     spacing: 0
@@ -50,7 +51,7 @@ ColumnLayout {
             radius: Appearance.rounding.small
             color: Appearance.colors.colSurfaceContainerHigh
             implicitWidth: 250
-            implicitHeight: calendarColumn.implicitHeight + 28
+            implicitHeight: root.panelHeight
             Layout.fillWidth: root.compact
             Layout.preferredWidth: root.compact ? 360 : implicitWidth
             Layout.alignment: Qt.AlignTop
@@ -61,9 +62,9 @@ ColumnLayout {
                     left: parent.left
                     right: parent.right
                     top: parent.top
-                    margins: 14
+                    margins: 10
                 }
-                spacing: 8
+                spacing: 6
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
@@ -126,7 +127,7 @@ ColumnLayout {
             radius: Appearance.rounding.large
             color: "transparent"
             implicitWidth: 430
-            implicitHeight: 270
+            implicitHeight: root.panelHeight
             Layout.fillWidth: root.compact
             Layout.preferredWidth: root.compact ? 360 : implicitWidth
             Layout.alignment: Qt.AlignTop
@@ -178,26 +179,16 @@ ColumnLayout {
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -24
+                    anchors.verticalCenterOffset: 0
                     spacing: 1
                     z: 2
-
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: DateTime.timeDisplay
-                        font {
-                            weight: Font.Black
-                            pixelSize: Math.round(Appearance.font.pixelSize.large * 1.55)
-                        }
-                        color: Appearance.colors.colOnSurface
-                    }
 
                     StyledText {
                         Layout.alignment: Qt.AlignHCenter
                         text: Qt.formatDate(root.now, "dddd, MMM d")
                         font {
                             weight: Font.DemiBold
-                            pixelSize: Appearance.font.pixelSize.small
+                            pixelSize: Appearance.font.pixelSize.normal
                         }
                         color: Appearance.colors.colOnSurfaceVariant
                     }
@@ -326,7 +317,7 @@ ColumnLayout {
             radius: Appearance.rounding.small
             color: Appearance.colors.colSurfaceContainerHigh
             implicitWidth: 360
-            implicitHeight: detailColumn.implicitHeight + 28
+            implicitHeight: root.panelHeight
             Layout.fillWidth: root.compact
             Layout.preferredWidth: root.compact ? 360 : implicitWidth
             Layout.alignment: Qt.AlignTop
@@ -379,8 +370,8 @@ ColumnLayout {
 
                 GridLayout {
                     columns: 2
-                    rowSpacing: 5
-                    columnSpacing: 5
+                    rowSpacing: 4
+                    columnSpacing: 4
                     uniformCellWidths: true
                     Layout.fillWidth: true
 

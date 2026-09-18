@@ -20,6 +20,9 @@ SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
 LEFT_SIDEBAR_BUTTON = ROOT / "modules" / "bar" / "LeftSidebarButton.qml"
 BAR_CONTENT = ROOT / "modules" / "bar" / "BarContent.qml"
+BAR_GROUP = ROOT / "modules" / "bar" / "BarGroup.qml"
+CIRCLE_UTIL_BUTTON = ROOT / "modules" / "bar" / "CircleUtilButton.qml"
+SCROLL_HINT = ROOT / "modules" / "bar" / "ScrollHint.qml"
 WORKSPACES = ROOT / "modules" / "bar" / "Workspaces.qml"
 SYS_TRAY = ROOT / "modules" / "bar" / "SysTray.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
@@ -72,6 +75,9 @@ def main() -> None:
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
     left_sidebar_button = LEFT_SIDEBAR_BUTTON.read_text(encoding="utf-8")
     bar_content = BAR_CONTENT.read_text(encoding="utf-8")
+    bar_group = BAR_GROUP.read_text(encoding="utf-8")
+    circle_util_button = CIRCLE_UTIL_BUTTON.read_text(encoding="utf-8")
+    scroll_hint = SCROLL_HINT.read_text(encoding="utf-8")
     right_sidebar_start = bar_content.index("id: rightSidebarButtonComponent")
     right_sidebar_end = bar_content.find("\n    Component {", right_sidebar_start + 1)
     right_sidebar_block = bar_content[right_sidebar_start:
@@ -682,6 +688,48 @@ def main() -> None:
         "Appearance.animation.elementMoveFast.bezierCurve",
     ):
         require(workspaces, token, "Workspaces.qml")
+
+    for token in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.regalia.",
+    ):
+        forbid(bar_group, token, "BarGroup.qml")
+    for token in (
+        "property real padding: 8",
+        "borderless: Config.options?.bar?.borderless ?? false",
+        "radiusOverride: -1",
+        "elevation: 1",
+    ):
+        require(bar_group, token, "BarGroup.qml")
+
+    for token in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.regalia.",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "ZzzPlate {",
+    ):
+        forbid(circle_util_button, token, "CircleUtilButton.qml")
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        'colBackground: "transparent"',
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "colRipple: Appearance.colors.colLayer1Active",
+    ):
+        require(circle_util_button, token, "CircleUtilButton.qml")
+
+    for token in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.regalia.",
+    ):
+        forbid(scroll_hint, token, "ScrollHint.qml")
+    require(scroll_hint, "color: Appearance.colors.colSubtext", "ScrollHint.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

@@ -37,13 +37,9 @@ Scope {
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: root.settingsOpen
-                ? Appearance.animation.elementMoveEnter.duration
-                : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.settingsOpen
-                ? Appearance.animationCurves.emphasizedDecel
-                : Appearance.animationCurves.emphasizedAccel
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 
@@ -66,7 +62,7 @@ Scope {
     // Keep the native host alive until the bottom-edge exit slide completes.
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMoveExit.duration + 40
+        interval: Appearance.animation.elementMove.duration + 40
         repeat: false
         onTriggered: _closeAnimRunning = false
     }

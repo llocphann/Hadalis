@@ -125,7 +125,7 @@ ColumnLayout {
             radius: Appearance.rounding.large
             color: "transparent"
             implicitWidth: 430
-            implicitHeight: 350
+            implicitHeight: 300
             Layout.fillWidth: root.compact
             Layout.preferredWidth: root.compact ? 360 : implicitWidth
             Layout.alignment: Qt.AlignTop
@@ -134,12 +134,14 @@ ColumnLayout {
                 id: orbitalTimeline
                 anchors.fill: parent
                 anchors.margins: 8
+                anchors.topMargin: -4
+                anchors.bottomMargin: 20
 
                 // Serpantinum-inspired frontend: the clock is the visual center
                 // and Hadalis hourly data is distributed around an ellipse.
                 readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
                 readonly property real radiusX: Math.max(118, (width - 92) / 2)
-                readonly property real radiusY: Math.max(88, (height - 126) / 2)
+                readonly property real radiusY: Math.max(78, (height - 112) / 2)
 
                 Canvas {
                     id: orbitGuide
@@ -175,7 +177,7 @@ ColumnLayout {
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -10
+                    anchors.verticalCenterOffset: -18
                     spacing: 1
                     z: 2
 
@@ -184,7 +186,7 @@ ColumnLayout {
                         text: DateTime.timeDisplay
                         font {
                             weight: Font.Black
-                            pixelSize: Math.round(Appearance.font.pixelSize.large * 2.6)
+                            pixelSize: Math.round(Appearance.font.pixelSize.large * 2.0)
                         }
                         color: Appearance.colors.colOnSurface
                     }

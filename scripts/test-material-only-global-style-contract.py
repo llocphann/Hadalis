@@ -47,6 +47,7 @@ SETTINGS_NOTE = ROOT / "modules" / "common" / "widgets" / "SettingsNote.qml"
 SETTINGS_CARD_SECTION = ROOT / "modules" / "common" / "widgets" / "SettingsCardSection.qml"
 SETTINGS_GROUP = ROOT / "modules" / "common" / "widgets" / "SettingsGroup.qml"
 STYLED_TEXT_INPUT = ROOT / "modules" / "common" / "widgets" / "StyledTextInput.qml"
+STYLED_SLIDER = ROOT / "modules" / "common" / "widgets" / "StyledSlider.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -113,6 +114,7 @@ def main() -> None:
     settings_card_section = SETTINGS_CARD_SECTION.read_text(encoding="utf-8")
     settings_group = SETTINGS_GROUP.read_text(encoding="utf-8")
     styled_text_input = STYLED_TEXT_INPUT.read_text(encoding="utf-8")
+    styled_slider = STYLED_SLIDER.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -1033,6 +1035,34 @@ def main() -> None:
         "selectionColor: Appearance.colors.colSecondaryContainer",
     ):
         require(styled_text_input, token, "StyledTextInput.qml")
+
+    for token in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.regalia.",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+    ):
+        forbid(styled_slider, token, "StyledSlider.qml")
+    for token in (
+        "property real handleDefaultWidth: 3",
+        "property real handlePressedWidth: 1.5",
+        "property color highlightColor: Appearance.colors.colPrimary",
+        "property color trackColor: Appearance.colors.colSecondaryContainer",
+        "property color handleColor: Appearance.colors.colPrimary",
+        "property color dotColor: Appearance.colors.colOnSecondaryContainer",
+        "property color dotColorHighlighted: Appearance.colors.colOnPrimary",
+        "property real trackWidth: configuration",
+        "property bool wavy: configuration === StyledSlider.Configuration.Wavy",
+        "readonly property bool usesWaveTrack: wavy || configuration === StyledSlider.Configuration.Wavy",
+        "radius: Math.min(width, height) / 2",
+    ):
+        require(styled_slider, token, "StyledSlider.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

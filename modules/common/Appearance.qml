@@ -1628,8 +1628,9 @@ Singleton {
          property real spacingMedium: Math.round(12 * root.fontSizeScale)
          property real spacingLarge: Math.round(16 * root.fontSizeScale)
         property real baseBarHeight: Math.round(Math.max(24, Math.min(80, (Config.options?.bar?.height ?? 40))) * root.fontSizeScale)
-        property real barHeight: (((Config.options?.bar?.cornerStyle ?? 0) === 1) || ((Config.options?.bar?.cornerStyle ?? 0) === 3)) ? 
-            (baseBarHeight + root.sizes.hyprlandGapsOut * 2) : baseBarHeight
+        // Hug is the sole supported Classic Bar geometry; persisted legacy
+        // cornerStyle values must never add detached float gaps to runtime size.
+        property real barHeight: baseBarHeight
         property real barCenterSideModuleWidth: (Config.options?.bar?.verbose ?? true) ? Math.round(360 * root.fontSizeScale) : Math.round(140 * root.fontSizeScale)
         property real barCenterSideModuleWidthShortened: Math.round(280 * root.fontSizeScale)
         property real barCenterSideModuleWidthHellaShortened: Math.round(190 * root.fontSizeScale)
@@ -1648,8 +1649,7 @@ Singleton {
         property real sidebarWidth: Math.round(460 * root.fontSizeScale)
         property real sidebarWidthExtended: Math.round(750 * root.fontSizeScale)
         property real baseVerticalBarWidth: Math.round(46 * root.fontSizeScale)
-        property real verticalBarWidth: (((Config.options?.bar?.cornerStyle ?? 0) === 1) || ((Config.options?.bar?.cornerStyle ?? 0) === 3)) ? 
-            (baseVerticalBarWidth + root.sizes.hyprlandGapsOut * 2) : baseVerticalBarWidth
+        property real verticalBarWidth: baseVerticalBarWidth
         // Legacy selector fixed-card sizing (kept for compatibility; skwd-wall selector computes layout internally)
         property real wallpaperSelectorWidth: 1200
         property real wallpaperSelectorHeight: 690

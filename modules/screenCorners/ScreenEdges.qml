@@ -240,9 +240,9 @@ Scope {
         }
         mask: Region { item: emptyCornerInput }
 
-        // Paint one canonical top-left inverse corner and mirror it for the
-        // other three positions. This guarantees pixel-identical geometry at
-        // the bottom corners instead of relying on four independent arc paths.
+        // Paint every orientation explicitly with the same cubic quarter-arc
+        // constants. Bottom corners therefore do not depend on mirrored Canvas
+        // transform state and keep the same silhouette as the top pair.
         Canvas {
             id: innerCornerCanvas
             width: root.innerRadius

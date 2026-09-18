@@ -10,7 +10,7 @@ import qs.modules.common.functions
 Flow {
     id: root
     Layout.fillWidth: true
-    spacing: Appearance.regaliaEverywhere ? Appearance.regalia.controlGap : 2
+    spacing: 2
     // Integración con buscador global de Settings
     property bool enableSettingsSearch: true
     property int settingsSearchOptionId: -1

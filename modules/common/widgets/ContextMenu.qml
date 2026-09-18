@@ -179,11 +179,9 @@ Loader {
         }
 
         readonly property real settledMargin: root.ambientShadowWidth + root.visualMargin
-        // Cookie fades in at its final geometry. Sliding an overshooting spring
-        // inside this fixed PopupWindow clipped the face and temporarily split
-        // visual rows from their pointer regions.
-        property real sourceEdgeMargin: Appearance.cookieEverywhere
-            ? settledMargin : -implicitHeight
+        // Material keeps the established slide-in geometry; contextual motion
+        // is handled independently by the shared popupReveal opacity/scale profile.
+        property real sourceEdgeMargin: -implicitHeight
         readonly property bool isHorizontalPopup: root.popupSide !== 0
         readonly property bool isLeftSide: root.popupSide === Edges.Left
 
@@ -234,29 +232,12 @@ Loader {
                 leftMargin: popupWindow.isHorizontalPopup && !popupWindow.isLeftSide ? popupWindow.sourceEdgeMargin : (root.ambientShadowWidth + root.visualMargin)
                 rightMargin: popupWindow.isHorizontalPopup && popupWindow.isLeftSide ? popupWindow.sourceEdgeMargin : (root.ambientShadowWidth + root.visualMargin)
             }
-            fallbackColor: Appearance.regaliaEverywhere ? "transparent" : Appearance.colors.colSurfaceContainer
+            fallbackColor: Appearance.colors.colSurfaceContainer
             inirColor: Appearance.inir.colLayer2
             auroraTransparency: Appearance.aurora.popupTransparentize
-            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                : Appearance.rounding.normal
-            border.width: Appearance.regaliaEverywhere ? 0 : 1
-            border.color: Appearance.regaliaEverywhere ? "transparent"
-                        : Appearance.angelEverywhere ? Appearance.angel.colBorder
-                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                        : Appearance.auroraEverywhere
-                            ? Appearance.aurora.colTooltipBorder
-                            : Appearance.colors.colSurfaceContainerHighest
-
-            RegaliaPlate {
-                anchors.fill: parent
-                z: -1
-                visible: Appearance.regaliaEverywhere
-                fillColor: Appearance.regalia.bg2
-                radius: realContent.radius
-                inset: Appearance.regalia.surfaceInset
-                elevated: true
-            }
+            radius: Appearance.rounding.normal
+            border.width: 1
+            border.color: Appearance.colors.colSurfaceContainerHighest
             opacity: Appearance.motion.popupReveal.enableFade ? (shown ? 1 : 0) : 1
             scale: shown ? 1
                 : (root.scaleContent
@@ -315,9 +296,7 @@ Loader {
                                 Layout.bottomMargin: 2
                                 Layout.fillWidth: true
                                 implicitHeight: 1
-                                color: Appearance.angelEverywhere ? Appearance.angel.colBorderSubtle
-                                    : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                                    : Appearance.colors.colOutlineVariant
+                                color: Appearance.colors.colOutlineVariant
                             }
                         }
                         DelegateChoice {
@@ -331,28 +310,14 @@ Loader {
                                 opacity: enabled ? 1 : 0.45
                                 buttonHovered: enabled && menuHover.hovered
 
-                                implicitWidth: Math.max(140, menuRow.implicitWidth
-                                    + (Appearance.regaliaEverywhere ? Appearance.regalia.controlPaddingHorizontal * 2 : 20))
-                                implicitHeight: Appearance.regaliaEverywhere ? Appearance.regalia.compactControlHeight : 32
-                                buttonRadius: Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius
-                                    : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                                    : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-                                    : Appearance.rounding.small
+                                implicitWidth: Math.max(140, menuRow.implicitWidth + 20)
+                                implicitHeight: 32
+                                buttonRadius: Appearance.rounding.small
                                 colBackground: "transparent"
-                                colBackgroundHover: Appearance.regaliaEverywhere
-                                    ? Appearance.regalia.controlPlateHover
-                                    : Appearance.angelEverywhere
-                                        ? Appearance.angel.colGlassPopupHover
-                                        : Appearance.inirEverywhere
-                                            ? Appearance.inir.colLayer2Hover
-                                            : ColorUtils.transparentize(Appearance.colors.colPrimary, 0.85)
-                                colRipple: Appearance.regaliaEverywhere
-                                    ? Appearance.regalia.controlPlateActive
-                                    : Appearance.angelEverywhere
-                                        ? Appearance.angel.colGlassPopupActive
-                                        : Appearance.inirEverywhere
-                                            ? Appearance.inir.colLayer2Active
-                                            : ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)
+                                colBackgroundHover: ColorUtils.transparentize(
+                                    Appearance.colors.colPrimary, 0.85)
+                                colRipple: ColorUtils.transparentize(
+                                    Appearance.colors.colPrimary, 0.7)
 
                                 onClicked: {
                                     if (!enabled) return;
@@ -371,10 +336,9 @@ Loader {
                                 contentItem: RowLayout {
                                     id: menuRow
                                     anchors.fill: parent
-                                    anchors.leftMargin: Appearance.regaliaEverywhere
-                                        ? Appearance.regalia.controlPaddingHorizontal : 8
+                                    anchors.leftMargin: 8
                                     anchors.rightMargin: anchors.leftMargin
-                                    spacing: Appearance.regaliaEverywhere ? Appearance.regalia.controlGap : 8
+                                    spacing: 8
 
                                     Loader {
                                         active: root.hasIcons
@@ -388,8 +352,7 @@ Loader {
                                             MaterialSymbol {
                                                 text: menuBtn.modelData.iconName ?? ""
                                                 iconSize: Appearance.font.pixelSize.normal
-                                                color: Appearance.angelEverywhere ? Appearance.angel.colText
-                                                    : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnSurface
+                                                color: Appearance.colors.colOnSurface
                                             }
                                         }
 
@@ -404,8 +367,7 @@ Loader {
 
                                     StyledText {
                                         text: menuBtn.modelData.text ?? ""
-                                        color: Appearance.angelEverywhere ? Appearance.angel.colText
-                                            : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnSurface
+                                        color: Appearance.colors.colOnSurface
                                         font.pixelSize: Appearance.font.pixelSize.small
                                         Layout.fillWidth: true
                                         Layout.alignment: Qt.AlignVCenter

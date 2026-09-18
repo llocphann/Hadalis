@@ -8,6 +8,7 @@ APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
+CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -31,6 +32,7 @@ def main() -> None:
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
+    context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -277,6 +279,30 @@ def main() -> None:
         "Appearance.motion.popupReveal.enableScale",
     ):
         require(sys_tray_menu, token, "SysTrayMenu.qml")
+
+    # ContextMenu is shared by Bar and other active shell controls. Keep its
+    # focus/input/close behavior intact while locking visual chrome to Material.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+        "RegaliaPlate {",
+    ):
+        forbid(context_menu, token, "ContextMenu.qml")
+    for token in (
+        "property real sourceEdgeMargin: -implicitHeight",
+        "fallbackColor: Appearance.colors.colSurfaceContainer",
+        "radius: Appearance.rounding.normal",
+        "border.width: 1",
+        "border.color: Appearance.colors.colSurfaceContainerHighest",
+        "buttonRadius: Appearance.rounding.small",
+        "color: Appearance.colors.colOnSurface",
+        "Appearance.motion.popupReveal.enterBezierCurve",
+    ):
+        require(context_menu, token, "ContextMenu.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

@@ -71,21 +71,24 @@ Item {
         required property var track
         required property int trackIndex
         property bool active: String(track?.path ?? "") === LocalMusic.currentPath
+        property bool removable: false
         signal activated()
+        signal removeRequested()
 
-        implicitHeight: 62
+        implicitHeight: 50
         radius: Appearance.rounding.small
         color: active ? Appearance.colors.colSecondaryContainer
             : (rowMouse.containsMouse ? Appearance.colors.colLayer2Hover : "transparent")
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
-            spacing: 10
+            anchors.leftMargin: 6
+            anchors.rightMargin: 6
+            spacing: 8
+            z: 1
             Rectangle {
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer2
                 clip: true
@@ -100,7 +103,7 @@ Item {
                     anchors.centerIn: parent
                     visible: String(trackRow.track?.art ?? "").length === 0
                     text: trackRow.active && LocalMusic.playing ? "graphic_eq" : "music_note"
-                    iconSize: 23
+                    iconSize: 20
                     color: trackRow.active ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
                 }
             }
@@ -134,9 +137,18 @@ Item {
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 font.family: Appearance.font.family.numbers
             }
+            ToolIconButton {
+                visible: trackRow.removable
+                Layout.preferredWidth: visible ? 30 : 0
+                Layout.preferredHeight: 30
+                symbol: "close"
+                tip: Translation.tr("Remove")
+                onClicked: trackRow.removeRequested()
+            }
         }
         MouseArea {
             id: rowMouse
+            z: 0
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
@@ -362,8 +374,49 @@ Item {
                 }
 
                 Item {
+                    RowLayout {
+                        id: queueHeader
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        height: visible ? 34 : 0
+                        visible: LocalMusic.activeQueue.length > 0
+                        spacing: 6
+
+                        StyledText {
+                            text: Translation.tr("%1 songs").arg(LocalMusic.activeQueue.length)
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                        }
+                        Item { Layout.fillWidth: true }
+                        RippleButton {
+                            implicitHeight: 30
+                            implicitWidth: clearQueueContent.implicitWidth + 22
+                            buttonRadius: Appearance.rounding.full
+                            colBackground: Appearance.colors.colLayer2
+                            onClicked: LocalMusic.clearQueue()
+                            contentItem: RowLayout {
+                                id: clearQueueContent
+                                spacing: 5
+                                MaterialSymbol {
+                                    text: "delete_sweep"
+                                    iconSize: 17
+                                    color: Appearance.colors.colOnLayer2
+                                }
+                                StyledText {
+                                    text: Translation.tr("Clear")
+                                    color: Appearance.colors.colOnLayer2
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                }
+                            }
+                        }
+                    }
+
                     ListView {
-                        anchors.fill: parent
+                        anchors.top: queueHeader.visible ? queueHeader.bottom : parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
                         clip: true
                         spacing: 2
                         boundsBehavior: Flickable.StopAtBounds
@@ -375,7 +428,9 @@ Item {
                             width: ListView.view.width
                             track: modelData
                             trackIndex: index
+                            removable: true
                             onActivated: LocalMusic.jumpTo(index)
+                            onRemoveRequested: LocalMusic.removeQueueTrack(index)
                         }
                     }
                     StyledText {

@@ -26,6 +26,14 @@ grep -Fq 'Layout.fillHeight: false' "$view" || fail 'Music search must not consu
 grep -Fq 'ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }' "$view" || fail 'Music lists must expose scrolling'
 grep -Fq 'Translation.tr("Lyrics")' "$view" || fail 'Music must expose the local Lyrics tab'
 grep -Fq 'local_music_lyrics.py' "$service" || fail 'LocalMusic must load local sidecar lyrics'
+grep -Fq 'function removeQueueTrack(index: int): void' "$service" || fail 'Music Queue must expose per-track MPD removal'
+grep -Fq 'function clearQueue(): void' "$service" || fail 'Music Queue must expose MPD clear'
+grep -Fq '"deleteid",' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must allow stable queue-id deletion'
+grep -Fq '"clear",' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must allow clearing the active queue'
+grep -Fq 'removable: true' "$view" || fail 'Queue rows must expose their remove action'
+grep -Fq 'onRemoveRequested: LocalMusic.removeQueueTrack(index)' "$view" || fail 'Queue remove UI must target MPD queue state'
+grep -Fq 'onClicked: LocalMusic.clearQueue()' "$view" || fail 'Queue must expose a Clear action'
+grep -Fq 'implicitHeight: 50' "$view" || fail 'Song/queue rows must retain compact desktop-player density'
 if grep -Eq 'mpvPath|local_music_ipc|local_music_scan|--input-ipc-server' "$service"; then
     fail 'LocalMusic must not regress to a private mpv player'
 fi

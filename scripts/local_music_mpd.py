@@ -325,6 +325,9 @@ ALLOWED_COMMANDS = {
     "repeat",
     "single",
     "update",
+    "delete",
+    "deleteid",
+    "clear",
 }
 
 

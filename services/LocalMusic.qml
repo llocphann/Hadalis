@@ -384,6 +384,21 @@ Singleton {
             _sendMpd("play", [index])
     }
 
+    function removeQueueTrack(index: int): void {
+        if (index < 0 || index >= activeQueue.length) return
+        const track = activeQueue[index]
+        const queueId = Number(track?.queueId ?? -1)
+        if (Number.isFinite(queueId) && queueId >= 0)
+            _sendMpd("deleteid", [Math.trunc(queueId)])
+        else
+            _sendMpd("delete", [index])
+    }
+
+    function clearQueue(): void {
+        if (activeQueue.length === 0) return
+        _sendMpd("clear", [])
+    }
+
     function seek(seconds: real): void {
         const target = Math.max(0, Number(seconds) || 0)
         const player = mprisPlayer

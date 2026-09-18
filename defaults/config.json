@@ -1441,6 +1441,14 @@
             "enable": false,
             "lastActivePlugin": ""
         },
+        "music": {
+            "enable": false,
+            "libraryFolder": "",
+            "normalizeVolume": false,
+            "shuffleMode": false,
+            "repeatMode": 0,
+            "volume": 100
+        },
         "ytmusic": {
             "enable": false,
             "autoConnect": true,

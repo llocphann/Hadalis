@@ -2231,6 +2231,16 @@ Singleton {
                     property bool enable: false
                     property string lastActivePlugin: ""
                 }
+                // Canonical local-only music player. The old ytmusic object remains
+                // migration/compatibility data but no longer owns the Left Sidebar tab.
+                property JsonObject music: JsonObject {
+                    property bool enable: false
+                    property string libraryFolder: ""
+                    property bool normalizeVolume: false
+                    property bool shuffleMode: false
+                    property int repeatMode: 0
+                    property int volume: 100
+                }
                 property JsonObject ytmusic: JsonObject {
                     property bool enable: false
                     property bool autoConnect: true

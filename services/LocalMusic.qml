@@ -18,6 +18,8 @@ Singleton {
 
     property bool available: false
     property string mpvPath: ""
+    property bool _mpvMprisExists: false
+    readonly property bool mprisAvailable: _mpvMprisExists
     property bool scanning: false
     property bool playing: false
     property bool paused: true
@@ -185,6 +187,7 @@ Singleton {
             mpvPath,
             "--no-video", "--force-window=no", "--audio-display=no",
             "--input-ipc-server=" + ipcSocket,
+            ...(_mpvMprisExists ? ["--script=/usr/lib/mpv-mpris/mpris.so"] : []),
             "--volume=" + Math.round(volume * 100), "--volume-max=100",
             "--gapless-audio=weak", "--playlist-start=" + index,
             ...(normalizeVolume ? ["--af=loudnorm=I=-14:TP=-1.5:LRA=11"] : []),
@@ -249,12 +252,16 @@ Singleton {
     }
 
     Component.onCompleted: {
-        _availabilityProc.running = true
-        if (enabled) Qt.callLater(root.rescan)
+        if (enabled) {
+            _availabilityProc.running = true
+            _mprisCheckProc.running = true
+            Qt.callLater(root.rescan)
+        }
     }
     onEnabledChanged: {
         if (enabled) {
             _availabilityProc.running = true
+            _mprisCheckProc.running = true
             Qt.callLater(root.rescan)
         } else stop()
     }
@@ -271,6 +278,12 @@ Singleton {
             root.available = root.mpvPath.length > 0
             if (!root.available) root.error = "mpv_unavailable"
         }
+    }
+
+    Process {
+        id: _mprisCheckProc
+        command: ["/bin/sh", "-c", "test -f /usr/lib/mpv-mpris/mpris.so"]
+        onExited: (code, _status) => root._mpvMprisExists = code === 0
     }
 
     Process {

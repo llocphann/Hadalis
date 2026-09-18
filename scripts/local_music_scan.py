@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Scan a local music library and emit a compact JSON index for Hadalis."""
 from __future__ import annotations
-import json, os, sys
+import json, os, shutil, subprocess, sys
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +13,46 @@ try:
     from mutagen import File as MutagenFile  # type: ignore
 except Exception:
     MutagenFile = None
+
+FFPROBE = shutil.which("ffprobe")
+
+def _fraction_int(value: Any) -> int:
+    raw = str(value or "").strip()
+    if not raw:
+        return 0
+    try:
+        return int(raw.split("/", 1)[0])
+    except ValueError:
+        return 0
+
+def ffprobe_metadata(path: Path) -> dict[str, Any]:
+    if not FFPROBE:
+        return {}
+    try:
+        proc = subprocess.run(
+            [
+                FFPROBE, "-v", "error", "-print_format", "json",
+                "-show_entries",
+                "format=duration:format_tags=title,artist,album,album_artist,track,tracknumber,disc,discnumber",
+                str(path),
+            ],
+            capture_output=True, text=True, timeout=3, check=False,
+        )
+        if proc.returncode != 0 or not proc.stdout.strip():
+            return {}
+        payload = json.loads(proc.stdout)
+        fmt = payload.get("format") or {}
+        tags = {str(k).lower(): v for k, v in (fmt.get("tags") or {}).items()}
+        return {
+            "title": str(tags.get("title") or "").strip(),
+            "artist": str(tags.get("artist") or tags.get("album_artist") or "").strip(),
+            "album": str(tags.get("album") or "").strip(),
+            "track": _fraction_int(tags.get("track") or tags.get("tracknumber")),
+            "disc": _fraction_int(tags.get("disc") or tags.get("discnumber")),
+            "duration": float(fmt.get("duration") or 0.0),
+        }
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, json.JSONDecodeError):
+        return {}
 
 def first_tag(tags: Any, keys: tuple[str, ...]) -> str:
     if not tags: return ""
@@ -38,24 +78,29 @@ def metadata(path: Path, root: Path) -> dict[str, Any]:
     title, artist = path.stem.replace("_", " ").strip(), ""
     album = path.parent.name if path.parent != root else ""
     duration, track_no, disc_no = 0.0, 0, 0
+    metadata_loaded = False
     if MutagenFile is not None:
         try:
             audio = MutagenFile(path, easy=True)
             if audio is not None:
+                metadata_loaded = True
                 title = first_tag(audio.tags, ("title",)) or title
                 artist = first_tag(audio.tags, ("artist","albumartist"))
                 album = first_tag(audio.tags, ("album",)) or album
-                for attr, keys in (("track",("tracknumber",)),("disc",("discnumber",))):
-                    raw = first_tag(audio.tags, keys)
-                    if raw:
-                        try:
-                            if attr == "track": track_no = int(raw.split("/",1)[0])
-                            else: disc_no = int(raw.split("/",1)[0])
-                        except ValueError: pass
+                track_no = _fraction_int(first_tag(audio.tags, ("tracknumber",)))
+                disc_no = _fraction_int(first_tag(audio.tags, ("discnumber",)))
                 info = getattr(audio, "info", None)
                 if info is not None: duration = float(getattr(info, "length", 0.0) or 0.0)
         except Exception:
-            pass
+            metadata_loaded = False
+    if not metadata_loaded:
+        fallback = ffprobe_metadata(path)
+        title = str(fallback.get("title") or title)
+        artist = str(fallback.get("artist") or artist)
+        album = str(fallback.get("album") or album)
+        track_no = int(fallback.get("track") or track_no)
+        disc_no = int(fallback.get("disc") or disc_no)
+        duration = float(fallback.get("duration") or duration)
     try:
         rel = path.parent.relative_to(root)
         folder = "" if str(rel) == "." else str(rel)

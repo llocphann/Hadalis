@@ -47,6 +47,8 @@ for token in (
     'Directories.scriptsPath + "/local_music_scan.py"',
     'Directories.scriptsPath + "/local_music_ipc.py"',
     '"--input-ipc-server=" + ipcSocket',
+    '"--script=/usr/lib/mpv-mpris/mpris.so"',
+    'id: _mprisCheckProc',
     'function playCollection(collection, index = 0): void',
     'function toggleShuffle(): void',
     'function cycleRepeatMode(): void',
@@ -91,9 +93,25 @@ for forbidden in ('Translation.tr("YT Music")', "sidebar.ytmusic.autoConnect",
                   "sidebar.ytmusic.audioQuality", "sidebar.ytmusic.upNextNotifications"):
     forbid(settings, forbidden, f"Sidebar Settings still exposes YT-specific controls: {forbidden}")
 
-for token in ('PLAYLIST_EXTENSIONS = {".m3u",".m3u8"}', '"kind":"folder"', "AUDIO_EXTENSIONS"):
+for token in (
+    'PLAYLIST_EXTENSIONS = {".m3u",".m3u8"}',
+    '"kind":"folder"',
+    "AUDIO_EXTENSIONS",
+    'FFPROBE = shutil.which("ffprobe")',
+    "def ffprobe_metadata(path: Path)",
+):
     require(scanner, token, f"local library scanner contract missing: {token}")
 for token in ('socket.AF_UNIX', '"playlist-pos"', 'mode == "watch"', 'mode == "command"'):
     require(ipc, token, f"local mpv IPC helper contract missing: {token}")
+
+welcome = read("welcome.qml")
+navigation = read("services/DevNavigation.qml")
+launcher = read("scripts/inir")
+require(welcome, '"animeSchedule", "music"',
+        "welcome profile tab order must seed the canonical local Music id.")
+require(navigation, 'id: "sidebar-left/music"',
+        "dev navigation must expose the canonical local Music route.")
+require(launcher, '*LocalMusic*) select_prefix "sidebar-left/music"',
+        "focused maintainer audits must route LocalMusic changes to the Music surface.")
 
 print("Local Music source contract: OK")

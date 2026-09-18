@@ -150,16 +150,15 @@ Item {
 
     onPopupPresentedChanged: root.syncReveal()
 
+    // Keep the connected Dashboard on the same Caelestia-style spatial
+    // gesture as shared popups: one scalar, one default-spatial curve, and a
+    // natural reverse from the current value.
     Behavior on revealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: root.popupPresented
-                ? Appearance.animation.elementMoveEnter.duration
-                : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.popupPresented
-                ? Appearance.animation.elementMoveEnter.bezierCurve
-                : Appearance.animation.elementMoveExit.bezierCurve
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 

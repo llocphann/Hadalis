@@ -62,15 +62,13 @@ Scope {
             }
             readonly property bool bottomBarOwnsEdge:
                 root.bottomBarConfigured && root.bottomBarTargetsOutput
-            readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
-                Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-            readonly property real bottomAttachmentThickness: root.bottomBarOwnsEdge
-                ? Appearance.sizes.barHeight : root.screenEdgeThickness
-            // Exact visible attachment boundary. Dashboard itself underlaps via
-            // its clipped slide layer, so the Overlay surface never paints over
-            // the Bar/Screen Edge merely to hide an antialiasing seam.
-            readonly property real bottomAttachmentY: root.height
-                - root.bottomAttachmentThickness
+            // Attach to the visible top edge of a bottom Bar when it owns
+            // this output. Otherwise the Dashboard underlaps Screen Edge all the
+            // way to the physical display boundary, matching normal connected
+            // popups instead of stopping at the Screen Edge's inner boundary.
+            readonly property real bottomAttachmentY: root.bottomBarOwnsEdge
+                ? root.height - Appearance.sizes.barHeight
+                : root.height
             readonly property bool applicationDragActive: searchWidget.applicationDragActive
                 || (allAppsGridLoader.item?.applicationDragActive ?? false)
             screen: modelData

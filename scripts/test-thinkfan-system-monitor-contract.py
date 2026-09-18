@@ -116,10 +116,18 @@ def main() -> None:
         "Config.flushWrites()",
         'root.lastApplyError = "managed-control-active"',
         'root.lastApplyError = "helper-update-required"',
+        'Config.getNestedValue("powerProfiles.fanControl.enabled", false)',
+        'Config.getNestedValue(path, 0)',
+        "function _scheduleConfiguredFanLevelApply(): void",
+        "function onConfigChanged(): void",
+        "root._scheduleConfiguredFanLevelApply()",
+        'String(root.fanLevel ?? "").trim().toLowerCase() === normalized',
         "root._profileFollowArmed",
         'property string _queuedFanLevel: ""',
         "function _drainQueuedFanLevel(): void",
         'completedOperation === "profile:firmware"',
+        "onTriggered: {",
+        "root._profileFollowArmed = true",
     ):
         check(token in thinkfan_service,
               f"ThinkFan service must own guarded power-profile fan levels: {token}")

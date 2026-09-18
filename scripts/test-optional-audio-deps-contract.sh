@@ -116,6 +116,7 @@ audio_bundle="sdata/dist-arch/inir-audio/PKGBUILD"
 deps_bundle="sdata/dist-arch/inir-deps/PKGBUILD"
 meta_pkg="distro/arch/inir-meta/PKGBUILD"
 meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
+mpd_migration="sdata/migrations/042-mpd-mpris-bridge.sh"
 
 for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
   grep -Fq "'mpd-mpris: MPD/rmpc media controls through MPRIS'" "$pkg" \
@@ -136,6 +137,16 @@ grep -Fq "depends = mpd-mpris" "$meta_srcinfo" \
   || { printf 'FAIL: inir-meta .SRCINFO must include mpd-mpris\n' >&2; exit 1; }
 grep -Fq 'DEPS_AUDIO_MPD_MPRIS="arch:mpd-mpris' "$deps_map" \
   || { printf 'FAIL: dependency routing omits the Arch mpd-mpris bridge\n' >&2; exit 1; }
+
+for marker in \
+  'MIGRATION_ID="042-mpd-mpris-bridge"' \
+  'MIGRATION_REQUIRED=true' \
+  '_mpd_mpris_package_managed()' \
+  'pkg_sudo pacman -S --needed --noconfirm mpd-mpris' \
+  'command -v mpd-mpris >/dev/null 2>&1'; do
+  grep -Fq "$marker" "$mpd_migration" \
+    || { printf 'FAIL: MPD bridge migration contract missing: %s\n' "$marker" >&2; exit 1; }
+done
 
 for marker in \
   'function _mpdPlaybackStreamPresent(): bool' \

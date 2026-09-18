@@ -167,6 +167,11 @@ def main() -> None:
     ):
         check(retired not in sidebar_host,
               f"Sidebar must not stop at an inner-edge inset or restore a connector: {retired}")
+    check('property: "animTranslateX"' in sidebar_host
+          and 'property: "animTranslateY"' in sidebar_host
+          and "Appearance.animation?.elementMove?.duration ?? 500" in sidebar_host
+          and "Appearance.animation?.elementMove?.bezierCurve" in sidebar_host,
+          "Sidebar slide translation must use the default-spatial motion token")
 
     osk = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     for token in (
@@ -182,6 +187,9 @@ def main() -> None:
               f"OSK physical Screen Edge attachment contract missing: {token}")
     check("screenAttachInset" not in osk,
           "OSK must not stop at the inner Screen Edge boundary")
+    check("Appearance.animation.elementMove.duration" in osk
+          and "Appearance.animation.elementMove.bezierCurve" in osk,
+          "OSK attached-edge slide must use the default-spatial motion token")
     for token in (
         "property bool _oskResident:",
         "property real _oskRevealProgress:",
@@ -198,8 +206,8 @@ def main() -> None:
         "bodyRect.x + tangentAnimationOffset",
         "bodyRect.y + tangentAnimationOffset",
     ):
-        check(token in geometry,
-              f"Corner popups must add a tangent component to the shared reveal: {token}")
+        check(token not in geometry,
+              f"Connected popup slide must stay on the attachment axis like Caelestia: {token}")
 
     for token in (
         "id: innerCornerCanvas",
@@ -276,12 +284,19 @@ def main() -> None:
           and "settingsPanel.width * 0.88" in settings_focus
           and "settingsPanel.height * 0.92" in settings_focus,
           "Focus Settings overlay must use the enlarged bottom-connected footprint")
+    for settings_surface in (settings_overlay, settings_focus):
+        check("Appearance.animation.elementMove.duration" in settings_surface
+              and "Appearance.animation.elementMove.bezierCurve" in settings_surface,
+              "Connected Settings overlays must use the Caelestia-style default-spatial slide")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
     check("fallbackColor: Appearance.colors.colLayer0" in dashboard
           and "wallpaperBackdropEnabled: root.useWallpaperBackdrop" in dashboard
           and "readonly property bool useWallpaperBackdrop: false" in dashboard,
           "Dashboard connected body must stay on the same solid Material surface as connected popups")
+    check("Appearance.animation.elementMove.duration" in dashboard
+          and "Appearance.animation.elementMove.bezierCurve" in dashboard,
+          "Dashboard connected slide must use the default-spatial motion token")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,

@@ -208,6 +208,14 @@ Scope { // Scope
             // The body itself underlaps the full edge band; no separate stem exists.
             StyledRectangularShadow {
                 target: oskBackground
+                // Screen Edge shadow is structural connected chrome, not an
+                // optional effects-layer flourish. Keep it mapped for the whole
+                // resident enter/exit slide just like Bar, popup and Settings.
+                visible: root._oskResident
+                    && !GlobalStates.screenLocked
+                    && root.screenEdgeShadowEnabled
+                    && root.screenEdgeShadowSize > 0
+                    && root.screenEdgeShadowOpacity > 0
                 transform: Translate { y: oskRoot.revealOffsetY }
                 blur: root.screenEdgeShadowSize
                 spread: 0

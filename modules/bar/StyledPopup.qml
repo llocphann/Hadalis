@@ -332,10 +332,10 @@ LazyLoader {
             id: popupContentHost
             geometry: geometry
             padding: root._contentPadding
-            // Let the surface deform first, then bring content in as the body has
-            // enough area. This keeps the enter motion from reading as card fade.
-            opacity: Math.max(0, Math.min(1,
-                (geometry.revealProgress - 0.18) / 0.82))
+            // The body stays full-size and slides from the connected edge.
+            // A light opacity ramp prevents text from appearing before the first
+            // translated frame without reintroducing shrink/scale motion.
+            opacity: geometry.revealProgress
             children: [root.contentItem]
 
             HoverHandler {

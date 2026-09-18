@@ -193,36 +193,33 @@ QtObject {
         connectorSourceExtent + Math.max(0, outerRadius) * 2))
 
     readonly property real revealProgress: clamp(progress, 0, 1)
-    readonly property real animatedTangentExtent: snapSize(
-        connectorSourceExtent
-            + (bodyTangentExtent - connectorSourceExtent) * revealProgress)
-    readonly property real animatedCrossExtent: snapSize(
-        crossBodyExtent * revealProgress)
-    readonly property real animatedTangentCenter: snap(
-        anchorCenter + (bodyTangentCenter - anchorCenter) * revealProgress)
-    readonly property real animatedTangentStart: snap(
-        animatedTangentCenter - animatedTangentExtent / 2)
+    // Caelestia-style motion language: preserve the popup body's full size and
+    // translate it a short distance from/to the owning edge. Do not resize the
+    // body during reveal; shrinking made controls and corner radii visibly pulse.
+    readonly property real animatedTangentExtent: bodyTangentExtent
+    readonly property real animatedCrossExtent: crossBodyExtent
+    readonly property real animatedTangentCenter: bodyTangentCenter
+    readonly property real animatedTangentStart: horizontal ? bodyRect.x : bodyRect.y
     readonly property real animationOffset: snap(
-        (1 - revealProgress) * effectiveConnectorLength)
+        (1 - revealProgress)
+            * Math.min(Math.max(0, PerimeterTokens.revealSlideDistance),
+                crossBodyExtent))
 
-    // Morph from the real anchor: the tangent axis expands from the anchor/neck
-    // width while the inward axis grows from zero to the full body. This reads as
-    // one surface extruding from the bar instead of a floating card fading nearby.
     readonly property rect animatedBodyRect: edge === "top"
-        ? Qt.rect(animatedTangentStart,
+        ? Qt.rect(bodyRect.x,
             snap(bodyRect.y - animationOffset),
-            animatedTangentExtent, animatedCrossExtent)
+            bodyRect.width, bodyRect.height)
         : edge === "bottom"
-            ? Qt.rect(animatedTangentStart,
-                snap(bodyRect.y + bodyRect.height + animationOffset - animatedCrossExtent),
-                animatedTangentExtent, animatedCrossExtent)
+            ? Qt.rect(bodyRect.x,
+                snap(bodyRect.y + animationOffset),
+                bodyRect.width, bodyRect.height)
         : edge === "left"
             ? Qt.rect(snap(bodyRect.x - animationOffset),
-                animatedTangentStart,
-                animatedCrossExtent, animatedTangentExtent)
-        : Qt.rect(snap(bodyRect.x + bodyRect.width + animationOffset - animatedCrossExtent),
-            animatedTangentStart,
-            animatedCrossExtent, animatedTangentExtent)
+                bodyRect.y,
+                bodyRect.width, bodyRect.height)
+        : Qt.rect(snap(bodyRect.x + animationOffset),
+            bodyRect.y,
+            bodyRect.width, bodyRect.height)
 
     readonly property real connectorTangentExtent: connectorBodyExtent
 

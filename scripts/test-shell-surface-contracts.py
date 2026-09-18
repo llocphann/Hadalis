@@ -76,6 +76,16 @@ def main() -> None:
           "ConnectedSurfaceGeometry must source popup connector width from the shared perimeter token")
     check("Math.max(Math.max(0, connectorWidth), anchorTangentExtent)" not in geometry,
           "Connected popup neck width must not expand or shrink with the source control width")
+    check("PerimeterTokens.revealSlideDistance" in geometry,
+          "Connected popup reveal must use the shared directional slide distance")
+    check("crossBodyExtent * revealProgress" not in geometry,
+          "Connected popup reveal must not shrink the body cross-axis")
+    check("(bodyTangentExtent - connectorSourceExtent) * revealProgress" not in geometry,
+          "Connected popup reveal must not expand from a narrow neck")
+    check("bodyRect.width, bodyRect.height" in geometry,
+          "Connected popup slide must preserve the full body size")
+    check("opacity: geometry.revealProgress" in styled_popup,
+          "Connected popup content must follow slide progress without delayed shrink staging")
 
     content_host = read("modules/common/perimeter/ConnectedSurfaceContentHost.qml")
     for token in ("geometry.animatedBodyRect", "effectivePadding", "clip: true"):

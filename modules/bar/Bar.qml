@@ -82,6 +82,18 @@ Scope {
                     && !Appearance.zzzEverywhere
                 readonly property real roundDecoratorAllowance: hugCorners
                     ? Appearance.rounding.screenRounding : 0
+                readonly property bool edgeShadowEnabled: bar.showBarBackground
+                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
+                readonly property int edgeShadowExtent: edgeShadowEnabled
+                    ? Math.max(0, Math.min(32,
+                        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+                    : 0
+                readonly property real edgeShadowOpacity: Math.max(0, Math.min(0.60,
+                    Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+                readonly property color edgeShadowColor:
+                    ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
+                readonly property real inwardDecoratorAllowance:
+                    Math.max(roundDecoratorAllowance, edgeShadowExtent)
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
                     && !Appearance.zzzEverywhere
@@ -115,12 +127,16 @@ Scope {
                 property bool superShow: false
                 property bool mustShow: hoverRegion.containsMouse || superShow
                     || ShellEditSession.active
+                readonly property bool surfacePresented:
+                    !GlobalStates.coverflowSelectorOpen
+                    && GlobalStates.shellEntryReady
+                    && (!(Config.options?.bar?.autoHide?.enable ?? false) || mustShow)
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
                     barRoot.panelSurfaceHeight
                 WlrLayershell.namespace: "quickshell:bar"
-                implicitHeight: barRoot.panelSurfaceHeight + barRoot.roundDecoratorAllowance
+                implicitHeight: barRoot.panelSurfaceHeight + barRoot.inwardDecoratorAllowance
                 // Explicit zero-size item prevents ambiguous null input region during
                 // surface map/unmap transitions. Region { item: null } can be interpreted
                 // as "full surface accepts input" by the compositor, causing an invisible
@@ -210,6 +226,37 @@ Scope {
                                 target: barContent
                                 anchors.topMargin: 0
                                 anchors.bottomMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -barRoot.panelSurfaceHeight : 0
+                            }
+                        }
+                    }
+
+                    // Shared with Screen Edge shadow settings so the shell chrome
+                    // reads as one continuous Caelestia-style perimeter.
+                    Rectangle {
+                        id: barEdgeShadow
+                        visible: barRoot.edgeShadowEnabled
+                            && barRoot.edgeShadowExtent > 0
+                            && barRoot.edgeShadowOpacity > 0
+                            && barRoot.surfacePresented
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            top: !(Config.options?.bar?.bottom ?? false) ? barContent.bottom : undefined
+                            bottom: (Config.options?.bar?.bottom ?? false) ? barContent.top : undefined
+                        }
+                        height: barRoot.edgeShadowExtent
+                        color: "transparent"
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop {
+                                position: 0
+                                color: (Config.options?.bar?.bottom ?? false)
+                                    ? "transparent" : barRoot.edgeShadowColor
+                            }
+                            GradientStop {
+                                position: 1
+                                color: (Config.options?.bar?.bottom ?? false)
+                                    ? barRoot.edgeShadowColor : "transparent"
                             }
                         }
                     }

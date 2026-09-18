@@ -20,6 +20,7 @@ SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
 LEFT_SIDEBAR_BUTTON = ROOT / "modules" / "bar" / "LeftSidebarButton.qml"
 BAR_CONTENT = ROOT / "modules" / "bar" / "BarContent.qml"
+SYS_TRAY = ROOT / "modules" / "bar" / "SysTray.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
@@ -73,6 +74,7 @@ def main() -> None:
     right_sidebar_end = bar_content.find("\n    Component {", right_sidebar_start + 1)
     right_sidebar_block = bar_content[right_sidebar_start:
         right_sidebar_end if right_sidebar_end >= 0 else len(bar_content)]
+    sys_tray = SYS_TRAY.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
@@ -628,6 +630,29 @@ def main() -> None:
         "Appearance.colors.colOnLayer0",
     ):
         require(right_sidebar_block, token, "BarContent right sidebar button")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.zzz.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "Appearance.angel.",
+        "Appearance.regalia.",
+    ):
+        forbid(sys_tray, token, "SysTray.qml")
+    for token in (
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "Appearance.colors.colOnSecondaryContainer",
+        "Appearance.colors.colOnLayer2",
+        "color: Appearance.colors.colSubtext",
+    ):
+        require(sys_tray, token, "SysTray.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

@@ -1053,16 +1053,9 @@ Singleton {
         {
             pageIndex: 23, pageName: root.pages[23].name,
             section: Translation.tr("Sidebars"),
-            label: Translation.tr("YT Music Up Next notifications"),
-            description: Translation.tr("Enable or disable next-track notifications for YT Music auto-advance"),
-            keywords: ["ytmusic", "youtube", "music", "up next", "notification", "auto", "advance"]
-        },
-        {
-            pageIndex: 23, pageName: root.pages[23].name,
-            section: Translation.tr("Sidebars"),
-            label: Translation.tr("YT Music fullscreen suppression"),
-            description: Translation.tr("Mute YT Music Up Next notifications during fullscreen apps or GameMode"),
-            keywords: ["ytmusic", "fullscreen", "gamemode", "mute", "suppress", "notification", "gaming"]
+            label: Translation.tr("Music"),
+            description: Translation.tr("Media & content"),
+            keywords: ["music", "local", "mpd", "mpris", "library", "playlist", "queue", "sidebar"]
         },
         {
             pageIndex: 6, pageName: root.pages[6].name,

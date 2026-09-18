@@ -599,16 +599,16 @@ Scope {
                 target: card
                 visible: (root.settingsOpen || root._closeAnimRunning)
                     && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12) > 0
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24) > 0
+                    && Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15) > 0
+                    && Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70) > 0
                 blur: Math.max(0, Math.min(32,
-                    Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+                    Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
                 spread: 0
                 offset: Qt.vector2d(0, 0)
                 color: (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
                     ? ColorUtils.applyAlpha(Appearance.colors.colShadow,
-                        Math.max(0, Math.min(0.60,
-                            Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24))))
+                        Math.max(0, Math.min(1.0,
+                            Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
                     : "transparent"
                 joinBottom: true
             }

@@ -19,6 +19,9 @@ Item {
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
+    property bool shadowEnabled: false
+    property real shadowExtent: 0
+    property color shadowColor: "transparent"
 
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
     readonly property point bodyOrigin: root.bodyItem
@@ -40,22 +43,13 @@ Item {
     // Reuse the same inverse-corner primitive as the Hug Bar. This removes a
     // second Canvas implementation and guarantees identical shoulders for Bar,
     // popup, Settings, Sidebar and Screen Edge connected surfaces.
-    component Flare: RoundCorner {
+    component Flare: Item {
+        id: flare
+
         required property string flareCorner
         property color flareColor: root.fillColor
         property real r: root.radius
-
-        width: r
-        height: r
-        implicitSize: Math.max(1, Math.round(r))
-        color: flareColor
-        visible: r > 0
-
-        // The flare lives outside the body, so its inverse-corner orientation
-        // is the opposite horizontal/vertical corner from the body endpoint name.
-        // These mappings reproduce the former Canvas silhouettes exactly while
-        // using the same RoundCorner renderer as the Hug Bar.
-        corner: switch (flareCorner) {
+        readonly property int cornerEnum: switch (flareCorner) {
             case "topLeft": return RoundCorner.CornerEnum.TopRight
             case "topRight": return RoundCorner.CornerEnum.TopLeft
             case "bottomLeft": return RoundCorner.CornerEnum.BottomRight
@@ -65,6 +59,30 @@ Item {
             case "rightTop": return RoundCorner.CornerEnum.BottomRight
             case "rightBottom": return RoundCorner.CornerEnum.TopRight
             default: return RoundCorner.CornerEnum.TopLeft
+        }
+
+        width: r
+        height: r
+        visible: r > 0
+
+        // The shoulder is part of the same outside silhouette as the popup.
+        // Give its concave arc the exact same shadow ink/extent as Screen Edge,
+        // otherwise the rectangular body shadow stops abruptly at the join and
+        // the flare visually disappears on dark wallpapers.
+        PerimeterCornerShadow {
+            z: 0
+            corner: flare.cornerEnum
+            cornerRadius: flare.r
+            shadowExtent: root.shadowEnabled ? root.shadowExtent : 0
+            shadowColor: root.shadowColor
+        }
+
+        RoundCorner {
+            z: 1
+            anchors.fill: parent
+            implicitSize: Math.max(1, Math.round(flare.r))
+            color: flare.flareColor
+            corner: flare.cornerEnum
         }
     }
 

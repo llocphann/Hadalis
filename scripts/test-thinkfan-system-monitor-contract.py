@@ -37,12 +37,12 @@ def main() -> None:
     for token in (
         "ThinkFanService.refresh()",
         "ThinkFanService.applyProfile(",
-        'Translation.tr("ThinkFan")',
-        'Translation.tr("Fan speed")',
-        'Translation.tr("Fan level")',
+        'Translation.tr("Fan")',
+        'Translation.tr("Speed:")',
+        'Translation.tr("Level:")',
         "thinkFanCanApply",
         "connectAdjacentScreenEdge: true",
-        "font.pixelSize: Appearance.font.pixelSize.normal",
+        "font.pixelSize: Appearance.font.pixelSize.small",
         "thinkFanApplyErrorMessage",
     ):
         check(token in resources_popup,

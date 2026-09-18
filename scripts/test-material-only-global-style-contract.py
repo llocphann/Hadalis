@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
+BAR = ROOT / "modules" / "bar" / "Bar.qml"
 WEATHER_BAR = ROOT / "modules" / "bar" / "weather" / "WeatherBar.qml"
 BAR_MEDIA_POPUP = ROOT / "modules" / "mediaControls" / "BarMediaPopup.qml"
 BATTERY_INDICATOR = ROOT / "modules" / "bar" / "BatteryIndicator.qml"
@@ -64,6 +65,7 @@ def main() -> None:
     appearance = APPEARANCE.read_text(encoding="utf-8")
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
+    bar = BAR.read_text(encoding="utf-8")
     weather_bar = WEATHER_BAR.read_text(encoding="utf-8")
     bar_media_popup = BAR_MEDIA_POPUP.read_text(encoding="utf-8")
     battery_indicator = BATTERY_INDICATOR.read_text(encoding="utf-8")
@@ -431,6 +433,32 @@ def main() -> None:
         "color: Appearance.colors.colOnLayer0",
     ):
         require(ripple_button, token, "RippleButton.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+        "Appearance.zzz.",
+        "Appearance.regalia.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "Appearance.cookie.",
+        "AuroraBlurCorner",
+    ):
+        forbid(bar, token, "Bar.qml")
+    for token in (
+        "readonly property bool hugCorners: bar.showBarBackground",
+        "readonly property bool rightDeadPixelWorkaround:",
+        "readonly property bool bottomDeadPixelWorkaround:",
+        "readonly property color solidColor: showBarBackground",
+        "? Appearance.colors.colLayer0",
+        "RoundCorner {",
+    ):
+        require(bar, token, "Bar.qml")
 
     # Active Bar controls must not reintroduce frozen Global Theme routing.
     for token in (

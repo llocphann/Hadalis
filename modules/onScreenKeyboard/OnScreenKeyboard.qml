@@ -25,19 +25,15 @@ Scope { // Scope
     Behavior on _oskRevealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: GlobalStates.oskOpen
-                ? Appearance.animation.elementMoveEnter.duration
-                : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: GlobalStates.oskOpen
-                ? Appearance.animationCurves.emphasizedDecel
-                : Appearance.animationCurves.emphasizedAccel
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 
     Timer {
         id: oskUnloadTimer
-        interval: Appearance.animation.elementMoveExit.duration + 40
+        interval: Appearance.animation.elementMove.duration + 40
         repeat: false
         onTriggered: {
             if (!GlobalStates.oskOpen)

@@ -54,6 +54,8 @@ SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 CONTROL_PANEL_DATE_TIME = ROOT / "modules" / "controlPanel" / "DateTimeHeader.qml"
 CONTROL_PANEL_WALLPAPER = ROOT / "modules" / "controlPanel" / "WallpaperSection.qml"
+CONTROL_PANEL_WEATHER = ROOT / "modules" / "controlPanel" / "WeatherSection.qml"
+CONTROL_PANEL_SLIDERS = ROOT / "modules" / "controlPanel" / "SlidersSection.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -125,6 +127,8 @@ def main() -> None:
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
     control_panel_date_time = CONTROL_PANEL_DATE_TIME.read_text(encoding="utf-8")
     control_panel_wallpaper = CONTROL_PANEL_WALLPAPER.read_text(encoding="utf-8")
+    control_panel_weather = CONTROL_PANEL_WEATHER.read_text(encoding="utf-8")
+    control_panel_sliders = CONTROL_PANEL_SLIDERS.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1350,6 +1354,8 @@ def main() -> None:
     for source, content in (
         ("controlPanel/DateTimeHeader.qml", control_panel_date_time),
         ("controlPanel/WallpaperSection.qml", control_panel_wallpaper),
+        ("controlPanel/WeatherSection.qml", control_panel_weather),
+        ("controlPanel/SlidersSection.qml", control_panel_sliders),
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
@@ -1382,6 +1388,27 @@ def main() -> None:
         'GlobalActions.runLauncher(["wallpaperSelector", "toggle"])',
     ):
         require(control_panel_wallpaper, token, "controlPanel/WallpaperSection.qml")
+
+    forbid(control_panel_weather, "AngelPartialBorder {", "controlPanel/WeatherSection.qml")
+    for token in (
+        "radiusOverride: islandSkin ? -1 : Appearance.rounding.normal",
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOnLayer1",
+        "buttonRadius: Appearance.rounding.full",
+        "colBackgroundHover: Appearance.colors.colLayer2Hover",
+        "color: Appearance.colors.colSubtext",
+        'onClicked: Config.setNestedValue("waffles.widgetsPanel.weatherHideLocation", !root.hideLocation)',
+        "onClicked: Weather.forceRefresh()",
+    ):
+        require(control_panel_weather, token, "controlPanel/WeatherSection.qml")
+
+    forbid(control_panel_sliders, "AngelPartialBorder {", "controlPanel/SlidersSection.qml")
+    for token in (
+        "radiusOverride: islandSkin ? -1 : Appearance.rounding.normal",
+        "compactSurface: true",
+        "property var brightnessMonitor: screen ? Brightness.getMonitorForScreen(screen) : null",
+    ):
+        require(control_panel_sliders, token, "controlPanel/SlidersSection.qml")
 
     print("Material-only global style contract: PASS")
 

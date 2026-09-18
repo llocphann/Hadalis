@@ -300,6 +300,14 @@ LazyLoader {
                 && root._edgeShadowOpacity > 0
             shadowExtent: root._edgeShadowExtent
             shadowColor: root._edgeShadowColor
+            // Match Caelestia's one-surface composition principle: when
+            // the popup body reaches an orthogonal Screen Edge, its touching
+            // corners become square and the joined side has no duplicate shadow.
+            // The free sides keep the same configured Screen Edge shadow.
+            joinTop: directEdgeAttachment.atTop
+            joinBottom: directEdgeAttachment.atBottom
+            joinLeft: directEdgeAttachment.atLeft
+            joinRight: directEdgeAttachment.atRight
             shadowTop: root._attachmentEdge !== "top"
                 && !directEdgeAttachment.atTop
             shadowBottom: root._attachmentEdge !== "bottom"

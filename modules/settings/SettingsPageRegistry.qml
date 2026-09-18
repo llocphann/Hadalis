@@ -185,8 +185,6 @@ Singleton {
 
                 const redirected = Object.assign({}, entry)
                 const keywords = Array.isArray(entry.keywords) ? entry.keywords : []
-                const chargeCareEntry = keywords.includes("threshold")
-                    || keywords.includes("conservation")
 
                 redirected.pageIndex = root.systemPageIndex
                 redirected.pageName = root.pages[root.systemPageIndex].name

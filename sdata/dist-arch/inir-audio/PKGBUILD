@@ -1,6 +1,6 @@
 pkgname=inir-audio
 pkgver=1.0
-pkgrel=2
+pkgrel=3
 pkgdesc='iNiR - audio dependency bundle'
 arch=(any)
 license=('GPL-3.0-only')

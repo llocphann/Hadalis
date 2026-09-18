@@ -119,8 +119,12 @@ grep -Fq 'connectorVisible: false' "$styled_popup" \
     || fail 'StyledPopup must not paint a connector stem'
 grep -Fq 'ConnectedSurfaceRevealClip {' "$styled_popup" \
     || fail 'StyledPopup must slide underneath the Bar/Screen Edge through a fixed reveal clip'
-grep -Fq 'Hover ownership belongs to the complete connected surface' "$styled_popup" \
-    || fail 'StyledPopup hover bridge must cover the full connected surface instead of padded content only'
+grep -Fq 'hoverEnabled: root.active' "$styled_popup" \
+    || fail 'StyledPopup must route hover ownership through the full connected body'
+grep -Fq 'onBodyHoveredChanged: root.popupHovered = bodyHovered' "$styled_popup" \
+    || fail 'StyledPopup must keep popup hover state synchronized with the full body'
+grep -Fq 'property QtObject _hoverTransferTimerObject: Timer {' "$styled_popup" \
+    || fail 'StyledPopup must debounce cross-window hover transfer before retracting'
 grep -Fq 'readonly property real _popupScreenMargin: Math.max(0,' "$styled_popup" \
     || fail 'StyledPopup Screen Edge clamping must be placement-driven for every Bar module'
 if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \
@@ -157,6 +161,8 @@ if grep -Fq 'layer.effect: MultiEffect {' "$connected_frame"; then
 fi
 grep -Fq 'ConnectedSurfaceJoinFlares {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must add concave shoulders at directly joined edge endpoints'
+grep -Fq 'readonly property bool bodyHovered: bodyHover.hovered' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must expose full-body hover ownership'
 grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must source join flare size from shared perimeter tokens'
 grep -Fq 'No stem is' "$join_flares" \

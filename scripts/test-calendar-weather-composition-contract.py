@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTENT = ROOT / "modules" / "bar" / "weather" / "WeatherPopupContent.qml"
 POPUP = ROOT / "modules" / "bar" / "weather" / "WeatherPopup.qml"
 CLOCK = ROOT / "modules" / "bar" / "ClockWidget.qml"
+CLOCK_TOOLTIP = ROOT / "modules" / "bar" / "ClockWidgetTooltip.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -25,6 +26,8 @@ def main() -> None:
     clock = CLOCK.read_text(encoding="utf-8")
 
     forbid(clock, "ClockWidgetTooltip {", "ClockWidget.qml")
+    if CLOCK_TOOLTIP.exists():
+        raise AssertionError("retired ClockWidgetTooltip.qml must not remain as a public/live bar surface")
 
     for token in (
         "StyledPopup {",

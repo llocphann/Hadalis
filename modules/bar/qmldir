@@ -12,7 +12,6 @@ BatteryIndicator 1.0 BatteryIndicator.qml
 BatteryPopup 1.0 BatteryPopup.qml
 CircleUtilButton 1.0 CircleUtilButton.qml
 ClockWidget 1.0 ClockWidget.qml
-ClockWidgetTooltip 1.0 ClockWidgetTooltip.qml
 HyprlandXkbIndicator 1.0 HyprlandXkbIndicator.qml
 LeftSidebarButton 1.0 LeftSidebarButton.qml
 Media 1.0 Media.qml

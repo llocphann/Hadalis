@@ -213,29 +213,10 @@ def main() -> None:
         check(token not in geometry,
               f"Connected popup slide must stay on the attachment axis like Caelestia: {token}")
 
-    corner_shadow = read("modules/common/perimeter/PerimeterCornerShadow.qml")
-    for token in (
-        "Canvas {",
-        "required property int corner",
-        "property real cornerRadius:",
-        "property real shadowExtent:",
-        "property color shadowColor:",
-        "ctx.createRadialGradient",
-        "ctx.arc(cx, cy, r, start, end, false)",
-        "const inner = Math.max(0, r - extent)",
-    ):
-        check(token in corner_shadow,
-              f"Shared perimeter corner shadow contract missing: {token}")
-    check("GE.RadialGradient {" not in corner_shadow,
-          "Perimeter corner shadow must not fill an entire square outside the curved quarter-disc")
-    check("PerimeterCornerShadow {" in screen_edge
-          and "function adjacentShadowInset(outputName, edge)" in screen_edge,
-          "Screen Edge corners must use the shared curved shadow junction")
-    perimeter_tokens = read("modules/common/perimeter/PerimeterTokens.qml")
-    check("readonly property real shadowSeamOverlap: 1" in perimeter_tokens,
-          "Perimeter shadow tangent overlap must stay centralized")
-    check("PerimeterTokens.shadowSeamOverlap" in screen_edge,
-          "Screen Edge straight and curved shadows must overlap at their tangent")
+    check("PerimeterCornerShadow" not in screen_edge
+          and "adjacentShadowInset" not in screen_edge
+          and "shadowSeamOverlap" not in screen_edge,
+          "Rejected curved perimeter-shadow stitching must stay removed from Screen Edge")
 
     for token in (
         "id: sidebarEdgeFlares",
@@ -249,10 +230,10 @@ def main() -> None:
     sidebar_flare_block = sidebar_host[sidebar_flare_start:sidebar_flare_end]
     check("transform: Translate" not in sidebar_flare_block,
           "Sidebar flares must not double-apply the Loader translation after mapToItem()")
-    check("shadowEnabled: root.screenEdgeShadowEnabled" in sidebar_flare_block
-          and "shadowExtent: root.screenEdgeShadowSize" in sidebar_flare_block
-          and "shadowColor: root.screenEdgeShadowColor" in sidebar_flare_block,
-          "Sidebar flares must share the live Screen Edge shadow contract")
+    check("shadowEnabled:" not in sidebar_flare_block
+          and "shadowExtent:" not in sidebar_flare_block
+          and "shadowColor:" not in sidebar_flare_block,
+          "Sidebar Caelestia shoulders must remain fill-only; body shadow owns depth")
     check("PerimeterTokens.joinFlareRadius" in sidebar_host
           and "root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0" in sidebar_host,
           "Sidebar native host must reserve room for the larger of flare and configured Screen Edge shadow")
@@ -312,10 +293,13 @@ def main() -> None:
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface,
               "Connected Settings overlays must share the Screen Edge shadow contract")
-        check("shadowEnabled:" in settings_surface
-              and "shadowExtent:" in settings_surface
-              and "shadowColor:" in settings_surface,
-              "Connected Settings flares must carry the live Screen Edge shadow")
+        flare_start = settings_surface.index("ConnectedSurfaceJoinFlares {")
+        flare_end = settings_surface.index("Rectangle {", flare_start)
+        settings_flare = settings_surface[flare_start:flare_end]
+        check("shadowEnabled:" not in settings_flare
+              and "shadowExtent:" not in settings_flare
+              and "shadowColor:" not in settings_flare,
+              "Connected Settings Caelestia shoulders must stay fill-only")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
     check("Rectangle {\n        id: dashContainer" in dashboard
@@ -361,20 +345,35 @@ def main() -> None:
           "ConnectedSurfaceFrame must expose body-scoped hover ownership for popup hand-off")
     generic_shadow = read("modules/common/widgets/StyledRectangularShadow.qml")
     check("property color color: Appearance.colors.colShadow" in generic_shadow,
-          "Shared rectangular shadow must default to the themed shell shadow source")
-    check("cached: !(root.joinTop || root.joinBottom" in generic_shadow,
-          "Joined connected shadows must render live while translated")
+          "Shared rectangular shadow must use the proven themed shell shadow source")
+    check("cached: true" in generic_shadow,
+          "Shared rectangular shadow must retain the prior stable cached renderer")
+
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
-    check("component Flare: Item" in join_flares
-          and "RoundCorner {" in join_flares
-          and "PerimeterCornerShadow {" in join_flares,
-          "Connected shoulders must combine the Hug RoundCorner fill with its curved perimeter shadow")
-    check("property bool shadowEnabled: false" in join_flares
-          and "property real shadowExtent: 0" in join_flares
-          and 'property color shadowColor: "transparent"' in join_flares,
-          "Connected shoulders must accept the live Screen Edge shadow contract")
-    check("component Flare: Canvas" not in join_flares,
-          "Connected shoulders must not maintain a second Canvas corner renderer")
+    for token in (
+        "component Flare: Canvas {",
+        "const k = 0.5522847498",
+        'corner === "topLeft"',
+        'corner === "topRight"',
+        'corner === "bottomLeft"',
+        'corner === "bottomRight"',
+        'corner === "leftTop"',
+        'corner === "leftBottom"',
+        'corner === "rightTop"',
+        'corner === "rightBottom"',
+        "root.bodyItem.mapToItem(root, 0, 0)",
+        "visible: root.reveal > 0.001 && root.radius > 0",
+    ):
+        check(token in join_flares,
+              f"Restored Caelestia Canvas shoulder contract missing: {token}")
+    check("component Flare: RoundCorner" not in join_flares
+          and "PerimeterCornerShadow" not in join_flares
+          and "property bool shadowEnabled" not in join_flares
+          and "property real shadowExtent" not in join_flares
+          and "property color shadowColor" not in join_flares,
+          "Rejected RoundCorner/corner-shadow flare rewrite must stay reverted")
+    check(") * root.reveal" not in join_flares,
+          "Caelestia shoulder radius must stay fully formed during reveal")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
@@ -387,12 +386,11 @@ def main() -> None:
     vertical_bar_runtime = read("modules/verticalBar/VerticalBar.qml")
     bar_content = read("modules/bar/BarContent.qml")
     vertical_bar_content = read("modules/verticalBar/VerticalBarContent.qml")
-    check("readonly property real shadowTangentInset:" in bar_runtime
-          and "PerimeterTokens.shadowSeamOverlap" in bar_runtime,
-          "Horizontal Bar must keep a continuous straight/curved shadow tangent")
-    check("readonly property real shadowTangentInset:" in vertical_bar_runtime
-          and "PerimeterTokens.shadowSeamOverlap" in vertical_bar_runtime,
-          "Vertical Bar must keep a continuous straight/curved shadow tangent")
+    for runtime in (bar_runtime, vertical_bar_runtime):
+        check("PerimeterCornerShadow" not in runtime
+              and "shadowTangentInset" not in runtime
+              and "shadowSeamOverlap" not in runtime,
+              "Rejected curved Bar shadow stitching must stay reverted")
     for runtime in (bar_runtime, vertical_bar_runtime):
         check("readonly property bool showBarBackground: true" in runtime,
               "Supported Hug Bar chrome must remain structurally present")
@@ -402,8 +400,9 @@ def main() -> None:
         check("id: autoHideScreenEdge" in runtime
               and "visible: Config.options?.bar?.autoHide?.enable ?? false" in runtime,
               "Auto-hidden Bar must reveal a resident physical Screen Edge fallback")
-        check(runtime.count("PerimeterCornerShadow {") >= 4,
-              "Bar and its auto-hide Screen Edge fallback must own curved corner shadows")
+        check("id: barEdgeShadow" in runtime
+              and "&& barRoot.surfacePresented" in runtime,
+              "Bar shadow must use the prior straight presentation-gated renderer")
     check("visible: !gameModeMinimal" in bar_content,
           "Horizontal Hug body must not disappear because of legacy showBackground state")
     check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,

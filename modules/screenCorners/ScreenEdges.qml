@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.services
 import QtQuick
 import Quickshell
@@ -18,7 +19,16 @@ Scope {
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property int innerRadius: Math.max(thickness,
         Math.round(Appearance.rounding.screenRounding))
+    readonly property bool shadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property int shadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+    readonly property real shadowOpacity: Math.max(0, Math.min(0.60,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+    readonly property int shadowExtent: shadowEnabled ? shadowSize : 0
     readonly property color edgeColor: Appearance.colors.colLayer0
+    readonly property color shadowColor:
+        ColorUtils.applyAlpha(Appearance.colors.colShadow, shadowOpacity)
     readonly property bool barVertical: Config.options?.bar?.vertical ?? false
     readonly property string barEdge: barVertical
         ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
@@ -72,8 +82,8 @@ Scope {
         exclusiveZone: 0
         exclusionMode: ExclusionMode.Ignore
 
-        implicitWidth: horizontal ? 1 : root.thickness
-        implicitHeight: horizontal ? root.thickness : 1
+        implicitWidth: horizontal ? 1 : root.thickness + root.shadowExtent
+        implicitHeight: horizontal ? root.thickness + root.shadowExtent : 1
 
         WlrLayershell.namespace: "hadalis:screen-edge-" + edge
         WlrLayershell.layer: WlrLayer.Top
@@ -97,8 +107,35 @@ Scope {
         mask: Region { item: emptyInput }
 
         Rectangle {
-            anchors.fill: parent
+            id: edgeBand
+            x: horizontal ? 0 : (edge === "left" ? 0 : parent.width - root.thickness)
+            y: horizontal ? (edge === "top" ? 0 : parent.height - root.thickness) : 0
+            width: horizontal ? parent.width : root.thickness
+            height: horizontal ? root.thickness : parent.height
             color: root.edgeColor
+        }
+
+        Rectangle {
+            id: edgeShadow
+            visible: root.shadowExtent > 0 && root.shadowOpacity > 0
+            x: horizontal ? 0 : (edge === "left" ? root.thickness : 0)
+            y: horizontal ? (edge === "top" ? root.thickness : 0) : 0
+            width: horizontal ? parent.width : root.shadowExtent
+            height: horizontal ? root.shadowExtent : parent.height
+            color: "transparent"
+            gradient: Gradient {
+                orientation: horizontal ? Gradient.Vertical : Gradient.Horizontal
+                GradientStop {
+                    position: 0
+                    color: (edge === "top" || edge === "left")
+                        ? root.shadowColor : "transparent"
+                }
+                GradientStop {
+                    position: 1
+                    color: (edge === "top" || edge === "left")
+                        ? "transparent" : root.shadowColor
+                }
+            }
         }
     }
 

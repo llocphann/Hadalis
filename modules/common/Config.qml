@@ -478,6 +478,14 @@ Singleton {
             property JsonObject appearance: JsonObject {
                 property string theme: "auto"
                 property string globalStyle: "material"
+                property JsonObject screenEdge: JsonObject {
+                    property int width: 10
+                    property JsonObject shadow: JsonObject {
+                        property bool enabled: true
+                        property int size: 12
+                        property real opacity: 0.24
+                    }
+                }
                 // Shared skin for island surfaces such as dock, sidebars and search.
                 property JsonObject island: JsonObject {
                     property bool glass: true

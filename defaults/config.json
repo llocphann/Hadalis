@@ -63,6 +63,14 @@
     },
     "appearance": {
         "globalStyle": "material",
+        "screenEdge": {
+            "width": 10,
+            "shadow": {
+                "enabled": true,
+                "size": 12,
+                "opacity": 0.24
+            }
+        },
         "colorInvert": false,
         "island": {
             "radius": 18,

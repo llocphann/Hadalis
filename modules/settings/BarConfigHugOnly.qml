@@ -71,6 +71,45 @@ BarConfig {
                 onValueChanged: Config.setNestedValue("appearance.screenEdge.width", value)
             }
 
+            SettingsSwitch {
+                buttonIcon: "shadow"
+                text: Translation.tr("Screen edge shadow")
+                checked: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+                onCheckedChanged: Config.setNestedValue(
+                    "appearance.screenEdge.shadow.enabled", checked)
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "blur_on"
+                    text: Translation.tr("Shadow size (px)")
+                    value: Config.options?.appearance?.screenEdge?.shadow?.size ?? 12
+                    from: 0
+                    to: 32
+                    stepSize: 1
+                    enabled: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.shadow.size", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "opacity"
+                    text: Translation.tr("Shadow opacity (%)")
+                    value: Math.round(
+                        (Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24) * 100)
+                    from: 0
+                    to: 60
+                    stepSize: 2
+                    enabled: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.shadow.opacity", value / 100)
+                }
+            }
+
             SettingsNote {
                 icon: "info"
                 text: Translation.tr("The screen edge stays visible on the desktop and maximized windows. True fullscreen and lock screen hide it.")

@@ -46,6 +46,15 @@ fi
 grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qml" \
     || fail 'SidebarHost must own the active sidebar edge connector'
 
+grep -Fq 'property JsonObject screenEdge: JsonObject {' "$root/modules/common/Config.qml" \
+    || fail 'Config schema must persist appearance.screenEdge values'
+grep -Fq '"screenEdge": {' "$root/defaults/config.json" \
+    || fail 'default config must include the Screen Edge object'
+grep -Fq 'appearance.screenEdge.shadow.enabled' "$root/modules/settings/BarConfigHugOnly.qml" \
+    || fail 'Bar Settings must expose Screen Edge shadow controls'
+grep -Fq 'readonly property color shadowColor:' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge runtime must paint the configured inward shadow'
+
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'normal Media UX must stay on StyledPopup'
 grep -Fq 'GlobalStates.openSidebarRight' "$weather" \

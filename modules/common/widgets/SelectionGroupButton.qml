@@ -18,6 +18,10 @@ GroupButton {
     property string buttonIcon
     property string buttonPreviewKind: ""
     property real maxTextWidth: 180
+    // Opt-in only. Most segmented controls keep their centered label; callers
+    // such as the TLP category browser can request a tidy left-aligned list
+    // without changing alignment shell-wide.
+    property bool leftAlignContent: false
     property bool leftmost: false
     property bool rightmost: false
     readonly property bool showZzzPreview: Appearance.zzzEverywhere && buttonPreviewKind.length > 0
@@ -173,7 +177,8 @@ GroupButton {
             StyledText {
                 id: textItem
                 anchors.fill: parent
-                horizontalAlignment: Text.AlignHCenter
+                horizontalAlignment: root.leftAlignContent
+                    ? Text.AlignLeft : Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
                 maximumLineCount: 1
@@ -184,6 +189,14 @@ GroupButton {
                         : (root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer)
                 text: root.buttonText
             }
+        }
+
+        // With GridLayout-forced equal button widths, this absorbs only the
+        // trailing free space and leaves icon + label against the left inset.
+        Item {
+            visible: root.leftAlignContent
+            Layout.fillWidth: root.leftAlignContent
+            Layout.preferredWidth: root.leftAlignContent ? 1 : 0
         }
     }
 }

@@ -21,10 +21,12 @@ Singleton {
     readonly property int barPageIndex: 2
     readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
+    readonly property int sidebarsPageIndex: 23
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
     property bool _legacyBarCornerStyleMigrationDone: false
+    property bool _legacySidebarSurfaceMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
@@ -135,6 +137,19 @@ Singleton {
             Config.setNestedValue("bar.cornerStyle", 0)
     }
 
+    function _migrateLegacySidebarSurface(): void {
+        if (root._legacySidebarSurfaceMigrationDone || !Config.ready)
+            return
+
+        root._legacySidebarSurfaceMigrationDone = true
+        // Panel is the sole public Sidebar surface for v1.0. Keep the old
+        // fields readable so persisted configs load, then normalize them away.
+        if ((Config.options?.sidebar?.style ?? "panel") !== "panel")
+            Config.setNestedValue("sidebar.style", "panel")
+        if (Config.options?.sidebar?.cardStyle ?? false)
+            Config.setNestedValue("sidebar.cardStyle", false)
+    }
+
     function consumeLegacyTlpPowerRedirect(): bool {
         if (!root._legacyTlpPowerRedirectPending)
             return false
@@ -152,6 +167,8 @@ Singleton {
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
             .filter(entry => entry.pageIndex !== root.barPageIndex
                 || entry.label !== Translation.tr("Corner style"))
+            .filter(entry => entry.pageIndex !== root.sidebarsPageIndex
+                || entry.label !== Translation.tr("Sidebar style"))
             .map(entry => {
                 if (entry.pageIndex !== root.retiredTlpPageIndex)
                     return entry
@@ -179,6 +196,7 @@ Singleton {
         root._migrateLegacyDockStyle()
         root._migrateLegacyUiLocale()
         root._migrateLegacyBarCornerStyle()
+        root._migrateLegacySidebarSurface()
     }
 
     Connections {
@@ -196,6 +214,7 @@ Singleton {
                 root._migrateLegacyDockStyle()
                 root._migrateLegacyUiLocale()
                 root._migrateLegacyBarCornerStyle()
+                root._migrateLegacySidebarSurface()
             }
         }
     }

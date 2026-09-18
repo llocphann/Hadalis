@@ -103,15 +103,15 @@ ColumnLayout {
     }
 
     StyledText {
-        visible: root.showStatus && Battery.chargeLimitSupported
+        visible: root.showStatus
+            && Battery.chargeLimitSupported
+            && (!Battery.chargeLimitStateKnown || Battery.chargeLimitActive)
         Layout.leftMargin: SettingsMaterialPreset.groupPadding
         text: !Battery.chargeLimitStateKnown
             ? Translation.tr("Charge limit state unavailable")
-            : Battery.chargeLimitActive
-                ? (Battery.chargeLimitAdjustable && Battery.currentChargeLimit > 0 && Battery.currentChargeLimit < 100
-                    ? Translation.tr("Current limit: %1%").arg(Battery.currentChargeLimit)
-                    : Translation.tr("Battery conservation mode active"))
-                : Translation.tr("No charge limit active")
+            : (Battery.chargeLimitAdjustable && Battery.currentChargeLimit > 0 && Battery.currentChargeLimit < 100
+                ? Translation.tr("Current limit: %1%").arg(Battery.currentChargeLimit)
+                : Translation.tr("Battery conservation mode active"))
         font.pixelSize: Appearance.font.pixelSize.smaller
         color: Appearance.colors.colSubtext
     }

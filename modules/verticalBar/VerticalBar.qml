@@ -89,7 +89,7 @@ Scope {
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
-                    Appearance.sizes.baseVerticalBarWidth + ((Config.options?.bar?.cornerStyle ?? 0) === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
+                    Appearance.sizes.baseVerticalBarWidth
                 WlrLayershell.namespace: "quickshell:verticalBar"
                 // Default Top layer ON PURPOSE: fullscreen surfaces render
                 // above Top, so videos/games naturally cover the bar. Overlay

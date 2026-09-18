@@ -156,14 +156,24 @@ Item {
                 }
                 StyledText {
                     Layout.fillWidth: true
-                    text: LocalMusic.libraryFolder
+                    text: "MPD · " + LocalMusic.mpdHost + ":" + LocalMusic.mpdPort
+                        + (LocalMusic.libraryFolder.length > 0 ? " · " + LocalMusic.libraryFolder : "")
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     color: Appearance.colors.colSubtext
                     elide: Text.ElideMiddle
                 }
             }
-            ToolIconButton { symbol: "folder_open"; tip: Translation.tr("Folder"); onClicked: folderDialog.open() }
-            ToolIconButton { symbol: "audio_file"; tip: Translation.tr("Open"); onClicked: trackDialog.open() }
+            ToolIconButton {
+                symbol: "folder_open"
+                tip: Translation.tr("Folder")
+                onClicked: folderDialog.open()
+            }
+            ToolIconButton {
+                symbol: "database"
+                tip: Translation.tr("Update")
+                enabled: LocalMusic.available && !LocalMusic.scanning
+                onClicked: LocalMusic.updateDatabase()
+            }
             ToolIconButton {
                 symbol: "refresh"; tip: Translation.tr("Refresh")
                 enabled: !LocalMusic.scanning
@@ -254,10 +264,11 @@ Item {
                         RippleButton {
                             Layout.alignment: Qt.AlignHCenter
                             implicitWidth: 120; implicitHeight: 38
-                            onClicked: folderDialog.open()
+                            enabled: LocalMusic.available
+                            onClicked: LocalMusic.updateDatabase()
                             contentItem: StyledText {
                                 anchors.centerIn: parent
-                                text: Translation.tr("Folder")
+                                text: Translation.tr("Update")
                                 color: Appearance.colors.colOnLayer1
                             }
                         }
@@ -501,7 +512,7 @@ Item {
             color: Appearance.colors.colErrorContainer
             StyledText {
                 anchors.centerIn: parent
-                text: "mpv"
+                text: "MPD · " + LocalMusic.mpdHost + ":" + LocalMusic.mpdPort
                 color: Appearance.colors.colOnErrorContainer
                 font.pixelSize: Appearance.font.pixelSize.smaller
             }
@@ -512,16 +523,5 @@ Item {
         id: folderDialog
         title: Translation.tr("Music")
         onAccepted: LocalMusic.setLibraryFolder(String(selectedFolder))
-    }
-
-    FileDialog {
-        id: trackDialog
-        title: Translation.tr("Music")
-        fileMode: FileDialog.OpenFile
-        nameFilters: [
-            "Audio (*.mp3 *.flac *.ogg *.oga *.opus *.m4a *.aac *.wav *.wma *.alac *.ape *.aiff *.aif)",
-            "All files (*)"
-        ]
-        onAccepted: LocalMusic.playPath(String(selectedFile))
     }
 }

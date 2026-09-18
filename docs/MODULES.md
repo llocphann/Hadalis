@@ -28,7 +28,7 @@ Users can disable any panel from Settings without touching config files.
 | Module | Panel ID | Description |
 |--------|----------|-------------|
 | `sidebar/` | shared host | Physical left/right layer-shell hosts. They resolve semantic feature/system roles, own focus, masks, animations and live layout resize handles. |
-| `sidebarLeft/` | `iiSidebarLeft` | Feature-role content: AI chat (Gemini/OpenAI/Ollama), local Music library/player, Wallhaven browser, anime tracker, translator, draggable widgets and World Clock. The Music tab scans a chosen local folder, discovers M3U/M3U8 and folder collections, and plays through mpv. The role can occupy either physical edge. |
+| `sidebarLeft/` | `iiSidebarLeft` | Feature-role content: AI chat (Gemini/OpenAI/Ollama), local Music library/player, Wallhaven browser, anime tracker, translator, draggable widgets and World Clock. The Music tab browses MPD songs, saved playlists and queue, while transport follows the same mpd-mpris/MPRIS session used by the rest of the shell. The role can occupy either physical edge. |
 | `sidebarRight/` | `iiSidebarRight` | System-role content: quick toggles, calendar with external sync, notification center, volume mixer, Bluetooth/WiFi management, pomodoro timer, todo, calculator, notepad, system monitor and Screen Time. The role can occupy either physical edge. |
 
 ### Overlays

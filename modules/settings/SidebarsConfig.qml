@@ -596,8 +596,39 @@ ContentPage {
         SettingsGroup {
             ContentSubsection {
                 title: Translation.tr("Music")
-                tooltip: LocalMusic.libraryFolder
+                tooltip: "MPD + MPRIS"
                 visible: Config.options.sidebar?.music?.enable ?? false
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    MaterialSymbol {
+                        text: "dns"
+                        iconSize: 20
+                        color: Appearance.colors.colSubtext
+                    }
+
+                    MaterialTextField {
+                        Layout.fillWidth: true
+                        text: Config.options.sidebar?.music?.mpdHost ?? "127.0.0.1"
+                        onEditingFinished: {
+                            const value = text.trim()
+                            Config.setNestedValue("sidebar.music.mpdHost",
+                                value.length > 0 ? value : "127.0.0.1")
+                        }
+                    }
+
+                    ConfigSpinBox {
+                        icon: "tag"
+                        text: "MPD"
+                        value: Config.options.sidebar?.music?.mpdPort ?? 6600
+                        from: 1
+                        to: 65535
+                        stepSize: 1
+                        onValueChanged: Config.setNestedValue("sidebar.music.mpdPort", value)
+                    }
+                }
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -623,13 +654,33 @@ ContentPage {
                         }
                         StyledToolTip { text: Translation.tr("Folder") }
                     }
+
+                    RippleButton {
+                        implicitWidth: 44
+                        implicitHeight: 44
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: Appearance.colors.colLayer2
+                        enabled: LocalMusic.available && !LocalMusic.scanning
+                        onClicked: LocalMusic.updateDatabase()
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "database"
+                            iconSize: 21
+                            color: Appearance.colors.colOnLayer2
+                        }
+                        StyledToolTip { text: Translation.tr("Update") }
+                    }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "graphic_eq"
-                    text: Translation.tr("Normalize loudness")
-                    checked: Config.options.sidebar?.music?.normalizeVolume ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.music.normalizeVolume", checked)
+                StyledText {
+                    Layout.fillWidth: true
+                    text: "MPD"
+                        + (LocalMusic.mprisAvailable ? " · MPRIS" : "")
+                        + " · " + (LocalMusic.available
+                            ? Translation.tr("Connected") : LocalMusic.error)
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    wrapMode: Text.Wrap
                 }
             }
 

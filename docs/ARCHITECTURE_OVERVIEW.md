@@ -50,7 +50,7 @@ More details: [Panel Families](PANEL_FAMILIES.md)
 - **System integration**: Audio (PipeWire), Network (NetworkManager), Bluetooth (BlueZ), Battery (UPower)
 - **Data management**: Notifications, clipboard history, events, weather, calendar sync
 - **Theming**: MaterialThemeLoader watches `colors.json`, ThemeService orchestrates the pipeline
-- **Content**: AI chat (Gemini/OpenAI/Ollama), local Music library/player, anime tracking
+- **Content**: AI chat (Gemini/OpenAI/Ollama), MPD/MPRIS-backed local Music library/player, anime tracking
 
 Services are registered in `services/qmldir` and available everywhere as singletons.
 

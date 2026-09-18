@@ -292,6 +292,10 @@ def main() -> None:
         check("Appearance.animation.elementMove.duration" in settings_surface
               and "Appearance.animation.elementMove.bezierCurve" in settings_surface,
               "Connected Settings overlays must use the Caelestia-style default-spatial slide")
+        check("Appearance.m3colors.m3shadow" in settings_surface
+              and "screenEdge?.shadow?.size" in settings_surface
+              and "screenEdge?.shadow?.opacity" in settings_surface,
+              "Connected Settings overlays must share the Screen Edge shadow contract")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
     check("fallbackColor: Appearance.colors.colLayer0" in dashboard
@@ -301,6 +305,9 @@ def main() -> None:
     check("Appearance.animation.elementMove.duration" in dashboard
           and "Appearance.animation.elementMove.bezierCurve" in dashboard,
           "Dashboard connected slide must use the default-spatial motion token")
+    check("Appearance.m3colors.m3shadow" in dashboard
+          and "Appearance.colors.colShadow" not in dashboard,
+          "Dashboard connected shadow must use canonical Material shadow ink")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
@@ -323,6 +330,12 @@ def main() -> None:
           and "readonly property bool bodyHovered: bodyHover.hovered" in frame
           and "HoverHandler {" in frame,
           "ConnectedSurfaceFrame must expose body-scoped hover ownership for popup hand-off")
+    generic_shadow = read("modules/common/widgets/StyledRectangularShadow.qml")
+    check("Appearance.m3colors.m3shadow" in generic_shadow
+          and "Appearance.colors.colShadow" not in generic_shadow,
+          "Shared rectangular shadow must not disappear with transparent Material surfaces")
+    check("cached: !(root.joinTop || root.joinBottom" in generic_shadow,
+          "Joined connected shadows must render live while translated")
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     check("component Flare: RoundCorner" in join_flares
           and "import qs.modules.common.widgets" in join_flares,
@@ -477,6 +490,17 @@ def main() -> None:
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
+
+    for connected_shadow_path in (
+        "modules/sidebarLeft/SidebarLeftContent.qml",
+        "modules/sidebarRight/SidebarRightContent.qml",
+        "modules/sidebarRight/CompactSidebarRightContent.qml",
+        "modules/onScreenKeyboard/OnScreenKeyboard.qml",
+    ):
+        connected_shadow_source = read(connected_shadow_path)
+        check("Appearance.m3colors.m3shadow" in connected_shadow_source
+              and "ColorUtils.applyAlpha(Appearance.colors.colShadow" not in connected_shadow_source,
+              f"{connected_shadow_path} must use canonical connected shadow ink")
 
     sidebars_config = read("modules/settings/SidebarsConfig.qml")
     check('Translation.tr("Use Card style")' not in sidebars_config

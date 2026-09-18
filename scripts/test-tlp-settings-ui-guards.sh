@@ -9,7 +9,9 @@ runtime="$repo_root/services/TlpRuntimeCapabilities.qml"
 classic="$repo_root/modules/settings/TlpSettingRow.qml"
 waffle="$repo_root/modules/waffle/settings/WTlpSettingRow.qml"
 general="$repo_root/modules/settings/GeneralConfig.qml"
+general_core="$repo_root/modules/settings/GeneralConfigCore.qml"
 power="$repo_root/modules/settings/TlpPowerSettings.qml"
+charge_limit="$repo_root/modules/settings/BatteryChargeLimitSettings.qml"
 selection_group_button="$repo_root/modules/common/widgets/SelectionGroupButton.qml"
 registry="$repo_root/modules/settings/SettingsPageRegistry.qml"
 arrangement="$repo_root/modules/settings/SettingsArrangement.qml"
@@ -108,6 +110,14 @@ assert_contains 'property string settingsTaskSection: "power"' "$power" \
     'TLP controls must identify themselves as part of the Power task'
 assert_contains 'title: Translation.tr("Battery and TLP power management")' "$power" \
     'the primary TLP card title must remain a stable search target'
+assert_not_contains 'settingsTaskSection: "power"' "$general_core" \
+    'System settings must not render a second standalone Battery card'
+assert_contains 'text: Translation.tr("Low warning")' "$power" \
+    'low-battery warning controls must live in the merged Battery/TLP card'
+assert_contains 'text: Translation.tr("Automatic suspend")' "$power" \
+    'automatic suspend controls must live in the merged Battery/TLP card'
+assert_contains 'text: Translation.tr("Full warning")' "$power" \
+    'full-battery warning controls must live in the merged Battery/TLP card'
 assert_contains '.filter(category => String(category?.id ?? "") !== "battery-care")' "$power" \
     'Configuration categories must exclude the battery-care tab after merging it into Battery'
 assert_contains 'columns: 5' "$power" \
@@ -122,8 +132,14 @@ assert_not_contains 'text: Translation.tr("Config: %1").arg(TlpSettingsService.c
     'Battery/TLP summary must not expose the managed config path in the primary card'
 assert_contains ': Translation.tr("Effective values")' "$power" \
     'Battery/TLP summary must use the concise effective-values label'
+assert_not_contains 'Item { Layout.fillWidth: true }' "$power" \
+    'Effective values, Discard, Apply and Reset overrides must stay on one action row'
 assert_contains 'BatteryChargeLimitSettings {' "$power" \
     'battery charge care must be integrated into the primary Battery/TLP card'
+assert_not_contains 'No charge limit active' "$charge_limit" \
+    'inactive charge-limit state must not add redundant status text'
+assert_contains '&& (!Battery.chargeLimitStateKnown || Battery.chargeLimitActive)' "$charge_limit" \
+    'charge-limit status text must only appear for unknown or active state'
 assert_not_contains 'Values shown below come from TLP' "$power" \
     'Battery/TLP summary must not restore the old verbose effective-configuration description'
 assert_not_contains 'Apply validates every change and authenticates only once' "$power" \

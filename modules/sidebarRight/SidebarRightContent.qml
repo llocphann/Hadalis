@@ -39,6 +39,7 @@ Item {
     property var panelScreen: null
     property bool panelVisible: false
     property bool geometryPreviewActive: false
+    property string attachedEdge: "right"
     property bool showAudioOutputDialog: false
     property bool showAudioInputDialog: false
     property bool showBluetoothDialog: false
@@ -482,6 +483,10 @@ Item {
             : angelEverywhere ? Appearance.angel.roundingNormal
             : inirEverywhere ? (cardStyle ? Appearance.inir.roundingLarge : Appearance.inir.roundingNormal)
             : cardStyle ? Appearance.rounding.normal : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+        topLeftRadius: root.attachedEdge === "left" ? 0 : radius
+        bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
+        topRightRadius: root.attachedEdge === "right" ? 0 : radius
+        bottomRightRadius: root.attachedEdge === "right" ? 0 : radius
 
         Behavior on radius {
             enabled: Appearance.animationsEnabled
@@ -513,6 +518,10 @@ Item {
                 width: sidebarRightBackground.width
                 height: sidebarRightBackground.height
                 radius: sidebarRightBackground.radius
+                topLeftRadius: sidebarRightBackground.topLeftRadius
+                topRightRadius: sidebarRightBackground.topRightRadius
+                bottomLeftRadius: sidebarRightBackground.bottomLeftRadius
+                bottomRightRadius: sidebarRightBackground.bottomRightRadius
             }
         }
 

@@ -609,7 +609,7 @@ Singleton {
                     property string nightStart: "18:00"
                 }
                 property JsonObject globalStyleCornerStyles: JsonObject {
-                    property int material: 1
+                    property int material: 0
                     property int cards: 3
                     property int aurora: 0
                     property int inir: 1
@@ -1600,7 +1600,7 @@ Singleton {
                 property bool bottom: false
                 property int height: 40
                 property real opacity: 1.0
-                property int cornerStyle: 1
+                property int cornerStyle: 0
                 property int customRounding: -1
                 property bool floatStyleShadow: true
                 property bool borderless: true

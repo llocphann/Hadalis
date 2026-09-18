@@ -81,7 +81,11 @@ LazyLoader {
                 && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
             || root.popupHovered))
     property bool _lingerVisible: false
-    property real revealProgress: 0
+    // Match Caelestia's panel wrappers: one normalized offsetScale drives the
+    // whole slide and reverses naturally from its current value. Geometry keeps
+    // consuming revealProgress as the inverse for compatibility.
+    property real offsetScale: 1
+    readonly property real revealProgress: 1 - root.offsetScale
 
     // Material is the sole supported Global Theme for v1.0. Keep the connected
     // popup surface on the canonical Material palette and radius instead of
@@ -99,7 +103,7 @@ LazyLoader {
         root.popupHovered = false
         if (!root._lingerVisible)
             return
-        root.revealProgress = 0
+        root.offsetScale = 1
         if (Appearance.animationsEnabled)
             retractTimer.restart()
         else
@@ -113,19 +117,19 @@ LazyLoader {
             retractTimer.stop()
             root._lingerVisible = true
             if (!Appearance.animationsEnabled) {
-                root.revealProgress = 1
+                root.offsetScale = 0
                 return
             }
             if (alreadyResident) {
                 // Reverse an in-flight close from its current geometry rather than
                 // snapping to zero and replaying the opening animation.
-                root.revealProgress = 1
+                root.offsetScale = 0
                 return
             }
-            root.revealProgress = 0
+            root.offsetScale = 1
             Qt.callLater(() => {
                 if (root.requestedVisible)
-                    root.revealProgress = 1
+                    root.offsetScale = 0
             })
             return
         }
@@ -148,12 +152,15 @@ LazyLoader {
     onRequestedVisibleChanged: root._syncRequestedVisibility()
     Component.onCompleted: root._syncRequestedVisibility()
 
-    Behavior on revealProgress {
+    // Caelestia's wrappers use one default-spatial animation for both enter and
+    // exit instead of separate accelerate/decelerate curves. Hadalis already
+    // ships the same expressive-default-spatial token as elementMove.
+    Behavior on offsetScale {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMoveEnter.duration
-            easing.type: Appearance.animation.elementMoveEnter.type
-            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 
@@ -172,10 +179,10 @@ LazyLoader {
 
     property QtObject _retractTimerObject: Timer {
         id: retractTimer
-        interval: Math.max(1, Appearance.animation.elementMoveEnter.duration + 16)
+        interval: Math.max(1, Appearance.animation.elementMove.duration + 16)
         repeat: false
         onTriggered: {
-            if (!root.requestedVisible && root.revealProgress <= 0.001)
+            if (!root.requestedVisible && root.offsetScale >= 0.999)
                 root._lingerVisible = false
         }
     }

@@ -83,6 +83,7 @@ optdepends=(
   'mission-center: graphical system monitor (default task manager)'
   'mpv: media playback and YouTube Music support'
   'mpv-mpris: richer mpv media session integration'
+  'mpd-mpris: MPD/rmpc media controls through MPRIS'
   'nautilus: default file manager integration'
   'nm-connection-editor: default network settings GUI'
   'pavucontrol: advanced audio mixer UI'

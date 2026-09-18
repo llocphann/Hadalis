@@ -60,6 +60,7 @@ CONTROL_PANEL_SYSTEM = ROOT / "modules" / "controlPanel" / "SystemSection.qml"
 CONTROL_PANEL_PROFILE = ROOT / "modules" / "controlPanel" / "ProfileHeader.qml"
 CONTROL_PANEL_QUICK_ACTIONS = ROOT / "modules" / "controlPanel" / "QuickActionsSection.qml"
 CONTROL_PANEL_MEDIA = ROOT / "modules" / "controlPanel" / "MediaSection.qml"
+CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -137,6 +138,7 @@ def main() -> None:
     control_panel_profile = CONTROL_PANEL_PROFILE.read_text(encoding="utf-8")
     control_panel_quick_actions = CONTROL_PANEL_QUICK_ACTIONS.read_text(encoding="utf-8")
     control_panel_media = CONTROL_PANEL_MEDIA.read_text(encoding="utf-8")
+    control_panel_content = CONTROL_PANEL_CONTENT.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1368,6 +1370,7 @@ def main() -> None:
         ("controlPanel/ProfileHeader.qml", control_panel_profile),
         ("controlPanel/QuickActionsSection.qml", control_panel_quick_actions),
         ("controlPanel/MediaSection.qml", control_panel_media),
+        ("controlPanel/ControlPanelContent.qml", control_panel_content),
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
@@ -1513,6 +1516,40 @@ def main() -> None:
         "Appearance.zzz.",
     ):
         forbid(control_panel_media, token, "controlPanel/MediaSection.qml")
+
+    for token in (
+        "RegaliaPlate {",
+        "ZzzPlate {",
+        "ZzzPanelBackdrop {",
+        "ColorQuantizer {",
+        "AdaptedMaterialScheme {",
+        "id: blurredWallpaper",
+        "useWallpaperBackdrop",
+    ):
+        forbid(control_panel_content, token, "controlPanel/ControlPanelContent.qml")
+    for token in (
+        "property int _entranceCascade: GlobalStates.controlPanelOpen ? 99 : -1",
+        "interval: 45",
+        "root._entranceCascade = -1",
+        "entranceCascadeTimer.start()",
+        "visible: !root.islandStyle && !Appearance.gameModeMinimal",
+        "RicelinSurface {",
+        "visible: root.islandStyle",
+        'color: root.islandStyle ? "transparent" : Appearance.colors.colLayer0',
+        "Appearance.rounding.large",
+        "border.width: root.islandStyle ? 0 : 1",
+        "border.color: Appearance.colors.colLayer0Border",
+        "active: root.showMediaSection",
+        "active: root.showWallpaperSection",
+        "active: root.showWeatherSection",
+        "active: root.showSystemSection",
+        "active: root.showSlidersSection",
+        "active: root.showQuickActionsSection",
+        "asynchronous: true",
+        "opacity: root._entranceCascade >= 7 ? 1 : 0",
+        "flickable.contentY = Math.max(0, Math.min(",
+    ):
+        require(control_panel_content, token, "controlPanel/ControlPanelContent.qml")
 
     print("Material-only global style contract: PASS")
 

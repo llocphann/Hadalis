@@ -108,6 +108,14 @@ grep -Fq 'appearance.screenEdge.shadow.enabled' "$root/modules/settings/BarConfi
     || fail 'Bar Settings must expose Screen Edge shadow controls'
 grep -Fq 'readonly property color shadowColor:' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge runtime must paint the configured inward shadow'
+for shadow_source in \
+    "$root/modules/screenCorners/ScreenEdges.qml" \
+    "$root/modules/bar/Bar.qml" \
+    "$root/modules/verticalBar/VerticalBar.qml" \
+    "$styled_popup"; do
+    grep -Fq 'Appearance.m3colors.m3shadow' "$shadow_source" \
+        || fail "${shadow_source#$root/} must use the canonical perimeter shadow ink"
+done
 grep -Fq 'exclusiveZone: mapped ? root.thickness : 0' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge thickness must define the compositor layout boundary'
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
@@ -125,6 +133,14 @@ grep -Fq 'onBodyHoveredChanged: root.popupHovered = bodyHovered' "$styled_popup"
     || fail 'StyledPopup must keep popup hover state synchronized with the full body'
 grep -Fq 'property QtObject _hoverTransferTimerObject: Timer {' "$styled_popup" \
     || fail 'StyledPopup must debounce cross-window hover transfer before retracting'
+grep -Fq 'property real offsetScale: 1' "$styled_popup" \
+    || fail 'StyledPopup must use a Caelestia-style normalized offsetScale'
+grep -Fq 'readonly property real revealProgress: 1 - root.offsetScale' "$styled_popup" \
+    || fail 'StyledPopup reveal progress must be the inverse of offsetScale'
+grep -Fq 'Behavior on offsetScale {' "$styled_popup" \
+    || fail 'StyledPopup must animate the normalized offset scalar directly'
+grep -Fq 'Appearance.animation.elementMove.duration' "$styled_popup" \
+    || fail 'StyledPopup must use expressive default-spatial timing for the shared slide'
 grep -Fq 'readonly property real _popupScreenMargin: Math.max(0,' "$styled_popup" \
     || fail 'StyledPopup Screen Edge clamping must be placement-driven for every Bar module'
 if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \
@@ -151,6 +167,10 @@ grep -Fq 'id: shadowClip' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must clip radius-following shadow at attached edges'
 grep -Fq 'RectangularShadow {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must use the stable radius-aware shell shadow renderer'
+grep -Fq 'cached: false' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame shadow must stay live while the connected body translates'
+grep -Fq 'id: shadowClip' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must retain explicit joined-edge shadow clipping'
 grep -Fq 'import QtQuick.Effects' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame RectangularShadow must import QtQuick.Effects'
 if grep -Fq 'import Qt5Compat.GraphicalEffects' "$connected_frame"; then
@@ -169,6 +189,11 @@ grep -Fq 'No stem is' "$join_flares" \
     || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
 grep -Fq 'root.bodyItem.mapToItem(root, 0, 0)' "$join_flares" \
     || fail 'join flares must map nested body geometry into the flare host coordinate space'
+grep -Fq 'visible: root.reveal > 0.001 && root.radius > 0' "$join_flares" \
+    || fail 'connected join flares must remain fully formed while the body slides'
+if grep -Fq ') * root.reveal' "$join_flares"; then
+    fail 'connected join flare radius must not shrink with reveal progress'
+fi
 grep -Fq 'root.joinTop && !root.joinLeft' "$join_flares" \
     || fail 'top flare must suppress itself when the adjacent Screen Edge is also joined'
 for token in \

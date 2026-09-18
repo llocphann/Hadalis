@@ -29,9 +29,10 @@ Singleton {
     property bool _refreshQueued: false
     property bool _profileFollowArmed: false
     property string _queuedFanLevel: ""
+    property bool _fanConfigApplyQueued: false
 
     readonly property bool profileFanControlEnabled:
-        Config.options?.powerProfiles?.fanControl?.enabled ?? false
+        Config.getNestedValue("powerProfiles.fanControl.enabled", false) === true
     readonly property string activePowerProfileKey:
         root._powerProfileKey(PowerProfiles.profile)
     readonly property int configuredActiveFanLevel:
@@ -47,14 +48,13 @@ Singleton {
     }
 
     function configuredFanLevel(key: string): int {
-        const cfg = Config.options?.powerProfiles?.fanControl
-        let value = 0
-        switch (String(key ?? "")) {
-        case "powerSaver": value = Number(cfg?.powerSaver ?? 0); break
-        case "performance": value = Number(cfg?.performance ?? 0); break
-        case "balanced":
-        default: value = Number(cfg?.balanced ?? 0); break
-        }
+        const normalizedKey = String(key ?? "")
+        let path = "powerProfiles.fanControl.balanced"
+        if (normalizedKey === "powerSaver")
+            path = "powerProfiles.fanControl.powerSaver"
+        else if (normalizedKey === "performance")
+            path = "powerProfiles.fanControl.performance"
+        const value = Number(Config.getNestedValue(path, 0))
         if (!isFinite(value))
             return 0
         return Math.max(0, Math.min(7, Math.round(value)))
@@ -275,16 +275,34 @@ Singleton {
         return root.applyFanLevel(root.configuredActiveFanLevel)
     }
 
+    function _scheduleConfiguredFanLevelApply(): void {
+        if (!root._profileFollowArmed || !root.profileFanControlEnabled
+                || root.profile === "managed")
+            return
+        if (root._fanConfigApplyQueued)
+            return
+        root._fanConfigApplyQueued = true
+        Qt.callLater(() => {
+            root._fanConfigApplyQueued = false
+            if (root._profileFollowArmed && root.profileFanControlEnabled
+                    && root.profile !== "managed")
+                root.applyConfiguredPowerProfileFanLevel()
+        })
+    }
+
     Component.onCompleted: root.refresh()
 
     Connections {
         target: PowerProfiles
         function onProfileChanged(): void {
-            if (!root._profileFollowArmed || !root.profileFanControlEnabled)
-                return
-            if (root.profile === "managed")
-                return
-            Qt.callLater(() => root.applyConfiguredPowerProfileFanLevel())
+            root._scheduleConfiguredFanLevelApply()
+        }
+    }
+
+    Connections {
+        target: Config
+        function onConfigChanged(): void {
+            root._scheduleConfiguredFanLevelApply()
         }
     }
 
@@ -295,7 +313,10 @@ Singleton {
         interval: 5000
         repeat: false
         running: true
-        onTriggered: root._profileFollowArmed = true
+        onTriggered: {
+            root._profileFollowArmed = true
+            root._scheduleConfiguredFanLevelApply()
+        }
     }
 
     Process {

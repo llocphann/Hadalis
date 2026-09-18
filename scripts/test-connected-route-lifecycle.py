@@ -20,7 +20,7 @@ def main() -> None:
     media = read("modules/bar/Media.qml")
     weather_bar = read("modules/bar/weather/WeatherBar.qml")
     weather_popup = read("modules/bar/weather/WeatherPopup.qml")
-    sidebar = read("modules/sidebar/SidebarEdgeConnectors.qml")
+    sidebar = read("modules/sidebar/SidebarHost.qml")
 
     for token in (
         "property bool requestedVisible",
@@ -58,11 +58,15 @@ def main() -> None:
 
     for token in (
         "ConnectedSurfaceConnector",
-        'BridgeWindow { edge: "left" }',
-        'BridgeWindow { edge: "right" }',
+        "id: sidebarBridgeGeometry",
+        "geometry: sidebarBridgeGeometry",
+        "PerimeterTokens.seamOverlap",
+        "Config.options?.appearance?.screenEdge?.width ?? 10",
     ):
         check(token in sidebar,
               f"Sidebar connected route contract missing: {token}")
+    check("SidebarEdgeConnectors.qml" not in sidebar,
+          "Sidebar lifecycle must not depend on the retired standalone bridge window")
 
     if failures:
         print("Connected presentation lifecycle regression(s):")

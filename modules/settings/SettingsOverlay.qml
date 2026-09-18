@@ -11,6 +11,7 @@ import qs.services
 import qs.modules.settings
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.modules.common.functions as CF
 
 /**
@@ -31,22 +32,41 @@ Scope {
     // instant settingsOpen flips false and the scrim cut to black.
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
+    property real _surfaceReveal: settingsOpen ? 1 : 0
+
+    Behavior on _surfaceReveal {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: root.settingsOpen
+                ? Appearance.animation.elementMoveEnter.duration
+                : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.settingsOpen
+                ? Appearance.animationCurves.emphasizedDecel
+                : Appearance.animationCurves.emphasizedAccel
+        }
+    }
 
     onSettingsOpenChanged: {
         if (settingsOpen) {
             _closeAnimRunning = false
             closeAnimTimer.stop()
+            _surfaceReveal = 0
+            Qt.callLater(() => {
+                if (root.settingsOpen)
+                    root._surfaceReveal = 1
+            })
         } else {
+            _surfaceReveal = 0
             _closeAnimRunning = true
             closeAnimTimer.restart()
         }
     }
 
-    // Match the scrim fade-out (elementMoveFast) + a small margin so teardown
-    // lands right after the backdrop finishes fading.
+    // Keep the native host alive until the bottom-edge exit slide completes.
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMoveFast.duration + 40
+        interval: Appearance.animation.elementMoveExit.duration + 40
         repeat: false
         onTriggered: _closeAnimRunning = false
     }
@@ -430,10 +450,12 @@ Scope {
             WlrLayershell.namespace: "quickshell:settingsOverlay"
             // Yield the layer-shell overlay while a native dialog is visible.
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
-                ? WlrLayer.Bottom : WlrLayer.Overlay
+                ? WlrLayer.Bottom
+                : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
             WlrLayershell.keyboardFocus: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
+                && !PolkitService.active
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"
@@ -549,13 +571,28 @@ Scope {
             MouseArea {
                 anchors.fill: parent
                 visible: GlobalStates.settingsOverlayOpen ?? false
-                enabled: !GlobalStates.settingsNativeDialogOpen
+                enabled: !GlobalStates.settingsNativeDialogOpen && !PolkitService.active
                 onClicked: GlobalStates.settingsOverlayOpen = false
             }
 
             // ── Floating settings card (no separate drop shadow — the card
             //    sits on the scrim backdrop; the panel border provides depth) ──
-// ── Floating settings card ──
+// ── Bottom-connected settings popup ──
+            StyledRectangularShadow {
+                target: settingsCard
+                joinBottom: true
+            }
+
+            ConnectedSurfaceJoinFlares {
+                anchors.fill: parent
+                bodyItem: settingsCard
+                fillColor: settingsCard.color
+                flareRadius: PerimeterTokens.joinFlareRadius
+                progress: root._surfaceReveal
+                joinBottom: true
+                z: 2
+            }
+
             Rectangle {
                 id: settingsCard
 
@@ -568,10 +605,14 @@ Scope {
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
 
-                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: settingsPanel.height - height
+                    + (1 - root._surfaceReveal) * height
                 width: maxCardWidth
                 height: maxCardHeight
                 radius: Appearance.rounding.windowRounding
+                bottomLeftRadius: 0
+                bottomRightRadius: 0
                 Behavior on radius {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot }
@@ -594,8 +635,8 @@ Scope {
                 // Instant show/hide — matches the window-mode settings UI.
                 // No scale/opacity fade (the fade felt heavy and the scrim
                 // backdrop already carries the transition).
-                opacity: (GlobalStates.settingsOverlayOpen ?? false) ? 1 : 0
-                visible: opacity > 0
+                opacity: 1
+                visible: root.settingsOpen || root._closeAnimRunning
 
                 // Material-only v1.0: retired shell-wide style backdrops are not
                 // instantiated in the active Settings surface.

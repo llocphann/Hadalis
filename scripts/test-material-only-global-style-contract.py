@@ -17,6 +17,7 @@ NOTIFICATION_UNREAD_COUNT = ROOT / "modules" / "bar" / "NotificationUnreadCount.
 ACTIVE_WINDOW = ROOT / "modules" / "bar" / "ActiveWindow.qml"
 RESOURCE = ROOT / "modules" / "bar" / "Resource.qml"
 CLIPPED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "ClippedProgressBar.qml"
+STYLED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "StyledProgressBar.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -80,6 +81,7 @@ def main() -> None:
     active_window = ACTIVE_WINDOW.read_text(encoding="utf-8")
     resource = RESOURCE.read_text(encoding="utf-8")
     clipped_progress_bar = CLIPPED_PROGRESS_BAR.read_text(encoding="utf-8")
+    styled_progress_bar = STYLED_PROGRESS_BAR.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -600,6 +602,23 @@ def main() -> None:
         "radius: Appearance.rounding.unsharpen",
     ):
         require(clipped_progress_bar, token, "ClippedProgressBar.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+        "zzzSegments",
+    ):
+        forbid(styled_progress_bar, token, "StyledProgressBar.qml")
+    for token in (
+        "property color trackColor: Appearance.colors.colSecondaryContainer",
+        "active: root.wavy || root.waveAmplitudeMultiplier > 0",
+        "active: !root.wavy && root.waveAmplitudeMultiplier <= 0",
+        "radius: height / 2",
+        "visible: true",
+    ):
+        require(styled_progress_bar, token, "StyledProgressBar.qml")
 
     for token in (
         "Appearance.zzzEverywhere",

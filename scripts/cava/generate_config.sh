@@ -69,6 +69,8 @@ source = ${MONITOR}
 method = raw
 raw_target = /dev/stdout
 data_format = ascii
+ascii_max_range = 1000
+bar_delimiter = 59
 channels = ${CHANNELS}
 mono_option = average
 

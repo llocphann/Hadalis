@@ -51,6 +51,9 @@ Item {
     CavaProcess {
         id: cavaProcess
         active: root.visualizerActive
+        // Match the Serpantinum visualizer density while keeping Hadalis'
+        // shared CAVA service and per-consumer sample negotiation.
+        sampleCount: 64
     }
 
     property list<real> visualizerPoints: cavaProcess.points

@@ -1,82 +1,135 @@
 import qs.services
 import qs.modules.common
-import qs.modules.common.widgets
 import QtQuick
-import QtQuick.Effects
 
-Canvas {
+// Serpantinum-inspired equalizer renderer adapted to Hadalis' existing
+// CAVA -> PlayerControl -> WaveVisualizer data contract. This stays as the
+// single media visualizer; it deliberately avoids a second CAVA/EQ subsystem.
+Item {
     id: root
+
     property list<var> points
     property real maxVisualizerValue: 1000
     property int smoothing: 2
     property bool live: true
     property color color: CavaTheme.primaryColor
-    // Fill alpha — reads global config, consumers can override
+    // Preserve the existing user-facing wave opacity setting as the baseline
+    // opacity for the bar field.
     property real fillOpacity: (Config.options?.appearance?.cava?.waveOpacity ?? 30) / 100
-    onPointsChanged: () => {
-        if (root.visible)
-            root.requestPaint()
-    }
-    onVisibleChanged: {
-        if (root.visible)
-            root.requestPaint()
-    }
-    // Canvas does not repaint just because these scalar bindings change. When
-    // playback pauses CAVA can stop emitting points immediately, so clear the
-    // last live waveform explicitly; likewise redraw when adaptive scaling moves.
-    onLiveChanged: requestPaint()
-    onMaxVisualizerValueChanged: requestPaint()
-    onFillOpacityChanged: requestPaint()
-    onColorChanged: requestPaint()
 
-    anchors.fill: parent
-    onPaint: {
-        var ctx = getContext("2d");
-        ctx.clearRect(0, 0, width, height);
+    property real barSpacing: 3
+    property real minBarWidth: 4
+    property real minBarHeight: 2
 
-        var points = root.points;
-        var maxVal = root.maxVisualizerValue || 1;
-        var h = height;
-        var w = width;
-        var n = points.length;
-        if (n < 2) return;
+    readonly property int activeBars: Math.max(4, Math.min(64,
+        Math.floor((root.width + root.barSpacing)
+            / (root.minBarWidth + root.barSpacing))))
+    readonly property real actualBarWidth: Math.max(1,
+        (root.width - (root.activeBars - 1) * root.barSpacing)
+            / Math.max(1, root.activeBars))
 
-        var smoothWindow = Math.max(0, root.smoothing);
-        var smoothPoints = new Array(n);
-        var count = smoothWindow * 2 + 1;
-        var sum = 0;
-        for (var j = -smoothWindow; j <= smoothWindow; ++j)
-            sum += points[Math.max(0, Math.min(n - 1, j))];
-        for (var i = 0; i < n; ++i) {
-            smoothPoints[i] = sum / count;
-            var outgoing = Math.max(0, Math.min(n - 1, i - smoothWindow));
-            var incoming = Math.max(0, Math.min(n - 1, i + smoothWindow + 1));
-            sum += points[incoming] - points[outgoing];
+    // Serpantinum mirrors low frequencies toward the center and higher
+    // frequencies toward the edges, then eases the outer bars to zero. Hadalis
+    // receives raw CAVA amplitudes plus an adaptive ceiling, so normalize first
+    // and keep that same visual mapping without replacing the shared service.
+    readonly property var processedBars: {
+        const count = root.activeBars
+        let out = new Array(count).fill(0.0)
+        if (!root.live || !root.points || root.points.length === 0)
+            return out
+
+        const source = root.points
+        const srcLen = source.length
+        const maxVal = Math.max(1, root.maxVisualizerValue)
+        const half = (count - 1) / 2
+
+        for (let i = 0; i < count; ++i) {
+            const distFromCenter = Math.abs(i - half)
+            const norm = half > 0 ? distFromCenter / half : 0
+            const pos = Math.pow(norm, 1.25) * (srcLen - 1)
+            const idx0 = Math.floor(pos)
+            const idx1 = Math.min(srcLen - 1, idx0 + 1)
+            const frac = pos - idx0
+            const v0 = Math.max(0, Number(source[idx0]) || 0) / maxVal
+            const v1 = Math.max(0, Number(source[idx1]) || 0) / maxVal
+            const rawVal = Math.max(0, Math.min(1, v0 + (v1 - v0) * frac))
+
+            const threshold = 0.02
+            let value = rawVal < threshold
+                ? 0.0
+                : Math.pow((rawVal - threshold) / (1 - threshold), 1.10)
+            value = Math.max(0.0, Math.min(1.0, value))
+
+            const edgeNorm = Math.sin((i / Math.max(1, count - 1)) * Math.PI)
+            let edgeFactor = Math.min(1.0, edgeNorm * 2.0)
+            edgeFactor = edgeFactor * edgeFactor * (3.0 - 2.0 * edgeFactor)
+            out[i] = value * edgeFactor
         }
-        if (!root.live) smoothPoints.fill(0);
 
-        ctx.beginPath();
-        ctx.moveTo(0, h);
-        for (var i = 0; i < n; ++i) {
-            var x = i * w / (n - 1);
-            var y = h - (smoothPoints[i] / maxVal) * h * 0.9;
-            ctx.lineTo(x, y);
+        // Keep the old smoothing knob meaningful with a lightweight neighbour
+        // pass. Capping the passes prevents pathological config values from
+        // adding unnecessary per-frame work.
+        const passes = Math.min(3, Math.max(0, Math.round(root.smoothing)))
+        for (let pass = 0; pass < passes; ++pass) {
+            const next = new Array(count)
+            for (let i = 0; i < count; ++i) {
+                const prev = i > 0 ? out[i - 1] : out[i]
+                const curr = out[i]
+                const following = i < count - 1 ? out[i + 1] : out[i]
+                next[i] = prev * 0.25 + curr * 0.5 + following * 0.25
+            }
+            out = next
         }
-        ctx.lineTo(w, h);
-        ctx.closePath();
-
-        ctx.fillStyle = Qt.rgba(root.color.r, root.color.g, root.color.b, root.fillOpacity);
-        ctx.fill();
+        return out
     }
 
-    layer.enabled: root.visible && Appearance.effectsEnabled
-    // layer.effect receives this Canvas' offscreen texture automatically.
-    // Pointing MultiEffect.source back at the Canvas makes the effect include
-    // its own parent, which Qt explicitly does not support and can render blank.
-    layer.effect: MultiEffect {
-        saturation: 0.2
-        blurEnabled: Appearance.effectsEnabled
-        blurMax: 7
-        blur: Appearance.effectsEnabled ? 1 : 0
+    Row {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: parent.height
+        spacing: root.barSpacing
+
+        Repeater {
+            model: root.activeBars
+
+            delegate: Rectangle {
+                property real level: root.processedBars && index < root.processedBars.length
+                    ? root.processedBars[index] : 0.0
+                property real edgeNorm: Math.sin(
+                    (index / Math.max(1, root.activeBars - 1)) * Math.PI)
+                property real rawEdgeFactor: Math.min(1.0, edgeNorm * 2.0)
+                property real edgeFactor: rawEdgeFactor * rawEdgeFactor
+                    * (3.0 - 2.0 * rawEdgeFactor)
+
+                width: root.actualBarWidth
+                height: Math.max(root.minBarHeight, level * parent.height * 0.96)
+                anchors.bottom: parent.bottom
+                topLeftRadius: width * 0.45
+                topRightRadius: width * 0.45
+                bottomLeftRadius: 0
+                bottomRightRadius: 0
+                // PlayerControl historically passes a transparentized accent.
+                // Use its RGB as the bar color and let opacity own intensity so
+                // the equalizer cannot become effectively double-transparent.
+                color: Qt.rgba(root.color.r, root.color.g, root.color.b, 1.0)
+                opacity: {
+                    const base = Math.max(0.12, Math.min(0.70, root.fillOpacity))
+                    const strength = root.live
+                        ? base + level * (0.95 - base)
+                        : base * 0.45
+                    return strength * edgeFactor
+                }
+
+                Behavior on height {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation { duration: 75; easing.type: Easing.OutCubic }
+                }
+                Behavior on opacity {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation { duration: 75; easing.type: Easing.OutQuad }
+                }
+            }
+        }
     }
 }

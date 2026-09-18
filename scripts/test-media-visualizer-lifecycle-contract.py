@@ -19,6 +19,8 @@ def main() -> None:
     popup = read("modules/mediaControls/BarMediaPopup.qml")
     player = read("modules/mediaControls/PlayerControl.qml")
     cava = read("modules/common/widgets/CavaProcess.qml")
+    cava_service = read("services/deferred/CavaService.qml")
+    cava_config = read("scripts/cava/generate_config.sh")
     wave = read("modules/common/widgets/WaveVisualizer.qml")
 
     check(
@@ -32,6 +34,10 @@ def main() -> None:
     check(
         "active: root.visualizerActive" in popup,
         "BarMediaPopup must drive CavaProcess from the lifecycle-gated active state",
+    )
+    check(
+        "sampleCount: 64" in popup,
+        "BarMediaPopup must request the Serpantinum-density CAVA sample field",
     )
     check(
         "visualizerPoints: root.visualizerPoints" in popup,
@@ -58,16 +64,15 @@ def main() -> None:
         "PlayerControl must scale the wave against the adaptive signal ceiling instead of a fixed 1000",
     )
     check(
-        "layer.effect: MultiEffect {" in wave and "source: root" not in wave,
-        "WaveVisualizer layer effect must consume the implicit layer texture instead of self-sourcing the Canvas",
+        "Repeater {" in wave
+        and "processedBars" in wave
+        and "distFromCenter" in wave
+        and "edgeFactor" in wave,
+        "WaveVisualizer must render the Serpantinum-inspired equalizer bar field",
     )
     check(
-        "onLiveChanged: requestPaint()" in wave,
-        "WaveVisualizer must repaint when playback lifecycle clears/restores the live waveform",
-    )
-    check(
-        "onMaxVisualizerValueChanged: requestPaint()" in wave,
-        "WaveVisualizer must repaint when the adaptive CAVA normalization ceiling changes",
+        "Canvas {" not in wave and "layer.effect" not in wave,
+        "Media equalizer must not depend on Canvas/layer-effect rendering",
     )
     check(
         "CavaService.subscribe(root.sampleCount)" in cava,
@@ -76,6 +81,17 @@ def main() -> None:
     check(
         "CavaService.unsubscribe(root._subscriptionId)" in cava,
         "CavaProcess must unsubscribe when presentation activity drops",
+    )
+    check(
+        "id: dataWatchdog" in cava_service
+        and "configRestart.restart()" in cava_service
+        and "dataWatchdog.restart()" in cava_service,
+        "Shared CAVA service must recover when a running source stops emitting valid frames",
+    )
+    check(
+        "ascii_max_range = 1000" in cava_config
+        and "bar_delimiter = 59" in cava_config,
+        "Generated raw CAVA config must pin the same ASCII range/delimiter contract as the visualizer parser",
     )
 
     if failures:

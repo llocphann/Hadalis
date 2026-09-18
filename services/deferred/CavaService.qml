@@ -151,6 +151,12 @@ Singleton {
         if (parsed.length !== root._processBars)
             return
 
+        // A healthy raw CAVA process emits complete frames continuously,
+        // including silence. Refresh the watchdog only after a complete frame;
+        // if the selected PipeWire/Pulse source stalls, regenerate the config
+        // and resolve the source again instead of leaving an invisible EQ.
+        dataWatchdog.restart()
+
         let peak = 0
         let sum = 0
         for (let i = 0; i < parsed.length; ++i) {
@@ -227,6 +233,19 @@ Singleton {
         onTriggered: root.audioSignalActive = false
     }
 
+    // Port Serpantinum's no-data recovery idea into the shared Hadalis service.
+    // Zero-amplitude frames still refresh this timer; it only fires when the
+    // process itself stops producing valid frames while a consumer is active.
+    Timer {
+        id: dataWatchdog
+        interval: 2400
+        repeat: false
+        onTriggered: {
+            if (root.active && cavaProc.running)
+                configRestart.restart()
+        }
+    }
+
     Timer {
         id: frameClear
         interval: 2600
@@ -300,7 +319,10 @@ Singleton {
         running: false
         command: ["cava", "-p", root.configPath]
         onRunningChanged: {
-            if (!running) {
+            if (running) {
+                dataWatchdog.restart()
+            } else {
+                dataWatchdog.stop()
                 if (root._pendingRestart && root.active) {
                     root._pendingRestart = false
                     root._generateConfig()

@@ -128,6 +128,16 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must share Screen Edge shadow settings'
+grep -Fq 'readonly property bool showBarBackground: true' "$root/modules/bar/Bar.qml" \
+    || fail 'horizontal Hug structural chrome must not disappear with legacy background state'
+grep -Fq 'readonly property bool showBarBackground: true' "$root/modules/verticalBar/VerticalBar.qml" \
+    || fail 'vertical Hug structural chrome must not disappear with legacy background state'
+if grep -A8 -F 'id: barEdgeShadow' "$root/modules/bar/Bar.qml" | grep -Fq 'surfacePresented'; then
+    fail 'horizontal Bar shadow must not blink behind a separate presentation-readiness gate'
+fi
+if grep -A8 -F 'id: barEdgeShadow' "$root/modules/verticalBar/VerticalBar.qml" | grep -Fq 'surfacePresented'; then
+    fail 'vertical Bar shadow must not blink behind a separate presentation-readiness gate'
+fi
 
 grep -Fq 'connectorVisible: false' "$styled_popup" \
     || fail 'StyledPopup must not paint a connector stem'

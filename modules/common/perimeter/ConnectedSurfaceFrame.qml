@@ -47,7 +47,6 @@ Item {
 
     Rectangle {
         id: body
-        z: 1
         x: root.geometry.animatedBodyRect.x
         y: root.geometry.animatedBodyRect.y
         width: root.geometry.animatedBodyRect.width
@@ -75,7 +74,7 @@ Item {
     // every free side keeps the configured Screen Edge/Bar falloff.
     Item {
         id: shadowClip
-        z: 0
+        z: -1
         visible: root.shadowEnabled && root.shadowExtent > 0 && body.visible
             && (root.shadowTop || root.shadowBottom
                 || root.shadowLeft || root.shadowRight)
@@ -99,11 +98,7 @@ Item {
             spread: 0
             offset: Qt.vector2d(0, 0)
             color: root.shadowColor
-            // The source rectangle translates every frame while the popup is
-            // revealing/retracting. Caching this shadow can retain an empty or
-            // stale FBO across a rapid reverse; render it live like the Bar's
-            // lightweight perimeter shadow so it is deterministic.
-            cached: false
+            cached: true
         }
     }
 
@@ -117,9 +112,6 @@ Item {
         fillColor: root.fillColor
         flareRadius: root.joinFlareRadius
         progress: root.geometry.revealProgress ?? root.geometry.progress ?? 1
-        shadowEnabled: root.shadowEnabled
-        shadowExtent: root.shadowExtent
-        shadowColor: root.shadowColor
         joinTop: root.joinTop
         joinBottom: root.joinBottom
         joinLeft: root.joinLeft

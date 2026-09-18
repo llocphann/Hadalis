@@ -14,6 +14,7 @@ bar_taskbar_button="$root/modules/bar/BarTaskbarButton.qml"
 bar_content="$root/modules/bar/BarContent.qml"
 vertical_bar_content="$root/modules/verticalBar/VerticalBarContent.qml"
 vertical_media="$root/modules/verticalBar/VerticalMedia.qml"
+waffle_bar_popup="$root/modules/waffle/bar/BarPopup.qml"
 overview="$root/modules/overview/Overview.qml"
 overview_dashboard="$root/modules/overview/OverviewDashboard.qml"
 
@@ -22,7 +23,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$waffle_bar_popup" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -181,6 +182,31 @@ if grep -Fq 'sourceComponent: PanelWindow {' "$vertical_media"; then
 fi
 if grep -Fq 'active: (root.volumePopupVisible || root.containsMouse)' "$vertical_media"; then
     fail 'VerticalMedia volume HUD must not override StyledPopup LazyLoader.active'
+fi
+for token in \
+    'import qs.modules.common.perimeter' \
+    'sourceComponent: PanelWindow {' \
+    'ConnectedSurfaceGeometry {' \
+    'connectorLength: 0' \
+    'ConnectedSurfaceFrame {' \
+    'connectorVisible: false' \
+    'ConnectedSurfaceContentHost {' \
+    'ConnectedSurfaceMask {' \
+    'screen: root._anchorScreen' \
+    'function updateAnchor()'; do
+    grep -Fq "$token" "$waffle_bar_popup" \
+        || fail "Waffle BarPopup must reuse shared connected-surface geometry: $token"
+done
+if grep -Fq 'sourceComponent: PopupWindow {' "$waffle_bar_popup"; then
+    fail 'Waffle BarPopup must not retain detached PopupWindow presentation'
+fi
+if grep -Fq 'sourceEdgeMargin' "$waffle_bar_popup"; then
+    fail 'Waffle BarPopup must not recreate the old visual-margin gap animation'
+fi
+grep -Fq 'property bool focusGrabRequested: false' "$waffle_bar_popup" \
+    || fail 'Waffle BarPopup must keep explicit focus re-grab state'
+if grep -Eq 'focusGrab\.active[[:space:]]*=' "$waffle_bar_popup"; then
+    fail 'Waffle BarPopup must not imperatively detach the focusGrab.active binding'
 fi
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'

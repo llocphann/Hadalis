@@ -1,227 +1,321 @@
 pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.waffle.looks
 
+// Waffle keeps its own BarPopup API/palette, but presentation is now driven by
+// the same connected-surface geometry used by ii. This avoids a second visual
+// seam model while preserving Waffle callers, focus and hover-close behavior.
 Loader {
     id: root
 
     required property var contentItem
     property real padding: Looks.radius.large - Looks.radius.medium
-    property bool noSmoothClosing: !(Config.options?.waffles?.tweaks?.smootherMenuAnimations ?? true)
+    property bool noSmoothClosing:
+        !(Config.options?.waffles?.tweaks?.smootherMenuAnimations ?? true)
     property bool closeOnFocusLost: true
-    property bool closeOnHoverLost: true  // Close when mouse leaves both popup and anchor
-    property int closeOnHoverLostDelay: 300  // Delay in ms before closing on hover lost
-    property bool anchorHovered: false  // Set by parent to indicate if anchor button is hovered
+    property bool closeOnHoverLost: true
+    property int closeOnHoverLostDelay: 300
+    property bool anchorHovered: false
     signal focusCleared()
-    
-    property Item anchorItem: parent
-    property real visualMargin: Looks.dp(12)
-    readonly property bool barAtBottom: Config.options?.waffles?.bar?.bottom ?? false
-    property bool popupBelow: false  // Force popup to appear below anchor
-    property real ambientShadowWidth: 1
 
-    onFocusCleared: {
-        if (!root.closeOnFocusLost) return;
-        root.close()
-    }
+    property Item anchorItem: parent
+    // Compatibility knobs retained for callers. visualMargin no longer creates
+    // a detached gap; it controls only the free-side shadow extent.
+    property real visualMargin: Looks.dp(12)
+    readonly property bool barAtBottom:
+        Config.options?.waffles?.bar?.bottom ?? false
+    property bool popupBelow: false
+    property real ambientShadowWidth: 1
+    property int _anchorRevision: 0
+
+    readonly property string _attachmentEdge:
+        root.popupBelow ? "top" : (root.barAtBottom ? "bottom" : "top")
+    readonly property var _anchorWindow: root.anchorItem
+        ? root.anchorItem.QsWindow.window : null
+    readonly property var _anchorScreen: root._anchorWindow
+        ? root._anchorWindow.screen : null
+    readonly property bool _anchorReady: root.anchorItem !== null
+        && root._anchorWindow !== null
+        && root._anchorScreen !== null
+        && root.anchorItem.width > 0
+        && root.anchorItem.height > 0
+    readonly property real _barSurfaceThickness:
+        Math.max(1, Number(root._anchorWindow?.height
+            ?? Looks.scaledBar(48, root._anchorScreen)))
+    readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property real _popupScreenMargin: Math.max(0,
+        root._screenEdgeThickness - PerimeterTokens.seamOverlap)
 
     function grabFocus() {
-        if (item) item.grabFocus();
+        if (item)
+            item.grabFocus()
     }
 
     function close() {
-        if (item) item.close();
-        else root.active = false;
+        if (item)
+            item.close()
+        else
+            root.active = false
     }
 
     function updateAnchor() {
-        item?.anchor.updateAnchor();
+        root._anchorRevision++
     }
 
-    active: false  // Default value, can be overridden by binding from parent
+    function _anchorRect(outputWidth, outputHeight) {
+        const target = root.anchorItem
+        const host = target ? target.QsWindow : null
+        const hostWindow = root._anchorWindow
+        if (!target || !host || !hostWindow || !root._anchorScreen
+                || target.width <= 0 || target.height <= 0
+                || outputWidth <= 0 || outputHeight <= 0)
+            return Qt.rect(0, 0, 0, 0)
+
+        // Explicit revision preserves the legacy updateAnchor() API. Geometry
+        // reads also keep transformed/scaled outputs reactive.
+        root._anchorRevision
+        target.x
+        target.y
+        target.width
+        target.height
+        hostWindow.windowTransform
+
+        const mapped = host.mapFromItem(target, 0, 0)
+        const barY = root._attachmentEdge === "bottom"
+            ? Math.max(0, outputHeight - root._barSurfaceThickness) : 0
+        return Qt.rect(mapped.x, barY,
+            Math.max(1, target.width), root._barSurfaceThickness)
+    }
+
+    active: false
     visible: active
-    sourceComponent: PopupWindow {
+
+    sourceComponent: PanelWindow {
         id: popupWindow
-        visible: true
-        Component.onCompleted: {
-            openAnim.start();
+
+        screen: root._anchorScreen
+        visible: root.active && root._anchorReady
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        exclusiveZone: 0
+        focusable: root.closeOnFocusLost
+
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
         }
 
-        anchor {
-            adjustment: PopupAdjustment.ResizeY | PopupAdjustment.SlideX
-            item: root.anchorItem
-            gravity: root.popupBelow ? Edges.Bottom : (root.barAtBottom ? Edges.Top : Edges.Bottom)
-            edges: root.popupBelow ? Edges.Bottom : (root.barAtBottom ? Edges.Top : Edges.Bottom)
+        WlrLayershell.namespace: "quickshell:waffle-bar-popup"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus:
+            root.closeOnFocusLost && root.active
+                ? WlrKeyboardFocus.OnDemand
+                : WlrKeyboardFocus.None
+
+        property real revealProgress: 0
+        property bool focusGrabRequested: false
+        readonly property bool popupContainsMouse: popupHoverHandler.hovered
+        property alias popupHoverArea: popupHoverHandler
+
+        Component.onCompleted: {
+            popupWindow.revealProgress = 0
+            openAnim.restart()
+        }
+
+        function close() {
+            popupWindow.focusGrabRequested = false
+            if (root.noSmoothClosing || !Looks.transition.enabled) {
+                root.active = false
+                return
+            }
+            closeAnim.restart()
+        }
+
+        function grabFocus() {
+            popupWindow.focusGrabRequested = true
+        }
+
+        NumberAnimation {
+            id: openAnim
+            target: popupWindow
+            property: "revealProgress"
+            from: 0
+            to: 1
+            duration: Looks.transition.enabled
+                ? Looks.transition.duration.medium : 0
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
+        }
+
+        SequentialAnimation {
+            id: closeAnim
+
+            NumberAnimation {
+                target: popupWindow
+                property: "revealProgress"
+                to: 0
+                duration: Looks.transition.enabled
+                    ? Looks.transition.duration.fast : 0
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
+            }
+
+            ScriptAction {
+                script: root.active = false
+            }
+        }
+
+        Shortcut {
+            sequences: [StandardKey.Cancel]
+            enabled: root.active
+            onActivated: root.close()
         }
 
         CompositorFocusGrab {
             id: focusGrab
-            active: root.closeOnFocusLost && CompositorService.isHyprland
+            active: (root.closeOnFocusLost || popupWindow.focusGrabRequested)
+                && root.active
+                && CompositorService.isHyprland
             windows: [popupWindow]
-            onCleared: root.focusCleared();
+            onCleared: root.focusCleared()
         }
-        
-        // Close on Escape key — handled via Shortcut since PopupWindow is not an Item
-        Shortcut {
-            sequences: [StandardKey.Cancel]
-            onActivated: root.close()
-        }
-        
-        // Timer to close when mouse leaves both popup AND anchor
-        // Same pattern as TaskPreview - only runs when conditions are met
+
         Timer {
-            id: closeTimer
             interval: root.closeOnHoverLostDelay
-            running: root.closeOnHoverLost && popupWindow.visible && !popupWindow.popupContainsMouse && !root.anchorHovered
-            onTriggered: {
-                root.close();
-            }
+            running: root.closeOnHoverLost
+                && root.active
+                && !popupWindow.popupContainsMouse
+                && !root.anchorHovered
+            onTriggered: root.close()
         }
 
-        function close() {
-            if (root.noSmoothClosing) root.active = false;
-            else closeAnim.start();
+        ConnectedSurfaceGeometry {
+            id: geometry
+
+            edge: root._attachmentEdge
+            alignment: "center"
+            outputRect: Qt.rect(0, 0, popupWindow.width, popupWindow.height)
+            anchorRect: root._anchorRect(
+                popupWindow.width, popupWindow.height)
+            bodySize: Qt.size(
+                Math.max(1, (root.contentItem?.implicitWidth ?? 0)
+                    + root.padding * 2),
+                Math.max(1, (root.contentItem?.implicitHeight ?? 0)
+                    + root.padding * 2))
+            outerRadius: Looks.radius.large
+            screenMargin: root._popupScreenMargin
+            connectorLength: 0
+            progress: popupWindow.revealProgress
+            devicePixelRatio: popupWindow.devicePixelRatio
         }
 
-        function grabFocus() {
-            focusGrab.active = true;
+        QtObject {
+            id: directEdgeAttachment
+
+            readonly property rect body: geometry.bodyRect
+            readonly property real epsilon:
+                1 / Math.max(1, popupWindow.devicePixelRatio)
+            readonly property real margin: geometry.effectiveScreenMargin
+            readonly property bool atLeft:
+                Math.abs(body.x - margin) <= epsilon
+            readonly property bool atRight:
+                Math.abs((popupWindow.width - margin)
+                    - (body.x + body.width)) <= epsilon
+            readonly property bool atTop:
+                Math.abs(body.y - margin) <= epsilon
+            readonly property bool atBottom:
+                Math.abs((popupWindow.height - margin)
+                    - (body.y + body.height)) <= epsilon
         }
 
-        implicitWidth: realContent.implicitWidth + (root.ambientShadowWidth * 2) + (root.visualMargin * 2)
-        implicitHeight: realContent.implicitHeight + (root.ambientShadowWidth * 2) + (root.visualMargin * 2)
+        ConnectedSurfaceFrame {
+            id: frame
 
-        property real sourceEdgeMargin: -implicitHeight
-        ParallelAnimation {
-            id: openAnim
-            PropertyAnimation {
-                target: popupWindow
-                property: "sourceEdgeMargin"
-                to: (root.ambientShadowWidth + root.visualMargin)
-                duration: Looks.transition.enabled ? Looks.transition.duration.medium : 0
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate
-            }
-            NumberAnimation {
-                target: realContent
-                property: "opacity"
-                to: 1
-                duration: Looks.transition.enabled ? Looks.transition.duration.normal : 0
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.standard
-            }
-            NumberAnimation {
-                target: realContent
-                property: "scale"
-                to: 1
-                duration: Looks.transition.enabled ? Looks.transition.duration.medium : 0
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.popIn
-            }
-        }
-        SequentialAnimation {
-            id: closeAnim
-            ParallelAnimation {
-                PropertyAnimation {
-                    target: popupWindow
-                    property: "sourceEdgeMargin"
-                    to: -implicitHeight
-                    duration: Looks.transition.enabled ? Looks.transition.duration.fast : 0
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.accelerate
-                }
-                NumberAnimation {
-                    target: realContent
-                    property: "opacity"
-                    to: 0
-                    duration: Looks.transition.enabled ? Looks.transition.duration.fast : 0
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.standard
-                }
-                NumberAnimation {
-                    target: realContent
-                    property: "scale"
-                    to: 0.98
-                    duration: Looks.transition.enabled ? Looks.transition.duration.fast : 0
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.popOut
-                }
-            }
-            ScriptAction {
-                script: {
-                    root.active = false;
-                }
-            }
+            anchors.fill: parent
+            geometry: geometry
+            fillColor: Looks.colors.bg1Base
+            borderColor: Looks.colors.bg2Border
+            borderWidth: Math.max(0, root.ambientShadowWidth)
+            connectorBorderWidth: 0
+            connectorVisible: false
+            shadowEnabled: Looks.effectsEnabled
+                && root.visualMargin > 0
+            shadowExtent: Math.max(0, root.visualMargin)
+            shadowColor: Looks.colors.shadow
+            joinTop: root._attachmentEdge === "top"
+                || directEdgeAttachment.atTop
+            joinBottom: root._attachmentEdge === "bottom"
+                || directEdgeAttachment.atBottom
+            joinLeft: directEdgeAttachment.atLeft
+            joinRight: directEdgeAttachment.atRight
+            shadowTop: !frame.joinTop
+            shadowBottom: !frame.joinBottom
+            shadowLeft: !frame.joinLeft
+            shadowRight: !frame.joinRight
         }
 
-        color: "transparent"
-        
-        WAmbientShadow {
-            target: realContent
-        }
-        
-        Rectangle {
-            id: realContent
-            z: 1
-            opacity: 0
-            scale: 0.98
-            anchors {
-                left: parent.left
-                right: parent.right
-                top: root.barAtBottom ? undefined : parent.top
-                bottom: root.barAtBottom ? parent.bottom : undefined
-                margins: root.ambientShadowWidth + root.visualMargin
-                // Opening anim
-                bottomMargin: root.barAtBottom ? popupWindow.sourceEdgeMargin : (root.ambientShadowWidth + root.visualMargin)
-                topMargin: root.barAtBottom ? (root.ambientShadowWidth + root.visualMargin) : popupWindow.sourceEdgeMargin
-            }
-            color: Looks.colors.bg1Base
-            radius: Looks.radius.large
-            border.width: 1
-            border.color: Looks.colors.bg2Border
+        ConnectedSurfaceContentHost {
+            id: contentHost
 
-            implicitWidth: root.contentItem.implicitWidth + (root.padding * 2)
-            implicitHeight: root.contentItem.implicitHeight + (root.padding * 2)
-
+            geometry: geometry
+            padding: root.padding
+            opacity: Math.max(0, Math.min(1,
+                (geometry.revealProgress - 0.18) / 0.82))
             children: [root.contentItem]
+
+            HoverHandler {
+                id: popupHoverHandler
+                enabled: root.active
+            }
         }
-        
-        // Hover detection for auto-close - uses HoverHandler which doesn't block events
-        HoverHandler {
-            id: popupHoverHandler
+
+        ConnectedSurfaceMask {
+            id: connectedMask
+
+            geometry: geometry
+            bodyItem: frame.bodyItem
+            connectorItem: frame.connectorItem
+            inputEnabled: root.active
         }
-        property alias popupHoverArea: popupHoverHandler  // Alias for compatibility
-        // Expose containsMouse for the timer
-        readonly property bool popupContainsMouse: popupHoverHandler.hovered
-        
-        // Fullscreen transparent backdrop for Niri to detect clicks outside
-        // Uses WlrLayer.Top so it's below the popup (Overlay) but above normal windows
+
+        mask: connectedMask
+
         PanelWindow {
             id: clickOutsideBackdrop
-            visible: popupWindow.visible && CompositorService.isNiri && root.closeOnFocusLost
-            color: "transparent"
+
+            screen: root._anchorScreen
+            visible: popupWindow.visible
+                && CompositorService.isNiri
+                && root.closeOnFocusLost
+            color: Qt.rgba(0, 0, 0, 1 / 255)
             exclusiveZone: 0
+            exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "quickshell:barPopupBackdrop"
-            
+            WlrLayershell.namespace:
+                "quickshell:waffle-bar-popup-backdrop"
+
             anchors {
                 top: true
                 bottom: true
                 left: true
                 right: true
             }
-            
+
             MouseArea {
                 anchors.fill: parent
-                onClicked: {
-                    root.close();
-                }
+                onClicked: root.close()
             }
         }
     }

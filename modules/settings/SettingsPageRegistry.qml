@@ -27,6 +27,7 @@ Singleton {
     property bool _legacyBarCornerStyleMigrationDone: false
     property bool _legacyBarBackgroundMigrationDone: false
     property bool _legacySidebarSurfaceMigrationDone: false
+    property bool _legacyScreenEdgeShadowMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
@@ -162,6 +163,24 @@ Singleton {
             Config.setNestedValue("sidebar.cardStyle", false)
     }
 
+    function _migrateLegacyScreenEdgeShadow(): void {
+        if (root._legacyScreenEdgeShadowMigrationDone || !Config.ready)
+            return
+
+        root._legacyScreenEdgeShadowMigrationDone = true
+        const size = Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)
+        const opacity = Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)
+
+        // 12px / 24% was Hadalis' provisional shadow and is too weak to read on
+        // dark wallpapers. Migrate only that exact legacy pair; any user-tuned
+        // value is preserved. Caelestia's current ContentWindow uses blurMax=15
+        // with 0.7 shadow alpha.
+        if (size === 12 && Math.abs(opacity - 0.24) < 0.001) {
+            Config.setNestedValue("appearance.screenEdge.shadow.size", 15)
+            Config.setNestedValue("appearance.screenEdge.shadow.opacity", 0.70)
+        }
+    }
+
     function consumeLegacyTlpPowerRedirect(): bool {
         if (!root._legacyTlpPowerRedirectPending)
             return false
@@ -204,6 +223,7 @@ Singleton {
         root._migrateLegacyBarCornerStyle()
         root._migrateLegacyBarBackground()
         root._migrateLegacySidebarSurface()
+        root._migrateLegacyScreenEdgeShadow()
     }
 
     Connections {
@@ -223,6 +243,7 @@ Singleton {
                 root._migrateLegacyBarCornerStyle()
                 root._migrateLegacyBarBackground()
                 root._migrateLegacySidebarSurface()
+                root._migrateLegacyScreenEdgeShadow()
             }
         }
     }

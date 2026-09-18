@@ -27,7 +27,7 @@ ColumnLayout {
             || Battery.chargeLimitManaged
             || root.requestedEnabled
         uniform: false
-        Layout.fillWidth: false
+        Layout.fillWidth: true
 
         SettingsSwitch {
             buttonIcon: "battery_saver"

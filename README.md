@@ -277,7 +277,7 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 - [x] **KeyboardFocusRing `Appearance` import:** current source already imports `qs.modules.common`. Live shell update/reload validation is pending.
 - [x] **Connected popup geometry:** shared `StyledPopup` keeps each control's tangent center/extent but normalizes the cross-axis attachment to the real horizontal/vertical Bar surface (`barHeight` / `verticalBarWidth`), so differently sized controls grow from one physical edge while retaining the canonical connector width/seam tokens. Live top/bottom/left/right validation is pending.
 - [x] **Bar/Screen Edge overlap and color:** current source suppresses the Screen Edge and its adjacent corner overlay on the exact output/edge owned by the horizontal or vertical ii Bar, mirrors the Bar's stale-`screenList` fallback, and uses the Material Bar `colLayer0` surface token. Live placement/color validation is pending.
-- [ ] **Media Popup equalizer:** diagnose why the existing CAVA -> `PlayerControl` -> `WaveVisualizer` source path is not visibly rendering in the reported runtime.
+- [x] **Media Popup equalizer:** source now forwards the shared CAVA service's adaptive `normalizationCeiling` into `PlayerControl` instead of scaling the wave against a fixed 1000; this preserves the existing CAVA lifecycle while making normal 20–100-range playback peaks occupy a visible waveform range. Live play/pause/player-switch/reopen validation is pending.
 - [ ] **Time & Date / Weather hover:** remove the redundant separate Time & Date hover surface, route hover into the Weather/Calendar composition, and tighten the Serpantinum-inspired frontend while retaining Hadalis detailed weather ownership on the right.
 - [x] **Left/right Sidebar connectors:** the connector now lives inside the owning `SidebarHost` PanelWindow, shares its output/centering/lifecycle, overlaps the physical edge-to-card gap through `PerimeterTokens.seamOverlap`, and uses the sidebar's Material/card surface token. Live left/right validation is pending.
 - [x] **Overview bottom connector:** the dashboard's visible `dashContainer` now exposes its exact body rect/color and the owning Overview window draws a shared `ConnectedSurfaceConnector` from that body to the inner boundary of the bottom Screen Edge using the canonical width/seam tokens. Live Meta/Super+Space validation is pending.
@@ -293,7 +293,7 @@ Recommended next source-side sequence:
 
 1. refetch `dev` and `stable`, inspect every concurrent commit, and re-read README/targets on the latest HEAD before editing;
 2. live-validate the source-fixed connected-surface cluster later; do not rebuild the retired broad perimeter runtime;
-3. diagnose/fix Media Popup CAVA/WaveVisualizer visibility on the existing media path;
+3. live-validate the source-fixed Media Popup CAVA/WaveVisualizer scaling later;
 4. merge Time & Date hover behavior into the Weather/Calendar popup and tighten its Serpantinum-inspired left/center frontend while keeping Hadalis detailed weather on the right;
 5. finish the remaining source-only common-perimeter compatibility audit and remove/update any other stale regression contracts/docs that still describe retired runtime/theme behavior;
 6. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.

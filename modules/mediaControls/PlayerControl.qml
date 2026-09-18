@@ -17,6 +17,10 @@ Item {
     id: root
     required property MprisPlayer player
     required property list<real> visualizerPoints
+    // CAVA's shared service adapts this ceiling to the real signal. Keep a
+    // conservative fallback for external/legacy callers, while active owners
+    // pass the shared normalization ceiling so quiet-but-real audio stays visible.
+    property real visualizerMaxValue: 1000
     property real radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.rounding.large
     // Track-change slide direction: +1 next/forward (new content enters from the
     // right), -1 previous (enters from the left). Set by the prev/next handlers
@@ -291,7 +295,7 @@ Item {
             height: 35
             live: root.player?.isPlaying ?? false
             points: root.visualizerPoints
-            maxVisualizerValue: 1000
+            maxVisualizerValue: Math.max(1, root.visualizerMaxValue)
             smoothing: 2
             color: ColorUtils.transparentize(
                 Appearance.zzzEverywhere ? Appearance.zzz.metricFill

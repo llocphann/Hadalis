@@ -54,6 +54,7 @@ Item {
     }
 
     property list<real> visualizerPoints: cavaProcess.points
+    readonly property real visualizerMaxValue: Math.max(1, cavaProcess.normalizationCeiling)
 
     function _samePlayerOrder(a, b): bool {
         if ((a?.length ?? 0) !== (b?.length ?? 0)) return false
@@ -171,6 +172,7 @@ Item {
                         ? Appearance.sizes.elevationMargin : 0
                     player: modelData
                     visualizerPoints: root.visualizerPoints
+                    visualizerMaxValue: root.visualizerMaxValue
                     radius: root.popupRounding
                     screenX: root.screenX + playerDelegate.x + playerControl.x
                     screenY: root.screenY + playerDelegate.y + playerControl.y

@@ -37,8 +37,24 @@ def main() -> None:
         "BarMediaPopup must forward CAVA points into PlayerControl",
     )
     check(
+        "cavaProcess.normalizationCeiling" in popup
+        and "visualizerMaxValue: root.visualizerMaxValue" in popup,
+        "BarMediaPopup must forward the shared adaptive CAVA normalization ceiling",
+    )
+    media_controls = read("modules/mediaControls/MediaControls.qml")
+    check(
+        "cavaProcess.normalizationCeiling" in media_controls
+        and "visualizerMaxValue: root.visualizerMaxValue" in media_controls,
+        "Global MediaControls must share the adaptive CAVA normalization contract",
+    )
+    check(
         "WaveVisualizer {" in player and "points: root.visualizerPoints" in player,
         "PlayerControl must keep the CAVA -> WaveVisualizer data route",
+    )
+    check(
+        "maxVisualizerValue: Math.max(1, root.visualizerMaxValue)" in player
+        and "maxVisualizerValue: 1000" not in player,
+        "PlayerControl must scale the wave against the adaptive signal ceiling instead of a fixed 1000",
     )
     check(
         "CavaService.subscribe(root.sampleCount)" in cava,

@@ -116,10 +116,13 @@ def main() -> None:
         check(token in join_flares,
               f"Join flares must map nested body coordinates into their host: {token}")
 
-    check("Hover ownership belongs to the complete connected surface" in styled_popup
-          and styled_popup.index("id: popupHoverHandler")
-              < styled_popup.index("ConnectedSurfaceFrame {"),
-          "StyledPopup hover bridge must cover the full connected reveal surface, including padding")
+    check("hoverEnabled: root.active" in styled_popup
+          and "onBodyHoveredChanged: root.popupHovered = bodyHovered" in styled_popup,
+          "StyledPopup hover bridge must track the complete popup body instead of padded content")
+    check("property QtObject _hoverTransferTimerObject: Timer {" in styled_popup
+          and "interval: 90" in styled_popup
+          and "hoverTransferTimer.restart()" in styled_popup,
+          "StyledPopup must debounce the compositor leave/enter hand-off across Bar and popup windows")
 
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
@@ -210,11 +213,15 @@ def main() -> None:
     for token in (
         "id: sidebarEdgeFlares",
         "tracksBodyTranslation",
-        "sidebarContentLoader.animTranslateX",
-        "sidebarContentLoader.animTranslateY",
+        "JoinFlares maps bodyItem through mapToItem()",
     ):
         check(token in sidebar_host,
-              f"Sidebar Screen Edge shoulders must follow translated body motion: {token}")
+              f"Sidebar Screen Edge shoulders must follow the mapped body once: {token}")
+    sidebar_flare_start = sidebar_host.index("id: sidebarEdgeFlares")
+    sidebar_flare_end = sidebar_host.index("ShellEditSurfaceFrame", sidebar_flare_start)
+    sidebar_flare_block = sidebar_host[sidebar_flare_start:sidebar_flare_end]
+    check("transform: Translate" not in sidebar_flare_block,
+          "Sidebar flares must not double-apply the Loader translation after mapToItem()")
 
     media_popup = read("modules/mediaControls/BarMediaPopup.qml")
     check("EqualizerPanel {" in media_popup,
@@ -281,6 +288,10 @@ def main() -> None:
           "ConnectedSurfaceFrame must preserve the flared body/connector seam contract")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
+    check("property bool hoverEnabled: false" in frame
+          and "readonly property bool bodyHovered: bodyHover.hovered" in frame
+          and "HoverHandler {" in frame,
+          "ConnectedSurfaceFrame must expose body-scoped hover ownership for popup hand-off")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):

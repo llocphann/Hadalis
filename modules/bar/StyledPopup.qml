@@ -255,8 +255,8 @@ LazyLoader {
             fillColor: root._surfaceColor
             borderColor: root._borderColor
             borderWidth: root._borderWidth
-            // The connector owns the join. Leaving its outline off lets the
-            // shoulder merge into both bar and body instead of drawing a stem.
+            // Use the Caelestia-like smooth contact only for bar popouts.
+            edgeContactMode: true
             connectorBorderWidth: 0
         }
 

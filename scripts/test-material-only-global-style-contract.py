@@ -13,6 +13,9 @@ GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qm
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
+FONT_SELECTOR = ROOT / "modules" / "common" / "widgets" / "FontSelector.qml"
+ICON_THEME_SELECTOR = ROOT / "modules" / "common" / "widgets" / "IconThemeSelector.qml"
+CONFIG_SELECTION_ARRAY = ROOT / "modules" / "common" / "widgets" / "ConfigSelectionArray.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -41,6 +44,9 @@ def main() -> None:
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
+    font_selector = FONT_SELECTOR.read_text(encoding="utf-8")
+    icon_theme_selector = ICON_THEME_SELECTOR.read_text(encoding="utf-8")
+    config_selection_array = CONFIG_SELECTION_ARRAY.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -398,6 +404,27 @@ def main() -> None:
         "Layout.rightMargin: 8",
     ):
         require(styled_combo_box, token, "StyledComboBox.qml")
+
+    # Active shared selectors must not route their popup/control chrome
+    # through frozen legacy Global Theme predicates.
+    forbid(font_selector, "Appearance.inirEverywhere", "FontSelector.qml")
+    for token in (
+        "color: Appearance.colors.colLayer2Base",
+        "radius: Appearance.rounding.normal",
+        "border.color: Appearance.colors.colLayer0Border",
+    ):
+        require(font_selector, token, "FontSelector.qml")
+
+    forbid(icon_theme_selector, "Appearance.inirEverywhere", "IconThemeSelector.qml")
+    for token in (
+        "color: Appearance.colors.colLayer2Base",
+        "radius: Appearance.rounding.normal",
+        "border.color: Appearance.colors.colLayer0Border",
+    ):
+        require(icon_theme_selector, token, "IconThemeSelector.qml")
+
+    forbid(config_selection_array, "Appearance.regaliaEverywhere", "ConfigSelectionArray.qml")
+    require(config_selection_array, "spacing: 2", "ConfigSelectionArray.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

@@ -287,7 +287,7 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 
 Still open / must be treated as unfinished until audited or locally validated:
 
-1. **Material-only active-tree residue remains.** `Appearance.globalStyle` is runtime-clamped and public Settings routing is Material-only, but large Settings chrome files still contain dead legacy `Appearance.*Everywhere` presentation branches. Audit/remove those in small, exact Material-fallback groups; do not mass-delete or revive old themes.
+1. **Material-only active-tree residue is now outside Settings chrome.** `SettingsOverlay.qml` and the standalone `settings.qml` no longer contain legacy `Appearance.*Everywhere` presentation branches; both are collapsed to their existing Material fallbacks. Continue auditing the compatibility predicates/tokens in `Appearance.qml` and any non-Settings callers before removing them; do not mass-delete aliases that a supported component still consumes.
 2. **All maintainer-reported follow-up items now have source-side fixes.** Connected popup geometry, Media waveform visibility, Weather/Calendar sizing/hover, Overview bottom attachment, Sidebar connectors and same-edge Screen Edge ownership/color remain runtime-sensitive and require the maintainer's live desktop pass.
 3. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
@@ -297,7 +297,7 @@ Recommended next source-side sequence:
 2. live-validate the source-fixed connected-surface cluster later; do not rebuild the retired broad perimeter runtime;
 3. live-validate the source-fixed Media Popup CAVA/WaveVisualizer scaling later;
 4. live-validate the source-fixed Weather/Calendar hover composition later;
-5. audit/remove the remaining dead non-Material Settings chrome branches in small exact-fallback groups; avoid broad mechanical rewrites;
+5. audit the remaining `Appearance.qml` legacy compatibility predicates/tokens and their exact non-Settings callers; remove only dead groups with proven Material fallbacks;
 6. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 
 ## 12. New-conversation continuation prompt

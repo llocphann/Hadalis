@@ -258,6 +258,50 @@ def main() -> None:
     ):
         require(window_nav, token, "settings.qml navigation rail")
 
+    # The standalone Settings window is now collapsed entirely to its Material
+    # fallbacks, not just root/search/navigation chrome.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+    ):
+        forbid(settings_window, token, "settings.qml")
+
+    window_content_start = settings_window.index("id: contentContainer")
+    window_results_start = settings_window.index("id: searchResultsCard", window_content_start)
+    window_content = settings_window[window_content_start:window_results_start]
+    for token in (
+        "color: Appearance.colors.colSurfaceContainerLow",
+        "radius: Appearance.rounding.windowRounding - root.contentPadding",
+        "border.width: 0",
+        'border.color: "transparent"',
+        "color: Appearance.m3colors.m3outlineVariant",
+    ):
+        require(window_content, token, "settings.qml content container")
+
+    window_results_end = settings_window.index("id: resultsListView", window_results_start)
+    window_results = settings_window[window_results_start:window_results_end]
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "border.width: 1",
+        "border.color: Appearance.m3colors.m3outlineVariant",
+        "layer.enabled: Appearance.effectsEnabled",
+    ):
+        require(window_results, token, "settings.qml search results card")
+
+    results_delegate_start = settings_window.index("id: resultItem", window_results_end)
+    results_delegate_end = settings_window.index("contentItem: RowLayout", results_delegate_start)
+    results_delegate = settings_window[results_delegate_start:results_delegate_end]
+    for token in (
+        "buttonRadius: Appearance.rounding.small",
+        "? Appearance.colors.colPrimaryContainer",
+        "colBackgroundHover: Appearance.colors.colLayer2",
+    ):
+        require(results_delegate, token, "settings.qml search result delegate")
+
     print("Material-only global style contract: PASS")
 
 

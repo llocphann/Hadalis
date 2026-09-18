@@ -1400,23 +1400,10 @@ ApplicationWindow {
                 id: contentContainer
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                // ZZZ: same bg2 plate + hairline as the overlay-mode content
-                // field, so both settings modes read as the same surface.
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                     : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                     : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                     : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                     : Appearance.colors.colSurfaceContainerLow
-                radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                      : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                      : Appearance.rounding.windowRounding - root.contentPadding
-                border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                            : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-                            : Appearance.inirEverywhere ? 1 : 0
-                border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                            : Appearance.zzzEverywhere ? Appearance.zzz.hairline
-                            : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                            : "transparent"
+                color: Appearance.colors.colSurfaceContainerLow
+                radius: Appearance.rounding.windowRounding - root.contentPadding
+                border.width: 0
+                border.color: "transparent"
 
                 // ── Page header: icon + name + description ──
                 Item {
@@ -1470,7 +1457,7 @@ ApplicationWindow {
                     Rectangle {
                         anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 16; rightMargin: 16 }
                         height: 1
-                        color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : Appearance.m3colors.m3outlineVariant
+                        color: Appearance.m3colors.m3outlineVariant
                         opacity: 0.5
                     }
                 }
@@ -1522,16 +1509,10 @@ ApplicationWindow {
                         }
                         anchors.top: parent.top
                         anchors.topMargin: 8
-                        radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                             : Appearance.rounding.normal
+                        radius: Appearance.rounding.normal
                         color: "transparent"
-                        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                    : Appearance.inirEverywhere ? 1 : 1
-                        border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                            : Appearance.auroraEverywhere ? Appearance.aurora.colPopupBorder
-                            : Appearance.m3colors.m3outlineVariant
+                        border.width: 1
+                        border.color: Appearance.m3colors.m3outlineVariant
 
                         GlassBackground {
                             anchors.fill: parent
@@ -1546,7 +1527,7 @@ ApplicationWindow {
                             auroraTransparency: Math.max(0.22, Appearance.aurora.popupTransparentize - 0.12)
                         }
 
-                        layer.enabled: Appearance.effectsEnabled && !Appearance.auroraEverywhere
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             color: Qt.rgba(0, 0, 0, 0.3)
                             radius: 12
@@ -1596,20 +1577,12 @@ ApplicationWindow {
 
                                 width: resultsListView.width
                                 implicitHeight: 52
-                                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                                            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-                                            : Appearance.rounding.small
+                                buttonRadius: Appearance.rounding.small
 
                                 colBackground: ListView.isCurrentItem
-                                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                      : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                      : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                                      : Appearance.colors.colPrimaryContainer)
+                                    ? Appearance.colors.colPrimaryContainer
                                     : "transparent"
-                                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-                                                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                                  : Appearance.colors.colLayer2
+                                colBackgroundHover: Appearance.colors.colLayer2
 
                                 Keys.forwardTo: [resultsListView]
                                 onClicked: root.openSearchResult(modelData)

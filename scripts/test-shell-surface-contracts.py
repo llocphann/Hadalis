@@ -145,6 +145,20 @@ def main() -> None:
           and "hoverTransferTimer.restart()" in styled_popup,
           "StyledPopup must debounce the compositor leave/enter hand-off across Bar and popup windows")
 
+    round_corner = read("modules/common/widgets/RoundCorner.qml")
+    check("PathCubic {" in round_corner
+          and "PathAngleArc {" not in round_corner
+          and "readonly property real _k: 0.5522847498307936" in round_corner,
+          "Screen Edge/Bar inverse corners must use the shared circular cubic geometry")
+    for token in (
+        "RoundCorner.CornerEnum.TopLeft",
+        "RoundCorner.CornerEnum.TopRight",
+        "RoundCorner.CornerEnum.BottomLeft",
+        "RoundCorner.CornerEnum.BottomRight",
+    ):
+        check(token in round_corner,
+              f"RoundCorner must preserve all four orientations: {token}")
+
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")
@@ -405,6 +419,10 @@ def main() -> None:
               and "shadowTangentInset" not in runtime
               and "shadowSeamOverlap" not in runtime,
               "Rejected curved Bar shadow stitching must stay reverted")
+    check("frameRadius: PerimeterTokens.frameRadius" in bar_runtime,
+          "Horizontal Bar endpoint fillets must use Caelestia's 25px frame radius")
+    check("frameRadius: PerimeterTokens.frameRadius" in vertical_bar_runtime,
+          "Vertical Bar endpoint fillets must use Caelestia's 25px frame radius")
     for runtime in (bar_runtime, vertical_bar_runtime):
         check("readonly property bool showBarBackground: true" in runtime,
               "Supported Hug Bar chrome must remain structurally present")

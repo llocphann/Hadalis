@@ -21,7 +21,6 @@ Singleton {
     readonly property int barPageIndex: 2
     readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
-    readonly property int sidebarsPageIndex: 23
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
@@ -167,8 +166,6 @@ Singleton {
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
             .filter(entry => entry.pageIndex !== root.barPageIndex
                 || entry.label !== Translation.tr("Corner style"))
-            .filter(entry => entry.pageIndex !== root.sidebarsPageIndex
-                || entry.label !== Translation.tr("Sidebar style"))
             .map(entry => {
                 if (entry.pageIndex !== root.retiredTlpPageIndex)
                     return entry

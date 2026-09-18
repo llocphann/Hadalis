@@ -56,6 +56,7 @@ CONTROL_PANEL_DATE_TIME = ROOT / "modules" / "controlPanel" / "DateTimeHeader.qm
 CONTROL_PANEL_WALLPAPER = ROOT / "modules" / "controlPanel" / "WallpaperSection.qml"
 CONTROL_PANEL_WEATHER = ROOT / "modules" / "controlPanel" / "WeatherSection.qml"
 CONTROL_PANEL_SLIDERS = ROOT / "modules" / "controlPanel" / "SlidersSection.qml"
+CONTROL_PANEL_SYSTEM = ROOT / "modules" / "controlPanel" / "SystemSection.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -129,6 +130,7 @@ def main() -> None:
     control_panel_wallpaper = CONTROL_PANEL_WALLPAPER.read_text(encoding="utf-8")
     control_panel_weather = CONTROL_PANEL_WEATHER.read_text(encoding="utf-8")
     control_panel_sliders = CONTROL_PANEL_SLIDERS.read_text(encoding="utf-8")
+    control_panel_system = CONTROL_PANEL_SYSTEM.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1356,6 +1358,7 @@ def main() -> None:
         ("controlPanel/WallpaperSection.qml", control_panel_wallpaper),
         ("controlPanel/WeatherSection.qml", control_panel_weather),
         ("controlPanel/SlidersSection.qml", control_panel_sliders),
+        ("controlPanel/SystemSection.qml", control_panel_system),
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
@@ -1409,6 +1412,25 @@ def main() -> None:
         "property var brightnessMonitor: screen ? Brightness.getMonitorForScreen(screen) : null",
     ):
         require(control_panel_sliders, token, "controlPanel/SlidersSection.qml")
+
+    forbid(control_panel_system, "AngelPartialBorder {", "controlPanel/SystemSection.qml")
+    for token in (
+        "radiusOverride: islandSkin ? -1 : Appearance.rounding.small",
+        "readonly property real _contentHPad: root.compactMode ? 5 : 6",
+        'label: "CPU"',
+        'label: "RAM"',
+        'label: "BAT"',
+        "Appearance.colors.colError",
+        "Appearance.colors.colSuccess",
+        "Appearance.colors.colPrimary",
+        "color: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colOnLayer1",
+        "implicitHeight: root.compactMode ? 3 : 4",
+        "color: Appearance.colors.colLayer2",
+    ):
+        require(control_panel_system, token, "controlPanel/SystemSection.qml")
+    for token in ("id: segRail", "visible: Appearance.zzzEverywhere"):
+        forbid(control_panel_system, token, "controlPanel/SystemSection.qml")
 
     print("Material-only global style contract: PASS")
 

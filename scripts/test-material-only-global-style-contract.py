@@ -58,6 +58,7 @@ CONTROL_PANEL_WEATHER = ROOT / "modules" / "controlPanel" / "WeatherSection.qml"
 CONTROL_PANEL_SLIDERS = ROOT / "modules" / "controlPanel" / "SlidersSection.qml"
 CONTROL_PANEL_SYSTEM = ROOT / "modules" / "controlPanel" / "SystemSection.qml"
 CONTROL_PANEL_PROFILE = ROOT / "modules" / "controlPanel" / "ProfileHeader.qml"
+CONTROL_PANEL_QUICK_ACTIONS = ROOT / "modules" / "controlPanel" / "QuickActionsSection.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -133,6 +134,7 @@ def main() -> None:
     control_panel_sliders = CONTROL_PANEL_SLIDERS.read_text(encoding="utf-8")
     control_panel_system = CONTROL_PANEL_SYSTEM.read_text(encoding="utf-8")
     control_panel_profile = CONTROL_PANEL_PROFILE.read_text(encoding="utf-8")
+    control_panel_quick_actions = CONTROL_PANEL_QUICK_ACTIONS.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1362,6 +1364,7 @@ def main() -> None:
         ("controlPanel/SlidersSection.qml", control_panel_sliders),
         ("controlPanel/SystemSection.qml", control_panel_system),
         ("controlPanel/ProfileHeader.qml", control_panel_profile),
+        ("controlPanel/QuickActionsSection.qml", control_panel_quick_actions),
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
@@ -1451,6 +1454,29 @@ def main() -> None:
         "GlobalStates.sessionOpen = true",
     ):
         require(control_panel_profile, token, "controlPanel/ProfileHeader.qml")
+
+    for token in ("AngelPartialBorder {", "RegaliaControlFace {", "CookieFace {"):
+        forbid(control_panel_quick_actions, token, "controlPanel/QuickActionsSection.qml")
+    for token in (
+        "radiusOverride: islandSkin ? -1 : Appearance.rounding.normal",
+        "anchors.margins: root.compactMode ? 6 : 8",
+        "rowSpacing: root.compactMode ? 4 : 6",
+        "Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1",
+        "radius: Appearance.rounding.small",
+        "Appearance.colors.colPrimaryHover : Appearance.colors.colLayer2Hover",
+        "Appearance.colors.colPrimary : Appearance.colors.colLayer2",
+        "border.width: 0",
+        "border.color: Appearance.colors.colPrimary",
+        "Audio.toggleMute()",
+        "Audio.toggleMicMute()",
+        "Network.toggleWifi()",
+        "BluetoothStatus.toggle()",
+        "Idle.toggleInhibit()",
+        "GameMode.toggle()",
+        "GlobalStates.openRegionScreenshot()",
+        "GlobalStates.sessionOpen = true",
+    ):
+        require(control_panel_quick_actions, token, "controlPanel/QuickActionsSection.qml")
 
     print("Material-only global style contract: PASS")
 

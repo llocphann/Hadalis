@@ -319,6 +319,12 @@ def main() -> None:
           and "readonly property bool bodyHovered: bodyHover.hovered" in frame
           and "HoverHandler {" in frame,
           "ConnectedSurfaceFrame must expose body-scoped hover ownership for popup hand-off")
+    join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
+    check("component Flare: RoundCorner" in join_flares
+          and "import qs.modules.common.widgets" in join_flares,
+          "Connected shoulders must reuse the same RoundCorner primitive as the Hug Bar")
+    check("component Flare: Canvas" not in join_flares,
+          "Connected shoulders must not maintain a second Canvas corner renderer")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
@@ -341,6 +347,12 @@ def main() -> None:
           "Horizontal Hug body must not disappear because of legacy showBackground state")
     check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,
           "Vertical Hug body must not disappear because of legacy showBackground state")
+    check("Config.options?.bar?.cornerStyle" not in bar_content,
+          "Horizontal Hug body must ignore persisted retired cornerStyle at runtime")
+    check("Config.options?.bar?.cornerStyle" not in vertical_bar_content,
+          "Vertical Hug body must ignore persisted retired cornerStyle at runtime")
+    check("(Config.options?.bar?.cornerStyle ?? 0) === 0" not in vertical_bar_runtime,
+          "Vertical Hug shoulders must not depend on legacy cornerStyle state")
 
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,
@@ -387,6 +399,21 @@ def main() -> None:
     bar_runtime = read("modules/bar/Bar.qml")
     check('Config.setNestedValue("bar.cornerStyle", 0)' in bar_runtime,
           "Classic Bar startup must normalize persisted legacy corner styles to Hug")
+    config_qml = read("modules/common/Config.qml")
+    defaults_json = read("defaults/config.json")
+    appearance_qml = read("modules/common/Appearance.qml")
+    shell_layout = read("services/ShellLayoutController.qml")
+    check("property int cornerStyle: 0" in config_qml,
+          "Classic Bar schema default must be Hug")
+    check('"cornerStyle": 0' in defaults_json,
+          "Classic Bar persisted default must be Hug")
+    check("property int material: 0" in config_qml
+          and '"material": 0' in defaults_json,
+          "Material global-style compatibility corner must resolve to Hug")
+    check("Config.options?.bar?.cornerStyle" not in appearance_qml,
+          "Shared Bar sizing must not branch on retired cornerStyle")
+    check("Config.options?.bar?.cornerStyle" not in shell_layout,
+          "Shell layout reservation must not branch on retired cornerStyle")
     for retired_runtime_token in ("effectiveCornerStyle", "floatStyleShadow", "barFillInner"):
         check(retired_runtime_token not in bar_runtime,
               f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")

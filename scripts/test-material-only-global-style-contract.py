@@ -12,6 +12,7 @@ CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
+STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -39,6 +40,7 @@ def main() -> None:
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
+    styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -367,6 +369,35 @@ def main() -> None:
         "color: Appearance.colors.colOnLayer0",
     ):
         require(ripple_button, token, "RippleButton.qml")
+
+    # StyledComboBox is active Settings/shared control chrome. Preserve its
+    # public ComboBox/search contract while rendering only the Material fallback.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+        "RegaliaControlFace {",
+        "RegaliaPlate {",
+    ):
+        forbid(styled_combo_box, token, "StyledComboBox.qml")
+    for token in (
+        "property real baseHeight: 38",
+        "property real radius: Appearance.rounding.small",
+        "readonly property color _bgColor: Appearance.colors.colLayer2",
+        "readonly property color _popupColor: Appearance.colors.colLayer3Base",
+        "readonly property color _selectedColor: Appearance.colors.colPrimaryContainer",
+        "color: root.down ? root._bgActiveColor",
+        "border.width: 1",
+        "width: root.width - 8",
+        "height: 36",
+        "radius: Appearance.rounding.unsharpenmore",
+        "Layout.leftMargin: 12",
+        "Layout.rightMargin: 8",
+    ):
+        require(styled_combo_box, token, "StyledComboBox.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

@@ -175,7 +175,7 @@ Item {
     // than the Loader/shadow bounds.
     readonly property rect connectedSurfaceRect: Qt.rect(
         dashContainer.x, dashContainer.y, dashContainer.width, dashContainer.height)
-    readonly property color connectedSurfaceColor: dashContainer.fallbackColor
+    readonly property color connectedSurfaceColor: dashContainer.color
 
     Component.onCompleted: {
         ResourceUsage.ensureRunning()
@@ -258,7 +258,7 @@ Item {
         z: 5
         anchors.fill: parent
         bodyItem: dashContainer
-        fillColor: dashContainer.fallbackColor
+        fillColor: dashContainer.color
         flareRadius: PerimeterTokens.joinFlareRadius
         shadowEnabled: root.screenEdgeShadowEnabled
         shadowExtent: root.screenEdgeShadowSize
@@ -268,7 +268,7 @@ Item {
         joinBottom: root.directBottomAttachment
     }
 
-    GlassBackground {
+    Rectangle {
         id: dashContainer
         parent: dashboardSurfaceLayer
         anchors {
@@ -285,13 +285,11 @@ Item {
         topRightRadius: radius
         bottomLeftRadius: root.directBottomAttachment ? 0 : radius
         bottomRightRadius: root.directBottomAttachment ? 0 : radius
-        // Use the same Material layer as Bar/Screen Edge connected popups so
-        // the body, shoulders and owning edge read as one continuous surface.
-        fallbackColor: Appearance.colors.colLayer0
-        // Connected Bar/Screen Edge popups use the solid Material owner layer.
-        // Do not let the generic GlassBackground panel backend turn Dashboard
-        // transparent/blurred, or it reads as a different surface family.
-        wallpaperBackdropEnabled: root.useWallpaperBackdrop
+        // Dashboard is a connected Material popup, not a glass scene. A plain
+        // solid Rectangle prevents any panel-backdrop tint/saturation from
+        // darkening the whole Dashboard while keeping the same colLayer0 owner
+        // color as StyledPopup, Bar and Screen Edge.
+        color: Appearance.colors.colLayer0
         border.width: 0
         border.color: root.colBorder
         Behavior on border.width {

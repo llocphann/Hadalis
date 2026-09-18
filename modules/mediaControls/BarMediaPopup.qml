@@ -214,6 +214,12 @@ Item {
             }
         }
 
+        EqualizerPanel {
+            Layout.fillWidth: true
+            implicitWidth: root.widgetWidth
+            active: root.presentationActive && root.visible
+        }
+
         // No player placeholder - only show if truly no players after debounce
         Item {
             id: placeholderItem

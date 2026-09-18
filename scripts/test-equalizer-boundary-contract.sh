@@ -5,9 +5,8 @@ root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$root/services/deferred/EqualizerService.qml"
 qmldir="$root/services/deferred/qmldir"
 shell_root="$root/shell.qml"
-media_module="$root/modules/perimeter/MediaModule.qml"
-media_surface="$root/modules/perimeter/MediaConnectedSurface.qml"
 media_popup="$root/modules/mediaControls/BarMediaPopup.qml"
+equalizer_panel="$root/modules/mediaControls/EqualizerPanel.qml"
 media_controls_root="$root/modules/mediaControls"
 
 fail() {
@@ -15,52 +14,30 @@ fail() {
     exit 1
 }
 
-for file in "$service" "$qmldir" "$shell_root" "$media_module" "$media_surface" "$media_popup"; do
+for file in "$service" "$qmldir" "$shell_root" "$media_popup" "$equalizer_panel"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 [[ -d "$media_controls_root" ]] || fail 'missing modules/mediaControls'
 
-grep -Fxq 'singleton EqualizerService 1.0 EqualizerService.qml' "$qmldir" \
-    || fail 'EqualizerService is not exported from deferred services'
-grep -Fq 'property bool enabled: false' "$service" \
-    || fail 'equalizer capability is no longer disabled by default'
+grep -Fxq 'singleton EqualizerService 1.0 EqualizerService.qml' "$qmldir"     || fail 'EqualizerService is not exported from deferred services'
+grep -Fq 'property bool enabled: false' "$service"     || fail 'equalizer capability is no longer idle/disabled without consumers'
 
-for token in \
-    'readonly property string backendName:' \
-    'readonly property bool backendAvailable:' \
-    'readonly property bool available:' \
-    'property string error:' \
-    'property list<string> presets:' \
-    'property string activePreset:' \
-    'property var bands:' \
-    'function applyPreset(' \
-    'function setBandGain(' \
-    'function reset(' \
-    'function refresh('; do
-    grep -Fq "$token" "$service" || fail "service contract missing $token"
+for token in     'readonly property var dspFrequencies:'     'readonly property var dspPresetCurves:'     'function registerConsumer('     'function unregisterConsumer('     'function setDspBandGain('     'function applyDspPreset('; do
+    grep -Fq "$token" "$service" || fail "DSP service contract missing $token"
 done
 
-grep -Fq 'target: root.enabled ? EasyEffects : null' "$service" \
-    || fail 'disabled equalizer still subscribes to EasyEffects lifecycle'
-grep -Fq 'root._cancelProcesses()' "$service" \
-    || fail 'disabled equalizer cannot cancel backend processes'
-
-# Phase 1 must remain opt-in and detached from shell startup.
 if grep -Fq 'EqualizerService' "$shell_root"; then
     fail 'shell root eagerly references EqualizerService'
 fi
 
-# Presentation may consume EqualizerService in the future, but backend execution
-# belongs to the service layer. Connected Media must not grow direct EasyEffects
-# or subprocess control paths.
-for file in "$media_module" "$media_surface" "$media_popup"; do
-    if grep -Eq 'EasyEffects|socat|Quickshell\.execDetached|(^|[^A-Za-z])Process[[:space:]]*\{' "$file"; then
-        fail "${file#"$root/"} bypasses the equalizer service boundary"
-    fi
-done
+grep -Fq 'EqualizerPanel {' "$media_popup"     || fail 'Bar Media Popup does not host the DSP panel'
+grep -Fq 'EqualizerService.registerConsumer()' "$equalizer_panel"     || fail 'DSP panel does not acquire the optional service on presentation'
+grep -Fq 'EqualizerService.unregisterConsumer()' "$equalizer_panel"     || fail 'DSP panel does not release the optional service on teardown'
+grep -Fq 'model: ["Flat", "Bass", "Treble", "Vocal",' "$equalizer_panel"     || fail 'Serpantinum DSP preset row is missing'
+grep -Fq 'model: EqualizerService.dspBands' "$equalizer_panel"     || fail 'DSP panel is not driven by the service 10-band facade'
 
-# Guard every Media Controls presentation surface against reaching through the
-# EqualizerService facade to backend names, transport, socket, or wire protocol.
+# Presentation consumes only the facade. Backend/process/socket protocol remains
+# service-owned, so Media Controls cannot grow a second Equalizer implementation.
 backend_pattern='EasyEffects|socat|EasyEffectsServer|load_preset:output:|set_property:output:equalizer|get_property:output:equalizer'
 while IFS= read -r -d '' file; do
     if grep -Eq "$backend_pattern" "$file"; then
@@ -68,4 +45,4 @@ while IFS= read -r -d '' file; do
     fi
 done < <(find "$media_controls_root" -type f -name '*.qml' -print0)
 
-printf 'PASS: equalizer architecture boundary\n'
+printf 'PASS: Media DSP stays behind the EqualizerService boundary\n'

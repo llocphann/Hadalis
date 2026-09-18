@@ -83,7 +83,7 @@ band_end = text.index("function reset(", band_start)
 band_block = text[band_start:band_end]
 
 for marker in [
-    "if (!root._canMutate())",
+    "if (!root._canMutate(internalContinuation))",
     "Math.floor(bandIndex) !== bandIndex",
     "!isFinite(requestedGain)",
     "bandIndex < 0 || bandIndex >= root.bands.length",
@@ -161,6 +161,20 @@ for marker in [
         )
 if reset_proc.count("root._scheduleReconcile()") < 3:
     raise SystemExit("FAIL: Equalizer reset no longer reconciles all completion paths")
+
+for marker in [
+    "readonly property var dspFrequencies: [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]",
+    '"Bass":    [5, 7, 5, 2, 1, 0, 0, 0, 1, 2]',
+    '"Treble":  [-2, -1, 0, 1, 2, 3, 4, 5, 6, 6]',
+    "function registerConsumer()",
+    "function unregisterConsumer()",
+    "function setDspBandGain(index, gain)",
+    "function applyDspPreset(name)",
+    "root._dspPresetApplying = true",
+    "root._continueDspPreset()",
+]:
+    if marker not in text:
+        raise SystemExit(f"FAIL: 10-band DSP facade marker missing: {marker}")
 
 easyeffects_text = easyeffects.read_text(encoding="utf-8")
 flatpak_start = easyeffects_text.index("id: flatpakPsProc")

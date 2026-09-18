@@ -344,6 +344,31 @@ uninstall_remove_battery_charge_limit() {
     tui_success "iNiR TLP settings integration removed (TLP preserved)"
 }
 
+uninstall_remove_thinkfan_bridge() {
+    local helper="/usr/libexec/inir-thinkfan"
+    local policy="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"
+    local update_strategy=""
+
+    if declare -F get_installed_update_strategy >/dev/null 2>&1; then
+        update_strategy=$(get_installed_update_strategy 2>/dev/null || true)
+    fi
+
+    # Package-style installs own these files through their package manager.
+    # Source uninstall must never delete package-owned system payloads.
+    if [[ "$update_strategy" == "package-manager" ]]; then
+        tui_info "Preserving package-managed ThinkFan bridge"
+        return 0
+    fi
+
+    if [[ ! -e "$helper" && ! -e "$policy" ]]; then
+        return 0
+    fi
+
+    tui_info "Removing Hadalis ThinkFan bridge..."
+    pkg_sudo rm -f "$helper" "$policy" || return 1
+    tui_success "Hadalis ThinkFan bridge removed (upstream ThinkFan preserved)"
+}
+
 uninstall_create_backup() {
     local backup_dir="${HOME}/.local/share/inir-uninstall-backup-$(date +%Y%m%d-%H%M%S)"
 
@@ -955,6 +980,10 @@ run_uninstall() {
         tui_error "Battery charge-limit cleanup failed; no user files were removed."
         return 1
     fi
+    if ! uninstall_remove_thinkfan_bridge; then
+        tui_error "ThinkFan bridge cleanup failed; no user files were removed."
+        return 1
+    fi
 
     # Remove iNiR-exclusive files (always safe)
     uninstall_remove_inir_only
@@ -1033,9 +1062,14 @@ run_uninstall_quick() {
     # Stop services
     uninstall_stop_services
 
-    # The helper, policy and managed TLP drop-in are iNiR-exclusive.
+    # Privileged Hadalis-owned helpers/policies are removed without touching
+    # upstream TLP or ThinkFan package/service/config ownership.
     if ! uninstall_remove_battery_charge_limit; then
         tui_error "Battery charge-limit cleanup failed; no user files were removed."
+        return 1
+    fi
+    if ! uninstall_remove_thinkfan_bridge; then
+        tui_error "ThinkFan bridge cleanup failed; no user files were removed."
         return 1
     fi
 

@@ -20,6 +20,7 @@ def main() -> None:
     bar_settings = read("modules/settings/BarConfigHugOnly.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
     thinkfan_migration = read("sdata/migrations/041-thinkfan-helper-bridge.sh")
+    uninstall_lib = read("sdata/lib/uninstall.sh")
     migration_engine = read("sdata/lib/migrations.sh")
     setup_entrypoint = read("setup")
     thinkfan_docs = read("docs/THINKFAN.md")
@@ -111,6 +112,33 @@ def main() -> None:
     ):
         check(forbidden not in thinkfan_migration,
               f"ThinkFan bridge migration must preserve upstream ThinkFan ownership: {forbidden}")
+
+    for token in (
+        "uninstall_remove_thinkfan_bridge()",
+        'helper="/usr/libexec/inir-thinkfan"',
+        'policy="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"',
+        "get_installed_update_strategy 2>/dev/null || true",
+        '[[ "$update_strategy" == "package-manager" ]]',
+        'pkg_sudo rm -f "$helper" "$policy"',
+        "upstream ThinkFan preserved",
+    ):
+        check(token in uninstall_lib,
+              f"Repo uninstall must remove only the Hadalis-owned ThinkFan bridge: {token}")
+    check(uninstall_lib.count("uninstall_remove_thinkfan_bridge") >= 3,
+          "Both normal and quick repo uninstall paths must clean the Hadalis ThinkFan bridge")
+
+    for forbidden in (
+        "systemctl stop thinkfan",
+        "systemctl disable thinkfan",
+        "systemctl disable --now thinkfan",
+        "pacman -R thinkfan",
+        "dnf remove thinkfan",
+        "apt remove thinkfan",
+        "rm -f /etc/thinkfan",
+        "rm -rf /etc/thinkfan",
+    ):
+        check(forbidden not in uninstall_lib,
+              f"Repo uninstall must preserve upstream ThinkFan ownership: {forbidden}")
 
     check("run_migrations_auto" in setup_entrypoint,
           "Repo update path must run required migrations after pulling source changes")

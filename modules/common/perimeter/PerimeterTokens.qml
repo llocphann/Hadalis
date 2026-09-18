@@ -13,5 +13,8 @@ QtObject {
     readonly property real seamOverlap: 2
     readonly property real borderWidth: 1
     readonly property real blurExpansion: 24
+    // Straight and curved shadow primitives overlap by one logical pixel at
+    // their tangent so antialiasing cannot expose a hairline break.
+    readonly property real shadowSeamOverlap: 1
     readonly property real screenMargin: 4
 }

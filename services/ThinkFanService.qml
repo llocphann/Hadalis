@@ -4,6 +4,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.UPower
+import qs.modules.common
 
 Singleton {
     id: root
@@ -12,6 +14,7 @@ Singleton {
     property bool serviceInstalled: false
     property bool active: false
     property bool enabled: false
+    property bool directControlAvailable: false
     property bool stateKnown: false
     property bool busy: false
     property string profile: "firmware"
@@ -21,13 +24,60 @@ Singleton {
     property string statusReason: ""
     property bool lastApplySucceeded: false
     property string lastApplyError: ""
+    property string pendingOperation: ""
     property bool _refreshQueued: false
+    property bool _profileFollowArmed: false
+
+    readonly property bool profileFanControlEnabled:
+        Config.options?.powerProfiles?.fanControl?.enabled ?? false
+    readonly property string activePowerProfileKey:
+        root._powerProfileKey(PowerProfiles.profile)
+    readonly property int configuredActiveFanLevel:
+        root.configuredFanLevel(root.activePowerProfileKey)
+
+    function _powerProfileKey(profileValue): string {
+        switch (profileValue) {
+        case PowerProfile.PowerSaver: return "powerSaver"
+        case PowerProfile.Performance: return "performance"
+        case PowerProfile.Balanced:
+        default: return "balanced"
+        }
+    }
+
+    function configuredFanLevel(key: string): int {
+        const cfg = Config.options?.powerProfiles?.fanControl
+        let value = 0
+        switch (String(key ?? "")) {
+        case "powerSaver": value = Number(cfg?.powerSaver ?? 0); break
+        case "performance": value = Number(cfg?.performance ?? 0); break
+        case "balanced":
+        default: value = Number(cfg?.balanced ?? 0); break
+        }
+        if (!isFinite(value))
+            return 0
+        return Math.max(0, Math.min(7, Math.round(value)))
+    }
+
+    function _normalizeFanLevel(requestedLevel): string {
+        if (String(requestedLevel ?? "").toLowerCase() === "auto")
+            return "auto"
+        const numeric = Number(requestedLevel)
+        if (!isFinite(numeric))
+            return ""
+        const level = Math.round(numeric)
+        if (level === 0)
+            return "auto"
+        if (level < 1 || level > 7)
+            return ""
+        return String(level)
+    }
 
     function _clearStatus(reason: string): void {
         root.available = false
         root.serviceInstalled = false
         root.active = false
         root.enabled = false
+        root.directControlAvailable = false
         root.stateKnown = false
         root.profile = "firmware"
         root.fanRpm = -1
@@ -53,6 +103,7 @@ Singleton {
         root.serviceInstalled = data.serviceInstalled === true
         root.active = data.active === true
         root.enabled = data.enabled === true
+        root.directControlAvailable = data.directControlAvailable === true
         root.profile = String(data.profile ?? "firmware")
         root.fanRpm = typeof data.fanRpm === "number" && isFinite(data.fanRpm)
             ? Math.max(0, Math.round(data.fanRpm)) : -1
@@ -96,6 +147,7 @@ Singleton {
         }
 
         root.busy = true
+        root.pendingOperation = "profile:" + normalized
         root.lastApplySucceeded = false
         root.lastApplyError = ""
         applyProcess.command = [
@@ -106,7 +158,69 @@ Singleton {
         return true
     }
 
+    function applyFanLevel(requestedLevel): bool {
+        const normalized = root._normalizeFanLevel(requestedLevel)
+        if (normalized.length === 0) {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "unsupported-fan-level"
+            return false
+        }
+        if (root.busy) {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "apply-busy"
+            return false
+        }
+        if (!root.stateKnown || !root.directControlAvailable) {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "direct-control-unavailable"
+            return false
+        }
+        if (root.profile === "managed") {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "managed-control-active"
+            return false
+        }
+
+        root.busy = true
+        root.pendingOperation = "fan-level:" + normalized
+        root.lastApplySucceeded = false
+        root.lastApplyError = ""
+        applyProcess.command = [
+            "/usr/bin/pkexec", "/usr/libexec/inir-thinkfan",
+            "--set-level", normalized
+        ]
+        applyProcess.running = true
+        return true
+    }
+
+    function applyConfiguredPowerProfileFanLevel(): bool {
+        if (!root.profileFanControlEnabled)
+            return false
+        return root.applyFanLevel(root.configuredActiveFanLevel)
+    }
+
     Component.onCompleted: root.refresh()
+
+    Connections {
+        target: PowerProfiles
+        function onProfileChanged(): void {
+            if (!root._profileFollowArmed || !root.profileFanControlEnabled)
+                return
+            if (root.profile === "managed")
+                return
+            Qt.callLater(() => root.applyConfiguredPowerProfileFanLevel())
+        }
+    }
+
+    // Do not trigger a privileged fan write during shell startup/profile restore.
+    // After startup settles, later user/runtime power-profile changes can follow
+    // the configured fan level when the opt-in switch is enabled.
+    Timer {
+        interval: 5000
+        repeat: false
+        running: true
+        onTriggered: root._profileFollowArmed = true
+    }
 
     Process {
         id: detector
@@ -190,7 +304,8 @@ Singleton {
             root.busy = false
             root.lastApplySucceeded = false
             root.lastApplyError = "apply-start-failed"
-            console.warn("[ThinkFan] Failed to start privileged profile helper")
+            root.pendingOperation = ""
+            console.warn("[ThinkFan] Failed to start privileged fan-control helper")
             Qt.callLater(() => root.refresh())
         }
         onStarted: {
@@ -206,12 +321,11 @@ Singleton {
                 ? "apply-timeout" : (exitCode === 0 ? "" : "apply-failed")
             if (!root.lastApplySucceeded) {
                 if (applyProcess.timedOut)
-                    console.warn("[ThinkFan] Timed out while applying profile intent")
+                    console.warn("[ThinkFan] Timed out while applying fan-control intent")
                 else
-                    console.warn("[ThinkFan] Failed to apply profile intent (exit code " + exitCode + ")")
+                    console.warn("[ThinkFan] Failed to apply fan-control intent (exit code " + exitCode + ")")
             }
-            // Always re-read through the unprivileged path. The privileged helper
-            // also verifies service state before returning success.
+            root.pendingOperation = ""
             Qt.callLater(() => root.refresh())
         }
     }

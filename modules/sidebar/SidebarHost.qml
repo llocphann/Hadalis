@@ -1094,21 +1094,15 @@ Scope {
                 ?? Appearance.colors.colLayer0
             flareRadius: PerimeterTokens.joinFlareRadius
 
-            // The default sidebar motion is a translated slide. Move the
-            // endpoint shoulders with that same transform instead of hiding
-            // them for the whole transition; otherwise the attached corners
-            // briefly read as square even though the settled body is joined.
+            // JoinFlares maps bodyItem through mapToItem(), so the shoulder
+            // already follows Loader translations exactly once. Keep it visible
+            // through translated slide/drop motion; other morph modes still wait
+            // for their body geometry to settle.
             readonly property bool tracksBodyTranslation:
                 root.animationType === "slide" || root.animationType === "drop"
             progress: root.presentationOpen
                 && (!sidebarContentLoader.animating || tracksBodyTranslation)
                 ? 1 : 0
-            transform: Translate {
-                x: sidebarEdgeFlares.tracksBodyTranslation
-                    ? sidebarContentLoader.animTranslateX : 0
-                y: sidebarEdgeFlares.tracksBodyTranslation
-                    ? sidebarContentLoader.animTranslateY : 0
-            }
 
             joinLeft: root.isLeftEdge
             joinRight: !root.isLeftEdge

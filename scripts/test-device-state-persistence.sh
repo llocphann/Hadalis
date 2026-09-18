@@ -19,6 +19,9 @@ for f in "$persist" "$service" "$network" "$bluetooth" "$audio" "$qmldir" "$shel
     [[ -f "$f" ]] || fail "missing ${f#$root/}"
 done
 
+grep -Fq 'import Quickshell' "$service" \
+    || fail 'Singleton service must import Quickshell'
+
 for token in     'property JsonObject deviceState: JsonObject {'     'property bool wifiKnown: false'     'property bool bluetoothKnown: false'     'property bool micKnown: false'; do
     grep -Fq "$token" "$persist" || fail "Persistent schema missing: $token"
 done

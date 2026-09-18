@@ -10,14 +10,6 @@ import qs.modules.common.widgets
 BarConfig {
     id: root
 
-    readonly property bool thinkFanManaged:
-        ThinkFanService.stateKnown && ThinkFanService.profile === "managed"
-    readonly property bool thinkFanCanApply:
-        ThinkFanService.stateKnown
-        && ThinkFanService.serviceInstalled
-        && !ThinkFanService.busy
-        && (root.thinkFanManaged || ThinkFanService.available)
-
     // Never gate the whole page on the post-construction compatibility pass.
     // SettingsPageHost may expose this Loader before the zero-delay Timer runs;
     // keeping opacity at 0 in that window made a successfully loaded Bar page
@@ -113,45 +105,6 @@ BarConfig {
             SettingsNote {
                 icon: "info"
                 text: Translation.tr("The screen edge stays visible on the desktop and maximized windows. True fullscreen and lock screen hide it.")
-            }
-        }
-    }
-
-    SettingsCardSection {
-        settingsTaskSection: "system"
-        visible: root.isIiActive && root.activeSection === "system"
-        expanded: true
-        icon: "mode_fan"
-        title: Translation.tr("Fan Control")
-
-        SettingsGroup {
-            SettingsSwitch {
-                buttonIcon: "mode_fan"
-                text: Translation.tr("ThinkFan managed control")
-                description: Translation.tr("Use ThinkFan for fan control instead of firmware control. Changing profile may require administrator authorization.")
-                autoToggle: false
-                checked: root.thinkFanManaged
-                enabled: root.thinkFanCanApply
-                onToggledByUser: nextChecked => ThinkFanService.applyProfile(
-                    nextChecked ? "managed" : "firmware")
-            }
-
-            SettingsNote {
-                icon: ThinkFanService.serviceInstalled ? "thermostat" : "info"
-                warning: ThinkFanService.stateKnown
-                    && (!ThinkFanService.serviceInstalled
-                        || ThinkFanService.statusReason.length > 0)
-                text: !ThinkFanService.stateKnown
-                    ? Translation.tr("Checking ThinkFan status…")
-                    : !ThinkFanService.serviceInstalled
-                        ? Translation.tr("thinkfan.service is unavailable; system monitoring remains available without fan controls.")
-                    : ThinkFanService.busy
-                        ? Translation.tr("Applying fan control profile…")
-                    : root.thinkFanManaged
-                        ? Translation.tr("ThinkFan is managing the fan. Changes here are reflected immediately in System Monitor.")
-                        : ThinkFanService.available
-                            ? Translation.tr("Firmware controls the fan. Changes here are reflected immediately in System Monitor.")
-                            : Translation.tr("ThinkFan is unavailable; firmware control remains active.")
             }
         }
     }

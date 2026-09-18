@@ -58,7 +58,7 @@ Scope {
         ? WaffleLooks.Looks.colors.bg0
         : Appearance.colors.colLayer0
     readonly property color shadowColor:
-        ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, shadowOpacity)
+        ColorUtils.applyAlpha(Appearance.colors.colShadow, shadowOpacity)
 
     function targetsOutput(outputName, configuredList) {
         if (outputName.length === 0)

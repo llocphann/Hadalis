@@ -86,9 +86,7 @@ Item {
         return Math.min(mirrored, root.centerSideMaxWidth)
     }
 
-    readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false)
-        && (Config.options?.sidebar?.cardStyle ?? false)
-        && (Config.options?.bar?.cornerStyle === 3)
+    readonly property bool cardStyleEverywhere: false
     readonly property string surfaceDialect: Appearance.surfaceDialectFor("")
     readonly property bool zzzEverywhere: root.surfaceDialect === "zzz"
     readonly property color separatorColor: root.zzzEverywhere
@@ -128,22 +126,14 @@ Item {
     readonly property bool regaliaEverywhere: root.surfaceDialect === "regalia"
     readonly property bool auroraEverywhere: root.surfaceDialect === "aurora" || root.angelEverywhere
 
-    readonly property string nativeBlurTopology:
-        (Config.options?.bar?.cornerStyle ?? 0) !== 0
-            && (!root.zzzEverywhere || Appearance.zzz.round)
-        ? Appearance.blurTopology.roundedRectangle
-        : Appearance.blurTopology.unsupported
+    readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
     readonly property bool nativeBlurGeometryExact:
         Appearance.blurTopologyExact(root.nativeBlurTopology)
     readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
             "bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
         && !Appearance.gameModeMinimal
-    readonly property bool zzzDetachedRounded: root.zzzEverywhere
-        && Appearance.zzz.round
-        && (Config.options?.bar?.showBackground ?? true)
-        && (((Config.options?.bar?.cornerStyle ?? 0) === 1)
-            || ((Config.options?.bar?.cornerStyle ?? 0) === 3))
+    readonly property bool zzzDetachedRounded: false
 
     readonly property string leftAction: Config.options?.bar?.leftScrollAction ?? "brightness"
     readonly property string rightAction: Config.options?.bar?.rightScrollAction ?? "volume"
@@ -458,14 +448,9 @@ Item {
     }
 
     Loader {
-        active: !root.inirEverywhere
-            && (root.angelEverywhere || root.surfaceDialect !== "aurora")
-            && !Appearance.gameModeMinimal
-            && (Config.options?.bar?.showBackground ?? true)
-            && (root.angelEverywhere
-                || (((Config.options?.bar?.cornerStyle ?? 0) === 1
-                    || (Config.options?.bar?.cornerStyle ?? 0) === 3)
-                    && (Config.options?.bar?.floatStyleShadow ?? true)))
+        // Detached Float/Card shadow is retired. The supported Hug Bar uses the
+        // dedicated inward edge shadow owned by Bar.qml.
+        active: false
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined
@@ -478,22 +463,17 @@ Item {
         readonly property bool auroraEverywhere:
             root.surfaceDialect === "aurora" || root.angelEverywhere
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
-        readonly property int cornerStyle: Config.options?.bar?.cornerStyle ?? 0
+        readonly property int cornerStyle: 0
         readonly property bool zzzGlassActive: root.zzzEverywhere
             && Appearance.effectsEnabled
             && (Config.options?.appearance?.zzz?.glass ?? true)
-        readonly property bool floatingStyle: root.zzzDetachedRounded
-            || ((cornerStyle === 1 || cornerStyle === 3)
-                || (auroraEverywhere && cornerStyle !== 0 && cornerStyle !== 2))
+        readonly property bool floatingStyle: false
 
         anchors {
             fill: parent
-            margins: root.zzzDetachedRounded ? Appearance.sizes.elevationMargin
-                : floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+            margins: 0
         }
-        readonly property real barMargin: root.zzzDetachedRounded
-            ? Appearance.sizes.elevationMargin
-            : floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+        readonly property real barMargin: 0
         readonly property bool isBottom: Config.options?.bar?.bottom ?? false
         readonly property QtObject blendedColors: root.blendedColors
 

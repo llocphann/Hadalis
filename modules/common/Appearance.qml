@@ -537,38 +537,29 @@ Singleton {
         property color colErrorContainerActive: ColorUtils.mix(colErrorContainer, colOnErrorContainer, 0.70)
         property color colOnErrorContainer: root.regaliaEverywhere ? root.regalia.signalPlateInk : m3colors.m3onErrorContainer
 
-        // Success and warning existed only on the aurora token set, but the
-        // contrast badges in the theme editor and the colour picker read them
-        // off `colors` — so under every other style they resolved to undefined
-        // and each badge logged "Unable to assign [undefined] to QColor" on
-        // every repaint. zzz keeps its own chip inks: a raw green or orange is
-        // a hex dump in that doctrine, not a console chip.
-        property color colSuccess: root.regaliaEverywhere ? root.regalia.success : m3colors.m3success
-        property color colOnSuccess: root.regaliaEverywhere ? root.regalia.successInk : m3colors.m3onSuccess
-        property color colSuccessContainer: root.regaliaEverywhere ? root.regalia.successPlate : m3colors.m3successContainer
-        property color colOnSuccessContainer: root.regaliaEverywhere ? root.regalia.successPlateInk : m3colors.m3onSuccessContainer
-        property color colWarning: root.regaliaEverywhere ? root.regalia.warning : m3colors.m3tertiary
-        property color colWarningContainer: root.regaliaEverywhere ? root.regalia.warningPlate : root.zzzEverywhere
-            ? root.zzz.secondary : m3colors.m3tertiaryContainer
-        property color colOnWarningContainer: root.regaliaEverywhere ? root.regalia.warningPlateInk : root.zzzEverywhere
-            ? root.zzz.onSecondary : m3colors.m3onTertiaryContainer
+        property color colSuccess: m3colors.m3success
+        property color colOnSuccess: m3colors.m3onSuccess
+        property color colSuccessContainer: m3colors.m3successContainer
+        property color colOnSuccessContainer: m3colors.m3onSuccessContainer
+        property color colWarning: m3colors.m3tertiary
+        property color colWarningContainer: m3colors.m3tertiaryContainer
+        property color colOnWarningContainer: m3colors.m3onTertiaryContainer
     }
 
     rounding: QtObject {
-        // Dynamic rounding scalar based on theme metadata
-        // Matrix -> 0, Zen Garden -> 1.5, Standard -> 1.0
-        property real scale: (root.regaliaEverywhere || root.zzzEverywhere) ? 1.0 : (root._themeMeta.roundingScale ?? 1.0)
+        // Material presets may still tune the canonical rounding scale.
+        property real scale: root._themeMeta.roundingScale ?? 1.0
 
-        property int unsharpen: root.regaliaEverywhere ? 2 : root.cookieEverywhere ? 4 : root.zzzEverywhere ? 2 : Math.max(0, Math.round(2 * scale))
-        property int unsharpenmore: root.regaliaEverywhere ? root.regalia.roundVerySmall : root.cookieEverywhere ? 8 : root.zzzEverywhere ? 4 : Math.max(0, Math.round(6 * scale))
-        property int verysmall: root.regaliaEverywhere ? root.regalia.roundVerySmall : root.cookieEverywhere ? root.cookie.roundVerySmall : root.zzzEverywhere ? root.zzz.roundSmall : Math.max(0, Math.round(8 * scale))
-        property int small: root.regaliaEverywhere ? root.regalia.roundSmall : root.cookieEverywhere ? root.cookie.roundSmall : root.zzzEverywhere ? root.zzz.roundSmall : Math.max(0, Math.round(12 * scale))
-        property int normal: root.regaliaEverywhere ? root.regalia.roundNormal : root.cookieEverywhere ? root.cookie.roundNormal : root.zzzEverywhere ? root.zzz.roundNormal : Math.max(0, Math.round(17 * scale))
-        property int large: root.regaliaEverywhere ? root.regalia.roundLarge : root.cookieEverywhere ? root.cookie.roundLarge : root.zzzEverywhere ? root.zzz.roundLarge : Math.max(0, Math.round(23 * scale))
-        property int verylarge: root.regaliaEverywhere ? root.regalia.panelRadius : root.cookieEverywhere ? root.cookie.panelRadius : root.zzzEverywhere ? root.zzz.panelRadius : Math.max(0, Math.round(30 * scale))
-        property int full: root.zzzEverywhere ? (root.zzz.round ? 9999 : root.zzz.controlRadius) : 9999
+        property int unsharpen: Math.max(0, Math.round(2 * scale))
+        property int unsharpenmore: Math.max(0, Math.round(6 * scale))
+        property int verysmall: Math.max(0, Math.round(8 * scale))
+        property int small: Math.max(0, Math.round(12 * scale))
+        property int normal: Math.max(0, Math.round(17 * scale))
+        property int large: Math.max(0, Math.round(23 * scale))
+        property int verylarge: Math.max(0, Math.round(30 * scale))
+        property int full: 9999
         property int screenRounding: large
-        property int windowRounding: root.regaliaEverywhere ? root.regalia.panelRadius : root.zzzEverywhere ? root.zzz.panelRadius : Math.max(0, Math.round(18 * scale))
+        property int windowRounding: Math.max(0, Math.round(18 * scale))
     }
 
     // Typography scale factor from config
@@ -578,36 +569,22 @@ Singleton {
     readonly property var activeThemePreset: ThemePresets.getPreset(Config.options?.appearance?.theme ?? "auto")
     readonly property var _themeMeta: activeThemePreset.meta || {}
     
-    // Font Strategy:
-    // 1. Inir style -> Always Monospace (TUI feel)
-    // 2. Theme requests mono (Matrix, Vesper) -> Monospace
-    // 3. Theme requests serif (Angel) -> Serif (if mapped)
-    // 4. Default -> Config Main Font
-    readonly property bool _forceMono: globalStyle === "inir" || _themeMeta.fontStyle === "mono"
+    // Material typography may still request a monospace preset through theme metadata.
+    readonly property bool _forceMono: _themeMeta.fontStyle === "mono"
     readonly property string _angelFont: "Oxanium"
-    readonly property bool _useAngelFont: globalStyle === "angel"
+    readonly property bool _useAngelFont: false
     readonly property string _regaliaFont: "Space Grotesk"
     readonly property string _regaliaTechFont: "Oxanium"
-    readonly property bool _useRegaliaFont: globalStyle === "regalia"
-    // ZZZ uses Oxanium (poster geometric). Restored after Space Grotesk felt
-    // thinner/less characteristic — Oxanium keeps the ZZZ identity.
+    readonly property bool _useRegaliaFont: false
     readonly property string _zzzFont: "Oxanium"
-    readonly property bool _useZzzFont: globalStyle === "zzz"
+    readonly property bool _useZzzFont: false
 
     font: QtObject {
         property QtObject family: QtObject {
-            property string main: root._useZzzFont ? root._zzzFont
-                                : root._useAngelFont ? root._angelFont
-                                : root._useRegaliaFont ? root._regaliaFont
-                                : root._forceMono ? monospace
+            property string main: root._forceMono ? monospace
                                 : (Config.options?.appearance?.typography?.mainFont ?? "Roboto Flex")
-            property string numbers: root._useZzzFont ? root._zzzFont
-                                : root._useAngelFont ? root._angelFont
-                                : root._useRegaliaFont ? root._regaliaTechFont : "Rubik"
-            property string title: root._useZzzFont ? root._zzzFont
-                                 : root._useAngelFont ? root._angelFont
-                                 : root._useRegaliaFont ? root._regaliaFont
-                                 : root._forceMono ? monospace
+            property string numbers: "Rubik"
+            property string title: root._forceMono ? monospace
                                  : (Config.options?.appearance?.typography?.titleFont ?? "Gabarito")
             property string iconMaterial: "Material Symbols Rounded"
             property string iconNerd: "JetBrains Mono NF"
@@ -617,9 +594,7 @@ Singleton {
         }
         property QtObject variableAxes: QtObject {
             // Roboto Flex is customized to feel geometric, unserious yet not overly kiddy
-            property var main: root.regaliaEverywhere ? ({
-                "wght": 430,
-            }) : ({
+            property var main: ({
                 "YTUC": 716,
                 "YTFI": 716,
                 "YTAS": 716,
@@ -633,7 +608,7 @@ Singleton {
                 "wght": 400,
             })
             property var title: ({
-                "wght": root.regaliaEverywhere ? 650 : 900,
+                "wght": 900,
             })
         }
         property QtObject pixelSize: QtObject {

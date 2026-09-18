@@ -89,6 +89,50 @@ def main() -> None:
     ):
         require(warning_contract, token, "Appearance.qml warning tokens")
 
+    colors_success_start = appearance.index("property color colSuccess:")
+    rounding_start = appearance.index("rounding: QtObject {", colors_success_start)
+    colors_success = appearance[colors_success_start:rounding_start]
+    for token in ("regaliaEverywhere", "zzzEverywhere"):
+        forbid(colors_success, token, "Appearance.qml success/warning colors")
+    for token in (
+        "property color colSuccess: m3colors.m3success",
+        "property color colWarningContainer: m3colors.m3tertiaryContainer",
+        "property color colOnWarningContainer: m3colors.m3onTertiaryContainer",
+    ):
+        require(colors_success, token, "Appearance.qml success/warning colors")
+
+    typography_start = appearance.index("// Typography scale factor from config", rounding_start)
+    rounding_contract = appearance[rounding_start:typography_start]
+    for token in ("regaliaEverywhere", "cookieEverywhere", "zzzEverywhere"):
+        forbid(rounding_contract, token, "Appearance.qml rounding")
+    for token in (
+        "property real scale: root._themeMeta.roundingScale ?? 1.0",
+        "property int full: 9999",
+        "property int windowRounding: Math.max(0, Math.round(18 * scale))",
+    ):
+        require(rounding_contract, token, "Appearance.qml rounding")
+
+    font_strategy_start = appearance.index("// Material typography may still request", typography_start)
+    animation_curves_start = appearance.index("animationCurves: QtObject {", font_strategy_start)
+    font_contract = appearance[font_strategy_start:animation_curves_start]
+    for token in (
+        'globalStyle === "inir"',
+        'globalStyle === "angel"',
+        'globalStyle === "regalia"',
+        'globalStyle === "zzz"',
+        "regaliaEverywhere",
+    ):
+        forbid(font_contract, token, "Appearance.qml font dispatch")
+    for token in (
+        'readonly property bool _forceMono: _themeMeta.fontStyle === "mono"',
+        "readonly property bool _useAngelFont: false",
+        "readonly property bool _useRegaliaFont: false",
+        "readonly property bool _useZzzFont: false",
+        'property string numbers: "Rubik"',
+        '"wght": 900',
+    ):
+        require(font_contract, token, "Appearance.qml font dispatch")
+
     # Persistence migration remains owned by ThemeService: old callers/config may
     # still reach this compatibility boundary, but every value is clamped to Material.
     for token in (

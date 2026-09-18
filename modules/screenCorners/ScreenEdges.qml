@@ -110,6 +110,18 @@ Scope {
 
         readonly property string outputName: String(modelData?.name ?? "")
         readonly property bool horizontal: edge === "top" || edge === "bottom"
+        // Straight edge shadows live in separate layer surfaces from the rounded
+        // corner overlays. Keep each straight shadow outside the corner footprint
+        // it does not own; otherwise compositor stacking can paint the shadow over
+        // the corner fill and leave the lower corners looking like dark triangles.
+        readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
+        readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
+        readonly property real leadingShadowInset:
+            root.barOwnsEdge(outputName, leadingAdjacentEdge)
+                ? 0 : root.thickness + root.innerRadius
+        readonly property real trailingShadowInset:
+            root.barOwnsEdge(outputName, trailingAdjacentEdge)
+                ? 0 : root.thickness + root.innerRadius
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -163,10 +175,16 @@ Scope {
         Rectangle {
             id: edgeShadow
             visible: root.shadowExtent > 0 && root.shadowOpacity > 0
-            x: horizontal ? 0 : (edge === "left" ? root.thickness : 0)
-            y: horizontal ? (edge === "top" ? root.thickness : 0) : 0
-            width: horizontal ? parent.width : root.shadowExtent
-            height: horizontal ? root.shadowExtent : parent.height
+            x: horizontal ? leadingShadowInset
+                : (edge === "left" ? root.thickness : 0)
+            y: horizontal ? (edge === "top" ? root.thickness : 0)
+                : leadingShadowInset
+            width: horizontal
+                ? Math.max(0, parent.width - leadingShadowInset - trailingShadowInset)
+                : root.shadowExtent
+            height: horizontal
+                ? root.shadowExtent
+                : Math.max(0, parent.height - leadingShadowInset - trailingShadowInset)
             color: "transparent"
             gradient: Gradient {
                 orientation: horizontal ? Gradient.Vertical : Gradient.Horizontal

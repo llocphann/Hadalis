@@ -7,8 +7,11 @@ import qs.modules.common
 QuickConfig {
     id: root
 
-    property bool _hugUiReady: false
-    opacity: root._hugUiReady ? 1 : 0
+    // Do not gate the whole page on this post-construction compatibility pass.
+    // SettingsPageHost can expose a ready Loader before a zero-delay Timer fires;
+    // hiding the entire page in that window makes a valid Quick page look blank.
+    // The pass only hides the retired Bar-style card, so it is safe to run after
+    // the page has already become visible.
 
     function _applyHugOnlyUi(item): void {
         if (!item)
@@ -28,9 +31,6 @@ QuickConfig {
         interval: 0
         running: true
         repeat: false
-        onTriggered: {
-            root._applyHugOnlyUi(root)
-            root._hugUiReady = true
-        }
+        onTriggered: root._applyHugOnlyUi(root)
     }
 }

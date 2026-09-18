@@ -55,6 +55,10 @@ require(quick, 'Translation.tr("Bar style")',
         "Quick Settings Hug facade lost its retired-control filter")
 require(quick, 'item.visible = false',
         "Quick Settings no longer hides the retired Bar style card")
+forbid(quick, 'opacity: root._hugUiReady ? 1 : 0',
+       "Quick Settings must not hide the whole page behind a zero-delay compatibility timer")
+forbid(quick, 'property bool _hugUiReady:',
+       "Quick Settings retained the blank-page readiness gate")
 
 # Fan Control must remain reachable from the real System page and static search.
 require(system, '{ displayName: Translation.tr("Fan Control"), icon: "mode_fan", value: "fan" }',

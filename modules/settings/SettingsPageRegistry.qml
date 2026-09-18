@@ -190,12 +190,10 @@ Singleton {
 
                 redirected.pageIndex = root.systemPageIndex
                 redirected.pageName = root.pages[root.systemPageIndex].name
-                redirected.section = chargeCareEntry
-                    ? Translation.tr("Power") + " · " + Translation.tr("Battery Care")
-                    : Translation.tr("Power")
-                redirected.label = chargeCareEntry
-                    ? Translation.tr("Hardware-aware charge care")
-                    : Translation.tr("Battery and TLP power management")
+                // Battery care is integrated into the primary Power card;
+                // legacy charge-limit searches land on that same visible target.
+                redirected.section = Translation.tr("Power")
+                redirected.label = Translation.tr("Battery and TLP power management")
                 redirected.keywords = keywords.concat(["system", "settings", "power"])
                 return redirected
             })

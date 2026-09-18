@@ -15,7 +15,8 @@ The integration has three pieces:
   - applies `managed` or `firmware` ownership when invoked as root;
   - on supported ThinkPad ACPI hardware, applies an explicit `auto` or fixed fan level 1–7 through `--set-level` without rewriting the machine's ThinkFan configuration.
 - `org.inir.thinkfan.policy`
-  - authorizes privileged profile changes through Polkit.
+  - authorizes the exact installed helper through Polkit;
+  - allows it without a password prompt only for the active local session, while inactive/non-local subjects remain denied.
 
 The repo-managed `./setup install`, source/Make, and Arch package paths install the helper and policy. Package-managed setup runs leave those system files to the package manager. The current Nix package does not provision these privileged system-level files; see [NixOS / Home Manager](NIXOS.md#privileged-integration-limitation).
 
@@ -28,7 +29,7 @@ To use managed fan control, the machine must provide all of the following:
 3. a valid ThinkFan configuration, normally `/etc/thinkfan.yaml` or `/etc/thinkfan.conf`;
 4. the Hadalis helper at `/usr/libexec/inir-thinkfan`;
 5. the Hadalis Polkit policy for privileged profile changes;
-6. a working Polkit authentication agent when an interactive authorization prompt is required.
+6. an active local desktop session recognized by Polkit. The shipped policy does not prompt that active session for these narrowly scoped helper operations.
 
 The Arch `inir-shell` packages treat `thinkfan` as an optional dependency. Installing Hadalis therefore does not by itself guarantee that `thinkfan.service` or a machine-specific ThinkFan configuration exists.
 
@@ -130,7 +131,7 @@ If managed mode fails to start, inspect the system service journal:
 journalctl -u thinkfan.service -b
 ```
 
-If the shell reports an apply-start failure, verify that `/usr/bin/pkexec`, the Hadalis helper, the Polkit policy, and an authentication agent are available.
+If the shell reports an apply-start failure, verify that `/usr/bin/pkexec`, the Hadalis helper and the current Polkit policy are installed, and that the desktop session is recognized as active. A stale pre-update policy can still request administrator authentication until the packaged/system policy is refreshed.
 
 If the shell reports an apply timeout, inspect ThinkFan/systemd directly before retrying. The UI intentionally times out privileged apply operations instead of leaving its state permanently busy.
 

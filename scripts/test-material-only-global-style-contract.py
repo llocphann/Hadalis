@@ -61,6 +61,7 @@ CONTROL_PANEL_PROFILE = ROOT / "modules" / "controlPanel" / "ProfileHeader.qml"
 CONTROL_PANEL_QUICK_ACTIONS = ROOT / "modules" / "controlPanel" / "QuickActionsSection.qml"
 CONTROL_PANEL_MEDIA = ROOT / "modules" / "controlPanel" / "MediaSection.qml"
 CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent.qml"
+OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -139,6 +140,7 @@ def main() -> None:
     control_panel_quick_actions = CONTROL_PANEL_QUICK_ACTIONS.read_text(encoding="utf-8")
     control_panel_media = CONTROL_PANEL_MEDIA.read_text(encoding="utf-8")
     control_panel_content = CONTROL_PANEL_CONTENT.read_text(encoding="utf-8")
+    overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1374,6 +1376,25 @@ def main() -> None:
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
+
+    # Overview cleanup is component-by-component. SearchBar is an active leaf
+    # owned by SearchWidget; lock its song-recognition chrome to the existing
+    # Material fallback without changing search/SongRec behavior.
+    for token in legacy_style_tokens:
+        forbid(overview_search_bar, token, "overview/SearchBar.qml")
+    forbid(overview_search_bar, "RegaliaControlFace {", "overview/SearchBar.qml")
+    for token in (
+        "? Appearance.colors.colOnPrimary",
+        ": Appearance.colors.colOnSurfaceVariant",
+        "MaterialShape {",
+        "Appearance.colors.colPrimaryHover",
+        "Appearance.colors.colPrimary",
+        "Appearance.colors.colSurfaceContainerHigh",
+        "ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh)",
+        "onClicked: SongRec.toggleRunning()",
+        'text: "music_cast"',
+    ):
+        require(overview_search_bar, token, "overview/SearchBar.qml")
 
     forbid(
         control_panel_date_time,

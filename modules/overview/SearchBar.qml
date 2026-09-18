@@ -149,24 +149,11 @@ RowLayout {
         }
 
         colText: toggled
-            ? (Appearance.regaliaEverywhere ? Appearance.regalia.primaryPlateInk
-                : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary : Appearance.colors.colOnPrimary)
-            : (Appearance.regaliaEverywhere ? Appearance.regalia.onMuted
-                : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnSurfaceVariant)
+            ? Appearance.colors.colOnPrimary
+            : Appearance.colors.colOnSurfaceVariant
         background: Item {
-            RegaliaControlFace {
-                anchors.fill: parent
-                visible: Appearance.regaliaEverywhere
-                fillColor: songRecButton.toggled ? Appearance.regalia.primaryPlate : Appearance.regalia.controlPlate
-                radius: Appearance.regalia.roundSmall
-                hovered: songRecButton.hovered
-                pressed: songRecButton.down
-                selected: songRecButton.toggled
-            }
-
             MaterialShape {
                 anchors.fill: parent
-                visible: !Appearance.regaliaEverywhere
                 RotationAnimation on rotation {
                     running: songRecButton.toggled
                     duration: 12000
@@ -184,9 +171,13 @@ RowLayout {
                 }
                 color: {
                     if (songRecButton.toggled) {
-                        return songRecButton.hovered ? (Appearance.inirEverywhere ? Appearance.inir.colPrimaryHover : Appearance.colors.colPrimaryHover) : (Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
+                        return songRecButton.hovered
+                            ? Appearance.colors.colPrimaryHover
+                            : Appearance.colors.colPrimary
                     } else {
-                        return songRecButton.hovered ? (Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover : Appearance.colors.colSurfaceContainerHigh) : (Appearance.inirEverywhere ? Appearance.inir.colLayer2 : ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh))
+                        return songRecButton.hovered
+                            ? Appearance.colors.colSurfaceContainerHigh
+                            : ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh)
                     }
                 }
                 Behavior on color {

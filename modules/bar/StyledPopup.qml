@@ -17,8 +17,8 @@ LazyLoader {
     property bool popupHovered: false
     default property Item contentItem
     property real popupBackgroundMargin: 0
-    // Opt-in for corner-near popups whose body should directly overlap the
-    // orthogonal Screen Edge. No separate connector/stem is rendered.
+    // Compatibility knob retained for old callers. Placement is now authoritative:
+    // every popup automatically joins any Screen Edge its body actually reaches.
     property bool connectAdjacentScreenEdge: false
 
     // Presentation-only handle for the lazily-created connected surface. This is
@@ -40,9 +40,8 @@ LazyLoader {
     readonly property real _contentPadding: 14
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    readonly property real _popupScreenMargin: root.connectAdjacentScreenEdge
-        ? Math.max(0, root._screenEdgeThickness - PerimeterTokens.seamOverlap)
-        : PerimeterTokens.screenMargin
+    readonly property real _popupScreenMargin: Math.max(0,
+        root._screenEdgeThickness - PerimeterTokens.seamOverlap)
     readonly property bool _edgeShadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,
@@ -268,19 +267,19 @@ LazyLoader {
             readonly property rect body: geometry.bodyRect
             readonly property real epsilon:
                 1 / Math.max(1, popupWindow.devicePixelRatio)
-            readonly property bool atLeft: root.connectAdjacentScreenEdge
-                && !root._barVertical
-                && Math.abs(body.x - geometry.effectiveScreenMargin) <= epsilon
-            readonly property bool atRight: root.connectAdjacentScreenEdge
-                && !root._barVertical
-                && Math.abs((popupWindow.width - geometry.effectiveScreenMargin)
+            readonly property real margin: geometry.effectiveScreenMargin
+            // Detect all output edges from the resting body geometry. A popup
+            // moved away from a corner therefore loses that edge join naturally;
+            // a wide/tall popup may join multiple Screen Edges if it reaches them.
+            readonly property bool atLeft:
+                Math.abs(body.x - margin) <= epsilon
+            readonly property bool atRight:
+                Math.abs((popupWindow.width - margin)
                     - (body.x + body.width)) <= epsilon
-            readonly property bool atTop: root.connectAdjacentScreenEdge
-                && root._barVertical
-                && Math.abs(body.y - geometry.effectiveScreenMargin) <= epsilon
-            readonly property bool atBottom: root.connectAdjacentScreenEdge
-                && root._barVertical
-                && Math.abs((popupWindow.height - geometry.effectiveScreenMargin)
+            readonly property bool atTop:
+                Math.abs(body.y - margin) <= epsilon
+            readonly property bool atBottom:
+                Math.abs((popupWindow.height - margin)
                     - (body.y + body.height)) <= epsilon
         }
 
@@ -304,18 +303,18 @@ LazyLoader {
             // the popup body reaches an orthogonal Screen Edge, its touching
             // corners become square and the joined side has no duplicate shadow.
             // The free sides keep the same configured Screen Edge shadow.
-            joinTop: directEdgeAttachment.atTop
-            joinBottom: directEdgeAttachment.atBottom
-            joinLeft: directEdgeAttachment.atLeft
-            joinRight: directEdgeAttachment.atRight
-            shadowTop: root._attachmentEdge !== "top"
-                && !directEdgeAttachment.atTop
-            shadowBottom: root._attachmentEdge !== "bottom"
-                && !directEdgeAttachment.atBottom
-            shadowLeft: root._attachmentEdge !== "left"
-                && !directEdgeAttachment.atLeft
-            shadowRight: root._attachmentEdge !== "right"
-                && !directEdgeAttachment.atRight
+            joinTop: root._attachmentEdge === "top"
+                || directEdgeAttachment.atTop
+            joinBottom: root._attachmentEdge === "bottom"
+                || directEdgeAttachment.atBottom
+            joinLeft: root._attachmentEdge === "left"
+                || directEdgeAttachment.atLeft
+            joinRight: root._attachmentEdge === "right"
+                || directEdgeAttachment.atRight
+            shadowTop: !frame.joinTop
+            shadowBottom: !frame.joinBottom
+            shadowLeft: !frame.joinLeft
+            shadowRight: !frame.joinRight
         }
 
         ConnectedSurfaceContentHost {

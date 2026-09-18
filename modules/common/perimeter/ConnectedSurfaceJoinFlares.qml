@@ -64,17 +64,9 @@ Item {
         height: r
         visible: r > 0
 
-        // Paint the wallpaper-facing shadow on the same concave arc as the
-        // shoulder itself. A rectangular body shadow alone terminates before
-        // this outside square and makes the join look detached.
-        PerimeterCornerShadow {
-            z: 0
-            corner: flare.cornerEnum
-            cornerRadius: flare.r
-            shadowExtent: root.shadowEnabled ? root.shadowExtent : 0
-            shadowColor: root.shadowColor
-        }
-
+        // Keep the flare itself dependency-free. The connected body owns the
+        // shared Screen Edge shadow; using a separate unresolved corner-shadow
+        // primitive here makes the entire shell fail QML type resolution.
         RoundCorner {
             z: 1
             anchors.fill: parent

@@ -300,17 +300,6 @@ LazyLoader {
             id: popupRevealClip
             geometry: geometry
 
-            // Hover ownership belongs to the complete connected surface, not
-            // only to the padded content host. Tracking just the content left a
-            // 14px perimeter dead zone at the Bar/Screen Edge join; crossing it
-            // cleared both source-hover and popup-hover, causing the popup to
-            // retract/reopen repeatedly under the pointer.
-            HoverHandler {
-                id: popupHoverHandler
-                enabled: root.active
-                onHoveredChanged: root.popupHovered = hovered
-            }
-
             ConnectedSurfaceFrame {
                 id: frame
                 anchors.fill: parent
@@ -320,6 +309,12 @@ LazyLoader {
                 borderWidth: root._borderWidth
                 connectorBorderWidth: 0
                 connectorVisible: false
+                // Own hover on the complete popup body, including its visual
+                // padding, but not on the reveal viewport's empty screen area.
+                // This closes the Bar→popup dead zone without turning the whole
+                // inward half of the output into a hover bridge.
+                hoverEnabled: root.active
+                onBodyHoveredChanged: root.popupHovered = bodyHovered
                 shadowEnabled: root._edgeShadowEnabled
                     && root._edgeShadowExtent > 0
                     && root._edgeShadowOpacity > 0

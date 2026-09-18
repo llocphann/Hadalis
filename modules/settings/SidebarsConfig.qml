@@ -50,40 +50,6 @@ ContentPage {
             ContentSubsection {
                 title: Translation.tr("General")
 
-                ConfigSelectionArray {
-                    currentValue: Config.options?.sidebar?.style ?? "panel"
-                    onSelected: newValue => {
-                        Config.setNestedValue("sidebar.style", newValue);
-                    }
-                    options: [
-                        { displayName: Translation.tr("Panel"), icon: "side_navigation", value: "panel" },
-                        { displayName: Translation.tr("Island"), icon: "blur_on", value: "island" }
-                    ]
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Island wraps both sidebars in the gradient card look used by the island bar and dock.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    wrapMode: Text.WordWrap
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "branding_watermark"
-                    text: Translation.tr("Use Card style")
-                    enabled: Appearance.globalStyle === "material" || Appearance.globalStyle === "inir"
-                    checked: Config.options.sidebar?.cardStyle ?? false
-                    onCheckedChanged: {
-                        Config.setNestedValue("sidebar.cardStyle", checked);
-                    }
-                    StyledToolTip {
-                        text: (Appearance.globalStyle === "material" || Appearance.globalStyle === "inir")
-                            ? Translation.tr("Apply rounded card styling to sidebars")
-                            : Translation.tr("Only available with Material or Inir global style")
-                    }
-                }
-
                 SettingsSwitch {
                     buttonIcon: "unfold_less"
                     text: Translation.tr("Collapse notifications when empty")

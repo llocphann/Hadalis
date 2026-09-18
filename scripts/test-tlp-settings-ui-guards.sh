@@ -118,8 +118,8 @@ assert_contains 'model: root.navigationCategories' "$power" \
     'Configuration categories must consume the filtered ten-category model'
 assert_contains 'leftAlignContent: true' "$power" \
     'Configuration category tabs must opt into scoped left alignment'
-assert_contains 'text: Translation.tr("Config: %1").arg(TlpSettingsService.configFile)' "$power" \
-    'Battery/TLP summary must keep the managed config path concise'
+assert_not_contains 'text: Translation.tr("Config: %1").arg(TlpSettingsService.configFile)' "$power" \
+    'Battery/TLP summary must not expose the managed config path in the primary card'
 assert_contains ': Translation.tr("Effective values")' "$power" \
     'Battery/TLP summary must use the concise effective-values label'
 assert_contains 'BatteryChargeLimitSettings {' "$power" \

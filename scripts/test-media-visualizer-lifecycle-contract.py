@@ -58,6 +58,10 @@ def main() -> None:
         "PlayerControl must scale the wave against the adaptive signal ceiling instead of a fixed 1000",
     )
     check(
+        "layer.effect: MultiEffect {" in wave and "source: root" not in wave,
+        "WaveVisualizer layer effect must consume the implicit layer texture instead of self-sourcing the Canvas",
+    )
+    check(
         "onLiveChanged: requestPaint()" in wave,
         "WaveVisualizer must repaint when playback lifecycle clears/restores the live waveform",
     )

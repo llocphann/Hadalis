@@ -392,7 +392,7 @@ Scope {
                         // Calculate bar/dock offset at top
                         let barOffset = 0;
                         if (respectBar && !(Config.options?.bar?.bottom ?? false)) {
-                            barOffset = Appearance.sizes.barHeight + Appearance.rounding.screenRounding;
+                            barOffset = Appearance.sizes.barHeight + PerimeterTokens.frameRadius;
                         }
                         const dock = Config.options?.dock;
                         if (dock?.enable && dock?.position === "top") {
@@ -402,7 +402,7 @@ Scope {
                         // Calculate bar/dock offset at bottom
                         let bottomOffset = 8;
                         if (respectBar && (Config.options?.bar?.bottom ?? false)) {
-                            bottomOffset += Appearance.sizes.barHeight + Appearance.rounding.screenRounding;
+                            bottomOffset += Appearance.sizes.barHeight + PerimeterTokens.frameRadius;
                         }
                         if (dock?.enable && dock?.position === "bottom") {
                             bottomOffset += (dock.height ?? 60) + 20;

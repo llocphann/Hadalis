@@ -117,6 +117,11 @@ Scope {
             && edge === root.iiBarEdge
             && root.iiBarTargetsOutput(outputName)
         if (iiOwns) {
+            // Auto-hide keeps a physical Screen Edge fallback underneath the
+            // moving Bar. Adjacent edge shadows must meet that fallback at the
+            // normal Screen Edge corner even while the Bar is temporarily shown.
+            if (Config.options?.bar?.autoHide?.enable ?? false)
+                return root.thickness + root.innerRadius
             const barThickness = root.barVertical
                 ? Appearance.sizes.verticalBarWidth
                 : Appearance.sizes.barHeight

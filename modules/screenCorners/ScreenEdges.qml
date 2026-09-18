@@ -208,6 +208,43 @@ Scope {
             }
         }
 
+        // Continue the side-edge shadow through the R×R corner footprint
+        // inside this horizontal owner. RoundCorner paints above it and shapes
+        // the visible shadow to the same inverse curve as the Bar junction.
+        Rectangle {
+            id: leadingCornerSideShadow
+            visible: horizontal && root.shadowExtent > 0 && root.shadowOpacity > 0
+                && !root.barOwnsEdge(outputName, "left")
+            x: root.thickness
+            y: edge === "top" ? edgeBand.bottom : edgeBand.top - root.innerRadius
+            width: root.shadowExtent
+            height: root.innerRadius
+            color: "transparent"
+            z: 1
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: root.shadowColor }
+                GradientStop { position: 1; color: "transparent" }
+            }
+        }
+
+        Rectangle {
+            id: trailingCornerSideShadow
+            visible: horizontal && root.shadowExtent > 0 && root.shadowOpacity > 0
+                && !root.barOwnsEdge(outputName, "right")
+            x: parent.width - root.thickness - root.shadowExtent
+            y: edge === "top" ? edgeBand.bottom : edgeBand.top - root.innerRadius
+            width: root.shadowExtent
+            height: root.innerRadius
+            color: "transparent"
+            z: 1
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: "transparent" }
+                GradientStop { position: 1; color: root.shadowColor }
+            }
+        }
+
         // Match Bar.qml's Hug composition: the solid horizontal band and its
         // wallpaper-facing inverse corners are one layer surface. This removes
         // compositor ordering between an edge shadow and four independent

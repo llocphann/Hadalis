@@ -133,6 +133,22 @@ grep -A12 -F 'id: leadingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
 grep -A12 -F 'id: trailingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
         | grep -Fq 'rightMargin: root.thickness' \
     || fail 'trailing inverse corner must begin before the right Screen Edge band'
+grep -Fq 'id: leadingCornerSideShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'leading Screen Edge corner must continue the side shadow inside the horizontal owner'
+grep -Fq 'id: trailingCornerSideShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'trailing Screen Edge corner must continue the side shadow inside the horizontal owner'
+grep -A18 -F 'id: leadingCornerSideShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq 'height: root.innerRadius' \
+    || fail 'leading corner side-shadow continuation must span the inverse-corner footprint'
+grep -A18 -F 'id: trailingCornerSideShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq 'height: root.innerRadius' \
+    || fail 'trailing corner side-shadow continuation must span the inverse-corner footprint'
+grep -A20 -F 'id: leadingCornerSideShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq 'z: 1' \
+    || fail 'corner side-shadow continuation must remain below inverse-corner paint'
+grep -A10 -F 'id: leadingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq 'z: 2' \
+    || fail 'inverse corner must paint above its side-shadow continuation'
 
 grep -Fq '? root.thickness + Math.max(root.shadowExtent, root.innerRadius)' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'horizontal Screen Edge window must reserve visual-only room for its rounded endpoints'

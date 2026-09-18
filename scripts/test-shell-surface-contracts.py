@@ -35,6 +35,9 @@ def main() -> None:
         "_lingerVisible",
         "retractTimer",
         "progress: root.revealProgress",
+        "property real offsetScale: 1",
+        "readonly property real revealProgress: 1 - root.offsetScale",
+        "Behavior on offsetScale",
         "|| root.popupHovered",
         "enabled: root.active",
     ):
@@ -89,6 +92,9 @@ def main() -> None:
           "Connected popup reveal must not expand from a narrow neck")
     check("bodyRect.width, bodyRect.height" in geometry,
           "Connected popup slide must preserve the full body size")
+    check("tangentAnimationOffset" not in geometry
+          and "tangentRevealDirection" not in geometry,
+          "Connected popup slide must remain on the attachment axis like Caelestia wrappers")
     check("ConnectedSurfaceRevealClip {" in styled_popup
           and "opacity: 1" in styled_popup,
           "Connected popup must use pure slide-under clipping instead of staged fade/scale")

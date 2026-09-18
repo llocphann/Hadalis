@@ -23,6 +23,8 @@ BAR_CONTENT = ROOT / "modules" / "bar" / "BarContent.qml"
 BAR_GROUP = ROOT / "modules" / "bar" / "BarGroup.qml"
 CIRCLE_UTIL_BUTTON = ROOT / "modules" / "bar" / "CircleUtilButton.qml"
 SCROLL_HINT = ROOT / "modules" / "bar" / "ScrollHint.qml"
+BAR_TASKBAR_BUTTON = ROOT / "modules" / "bar" / "BarTaskbarButton.qml"
+BAR_TASKBAR_WINDOW_PREVIEW = ROOT / "modules" / "bar" / "BarTaskbarWindowPreview.qml"
 WORKSPACES = ROOT / "modules" / "bar" / "Workspaces.qml"
 SYS_TRAY = ROOT / "modules" / "bar" / "SysTray.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
@@ -78,6 +80,8 @@ def main() -> None:
     bar_group = BAR_GROUP.read_text(encoding="utf-8")
     circle_util_button = CIRCLE_UTIL_BUTTON.read_text(encoding="utf-8")
     scroll_hint = SCROLL_HINT.read_text(encoding="utf-8")
+    bar_taskbar_button = BAR_TASKBAR_BUTTON.read_text(encoding="utf-8")
+    bar_taskbar_window_preview = BAR_TASKBAR_WINDOW_PREVIEW.read_text(encoding="utf-8")
     right_sidebar_start = bar_content.index("id: rightSidebarButtonComponent")
     right_sidebar_end = bar_content.find("\n    Component {", right_sidebar_start + 1)
     right_sidebar_block = bar_content[right_sidebar_start:
@@ -730,6 +734,46 @@ def main() -> None:
     ):
         forbid(scroll_hint, token, "ScrollHint.qml")
     require(scroll_hint, "color: Appearance.colors.colSubtext", "ScrollHint.qml")
+
+    for source, label in (
+        (bar_taskbar_button, "BarTaskbarButton.qml"),
+        (bar_taskbar_window_preview, "BarTaskbarWindowPreview.qml"),
+    ):
+        for token in (
+            "Appearance.zzzEverywhere",
+            "Appearance.regaliaEverywhere",
+            "Appearance.angelEverywhere",
+            "Appearance.inirEverywhere",
+            "Appearance.auroraEverywhere",
+            "Appearance.cookieEverywhere",
+            "Appearance.zzz.",
+            "Appearance.regalia.",
+            "Appearance.angel.",
+            "Appearance.inir.",
+            "Appearance.aurora.",
+            "Appearance.cookie.",
+            "Appearance.animationCurves.zzzOvershoot",
+        ):
+            forbid(source, token, label)
+
+    for token in (
+        "buttonRadius: Appearance.rounding.small",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "colRipple: Appearance.colors.colLayer1Active",
+        'colBackgroundToggled: "transparent"',
+        "ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9)",
+        "color: Appearance.colors.colOutlineVariant",
+    ):
+        require(bar_taskbar_button, token, "BarTaskbarButton.qml")
+    for token in (
+        "radius: Appearance.rounding.small",
+        "ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)",
+        "ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh, 0.5)",
+        "color: Appearance.colors.colOnLayer0",
+        "color: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colSurfaceContainerLow",
+    ):
+        require(bar_taskbar_window_preview, token, "BarTaskbarWindowPreview.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

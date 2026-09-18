@@ -72,6 +72,14 @@ for sidebar_surface in \
     "$root/modules/sidebarRight/CompactSidebarRightContent.qml"; do
     grep -Fq 'border.width: 0 // Screen Edge seam owns the outer boundary' "$sidebar_surface" \
         || fail "${sidebar_surface#$root/} must not draw an outer border against Screen Edge"
+    grep -Fq 'StyledRectangularShadow {' "$sidebar_surface" \
+        || fail "${sidebar_surface#$root/} must derive its outer shadow from the rounded sidebar surface"
+    grep -Fq 'joinLeft: root.attachedEdge === "left"' "$sidebar_surface" \
+        || fail "${sidebar_surface#$root/} must stop shadow at a joined left Screen Edge"
+    grep -Fq 'joinRight: root.attachedEdge === "right"' "$sidebar_surface" \
+        || fail "${sidebar_surface#$root/} must stop shadow at a joined right Screen Edge"
+    grep -Fq 'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' "$sidebar_surface" \
+        || fail "${sidebar_surface#$root/} must share Screen Edge shadow enable state"
 done
 
 grep -Fq 'property JsonObject screenEdge: JsonObject {' "$root/modules/common/Config.qml" \

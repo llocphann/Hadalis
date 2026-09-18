@@ -88,7 +88,7 @@ Scope {
     readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
         Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
     readonly property color screenEdgeShadowColor:
-        ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
+        ColorUtils.applyAlpha(Appearance.colors.colShadow,
             root.screenEdgeShadowOpacity)
     readonly property real availableContentHeight: Math.max(0,
         (sidebarRoot.screen?.height ?? 1080)

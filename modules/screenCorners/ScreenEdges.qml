@@ -79,7 +79,10 @@ Scope {
         visible: mapped
         updatesEnabled: mapped
         color: "transparent"
-        exclusiveZone: 0
+        // Reserve only the solid Screen Edge band. The inward shadow stays
+        // visual-only, so compositor Window Gap is measured from the inner
+        // Screen Edge boundary rather than from the physical display rim.
+        exclusiveZone: mapped ? root.thickness : 0
         exclusionMode: ExclusionMode.Ignore
 
         implicitWidth: horizontal ? 1 : root.thickness + root.shadowExtent

@@ -283,6 +283,13 @@ if grep -Fq 'layer.effect: MultiEffect {' "$connected_frame"; then
 fi
 grep -Fq 'ConnectedSurfaceJoinFlares {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must add concave shoulders at directly joined edge endpoints'
+for token in \
+    'shadowEnabled: root.shadowEnabled' \
+    'shadowExtent: root.shadowExtent' \
+    'shadowColor: root.shadowColor'; do
+    grep -Fq "$token" "$connected_frame" \
+        || fail "ConnectedSurfaceFrame must forward live Screen Edge shadow state into its shoulders: $token"
+done
 grep -Fq 'readonly property bool bodyHovered: bodyHover.hovered' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must expose full-body hover ownership'
 grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \

@@ -164,7 +164,11 @@ Scope {
                     const a = clamped / 100
                     return ColorUtils.transparentize(Appearance.colors.colLayer0Base, 1 - a)
                 }
-                opacity: root._presentedOpen ? 1 : 0
+                // Dashboard is now a connected popup, not a full Overview scene.
+                // Do not dim the wallpaper behind it; search/task-view presentation
+                // still owns the ordinary Overview scrim.
+                opacity: root.dashboardPresentationMode
+                    ? 0 : (root._presentedOpen ? 1 : 0)
                 visible: opacity > 0.001
 
                 // The scrim fades a little slower than the content on the way out, so

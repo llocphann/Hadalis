@@ -81,9 +81,14 @@ grep -Fq 'readonly property color connectedSurfaceColor:' "$dashboard" \
     || fail 'OverviewDashboard must expose its connector surface color'
 
 for token in \
-    'readonly property color edgeColor: Appearance.colors.colLayer0' \
+    'import qs.modules.waffle.looks as WaffleLooks' \
+    'readonly property bool waffleBarPanelEnabled:' \
+    '(Config.options?.enabledPanels ?? []).includes("wBar")' \
+    'readonly property string waffleBarEdge:' \
+    'Config.options?.waffles?.bar?.screenList' \
+    '? WaffleLooks.Looks.colors.bg0' \
     'function barOwnsEdge(outputName, edge)' \
-    '&& !GlobalStates.widgetEditMode' \
+    'GlobalStates.widgetEditMode' \
     'Config.options?.bar?.screenList' \
     '&& !root.barOwnsEdge(outputName, edge)' \
     'readonly property bool adjacentBarOwned:' \

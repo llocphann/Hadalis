@@ -5,6 +5,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.services
+import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -26,40 +27,81 @@ Scope {
     readonly property real shadowOpacity: Math.max(0, Math.min(0.60,
         Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
     readonly property int shadowExtent: shadowEnabled ? shadowSize : 0
-    readonly property color edgeColor: Appearance.colors.colLayer0
-    readonly property color shadowColor:
-        ColorUtils.applyAlpha(Appearance.colors.colShadow, shadowOpacity)
+    readonly property bool waffleFamily:
+        (Config.options?.panelFamily ?? "ii") === "waffle"
     readonly property bool barVertical: Config.options?.bar?.vertical ?? false
-    readonly property string barEdge: barVertical
+    readonly property string iiBarEdge: barVertical
         ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
         : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
-    readonly property string barPanelId: barVertical ? "iiVerticalBar" : "iiBar"
-    readonly property bool barPanelEnabled:
-        (Config.options?.enabledPanels ?? []).includes(barPanelId)
+    readonly property string iiBarPanelId:
+        barVertical ? "iiVerticalBar" : "iiBar"
+    readonly property bool iiBarPanelEnabled:
+        (Config.options?.enabledPanels ?? []).includes(iiBarPanelId)
+    readonly property string waffleBarEdge:
+        (Config.options?.waffles?.bar?.bottom ?? false) ? "bottom" : "top"
+    readonly property bool waffleBarPanelEnabled: root.waffleFamily
+        && (Config.options?.enabledPanels ?? []).includes("wBar")
 
-    function barTargetsOutput(outputName) {
+    // Compatibility aliases retained for callers/tests that only need the
+    // currently active family. barOwnsEdge() below remains authoritative when
+    // more than one panel id is accidentally enabled.
+    readonly property bool barPanelEnabled:
+        root.iiBarPanelEnabled || root.waffleBarPanelEnabled
+    readonly property string barPanelId:
+        root.waffleBarPanelEnabled ? "wBar" : root.iiBarPanelId
+    readonly property string barEdge:
+        root.waffleBarPanelEnabled ? root.waffleBarEdge : root.iiBarEdge
+
+    // Screen Edge must read as the continuation of the active bar family.
+    readonly property color edgeColor: root.waffleBarPanelEnabled
+        ? WaffleLooks.Looks.colors.bg0
+        : Appearance.colors.colLayer0
+    readonly property color shadowColor:
+        ColorUtils.applyAlpha(Appearance.colors.colShadow, shadowOpacity)
+
+    function targetsOutput(outputName, configuredList) {
         if (outputName.length === 0)
             return false
-        const list = Config.options?.bar?.screenList ?? []
+        const list = configuredList ?? []
         if (!list || list.length === 0)
             return true
         const matched = Quickshell.screens.filter(screen => {
             const screenName = String(screen?.name ?? "")
             return screenName.length > 0 && list.includes(screenName)
         })
-        // Keep ownership identical to Bar.qml / VerticalBar.qml. If saved output
-        // names are stale, both bar and edge policy fall back to all screens.
+        // Keep ownership identical to both Bar implementations: stale output
+        // names fall back to all screens rather than hiding the bar everywhere.
         if (matched.length === 0)
             return true
         return list.includes(outputName)
     }
 
+    function iiBarTargetsOutput(outputName) {
+        return root.targetsOutput(outputName,
+            Config.options?.bar?.screenList ?? [])
+    }
+
+    function waffleBarTargetsOutput(outputName) {
+        return root.targetsOutput(outputName,
+            Config.options?.waffles?.bar?.screenList ?? [])
+    }
+
+    function barTargetsOutput(outputName) {
+        return root.waffleBarPanelEnabled
+            ? root.waffleBarTargetsOutput(outputName)
+            : root.iiBarTargetsOutput(outputName)
+    }
+
     function barOwnsEdge(outputName, edge) {
-        return root.barPanelEnabled
-            && GlobalStates.barOpen
-            && !GlobalStates.widgetEditMode
-            && edge === root.barEdge
-            && root.barTargetsOutput(outputName)
+        if (!GlobalStates.barOpen || GlobalStates.widgetEditMode)
+            return false
+        const iiOwned = root.iiBarPanelEnabled
+            && edge === root.iiBarEdge
+            && root.iiBarTargetsOutput(outputName)
+        const waffleOwned = root.waffleBarPanelEnabled
+            && edge === root.waffleBarEdge
+            && root.waffleBarTargetsOutput(outputName)
+        return iiOwned || waffleOwned
     }
 
     component EdgeWindow: PanelWindow {

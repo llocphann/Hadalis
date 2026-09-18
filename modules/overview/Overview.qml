@@ -36,6 +36,10 @@ Scope {
                 GlobalStates.overviewPresentationOutput === (root.modelData?.name ?? "")
             readonly property bool shouldShow: GlobalStates.overviewOpen
                 && (taskViewMode ? isTargetOutput : (!activeScreenOnly || isTargetOutput))
+            readonly property bool dashboardPresentationMode:
+                !root.taskViewMode
+                && (Config.options?.overview?.dashboard?.enable ?? false)
+                && root.searchingText === ""
             readonly property string outputName: String(root.modelData?.name ?? "")
             readonly property bool iiFamily:
                 (Config.options?.panelFamily ?? "ii") === "ii"
@@ -62,8 +66,11 @@ Scope {
                 Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
             readonly property real bottomAttachmentThickness: root.bottomBarOwnsEdge
                 ? Appearance.sizes.barHeight : root.screenEdgeThickness
+            // Exact visible attachment boundary. Dashboard itself underlaps via
+            // its clipped slide layer, so the Overlay surface never paints over
+            // the Bar/Screen Edge merely to hide an antialiasing seam.
             readonly property real bottomAttachmentY: root.height
-                - root.bottomAttachmentThickness + PerimeterTokens.seamOverlap
+                - root.bottomAttachmentThickness
             readonly property bool applicationDragActive: searchWidget.applicationDragActive
                 || (allAppsGridLoader.item?.applicationDragActive ?? false)
             screen: modelData
@@ -324,21 +331,30 @@ Scope {
                 // Direction-aware opacity. Open: leads in, fully legible by 70% of the
                 // unfold. Close: leads out, fully faded by the time the surface has
                 // receded ~45%, so the slow decel tail collapses invisibly.
-                opacity: root._presentedOpen
-                    ? Math.min(1, openProgress / 0.7)
-                    : Math.max(0, (openProgress - 0.45) / 0.55)
+                opacity: root.dashboardPresentationMode ? 1
+                    : root._presentedOpen
+                        ? Math.min(1, openProgress / 0.7)
+                        : Math.max(0, (openProgress - 0.45) / 0.55)
                 visible: openProgress > 0.001
 
                 transform: [
                     Scale {
                         origin.x: columnLayout.width / 2
                         origin.y: root.taskViewMode ? columnLayout.height / 2 : 0
-                        xScale: (root.taskViewMode ? 0.94 : 0.975)
-                            + (root.taskViewMode ? 0.06 : 0.025) * columnLayout.openProgress
-                        yScale: (root.taskViewMode ? 0.94 : 0.93)
-                            + (root.taskViewMode ? 0.06 : 0.07) * columnLayout.openProgress
+                        xScale: root.dashboardPresentationMode ? 1
+                            : (root.taskViewMode ? 0.94 : 0.975)
+                                + (root.taskViewMode ? 0.06 : 0.025)
+                                    * columnLayout.openProgress
+                        yScale: root.dashboardPresentationMode ? 1
+                            : (root.taskViewMode ? 0.94 : 0.93)
+                                + (root.taskViewMode ? 0.06 : 0.07)
+                                    * columnLayout.openProgress
                     },
-                    Translate { y: (1 - columnLayout.openProgress) * (root.taskViewMode ? 8 : -12) }
+                    Translate {
+                        y: root.dashboardPresentationMode ? 0
+                            : (1 - columnLayout.openProgress)
+                                * (root.taskViewMode ? 8 : -12)
+                    }
                 ]
 
                 Behavior on openProgress {
@@ -360,9 +376,8 @@ Scope {
                     topMargin: {
                         const ov = Config?.options?.overview;
                         const respectBar = ov && ov.respectBar !== undefined ? ov.respectBar : true;
-                        const dashboardMode = !root.taskViewMode
-                            && (Config.options?.overview?.dashboard?.enable ?? false)
-                        if (dashboardMode && dashboardPanel.visible && dashboardPanel.item) {
+                        if (root.dashboardPresentationMode
+                                && dashboardPanel.visible && dashboardPanel.item) {
                             const rect = dashboardPanel.item.connectedSurfaceRect
                                 ?? Qt.rect(0, 0, dashboardPanel.width, dashboardPanel.height)
                             const bodyBottomInColumn = dashboardPanel.y + rect.y + rect.height
@@ -497,25 +512,22 @@ Scope {
                 Loader {
                     id: dashboardPanel
                     anchors.horizontalCenter: parent.horizontalCenter
-                    active: !root.taskViewMode && (Config.options?.overview?.dashboard?.enable ?? false)
+                    active: !root.taskViewMode
+                        && (Config.options?.overview?.dashboard?.enable ?? false)
+                    // Keep the loader mapped through the reverse slide tail.
                     visible: active && status === Loader.Ready
-                        && root.shouldShow && (root.searchingText == "")
-                    opacity: root._presentedOpen ? 1 : 0
+                        && root.searchingText === ""
+                        && (root._presentedOpen
+                            || (item?.revealProgress ?? 0) > 0.001)
+                    opacity: 1
                     sourceComponent: Component {
                         OverviewDashboard {
                             panelVisible: root.visible
                             directBottomAttachment: true
+                            popupPresented: root._presentedOpen
+                                && root.searchingText === ""
                             availableWidth: dashboardPanel.parent?.width ?? root.width
                             availableHeight: Math.max(260, root.height * 0.78)
-                        }
-                    }
-
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
                         }
                     }
                 }

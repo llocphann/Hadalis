@@ -5,6 +5,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.models
+import qs.modules.common.perimeter
 import Qt5Compat.GraphicalEffects as GE
 import QtQuick
 import QtQuick.Controls
@@ -24,6 +25,18 @@ Item {
     readonly property bool zzzStyle: Appearance.zzzEverywhere
     property bool panelVisible: true
     property bool directBottomAttachment: false
+    property bool popupPresented: true
+    property real revealProgress: 0
+    readonly property bool screenEdgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+    readonly property real connectedDecorationMargin: root.directBottomAttachment
+        ? Math.max(Appearance.sizes.elevationMargin,
+            PerimeterTokens.joinFlareRadius, root.screenEdgeShadowSize + 2)
+        : Appearance.sizes.elevationMargin
     readonly property bool useWallpaperBackdrop: root.panelVisible && (root.angelStyle || root.auroraStyle) && !root.inirStyle && root.wallpaperUrl.length > 0
 
     // ── Screen & wallpaper for blur (angel/aurora) ──
@@ -156,8 +169,40 @@ Item {
     readonly property int weatherSystemMinHeight: 190
     readonly property int weatherCardMinHeight: 132
 
-    implicitWidth: dashContainer.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: dashContainer.implicitHeight + Appearance.sizes.elevationMargin * 2
+    implicitWidth: dashContainer.implicitWidth
+        + root.connectedDecorationMargin * 2
+    implicitHeight: dashContainer.implicitHeight
+        + (root.directBottomAttachment
+            ? root.connectedDecorationMargin
+            : root.connectedDecorationMargin * 2)
+    clip: root.directBottomAttachment
+
+    function syncReveal(): void {
+        root.revealProgress = root.popupPresented ? 1 : 0
+    }
+
+    onPopupPresentedChanged: root.syncReveal()
+
+    Behavior on revealProgress {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: root.popupPresented
+                ? Appearance.animation.elementMoveEnter.duration
+                : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.popupPresented
+                ? Appearance.animation.elementMoveEnter.bezierCurve
+                : Appearance.animation.elementMoveExit.bezierCurve
+        }
+    }
+
+    Item {
+        id: dashboardSurfaceLayer
+        anchors.fill: parent
+        transform: Translate {
+            y: (1 - root.revealProgress) * dashContainer.height
+        }
+    }
     // Expose only presentation geometry needed by the owning Overview window.
     // This keeps the connector attached to the visible dashboard body rather
     // than the Loader/shadow bounds.
@@ -165,7 +210,11 @@ Item {
         dashContainer.x, dashContainer.y, dashContainer.width, dashContainer.height)
     readonly property color connectedSurfaceColor: dashContainer.fallbackColor
 
-    Component.onCompleted: ResourceUsage.ensureRunning()
+    Component.onCompleted: {
+        ResourceUsage.ensureRunning()
+        root.revealProgress = 0
+        Qt.callLater(root.syncReveal)
+    }
 
     Timer {
         running: root.effectiveIsPlaying
@@ -174,9 +223,18 @@ Item {
     }
 
     StyledRectangularShadow {
+        parent: dashboardSurfaceLayer
         target: dashContainer
-        visible: !root.inirStyle && !root.auroraStyle
-        blur: 0.32 * Appearance.sizes.elevationMargin
+        visible: root.panelVisible
+            && root.screenEdgeShadowEnabled
+            && root.screenEdgeShadowSize > 0
+            && root.screenEdgeShadowOpacity > 0
+        blur: root.screenEdgeShadowSize
+        spread: 0
+        offset: Qt.vector2d(0, 0)
+        color: ColorUtils.applyAlpha(Appearance.colors.colShadow,
+            root.screenEdgeShadowOpacity)
+        opacity: root.revealProgress
         joinBottom: root.directBottomAttachment
     }
 
@@ -232,7 +290,19 @@ Item {
     // ═══════════════════════════════════════════════════
     // MAIN CONTAINER — transparent, no floating panel
     // ═══════════════════════════════════════════════════
+    ConnectedSurfaceJoinFlares {
+        parent: dashboardSurfaceLayer
+        z: 5
+        anchors.fill: parent
+        bodyItem: dashContainer
+        fillColor: dashContainer.fallbackColor
+        flareRadius: PerimeterTokens.joinFlareRadius
+        progress: root.revealProgress > 0.001 ? 1 : 0
+        joinBottom: root.directBottomAttachment
+    }
+
     ZzzPlate {
+        parent: dashboardSurfaceLayer
         anchors.fill: dashContainer
         visible: Appearance.zzzEverywhere
         fillColor: Appearance.colors.colLayer0
@@ -243,7 +313,12 @@ Item {
 
     GlassBackground {
         id: dashContainer
-        anchors.centerIn: parent
+        parent: dashboardSurfaceLayer
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            bottom: root.directBottomAttachment ? parent.bottom : undefined
+            verticalCenter: root.directBottomAttachment ? undefined : parent.verticalCenter
+        }
         width: Math.min(root.dashboardMaxWidth, root.availableWidth - (root.dashboardHorizontalPadding * 2))
         implicitWidth: width
         implicitHeight: Math.min(mainCol.implicitHeight + 24, root.dashboardSafeHeight)

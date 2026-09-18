@@ -85,23 +85,36 @@ done
 
 for token in \
     'import qs.modules.common.perimeter' \
-    'id: overviewBottomConnectorGeometry' \
-    'readonly property string edge: "bottom"' \
     'readonly property bool bottomBarOwnsEdge:' \
     'Config.options?.bar?.screenList' \
-    'readonly property real attachmentThickness:' \
-    'root.bottomBarOwnsEdge ? Appearance.sizes.barHeight : edgeThickness' \
-    'readonly property bool valid: root.iiFamily' \
-    'PerimeterTokens.seamOverlap' \
-    'ConnectedSurfaceConnector {' \
-    'dashboard.connectedSurfaceRect'; do
-    grep -Fq "$token" "$overview" \
-        || fail "Overview dashboard must remain connected to the bottom Screen Edge: $token"
+    'readonly property real bottomAttachmentThickness:' \
+    'readonly property real bottomAttachmentY:' \
+    '- root.bottomAttachmentThickness' \
+    'readonly property bool dashboardPresentationMode:' \
+    'root.bottomAttachmentY - bodyBottomInColumn' \
+    'popupPresented: root._presentedOpen'; do
+    grep -Fq -- "$token" "$overview" \
+        || fail "Overview dashboard must stay directly attached and popup-like: $token"
 done
-grep -Fq 'readonly property rect connectedSurfaceRect:' "$dashboard" \
-    || fail 'OverviewDashboard must expose the visible dashboard surface geometry'
-grep -Fq 'readonly property color connectedSurfaceColor:' "$dashboard" \
-    || fail 'OverviewDashboard must expose its connector surface color'
+if grep -Fq 'ConnectedSurfaceConnector {' "$overview" \
+        || grep -Fq 'overviewBottomConnectorGeometry' "$overview"; then
+    fail 'Overview must not restore connector/stem geometry'
+fi
+for token in \
+    'import qs.modules.common.perimeter' \
+    'property bool directBottomAttachment: false' \
+    'property bool popupPresented: true' \
+    'property real revealProgress: 0' \
+    'id: dashboardSurfaceLayer' \
+    '(1 - root.revealProgress) * dashContainer.height' \
+    'clip: root.directBottomAttachment' \
+    'ConnectedSurfaceJoinFlares {' \
+    'joinBottom: root.directBottomAttachment' \
+    'blur: root.screenEdgeShadowSize' \
+    'readonly property rect connectedSurfaceRect:'; do
+    grep -Fq "$token" "$dashboard" \
+        || fail "OverviewDashboard must behave like a bottom-connected popup: $token"
+done
 
 for token in \
     'import qs.modules.waffle.looks as WaffleLooks' \

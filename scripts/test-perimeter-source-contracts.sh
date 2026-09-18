@@ -286,18 +286,32 @@ fi
 if grep -Fq 'overviewBottomConnectorGeometry' "$overview"; then
     fail 'Overview must not retain bottom connector geometry'
 fi
-grep -Fq 'readonly property real bottomAttachmentY:' "$overview" \
-    || fail 'Overview must derive the direct bottom Bar/Screen Edge boundary'
-grep -Fq 'root.bottomAttachmentY - bodyBottomInColumn' "$overview" \
-    || fail 'Overview must place the dashboard body directly on the bottom attachment boundary'
-grep -Fq 'directBottomAttachment: true' "$overview" \
-    || fail 'Overview must tell the dashboard surface that its bottom edge is joined'
-grep -Fq 'property bool directBottomAttachment: false' "$overview_dashboard" \
-    || fail 'OverviewDashboard must expose direct bottom attachment state'
-grep -Fq 'joinBottom: root.directBottomAttachment' "$overview_dashboard" \
-    || fail 'Overview dashboard shadow must stop at its joined bottom edge'
-grep -Fq 'bottomLeftRadius: root.directBottomAttachment ? 0 : radius' "$overview_dashboard" \
-    || fail 'Overview dashboard must square its joined bottom corners'
+for token in \
+    'readonly property real bottomAttachmentY:' \
+    '- root.bottomAttachmentThickness' \
+    'readonly property bool dashboardPresentationMode:' \
+    'root.dashboardPresentationMode ? 1' \
+    'root.bottomAttachmentY - bodyBottomInColumn' \
+    'popupPresented: root._presentedOpen'; do
+    grep -Fq -- "$token" "$overview" \
+        || fail "Overview must present Dashboard as a direct bottom popup: $token"
+done
+for token in \
+    'property bool directBottomAttachment: false' \
+    'property bool popupPresented: true' \
+    'property real revealProgress: 0' \
+    'id: dashboardSurfaceLayer' \
+    '(1 - root.revealProgress) * dashContainer.height' \
+    'clip: root.directBottomAttachment' \
+    'ConnectedSurfaceJoinFlares {' \
+    'flareRadius: PerimeterTokens.joinFlareRadius' \
+    'joinBottom: root.directBottomAttachment' \
+    'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' \
+    'blur: root.screenEdgeShadowSize' \
+    'bottomLeftRadius: root.directBottomAttachment ? 0 : radius'; do
+    grep -Fq "$token" "$overview_dashboard" \
+        || fail "OverviewDashboard popup contract missing: $token"
+done
 
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'normal Media UX must stay on StyledPopup'

@@ -64,6 +64,7 @@ CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent
 OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
 OVERVIEW_SEARCH_ITEM = ROOT / "modules" / "overview" / "SearchItem.qml"
 OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
+OVERVIEW_ACTION_MODE_VIEW = ROOT / "modules" / "overview" / "ActionModeView.qml"
 OVERVIEW_ALL_APPS_GRID = ROOT / "modules" / "overview" / "OverviewAllAppsGrid.qml"
 OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
 
@@ -147,6 +148,7 @@ def main() -> None:
     overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
     overview_search_item = OVERVIEW_SEARCH_ITEM.read_text(encoding="utf-8")
     overview_search_widget = OVERVIEW_SEARCH_WIDGET.read_text(encoding="utf-8")
+    overview_action_mode_view = OVERVIEW_ACTION_MODE_VIEW.read_text(encoding="utf-8")
     overview_all_apps_grid = OVERVIEW_ALL_APPS_GRID.read_text(encoding="utf-8")
     overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
 
@@ -1458,6 +1460,40 @@ def main() -> None:
         "onApplicationDragChanged: active => root.applicationDragActive = active",
     ):
         require(overview_search_widget, token, "overview/SearchWidget.qml")
+
+    # ActionModeView owns the slash-command/category/package result surface.
+    # Keep action/package execution and keyboard navigation while collapsing its
+    # row/badge/footer presentation to the Material terminal branches.
+    for token in legacy_style_tokens:
+        forbid(overview_action_mode_view, token, "overview/ActionModeView.qml")
+    forbid(overview_action_mode_view, "root.zzzEverywhere", "overview/ActionModeView.qml")
+    for token in (
+        "spacing: 2",
+        "readonly property color normalTextColor: Appearance.colors.colOnLayer1",
+        "readonly property color selectedTextColor: Appearance.colors.colOnLayer1",
+        "Appearance.colors.colSubtext",
+        "readonly property color selectedBackgroundColor: Appearance.colors.colLayer1",
+        "readonly property color hoverBackgroundColor: Appearance.colors.colLayer1",
+        "readonly property color pressedBackgroundColor: Appearance.colors.colLayer1Hover",
+        "property int horizontalMargin: 10",
+        "property int buttonHorizontalPadding: 10",
+        "property int buttonVerticalPadding: 6",
+        "buttonRadius: Appearance.rounding.normal",
+        "colRipple: Appearance.colors.colLayer1Hover",
+        "radius: Appearance.rounding.full",
+        "ColorUtils.transparentize(Appearance.colors.colPrimary, 0.3)",
+        "Appearance.colors.colLayer2Hover",
+        "Appearance.colors.colSecondaryContainer",
+        "Appearance.colors.colOnSecondaryContainer",
+        "ColorUtils.transparentize(Appearance.colors.colPrimary, 0.2)",
+        "GlobalActions.fuzzyQuery(root.query)",
+        "PackageSearch.search(root.packageQuery)",
+        "PackageSearch.removePackage(name)",
+        "PackageSearch.installPackage(name, pkg?.isAur ?? false)",
+        "capturedAction.execute(capturedArgs)",
+        "root._executePackageActionStatic(capturedPkg, capturedIsRemove)",
+    ):
+        require(overview_action_mode_view, token, "overview/ActionModeView.qml")
 
     # The All Apps grid is an active Overview leaf. Its app model, category
     # grouping, launch and drag behavior stay intact while chrome uses only the

@@ -215,15 +215,19 @@ def main() -> None:
 
     corner_shadow = read("modules/common/perimeter/PerimeterCornerShadow.qml")
     for token in (
-        "GE.RadialGradient {",
+        "Canvas {",
         "required property int corner",
         "property real cornerRadius:",
         "property real shadowExtent:",
         "property color shadowColor:",
-        "1 - root.shadowExtent / Math.max(1, root.cornerRadius)",
+        "ctx.createRadialGradient",
+        "ctx.arc(cx, cy, r, start, end, false)",
+        "const inner = Math.max(0, r - extent)",
     ):
         check(token in corner_shadow,
               f"Shared perimeter corner shadow contract missing: {token}")
+    check("GE.RadialGradient {" not in corner_shadow,
+          "Perimeter corner shadow must not fill an entire square outside the curved quarter-disc")
     check("PerimeterCornerShadow {" in screen_edge
           and "function adjacentShadowInset(outputName, edge)" in screen_edge,
           "Screen Edge corners must use the shared curved shadow junction")
@@ -309,10 +313,11 @@ def main() -> None:
               "Connected Settings flares must carry the live Screen Edge shadow")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
-    check("fallbackColor: Appearance.colors.colLayer0" in dashboard
-          and "wallpaperBackdropEnabled: root.useWallpaperBackdrop" in dashboard
+    check("Rectangle {\n        id: dashContainer" in dashboard
+          and "color: Appearance.colors.colLayer0" in dashboard
+          and "GlassBackground {\n        id: dashContainer" not in dashboard
           and "readonly property bool useWallpaperBackdrop: false" in dashboard,
-          "Dashboard connected body must stay on the same solid Material surface as connected popups")
+          "Dashboard connected body must be a plain solid Material surface without glass tint")
     check("Appearance.animation.elementMove.duration" in dashboard
           and "Appearance.animation.elementMove.bezierCurve" in dashboard,
           "Dashboard connected slide must use the default-spatial motion token")

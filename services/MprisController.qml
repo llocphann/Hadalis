@@ -71,7 +71,10 @@ Singleton {
 			_manualPlayerSelection = false;
 			trackedPlayer = players[0] ?? null;
 		}
-		if (root._hasMpdMprisPlayer()) {
+		const nextMpdPlayer = root._findMpdMprisPlayer()
+		if (root.mpdPlayer !== nextMpdPlayer)
+			root.mpdPlayer = nextMpdPlayer
+		if (nextMpdPlayer) {
 			root._mpdBridgeStartAttempted = false
 			_mpdBridgeRetry.stop()
 		}
@@ -91,15 +94,33 @@ Singleton {
 	property bool _mpdBridgeStartAttempted: false
 	property int _mpdBridgeAvailable: -1 // -1 unknown, 0 unavailable, 1 installed
 	property bool _mpdProcessSeen: false
+	property MprisPlayer mpdPlayer: null
 
-	function _hasMpdMprisPlayer(): bool {
+	function _findMpdMprisPlayer(): var {
 		for (const player of Mpris.players.values) {
 			const name = String(player?.dbusName ?? "")
 			if (name === "org.mpris.MediaPlayer2.mpd"
 					|| name.startsWith("org.mpris.MediaPlayer2.mpd."))
-				return true
+				return player
 		}
-		return false
+		return null
+	}
+
+	function _hasMpdMprisPlayer(): bool {
+		return root._findMpdMprisPlayer() !== null
+	}
+
+	function ensureMpdMprisBridge(): void {
+		const existing = root._findMpdMprisPlayer()
+		if (existing) {
+			root.mpdPlayer = existing
+			return
+		}
+		// LocalMusic is itself a positive signal that the user wants the local MPD
+		// session. Probe/start the packaged bridge without inventing a second
+		// media-control API.
+		root._mpdProcessSeen = true
+		root._maybeStartMpdMprisBridge()
 	}
 
 	function _mpdPlaybackStreamPresent(): bool {

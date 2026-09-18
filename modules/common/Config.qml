@@ -2231,11 +2231,15 @@ Singleton {
                     property bool enable: false
                     property string lastActivePlugin: ""
                 }
-                // Canonical local-only music player. The old ytmusic object remains
-                // migration/compatibility data but no longer owns the Left Sidebar tab.
+                // Canonical local Music frontend. MPD owns the library/queue and
+                // mpd-mpris exposes that same session through the shell's MPRIS path.
+                // libraryFolder is only an optional local-path override for cover art.
                 property JsonObject music: JsonObject {
                     property bool enable: false
                     property string libraryFolder: ""
+                    property string mpdHost: "127.0.0.1"
+                    property int mpdPort: 6600
+                    // Deprecated mpv-era compatibility values; runtime MPD state wins.
                     property bool normalizeVolume: false
                     property bool shuffleMode: false
                     property int repeatMode: 0

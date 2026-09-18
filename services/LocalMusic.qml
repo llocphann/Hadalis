@@ -10,20 +10,38 @@ Singleton {
     id: root
 
     readonly property bool enabled: Config.options?.sidebar?.music?.enable ?? false
-    readonly property string configuredLibraryFolder: Config.options?.sidebar?.music?.libraryFolder ?? ""
-    readonly property string defaultLibraryFolder: FileUtils.trimFileProtocol(Directories.music)
-    readonly property string libraryFolder: configuredLibraryFolder.length > 0
-        ? configuredLibraryFolder : defaultLibraryFolder
-    readonly property bool normalizeVolume: Config.options?.sidebar?.music?.normalizeVolume ?? false
+    readonly property string configuredLibraryFolder:
+        Config.options?.sidebar?.music?.libraryFolder ?? ""
+    readonly property string configuredHost:
+        Config.options?.sidebar?.music?.mpdHost ?? ""
+    readonly property int configuredPort:
+        Number(Config.options?.sidebar?.music?.mpdPort ?? 6600)
+    readonly property string mpdHost: configuredHost.length > 0
+        ? configuredHost
+        : ((Quickshell.env("MPD_HOST") ?? "").length > 0
+            ? Quickshell.env("MPD_HOST") : "127.0.0.1")
+    readonly property int mpdPort: {
+        const envPort = Number(Quickshell.env("MPD_PORT") ?? 0)
+        if (configuredPort > 0) return configuredPort
+        return envPort > 0 ? envPort : 6600
+    }
 
-    property bool available: false
-    property string mpvPath: ""
-    property string mpvMprisPath: ""
-    readonly property bool mprisAvailable: mpvMprisPath.length > 0
+    property string detectedLibraryFolder: ""
+    readonly property string defaultLibraryFolder:
+        FileUtils.trimFileProtocol(Directories.music)
+    readonly property string libraryFolder: configuredLibraryFolder.length > 0
+        ? configuredLibraryFolder
+        : (detectedLibraryFolder.length > 0
+            ? detectedLibraryFolder : defaultLibraryFolder)
+
+    readonly property var mprisPlayer: MprisController.mpdPlayer
+    readonly property bool mprisAvailable: mprisPlayer !== null
+    property bool mpdConnected: false
+    readonly property bool available: mpdConnected
+
     property bool scanning: false
-    property bool playing: false
-    property bool paused: true
     property string error: ""
+    property string mpdState: "stop"
 
     property var libraryTracks: []
     property var playlists: []
@@ -34,41 +52,43 @@ Singleton {
     property string activeQueueName: ""
     property int currentIndex: -1
     property string currentPath: ""
+    property string currentUri: ""
     property string currentTitle: ""
     property string currentArtist: ""
     property string currentAlbum: ""
     property string currentArt: ""
     property real currentDuration: 0
     property real currentPosition: 0
-    property real volume: Math.max(0, Math.min(1,
-        Number(Config.options?.sidebar?.music?.volume ?? 100) / 100))
-    property bool shuffleMode: Config.options?.sidebar?.music?.shuffleMode ?? false
-    property int repeatMode: Config.options?.sidebar?.music?.repeatMode ?? 0
-    property var _pendingPlayCommand: []
+    property real volume: 1
+    property bool shuffleMode: false
+    property int repeatMode: 0
 
+    readonly property bool playing: mprisAvailable
+        ? (mprisPlayer?.isPlaying ?? false)
+        : mpdState === "play"
+    readonly property bool paused: !playing
     readonly property bool hasQueue: activeQueue.length > 0
-    readonly property bool hasCurrentTrack: currentIndex >= 0 && currentIndex < activeQueue.length
-    readonly property bool canGoPrevious: hasCurrentTrack
-        && (currentIndex > 0 || repeatMode === 2 || currentPosition > 3)
-    readonly property bool canGoNext: hasCurrentTrack
-        && (currentIndex < activeQueue.length - 1 || repeatMode === 2)
+    readonly property bool hasCurrentTrack:
+        currentIndex >= 0 && currentIndex < activeQueue.length
+    readonly property bool canGoPrevious:
+        hasCurrentTrack && (currentIndex > 0 || repeatMode === 2 || currentPosition > 3)
+    readonly property bool canGoNext:
+        hasCurrentTrack && (currentIndex < activeQueue.length - 1 || repeatMode === 2)
 
-    readonly property string _runtimeDir: {
-        const value = Quickshell.env("XDG_RUNTIME_DIR")
-        return value && value.length > 0 ? value : "/tmp"
-    }
-    readonly property string ipcSocket:
-        _runtimeDir + "/hadalis-local-music-" + Quickshell.processId + ".sock"
-    readonly property string _scanScript: Directories.scriptsPath + "/local_music_scan.py"
-    readonly property string _ipcScript: Directories.scriptsPath + "/local_music_ipc.py"
+    readonly property string _mpdScript: Directories.scriptsPath + "/local_music_mpd.py"
 
-    function _trackForPath(path: string): var {
-        const normalized = String(path ?? "")
+    function _trackForIdentity(uri: string, path: string): var {
+        const wantedUri = String(uri ?? "")
+        const wantedPath = String(path ?? "")
         for (const track of activeQueue) {
-            if (String(track?.path ?? "") === normalized) return track
+            if ((wantedUri && String(track?.uri ?? "") === wantedUri)
+                    || (wantedPath && String(track?.path ?? "") === wantedPath))
+                return track
         }
         for (const track of libraryTracks) {
-            if (String(track?.path ?? "") === normalized) return track
+            if ((wantedUri && String(track?.uri ?? "") === wantedUri)
+                    || (wantedPath && String(track?.path ?? "") === wantedPath))
+                return track
         }
         return null
     }
@@ -82,68 +102,98 @@ Singleton {
             currentArt = ""
             return
         }
+        currentUri = String(track.uri ?? "")
+        currentPath = String(track.path ?? track.uri ?? "")
         currentTitle = String(track.title ?? "")
         currentArtist = String(track.artist ?? "")
         currentAlbum = String(track.album ?? "")
         currentArt = String(track.art ?? "")
+        currentDuration = Math.max(0, Number(track.duration ?? currentDuration) || 0)
     }
 
-    function _syncQueueFromMpv(playlist): void {
-        if (!Array.isArray(playlist) || playlist.length === 0) return
-        const ordered = []
-        for (const entry of playlist) {
-            const path = String(entry?.filename ?? "")
-            const track = _trackForPath(path)
-            ordered.push(track ?? {
-                path: path,
-                title: path.substring(path.lastIndexOf("/") + 1),
-                artist: "", album: "", art: "", duration: 0
-            })
+    function _applyPayload(payload, includeLibrary = false): void {
+        if (!payload || payload.connected === false) {
+            mpdConnected = false
+            if (payload?.error) error = String(payload.error)
+            return
         }
-        activeQueue = ordered
-    }
 
-    function _handleStatus(line: string): void {
-        let payload
-        try { payload = JSON.parse(line) } catch (e) { return }
-        if (payload?.unavailable) return
+        mpdConnected = true
+        error = ""
+        if (String(payload.musicRoot ?? "").length > 0)
+            detectedLibraryFolder = String(payload.musicRoot)
 
-        paused = payload.pause ?? paused
-        playing = _playProc.running && !paused
-        currentPosition = Math.max(0, Number(payload["time-pos"] ?? currentPosition) || 0)
-        currentDuration = Math.max(0, Number(payload.duration ?? currentDuration) || 0)
-        const mpvVolume = Number(payload.volume)
-        if (Number.isFinite(mpvVolume))
-            volume = Math.max(0, Math.min(1, mpvVolume / 100))
+        if (includeLibrary) {
+            libraryTracks = payload.tracks ?? []
+            playlists = payload.playlists ?? []
+            folderCollections = payload.folders ?? []
+        }
 
-        const path = String(payload.path ?? "")
-        if (path.length > 0) currentPath = path
-        if (Array.isArray(payload.playlist)) _syncQueueFromMpv(payload.playlist)
+        if (Array.isArray(payload.queue))
+            activeQueue = payload.queue
 
-        let idx = currentPath.length > 0
-            ? activeQueue.findIndex(track => String(track?.path ?? "") === currentPath) : -1
-        if (idx < 0) idx = Number(payload["playlist-pos"] ?? -1)
-        if (idx >= 0 && idx < activeQueue.length) {
-            currentIndex = idx
-            _applyCurrentTrack(activeQueue[idx])
-        } else if (currentPath.length > 0) {
-            _applyCurrentTrack(_trackForPath(currentPath))
+        const status = payload.status ?? {}
+        mpdState = String(status.state ?? "stop")
+        currentIndex = Number(status.song ?? -1)
+        currentPosition = Math.max(0, Number(status.elapsed ?? 0) || 0)
+        currentDuration = Math.max(0, Number(status.duration ?? 0) || 0)
+        const mpdVolume = Number(status.volume)
+        if (Number.isFinite(mpdVolume) && mpdVolume >= 0)
+            volume = Math.max(0, Math.min(1, mpdVolume / 100))
+        shuffleMode = String(status.random ?? "0") === "1"
+        repeatMode = String(status.single ?? "0") === "1"
+            ? 1
+            : (String(status.repeat ?? "0") === "1" ? 2 : 0)
+
+        const current = payload.current ?? (
+            currentIndex >= 0 && currentIndex < activeQueue.length
+                ? activeQueue[currentIndex] : null
+        )
+        if (current) {
+            _applyCurrentTrack(current)
+        } else {
+            currentIndex = -1
+            currentUri = ""
+            currentPath = ""
+            currentTitle = ""
+            currentArtist = ""
+            currentAlbum = ""
+            currentArt = ""
+            currentDuration = 0
+            currentPosition = 0
         }
     }
 
     function setLibraryFolder(path: string): void {
         const normalized = FileUtils.trimFileProtocol(String(path ?? "")).trim()
-        if (normalized.length === 0) return
         Config.setNestedValue("sidebar.music.libraryFolder", normalized)
-        Qt.callLater(root.rescan)
+        if (enabled) Qt.callLater(root.rescan)
     }
 
     function rescan(): void {
         if (!enabled || _scanProc.running) return
         scanning = true
         error = ""
-        _scanProc.command = ["python3", _scanScript, libraryFolder]
+        MprisController.ensureMpdMprisBridge()
+        _scanProc.command = [
+            "python3", _mpdScript, "snapshot",
+            mpdHost, String(mpdPort), configuredLibraryFolder
+        ]
         _scanProc.running = true
+    }
+
+    function refreshStatus(): void {
+        if (!enabled || _statusProc.running || _scanProc.running) return
+        _statusProc.command = [
+            "python3", _mpdScript, "status",
+            mpdHost, String(mpdPort), configuredLibraryFolder
+        ]
+        _statusProc.running = true
+    }
+
+    function updateDatabase(): void {
+        _sendMpd("update", [])
+        updateRescanTimer.restart()
     }
 
     function playLibrary(index: int): void {
@@ -158,136 +208,178 @@ Singleton {
     function playPath(path: string): void {
         const normalized = FileUtils.trimFileProtocol(String(path ?? "")).trim()
         if (normalized.length === 0) return
-        const known = libraryTracks.find(track => String(track?.path ?? "") === normalized)
-        const item = known ?? {
-            path: normalized,
-            title: normalized.substring(normalized.lastIndexOf("/") + 1),
-            artist: "", album: "", art: "", duration: 0
+        const index = libraryTracks.findIndex(track =>
+            String(track?.path ?? "") === normalized
+                || String(track?.uri ?? "") === normalized)
+        if (index < 0) {
+            error = "not_in_mpd_library"
+            return
         }
-        playQueue([item], 0, Translation.tr("Queue"))
+        playLibrary(index)
     }
 
     function playQueue(queue, index = 0, name = ""): void {
         if (!available || !Array.isArray(queue) || queue.length === 0) return
-        const valid = queue.filter(track => String(track?.path ?? "").length > 0)
+        const valid = queue.filter(track =>
+            String(track?.uri ?? track?.path ?? "").length > 0)
         if (valid.length === 0) return
 
         index = Math.max(0, Math.min(valid.length - 1, Number(index) || 0))
         activeQueue = valid
         activeQueueName = String(name ?? "")
         currentIndex = index
-        currentPath = String(valid[index].path)
         _applyCurrentTrack(valid[index])
         currentPosition = 0
-        currentDuration = Number(valid[index].duration ?? 0) || 0
-        paused = false
         error = ""
 
-        const args = [
-            mpvPath,
-            "--no-video", "--force-window=no", "--audio-display=no",
-            "--input-ipc-server=" + ipcSocket,
-            ...(mprisAvailable ? ["--script=" + mpvMprisPath] : []),
-            "--volume=" + Math.round(volume * 100), "--volume-max=100",
-            "--gapless-audio=weak", "--playlist-start=" + index,
-            ...(normalizeVolume ? ["--af=loudnorm=I=-14:TP=-1.5:LRA=11"] : []),
-            ...(repeatMode === 1 ? ["--loop-file=inf"] : []),
-            ...(repeatMode === 2 ? ["--loop-playlist=inf"] : []),
-            ...(shuffleMode ? ["--shuffle"] : []),
-            ...valid.map(track => String(track.path))
+        _queueProc.command = [
+            "python3", _mpdScript, "queue",
+            mpdHost, String(mpdPort), String(index),
+            JSON.stringify(valid.map(track => String(track.uri ?? track.path)))
         ]
-        _pendingPlayCommand = args
-        if (_playProc.running) _playProc.running = false
-        else _launchPending()
+        _queueProc.running = true
     }
 
-    function _launchPending(): void {
-        if (!Array.isArray(_pendingPlayCommand) || _pendingPlayCommand.length === 0) return
-        const command = _pendingPlayCommand
-        _pendingPlayCommand = []
-        Quickshell.execDetached(["/usr/bin/rm", "-f", ipcSocket])
-        _playProc.command = command
-        _playProc.running = true
-    }
-
-    function _send(command): void {
-        if (!_playProc.running) return
+    function _sendMpd(command: string, args): void {
         Quickshell.execDetached([
-            "python3", _ipcScript, "command", ipcSocket, JSON.stringify(command)
+            "python3", _mpdScript, "command",
+            mpdHost, String(mpdPort), command,
+            JSON.stringify(Array.isArray(args) ? args : [])
         ])
+        statusRefreshTimer.restart()
     }
 
-    function togglePlaying(): void { _send(["cycle", "pause"]) }
-    function next(): void { _send(["playlist-next", "force"]) }
-    function previous(): void {
-        if (currentPosition > 3) seek(0)
-        else _send(["playlist-prev", "force"])
+    function togglePlaying(): void {
+        const player = mprisPlayer
+        if (player && (player.canTogglePlaying ?? false)) {
+            player.togglePlaying()
+            statusRefreshTimer.restart()
+            return
+        }
+        _sendMpd("pause", [playing ? 1 : 0])
     }
+
+    function next(): void {
+        const player = mprisPlayer
+        if (player && MprisController.canGoNextForPlayer(player)) {
+            MprisController.nextForPlayer(player, false)
+            statusRefreshTimer.restart()
+            return
+        }
+        _sendMpd("next", [])
+    }
+
+    function previous(): void {
+        if (currentPosition > 3) {
+            seek(0)
+            return
+        }
+        const player = mprisPlayer
+        if (player && MprisController.canGoPreviousForPlayer(player)) {
+            MprisController.previousForPlayer(player, false)
+            statusRefreshTimer.restart()
+            return
+        }
+        _sendMpd("previous", [])
+    }
+
     function jumpTo(index: int): void {
         if (index >= 0 && index < activeQueue.length)
-            _send(["set_property", "playlist-pos", index])
+            _sendMpd("play", [index])
     }
+
     function seek(seconds: real): void {
-        _send(["seek", Math.max(0, Number(seconds) || 0), "absolute"])
+        const target = Math.max(0, Number(seconds) || 0)
+        const player = mprisPlayer
+        if (player && (player.canSeek ?? false)
+                && (player.positionSupported ?? true)) {
+            player.position = target
+            statusRefreshTimer.restart()
+            return
+        }
+        _sendMpd("seekcur", [target])
     }
+
     function setVolume(value: real): void {
         const clamped = Math.max(0, Math.min(1, Number(value) || 0))
         volume = clamped
-        Config.setNestedValue("sidebar.music.volume", Math.round(clamped * 100))
-        _send(["set_property", "volume", Math.round(clamped * 100)])
+        const player = mprisPlayer
+        if (player && (player.volumeSupported ?? false) && (player.canControl ?? false)) {
+            player.volume = clamped
+            statusRefreshTimer.restart()
+            return
+        }
+        _sendMpd("setvol", [Math.round(clamped * 100)])
     }
+
     function toggleShuffle(): void {
-        shuffleMode = !shuffleMode
-        Config.setNestedValue("sidebar.music.shuffleMode", shuffleMode)
-        _send([shuffleMode ? "playlist-shuffle" : "playlist-unshuffle"])
+        const target = !shuffleMode
+        shuffleMode = target
+        const player = mprisPlayer
+        if (player && (player.shuffleSupported ?? false) && (player.canControl ?? false)) {
+            player.shuffle = target
+            statusRefreshTimer.restart()
+            return
+        }
+        _sendMpd("random", [target ? 1 : 0])
     }
+
     function cycleRepeatMode(): void {
-        repeatMode = (repeatMode + 1) % 3
-        Config.setNestedValue("sidebar.music.repeatMode", repeatMode)
-        _send(["set_property", "loop-file", repeatMode === 1 ? "inf" : "no"])
-        _send(["set_property", "loop-playlist", repeatMode === 2 ? "inf" : "no"])
+        const target = (repeatMode + 1) % 3
+        repeatMode = target
+        // MPD expresses track repeat as repeat+single and queue repeat as repeat.
+        _sendMpd("repeat", [target === 0 ? 0 : 1])
+        _sendMpd("single", [target === 1 ? 1 : 0])
     }
+
     function stop(): void {
-        if (_playProc.running) _send(["quit"])
+        const player = mprisPlayer
+        if (player && (player.canStop ?? false)) {
+            player.stop()
+            statusRefreshTimer.restart()
+            return
+        }
+        _sendMpd("stop", [])
     }
 
     Component.onCompleted: {
         if (enabled) {
-            _availabilityProc.running = true
-            _mprisCheckProc.running = true
+            MprisController.ensureMpdMprisBridge()
             Qt.callLater(root.rescan)
         }
     }
+
     onEnabledChanged: {
         if (enabled) {
-            _availabilityProc.running = true
-            _mprisCheckProc.running = true
+            MprisController.ensureMpdMprisBridge()
             Qt.callLater(root.rescan)
-        } else stop()
+        }
     }
+
     onConfiguredLibraryFolderChanged: if (enabled) Qt.callLater(root.rescan)
+    onConfiguredHostChanged: if (enabled) Qt.callLater(root.rescan)
+    onConfiguredPortChanged: if (enabled) Qt.callLater(root.rescan)
 
-    Process {
-        id: _availabilityProc
-        stdout: StdioCollector {
-            id: mpvPathCollector
-        }
-        command: ["/bin/sh", "-c", "command -v mpv 2>/dev/null || true"]
-        onExited: (_code, _status) => {
-            root.mpvPath = (mpvPathCollector.text ?? "").trim()
-            root.available = root.mpvPath.length > 0
-            if (!root.available) root.error = "mpv_unavailable"
-        }
+    Timer {
+        id: pollTimer
+        interval: 900
+        repeat: true
+        running: root.enabled
+        onTriggered: root.refreshStatus()
     }
 
-    Process {
-        id: _mprisCheckProc
-        stdout: StdioCollector { id: mpvMprisPathCollector }
-        command: ["/bin/sh", "-c",
-            "for p in /usr/lib/mpv-mpris/mpris.so /usr/lib64/mpv-mpris/mpris.so /usr/lib/x86_64-linux-gnu/mpv-mpris/mpris.so; do [ -f \"$p\" ] && { printf '%s\\n' \"$p\"; exit 0; }; done; exit 1"]
-        onExited: (code, _status) => {
-            root.mpvMprisPath = code === 0 ? (mpvMprisPathCollector.text ?? "").trim() : ""
-        }
+    Timer {
+        id: statusRefreshTimer
+        interval: 180
+        repeat: false
+        onTriggered: root.refreshStatus()
+    }
+
+    Timer {
+        id: updateRescanTimer
+        interval: 2200
+        repeat: false
+        onTriggered: root.rescan()
     }
 
     Process {
@@ -300,42 +392,56 @@ Singleton {
         onExited: (code, _status) => {
             root.scanning = false
             if (code !== 0) {
-                root.error = "scan_failed"
+                root.mpdConnected = false
+                try {
+                    const payload = JSON.parse(_scanProc.output || "{}")
+                    root.error = String(payload.error ?? "mpd_unavailable")
+                } catch (e) {
+                    root.error = "mpd_unavailable"
+                }
                 return
             }
             try {
-                const payload = JSON.parse(_scanProc.output || "{}")
-                root.libraryTracks = payload.tracks ?? []
-                root.playlists = payload.playlists ?? []
-                root.folderCollections = payload.folders ?? []
-                root.error = String(payload.error ?? "")
+                root._applyPayload(JSON.parse(_scanProc.output || "{}"), true)
             } catch (e) {
-                root.error = "scan_parse_failed"
+                root.error = "mpd_snapshot_parse_failed"
             }
         }
     }
 
     Process {
-        id: _playProc
-        onStarted: {
-            root.paused = false
-            root.playing = true
+        id: _statusProc
+        property string output: ""
+        stdout: StdioCollector {
+            onStreamFinished: _statusProc.output = text ?? ""
         }
-        onExited: (_code, _status) => {
-            root.playing = false
-            root.paused = true
-            root.currentPosition = 0
-            Quickshell.execDetached(["/usr/bin/rm", "-f", root.ipcSocket])
-            if (root._pendingPlayCommand.length > 0) Qt.callLater(root._launchPending)
+        onStarted: _statusProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) {
+                root.mpdConnected = false
+                return
+            }
+            try {
+                root._applyPayload(JSON.parse(_statusProc.output || "{}"), false)
+            } catch (e) {
+                root.error = "mpd_status_parse_failed"
+            }
         }
     }
 
     Process {
-        id: _watchProc
-        running: _playProc.running
-        command: ["python3", root._ipcScript, "watch", root.ipcSocket, "0.75"]
-        stdout: SplitParser {
-            onRead: line => root._handleStatus(line)
+        id: _queueProc
+        property string output: ""
+        stdout: StdioCollector {
+            onStreamFinished: _queueProc.output = text ?? ""
+        }
+        onStarted: _queueProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) {
+                root.error = "mpd_queue_failed"
+                return
+            }
+            statusRefreshTimer.restart()
         }
     }
 }

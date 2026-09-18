@@ -1444,6 +1444,8 @@
         "music": {
             "enable": false,
             "libraryFolder": "",
+            "mpdHost": "127.0.0.1",
+            "mpdPort": 6600,
             "normalizeVolume": false,
             "shuffleMode": false,
             "repeatMode": 0,

@@ -576,6 +576,10 @@ Scope {
 // ── Bottom-connected settings popup ──
             StyledRectangularShadow {
                 target: settingsCard
+                visible: (root.settingsOpen || root._closeAnimRunning)
+                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
+                    && Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12) > 0
+                    && Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24) > 0
                 blur: Math.max(0, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
                 spread: 0

@@ -21,6 +21,9 @@ TRAY_PATH = Path("modules/bar/SysTray.qml")
 MEDIA_PATH = Path("modules/bar/Media.qml")
 SETTINGS_QMLDIR_PATH = Path("modules/settings/qmldir")
 SETTINGS_REGISTRY_PATH = Path("modules/settings/SettingsPageRegistry.qml")
+VERTICAL_CLOCK_PATH = Path("modules/verticalBar/VerticalClockWidget.qml")
+SIDEBAR_LEFT_PATH = Path("modules/sidebarLeft/SidebarLeft.qml")
+SIDEBAR_RIGHT_PATH = Path("modules/sidebarRight/SidebarRight.qml")
 
 CONSUMER_ROOT_RE = re.compile(r"^\s*StyledPopup\s*\{")
 IMPLEMENTATION_ROOT_RE = re.compile(r"^\s*LazyLoader\s*\{")
@@ -172,6 +175,9 @@ def source_contract_failures() -> list[str]:
     media = MEDIA_PATH.read_text(encoding="utf-8")
     settings_qmldir = SETTINGS_QMLDIR_PATH.read_text(encoding="utf-8")
     settings_registry = SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8")
+    vertical_clock = VERTICAL_CLOCK_PATH.read_text(encoding="utf-8")
+    sidebar_left = SIDEBAR_LEFT_PATH.read_text(encoding="utf-8")
+    sidebar_right = SIDEBAR_RIGHT_PATH.read_text(encoding="utf-8")
 
     # Output/window ownership must come from the actual bar control. QsWindow's
     # mapping API is non-reactive, so windowTransform must participate in the
@@ -201,6 +207,13 @@ def source_contract_failures() -> list[str]:
     forbid(preview, "component LegacyAnchor", str(TASKBAR_PREVIEW_PATH), failures)
     forbid(preview, "property LegacyAnchor anchor", str(TASKBAR_PREVIEW_PATH), failures)
     forbid(preview, "property QtObject anchor: QtObject", str(TASKBAR_PREVIEW_PATH), failures)
+    preview_content_pos = preview.find("id: previewContent")
+    preview_connections_pos = preview.find("Connections {")
+    if preview_content_pos < 0 or preview_connections_pos < preview_content_pos:
+        failures.append(
+            f"{TASKBAR_PREVIEW_PATH}: preview listeners must live inside the one "
+            "Item-compatible StyledPopup content root"
+        )
 
     # Presentation peers that need the lazily-created surface (tray focus grab)
     # must use the explicit handle rather than QsWindow on the StyledPopup loader.
@@ -254,6 +267,18 @@ def source_contract_failures() -> list[str]:
         str(SETTINGS_REGISTRY_PATH),
         failures,
     )
+
+    # Startup type graph: retired aliases/cutover symbols must not make the
+    # VerticalBar or sidebars unavailable before the first frame.
+    forbid(vertical_clock, "ClockWidgetTooltip", str(VERTICAL_CLOCK_PATH), failures)
+    forbid(vertical_clock, "import qs.modules.bar as Bar", str(VERTICAL_CLOCK_PATH), failures)
+    for sidebar_text, sidebar_path in (
+        (sidebar_left, SIDEBAR_LEFT_PATH),
+        (sidebar_right, SIDEBAR_RIGHT_PATH),
+    ):
+        forbid(sidebar_text, "PerimeterCutoverPolicy", str(sidebar_path), failures)
+        forbid(sidebar_text, "perimeterEnabled", str(sidebar_path), failures)
+        require(sidebar_text, "model: root.targetScreens", str(sidebar_path), failures)
 
     return failures
 

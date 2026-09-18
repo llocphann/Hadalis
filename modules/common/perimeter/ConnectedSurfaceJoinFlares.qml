@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common.widgets
 
 // Concave union shoulders for direct Bar/Screen Edge attachments.
 //
@@ -36,80 +37,32 @@ Item {
     visible: root.reveal > 0.001 && root.radius > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
-    component Flare: Canvas {
+    // Reuse the same inverse-corner primitive as the Hug Bar. This removes a
+    // second Canvas implementation and guarantees identical shoulders for Bar,
+    // popup, Settings, Sidebar and Screen Edge connected surfaces.
+    component Flare: RoundCorner {
         required property string corner
         property color flareColor: root.fillColor
         property real r: root.radius
 
         width: r
         height: r
+        implicitSize: Math.max(1, Math.round(r))
+        color: flareColor
         visible: r > 0
 
-        onRChanged: requestPaint()
-        onFlareColorChanged: requestPaint()
-        onCornerChanged: requestPaint()
-        Component.onCompleted: requestPaint()
-
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            const s = Math.min(width, height)
-            if (!(s > 0))
-                return
-
-            // Cubic approximation of a quarter circle. The filled region is
-            // the complement of that arc inside the r×r corner, producing the
-            // characteristic concave "shoulder" where two surfaces unite.
-            const k = 0.5522847498
-            ctx.beginPath()
-
-            if (corner === "topLeft") {
-                ctx.moveTo(0, 0)
-                ctx.lineTo(s, 0)
-                ctx.lineTo(s, s)
-                ctx.bezierCurveTo(s, s * (1 - k), s * k, 0, 0, 0)
-            } else if (corner === "topRight") {
-                ctx.moveTo(s, 0)
-                ctx.lineTo(0, 0)
-                ctx.lineTo(0, s)
-                ctx.bezierCurveTo(0, s * (1 - k), s * (1 - k), 0, s, 0)
-            } else if (corner === "bottomLeft") {
-                ctx.moveTo(0, s)
-                ctx.lineTo(s, s)
-                ctx.lineTo(s, 0)
-                ctx.bezierCurveTo(s, s * k, s * k, s, 0, s)
-            } else if (corner === "bottomRight") {
-                ctx.moveTo(s, s)
-                ctx.lineTo(0, s)
-                ctx.lineTo(0, 0)
-                ctx.bezierCurveTo(0, s * k, s * (1 - k), s, s, s)
-            } else if (corner === "leftTop") {
-                ctx.moveTo(0, 0)
-                ctx.lineTo(0, s)
-                ctx.lineTo(s, s)
-                ctx.bezierCurveTo(s * (1 - k), s, 0, s * k, 0, 0)
-            } else if (corner === "leftBottom") {
-                ctx.moveTo(0, s)
-                ctx.lineTo(0, 0)
-                ctx.lineTo(s, 0)
-                ctx.bezierCurveTo(s * (1 - k), 0, 0, s * (1 - k), 0, s)
-            } else if (corner === "rightTop") {
-                ctx.moveTo(s, 0)
-                ctx.lineTo(s, s)
-                ctx.lineTo(0, s)
-                ctx.bezierCurveTo(s * k, s, s, s * k, s, 0)
-            } else if (corner === "rightBottom") {
-                ctx.moveTo(s, s)
-                ctx.lineTo(s, 0)
-                ctx.lineTo(0, 0)
-                ctx.bezierCurveTo(s * k, 0, s, s * (1 - k), s, s)
-            } else {
-                return
-            }
-
-            ctx.closePath()
-            ctx.fillStyle = flareColor
-            ctx.fill()
+        corner: switch (corner) {
+            case "topLeft": return RoundCorner.CornerEnum.TopLeft
+            case "topRight": return RoundCorner.CornerEnum.TopRight
+            case "bottomLeft": return RoundCorner.CornerEnum.BottomLeft
+            case "bottomRight": return RoundCorner.CornerEnum.BottomRight
+            // Vertical joins use the same four silhouettes, rotated by which
+            // two solid edges meet inside the r×r shoulder square.
+            case "leftTop": return RoundCorner.CornerEnum.BottomRight
+            case "leftBottom": return RoundCorner.CornerEnum.TopRight
+            case "rightTop": return RoundCorner.CornerEnum.BottomLeft
+            case "rightBottom": return RoundCorner.CornerEnum.TopLeft
+            default: return RoundCorner.CornerEnum.TopLeft
         }
     }
 

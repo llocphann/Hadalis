@@ -9,6 +9,8 @@ THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
+GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
+STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -33,6 +35,8 @@ def main() -> None:
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
+    glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
+    styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -303,6 +307,38 @@ def main() -> None:
         "Appearance.motion.popupReveal.enterBezierCurve",
     ):
         require(context_menu, token, "ContextMenu.qml")
+
+    # Shared primitives used by active menu surfaces must not re-route through
+    # the frozen legacy Global Theme aliases.
+    for source, content in (
+        ("GlassBackground.qml", glass_background),
+        ("StyledRadioButton.qml", styled_radio_button),
+    ):
+        for token in (
+            "Appearance.zzzEverywhere",
+            "Appearance.regaliaEverywhere",
+            "Appearance.angelEverywhere",
+            "Appearance.inirEverywhere",
+            "Appearance.auroraEverywhere",
+            "Appearance.cookieEverywhere",
+        ):
+            forbid(content, token, source)
+    for token in (
+        'color: root.useWallpaperBackdrop ? "transparent" : root.fallbackColor',
+        "saturation: Appearance.effectsEnabled ? root.saturationStrength : 0",
+        "blur: Appearance.effectsEnabled ? root.blurStrength : 0",
+    ):
+        require(glass_background, token, "GlassBackground.qml")
+    for token in ("AngelPartialBorder {",):
+        forbid(glass_background, token, "GlassBackground.qml")
+    for token in (
+        "width: 20",
+        "border.width: 2",
+        "width: checked ? 10 : 4",
+        "enabled: Appearance.animationsEnabled",
+    ):
+        require(styled_radio_button, token, "StyledRadioButton.qml")
+    forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

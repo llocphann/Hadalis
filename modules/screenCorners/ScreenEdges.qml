@@ -258,14 +258,21 @@ Scope {
         }
         mask: Region { item: emptyCornerInput }
 
-        // Paint every orientation explicitly with the same cubic quarter-arc
-        // constants. Bottom corners therefore do not depend on mirrored Canvas
-        // transform state and keep the same silhouette as the top pair.
-        Canvas {
-            id: innerCornerCanvas
-            width: root.innerRadius
-            height: root.innerRadius
-            property color fillColor: root.edgeColor
+        // Reuse the exact inverse-corner primitive that already produces the
+        // correct top Hug silhouette. Paint one canonical TopLeft curve and
+        // rotate the square item for the other three positions, so the lower
+        // pair cannot drift into a separate Canvas path or triangular wedge.
+        RoundCorner {
+            id: innerCornerShape
+            implicitSize: root.innerRadius
+            corner: RoundCorner.CornerEnum.TopLeft
+            color: root.edgeColor
+            transformOrigin: Item.Center
+            rotation: {
+                if (cornerWindow.isTop)
+                    return cornerWindow.isLeft ? 0 : 90
+                return cornerWindow.isLeft ? 270 : 180
+            }
             anchors {
                 top: cornerWindow.isTop ? parent.top : undefined
                 bottom: cornerWindow.isTop ? undefined : parent.bottom
@@ -275,61 +282,6 @@ Scope {
                 bottomMargin: cornerWindow.isTop ? 0 : root.thickness
                 leftMargin: cornerWindow.isLeft ? root.thickness : 0
                 rightMargin: cornerWindow.isLeft ? 0 : root.thickness
-            }
-
-            readonly property bool topSide: cornerWindow.isTop
-            readonly property bool leftSide: cornerWindow.isLeft
-
-            onWidthChanged: requestPaint()
-            onHeightChanged: requestPaint()
-            onFillColorChanged: requestPaint()
-            onTopSideChanged: requestPaint()
-            onLeftSideChanged: requestPaint()
-            Component.onCompleted: requestPaint()
-
-            onPaint: {
-                const ctx = getContext("2d")
-                ctx.clearRect(0, 0, width, height)
-                const s = Math.min(width, height)
-                if (!(s > 0))
-                    return
-
-                // Draw each orientation explicitly rather than relying on a
-                // mirrored Canvas transform. The bottom pair used to depend on
-                // transform state at first paint and could land as a square
-                // Screen Edge join while the top pair rendered correctly.
-                const k = 0.5522847498
-                ctx.beginPath()
-
-                if (topSide && leftSide) {
-                    ctx.moveTo(0, 0)
-                    ctx.lineTo(s, 0)
-                    ctx.bezierCurveTo(s * (1 - k), 0,
-                        0, s * (1 - k), 0, s)
-                } else if (topSide && !leftSide) {
-                    ctx.moveTo(s, 0)
-                    ctx.lineTo(0, 0)
-                    ctx.bezierCurveTo(s * k, 0,
-                        s, s * (1 - k), s, s)
-                } else if (!topSide && leftSide) {
-                    ctx.moveTo(0, s)
-                    ctx.lineTo(s, s)
-                    ctx.bezierCurveTo(s * (1 - k), s,
-                        0, s * k, 0, 0)
-                } else {
-                    ctx.moveTo(s, s)
-                    ctx.lineTo(0, s)
-                    ctx.bezierCurveTo(s * k, s,
-                        s, s * k, s, 0)
-                }
-
-                ctx.lineTo(topSide
-                    ? (leftSide ? 0 : s)
-                    : (leftSide ? 0 : s),
-                    topSide ? 0 : s)
-                ctx.closePath()
-                ctx.fillStyle = fillColor
-                ctx.fill()
             }
         }
     }

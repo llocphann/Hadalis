@@ -114,6 +114,15 @@ grep -Fq 'parent.width - leadingShadowInset - trailingShadowInset' "$root/module
     || fail 'horizontal Screen Edge shadow must stop before both rounded corner overlays'
 grep -Fq 'parent.height - leadingShadowInset - trailingShadowInset' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'vertical Screen Edge shadow must stop before both rounded corner overlays'
+grep -Fq 'id: innerCornerShape' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge corners must use the shared RoundCorner primitive'
+grep -Fq 'corner: RoundCorner.CornerEnum.TopLeft' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge corners must derive every orientation from one canonical TopLeft silhouette'
+grep -Fq 'return cornerWindow.isLeft ? 270 : 180' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'bottom Screen Edge corners must rotate the canonical silhouette instead of drawing a separate path'
+if grep -Fq 'Canvas {' "$root/modules/screenCorners/ScreenEdges.qml"; then
+    fail 'Screen Edge inner corners must not regress to independent Canvas paths'
+fi
 for shadow_source in \
     "$root/modules/screenCorners/ScreenEdges.qml" \
     "$root/modules/bar/Bar.qml" \

@@ -23,7 +23,6 @@ Item { // Bar content region
     readonly property bool nativeBlurActive: !root.isIslands
         && Appearance.useCompositorBlur("bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
-        && (Config.options?.bar?.showBackground ?? true)
         && !root.gameModeMinimal
 
     property Item barContextMenuSource: null
@@ -124,7 +123,9 @@ Item { // Bar content region
             // Only add margins for floating styles, NOT for hug mode (cornerStyle 0)
             margins: floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
         }
-        visible: (Config.options?.bar?.showBackground ?? true) && !root.gameModeMinimal && !root.isIslands
+        // Hug background is structural connected chrome; stale transparent
+        // config must not remove the body below the shared edge shadow.
+        visible: !root.gameModeMinimal && !root.isIslands
         color: root.cardStyleEverywhere
             ? Appearance.colors.colLayer1
             : ((Config.options?.bar?.cornerStyle ?? 0) === 3

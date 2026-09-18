@@ -119,7 +119,7 @@ Item {
         visible: root.shadowEnabled
             && root.shadowExtent > 0
             && root._r > 0
-            && Qt.color(root.shadowColor).a > 0
+            && root.shadowColor.a > 0
         antialiasing: true
 
         onVisibleChanged: requestPaint()

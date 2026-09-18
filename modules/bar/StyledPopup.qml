@@ -18,7 +18,9 @@ LazyLoader {
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
     property bool keyboardFocus: false
-    property bool popupHovered: false
+    property bool _bodyHovered: false
+    property bool _contentHovered: false
+    readonly property bool popupHovered: root._bodyHovered || root._contentHovered
     default property Item contentItem
     property real popupBackgroundMargin: 0
     // Compatibility knob retained for old callers. Placement is now authoritative:
@@ -100,7 +102,6 @@ LazyLoader {
     active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
     function _beginRetract(): void {
-        root.popupHovered = false
         if (!root._lingerVisible)
             return
         root.offsetScale = 1
@@ -348,7 +349,7 @@ LazyLoader {
                 // This closes the Bar→popup dead zone without turning the whole
                 // inward half of the output into a hover bridge.
                 hoverEnabled: root.active
-                onBodyHoveredChanged: root.popupHovered = bodyHovered
+                onBodyHoveredChanged: root._bodyHovered = bodyHovered
                 shadowEnabled: root._edgeShadowEnabled
                     && root._edgeShadowExtent > 0
                     && root._edgeShadowOpacity > 0
@@ -375,6 +376,16 @@ LazyLoader {
                 // Pure slide-under motion: no scale/shrink and no staged fade.
                 opacity: 1
                 children: [root.contentItem]
+
+                // Track the actual content plane as well as the decorative body.
+                // Interactive children (notably StyledSwitch/MouseArea controls)
+                // sit above ConnectedSurfaceFrame and can otherwise make the
+                // frame's HoverHandler report a transient leave while the pointer
+                // is still visibly inside the popup, causing retract/reopen jitter.
+                HoverHandler {
+                    enabled: root.active
+                    onHoveredChanged: root._contentHovered = hovered
+                }
             }
         }
 

@@ -22,6 +22,7 @@ def main() -> None:
     default_config = read("defaults/config.json")
     thinkfan_service = read("services/ThinkFanService.qml")
     thinkfan_helper = read("assets/helpers/inir-thinkfan")
+    shell_root = read("shell.qml")
     system_settings = read("modules/settings/GeneralConfigCore.qml")
     system_facade = read("modules/settings/GeneralConfig.qml")
     settings_registry = read("modules/settings/SettingsPageRegistryData.qml")
@@ -105,12 +106,20 @@ def main() -> None:
     for token in (
         "import Quickshell.Services.UPower",
         "property bool directControlAvailable: false",
+        "property bool fanLevelControlSupported: false",
         "readonly property string activePowerProfileKey:",
         "readonly property int configuredActiveFanLevel:",
+        "function setConfiguredFanLevel(key: string, requestedLevel): bool",
+        "function setProfileFanControlEnabled(requestedEnabled: bool): bool",
         "function applyFanLevel(requestedLevel): bool",
         "function applyConfiguredPowerProfileFanLevel(): bool",
+        "Config.flushWrites()",
         'root.lastApplyError = "managed-control-active"',
+        'root.lastApplyError = "helper-update-required"',
         "root._profileFollowArmed",
+        'property string _queuedFanLevel: ""',
+        "function _drainQueuedFanLevel(): void",
+        'completedOperation === "profile:firmware"',
     ):
         check(token in thinkfan_service,
               f"ThinkFan service must own guarded power-profile fan levels: {token}")
@@ -118,6 +127,7 @@ def main() -> None:
     for token in (
         "fan_control_path=/sys/module/thinkpad_acpi/parameters/fan_control",
         "direct_control_available()",
+        '"fanLevelControlSupported":true',
         "--set-level auto|1..7",
         "set_fan_level()",
         "auto|1|2|3|4|5|6|7",
@@ -139,11 +149,33 @@ def main() -> None:
         'text: Translation.tr("Balanced fan level")',
         'text: Translation.tr("Performance fan level")',
         "ThinkFanService.directControlAvailable",
-        "root.setProfileFanLevel(",
-        "ThinkFanService.applyConfiguredPowerProfileFanLevel()",
+        "ThinkFanService.fanLevelControlSupported",
+        "ThinkFanService.setConfiguredFanLevel(",
+        "ThinkFanService.setProfileFanControlEnabled(",
+        "enabled: Config.ready",
     ):
         check(token in system_settings,
               f"System Settings must own the shared ThinkFan profile control: {token}")
+
+    for forbidden in (
+        "root.setProfileFanLevel(",
+        "root.profileFanControlReady",
+        "enabled: ThinkFanService.directControlAvailable && !root.thinkFanManaged",
+    ):
+        check(forbidden not in system_settings,
+              f"Fan preferences must persist independently of runtime helper readiness: {forbidden}")
+
+    for token in (
+        "function flushWrites(): void",
+        "if (root._writeInFlight) {",
+        "root._pendingWrite = true",
+        "root._writeMirrorToDisk()",
+    ):
+        check(token in config_schema,
+              f"Explicit Config flushes must serialize safely before fan apply: {token}")
+
+    check("property var _thinkFanService: ThinkFanService" in shell_root,
+          "Shell root must keep ThinkFanService alive so power-profile following works with Settings closed")
 
     for token in (
         'value.includes("fan")',

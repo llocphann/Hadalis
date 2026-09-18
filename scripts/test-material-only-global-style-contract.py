@@ -62,6 +62,7 @@ CONTROL_PANEL_QUICK_ACTIONS = ROOT / "modules" / "controlPanel" / "QuickActionsS
 CONTROL_PANEL_MEDIA = ROOT / "modules" / "controlPanel" / "MediaSection.qml"
 CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent.qml"
 OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
+OVERVIEW_SEARCH_ITEM = ROOT / "modules" / "overview" / "SearchItem.qml"
 OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
 
 
@@ -142,6 +143,7 @@ def main() -> None:
     control_panel_media = CONTROL_PANEL_MEDIA.read_text(encoding="utf-8")
     control_panel_content = CONTROL_PANEL_CONTENT.read_text(encoding="utf-8")
     overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
+    overview_search_item = OVERVIEW_SEARCH_ITEM.read_text(encoding="utf-8")
     overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
@@ -1397,6 +1399,25 @@ def main() -> None:
         'text: "music_cast"',
     ):
         require(overview_search_bar, token, "overview/SearchBar.qml")
+
+    # Search result delegates are active for both compositor paths. Preserve
+    # execution/keyboard/drag semantics while locking their row chrome to Material.
+    for token in legacy_style_tokens:
+        forbid(overview_search_item, token, "overview/SearchItem.qml")
+    for token in (
+        "readonly property color normalTextColor: Appearance.colors.colOnLayer1",
+        "readonly property color selectedTextColor: Appearance.colors.colOnLayer1",
+        "readonly property color selectedBackgroundColor: Appearance.colors.colLayer1",
+        "readonly property color hoverBackgroundColor: Appearance.colors.colLayer1",
+        "readonly property color pressedBackgroundColor: Appearance.colors.colLayer1Hover",
+        "readonly property color activeRippleColor: Appearance.colors.colLayer1Hover",
+        "buttonRadius: Appearance.rounding.normal",
+        "radius: Appearance.rounding.full",
+        "buttonRadius: Appearance.rounding.full",
+        'Drag.keys: ["application/x-inir-desktop-entry"]',
+        "root.entry.execute()",
+    ):
+        require(overview_search_item, token, "overview/SearchItem.qml")
 
     # Hyprland OverviewWidget keeps its compositor behavior while its visual
     # Global Theme branches collapse to the terminal Material fallbacks.

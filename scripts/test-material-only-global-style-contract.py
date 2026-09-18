@@ -167,6 +167,34 @@ def main() -> None:
     ):
         require(nav_chrome, token, "SettingsOverlay.qml navigation rail")
 
+    actions_start = settings_overlay.index("id: overlayNavActions")
+    content_start = settings_overlay.index("id: overlayContentContainer", actions_start)
+    search_results_start = settings_overlay.index(
+        "id: overlaySearchResultsOverlay", content_start
+    )
+    nav_actions = settings_overlay[actions_start:content_start]
+    content_chrome = settings_overlay[content_start:search_results_start]
+    for source, chrome in (
+        ("SettingsOverlay.qml navigation actions", nav_actions),
+        ("SettingsOverlay.qml content container", content_chrome),
+    ):
+        for token in (
+            "Appearance.zzzEverywhere",
+            "Appearance.regaliaEverywhere",
+            "Appearance.angelEverywhere",
+            "Appearance.inirEverywhere",
+            "Appearance.auroraEverywhere",
+        ):
+            forbid(chrome, token, source)
+    forbid(content_chrome, "GlassBackground {", "SettingsOverlay.qml content container")
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colSurfaceContainerLow",
+        "border.width: 0",
+        'border.color: "transparent"',
+    ):
+        require(content_chrome, token, "SettingsOverlay.qml content container")
+
     print("Material-only global style contract: PASS")
 
 

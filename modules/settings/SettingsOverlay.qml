@@ -1415,13 +1415,8 @@ Scope {
                                     implicitHeight: 36
                                     buttonRadius: Appearance.rounding.small
                                     colBackground: "transparent"
-                                    colBackgroundHover: Appearance.angelEverywhere
-                                        ? Appearance.angel.colGlassCard
-                                        : Appearance.inirEverywhere
-                                            ? Appearance.inir.colLayer1Hover
-                                            : Appearance.auroraEverywhere
-                                                ? Appearance.aurora.colSubSurface
-                                                : CF.ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.5)
+                                    colBackgroundHover: CF.ColorUtils.transparentize(
+                                        Appearance.colors.colLayer1Hover, 0.5)
 
                                     onClicked: {
                                         Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "settings-window"])
@@ -1461,56 +1456,19 @@ Scope {
                             }
                         }
 
-                        // ZZZ no longer needs a separate nav/content rule: the content
-                        // plate and active pill provide enough separation without a hard line.
-                        Rectangle {
-                            visible: false
-                            Layout.fillHeight: true
-                            Layout.topMargin: 6
-                            Layout.bottomMargin: 6
-                            Layout.preferredWidth: Math.max(1, Appearance.zzz.borderThick)
-                            color: Appearance.zzz.hairlineStrong
-                        }
-
+                        // Content area
                         // Content area
                         Rectangle {
                             id: overlayContentContainer
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                                 : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                                 : Appearance.rounding.normal
-                            // ZZZ: lift the content field clearly off the chrome panel +
-                            // nav rail so the reading area reads as its own plate (bg2),
-                            // not the same black. Hairline seals the edge.
-                            color: Appearance.auroraEverywhere ? "transparent"
-                                 : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                                 : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                 : Appearance.colors.colSurfaceContainerLow
-                            border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                        : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-                                        : Appearance.inirEverywhere ? 1 : 0
-                            border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                                        : Appearance.zzzEverywhere ? Appearance.zzz.hairline
-                                        : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : "transparent"
+                            radius: Appearance.rounding.normal
+                            color: Appearance.colors.colSurfaceContainerLow
+                            border.width: 0
+                            border.color: "transparent"
                             clip: true
 
-                            // Glass background for aurora/angel wallpaper blur in content area
-                            GlassBackground {
-                                anchors.fill: parent
-                                z: -1
-                                visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
-                                screenX: settingsCard.x + overlayContentContainer.x + 16
-                                screenY: settingsCard.y + overlayContentContainer.y + 16
-                                screenWidth: settingsPanel.width
-                                screenHeight: settingsPanel.height
-                                fallbackColor: "transparent"
-                                auroraTransparency: Appearance.angelEverywhere
-                                    ? Appearance.angel.cardTransparentize
-                                    : Appearance.aurora.subSurfaceTransparentize
-                                radius: parent.radius
-                            }
-
+                            // ── Page header: icon + name + description ──
                             // ── Page header: icon + name + description ──
                             Item {
                                 id: overlayPageHeader
@@ -1565,7 +1523,7 @@ Scope {
                                 Rectangle {
                                     anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 16; rightMargin: 16 }
                                     height: 1
-                                    color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : Appearance.colors.colOutlineVariant
+                                    color: Appearance.colors.colOutlineVariant
                                     opacity: 0
                                 }
                             }

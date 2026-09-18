@@ -79,7 +79,6 @@ Scope {
                 visible: true
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property bool hugCorners: bar.showBarBackground
-                    && !Appearance.zzzEverywhere
                 readonly property real roundDecoratorAllowance: hugCorners
                     ? Appearance.rounding.screenRounding : 0
                 readonly property bool edgeShadowEnabled: bar.showBarBackground
@@ -96,10 +95,8 @@ Scope {
                     Math.max(roundDecoratorAllowance, edgeShadowExtent)
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
-                    && !Appearance.zzzEverywhere
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.bottom
-                    && !Appearance.zzzEverywhere
 
                 property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
                 property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen.width) ? 1 : 0
@@ -317,19 +314,14 @@ Scope {
                             id: hugDecorators
                             implicitHeight: Appearance.rounding.screenRounding
                             
-                            readonly property bool isAurora: Appearance.auroraEverywhere
-                            readonly property bool isInir: Appearance.inirEverywhere
                             readonly property bool isBottom: Config.options?.bar?.bottom ?? false
-                            readonly property color solidColor: showBarBackground 
-                                ? (isInir ? Appearance.inir.colLayer0 
-                                    : isAurora ? Appearance.aurora.colPopupSurface
-                                    : Appearance.colors.colLayer0) 
+                            readonly property color solidColor: showBarBackground
+                                ? Appearance.colors.colLayer0
                                 : "transparent"
                             
                             // Left corner - solid for Material/Inir, blur for Aurora
                             RoundCorner {
                                 id: leftCorner
-                                visible: !hugDecorators.isAurora
                                 anchors {
                                     top: parent.top
                                     bottom: parent.bottom
@@ -352,7 +344,6 @@ Scope {
                             // Right corner - solid for Material/Inir
                             RoundCorner {
                                 id: rightCorner
-                                visible: !hugDecorators.isAurora
                                 anchors {
                                     right: parent.right
                                     top: !hugDecorators.isBottom ? parent.top : undefined
@@ -371,97 +362,6 @@ Scope {
                                 }
                             }
                             
-                            // Aurora blur corners
-                            Loader {
-                                active: hugDecorators.isAurora
-                                anchors.fill: parent
-                                sourceComponent: Item {
-                                    id: auroraCorners
-                                    
-                                    component AuroraBlurCorner: Item {
-                                        id: blurCorner
-                                        property int corner: RoundCorner.CornerEnum.TopLeft
-                                        property real cornerSize: Appearance.rounding.screenRounding
-                                        
-                                        readonly property bool isLeft: corner === RoundCorner.CornerEnum.TopLeft || corner === RoundCorner.CornerEnum.BottomLeft
-                                        readonly property bool isTop: corner === RoundCorner.CornerEnum.TopLeft || corner === RoundCorner.CornerEnum.TopRight
-                                        
-                                        width: cornerSize
-                                        height: cornerSize
-                                        clip: true
-                                        
-                                        // Solid background matching BarContent
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            color: ColorUtils.applyAlpha((barContent.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
-                                        }
-
-                                        // Blur background
-                                        Image {
-                                            id: blurImg
-                                            // Position relative to screen
-                                            x: blurCorner.isLeft ? 0 : -(barRoot.screen?.width ?? 1920) + blurCorner.cornerSize
-                                            y: hugDecorators.isBottom 
-                                                ? (-(barRoot.screen?.height ?? 1080) + Appearance.sizes.barHeight)
-                                                : (-Appearance.sizes.barHeight)
-                                            width: barRoot.screen?.width ?? 1920
-                                            height: barRoot.screen?.height ?? 1080
-                                            source: barContent.wallpaperUrl
-                                            fillMode: Image.PreserveAspectCrop
-                                            cache: true
-                                            sourceSize.width: barRoot.screen?.width ?? 1920
-                                            sourceSize.height: barRoot.screen?.height ?? 1080
-                                            asynchronous: true
-                                            
-                                            // See #159 — skip QML blur when compositor blur covers this layer
-                                            layer.enabled: Appearance.effectsEnabled && Appearance.auroraEverywhere && !barContent.nativeBlurActive
-                                            layer.effect: MultiEffect {
-                                                source: blurImg
-                                                anchors.fill: source
-                                                saturation: Appearance.angelEverywhere
-                                                    ? Appearance.angel.blurSaturation
-                                                    : (Appearance.effectsEnabled ? 0.2 : 0)
-                                                blurEnabled: Appearance.effectsEnabled
-                                                blurMax: 64
-                                                blur: Appearance.effectsEnabled ? 1 : 0
-                                            }
-                                            
-                                            Rectangle {
-                                                anchors.fill: parent
-                                                color: Appearance.angelEverywhere
-                                                    ? ColorUtils.transparentize((barContent.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.angel.overlayOpacity)
-                                                    : ColorUtils.transparentize((barContent.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.aurora.overlayTransparentize)
-                                            }
-                                        }
-                                        
-                                        // Mask to corner shape
-                                        layer.enabled: Appearance.auroraEverywhere
-                                        layer.effect: GE.OpacityMask {
-                                            maskSource: RoundCorner {
-                                                width: blurCorner.width
-                                                height: blurCorner.height
-                                                implicitSize: blurCorner.cornerSize
-                                                corner: blurCorner.corner
-                                                color: "white"
-                                            }
-                                        }
-                                    }
-                                    
-                                    AuroraBlurCorner {
-                                        anchors.left: parent.left
-                                        anchors.top: !hugDecorators.isBottom ? parent.top : undefined
-                                        anchors.bottom: hugDecorators.isBottom ? parent.bottom : undefined
-                                        corner: hugDecorators.isBottom ? RoundCorner.CornerEnum.BottomLeft : RoundCorner.CornerEnum.TopLeft
-                                    }
-                                    
-                                    AuroraBlurCorner {
-                                        anchors.right: parent.right
-                                        anchors.top: !hugDecorators.isBottom ? parent.top : undefined
-                                        anchors.bottom: hugDecorators.isBottom ? parent.bottom : undefined
-                                        corner: hugDecorators.isBottom ? RoundCorner.CornerEnum.BottomRight : RoundCorner.CornerEnum.TopRight
-                                    }
-                                }
-                            }
                         }
                     }
                 }

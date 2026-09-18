@@ -14,6 +14,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.common.perimeter
 
 Scope {
     id: bar
@@ -74,6 +75,8 @@ Scope {
                     !GlobalStates.coverflowSelectorOpen
                     && GlobalStates.shellEntryReady
                     && (!(Config.options?.bar?.autoHide?.enable ?? false) || mustShow)
+                readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+                    Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
                 readonly property bool edgeShadowEnabled: bar.showBarBackground
                     && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
                 readonly property int edgeShadowExtent: edgeShadowEnabled
@@ -130,6 +133,122 @@ Scope {
                         }
                     }
 
+                    Item {
+                        id: autoHideScreenEdge
+                        z: -10
+                        anchors.fill: parent
+                        visible: Config.options?.bar?.autoHide?.enable ?? false
+                        opacity: {
+                            const displacement = (Config.options?.bar?.bottom ?? false)
+                                ? Math.abs(barContent.anchors.rightMargin)
+                                : Math.abs(barContent.anchors.leftMargin)
+                            return Math.max(0, Math.min(1,
+                                displacement / Math.max(1, Appearance.sizes.verticalBarWidth)))
+                        }
+
+                        Rectangle {
+                            id: autoHideEdgeBand
+                            x: (Config.options?.bar?.bottom ?? false)
+                                ? parent.width - barRoot.screenEdgeThickness : 0
+                            y: 0
+                            width: barRoot.screenEdgeThickness
+                            height: parent.height
+                            color: Appearance.colors.colLayer0
+                        }
+
+                        Rectangle {
+                            visible: barRoot.edgeShadowEnabled
+                                && barRoot.edgeShadowExtent > 0
+                                && barRoot.edgeShadowOpacity > 0
+                            x: (Config.options?.bar?.bottom ?? false)
+                                ? autoHideEdgeBand.x - barRoot.edgeShadowExtent
+                                : autoHideEdgeBand.x + autoHideEdgeBand.width
+                            y: barRoot.screenEdgeThickness
+                                + Appearance.rounding.screenRounding
+                            width: barRoot.edgeShadowExtent
+                            height: Math.max(0, parent.height
+                                - 2 * (barRoot.screenEdgeThickness
+                                    + Appearance.rounding.screenRounding))
+                            color: "transparent"
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop {
+                                    position: 0
+                                    color: (Config.options?.bar?.bottom ?? false)
+                                        ? "transparent" : barRoot.edgeShadowColor
+                                }
+                                GradientStop {
+                                    position: 1
+                                    color: (Config.options?.bar?.bottom ?? false)
+                                        ? barRoot.edgeShadowColor : "transparent"
+                                }
+                            }
+                        }
+
+                        PerimeterCornerShadow {
+                            cornerRadius: Appearance.rounding.screenRounding
+                            shadowExtent: barRoot.edgeShadowExtent
+                            shadowColor: barRoot.edgeShadowColor
+                            corner: (Config.options?.bar?.bottom ?? false)
+                                ? RoundCorner.CornerEnum.TopRight
+                                : RoundCorner.CornerEnum.TopLeft
+                            anchors {
+                                top: parent.top
+                                topMargin: barRoot.screenEdgeThickness
+                                left: !(Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.right : undefined
+                                right: (Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.left : undefined
+                            }
+                        }
+                        PerimeterCornerShadow {
+                            cornerRadius: Appearance.rounding.screenRounding
+                            shadowExtent: barRoot.edgeShadowExtent
+                            shadowColor: barRoot.edgeShadowColor
+                            corner: (Config.options?.bar?.bottom ?? false)
+                                ? RoundCorner.CornerEnum.BottomRight
+                                : RoundCorner.CornerEnum.BottomLeft
+                            anchors {
+                                bottom: parent.bottom
+                                bottomMargin: barRoot.screenEdgeThickness
+                                left: !(Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.right : undefined
+                                right: (Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.left : undefined
+                            }
+                        }
+                        RoundCorner {
+                            implicitSize: Appearance.rounding.screenRounding
+                            color: Appearance.colors.colLayer0
+                            corner: (Config.options?.bar?.bottom ?? false)
+                                ? RoundCorner.CornerEnum.TopRight
+                                : RoundCorner.CornerEnum.TopLeft
+                            anchors {
+                                top: parent.top
+                                topMargin: barRoot.screenEdgeThickness
+                                left: !(Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.right : undefined
+                                right: (Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.left : undefined
+                            }
+                        }
+                        RoundCorner {
+                            implicitSize: Appearance.rounding.screenRounding
+                            color: Appearance.colors.colLayer0
+                            corner: (Config.options?.bar?.bottom ?? false)
+                                ? RoundCorner.CornerEnum.BottomRight
+                                : RoundCorner.CornerEnum.BottomLeft
+                            anchors {
+                                bottom: parent.bottom
+                                bottomMargin: barRoot.screenEdgeThickness
+                                left: !(Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.right : undefined
+                                right: (Config.options?.bar?.bottom ?? false)
+                                    ? autoHideEdgeBand.left : undefined
+                            }
+                        }
+                    }
+
                     VerticalBarContent {
                         id: barContent
 
@@ -178,8 +297,10 @@ Scope {
                         anchors {
                             top: parent.top
                             bottom: parent.bottom
-                            topMargin: showBarBackground ? Appearance.rounding.screenRounding : 0
-                            bottomMargin: showBarBackground ? Appearance.rounding.screenRounding : 0
+                            topMargin: showBarBackground
+                                ? barRoot.screenEdgeThickness + Appearance.rounding.screenRounding : 0
+                            bottomMargin: showBarBackground
+                                ? barRoot.screenEdgeThickness + Appearance.rounding.screenRounding : 0
                             left: !(Config.options?.bar?.bottom ?? false) ? barContent.right : undefined
                             right: (Config.options?.bar?.bottom ?? false) ? barContent.left : undefined
                         }
@@ -262,6 +383,35 @@ Scope {
                                 ? Appearance.colors.colLayer0
                                 : "transparent"
 
+                            PerimeterCornerShadow {
+                                cornerRadius: Appearance.rounding.screenRounding
+                                shadowExtent: barRoot.edgeShadowExtent
+                                shadowColor: barRoot.edgeShadowColor
+                                corner: hugDecorators.isRight
+                                    ? RoundCorner.CornerEnum.TopRight
+                                    : RoundCorner.CornerEnum.TopLeft
+                                anchors {
+                                    top: parent.top
+                                    topMargin: barRoot.screenEdgeThickness
+                                    left: !hugDecorators.isRight ? parent.left : undefined
+                                    right: hugDecorators.isRight ? parent.right : undefined
+                                }
+                            }
+                            PerimeterCornerShadow {
+                                cornerRadius: Appearance.rounding.screenRounding
+                                shadowExtent: barRoot.edgeShadowExtent
+                                shadowColor: barRoot.edgeShadowColor
+                                corner: hugDecorators.isRight
+                                    ? RoundCorner.CornerEnum.BottomRight
+                                    : RoundCorner.CornerEnum.BottomLeft
+                                anchors {
+                                    bottom: parent.bottom
+                                    bottomMargin: barRoot.screenEdgeThickness
+                                    left: !hugDecorators.isRight ? parent.left : undefined
+                                    right: hugDecorators.isRight ? parent.right : undefined
+                                }
+                            }
+
                             // Top Material corner.
                             RoundCorner {
                                 id: topCorner
@@ -269,6 +419,7 @@ Scope {
                                     left: parent.left
                                     right: parent.right
                                     top: parent.top
+                                    topMargin: barRoot.screenEdgeThickness
                                 }
 
                                 implicitSize: Appearance.rounding.screenRounding
@@ -289,6 +440,7 @@ Scope {
                                 id: bottomCorner
                                 anchors {
                                     bottom: parent.bottom
+                                    bottomMargin: barRoot.screenEdgeThickness
                                     left: !hugDecorators.isRight ? parent.left : undefined
                                     right: hugDecorators.isRight ? parent.right : undefined
                                 }

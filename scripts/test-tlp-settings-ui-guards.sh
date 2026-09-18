@@ -10,6 +10,7 @@ classic="$repo_root/modules/settings/TlpSettingRow.qml"
 waffle="$repo_root/modules/waffle/settings/WTlpSettingRow.qml"
 general="$repo_root/modules/settings/GeneralConfig.qml"
 power="$repo_root/modules/settings/TlpPowerSettings.qml"
+selection_group_button="$repo_root/modules/common/widgets/SelectionGroupButton.qml"
 registry="$repo_root/modules/settings/SettingsPageRegistry.qml"
 arrangement="$repo_root/modules/settings/SettingsArrangement.qml"
 legacy_tlp="$repo_root/modules/settings/TlpConfig.qml"
@@ -31,6 +32,15 @@ assert_contains() {
     file=$2
     message=$3
     grep -Fq -- "$needle" "$file" || fail "$message"
+}
+
+assert_not_contains() {
+    needle=$1
+    file=$2
+    message=$3
+    if grep -Fq -- "$needle" "$file"; then
+        fail "$message"
+    fi
 }
 
 sh -n "$helper" || fail 'TLP helper must remain valid POSIX shell syntax'
@@ -114,6 +124,14 @@ assert_contains ': Translation.tr("Effective values")' "$power" \
     'Battery/TLP summary must use the concise effective-values label'
 assert_contains 'BatteryChargeLimitSettings {' "$power" \
     'battery charge care must be integrated into the primary Battery/TLP card'
+assert_not_contains 'Values shown below come from TLP' "$power" \
+    'Battery/TLP summary must not restore the old verbose effective-configuration description'
+assert_not_contains 'Apply validates every change and authenticates only once' "$power" \
+    'Battery/TLP summary must keep apply guidance concise'
+assert_not_contains 'Reset removes only the general iNiR TLP' "$power" \
+    'Battery/TLP summary must keep reset guidance concise'
+assert_contains 'Layout.fillWidth: root.leftAlignContent' "$selection_group_button" \
+    'scoped category left alignment must consume trailing button space without changing global controls'
 assert_contains 'import Quickshell' "$registry" \
     'SettingsPageRegistry must import the Quickshell Singleton type or shell startup will fail'
 assert_contains 'readonly property int retiredTlpPageIndex: 28' "$registry" \

@@ -527,13 +527,6 @@ Singleton {
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("Appearance & Layout"),
-            label: Translation.tr("Corner style"),
-            description: Translation.tr("Bar corner style: hug, float or rectangle"),
-            keywords: ["bar", "corner", "style", "hug", "float", "rectangle", "rounding"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Audio spectrum"),
             label: Translation.tr("Bar audio spectrum"),
             description: Translation.tr("Bars, waves, frequency accents and dynamic curve fit"),
@@ -552,6 +545,20 @@ Singleton {
             label: Translation.tr("Bar background"),
             description: Translation.tr("Show or hide bar background"),
             keywords: ["bar", "background", "transparent", "show", "hide"]
+        },
+        {
+            pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Screen Edge"),
+            label: Translation.tr("Screen edge width (px)"),
+            description: Translation.tr("Set the persistent connected screen-edge thickness"),
+            keywords: ["screen", "edge", "width", "thickness", "perimeter", "connected", "bar", "gap"]
+        },
+        {
+            pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Screen Edge"),
+            label: Translation.tr("Screen edge shadow"),
+            description: Translation.tr("Configure the shared Bar and Screen Edge shadow"),
+            keywords: ["screen", "edge", "shadow", "size", "opacity", "bar", "connected", "surface"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,

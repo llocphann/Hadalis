@@ -230,6 +230,9 @@ Scope { // Scope
                 bodyItem: oskBackground
                 fillColor: oskBackground.color
                 flareRadius: PerimeterTokens.joinFlareRadius
+                shadowEnabled: root.screenEdgeShadowEnabled
+                shadowExtent: root.screenEdgeShadowSize
+                shadowColor: root.screenEdgeShadowColor
                 progress: root._oskRevealProgress
                 transform: Translate { y: oskRoot.revealOffsetY }
                 joinTop: oskRoot.snappedEdge === "top"

@@ -193,6 +193,12 @@ QtObject {
         connectorSourceExtent + Math.max(0, outerRadius) * 2))
 
     readonly property real revealProgress: clamp(progress, 0, 1)
+    // Preserve Caelestia's expressive-spatial overshoot for the actual motion.
+    // Semantic visibility/input still consumes the clamped revealProgress, but
+    // the body translation follows the animated scalar itself so the default
+    // spatial curve can travel a few pixels past rest before settling.
+    readonly property real motionProgress: Number.isFinite(Number(progress))
+        ? Number(progress) : 0
     // Slide the complete body under the owning Bar/Screen Edge. The body never
     // resizes; its full cross-axis extent travels behind a fixed reveal boundary.
     readonly property real animatedTangentExtent: bodyTangentExtent
@@ -200,7 +206,7 @@ QtObject {
     readonly property real animatedTangentCenter: bodyTangentCenter
     readonly property real animatedTangentStart: horizontal ? bodyRect.x : bodyRect.y
     readonly property real animationOffset: snap(
-        (1 - revealProgress) * crossBodyExtent)
+        (1 - motionProgress) * crossBodyExtent)
     // Caelestia panel wrappers translate only on the attachment axis. Tangent
     // placement remains fixed even when the resting body is corner-clamped;
     // this avoids a diagonal drift and keeps the connected shoulder stationary

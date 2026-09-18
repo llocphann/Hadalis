@@ -20,6 +20,8 @@ Item {
     property bool joinRight: false
 
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
+    readonly property point bodyOrigin: root.bodyItem
+        ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,
         root.bodyItem?.width / 2 ?? 0,
@@ -109,51 +111,51 @@ Item {
     Flare {
         corner: "topLeft"
         visible: root.joinTop && !root.joinLeft && r > 0
-        x: root.bodyItem.x - r
-        y: root.bodyItem.y
+        x: root.bodyOrigin.x - r
+        y: root.bodyOrigin.y
     }
     Flare {
         corner: "topRight"
         visible: root.joinTop && !root.joinRight && r > 0
-        x: root.bodyItem.x + root.bodyItem.width
-        y: root.bodyItem.y
+        x: root.bodyOrigin.x + root.bodyItem.width
+        y: root.bodyOrigin.y
     }
     Flare {
         corner: "bottomLeft"
         visible: root.joinBottom && !root.joinLeft && r > 0
-        x: root.bodyItem.x - r
-        y: root.bodyItem.y + root.bodyItem.height - r
+        x: root.bodyOrigin.x - r
+        y: root.bodyOrigin.y + root.bodyItem.height - r
     }
     Flare {
         corner: "bottomRight"
         visible: root.joinBottom && !root.joinRight && r > 0
-        x: root.bodyItem.x + root.bodyItem.width
-        y: root.bodyItem.y + root.bodyItem.height - r
+        x: root.bodyOrigin.x + root.bodyItem.width
+        y: root.bodyOrigin.y + root.bodyItem.height - r
     }
 
     // Vertical attachments: flare above/below the body endpoints.
     Flare {
         corner: "leftTop"
         visible: root.joinLeft && !root.joinTop && r > 0
-        x: root.bodyItem.x
-        y: root.bodyItem.y - r
+        x: root.bodyOrigin.x
+        y: root.bodyOrigin.y - r
     }
     Flare {
         corner: "leftBottom"
         visible: root.joinLeft && !root.joinBottom && r > 0
-        x: root.bodyItem.x
-        y: root.bodyItem.y + root.bodyItem.height
+        x: root.bodyOrigin.x
+        y: root.bodyOrigin.y + root.bodyItem.height
     }
     Flare {
         corner: "rightTop"
         visible: root.joinRight && !root.joinTop && r > 0
-        x: root.bodyItem.x + root.bodyItem.width - r
-        y: root.bodyItem.y - r
+        x: root.bodyOrigin.x + root.bodyItem.width - r
+        y: root.bodyOrigin.y - r
     }
     Flare {
         corner: "rightBottom"
         visible: root.joinRight && !root.joinBottom && r > 0
-        x: root.bodyItem.x + root.bodyItem.width - r
-        y: root.bodyItem.y + root.bodyItem.height
+        x: root.bodyOrigin.x + root.bodyItem.width - r
+        y: root.bodyOrigin.y + root.bodyItem.height
     }
 }

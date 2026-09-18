@@ -8,7 +8,9 @@ import Quickshell
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.models
 import qs.modules.common.widgets
+import qs.modules.mediaControls
 
 Item {
     id: root
@@ -36,8 +38,15 @@ Item {
         switch (root.section) {
         case "playlists": return 1
         case "queue": return 2
+        case "lyrics": return 3
         default: return 0
         }
+    }
+
+    CavaProcess {
+        id: localMusicCava
+        active: root.visible && LocalMusic.mprisAvailable && LocalMusic.playing
+        sampleCount: 64
     }
 
     component ToolIconButton: RippleButton {
@@ -188,7 +197,8 @@ Item {
                 model: [
                     { id: "songs", label: Translation.tr("Songs"), icon: "music_note" },
                     { id: "playlists", label: Translation.tr("Playlists"), icon: "queue_music" },
-                    { id: "queue", label: Translation.tr("Queue"), icon: "format_list_numbered" }
+                    { id: "queue", label: Translation.tr("Queue"), icon: "format_list_numbered" },
+                    { id: "lyrics", label: Translation.tr("Lyrics"), icon: "lyrics" }
                 ]
                 delegate: RippleButton {
                     id: sectionButton
@@ -217,7 +227,12 @@ Item {
         ToolbarTextField {
             id: searchField
             Layout.fillWidth: true
+            // ToolbarTextField normally fills toolbar height. In this vertical
+            // view that consumed the entire song viewport.
+            Layout.fillHeight: false
+            Layout.minimumHeight: 38
             Layout.preferredHeight: 38
+            Layout.maximumHeight: 38
             placeholderText: Translation.tr("Search")
             visible: root.section === "songs"
         }
@@ -234,6 +249,8 @@ Item {
                         anchors.fill: parent
                         clip: true
                         spacing: 2
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                         model: root.filteredTracks
                         delegate: TrackRow {
                             required property var modelData
@@ -280,6 +297,8 @@ Item {
                         anchors.fill: parent
                         clip: true
                         spacing: 4
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                         model: LocalMusic.collections
                         delegate: Rectangle {
                             id: playlistRow
@@ -344,6 +363,8 @@ Item {
                         anchors.fill: parent
                         clip: true
                         spacing: 2
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                         model: LocalMusic.activeQueue
                         delegate: TrackRow {
                             required property var modelData
@@ -361,158 +382,171 @@ Item {
                         color: Appearance.colors.colSubtext
                     }
                 }
+
+                Item {
+                    ListView {
+                        id: lyricsList
+                        anchors.fill: parent
+                        clip: true
+                        spacing: 6
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        model: LocalMusic.localLyricsLines
+                        currentIndex: LocalMusic.localLyricsActiveIndex
+
+                        onCurrentIndexChanged: {
+                            if (currentIndex >= 0)
+                                Qt.callLater(() => positionViewAtIndex(currentIndex, ListView.Center))
+                        }
+
+                        header: ColumnLayout {
+                            width: lyricsList.width
+                            spacing: 2
+                            visible: LocalMusic.hasLocalLyrics
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: LocalMusic.localLyricsSynced
+                                    ? Translation.tr("Synced local lyrics")
+                                    : Translation.tr("Local lyrics")
+                                color: Appearance.colors.colSubtext
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                            }
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: Directories.shortHomePath(LocalMusic.localLyricsPath)
+                                color: Appearance.colors.colSubtext
+                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                elide: Text.ElideMiddle
+                            }
+                            Item { Layout.preferredHeight: 6 }
+                        }
+
+                        delegate: Rectangle {
+                            id: lyricRow
+                            required property var modelData
+                            required property int index
+                            width: ListView.view.width
+                            implicitHeight: lyricText.implicitHeight + 16
+                            radius: Appearance.rounding.small
+                            color: index === LocalMusic.localLyricsActiveIndex
+                                ? Appearance.colors.colSecondaryContainer : "transparent"
+
+                            StyledText {
+                                id: lyricText
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                text: String(lyricRow.modelData?.text ?? "")
+                                wrapMode: Text.WordWrap
+                                horizontalAlignment: Text.AlignHCenter
+                                font.pixelSize: index === LocalMusic.localLyricsActiveIndex
+                                    ? Appearance.font.pixelSize.normal
+                                    : Appearance.font.pixelSize.small
+                                font.weight: index === LocalMusic.localLyricsActiveIndex
+                                    ? Font.Medium : Font.Normal
+                                color: index === LocalMusic.localLyricsActiveIndex
+                                    ? Appearance.colors.colOnSecondaryContainer
+                                    : Appearance.colors.colOnLayer1
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        width: Math.min(parent.width - 40, 280)
+                        spacing: 8
+                        visible: !LocalMusic.hasLocalLyrics
+                        MaterialLoadingIndicator {
+                            Layout.alignment: Qt.AlignHCenter
+                            visible: LocalMusic.localLyricsStatus === "loading"
+                            loading: visible
+                            implicitSize: 30
+                        }
+                        MaterialSymbol {
+                            Layout.alignment: Qt.AlignHCenter
+                            visible: LocalMusic.localLyricsStatus !== "loading"
+                            text: "lyrics"
+                            iconSize: 36
+                            color: Appearance.colors.colSubtext
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            text: LocalMusic.currentPath.length === 0
+                                ? Translation.tr("Nothing playing")
+                                : LocalMusic.localLyricsStatus === "loading"
+                                    ? Translation.tr("Loading local lyrics")
+                                    : Translation.tr("No local .lrc or .txt lyrics beside this track")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                        }
+                    }
+                }
             }
             MaterialLoadingIndicator { anchors.centerIn: parent; visible: LocalMusic.scanning }
         }
 
-        Rectangle {
+        Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: LocalMusic.hasCurrentTrack ? 176 : 0
-            visible: LocalMusic.hasCurrentTrack
-            radius: Appearance.rounding.normal
-            color: Appearance.colors.colLayer2
-            clip: true
+            Layout.preferredHeight: visible ? Appearance.sizes.mediaControlsHeight : 0
+            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
 
-            ColumnLayout {
+            // Same player card used by modules/mediaControls/BarMediaPopup.qml.
+            PlayerControl {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 5
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 9
-                    Rectangle {
-                        Layout.preferredWidth: 46; Layout.preferredHeight: 46
-                        radius: Appearance.rounding.small
-                        color: Appearance.colors.colLayer1
-                        clip: true
-                        Image {
-                            anchors.fill: parent
-                            source: LocalMusic.currentArt
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            visible: source.toString().length > 0
-                        }
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            visible: LocalMusic.currentArt.length === 0
-                            text: "music_note"; iconSize: 24; color: Appearance.colors.colPrimary
-                        }
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: LocalMusic.currentTitle
-                            font.weight: Font.Medium
-                            color: Appearance.colors.colOnLayer2
-                            elide: Text.ElideRight
-                        }
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: LocalMusic.currentArtist || LocalMusic.currentAlbum
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            elide: Text.ElideRight
-                        }
-                    }
-                    ToolIconButton {
-                        symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"
-                        tip: Translation.tr("Shuffle")
-                        onClicked: LocalMusic.toggleShuffle()
-                    }
-                    ToolIconButton {
-                        symbol: LocalMusic.repeatMode === 1 ? "repeat_one_on"
-                            : (LocalMusic.repeatMode === 2 ? "repeat_on" : "repeat")
-                        tip: Translation.tr("Repeat")
-                        onClicked: LocalMusic.cycleRepeatMode()
-                    }
-                }
+                player: LocalMusic.mprisPlayer
+                visualizerPoints: localMusicCava.points
+                visualizerMaxValue: Math.max(1, localMusicCava.normalizationCeiling)
+                radius: Appearance.rounding.normal
+            }
+        }
 
-                StyledSlider {
-                    Layout.fillWidth: true
-                    from: 0
-                    to: Math.max(1, LocalMusic.currentDuration)
-                    value: LocalMusic.currentPosition
-                    onMoved: LocalMusic.seek(value)
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    StyledText {
-                        text: root.formatTime(LocalMusic.currentPosition)
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        font.family: Appearance.font.family.numbers
-                    }
-                    Item { Layout.fillWidth: true }
-                    ToolIconButton {
-                        symbol: "skip_previous"; tip: Translation.tr("Previous")
-                        enabled: LocalMusic.hasQueue
-                        onClicked: LocalMusic.previous()
-                    }
-                    RippleButton {
-                        implicitWidth: 44; implicitHeight: 44
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: Appearance.colors.colPrimary
-                        onClicked: LocalMusic.togglePlaying()
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: LocalMusic.playing ? "pause" : "play_arrow"
-                            iconSize: 25; fill: 1; color: Appearance.colors.colOnPrimary
-                        }
-                    }
-                    ToolIconButton {
-                        symbol: "skip_next"; tip: Translation.tr("Next")
-                        enabled: LocalMusic.hasQueue
-                        onClicked: LocalMusic.next()
-                    }
-                    Item { Layout.fillWidth: true }
-                    StyledText {
-                        text: root.formatTime(LocalMusic.currentDuration)
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        font.family: Appearance.font.family.numbers
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    MaterialSymbol {
-                        text: LocalMusic.volume <= 0 ? "volume_off"
-                            : (LocalMusic.volume < 0.5 ? "volume_down" : "volume_up")
-                        iconSize: 18
-                        color: Appearance.colors.colSubtext
-                    }
-                    StyledSlider {
-                        Layout.fillWidth: true
-                        from: 0
-                        to: 1
-                        value: LocalMusic.volume
-                        onMoved: LocalMusic.setVolume(value)
-                    }
-                    StyledText {
-                        Layout.preferredWidth: 34
-                        horizontalAlignment: Text.AlignRight
-                        text: Math.round(LocalMusic.volume * 100) + "%"
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        font.family: Appearance.font.family.numbers
-                    }
-                }
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 34 : 0
+            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
+            spacing: 6
+            ToolIconButton {
+                symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"
+                tip: Translation.tr("Shuffle")
+                onClicked: LocalMusic.toggleShuffle()
+            }
+            ToolIconButton {
+                symbol: LocalMusic.repeatMode === 1 ? "repeat_one_on"
+                    : (LocalMusic.repeatMode === 2 ? "repeat_on" : "repeat")
+                tip: Translation.tr("Repeat")
+                onClicked: LocalMusic.cycleRepeatMode()
+            }
+            Item { Layout.fillWidth: true }
+            MaterialSymbol {
+                text: LocalMusic.volume <= 0 ? "volume_off"
+                    : (LocalMusic.volume < 0.5 ? "volume_down" : "volume_up")
+                iconSize: 18
+                color: Appearance.colors.colSubtext
+            }
+            StyledSlider {
+                Layout.preferredWidth: 120
+                from: 0
+                to: 1
+                value: LocalMusic.volume
+                onMoved: LocalMusic.setVolume(value)
             }
         }
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: !LocalMusic.available ? 34 : 0
-            visible: !LocalMusic.available
+            Layout.preferredHeight: visible ? 34 : 0
+            visible: !LocalMusic.available || !LocalMusic.mprisAvailable
             radius: Appearance.rounding.small
             color: Appearance.colors.colErrorContainer
             StyledText {
                 anchors.centerIn: parent
-                text: "MPD · " + LocalMusic.mpdHost + ":" + LocalMusic.mpdPort
+                text: !LocalMusic.available
+                    ? "MPD · " + LocalMusic.mpdHost + ":" + LocalMusic.mpdPort
+                    : Translation.tr("Waiting for mpd-mpris")
                 color: Appearance.colors.colOnErrorContainer
                 font.pixelSize: Appearance.font.pixelSize.smaller
             }

@@ -63,6 +63,38 @@ Singleton {
     property bool shuffleMode: false
     property int repeatMode: 0
 
+    // Local-only lyric state. MPD/MPRIS still own playback; this only reads
+    // sidecar .lrc/.txt files next to the resolved local track path.
+    property var localLyricsLines: []
+    property string localLyricsStatus: "idle"
+    property string localLyricsPath: ""
+    property bool localLyricsSynced: false
+    property string _pendingLyricsPath: ""
+
+    readonly property real lyricsPosition: {
+        const mprisPosition = Number(mprisPlayer?.position)
+        if (mprisAvailable && Number.isFinite(mprisPosition))
+            return Math.max(0, mprisPosition)
+        return Math.max(0, currentPosition)
+    }
+    readonly property bool hasLocalLyrics: localLyricsLines.length > 0
+    readonly property int localLyricsActiveIndex: {
+        if (!localLyricsSynced || localLyricsLines.length === 0)
+            return -1
+        const position = lyricsPosition
+        let index = -1
+        for (let i = 0; i < localLyricsLines.length; i++) {
+            const time = Number(localLyricsLines[i]?.time ?? -1)
+            if (!Number.isFinite(time) || time < 0)
+                continue
+            if (time <= position)
+                index = i
+            else
+                break
+        }
+        return index
+    }
+
     readonly property bool playing: mprisAvailable
         ? (mprisPlayer?.isPlaying ?? false)
         : mpdState === "play"
@@ -76,6 +108,7 @@ Singleton {
         hasCurrentTrack && (currentIndex < activeQueue.length - 1 || repeatMode === 2)
 
     readonly property string _mpdScript: Directories.scriptsPath + "/local_music_mpd.py"
+    readonly property string _lyricsScript: Directories.scriptsPath + "/local_music_lyrics.py"
 
     function _trackForIdentity(uri: string, path: string): var {
         const wantedUri = String(uri ?? "")
@@ -163,6 +196,42 @@ Singleton {
             currentDuration = 0
             currentPosition = 0
         }
+    }
+
+    function _clearLocalLyrics(status = "idle"): void {
+        localLyricsLines = []
+        localLyricsPath = ""
+        localLyricsSynced = false
+        localLyricsStatus = status
+    }
+
+    function refreshLocalLyrics(): void {
+        const path = String(currentPath ?? "").trim()
+        _pendingLyricsPath = path
+        if (path.length === 0 || path.includes("://")) {
+            if (_lyricsProc.running)
+                _lyricsProc.running = false
+            _pendingLyricsPath = ""
+            _clearLocalLyrics(path.length === 0 ? "idle" : "not_found")
+            return
+        }
+        localLyricsStatus = "loading"
+        if (_lyricsProc.running) {
+            _lyricsProc.running = false
+            return
+        }
+        _startPendingLyrics()
+    }
+
+    function _startPendingLyrics(): void {
+        if (_lyricsProc.running || _pendingLyricsPath.length === 0)
+            return
+        const path = _pendingLyricsPath
+        _pendingLyricsPath = ""
+        _lyricsProc.requestedPath = path
+        _lyricsProc.output = ""
+        _lyricsProc.command = ["python3", _lyricsScript, path]
+        _lyricsProc.running = true
     }
 
     function setLibraryFolder(path: string): void {
@@ -360,6 +429,7 @@ Singleton {
     onConfiguredLibraryFolderChanged: if (enabled) Qt.callLater(root.rescan)
     onConfiguredHostChanged: if (enabled) Qt.callLater(root.rescan)
     onConfiguredPortChanged: if (enabled) Qt.callLater(root.rescan)
+    onCurrentPathChanged: Qt.callLater(root.refreshLocalLyrics)
 
     Timer {
         id: pollTimer
@@ -381,6 +451,39 @@ Singleton {
         interval: 2200
         repeat: false
         onTriggered: root.rescan()
+    }
+
+    Process {
+        id: _lyricsProc
+        property string requestedPath: ""
+        property string output: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: _lyricsProc.output = text ?? ""
+        }
+
+        onStarted: _lyricsProc.output = ""
+
+        onExited: (code, _status) => {
+            const requestedPath = _lyricsProc.requestedPath
+            if (requestedPath === root.currentPath) {
+                if (code !== 0) {
+                    root._clearLocalLyrics("error")
+                } else {
+                    try {
+                        const payload = JSON.parse(_lyricsProc.output || "{}")
+                        root.localLyricsStatus = String(payload.status ?? "not_found")
+                        root.localLyricsPath = String(payload.path ?? "")
+                        root.localLyricsSynced = payload.synced === true
+                        root.localLyricsLines = payload.lines ?? []
+                    } catch (e) {
+                        root._clearLocalLyrics("error")
+                    }
+                }
+            }
+            if (root._pendingLyricsPath.length > 0)
+                Qt.callLater(root._startPendingLyrics)
+        }
     }
 
     Process {

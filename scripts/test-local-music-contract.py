@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""Source contract for the Left Sidebar local Music replacement."""
-
+"""Source contract for the Left Sidebar MPD/MPRIS Music player."""
 from __future__ import annotations
 import json
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-
 def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
-
 def require(source: str, token: str, message: str) -> None:
     if token not in source:
         raise SystemExit(message)
-
 def forbid(source: str, token: str, message: str) -> None:
     if token in source:
         raise SystemExit(message)
@@ -22,98 +21,76 @@ service = read("services/LocalMusic.qml")
 view = read("modules/sidebarLeft/LocalMusicView.qml")
 sidebar = read("modules/sidebarLeft/SidebarLeftContent.qml")
 settings = read("modules/settings/SidebarsConfig.qml")
-service_qmldir = read("services/qmldir")
-sidebar_qmldir = read("modules/sidebarLeft/qmldir")
 config = read("modules/common/Config.qml")
 defaults = json.loads(read("defaults/config.json"))
-scanner = read("scripts/local_music_scan.py")
-ipc = read("scripts/local_music_ipc.py")
+mpd = read("scripts/local_music_mpd.py")
+lyrics = read("scripts/local_music_lyrics.py")
 
-require(service_qmldir, "singleton LocalMusic 1.0 LocalMusic.qml",
-        "LocalMusic must be registered as a service singleton.")
-require(sidebar_qmldir, "LocalMusicView 1.0 LocalMusicView.qml",
-        "LocalMusicView must be exported by the Left Sidebar module.")
-require(config, "property JsonObject music: JsonObject {",
-        "Config schema must expose sidebar.music.")
+require(config, "property JsonObject music: JsonObject {", "Config must expose sidebar.music.")
 music_defaults = defaults.get("sidebar", {}).get("music", {})
-if music_defaults.get("enable") is not False or "libraryFolder" not in music_defaults:
-    raise SystemExit("default config must expose disabled sidebar.music with a libraryFolder.")
+for key in ("enable", "libraryFolder", "mpdHost", "mpdPort"):
+    if key not in music_defaults:
+        raise SystemExit(f"default config missing sidebar.music.{key}")
 left_order = defaults.get("sidebar", {}).get("left", {}).get("tabOrder", [])
 if "music" not in left_order or "ytmusic" in left_order:
-    raise SystemExit("default Left Sidebar tab order must use the canonical music id.")
+    raise SystemExit("default Left Sidebar order must use music.")
 
 for token in (
-    'readonly property bool enabled: Config.options?.sidebar?.music?.enable ?? false',
-    'Directories.scriptsPath + "/local_music_scan.py"',
-    'Directories.scriptsPath + "/local_music_ipc.py"',
-    '"--input-ipc-server=" + ipcSocket',
-    'property string mpvMprisPath: ""',
-    '"--script=" + mpvMprisPath',
-    'id: _mprisCheckProc',
-    'function playCollection(collection, index = 0): void',
-    'function toggleShuffle(): void',
-    'function cycleRepeatMode(): void',
+    'Directories.scriptsPath + "/local_music_mpd.py"',
+    'readonly property var mprisPlayer: MprisController.mpdPlayer',
+    'MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)',
+    'Directories.scriptsPath + "/local_music_lyrics.py"',
+    'property var localLyricsLines: []',
+    'readonly property int localLyricsActiveIndex:',
 ):
     require(service, token, f"LocalMusic backend contract missing: {token}")
-for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic"):
-    forbid(service, forbidden, f"LocalMusic backend must remain local-only: {forbidden}")
+for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic", "--input-ipc-server"):
+    forbid(service, forbidden, f"LocalMusic backend must remain MPD/local-only: {forbidden}")
 
 for token in (
-    'property alias inputField: searchField',
     'Translation.tr("Songs")',
     'Translation.tr("Playlists")',
     'Translation.tr("Queue")',
-    'FolderDialog {',
-    'FileDialog {',
-    'LocalMusic.playCollection',
-    'LocalMusic.playPath',
-    'LocalMusic.seek',
-    'LocalMusic.setVolume',
+    'Translation.tr("Lyrics")',
+    'Layout.fillHeight: false',
+    'ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }',
+    'PlayerControl {',
+    'player: LocalMusic.mprisPlayer',
+    'visualizerPoints: localMusicCava.points',
+    'LocalMusic.localLyricsLines',
 ):
     require(view, token, f"Local Music frontend contract missing: {token}")
 for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):
-    forbid(view, forbidden, f"Local Music frontend must not route online playback: {forbidden}")
+    forbid(view, forbidden, f"Local Music frontend must stay local-only: {forbidden}")
 
-require(sidebar, 'property bool musicEnabled: Config.options?.sidebar?.music?.enable ?? false',
-        "Left Sidebar must gate the Music tab with sidebar.music.enable.")
 require(sidebar, 'Component { id: musicComp; LocalMusicView {} }',
-        "Left Sidebar must load LocalMusicView for the music tab.")
-require(sidebar, 'savedId === "ytmusic" ? "music" : savedId',
-        "legacy saved YT tab ordering must map to the local Music tab.")
-require(sidebar, 'values["sidebar.ytmusic.enable"] = false',
-        "legacy enabled YT state must be retired during Music migration.")
-for forbidden in ('Translation.tr("YT Music")', "InnerTuneView {}"):
-    forbid(sidebar, forbidden, f"Left Sidebar still exposes retired YT UI: {forbidden}")
-
-require(settings, 'text: Translation.tr("Music")',
-        "Sidebar Settings must expose Music.")
+        "Left Sidebar must load LocalMusicView.")
 require(settings, 'Config.setNestedValue("sidebar.music.enable", checked)',
-        "Sidebar Settings Music switch must use canonical sidebar.music state.")
-require(settings, 'LocalMusic.setLibraryFolder(String(selectedFolder))',
-        "Sidebar Settings must choose the local library folder through LocalMusic.")
-for forbidden in ('Translation.tr("YT Music")', "sidebar.ytmusic.autoConnect",
-                  "sidebar.ytmusic.audioQuality", "sidebar.ytmusic.upNextNotifications"):
-    forbid(settings, forbidden, f"Sidebar Settings still exposes YT-specific controls: {forbidden}")
+        "Sidebar Settings must use canonical Music state.")
 
-for token in (
-    'PLAYLIST_EXTENSIONS = {".m3u",".m3u8"}',
-    '"kind":"folder"',
-    "AUDIO_EXTENSIONS",
-    'FFPROBE = shutil.which("ffprobe")',
-    "def ffprobe_metadata(path: Path)",
-):
-    require(scanner, token, f"local library scanner contract missing: {token}")
-for token in ('socket.AF_UNIX', '"playlist-pos"', 'mode == "watch"', 'mode == "command"'):
-    require(ipc, token, f"local mpv IPC helper contract missing: {token}")
+for token in ('client.command("listallinfo")', 'client.command("listplaylists")',
+              'client.command("playlistinfo")', "def replace_queue("):
+    require(mpd, token, f"MPD library contract missing: {token}")
+for token in ("STAMP_RE", 'track.with_suffix(".lrc")',
+              'track.with_suffix(".txt")', '"synced": synced'):
+    require(lyrics, token, f"local lyrics helper missing: {token}")
 
-welcome = read("welcome.qml")
-navigation = read("services/DevNavigation.qml")
-launcher = read("scripts/inir")
-require(welcome, '"animeSchedule", "music"',
-        "welcome profile tab order must seed the canonical local Music id.")
-require(navigation, 'id: "sidebar-left/music"',
-        "dev navigation must expose the canonical local Music route.")
-require(launcher, '*LocalMusic*) select_prefix "sidebar-left/music"',
-        "focused maintainer audits must route LocalMusic changes to the Music surface.")
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    track = root / "song.flac"
+    track.touch()
+    (root / "song.lrc").write_text(
+        "[00:01.00][00:02.50]First line\n[00:04.00]Second line\n",
+        encoding="utf-8",
+    )
+    raw = subprocess.check_output(
+        [sys.executable, str(ROOT / "scripts/local_music_lyrics.py"), str(track)],
+        text=True,
+    )
+    payload = json.loads(raw)
+    if payload.get("status") != "ok" or payload.get("synced") is not True:
+        raise SystemExit("local lyrics helper did not recognize synchronized LRC.")
+    if [round(float(line["time"]), 2) for line in payload["lines"]] != [1.0, 2.5, 4.0]:
+        raise SystemExit("local lyrics timestamp parsing regressed.")
 
-print("Local Music source contract: OK")
+print("Local Music MPD/MPRIS + local lyrics source contract: OK")

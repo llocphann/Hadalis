@@ -158,6 +158,74 @@ def main() -> None:
               f"OSK physical Screen Edge attachment contract missing: {token}")
     check("screenAttachInset" not in osk,
           "OSK must not stop at the inner Screen Edge boundary")
+    for token in (
+        "property bool _oskResident:",
+        "property real _oskRevealProgress:",
+        "readonly property real revealOffsetY:",
+        "transform: Translate { y: oskRoot.revealOffsetY }",
+        "progress: root._oskRevealProgress",
+    ):
+        check(token in osk,
+              f"OSK must stay resident and slide through its attached edge: {token}")
+
+    for token in (
+        "tangentRevealDirection",
+        "tangentAnimationOffset",
+        "bodyRect.x + tangentAnimationOffset",
+        "bodyRect.y + tangentAnimationOffset",
+    ):
+        check(token in geometry,
+              f"Corner popups must add a tangent component to the shared reveal: {token}")
+
+    for token in (
+        "id: innerCornerCanvas",
+        "if (!cornerWindow.isLeft)",
+        "if (!cornerWindow.isTop)",
+        "ctx.scale(-1, 1)",
+        "ctx.scale(1, -1)",
+    ):
+        check(token in screen_edge,
+              f"Screen Edge must mirror one canonical inner-corner silhouette: {token}")
+
+    for token in (
+        "id: sidebarEdgeFlares",
+        "tracksBodyTranslation",
+        "sidebarContentLoader.animTranslateX",
+        "sidebarContentLoader.animTranslateY",
+    ):
+        check(token in sidebar_host,
+              f"Sidebar Screen Edge shoulders must follow translated body motion: {token}")
+
+    media_popup = read("modules/mediaControls/BarMediaPopup.qml")
+    check("EqualizerPanel {" in media_popup,
+          "Bar media popup must retain the Equalizer panel")
+    check("No active player" not in media_popup
+          and "Make sure your player has MPRIS support" not in media_popup,
+          "Bar media popup must not append an inactive-player text card below Equalizer")
+
+    resources_popup = read("modules/bar/ResourcesPopup.qml")
+    check('Translation.tr("RPM:")' in resources_popup
+          and 'Translation.tr("Speed:")' not in resources_popup,
+          "ThinkFan inline metric must use the compact RPM label")
+    check('String(ThinkFanService.fanRpm)' in resources_popup,
+          "ThinkFan RPM value must not repeat the RPM unit after the RPM label")
+
+    for settings_path in (
+        "modules/settings/SettingsOverlay.qml",
+        "modules/settings/SettingsFocus.qml",
+    ):
+        settings_surface = read(settings_path)
+        for token in (
+            "import qs.modules.common.perimeter",
+            "PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay",
+            "y: settingsPanel.height - height",
+            "ConnectedSurfaceJoinFlares {",
+            "joinBottom: true",
+            "bottomLeftRadius: 0",
+            "bottomRightRadius: 0",
+        ):
+            check(token in settings_surface,
+                  f"{settings_path} must be a bottom-connected popup below Polkit: {token}")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,

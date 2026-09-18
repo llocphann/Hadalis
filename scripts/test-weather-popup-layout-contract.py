@@ -21,6 +21,12 @@ def main() -> None:
         "anchors.verticalCenterOffset: 0",
         "readonly property real radiusX: Math.max(122, (width - 84) / 2)",
         "readonly property real radiusY: Math.max(82, (height - 104) / 2)",
+        "readonly property real orbitRadiusX: Math.max(1, radiusX - 2)",
+        "readonly property real orbitRadiusY: Math.max(1, radiusY - 2)",
+        "function orbitAngle(index, count): real",
+        "orbitalTimeline.orbitAngle(index, count)",
+        "Math.cos(angle) * orbitalTimeline.orbitRadiusX",
+        "Math.sin(angle) * orbitalTimeline.orbitRadiusY",
         "width: 52",
         "height: 64",
         'text: Qt.formatDate(root.now, "dddd, MMM d")',
@@ -39,6 +45,7 @@ def main() -> None:
         "pixelSize: Math.round(Appearance.font.pixelSize.large * 2.6)",
         "width: 58",
         "height: 72",
+        "+ index * (Math.PI * 2 / count)",
     ):
         if forbidden in source:
             raise AssertionError(f"Weather popup still contains oversized/loose layout token: {forbidden!r}")

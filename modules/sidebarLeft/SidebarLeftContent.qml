@@ -206,8 +206,19 @@ Item {
 
     StyledRectangularShadow {
         target: sidebarLeftBackground
-        visible: sidebarLeftBackground.angelEverywhere
+        radius: sidebarLeftBackground.radius
+        blur: Math.max(0, Math.min(32,
+            Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+        spread: 0
+        offset: Qt.vector2d(0, 0)
+        color: ColorUtils.applyAlpha(Appearance.colors.colShadow,
+            Math.max(0, Math.min(0.60,
+                Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24))))
+        visible: root.panelVisible
+            && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
             && !Appearance.gameModeMinimal
+        joinLeft: root.attachedEdge === "left"
+        joinRight: root.attachedEdge === "right"
     }
 
     IslandPanel {

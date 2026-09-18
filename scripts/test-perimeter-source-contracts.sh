@@ -119,6 +119,8 @@ grep -Fq 'connectorVisible: false' "$styled_popup" \
     || fail 'StyledPopup must not paint a connector stem'
 grep -Fq 'ConnectedSurfaceRevealClip {' "$styled_popup" \
     || fail 'StyledPopup must slide underneath the Bar/Screen Edge through a fixed reveal clip'
+grep -Fq 'Hover ownership belongs to the complete connected surface' "$styled_popup" \
+    || fail 'StyledPopup hover bridge must cover the full connected surface instead of padded content only'
 grep -Fq 'readonly property real _popupScreenMargin: Math.max(0,' "$styled_popup" \
     || fail 'StyledPopup Screen Edge clamping must be placement-driven for every Bar module'
 if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \
@@ -159,6 +161,8 @@ grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$conn
     || fail 'ConnectedSurfaceFrame must source join flare size from shared perimeter tokens'
 grep -Fq 'No stem is' "$join_flares" \
     || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
+grep -Fq 'root.bodyItem.mapToItem(root, 0, 0)' "$join_flares" \
+    || fail 'join flares must map nested body geometry into the flare host coordinate space'
 grep -Fq 'root.joinTop && !root.joinLeft' "$join_flares" \
     || fail 'top flare must suppress itself when the adjacent Screen Edge is also joined'
 for token in \
@@ -292,8 +296,9 @@ if grep -Fq 'overviewBottomConnectorGeometry' "$overview"; then
     fail 'Overview must not retain bottom connector geometry'
 fi
 for token in \
-    'readonly property real bottomAttachmentY:' \
-    '- root.bottomAttachmentThickness' \
+    'readonly property real bottomAttachmentY: root.bottomBarOwnsEdge' \
+    '? root.height - Appearance.sizes.barHeight' \
+    ': root.height' \
     'readonly property bool dashboardPresentationMode:' \
     'root.dashboardPresentationMode ? 1' \
     'root.bottomAttachmentY - bodyBottomInColumn' \
@@ -313,7 +318,8 @@ for token in \
     'joinBottom: root.directBottomAttachment' \
     'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' \
     'blur: root.screenEdgeShadowSize' \
-    'bottomLeftRadius: root.directBottomAttachment ? 0 : radius'; do
+    'bottomLeftRadius: root.directBottomAttachment ? 0 : radius' \
+    'fallbackColor: Appearance.colors.colLayer0'; do
     grep -Fq "$token" "$overview_dashboard" \
         || fail "OverviewDashboard popup contract missing: $token"
 done

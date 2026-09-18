@@ -900,18 +900,18 @@ Scope {
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateX"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel
-                                ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateY"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel
-                                ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader
@@ -974,18 +974,18 @@ Scope {
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateX"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel
-                                ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateY"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel
-                                ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader

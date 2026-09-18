@@ -283,7 +283,10 @@ Item {
         // Use the same Material layer as Bar/Screen Edge connected popups so
         // the body, shoulders and owning edge read as one continuous surface.
         fallbackColor: Appearance.colors.colLayer0
-        wallpaperBackdropEnabled: root.panelVisible
+        // Connected Bar/Screen Edge popups use the solid Material owner layer.
+        // Do not let the generic GlassBackground panel backend turn Dashboard
+        // transparent/blurred, or it reads as a different surface family.
+        wallpaperBackdropEnabled: root.useWallpaperBackdrop
         border.width: 0
         border.color: root.colBorder
         Behavior on border.width {

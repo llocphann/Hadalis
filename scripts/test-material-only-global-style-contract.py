@@ -45,6 +45,50 @@ def main() -> None:
         "Appearance.qml",
     )
 
+    blur_start = appearance.index("function blurBackendFor(")
+    blur_end = appearance.index("function useCompositorBlur(", blur_start)
+    blur_contract = appearance[blur_start:blur_end]
+    for token in (
+        "auroraEverywhere",
+        "angelEverywhere",
+        "zzzEverywhere",
+    ):
+        forbid(blur_contract, token, "Appearance.qml blur backend")
+    require(
+        blur_contract,
+        'if (area === "islands" || area === "waffle")',
+        "Appearance.qml blur backend",
+    )
+
+    hover_start = appearance.index("// Stable aliases for the canonical Material interaction fills")
+    hover_end = appearance.index("onEffectsEnabledChanged", hover_start)
+    hover_contract = appearance[hover_start:hover_end]
+    for token in (
+        "regaliaEverywhere",
+        "cookieEverywhere",
+        "zzzEverywhere",
+        "angelEverywhere",
+        "inirEverywhere",
+        "auroraEverywhere",
+    ):
+        forbid(hover_contract, token, "Appearance.qml interaction aliases")
+    for token in (
+        "readonly property color colLayer1Hover: colors.colLayer1Hover",
+        "readonly property color colLayer2Hover: colors.colLayer2Hover",
+        "readonly property color colLayer1Active: colors.colLayer1Active",
+    ):
+        require(hover_contract, token, "Appearance.qml interaction aliases")
+
+    warning_start = appearance.index("readonly property color colWarning:")
+    warning_end = appearance.index("readonly property color colInfo:", warning_start)
+    warning_contract = appearance[warning_start:warning_end]
+    forbid(warning_contract, "zzzEverywhere", "Appearance.qml warning tokens")
+    for token in (
+        "root.m3colors.m3tertiary, 0.42",
+        "readonly property color colOnWarningContainer: root.m3colors.m3onTertiaryContainer",
+    ):
+        require(warning_contract, token, "Appearance.qml warning tokens")
+
     # Persistence migration remains owned by ThemeService: old callers/config may
     # still reach this compatibility boundary, but every value is clamped to Material.
     for token in (

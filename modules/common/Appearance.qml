@@ -175,10 +175,6 @@ Singleton {
         // never a reason to replace a style-owned wallpaper material.
         if (area === "islands" || area === "waffle")
             return "wallpaper"
-        if (auroraEverywhere || angelEverywhere)
-            return "wallpaper"
-        if (zzzEverywhere && (Config.options?.appearance?.zzz?.glass ?? true))
-            return "wallpaper"
         return "off"
     }
 
@@ -219,36 +215,11 @@ Singleton {
         }
     }
 
-    // Style-aware hover/active fills. One source of truth so every component's hover matches the
-    // active global style instead of re-implementing the zzz/angel/inir/aurora/material ternary.
-    // zzz promotes one fill step (paper -> paperAlt) instead of a translucent mix, per its
-    // separate-by-fill doctrine (was missing here; components used to hardcode zzz.paperAlt).
-    // Cookie promotes one tonal step, like zzz: Expressive stacks plates, so a
-    // hover is the next plate up, not a translucent wash of the ink over the
-    // current one.
-    readonly property color colLayer1Hover: regaliaEverywhere ? regalia.hoverPlate
-        : cookieEverywhere ? cookie.bg2
-        : zzzEverywhere ? zzz.paperAlt
-        : angelEverywhere ? angel.colGlassCardHover
-        : inirEverywhere ? inir.colLayer1Hover
-        : auroraEverywhere ? aurora.colSubSurfaceHover
-        : colors.colLayer1Hover
-    readonly property color colLayer2Hover: regaliaEverywhere ? regalia.chassis3
-        : cookieEverywhere ? cookie.bg3
-        : zzzEverywhere ? zzz.bg3
-        : angelEverywhere ? angel.colGlassElevatedHover
-        : inirEverywhere ? inir.colLayer2Hover
-        : auroraEverywhere ? aurora.colElevatedSurfaceHover
-        : colors.colLayer2Hover
-    // Active/pressed fills — did not exist at top level before, so click feedback
-    // (RippleButton etc.) read straight from raw `colors.*`, skipping inir/zzz entirely.
-    readonly property color colLayer1Active: regaliaEverywhere ? regalia.pressPlate
-        : cookieEverywhere ? cookie.bg3
-        : zzzEverywhere ? zzz.bg3
-        : angelEverywhere ? angel.colGlassCardActive
-        : inirEverywhere ? inir.colLayer1Active
-        : auroraEverywhere ? aurora.colSubSurfaceActive
-        : colors.colLayer1Active
+    // Stable aliases for the canonical Material interaction fills. Keep these
+    // public names while callers migrate; v1.0 no longer dispatches by Global Style.
+    readonly property color colLayer1Hover: colors.colLayer1Hover
+    readonly property color colLayer2Hover: colors.colLayer2Hover
+    readonly property color colLayer1Active: colors.colLayer1Active
 
     onEffectsEnabledChanged: if (Qt.application.arguments.indexOf("--debug") !== -1) console.log("[Appearance] effectsEnabled:", effectsEnabled, "gameModeActive:", _gameModeActive)
     onAnimationsEnabledChanged: if (Qt.application.arguments.indexOf("--debug") !== -1) console.log("[Appearance] animationsEnabled:", animationsEnabled)
@@ -1007,14 +978,10 @@ Singleton {
         readonly property color colOnError: root.m3colors.m3onError
         readonly property color colErrorContainer: ColorUtils.transparentize(root.m3colors.m3errorContainer, 0.3)
 
-        // ZZZ-aware success/warning/error plates so the contrast indicator and
-        // form validation render as readable CONSOLE chips, not raw green/orange
-        // hex dumps. The fill is the generated accent/signal scaled to chip range.
         readonly property color colWarning: root.m3colors.m3tertiary
         readonly property color colWarningContainer: ColorUtils.transparentize(
-            Appearance.zzzEverywhere ? root.zzz.secondary : root.m3colors.m3tertiary, 0.42)
-        readonly property color colOnWarningContainer: Appearance.zzzEverywhere
-            ? root.zzz.onSecondary : root.m3colors.m3onTertiaryContainer
+            root.m3colors.m3tertiary, 0.42)
+        readonly property color colOnWarningContainer: root.m3colors.m3onTertiaryContainer
         readonly property color colInfo: root.m3colors.m3secondary
         
         // ═══════════════════════════════════════════════════════════════

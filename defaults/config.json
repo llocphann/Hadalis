@@ -67,8 +67,8 @@
             "width": 10,
             "shadow": {
                 "enabled": true,
-                "size": 12,
-                "opacity": 0.24
+                "size": 15,
+                "opacity": 0.7
             }
         },
         "colorInvert": false,

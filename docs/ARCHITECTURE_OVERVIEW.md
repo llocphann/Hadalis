@@ -50,7 +50,7 @@ More details: [Panel Families](PANEL_FAMILIES.md)
 - **System integration**: Audio (PipeWire), Network (NetworkManager), Bluetooth (BlueZ), Battery (UPower)
 - **Data management**: Notifications, clipboard history, events, weather, calendar sync
 - **Theming**: MaterialThemeLoader watches `colors.json`, ThemeService orchestrates the pipeline
-- **Content**: AI chat (Gemini/OpenAI/Ollama), YT Music player, anime tracking
+- **Content**: AI chat (Gemini/OpenAI/Ollama), local Music library/player, anime tracking
 
 Services are registered in `services/qmldir` and available everywhere as singletons.
 
@@ -108,7 +108,7 @@ A simplified map of what lives where:
 | `modules/bar/` | Classic Bar runtime (ii family; horizontal and vertical placements) | Normal |
 | `modules/waffle/` | Complete Windows 11 family | Normal |
 | `modules/sidebar/` | Physical sidebar hosts and live layout behavior | High |
-| `modules/sidebarLeft/` | Semantic feature content: AI chat, YT Music, widgets | Normal |
+| `modules/sidebarLeft/` | Semantic feature content: AI chat, local Music library/player, widgets | Normal |
 | `modules/sidebarRight/` | Semantic system content: toggles, calendar, tools | Normal |
 | `translations/` | i18n strings (15 languages) | Low |
 

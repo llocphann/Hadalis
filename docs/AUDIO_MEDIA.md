@@ -71,9 +71,9 @@ When multiple players are active, iNiR picks the most relevant one:
 
 ### Local Music
 
-The left sidebar Music tab is local-only. Choose a library folder (the XDG Music directory is the default) and Hadalis recursively indexes common audio formats. It reads tags and duration when the optional Python `mutagen` module is present, otherwise it falls back to filenames and folder names. Common cover-image names such as `cover`, `folder`, `front`, `album` and `artwork` are picked up from each track folder.
+The left sidebar Music tab is local-only. Choose a library folder (the XDG Music directory is the default) and Hadalis recursively indexes common audio formats. It reads tags and duration with Python `mutagen` when available, falls back to `ffprobe` metadata when possible, and finally falls back to filenames/folder names. Common cover-image names such as `cover`, `folder`, `front`, `album` and `artwork` are picked up from each track folder.
 
-The player discovers `.m3u`/`.m3u8` playlists and also exposes folders containing multiple tracks as playable collections. Songs, playlists and the active queue are selectable directly in the sidebar. Playback, seek, next/previous, shuffle, repeat and volume are driven through mpv's local Unix-socket IPC; no YouTube session, browser cookies, yt-dlp or network music API is needed.
+The player discovers `.m3u`/`.m3u8` playlists and also exposes folders containing multiple tracks as playable collections. Songs, playlists and the active queue are selectable directly in the sidebar. Playback, seek, next/previous, shuffle, repeat and volume are driven through mpv's local Unix-socket IPC; no YouTube session, browser cookies, yt-dlp or network music API is needed. When `mpv-mpris` is installed, Hadalis also loads its bridge so the same local mpv session is visible to the shell's ordinary MPRIS media surfaces; sidebar playback does not depend on that optional bridge.
 
 The historical `YtMusic` source remains only as compatibility code for now and is no longer routed from the Left Sidebar or its Settings UI.
 

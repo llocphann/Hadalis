@@ -11,7 +11,7 @@ Item {
     property alias rightVisualMargin: shape.anchors.rightMargin
     property alias bottomVisualMargin: shape.anchors.bottomMargin
 
-    property int implicitSize: 25
+    property real implicitSize: 25
     property color color: "#000000"
 
     // Optional hairline along only the curved edge. The default remains a plain

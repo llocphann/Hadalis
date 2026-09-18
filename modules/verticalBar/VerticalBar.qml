@@ -77,7 +77,9 @@ Scope {
                     && (!(Config.options?.bar?.autoHide?.enable ?? false) || mustShow)
                 readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-                readonly property real frameRadius: PerimeterTokens.frameRadius
+                readonly property real frameRadius: Math.max(0, Math.min(96,
+                    Number(Config.options?.appearance?.screenEdge?.radius
+                        ?? PerimeterTokens.frameRadius)))
                 readonly property bool edgeShadowEnabled: bar.showBarBackground
                     && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
                 readonly property int edgeShadowExtent: edgeShadowEnabled
@@ -189,6 +191,9 @@ Scope {
                         RoundCorner {
                             implicitSize: barRoot.frameRadius
                             color: Appearance.colors.colLayer0
+                            shadowEnabled: barRoot.edgeShadowEnabled
+                            shadowExtent: barRoot.edgeShadowExtent
+                            shadowColor: barRoot.edgeShadowColor
                             corner: (Config.options?.bar?.bottom ?? false)
                                 ? RoundCorner.CornerEnum.TopRight
                                 : RoundCorner.CornerEnum.TopLeft
@@ -204,6 +209,9 @@ Scope {
                         RoundCorner {
                             implicitSize: barRoot.frameRadius
                             color: Appearance.colors.colLayer0
+                            shadowEnabled: barRoot.edgeShadowEnabled
+                            shadowExtent: barRoot.edgeShadowExtent
+                            shadowColor: barRoot.edgeShadowColor
                             corner: (Config.options?.bar?.bottom ?? false)
                                 ? RoundCorner.CornerEnum.BottomRight
                                 : RoundCorner.CornerEnum.BottomLeft
@@ -267,6 +275,8 @@ Scope {
                         anchors {
                             top: parent.top
                             bottom: parent.bottom
+                            topMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
+                            bottomMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
                             left: !(Config.options?.bar?.bottom ?? false) ? barContent.right : undefined
                             right: (Config.options?.bar?.bottom ?? false) ? barContent.left : undefined
                         }
@@ -383,6 +393,10 @@ Scope {
 
                                 implicitSize: barRoot.frameRadius
                                 color: hugDecorators.solidColor
+                                shadowEnabled: barRoot.edgeShadowEnabled
+                                    && barRoot.surfacePresented
+                                shadowExtent: barRoot.edgeShadowExtent
+                                shadowColor: barRoot.edgeShadowColor
 
                                 corner: RoundCorner.CornerEnum.TopLeft
                                 states: State {
@@ -405,6 +419,10 @@ Scope {
                                 }
                                 implicitSize: barRoot.frameRadius
                                 color: hugDecorators.solidColor
+                                shadowEnabled: barRoot.edgeShadowEnabled
+                                    && barRoot.surfacePresented
+                                shadowExtent: barRoot.edgeShadowExtent
+                                shadowColor: barRoot.edgeShadowColor
 
                                 corner: RoundCorner.CornerEnum.BottomLeft
                                 states: State {

@@ -17,6 +17,7 @@ import qs.modules.common
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.mediaControls
 import qs.modules.pill
 import QtQuick
 import QtQuick.Controls
@@ -1474,6 +1475,11 @@ Item {
 
                                     CompactMediaPlayer {
                                         Layout.fillWidth: true
+                                    }
+
+                                    EqualizerPanel {
+                                        Layout.fillWidth: true
+                                        active: root.panelVisible
                                     }
                                 }
                             }

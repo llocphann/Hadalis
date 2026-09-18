@@ -240,10 +240,14 @@ Scope {
         }
         mask: Region { item: emptyCornerInput }
 
-        RoundCorner {
-            implicitSize: root.innerRadius
-            corner: cornerWindow.corner
-            color: root.edgeColor
+        // Paint one canonical top-left inverse corner and mirror it for the
+        // other three positions. This guarantees pixel-identical geometry at
+        // the bottom corners instead of relying on four independent arc paths.
+        Canvas {
+            id: innerCornerCanvas
+            width: root.innerRadius
+            height: root.innerRadius
+            property color fillColor: root.edgeColor
             anchors {
                 top: cornerWindow.isTop ? parent.top : undefined
                 bottom: cornerWindow.isTop ? undefined : parent.bottom
@@ -253,6 +257,41 @@ Scope {
                 bottomMargin: cornerWindow.isTop ? 0 : root.thickness
                 leftMargin: cornerWindow.isLeft ? root.thickness : 0
                 rightMargin: cornerWindow.isLeft ? 0 : root.thickness
+            }
+
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            onFillColorChanged: requestPaint()
+            Component.onCompleted: requestPaint()
+
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                const s = Math.min(width, height)
+                if (!(s > 0))
+                    return
+
+                ctx.save()
+                if (!cornerWindow.isLeft) {
+                    ctx.translate(s, 0)
+                    ctx.scale(-1, 1)
+                }
+                if (!cornerWindow.isTop) {
+                    ctx.translate(0, s)
+                    ctx.scale(1, -1)
+                }
+
+                const k = 0.5522847498
+                ctx.beginPath()
+                ctx.moveTo(0, 0)
+                ctx.lineTo(s, 0)
+                ctx.bezierCurveTo(s * (1 - k), 0,
+                    0, s * (1 - k), 0, s)
+                ctx.lineTo(0, 0)
+                ctx.closePath()
+                ctx.fillStyle = fillColor
+                ctx.fill()
+                ctx.restore()
             }
         }
     }

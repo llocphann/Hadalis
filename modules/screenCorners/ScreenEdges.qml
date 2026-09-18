@@ -8,7 +8,6 @@ import qs.modules.common.perimeter
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -22,8 +21,9 @@ Scope {
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     // Caelestia BorderConfig defaults to rounding=25 independently from
     // component/card rounding. Keep the physical frame on that exact geometry.
-    readonly property int innerRadius: Math.max(thickness,
-        Math.round(PerimeterTokens.frameRadius))
+    readonly property int innerRadius: Math.max(0, Math.min(96,
+        Math.round(Config.options?.appearance?.screenEdge?.radius
+            ?? PerimeterTokens.frameRadius)))
     readonly property bool shadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property int shadowSize: Math.max(0, Math.min(32,
@@ -114,8 +114,14 @@ Scope {
 
         readonly property string outputName: String(modelData?.name ?? "")
         readonly property bool horizontal: edge === "top" || edge === "bottom"
-        // The whole visible edge surface is shadowed as one alpha silhouette,
-        // matching Caelestia's single BlobGroup + MultiEffect composition.
+        readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
+        readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
+        readonly property real leadingShadowInset:
+            root.barOwnsEdge(outputName, leadingAdjacentEdge)
+                ? 0 : root.thickness + root.innerRadius
+        readonly property real trailingShadowInset:
+            root.barOwnsEdge(outputName, trailingAdjacentEdge)
+                ? 0 : root.thickness + root.innerRadius
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -162,24 +168,9 @@ Scope {
         }
         mask: Region { item: emptyInput }
 
-        // Render band + inverse corners into one offscreen alpha surface and
-        // apply one shadow to that silhouette. This is the closest QtQuick
-        // analogue to Caelestia's ContentWindow BlobGroup layer effect and,
-        // unlike four independent linear gradients, keeps the shadow continuous
-        // through the bottom corners and the two side edges that meet the Bar.
         Item {
             id: edgeSurface
             anchors.fill: parent
-
-            layer.enabled: root.shadowEnabled
-                && root.shadowExtent > 0
-                && root.shadowOpacity > 0
-            layer.smooth: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                blurMax: Math.max(1, root.shadowExtent)
-                shadowColor: root.shadowColor
-            }
 
             Rectangle {
                 id: edgeBand
@@ -193,14 +184,60 @@ Scope {
                 color: root.edgeColor
             }
 
-            // Horizontal EdgeWindow owns the free endpoint curves. Vertical
-            // edges are straight because the Bar (when present) or the
-            // horizontal edge surface owns the adjoining inverse corner.
+            // Straight portions use an explicit in-window gradient. This is
+            // deliberately not a layer effect: layer-shell textures clip effect
+            // padding differently across compositors, which made the shadow
+            // disappear entirely on the user's Niri/Qt path.
+            Rectangle {
+                id: edgeShadow
+                z: -2
+                visible: root.shadowEnabled
+                    && root.shadowExtent > 0
+                    && root.shadowOpacity > 0
+                x: horizontal ? leadingShadowInset
+                    : (edge === "left"
+                        ? root.thickness
+                        : edgeBand.x - root.shadowExtent)
+                y: horizontal
+                    ? (edge === "top"
+                        ? root.thickness
+                        : edgeBand.y - root.shadowExtent)
+                    : leadingShadowInset
+                width: horizontal
+                    ? Math.max(0, parent.width
+                        - leadingShadowInset - trailingShadowInset)
+                    : root.shadowExtent
+                height: horizontal
+                    ? root.shadowExtent
+                    : Math.max(0, parent.height
+                        - leadingShadowInset - trailingShadowInset)
+                color: "transparent"
+                gradient: Gradient {
+                    orientation: horizontal ? Gradient.Vertical : Gradient.Horizontal
+                    GradientStop {
+                        position: 0
+                        color: (edge === "top" || edge === "left")
+                            ? root.shadowColor : "transparent"
+                    }
+                    GradientStop {
+                        position: 1
+                        color: (edge === "top" || edge === "left")
+                            ? "transparent" : root.shadowColor
+                    }
+                }
+            }
+
+            // Horizontal EdgeWindow owns the free endpoint curves. The curved
+            // shadow is drawn by RoundCorner itself so it follows the actual
+            // circular boundary instead of stopping at the straight segment.
             RoundCorner {
                 id: leadingCorner
                 visible: horizontal && !root.barOwnsEdge(outputName, "left")
                 implicitSize: root.innerRadius
                 color: root.edgeColor
+                shadowEnabled: root.shadowEnabled
+                shadowExtent: root.shadowExtent
+                shadowColor: root.shadowColor
                 anchors {
                     left: parent.left
                     leftMargin: root.thickness
@@ -217,6 +254,9 @@ Scope {
                 visible: horizontal && !root.barOwnsEdge(outputName, "right")
                 implicitSize: root.innerRadius
                 color: root.edgeColor
+                shadowEnabled: root.shadowEnabled
+                shadowExtent: root.shadowExtent
+                shadowColor: root.shadowColor
                 anchors {
                     right: parent.right
                     rightMargin: root.thickness

@@ -73,7 +73,7 @@ When multiple players are active, iNiR picks the most relevant one:
 
 The left sidebar **Music** tab is a frontend for the user's MPD library. MPD owns the database, saved playlists and active queue; Hadalis does not create a second player process. The default endpoint is `127.0.0.1:6600`, configurable in Settings. The optional local folder field is only a path override for resolving cover files when MPD cannot report `music_directory`.
 
-Songs come from MPD `listallinfo`; saved MPD playlists, folder collections and the live MPD queue are selectable directly in the sidebar. Starting a song or collection replaces the MPD queue with those database URIs. Database refresh calls MPD `update`.
+Songs come from MPD `listallinfo`; saved MPD playlists, folder collections and the live MPD queue are selectable directly in the sidebar. Double-clicking a song appends that database URI to the existing MPD queue with `addid` and immediately starts the exact appended entry with `playid`, so existing queued tracks are preserved. Starting a collection still replaces the MPD queue with that collection. Database refresh calls MPD `update`.
 
 Normal transport integration uses the endpoint-matched `mpd-mpris` bridge: play/pause, previous/next, seeking, volume and shuffle prefer the MPD MPRIS player exposed through `MprisController`. Direct MPD commands are only a graceful fallback or are used for MPD-only operations such as queue replacement/database update. Bar, Media Popup and other media surfaces therefore observe the same session.
 

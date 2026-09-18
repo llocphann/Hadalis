@@ -299,6 +299,20 @@ def replace_queue(client: MpdClient, uris: list[str], index: int) -> None:
     client.command("play", max(0, min(index, len(uris) - 1)))
 
 
+def enqueue_track(client: MpdClient, uri: str, play_now: bool) -> None:
+    if not uri:
+        raise MpdError("empty_uri")
+    response = _pairs(client.command("addid", uri))
+    song_id = response.get("id", "")
+    if play_now:
+        if song_id:
+            client.command("playid", song_id)
+        else:
+            status = _pairs(client.command("status"))
+            queue_length = int(status.get("playlistlength", "1") or "1")
+            client.command("play", max(0, queue_length - 1))
+
+
 ALLOWED_COMMANDS = {
     "next",
     "previous",
@@ -344,6 +358,16 @@ def main() -> int:
                     return 2
                 replace_queue(client, [str(uri) for uri in uris], index)
                 print('{"ok":true}')
+                return 0
+            if mode == "enqueue" and len(sys.argv) > 6:
+                override_root = sys.argv[4]
+                play_now = sys.argv[5] == "1"
+                uri = sys.argv[6]
+                enqueue_track(client, uri, play_now)
+                music_root = _music_root(client, override_root)
+                payload = _status_payload(client, music_root)
+                payload["musicRoot"] = music_root
+                print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
                 return 0
             if mode == "command" and len(sys.argv) > 5:
                 name = sys.argv[4]

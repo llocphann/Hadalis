@@ -140,7 +140,11 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: trackRow.activated()
+            // Desktop-player semantics: a single click only focuses the row;
+            // a double click performs its action. This prevents the first click
+            // of a double click from replacing the live MPD queue.
+            onClicked: trackRow.forceActiveFocus()
+            onDoubleClicked: trackRow.activated()
         }
     }
 
@@ -258,11 +262,10 @@ Item {
                             width: ListView.view.width
                             track: modelData
                             trackIndex: index
-                            onActivated: {
-                                const originalIndex = LocalMusic.libraryTracks.findIndex(
-                                    item => String(item?.path ?? "") === String(modelData?.path ?? ""))
-                                if (originalIndex >= 0) LocalMusic.playLibrary(originalIndex)
-                            }
+                            // Double-click appends the selected song to the
+                            // existing MPD queue and immediately plays that
+                            // appended entry. It must not clear the current queue.
+                            onActivated: LocalMusic.enqueueTrack(modelData, true)
                         }
                     }
                     ColumnLayout {

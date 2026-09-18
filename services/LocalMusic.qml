@@ -62,6 +62,7 @@ Singleton {
     property real volume: 1
     property bool shuffleMode: false
     property int repeatMode: 0
+    property var _enqueueRequests: []
 
     // Local-only lyric state. MPD/MPRIS still own playback; this only reads
     // sidecar .lrc/.txt files next to the resolved local track path.
@@ -286,6 +287,31 @@ Singleton {
             return
         }
         playLibrary(index)
+    }
+
+    function enqueueTrack(track, playNow = true): void {
+        if (!available || !track) return
+        const uri = String(track?.uri ?? track?.path ?? "").trim()
+        if (uri.length === 0) return
+
+        _enqueueRequests = [..._enqueueRequests, {
+            uri: uri,
+            playNow: playNow === true
+        }]
+        _drainEnqueueRequests()
+    }
+
+    function _drainEnqueueRequests(): void {
+        if (_enqueueProc.running || _enqueueRequests.length === 0) return
+        const request = _enqueueRequests[0]
+        _enqueueRequests = _enqueueRequests.slice(1)
+        _enqueueProc.output = ""
+        _enqueueProc.command = [
+            "python3", _mpdScript, "enqueue",
+            mpdHost, String(mpdPort), configuredLibraryFolder,
+            request.playNow ? "1" : "0", String(request.uri)
+        ]
+        _enqueueProc.running = true
     }
 
     function playQueue(queue, index = 0, name = ""): void {
@@ -546,6 +572,28 @@ Singleton {
                 return
             }
             statusRefreshTimer.restart()
+        }
+    }
+
+    Process {
+        id: _enqueueProc
+        property string output: ""
+        stdout: StdioCollector {
+            onStreamFinished: _enqueueProc.output = text ?? ""
+        }
+        onStarted: _enqueueProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) {
+                root.error = "mpd_enqueue_failed"
+            } else {
+                try {
+                    root._applyPayload(JSON.parse(_enqueueProc.output || "{}"), false)
+                } catch (e) {
+                    root.error = "mpd_enqueue_parse_failed"
+                }
+            }
+            if (root._enqueueRequests.length > 0)
+                Qt.callLater(root._drainEnqueueRequests)
         }
     }
 }

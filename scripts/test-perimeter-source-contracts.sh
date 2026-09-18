@@ -302,9 +302,8 @@ if grep -Fq 'overviewBottomConnectorGeometry' "$overview"; then
     fail 'Overview must not retain bottom connector geometry'
 fi
 for token in \
-    'readonly property real bottomAttachmentY: root.bottomBarOwnsEdge' \
-    '? root.height - Appearance.sizes.barHeight' \
-    ': root.height' \
+    'readonly property real bottomAttachmentY:' \
+    '- root.bottomAttachmentThickness' \
     'readonly property bool dashboardPresentationMode:' \
     'root.dashboardPresentationMode ? 1' \
     'root.bottomAttachmentY - bodyBottomInColumn' \

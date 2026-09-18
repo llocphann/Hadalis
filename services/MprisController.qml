@@ -92,15 +92,36 @@ Singleton {
 	property bool _manualPlayerSelection: false;
 	property var _streamMetadataById: ({})
 	property bool _mpdBridgeStartAttempted: false
+	property bool _mpdBridgeExplicitRequested: false
 	property int _mpdBridgeAvailable: -1 // -1 unknown, 0 unavailable, 1 installed
 	property bool _mpdProcessSeen: false
+	property string _mpdBridgeHost: "127.0.0.1"
+	property int _mpdBridgePort: 6600
+	readonly property bool _mpdBridgeCustomEndpoint: {
+		const host = String(root._mpdBridgeHost ?? "").toLowerCase()
+		const localHost = host === "127.0.0.1" || host === "localhost" || host === "::1"
+		return !localHost || root._mpdBridgePort !== 6600
+	}
+	readonly property string _mpdPreferredMprisName: root._mpdBridgeCustomEndpoint
+		? "org.mpris.MediaPlayer2.mpd.hadalis"
+		: "org.mpris.MediaPlayer2.mpd"
 	property MprisPlayer mpdPlayer: null
 
 	function _findMpdMprisPlayer(): var {
+		const preferred = root._mpdPreferredMprisName
 		for (const player of Mpris.players.values) {
 			const name = String(player?.dbusName ?? "")
-			if (name === "org.mpris.MediaPlayer2.mpd"
-					|| name.startsWith("org.mpris.MediaPlayer2.mpd."))
+			if (name === preferred)
+				return player
+		}
+		// For the default localhost:6600 session, retain compatibility with an
+		// already-running named mpd-mpris instance. A configured custom endpoint
+		// must never silently bind to an unrelated MPD MPRIS player.
+		if (root._mpdBridgeCustomEndpoint)
+			return null
+		for (const player of Mpris.players.values) {
+			const name = String(player?.dbusName ?? "")
+			if (name.startsWith("org.mpris.MediaPlayer2.mpd."))
 				return player
 		}
 		return null
@@ -110,16 +131,46 @@ Singleton {
 		return root._findMpdMprisPlayer() !== null
 	}
 
-	function ensureMpdMprisBridge(): void {
+	function _mpdCustomBridgeCommand(): var {
+		const args = ["/usr/bin/env", "mpd-mpris"]
+		const host = String(root._mpdBridgeHost ?? "")
+		if (host.startsWith("/")) {
+			args.push("-network", "unix", "-host", host)
+		} else {
+			args.push("-host", host, "-port", String(root._mpdBridgePort))
+		}
+		args.push("-instance-name", "hadalis")
+		return args
+	}
+
+	function ensureMpdMprisBridge(host = "127.0.0.1", port = 6600): void {
+		const nextHost = String(host ?? "").trim().length > 0
+			? String(host).trim() : "127.0.0.1"
+		const numericPort = Number(port)
+		const nextPort = Number.isFinite(numericPort) && numericPort > 0
+			? Math.round(numericPort) : 6600
+		const endpointChanged = nextHost !== root._mpdBridgeHost
+			|| nextPort !== root._mpdBridgePort
+
+		root._mpdBridgeExplicitRequested = true
+		root._mpdBridgeHost = nextHost
+		root._mpdBridgePort = nextPort
+		if (endpointChanged) {
+			root.mpdPlayer = null
+			root._mpdBridgeStartAttempted = false
+			if (_mpdMprisCustomProc.running)
+				_mpdMprisCustomProc.running = false
+		}
+
 		const existing = root._findMpdMprisPlayer()
 		if (existing) {
 			root.mpdPlayer = existing
 			return
 		}
-		// LocalMusic is itself a positive signal that the user wants the local MPD
-		// session. Probe/start the packaged bridge without inventing a second
-		// media-control API.
-		root._mpdProcessSeen = true
+		// LocalMusic is an explicit request for this exact MPD session. The
+		// localhost:6600 endpoint uses the distro user service; custom endpoints
+		// get a Hadalis-named bridge instance so transport never targets another
+		// MPD server by accident.
 		root._maybeStartMpdMprisBridge()
 	}
 
@@ -149,13 +200,22 @@ Singleton {
 				_mpdMprisProbeProc.running = true
 			return
 		}
-		if (!(root._mpdProcessSeen || root._mpdPlaybackStreamPresent())
+		if (!(root._mpdBridgeExplicitRequested
+				|| root._mpdProcessSeen || root._mpdPlaybackStreamPresent())
 				|| root._mpdBridgeStartAttempted
-				|| _mpdMprisStartProc.running)
+				|| _mpdMprisStartProc.running
+				|| _mpdMprisCustomProc.running)
 			return
 
 		root._mpdBridgeStartAttempted = true
-		_mpdMprisStartProc.running = true
+		if (root._mpdBridgeCustomEndpoint) {
+			_mpdMprisCustomProc.command = root._mpdCustomBridgeCommand()
+			_mpdMprisCustomProc.running = true
+		} else {
+			if (_mpdMprisCustomProc.running)
+				_mpdMprisCustomProc.running = false
+			_mpdMprisStartProc.running = true
+		}
 	}
 
 	// rmpc is an MPD client, not an MPRIS provider. Probe for the packaged bridge
@@ -176,7 +236,7 @@ Singleton {
 			}
 			root._mpdBridgeAvailable = 1
 			root._mpdProcessSeen = exitCode === 0
-			if (root._mpdProcessSeen)
+			if (root._mpdBridgeExplicitRequested || root._mpdProcessSeen)
 				root._maybeStartMpdMprisBridge()
 			else
 				_mpdBridgeRetry.restart()
@@ -196,6 +256,24 @@ Singleton {
 				return
 			}
 			_mpdBridgeRetry.restart()
+		}
+	}
+
+	// A non-default MPD endpoint cannot use the distro unit unchanged because
+	// that unit targets localhost:6600. mpd-mpris supports host/port/network and
+	// instance-name flags, so keep one shell-owned bridge for the configured
+	// endpoint and expose it as org.mpris.MediaPlayer2.mpd.hadalis.
+	Process {
+		id: _mpdMprisCustomProc
+		running: false
+		onStarted: _mpdBridgeSettle.restart()
+		onExited: (_exitCode, _exitStatus) => {
+			if (!root._mpdBridgeCustomEndpoint || !root._mpdBridgeExplicitRequested)
+				return
+			if (!root._hasMpdMprisPlayer()) {
+				root._mpdBridgeStartAttempted = false
+				_mpdBridgeRetry.restart()
+			}
 		}
 	}
 

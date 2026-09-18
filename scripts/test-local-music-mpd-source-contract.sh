@@ -14,8 +14,11 @@ registry="$root/modules/settings/SettingsPageRegistryData.qml"
 
 grep -Fq 'local_music_mpd.py' "$service" || fail 'LocalMusic must use MPD helper'
 grep -Fq 'readonly property var mprisPlayer: MprisController.mpdPlayer' "$service" || fail 'LocalMusic must use MPD MPRIS player'
-grep -Fq 'MprisController.ensureMpdMprisBridge()' "$service" || fail 'LocalMusic must request MPD MPRIS bridge'
+grep -Fq 'MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)' "$service" || fail 'LocalMusic must request MPRIS for its configured MPD endpoint'
 grep -Fq 'property MprisPlayer mpdPlayer: null' "$mpris" || fail 'MprisController must expose MPD player'
+grep -Fq 'org.mpris.MediaPlayer2.mpd.hadalis' "$mpris" || fail 'custom MPD endpoints need a dedicated Hadalis MPRIS instance'
+grep -Fq '_mpdMprisCustomProc.command = root._mpdCustomBridgeCommand()' "$mpris" || fail 'custom MPD endpoint must launch endpoint-bound mpd-mpris'
+grep -Fq 'command: ["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' "$mpris" || fail 'default localhost MPD must retain distro mpd-mpris service path'
 grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Music UI must expose MPD update'
 if grep -Eq 'mpvPath|local_music_ipc|local_music_scan|--input-ipc-server' "$service"; then
     fail 'LocalMusic must not regress to a private mpv player'

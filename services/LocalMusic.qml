@@ -120,6 +120,7 @@ Singleton {
 
         mpdConnected = true
         error = ""
+        MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
         if (String(payload.musicRoot ?? "").length > 0)
             detectedLibraryFolder = String(payload.musicRoot)
 
@@ -174,7 +175,7 @@ Singleton {
         if (!enabled || _scanProc.running) return
         scanning = true
         error = ""
-        MprisController.ensureMpdMprisBridge()
+        MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
         _scanProc.command = [
             "python3", _mpdScript, "snapshot",
             mpdHost, String(mpdPort), configuredLibraryFolder
@@ -344,14 +345,14 @@ Singleton {
 
     Component.onCompleted: {
         if (enabled) {
-            MprisController.ensureMpdMprisBridge()
+            MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
             Qt.callLater(root.rescan)
         }
     }
 
     onEnabledChanged: {
         if (enabled) {
-            MprisController.ensureMpdMprisBridge()
+            MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
             Qt.callLater(root.rescan)
         }
     }

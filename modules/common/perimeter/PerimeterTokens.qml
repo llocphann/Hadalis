@@ -12,6 +12,11 @@ QtObject {
     readonly property real smoothUnionRadius: 20
     readonly property real popupRadius: 28
     readonly property real joinFlareRadius: smoothUnionRadius
+    // Caelestia compresses the SDF on the axis facing the border (boost=3).
+    // In separate QML surfaces we approximate that border-proximity compression
+    // with a shallower cross-axis shoulder while preserving the 20px tangent
+    // smoothing width.
+    readonly property real joinFlareCrossScale: 0.55
     // Shared popup reveal is a short directional slide from the owning edge.
     readonly property real revealSlideDistance: 18
     readonly property real connectorWidth: 40

@@ -64,6 +64,8 @@ CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent
 ON_SCREEN_KEYBOARD = ROOT / "modules" / "onScreenKeyboard" / "OnScreenKeyboard.qml"
 OSK_KEY = ROOT / "modules" / "onScreenKeyboard" / "OskKey.qml"
 SCREEN_CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
+VERTICAL_CLOCK_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalClockWidget.qml"
+VERTICAL_DATE_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalDateWidget.qml"
 OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
 OVERVIEW_SEARCH_ITEM = ROOT / "modules" / "overview" / "SearchItem.qml"
 OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
@@ -153,6 +155,8 @@ def main() -> None:
     on_screen_keyboard = ON_SCREEN_KEYBOARD.read_text(encoding="utf-8")
     osk_key = OSK_KEY.read_text(encoding="utf-8")
     screen_corners = SCREEN_CORNERS.read_text(encoding="utf-8")
+    vertical_clock_widget = VERTICAL_CLOCK_WIDGET.read_text(encoding="utf-8")
+    vertical_date_widget = VERTICAL_DATE_WIDGET.read_text(encoding="utf-8")
     overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
     overview_search_item = OVERVIEW_SEARCH_ITEM.read_text(encoding="utf-8")
     overview_search_widget = OVERVIEW_SEARCH_WIDGET.read_text(encoding="utf-8")
@@ -1449,6 +1453,29 @@ def main() -> None:
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+
+    # VerticalBar clock/date leaves are shared by both taskbar layouts.
+    # Keep DateTime formatting/layout intact while locking text/stroke chrome to Material.
+    for source, content in (
+        ("verticalBar/VerticalClockWidget.qml", vertical_clock_widget),
+        ("verticalBar/VerticalDateWidget.qml", vertical_date_widget),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+    for token in (
+        "DateTime.timeDisplay.split(/[: ]/)",
+        "color: Appearance.colors.colOnLayer1",
+        'text: modelData.padStart(2, "0")',
+    ):
+        require(vertical_clock_widget, token, "verticalBar/VerticalClockWidget.qml")
+    for token in (
+        "DateTime.clock.date",
+        "strokeColor: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colOnLayer1",
+        "dayOfMonth",
+        "monthOfYear",
+    ):
+        require(vertical_date_widget, token, "verticalBar/VerticalDateWidget.qml")
 
     # Overview cleanup is component-by-component. SearchBar is an active leaf
     # owned by SearchWidget; lock its song-recognition chrome to the existing

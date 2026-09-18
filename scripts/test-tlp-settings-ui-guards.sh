@@ -106,6 +106,12 @@ assert_contains 'rows: 2' "$power" \
     'Configuration categories must stay at two rows'
 assert_contains 'model: root.navigationCategories' "$power" \
     'Configuration categories must consume the filtered ten-category model'
+assert_contains 'leftAlignContent: true' "$power" \
+    'Configuration category tabs must opt into scoped left alignment'
+assert_contains 'text: Translation.tr("Config: %1").arg(TlpSettingsService.configFile)' "$power" \
+    'Battery/TLP summary must keep the managed config path concise'
+assert_contains ': Translation.tr("Effective values")' "$power" \
+    'Battery/TLP summary must use the concise effective-values label'
 assert_contains 'BatteryChargeLimitSettings {' "$power" \
     'battery charge care must be integrated into the primary Battery/TLP card'
 assert_contains 'import Quickshell' "$registry" \

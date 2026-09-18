@@ -128,6 +128,8 @@ grep -Eq '^[[:space:]]+mpd-mprisgrep -Eq '^[[:space:]]+mpd-mprisgrep -Fq 'DEPS_A
 for marker in \
   'function _mpdPlaybackStreamPresent(): bool' \
   'function _maybeStartMpdMprisBridge(): void' \
+  'id: _mpdMprisProbeProc' \
+  'command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1' \
   '["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' \
   'name === "org.mpris.MediaPlayer2.mpd"' \
   'name.startsWith("org.mpris.MediaPlayer2.mpd.")'; do
@@ -137,6 +139,10 @@ done
 
 grep -Fq '### MPD and rmpc' "$audio_doc" \
   || { printf 'FAIL: audio/media docs omit MPD/rmpc bridge behavior\n' >&2; exit 1; }
+grep -Fq 'direct-ALSA output' "$audio_doc" \
+  || { printf 'FAIL: audio/media docs omit direct-ALSA MPD bridge discovery\n' >&2; exit 1; }
+grep -Fq '| `mpd-mpris` | MPRIS bridge for MPD/rmpc media sessions |' docs/PACKAGES.md \
+  || { printf 'FAIL: package docs omit mpd-mpris from the Arch audio bundle\n' >&2; exit 1; }
 grep -Fq '`rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself' "$audio_doc" \
   || { printf 'FAIL: audio/media docs no longer explain the MPD/MPRIS boundary\n' >&2; exit 1; }
 

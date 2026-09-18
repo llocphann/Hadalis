@@ -4,6 +4,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.modules.common.perimeter
 import qs.modules.sidebarLeft
 import qs.modules.sidebarRight

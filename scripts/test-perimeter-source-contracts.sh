@@ -114,14 +114,19 @@ grep -Fq 'parent.width - leadingShadowInset - trailingShadowInset' "$root/module
     || fail 'horizontal Screen Edge shadow must stop before both rounded corner overlays'
 grep -Fq 'parent.height - leadingShadowInset - trailingShadowInset' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'vertical Screen Edge shadow must stop before both rounded corner overlays'
-grep -Fq 'id: innerCornerShape' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'Screen Edge corners must use the shared RoundCorner primitive'
-grep -Fq 'corner: RoundCorner.CornerEnum.TopLeft' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'Screen Edge corners must derive every orientation from one canonical TopLeft silhouette'
-grep -Fq 'return cornerWindow.isLeft ? 270 : 180' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'bottom Screen Edge corners must rotate the canonical silhouette instead of drawing a separate path'
-if grep -Fq 'Canvas {' "$root/modules/screenCorners/ScreenEdges.qml"; then
-    fail 'Screen Edge inner corners must not regress to independent Canvas paths'
+grep -Fq 'id: leadingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'horizontal Screen Edge must own its leading rounded endpoint'
+grep -Fq 'id: trailingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'horizontal Screen Edge must own its trailing rounded endpoint'
+grep -Fq 'bottom: edge === "bottom" ? edgeBand.top : undefined' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'bottom Screen Edge corners must attach directly to the bottom band like Hug Bar decorators'
+grep -Fq '? root.thickness + Math.max(root.shadowExtent, root.innerRadius)' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'horizontal Screen Edge window must reserve visual-only room for its rounded endpoints'
+if grep -Fq 'component InnerCornerWindow: PanelWindow' "$root/modules/screenCorners/ScreenEdges.qml"; then
+    fail 'Screen Edge corners must not live in independent compositor surfaces'
+fi
+if grep -Fq 'hadalis:screen-edge-corner-' "$root/modules/screenCorners/ScreenEdges.qml"; then
+    fail 'retired independent Screen Edge corner layer surfaces must stay absent'
 fi
 for shadow_source in \
     "$root/modules/screenCorners/ScreenEdges.qml" \

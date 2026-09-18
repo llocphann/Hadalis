@@ -110,18 +110,20 @@ Scope {
 
         readonly property string outputName: String(modelData?.name ?? "")
         readonly property bool horizontal: edge === "top" || edge === "bottom"
-        // Straight edge shadows live in separate layer surfaces from the rounded
-        // corner overlays. Keep each straight shadow outside the corner footprint
-        // it does not own; otherwise compositor stacking can paint the shadow over
-        // the corner fill and leave the lower corners looking like dark triangles.
+        // Horizontal Screen Edge windows now own their rounded endpoint
+        // decorators, exactly like the Hug Bar. Keep straight shadows outside
+        // that same-surface corner footprint; vertical edge shadows also skip
+        // the adjacent horizontal band before the curve begins.
         readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
         readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
         readonly property real leadingShadowInset:
             root.barOwnsEdge(outputName, leadingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
+                ? 0
+                : (horizontal ? root.innerRadius : root.thickness + root.innerRadius)
         readonly property real trailingShadowInset:
             root.barOwnsEdge(outputName, trailingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
+                ? 0
+                : (horizontal ? root.innerRadius : root.thickness + root.innerRadius)
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -140,7 +142,9 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
 
         implicitWidth: horizontal ? 1 : root.thickness + root.shadowExtent
-        implicitHeight: horizontal ? root.thickness + root.shadowExtent : 1
+        implicitHeight: horizontal
+            ? root.thickness + Math.max(root.shadowExtent, root.innerRadius)
+            : 1
 
         WlrLayershell.namespace: "hadalis:screen-edge-" + edge
         WlrLayershell.layer: WlrLayer.Top
@@ -177,7 +181,10 @@ Scope {
             visible: root.shadowExtent > 0 && root.shadowOpacity > 0
             x: horizontal ? leadingShadowInset
                 : (edge === "left" ? root.thickness : 0)
-            y: horizontal ? (edge === "top" ? root.thickness : 0)
+            y: horizontal
+                ? (edge === "top"
+                    ? root.thickness
+                    : parent.height - root.thickness - root.shadowExtent)
                 : leadingShadowInset
             width: horizontal
                 ? Math.max(0, parent.width - leadingShadowInset - trailingShadowInset)
@@ -200,92 +207,46 @@ Scope {
                 }
             }
         }
-    }
 
-    // The four edge bands intentionally stay rectangular so their physical-screen
-    // geometry remains exact. These transparent corner overlays only paint the
-    // concave quarter-corners on the wallpaper-facing side of that frame.
-    component InnerCornerWindow: PanelWindow {
-        id: cornerWindow
-
-        required property ShellScreen modelData
-        required property int corner
-
-        readonly property string outputName: String(modelData?.name ?? "")
-        readonly property bool isTop: corner === RoundCorner.CornerEnum.TopLeft
-            || corner === RoundCorner.CornerEnum.TopRight
-        readonly property bool isLeft: corner === RoundCorner.CornerEnum.TopLeft
-            || corner === RoundCorner.CornerEnum.BottomLeft
-        readonly property string cornerName: isTop
-            ? (isLeft ? "top-left" : "top-right")
-            : (isLeft ? "bottom-left" : "bottom-right")
-        readonly property bool fullscreenCovered: outputName.length > 0
-            && GameMode.hasFullscreenOnOutput(outputName)
-        readonly property bool adjacentBarOwned:
-            root.barOwnsEdge(outputName, isTop ? "top" : "bottom")
-            || root.barOwnsEdge(outputName, isLeft ? "left" : "right")
-        readonly property bool mapped: Config.ready
-            && !GlobalStates.screenLocked
-            && !fullscreenCovered
-            && !adjacentBarOwned
-
-        screen: modelData
-        visible: mapped
-        updatesEnabled: mapped
-        color: "transparent"
-        exclusiveZone: 0
-        exclusionMode: ExclusionMode.Ignore
-
-        implicitWidth: root.thickness + root.innerRadius
-        implicitHeight: root.thickness + root.innerRadius
-
-        WlrLayershell.namespace: "hadalis:screen-edge-corner-" + cornerName
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-        anchors {
-            top: isTop
-            bottom: !isTop
-            left: isLeft
-            right: !isLeft
-        }
-
-        Item {
-            id: emptyCornerInput
-            width: 0
-            height: 0
-            visible: false
-        }
-        mask: Region { item: emptyCornerInput }
-
-        // Reuse the exact inverse-corner primitive that already produces the
-        // correct top Hug silhouette. Paint one canonical TopLeft curve and
-        // rotate the square item for the other three positions, so the lower
-        // pair cannot drift into a separate Canvas path or triangular wedge.
+        // Match Bar.qml's Hug composition: the solid horizontal band and its
+        // wallpaper-facing inverse corners are one layer surface. This removes
+        // compositor ordering between an edge shadow and four independent
+        // corner PanelWindows, which was the source of the lower white wedges.
         RoundCorner {
-            id: innerCornerShape
+            id: leadingCorner
+            visible: horizontal && !root.barOwnsEdge(outputName, "left")
             implicitSize: root.innerRadius
-            corner: RoundCorner.CornerEnum.TopLeft
             color: root.edgeColor
-            transformOrigin: Item.Center
-            rotation: {
-                if (cornerWindow.isTop)
-                    return cornerWindow.isLeft ? 0 : 90
-                return cornerWindow.isLeft ? 270 : 180
-            }
+            z: 2
             anchors {
-                top: cornerWindow.isTop ? parent.top : undefined
-                bottom: cornerWindow.isTop ? undefined : parent.bottom
-                left: cornerWindow.isLeft ? parent.left : undefined
-                right: cornerWindow.isLeft ? undefined : parent.right
-                topMargin: cornerWindow.isTop ? root.thickness : 0
-                bottomMargin: cornerWindow.isTop ? 0 : root.thickness
-                leftMargin: cornerWindow.isLeft ? root.thickness : 0
-                rightMargin: cornerWindow.isLeft ? 0 : root.thickness
+                left: parent.left
+                top: edge === "top" ? edgeBand.bottom : undefined
+                bottom: edge === "bottom" ? edgeBand.top : undefined
             }
+            corner: edge === "top"
+                ? RoundCorner.CornerEnum.TopLeft
+                : RoundCorner.CornerEnum.BottomLeft
+        }
+
+        RoundCorner {
+            id: trailingCorner
+            visible: horizontal && !root.barOwnsEdge(outputName, "right")
+            implicitSize: root.innerRadius
+            color: root.edgeColor
+            z: 2
+            anchors {
+                right: parent.right
+                top: edge === "top" ? edgeBand.bottom : undefined
+                bottom: edge === "bottom" ? edgeBand.top : undefined
+            }
+            corner: edge === "top"
+                ? RoundCorner.CornerEnum.TopRight
+                : RoundCorner.CornerEnum.BottomRight
         }
     }
 
+    // Horizontal EdgeWindow owns the endpoint curves; left/right EdgeWindow
+    // only provide the straight physical bands and their inward shadows.
     Variants {
         model: Quickshell.screens
         EdgeWindow { edge: "top" }
@@ -303,20 +264,4 @@ Scope {
         EdgeWindow { edge: "right" }
     }
 
-    Variants {
-        model: Quickshell.screens
-        InnerCornerWindow { corner: RoundCorner.CornerEnum.TopLeft }
-    }
-    Variants {
-        model: Quickshell.screens
-        InnerCornerWindow { corner: RoundCorner.CornerEnum.TopRight }
-    }
-    Variants {
-        model: Quickshell.screens
-        InnerCornerWindow { corner: RoundCorner.CornerEnum.BottomLeft }
-    }
-    Variants {
-        model: Quickshell.screens
-        InnerCornerWindow { corner: RoundCorner.CornerEnum.BottomRight }
-    }
 }

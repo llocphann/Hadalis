@@ -1,12 +1,12 @@
 import QtQuick
+import qs.modules.common.widgets
 
 // Concave union shoulders for direct Bar/Screen Edge attachments.
 //
 // Caelestia gets this silhouette from its blob-union renderer. Hadalis keeps
-// its existing connected-surface architecture and approximates the same
-// tangent transition with small quarter-circle inverse corners. No stem is
-// drawn: each flare only fills the outside corner between the already-touching
-// source edge and popup body.
+// its connected-surface architecture and composes the same tangent shoulder
+// from the shared inverse-corner primitive. No connector/stem is drawn: each
+// flare only fills the outside corner between already-touching surfaces.
 Item {
     id: root
 
@@ -19,15 +19,18 @@ Item {
     property bool joinLeft: false
     property bool joinRight: false
 
+    // Shadow is structural connected chrome and follows the exact same live
+    // Screen Edge settings as Bar, popup body, Sidebar, Dashboard and Settings.
+    property bool shadowEnabled: false
+    property real shadowExtent: 0
+    property color shadowColor: "transparent"
+
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
     readonly property point bodyOrigin: root.bodyItem
         ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
-    // Caelestia moves one already-formed blob through a clipped viewport; the
-    // corner geometry itself does not grow from zero during the reveal. Keep
-    // the shoulder at its full radius and let the translated body + clip own
-    // the animation. Scaling the radius by progress made the flare disappear
-    // for most of the transition and could leave it visually absent after a
-    // rapid reverse.
+    // Keep the shoulder fully formed while the body slides under its owner.
+    // Growing/shrinking the corner during reveal is unlike Caelestia's blob
+    // motion and makes the flare disappear during rapid open/close reversals.
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,
         root.bodyItem?.width / 2 ?? 0,
@@ -36,104 +39,72 @@ Item {
     visible: root.reveal > 0.001 && root.radius > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
-    component Flare: Canvas {
-        required property string corner
+    component Flare: Item {
+        id: flare
+
+        required property string flareCorner
         property color flareColor: root.fillColor
         property real r: root.radius
+
+        readonly property int cornerEnum: switch (flareCorner) {
+            // The flare is outside the body endpoint, so the inverse corner is
+            // the opposite tangent orientation from the body-corner label.
+            case "topLeft": return RoundCorner.CornerEnum.TopRight
+            case "topRight": return RoundCorner.CornerEnum.TopLeft
+            case "bottomLeft": return RoundCorner.CornerEnum.BottomRight
+            case "bottomRight": return RoundCorner.CornerEnum.BottomLeft
+            case "leftTop": return RoundCorner.CornerEnum.BottomLeft
+            case "leftBottom": return RoundCorner.CornerEnum.TopLeft
+            case "rightTop": return RoundCorner.CornerEnum.BottomRight
+            case "rightBottom": return RoundCorner.CornerEnum.TopRight
+            default: return RoundCorner.CornerEnum.TopLeft
+        }
 
         width: r
         height: r
         visible: r > 0
 
-        onRChanged: requestPaint()
-        onFlareColorChanged: requestPaint()
-        onCornerChanged: requestPaint()
-        Component.onCompleted: requestPaint()
+        // Paint the wallpaper-facing shadow on the same concave arc as the
+        // shoulder itself. A rectangular body shadow alone terminates before
+        // this outside square and makes the join look detached.
+        PerimeterCornerShadow {
+            z: 0
+            corner: flare.cornerEnum
+            cornerRadius: flare.r
+            shadowExtent: root.shadowEnabled ? root.shadowExtent : 0
+            shadowColor: root.shadowColor
+        }
 
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            const s = Math.min(width, height)
-            if (!(s > 0))
-                return
-
-            // Cubic approximation of a quarter circle. The filled region is
-            // the complement of that arc inside the r×r corner, producing the
-            // characteristic concave "shoulder" where two surfaces unite.
-            const k = 0.5522847498
-            ctx.beginPath()
-
-            if (corner === "topLeft") {
-                ctx.moveTo(0, 0)
-                ctx.lineTo(s, 0)
-                ctx.lineTo(s, s)
-                ctx.bezierCurveTo(s, s * (1 - k), s * k, 0, 0, 0)
-            } else if (corner === "topRight") {
-                ctx.moveTo(s, 0)
-                ctx.lineTo(0, 0)
-                ctx.lineTo(0, s)
-                ctx.bezierCurveTo(0, s * (1 - k), s * (1 - k), 0, s, 0)
-            } else if (corner === "bottomLeft") {
-                ctx.moveTo(0, s)
-                ctx.lineTo(s, s)
-                ctx.lineTo(s, 0)
-                ctx.bezierCurveTo(s, s * k, s * k, s, 0, s)
-            } else if (corner === "bottomRight") {
-                ctx.moveTo(s, s)
-                ctx.lineTo(0, s)
-                ctx.lineTo(0, 0)
-                ctx.bezierCurveTo(0, s * k, s * (1 - k), s, s, s)
-            } else if (corner === "leftTop") {
-                ctx.moveTo(0, 0)
-                ctx.lineTo(0, s)
-                ctx.lineTo(s, s)
-                ctx.bezierCurveTo(s * (1 - k), s, 0, s * k, 0, 0)
-            } else if (corner === "leftBottom") {
-                ctx.moveTo(0, s)
-                ctx.lineTo(0, 0)
-                ctx.lineTo(s, 0)
-                ctx.bezierCurveTo(s * (1 - k), 0, 0, s * (1 - k), 0, s)
-            } else if (corner === "rightTop") {
-                ctx.moveTo(s, 0)
-                ctx.lineTo(s, s)
-                ctx.lineTo(0, s)
-                ctx.bezierCurveTo(s * k, s, s, s * k, s, 0)
-            } else if (corner === "rightBottom") {
-                ctx.moveTo(s, s)
-                ctx.lineTo(s, 0)
-                ctx.lineTo(0, 0)
-                ctx.bezierCurveTo(s * k, 0, s, s * (1 - k), s, s)
-            } else {
-                return
-            }
-
-            ctx.closePath()
-            ctx.fillStyle = flareColor
-            ctx.fill()
+        RoundCorner {
+            z: 1
+            anchors.fill: parent
+            implicitSize: Math.max(1, Math.round(flare.r))
+            color: flare.flareColor
+            corner: flare.cornerEnum
         }
     }
 
     // Horizontal attachments: flare tangent-wise beyond the body endpoints.
     Flare {
-        corner: "topLeft"
+        flareCorner: "topLeft"
         visible: root.joinTop && !root.joinLeft && r > 0
         x: root.bodyOrigin.x - r
         y: root.bodyOrigin.y
     }
     Flare {
-        corner: "topRight"
+        flareCorner: "topRight"
         visible: root.joinTop && !root.joinRight && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width
         y: root.bodyOrigin.y
     }
     Flare {
-        corner: "bottomLeft"
+        flareCorner: "bottomLeft"
         visible: root.joinBottom && !root.joinLeft && r > 0
         x: root.bodyOrigin.x - r
         y: root.bodyOrigin.y + root.bodyItem.height - r
     }
     Flare {
-        corner: "bottomRight"
+        flareCorner: "bottomRight"
         visible: root.joinBottom && !root.joinRight && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width
         y: root.bodyOrigin.y + root.bodyItem.height - r
@@ -141,25 +112,25 @@ Item {
 
     // Vertical attachments: flare above/below the body endpoints.
     Flare {
-        corner: "leftTop"
+        flareCorner: "leftTop"
         visible: root.joinLeft && !root.joinTop && r > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y - r
     }
     Flare {
-        corner: "leftBottom"
+        flareCorner: "leftBottom"
         visible: root.joinLeft && !root.joinBottom && r > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y + root.bodyItem.height
     }
     Flare {
-        corner: "rightTop"
+        flareCorner: "rightTop"
         visible: root.joinRight && !root.joinTop && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width - r
         y: root.bodyOrigin.y - r
     }
     Flare {
-        corner: "rightBottom"
+        flareCorner: "rightBottom"
         visible: root.joinRight && !root.joinBottom && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width - r
         y: root.bodyOrigin.y + root.bodyItem.height

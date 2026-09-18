@@ -6,10 +6,6 @@ import QtQuick.Layouts
 
 StyledPopup {
     id: popup
-    // System Monitor is frequently placed at the Bar's leading corner. When
-    // clamped there, join the same popup body to the orthogonal Screen Edge too.
-    connectAdjacentScreenEdge: true
-
     readonly property bool thinkFanManaged:
         ThinkFanService.stateKnown && ThinkFanService.profile === "managed"
     readonly property bool thinkFanCanApply:

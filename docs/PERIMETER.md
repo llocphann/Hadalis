@@ -28,7 +28,7 @@ In particular:
 - normal Media, Weather, Sidebar, Dock or System Monitor UX must not depend on a perimeter cutover flag;
 - Waffle remains its own supported panel family.
 
-Some source-only helper/compatibility files may still remain under `modules/common/perimeter/` while cleanup is audited. They are **not** runtime authority and must not gain new callers merely because they still exist.
+The legacy common host/config/cutover/route helper cluster has also been removed after caller auditing. `modules/common/perimeter/` now retains only the supported connected-surface primitives/tokens plus the small `PerimeterTopology.qml` edge utility still used by `ConnectedSurfaceGeometry.qml`.
 
 ## Connected popup contract
 
@@ -108,4 +108,4 @@ When changing connected surfaces:
 - do not reintroduce `modules/perimeter/`, `iiPerimeter`, feature registries, cutover toggles or panel-slot composition;
 - preserve Waffle as a separate supported panel family.
 
-Any remaining broad-runtime helper under `modules/common/perimeter/` should be removed only after exact caller auditing proves it is unused; do not delete the supported `ConnectedSurface*` primitives or `PerimeterTokens.qml` as part of that cleanup.
+Do not delete the supported `ConnectedSurface*` primitives, `PerimeterTokens.qml`, or the small `PerimeterTopology.qml` edge utility while they still have active callers.

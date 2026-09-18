@@ -260,6 +260,7 @@ Source work already present on `dev`:
 - connected popup connector width is centralized through the shared perimeter tokens/geometry instead of expanding to each source control width;
 - `modules/sidebar/SidebarHost.qml` now owns the Left/Right vertical Screen Edge bridge inside the same native sidebar surface; the old standalone bridge window has been retired so output/lifecycle/stacking cannot drift;
 - the broad legacy `modules/perimeter` runtime/topology/adapters have been retired and removed after caller auditing; the old cutover policy was removed as well, and regression contracts were aligned with the supported connected-surface architecture;
+- the dead common perimeter host/config/cutover/route compatibility cluster has also been removed; `PerimeterTopology.qml` remains only as the small edge utility used by `ConnectedSurfaceGeometry.qml`;
 - shared connected-popup primitives remain active and protected under `modules/common/perimeter/ConnectedSurface*`, `PerimeterTokens.qml`, and `modules/bar/StyledPopup.qml`; do not recreate the retired broad runtime to solve popup issues;
 - Thinkfan standalone connected-surface/content files have been removed from normal UX; Thinkfan controls/state are integrated into the existing System Monitor/resources popup and Settings. Fresh repo-managed installs provision the Hadalis helper/polkit bridge, and required migration `041-thinkfan-helper-bridge` reconciles missing/outdated Hadalis-owned bridge files during repo-managed updates without modifying upstream Thinkfan package/service/config ownership;
 - `modules/common/widgets/KeyboardFocusRing.qml` imports `qs.modules.common` on current `dev`, so the earlier `Appearance is not defined` warning belongs to an older runtime snapshot and must be rechecked only after the local shell updates/reloads to current source;
@@ -285,7 +286,7 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 
 Still open / must be treated as unfinished until audited or locally validated:
 
-1. **Regression/docs residue is narrowed but still open.** `docs/PERIMETER.md` now documents only the supported connected-surface architecture and explicitly marks the broad `modules/perimeter` runtime as retired; continue auditing source-only common-perimeter compatibility helpers and any other stale docs/tests before deleting code. Do not change supported runtime behavior merely to satisfy stale tests.
+1. **Regression/docs residue is narrowed but still open.** Perimeter docs/tests now match the retired broad runtime and the dead common host/config/cutover/route cluster is gone; continue the final stale-doc/test pass outside this cluster (especially retired Global Style/API assumptions) without changing supported runtime behavior merely to satisfy stale tests.
 2. **Maintainer-reported connected-surface/UI issues remain open.** Popup connector geometry, Media visualizer visibility and Time/Date+Weather hover composition still require concrete source fixes; Overview bottom attachment is source-fixed but needs live validation; Sidebar connector ownership is source-fixed but needs live validation; same-edge Screen Edge ownership/color is source-fixed but still needs live validation.
 3. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
@@ -295,7 +296,7 @@ Recommended next source-side sequence:
 2. live-validate the source-fixed connected-surface cluster later; do not rebuild the retired broad perimeter runtime;
 3. live-validate the source-fixed Media Popup CAVA/WaveVisualizer scaling later;
 4. merge Time & Date hover behavior into the Weather/Calendar popup and tighten its Serpantinum-inspired left/center frontend while keeping Hadalis detailed weather on the right;
-5. finish the remaining source-only common-perimeter compatibility audit and remove/update any other stale regression contracts/docs that still describe retired runtime/theme behavior;
+5. finish the remaining stale regression/docs audit outside the cleaned perimeter cluster, especially retired Global Style/API assumptions;
 6. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 
 ## 12. New-conversation continuation prompt
@@ -332,7 +333,7 @@ Maintainer-reported việc còn phải sửa:
 5. Left/Right Sidebar connector hiện có source nhưng runtime report không thấy nối vào vertical Screen Edge; tìm root cause geometry/visibility.
 6. Overview/dashboard mở bằng Super/Meta+Space phải nối vào bottom Screen Edge.
 7. Thinkfan uninstall ownership symmetry: repo-managed uninstall chỉ dọn Hadalis helper/policy khi đúng context; không remove/disable upstream Thinkfan package/service/config và không phá package-manager ownership.
-8. Packaging/runtime dependency audit cho CAVA, Thinkfan và Weather đã có source contract; tiếp tục dọn common-perimeter residue + stale regression/docs mà không biến Thinkfan thành hard dependency hoặc tự tạo fan config.
+8. Packaging/runtime dependency audit đã có source contract và common-perimeter dead runtime cluster đã được dọn; tiếp tục stale regression/docs audit ngoài cluster này mà không biến Thinkfan thành hard dependency hoặc tự tạo fan config.
 
 Sau mỗi nhóm thay đổi: refetch trước write, giữ patch nhỏ/atomic, commit trực tiếp lên `dev`, cập nhật checklist source-side trong README, xác nhận HEAD sau commit và báo root cause/goal, file đã đổi, SHA, source-level contract thay đổi và phần local/runtime validation còn lại.
 ```

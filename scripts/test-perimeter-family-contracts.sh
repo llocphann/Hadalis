@@ -30,11 +30,15 @@ fi
 
 for token in \
     '../../screenCorners/ScreenEdges.qml' \
-    '../../sidebar/SidebarEdgeConnectors.qml' \
+    '../../background/Background.qml' \
     '../../bar/Bar.qml' \
     '../../verticalBar/VerticalBar.qml' \
     '../../dock/Dock.qml'; do
     grep -Fq "$token" "$critical" || fail "ii critical family lost supported surface: $token"
 done
+
+if grep -Fq 'SidebarEdgeConnectors.qml' "$critical"; then
+    fail 'critical ii family must not revive the retired standalone Sidebar bridge window'
+fi
 
 printf 'PASS: ii and Waffle remain the supported panel families without perimeter cutover family\n'

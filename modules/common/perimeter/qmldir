@@ -1,21 +1,8 @@
 module qs.modules.common.perimeter
 singleton PerimeterTopology 1.0 PerimeterTopology.qml
-singleton PerimeterConfig 1.0 PerimeterConfig.qml
-singleton PerimeterCutoverPolicy 1.0 PerimeterCutoverPolicy.qml
-singleton PerimeterRuntimeHealth 1.0 PerimeterRuntimeHealth.qml
-singleton ModuleRegistry 1.0 ModuleRegistry.qml
-singleton AnchorRegistry 1.0 AnchorRegistry.qml
-singleton SurfaceRouteController 1.0 SurfaceRouteController.qml
 singleton PerimeterTokens 1.0 PerimeterTokens.qml
-PerimeterContext 1.0 PerimeterContext.qml
-PerimeterSlotModel 1.0 PerimeterSlotModel.qml
-PerimeterModuleHost 1.0 PerimeterModuleHost.qml
-PerimeterSlotHost 1.0 PerimeterSlotHost.qml
-PerimeterOutputHost 1.0 PerimeterOutputHost.qml
-AnchorPublisher 1.0 AnchorPublisher.qml
 ConnectedSurfaceGeometry 1.0 ConnectedSurfaceGeometry.qml
 ConnectedSurfaceConnector 1.0 ConnectedSurfaceConnector.qml
 ConnectedSurfaceFrame 1.0 ConnectedSurfaceFrame.qml
 ConnectedSurfaceContentHost 1.0 ConnectedSurfaceContentHost.qml
 ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml
-ConnectedSurfaceRouteState 1.0 ConnectedSurfaceRouteState.qml

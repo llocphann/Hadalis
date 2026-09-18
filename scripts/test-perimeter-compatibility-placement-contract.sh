@@ -3,7 +3,7 @@ set -euo pipefail
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 screen_edges="$root/modules/screenCorners/ScreenEdges.qml"
-sidebar="$root/modules/sidebar/SidebarEdgeConnectors.qml"
+sidebar="$root/modules/sidebar/SidebarHost.qml"
 settings="$root/modules/settings/ShellLayoutConfig.qml"
 
 fail() {
@@ -26,21 +26,19 @@ for edge in top bottom left right; do
 done
 
 for token in \
-    'panelId: isLeftEdge ? "iiSidebarLeft" : "iiSidebarRight"' \
+    'required property string edge' \
+    'readonly property bool isLeftEdge: root.edge === "left"' \
     'GlobalStates.sidebarLeftPresentationOutput' \
     'GlobalStates.sidebarRightPresentationOutput' \
-    'BridgeWindow { edge: "left" }' \
-    'BridgeWindow { edge: "right" }' \
+    'id: sidebarBridgeGeometry' \
+    'ConnectedSurfaceConnector {' \
     'PerimeterTokens.seamOverlap'; do
-    grep -Fq "$token" "$sidebar" || fail "semantic sidebar bridge missing: $token"
+    grep -Fq "$token" "$sidebar" || fail "semantic SidebarHost bridge missing: $token"
 done
-if grep -Fq 'Config.options?.bar' "$sidebar" || grep -Fq 'barVertical' "$sidebar"; then
-    fail 'sidebar edge connectors must stay independent of Bar placement/orientation'
-fi
 
 grep -Fq 'visible: surfaceSection.sidebarRole' "$settings" \
     || fail 'Shell Layout must retain supported sidebar sizing controls'
 grep -Fq 'text: Translation.tr("Width")' "$settings" \
     || fail 'Shell Layout must retain sidebar width setting'
 
-printf 'PASS: persistent Screen Edge and semantic left/right sidebar placement remain supported\n'
+printf 'PASS: persistent Screen Edge and semantic left/right SidebarHost placement remain supported\n'

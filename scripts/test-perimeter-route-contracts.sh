@@ -6,7 +6,7 @@ styled="$root/modules/bar/StyledPopup.qml"
 media="$root/modules/bar/Media.qml"
 weather_bar="$root/modules/bar/weather/WeatherBar.qml"
 weather_popup="$root/modules/bar/weather/WeatherPopup.qml"
-sidebar="$root/modules/sidebar/SidebarEdgeConnectors.qml"
+sidebar="$root/modules/sidebar/SidebarHost.qml"
 
 fail() {
     printf 'FAIL: supported connected route contract: %s\n' "$1" >&2
@@ -36,8 +36,8 @@ grep -Fq 'GlobalStates.sidebarRightRequestedWidget = "weather"' "$weather_bar" \
     || fail 'Weather primary activation must target the right-sidebar Weather tab'
 grep -Fq 'GlobalStates.openSidebarRight' "$weather_bar" \
     || fail 'Weather primary activation must use the supported right-sidebar route'
-grep -Fq 'ConnectedSurfaceConnector' "$sidebar" \
-    || fail 'left/right sidebars must retain semantic connected edge routes'
+grep -Fq 'ConnectedSurfaceConnector {' "$sidebar" \
+    || fail 'left/right SidebarHost surfaces must retain semantic connected edge routes'
 
 for file in "$media" "$weather_bar" "$weather_popup" "$sidebar"; do
     if grep -Fq 'SurfaceRouteController' "$file" || grep -Fq 'qs.modules.perimeter' "$file"; then
@@ -45,4 +45,4 @@ for file in "$media" "$weather_bar" "$weather_popup" "$sidebar"; do
     fi
 done
 
-printf 'PASS: Media/Weather/sidebar routes use supported connected presentation paths\n'
+printf 'PASS: Media/Weather/SidebarHost routes use supported connected presentation paths\n'

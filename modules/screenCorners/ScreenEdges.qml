@@ -7,6 +7,7 @@ import qs.modules.common.functions
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
+import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Wayland
 
@@ -104,26 +105,57 @@ Scope {
         return iiOwned || waffleOwned
     }
 
+    // Shadow for an inverse corner. The curve itself is a quarter circle, so
+    // its shadow must be radial rather than the union of two linear rectangles.
+    // At each tangent this radial profile reduces to the exact same linear
+    // falloff as the adjacent straight Screen Edge shadow.
+    component CornerShadow: GE.RadialGradient {
+        id: cornerShadow
+        required property int corner
+
+        readonly property bool isTop:
+            corner === RoundCorner.CornerEnum.TopLeft
+            || corner === RoundCorner.CornerEnum.TopRight
+        readonly property bool isLeft:
+            corner === RoundCorner.CornerEnum.TopLeft
+            || corner === RoundCorner.CornerEnum.BottomLeft
+        readonly property real innerStop: Math.max(0, Math.min(1,
+            1 - root.shadowExtent / Math.max(1, root.innerRadius)))
+
+        width: root.innerRadius
+        height: root.innerRadius
+        horizontalRadius: root.innerRadius
+        verticalRadius: root.innerRadius
+        horizontalOffset: isLeft ? width / 2 : -width / 2
+        verticalOffset: isTop ? height / 2 : -height / 2
+        visible: root.shadowExtent > 0 && root.shadowOpacity > 0
+        cached: true
+        z: 1
+
+        gradient: Gradient {
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: cornerShadow.innerStop; color: "transparent" }
+            GradientStop { position: 1; color: root.shadowColor }
+        }
+    }
+
     component EdgeWindow: PanelWindow {
         required property ShellScreen modelData
         required property string edge
 
         readonly property string outputName: String(modelData?.name ?? "")
         readonly property bool horizontal: edge === "top" || edge === "bottom"
-        // Mirror the Bar/Hug junction contract. Horizontal shadows start at
-        // the INNER boundary of an adjacent side Screen Edge and continue under
-        // the inverse-corner decorator; the radius shapes paint, not geometry.
-        // Vertical endpoint clearance remains a separate axis contract.
+        // Straight edge shadows terminate at the R×R inverse-corner box.
+        // CornerShadow below owns that box with a radial falloff whose tangent
+        // profiles exactly match the straight horizontal/vertical gradients.
         readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
         readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
         readonly property real leadingShadowInset:
             root.barOwnsEdge(outputName, leadingAdjacentEdge)
-                ? 0
-                : (horizontal ? root.thickness : root.thickness + root.innerRadius)
+                ? 0 : root.thickness + root.innerRadius
         readonly property real trailingShadowInset:
             root.barOwnsEdge(outputName, trailingAdjacentEdge)
-                ? 0
-                : (horizontal ? root.thickness : root.thickness + root.innerRadius)
+                ? 0 : root.thickness + root.innerRadius
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -208,40 +240,37 @@ Scope {
             }
         }
 
-        // Continue the side-edge shadow through the R×R corner footprint
-        // inside this horizontal owner. RoundCorner paints above it and shapes
-        // the visible shadow to the same inverse curve as the Bar junction.
-        Rectangle {
-            id: leadingCornerSideShadow
-            visible: horizontal && root.shadowExtent > 0 && root.shadowOpacity > 0
+        CornerShadow {
+            id: leadingCornerShadow
+            visible: horizontal
+                && root.shadowExtent > 0
+                && root.shadowOpacity > 0
                 && !root.barOwnsEdge(outputName, "left")
-            x: root.thickness
-            y: edge === "top" ? edgeBand.bottom : edgeBand.top - root.innerRadius
-            width: root.shadowExtent
-            height: root.innerRadius
-            color: "transparent"
-            z: 1
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: root.shadowColor }
-                GradientStop { position: 1; color: "transparent" }
+            corner: edge === "top"
+                ? RoundCorner.CornerEnum.TopLeft
+                : RoundCorner.CornerEnum.BottomLeft
+            anchors {
+                left: parent.left
+                leftMargin: root.thickness
+                top: edge === "top" ? edgeBand.bottom : undefined
+                bottom: edge === "bottom" ? edgeBand.top : undefined
             }
         }
 
-        Rectangle {
-            id: trailingCornerSideShadow
-            visible: horizontal && root.shadowExtent > 0 && root.shadowOpacity > 0
+        CornerShadow {
+            id: trailingCornerShadow
+            visible: horizontal
+                && root.shadowExtent > 0
+                && root.shadowOpacity > 0
                 && !root.barOwnsEdge(outputName, "right")
-            x: parent.width - root.thickness - root.shadowExtent
-            y: edge === "top" ? edgeBand.bottom : edgeBand.top - root.innerRadius
-            width: root.shadowExtent
-            height: root.innerRadius
-            color: "transparent"
-            z: 1
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: "transparent" }
-                GradientStop { position: 1; color: root.shadowColor }
+            corner: edge === "top"
+                ? RoundCorner.CornerEnum.TopRight
+                : RoundCorner.CornerEnum.BottomRight
+            anchors {
+                right: parent.right
+                rightMargin: root.thickness
+                top: edge === "top" ? edgeBand.bottom : undefined
+                bottom: edge === "bottom" ? edgeBand.top : undefined
             }
         }
 

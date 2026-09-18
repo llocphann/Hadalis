@@ -95,9 +95,21 @@ LazyLoader {
 
     active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
+    function _beginRetract(): void {
+        root.popupHovered = false
+        if (!root._lingerVisible)
+            return
+        root.revealProgress = 0
+        if (Appearance.animationsEnabled)
+            retractTimer.restart()
+        else
+            root._lingerVisible = false
+    }
+
     function _syncRequestedVisibility(): void {
         if (root.requestedVisible) {
             const alreadyResident = root._lingerVisible
+            hoverTransferTimer.stop()
             retractTimer.stop()
             root._lingerVisible = true
             if (!Appearance.animationsEnabled) {
@@ -118,14 +130,19 @@ LazyLoader {
             return
         }
 
-        root.popupHovered = false
         if (!root._lingerVisible)
             return
-        root.revealProgress = 0
-        if (Appearance.animationsEnabled)
-            retractTimer.restart()
-        else
-            root._lingerVisible = false
+
+        // Bar and popup are separate layer-shell surfaces. Compositors can emit
+        // one leave before the matching enter when the pointer crosses their
+        // shared seam. Give that hand-off a short grace period so a transient
+        // all-false hover state cannot start a retract/reopen oscillation.
+        if (root.hoverActivates) {
+            hoverTransferTimer.restart()
+            return
+        }
+
+        root._beginRetract()
     }
 
     onRequestedVisibleChanged: root._syncRequestedVisibility()
@@ -143,6 +160,16 @@ LazyLoader {
     // `contentItem` is the default property and accepts only QQuickItem. Keep
     // internal QObject/QWindow helpers on explicit object properties so they are
     // never routed through the popup content contract during type construction.
+    property QtObject _hoverTransferTimerObject: Timer {
+        id: hoverTransferTimer
+        interval: 90
+        repeat: false
+        onTriggered: {
+            if (!root.requestedVisible)
+                root._beginRetract()
+        }
+    }
+
     property QtObject _retractTimerObject: Timer {
         id: retractTimer
         interval: Math.max(1, Appearance.animation.elementMoveEnter.duration + 16)

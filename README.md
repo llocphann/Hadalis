@@ -275,20 +275,19 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 - [x] **Thinkfan missing helper after update:** required state-based migration reconciles `/usr/libexec/inir-thinkfan` and the Hadalis polkit action for repo-managed installs. Live update + System Monitor validation is pending.
 - [x] **KeyboardFocusRing `Appearance` import:** current source already imports `qs.modules.common`. Live shell update/reload validation is pending.
 - [ ] **Connected popup geometry:** make popup/body/connector/bar-or-Screen-Edge read as one Caelestia-like connected surface without detached stems or seams.
-- [ ] **Bar/Screen Edge overlap and color:** suppress the Screen Edge on an edge occupied by the Bar and make Screen Edge surface color follow the Bar surface contract.
+- [x] **Bar/Screen Edge overlap and color:** current source suppresses the Screen Edge and its adjacent corner overlay on the exact output/edge owned by the horizontal or vertical ii Bar, mirrors the Bar's stale-`screenList` fallback, and uses the Material Bar `colLayer0` surface token. Live placement/color validation is pending.
 - [ ] **Media Popup equalizer:** diagnose why the existing CAVA -> `PlayerControl` -> `WaveVisualizer` source path is not visibly rendering in the reported runtime.
 - [ ] **Time & Date / Weather hover:** remove the redundant separate Time & Date hover surface, route hover into the Weather/Calendar composition, and tighten the Serpantinum-inspired frontend while retaining Hadalis detailed weather ownership on the right.
 - [ ] **Left/right Sidebar connectors:** source connector exists; diagnose why it is not visibly joining the vertical Screen Edge in the reported runtime.
 - [ ] **Overview bottom connector:** connect the Super/Meta+Space Overview/dashboard surface to the bottom Screen Edge through the active shared connected-surface primitives.
-- [ ] **Thinkfan uninstall ownership symmetry:** repo-managed uninstall should remove only the Hadalis-owned helper/policy when appropriate; it must not remove/disable upstream Thinkfan package/service/config or interfere with package-manager ownership.
+- [x] **Thinkfan uninstall ownership symmetry:** repo-managed normal/quick uninstall now removes only the Hadalis-owned helper/policy, preserves package-manager-owned bridge files, and never removes/disables upstream Thinkfan package/service/config. Local uninstall-path validation is pending.
 
 Still open / must be treated as unfinished until audited or locally validated:
 
 1. **Packaging/runtime dependency audit is still open.** Confirm supported install/package paths cover `cava`, the Hadalis Thinkfan helper/polkit bridge plus its underlying runtime requirements, and weather dependencies. Source wiring alone is not sufficient.
-2. **Thinkfan uninstall ownership symmetry remains open.** Cleanup must be limited to Hadalis-owned artifacts and must preserve package-manager/upstream Thinkfan ownership.
-3. **Regression/docs residue needs a final pass after perimeter retirement.** Remove or rewrite stale contracts/documentation that still assume the deleted broad runtime, retired Global Styles or unsupported APIs. Do not change supported runtime behavior merely to satisfy stale tests.
-4. **Maintainer-reported connected-surface/UI issues remain open.** Popup connector geometry, same-edge Screen Edge suppression/color, Sidebar connector visibility, Overview bottom attachment, Media visualizer visibility and Time/Date+Weather hover composition all require concrete source fixes followed by live validation.
-5. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
+2. **Regression/docs residue needs a final pass after perimeter retirement.** Remove or rewrite stale contracts/documentation that still assume the deleted broad runtime, retired Global Styles or unsupported APIs. Do not change supported runtime behavior merely to satisfy stale tests.
+3. **Maintainer-reported connected-surface/UI issues remain open.** Popup connector geometry, Sidebar connector visibility, Overview bottom attachment, Media visualizer visibility and Time/Date+Weather hover composition still require concrete source fixes; same-edge Screen Edge ownership/color is source-fixed but still needs live validation.
+4. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
 Recommended next source-side sequence:
 
@@ -296,7 +295,7 @@ Recommended next source-side sequence:
 2. fix the connected-surface cluster from the maintainer report: shared popup connector geometry, same-edge Bar/Screen Edge ownership/color, Sidebar vertical connector visibility and Overview bottom attachment, without rebuilding the retired broad perimeter runtime;
 3. diagnose/fix Media Popup CAVA/WaveVisualizer visibility on the existing media path;
 4. merge Time & Date hover behavior into the Weather/Calendar popup and tighten its Serpantinum-inspired left/center frontend while keeping Hadalis detailed weather on the right;
-5. finish Thinkfan uninstall ownership symmetry and the packaging/runtime dependency audit for CAVA, Thinkfan and weather;
+5. finish the packaging/runtime dependency audit for CAVA, Thinkfan and weather;
 6. remove/update stale regression contracts/docs that still describe retired runtime/theme behavior;
 7. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 

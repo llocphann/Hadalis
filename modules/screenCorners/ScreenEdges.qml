@@ -18,6 +18,38 @@ Scope {
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property int innerRadius: Math.max(thickness,
         Math.round(Appearance.rounding.screenRounding))
+    readonly property color edgeColor: Appearance.colors.colLayer0
+    readonly property bool barVertical: Config.options?.bar?.vertical ?? false
+    readonly property string barEdge: barVertical
+        ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
+        : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
+    readonly property string barPanelId: barVertical ? "iiVerticalBar" : "iiBar"
+    readonly property bool barPanelEnabled:
+        (Config.options?.enabledPanels ?? []).includes(barPanelId)
+
+    function barTargetsOutput(outputName) {
+        if (outputName.length === 0)
+            return false
+        const list = Config.options?.bar?.screenList ?? []
+        if (!list || list.length === 0)
+            return true
+        const matched = Quickshell.screens.filter(screen => {
+            const screenName = String(screen?.name ?? "")
+            return screenName.length > 0 && list.includes(screenName)
+        })
+        // Keep ownership identical to Bar.qml / VerticalBar.qml. If saved output
+        // names are stale, both bar and edge policy fall back to all screens.
+        if (matched.length === 0)
+            return true
+        return list.includes(outputName)
+    }
+
+    function barOwnsEdge(outputName, edge) {
+        return root.barPanelEnabled
+            && GlobalStates.barOpen
+            && edge === root.barEdge
+            && root.barTargetsOutput(outputName)
+    }
 
     component EdgeWindow: PanelWindow {
         required property ShellScreen modelData
@@ -30,6 +62,7 @@ Scope {
         readonly property bool mapped: Config.ready
             && !GlobalStates.screenLocked
             && !fullscreenCovered
+            && !root.barOwnsEdge(outputName, edge)
 
         screen: modelData
         visible: mapped
@@ -64,7 +97,7 @@ Scope {
 
         Rectangle {
             anchors.fill: parent
-            color: Appearance.colors.colLayer1
+            color: root.edgeColor
         }
     }
 
@@ -87,9 +120,13 @@ Scope {
             : (isLeft ? "bottom-left" : "bottom-right")
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
+        readonly property bool adjacentBarOwned:
+            root.barOwnsEdge(outputName, isTop ? "top" : "bottom")
+            || root.barOwnsEdge(outputName, isLeft ? "left" : "right")
         readonly property bool mapped: Config.ready
             && !GlobalStates.screenLocked
             && !fullscreenCovered
+            && !adjacentBarOwned
 
         screen: modelData
         visible: mapped
@@ -123,7 +160,7 @@ Scope {
         RoundCorner {
             implicitSize: root.innerRadius
             corner: cornerWindow.corner
-            color: Appearance.colors.colLayer1
+            color: root.edgeColor
             anchors {
                 top: cornerWindow.isTop ? parent.top : undefined
                 bottom: cornerWindow.isTop ? undefined : parent.bottom

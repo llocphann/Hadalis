@@ -5,6 +5,7 @@ root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 common="$root/modules/common/perimeter"
 styled="$root/modules/bar/StyledPopup.qml"
 sidebar="$root/modules/sidebar/SidebarEdgeConnectors.qml"
+screen_edge="$root/modules/screenCorners/ScreenEdges.qml"
 
 fail() {
     printf 'FAIL: perimeter shared contract: %s\n' "$1" >&2
@@ -36,6 +37,17 @@ grep -Fq 'readonly property real connectorWidth: 40' "$common/PerimeterTokens.qm
     || fail 'shared connector width token changed unexpectedly'
 grep -Fq 'ConnectedSurfaceConnector' "$sidebar" \
     || fail 'left/right sidebar bridges must remain shared connected-surface consumers'
+
+for token in \
+    'readonly property color edgeColor: Appearance.colors.colLayer0' \
+    'function barOwnsEdge(outputName, edge)' \
+    'Config.options?.bar?.screenList' \
+    '&& !root.barOwnsEdge(outputName, edge)' \
+    'readonly property bool adjacentBarOwned:' \
+    '&& !adjacentBarOwned'; do
+    grep -Fq "$token" "$screen_edge" \
+        || fail "Screen Edge must suppress the Bar-owned edge/corners and share the Material Bar surface token: $token"
+done
 
 if grep -Fq 'qs.modules.perimeter' "$styled" || grep -Fq 'qs.modules.perimeter' "$sidebar"; then
     fail 'active connected surfaces must not import the retired broad perimeter module'

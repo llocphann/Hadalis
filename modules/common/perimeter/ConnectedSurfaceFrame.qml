@@ -25,6 +25,8 @@ Item {
     property bool joinLeft: false
     property bool joinRight: false
     property real joinFlareRadius: PerimeterTokens.joinFlareRadius
+    property bool hoverEnabled: false
+    readonly property bool bodyHovered: bodyHover.hovered
 
     readonly property Item bodyItem: body
     readonly property Item connectorItem: connector
@@ -60,6 +62,11 @@ Item {
         border.color: root.borderColor
         border.width: root.borderWidth
         visible: root.visible && width > 0 && height > 0
+
+        HoverHandler {
+            id: bodyHover
+            enabled: root.hoverEnabled && body.visible
+        }
     }
 
     // Use the same radius-aware RectangularShadow renderer that the shell's

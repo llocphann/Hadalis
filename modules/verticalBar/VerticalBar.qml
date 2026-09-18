@@ -236,7 +236,7 @@ Scope {
                             right: undefined
                         }
                         width: Appearance.rounding.screenRounding
-                        active: showBarBackground && (Config.options?.bar?.cornerStyle ?? 0) === 0
+                        active: showBarBackground
                             && !(Config.options?.bar?.appearanceStyle === "islands")
 
                         states: State {

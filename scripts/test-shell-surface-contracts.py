@@ -244,6 +244,9 @@ def main() -> None:
           and "shadowExtent: root.screenEdgeShadowSize" in sidebar_flare_block
           and "shadowColor: root.screenEdgeShadowColor" in sidebar_flare_block,
           "Sidebar flares must share the live Screen Edge shadow contract")
+    check("PerimeterTokens.joinFlareRadius" in sidebar_host
+          and "root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0" in sidebar_host,
+          "Sidebar native host must reserve room for the larger of flare and configured Screen Edge shadow")
 
     media_popup = read("modules/mediaControls/BarMediaPopup.qml")
     check("EqualizerPanel {" in media_popup,

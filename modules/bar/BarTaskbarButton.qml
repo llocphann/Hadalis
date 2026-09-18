@@ -227,20 +227,16 @@ RippleButton {
         }
     }
 
-    // Context menu direction depends on bar position
-    ContextMenu {
+    // Bar-owned context menu: physical attachment comes from the real taskbar
+    // button through StyledPopup instead of compositor PopupWindow gravity.
+    BarContextMenu {
         id: contextMenu
         anchorItem: root
         anchorHovered: root.buttonHovered
-        // Horizontal bar: top → popup below, bottom → popup above
-        popupAbove: root.barPosition === "bottom"
-        // Vertical bar: left → popup right, right → popup left
-        popupSide: root.vertical
-            ? (root.barPosition === "right" ? Edges.Left : Edges.Right)
-            : 0
 
         onActiveChanged: {
-            if (!active && root.taskbarRoot) root.taskbarRoot.contextMenuOpen = false
+            if (!active && root.taskbarRoot)
+                root.taskbarRoot.contextMenuOpen = false
         }
 
         model: [

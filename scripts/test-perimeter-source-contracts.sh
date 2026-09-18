@@ -9,6 +9,8 @@ weather="$root/modules/bar/weather/WeatherBar.qml"
 styled_popup="$root/modules/bar/StyledPopup.qml"
 connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
 join_flares="$root/modules/common/perimeter/ConnectedSurfaceJoinFlares.qml"
+bar_context_menu="$root/modules/bar/BarContextMenu.qml"
+bar_taskbar_button="$root/modules/bar/BarTaskbarButton.qml"
 overview="$root/modules/overview/Overview.qml"
 overview_dashboard="$root/modules/overview/OverviewDashboard.qml"
 
@@ -17,7 +19,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -120,6 +122,19 @@ grep -Fq 'No stem is' "$join_flares" \
     || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
 grep -Fq 'root.joinTop && !root.joinLeft' "$join_flares" \
     || fail 'top flare must suppress itself when the adjacent Screen Edge is also joined'
+for token in \
+    'StyledPopup {' \
+    'hoverTarget: root.anchorItem' \
+    'alternativeVisibleCondition: root.active' \
+    'closeOnOutsideClick: true'; do
+    grep -Fq "$token" "$bar_context_menu" \
+        || fail "BarContextMenu must use the shared connected popup path: $token"
+done
+grep -Fq 'BarContextMenu {' "$bar_taskbar_button" \
+    || fail 'Bar taskbar right-click menu must use BarContextMenu'
+if grep -Fq 'ContextMenu {' "$bar_taskbar_button"; then
+    fail 'Bar taskbar must not fall back to detached generic ContextMenu'
+fi
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'
 grep -Fq 'Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

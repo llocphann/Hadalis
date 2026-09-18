@@ -1,6 +1,7 @@
 module qs.modules.bar
 ActiveWindow 1.0 ActiveWindow.qml
 BarContent 1.0 BarContent.qml
+BarContextMenu 1.0 BarContextMenu.qml
 BarGroup 1.0 BarGroup.qml
 Bar 1.0 Bar.qml
 BarTaskbarButton 1.0 BarTaskbarButton.qml

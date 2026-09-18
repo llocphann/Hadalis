@@ -117,6 +117,7 @@ Singleton {
         root.configPath = String(data.configPath ?? "")
         root.statusReason = String(data.reason ?? "")
         root.stateKnown = true
+        root._scheduleConfiguredFanLevelApply()
         return true
     }
 
@@ -272,7 +273,13 @@ Singleton {
     function applyConfiguredPowerProfileFanLevel(): bool {
         if (!root.profileFanControlEnabled)
             return false
-        return root.applyFanLevel(root.configuredActiveFanLevel)
+        const normalized = root._normalizeFanLevel(root.configuredActiveFanLevel)
+        if (normalized.length === 0)
+            return false
+        if (root.stateKnown && root.profile !== "managed"
+                && String(root.fanLevel ?? "").trim().toLowerCase() === normalized)
+            return true
+        return root.applyFanLevel(normalized)
     }
 
     function _scheduleConfiguredFanLevelApply(): void {

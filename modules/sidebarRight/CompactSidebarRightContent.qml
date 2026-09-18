@@ -734,7 +734,7 @@ Item {
             Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
         spread: 0
         offset: Qt.vector2d(0, 0)
-        color: ColorUtils.applyAlpha(Appearance.colors.colShadow,
+        color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
             Math.max(0, Math.min(0.60,
                 Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24))))
         visible: root.panelVisible

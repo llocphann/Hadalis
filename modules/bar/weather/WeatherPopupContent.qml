@@ -175,7 +175,7 @@ ColumnLayout {
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -2
+                    anchors.verticalCenterOffset: -10
                     spacing: 1
                     z: 2
 
@@ -184,7 +184,7 @@ ColumnLayout {
                         text: DateTime.timeDisplay
                         font {
                             weight: Font.Black
-                            pixelSize: Math.round(Appearance.font.pixelSize.large * 3.2)
+                            pixelSize: Math.round(Appearance.font.pixelSize.large * 2.6)
                         }
                         color: Appearance.colors.colOnSurface
                     }
@@ -422,17 +422,18 @@ ColumnLayout {
                         value: Weather.data.sunset
                     }
                 }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 2
+                    text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)
+                    font {
+                        weight: Font.Medium
+                        pixelSize: Appearance.font.pixelSize.smaller
+                    }
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
             }
         }
-    }
-
-    StyledText {
-        Layout.alignment: Qt.AlignHCenter
-        text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)
-        font {
-            weight: Font.Medium
-            pixelSize: Appearance.font.pixelSize.smaller
-        }
-        color: Appearance.colors.colOnSurfaceVariant
     }
 }

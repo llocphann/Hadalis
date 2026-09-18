@@ -133,6 +133,27 @@ def main() -> None:
     ):
         require(font_contract, token, "Appearance.qml font dispatch")
 
+    animation_start = appearance.index("animation: QtObject {")
+    animation_end = appearance.index("aurora: QtObject {", animation_start)
+    animation_contract = appearance[animation_start:animation_end]
+    for token in (
+        "regaliaEverywhere",
+        "cookieEverywhere",
+        "zzzEverywhere",
+        "angelEverywhere",
+        "inirEverywhere",
+        "auroraEverywhere",
+    ):
+        forbid(animation_contract, token, "Appearance.qml animation presets")
+    for token in (
+        "root.calcEffectiveDuration(180, root.animationSpeed.clickBounce)",
+        "root.calcEffectiveDuration(root.contextualMotionProfile ? 520 : 400, root.animationSpeed.enterExit)",
+        'root.resolveCurveBezier("enterExit", animationCurves.emphasizedDecel)',
+        "root.calcEffectiveDuration(400, root.animationSpeed.clickBounce)",
+        'root.resolveCurveBezier("scroll", animationCurves.standardDecel)',
+    ):
+        require(animation_contract, token, "Appearance.qml animation presets")
+
     # Persistence migration remains owned by ThemeService: old callers/config may
     # still reach this compatibility boundary, but every value is clamped to Material.
     for token in (

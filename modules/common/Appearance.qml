@@ -664,15 +664,15 @@ Singleton {
         // color channel creates a dark/bright intermediate flash that reads as
         // a second hover animation, especially when entering from alpha zero.
         property QtObject stateChange: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.stateDuration : 180, root.animationSpeed.clickBounce)
+            property int duration: root.calcEffectiveDuration(180, root.animationSpeed.clickBounce)
             property int type: Easing.BezierSpline
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaPress : animationCurves.expressiveEffects
+            property list<real> bezierCurve: animationCurves.expressiveEffects
         }
 
         property QtObject elementMove: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.moveDuration : animationCurves.expressiveDefaultSpatialDuration, root.animationSpeed.movement)
+            property int duration: root.calcEffectiveDuration(animationCurves.expressiveDefaultSpatialDuration, root.animationSpeed.movement)
             property int type: root.resolveCurveType("movement", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("movement", animationCurves.expressiveDefaultSpatial)
+            property list<real> bezierCurve: root.resolveCurveBezier("movement", animationCurves.expressiveDefaultSpatial)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -684,9 +684,9 @@ Singleton {
         }
 
         property QtObject elementMoveEnter: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.enterDuration : root.cookieEverywhere ? root.cookie.springDuration : root.zzzEverywhere ? root.zzz.overshootDuration : (root.contextualMotionProfile ? 520 : 400), root.animationSpeed.enterExit)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 520 : 400, root.animationSpeed.enterExit)
             property int type: root.resolveCurveType("enterExit", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("enterExit", root.cookieEverywhere ? animationCurves.cookieSpring : root.zzzEverywhere ? animationCurves.zzzOvershoot : animationCurves.emphasizedDecel)
+            property list<real> bezierCurve: root.resolveCurveBezier("enterExit", animationCurves.emphasizedDecel)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -698,13 +698,9 @@ Singleton {
         }
 
         property QtObject elementMoveExit: QtObject {
-            // Cookie enters with a 420ms spatial spring. The generic 200ms exit
-            // made menus vanish in half that time and became a 150ms blink with
-            // the common 0.75 motion multiplier. Keep the exit shorter than the
-            // entrance, but long enough for its rounded surfaces to remain legible.
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.exitDuration : root.cookieEverywhere ? root.cookie.exitDuration : (root.contextualMotionProfile ? 280 : 200), root.animationSpeed.enterExit)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 280 : 200, root.animationSpeed.enterExit)
             property int type: root.resolveCurveType("enterExit", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaExit : root.resolveCurveBezier("enterExit", animationCurves.emphasizedAccel)
+            property list<real> bezierCurve: root.resolveCurveBezier("enterExit", animationCurves.emphasizedAccel)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -716,12 +712,9 @@ Singleton {
         }
 
         property QtObject elementMoveFast: QtObject {
-            // Cookie springs on click too. expressiveEffects does not overshoot,
-            // so without this a cookie button's press felt like material even
-            // while its silhouette was morphing expressively.
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.pressDuration : root.cookieEverywhere ? 300 : (root.contextualMotionProfile ? 260 : animationCurves.expressiveEffectsDuration), root.animationSpeed.clickBounce)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 260 : animationCurves.expressiveEffectsDuration, root.animationSpeed.clickBounce)
             property int type: root.resolveCurveType("clickBounce", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaPress : root.resolveCurveBezier("clickBounce", root.cookieEverywhere ? animationCurves.cookieSpring : animationCurves.expressiveEffects)
+            property list<real> bezierCurve: root.resolveCurveBezier("clickBounce", animationCurves.expressiveEffects)
             property int velocity: 850
             property Component colorAnimation: Component { ColorAnimation {
                 duration: root.animation.elementMoveFast.duration
@@ -736,9 +729,9 @@ Singleton {
         }
 
         property QtObject elementResize: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.resizeDuration : (root.contextualMotionProfile ? 380 : 300), root.animationSpeed.movement)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 380 : 300, root.animationSpeed.movement)
             property int type: root.resolveCurveType("movement", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("movement", animationCurves.emphasized)
+            property list<real> bezierCurve: root.resolveCurveBezier("movement", animationCurves.emphasized)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -750,9 +743,9 @@ Singleton {
         }
 
         property QtObject clickBounce: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.pressDuration : root.zzzEverywhere ? root.zzz.overshootDuration : 400, root.animationSpeed.clickBounce)
+            property int duration: root.calcEffectiveDuration(400, root.animationSpeed.clickBounce)
             property int type: root.resolveCurveType("clickBounce", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaPress : root.resolveCurveBezier("clickBounce", root.zzzEverywhere ? animationCurves.zzzOvershoot : animationCurves.expressiveDefaultSpatial)
+            property list<real> bezierCurve: root.resolveCurveBezier("clickBounce", animationCurves.expressiveDefaultSpatial)
             property int velocity: 850
             property Component numberAnimation: Component { NumberAnimation {
                     duration: root.animation.clickBounce.duration
@@ -762,9 +755,9 @@ Singleton {
         }
         
         property QtObject scroll: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.scrollDuration : root.zzzEverywhere ? root.zzz.overshootDuration : 200, root.animationSpeed.scroll)
+            property int duration: root.calcEffectiveDuration(200, root.animationSpeed.scroll)
             property int type: root.resolveCurveType("scroll", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("scroll", root.zzzEverywhere ? animationCurves.zzzSnap : animationCurves.standardDecel)
+            property list<real> bezierCurve: root.resolveCurveBezier("scroll", animationCurves.standardDecel)
         }
 
         property QtObject menuDecel: QtObject {

@@ -147,12 +147,60 @@ ColumnLayout {
                 // the near-touching visual density seen in the runtime pass.
                 readonly property real radiusX: Math.max(122, (width - 84) / 2)
                 readonly property real radiusY: Math.max(82, (height - 104) / 2)
+                // Keep card centres on the same ellipse that is actually painted.
+                // The old guide subtracted 2 px only while the cards used the
+                // larger radii, which was most visible on the four diagonal hours.
+                readonly property real orbitRadiusX: Math.max(1, radiusX - 2)
+                readonly property real orbitRadiusY: Math.max(1, radiusY - 2)
+
+                // Parameter-angle spacing is not visually even on a wide ellipse:
+                // equal 45° steps produce unequal distances along the orbit. Map
+                // each hour to equal arc length instead so all eight cells keep
+                // the same perimeter rhythm.
+                function orbitAngle(index, count): real {
+                    if (count <= 1)
+                        return -Math.PI / 2
+
+                    const samples = 160
+                    const start = -Math.PI / 2
+                    const step = Math.PI * 2 / samples
+                    const rx = orbitalTimeline.orbitRadiusX
+                    const ry = orbitalTimeline.orbitRadiusY
+                    const lengths = [0]
+                    let total = 0
+                    let prevX = Math.cos(start) * rx
+                    let prevY = Math.sin(start) * ry
+
+                    for (let sample = 1; sample <= samples; ++sample) {
+                        const angle = start + sample * step
+                        const x = Math.cos(angle) * rx
+                        const y = Math.sin(angle) * ry
+                        const dx = x - prevX
+                        const dy = y - prevY
+                        total += Math.sqrt(dx * dx + dy * dy)
+                        lengths.push(total)
+                        prevX = x
+                        prevY = y
+                    }
+
+                    const targetLength = total * (index / count)
+                    let sample = 1
+                    while (sample < lengths.length
+                            && lengths[sample] < targetLength)
+                        ++sample
+
+                    const previousLength = lengths[Math.max(0, sample - 1)]
+                    const segmentLength = Math.max(0.0001,
+                        lengths[sample] - previousLength)
+                    const fraction = (targetLength - previousLength) / segmentLength
+                    return start + (sample - 1 + fraction) * step
+                }
 
                 Canvas {
                     id: orbitGuide
                     anchors.centerIn: parent
-                    width: Math.max(1, orbitalTimeline.radiusX * 2)
-                    height: Math.max(1, orbitalTimeline.radiusY * 2)
+                    width: Math.max(1, orbitalTimeline.orbitRadiusX * 2 + 4)
+                    height: Math.max(1, orbitalTimeline.orbitRadiusY * 2 + 4)
                     opacity: 0.42
 
                     onWidthChanged: requestPaint()
@@ -161,8 +209,8 @@ ColumnLayout {
                         const ctx = getContext("2d")
                         ctx.clearRect(0, 0, width, height)
                         ctx.beginPath()
-                        const rx = Math.max(1, width / 2 - 2)
-                        const ry = Math.max(1, height / 2 - 2)
+                        const rx = orbitalTimeline.orbitRadiusX
+                        const ry = orbitalTimeline.orbitRadiusY
                         for (let angle = 0; angle <= Math.PI * 2 + 0.01; angle += 0.05) {
                             const x = width / 2 + Math.cos(angle) * rx
                             const y = height / 2 + Math.sin(angle) * ry
@@ -238,16 +286,16 @@ ColumnLayout {
                         required property var modelData
 
                         readonly property int count: Math.max(1, orbitHours.count)
-                        readonly property real angle: (-Math.PI / 2)
-                            + index * (Math.PI * 2 / count)
+                        readonly property real angle:
+                            orbitalTimeline.orbitAngle(index, count)
                         readonly property bool highlighted: index === 0
 
                         width: 52
                         height: 64
                         x: orbitalTimeline.width / 2
-                            + Math.cos(angle) * orbitalTimeline.radiusX - width / 2
+                            + Math.cos(angle) * orbitalTimeline.orbitRadiusX - width / 2
                         y: orbitalTimeline.height / 2
-                            + Math.sin(angle) * orbitalTimeline.radiusY - height / 2
+                            + Math.sin(angle) * orbitalTimeline.orbitRadiusY - height / 2
                         z: highlighted ? 3 : 1
 
                         Rectangle {

@@ -57,6 +57,7 @@ check_cmd "slurp" "slurp"
 check_cmd "cliphist" "cliphist"
 check_cmd "pipewire" "PipeWire"
 check_cmd "wpctl" "WirePlumber"
+check_cmd "cava" "CAVA audio visualizer"
 
 echo ""
 
@@ -211,7 +212,7 @@ echo "    Install: cargo install --git https://codeberg.org/LGFae/awww.git"
 echo ""
 
 echo -e "${STY_BLUE}Audio (required):${STY_RST}"
-echo "  pipewire, pipewire-pulse, wireplumber, playerctl, pavucontrol"
+echo "  pipewire, pipewire-pulse, wireplumber, playerctl, pavucontrol, cava"
 echo "  plasma-browser-integration (browser MPRIS sessions and artwork)"
 echo ""
 

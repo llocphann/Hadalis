@@ -128,8 +128,10 @@ grep -Fq 'bottom: edge === "bottom" ? edgeBand.top : undefined' "$root/modules/s
     || fail 'bottom Screen Edge corners must attach directly to the bottom band like Hug Bar decorators'
 grep -Fq 'function adjacentShadowInset(outputName, edge)' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge shadow junctions must centralize adjacent owner geometry'
-grep -Fq 'return barThickness + root.innerRadius' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'visible Bar junction must reserve Bar thickness plus the curved corner box'
+grep -Fq 'PerimeterTokens.shadowSeamOverlap' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge straight/curved shadows must share the one-pixel tangent overlap'
+grep -Fq 'barThickness + root.innerRadius - seam' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'visible Bar junction must reserve the curved corner box with tangent overlap'
 grep -Fq 'if (Config.options?.bar?.autoHide?.enable ?? false)' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'auto-hide Bar junction must fall back to physical Screen Edge geometry'
 grep -A12 -F 'id: leadingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
@@ -183,14 +185,20 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must share Screen Edge shadow settings'
+grep -Fq 'readonly property real shadowTangentInset:' "$root/modules/bar/Bar.qml" \
+    || fail 'horizontal Bar must centralize its straight/curved shadow tangent inset'
+grep -Fq 'PerimeterTokens.shadowSeamOverlap' "$root/modules/bar/Bar.qml" \
+    || fail 'horizontal Bar shadow tangent must overlap the curved shoulder by one pixel'
 grep -A18 -F 'id: barEdgeShadow' "$root/modules/bar/Bar.qml" \
-        | grep -Fq 'leftMargin: barRoot.screenEdgeThickness' \
-    || fail 'horizontal Bar straight shadow must stop before the curved left junction'
+        | grep -Fq 'leftMargin: barRoot.shadowTangentInset' \
+    || fail 'horizontal Bar straight shadow must use the shared curved-junction inset'
 grep -A18 -F 'id: barEdgeShadow' "$root/modules/bar/Bar.qml" \
-        | grep -Fq 'rightMargin: barRoot.screenEdgeThickness' \
-    || fail 'horizontal Bar straight shadow must stop before the curved right junction'
-grep -Fq 'barRoot.screenEdgeThickness + Appearance.rounding.screenRounding' "$root/modules/verticalBar/VerticalBar.qml" \
-    || fail 'vertical Bar straight shadow must stop before top/bottom curved junctions'
+        | grep -Fq 'rightMargin: barRoot.shadowTangentInset' \
+    || fail 'horizontal Bar straight shadow must use the shared curved-junction inset'
+grep -Fq 'readonly property real shadowTangentInset:' "$root/modules/verticalBar/VerticalBar.qml" \
+    || fail 'vertical Bar must centralize its straight/curved shadow tangent inset'
+grep -Fq 'PerimeterTokens.shadowSeamOverlap' "$root/modules/verticalBar/VerticalBar.qml" \
+    || fail 'vertical Bar shadow tangent must overlap the curved shoulder by one pixel'
 for bar_source in "$root/modules/bar/Bar.qml" "$root/modules/verticalBar/VerticalBar.qml"; do
     grep -Fq 'id: autoHideScreenEdge' "$bar_source" \
         || fail "${bar_source#$root/} must keep a physical Screen Edge fallback while auto-hidden"

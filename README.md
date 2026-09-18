@@ -104,7 +104,7 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### F. Calendar / Weather v1.0 composition — P0
 
-> **Latest maintainer runtime finding (2026-09-18):** the hourly orbit/timeline is present, but the circular hour cells are too large and visually crowd one another. Reduce their diameter while preserving legibility and the center composition.
+> **Latest maintainer runtime finding (2026-09-18):** the hourly orbit/timeline was visually crowded. Source now reduces each hour cell from 58×72 to 52×64, uses the normal Material radius, and slightly widens the ellipse so adjacent cells retain visible separation. Live sizing/scaling validation is pending.
 
 Adapt the useful part of the Serpantinum reference without copying its right-side weather presentation.
 
@@ -151,7 +151,7 @@ The following issues were reproduced visually/runtime-side on 2026-09-18 and rem
 - Media transport controls: source fix removes hover text tooltips for Previous / Pause-Play / Next; live hover validation remains.
 - Media DSP: source fix replaces version-dependent channel-scoped band access with the Serpantinum-compatible preset-generation/load path and compacts the eight preset buttons; live native/Flatpak EasyEffects validation remains.
 - Shared popup motion: source fix now uses full-size directional slide/retract from the connected edge; live motion validation remains.
-- Weather center timeline: reduce hourly circular-cell size and restore clear spacing between adjacent cells.
+- Weather center timeline: source fix reduces hour-cell size and widens the orbit slightly; live spacing/scaling validation remains.
 - Left/Right Sidebars: the visible body still appears detached from the vertical Screen Edge; fix actual window/resting geometry, not only frame corner flags.
 - On-Screen Keyboard: the visible keyboard body still appears detached from the Screen Edge; fix actual window/resting geometry and preserve draggable/retract behavior.
 

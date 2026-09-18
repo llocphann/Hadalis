@@ -19,6 +19,10 @@ def main() -> None:
         "anchors.topMargin: -12",
         "anchors.bottomMargin: 0",
         "anchors.verticalCenterOffset: 0",
+        "readonly property real radiusX: Math.max(122, (width - 84) / 2)",
+        "readonly property real radiusY: Math.max(82, (height - 104) / 2)",
+        "width: 52",
+        "height: 64",
         'text: Qt.formatDate(root.now, "dddd, MMM d")',
         'text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)',
     )
@@ -33,6 +37,8 @@ def main() -> None:
         "pixelSize: Math.round(Appearance.font.pixelSize.large * 1.55)",
         "pixelSize: Math.round(Appearance.font.pixelSize.large * 2.0)",
         "pixelSize: Math.round(Appearance.font.pixelSize.large * 2.6)",
+        "width: 58",
+        "height: 72",
     ):
         if forbidden in source:
             raise AssertionError(f"Weather popup still contains oversized/loose layout token: {forbidden!r}")

@@ -142,8 +142,11 @@ ColumnLayout {
                 // Serpantinum-inspired frontend: the clock is the visual center
                 // and Hadalis hourly data is distributed around an ellipse.
                 readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
-                readonly property real radiusX: Math.max(118, (width - 92) / 2)
-                readonly property real radiusY: Math.max(78, (height - 112) / 2)
+                // Keep the eight cells clear of one another: smaller cards plus
+                // a slightly wider orbit preserve the same composition without
+                // the near-touching visual density seen in the runtime pass.
+                readonly property real radiusX: Math.max(122, (width - 84) / 2)
+                readonly property real radiusY: Math.max(82, (height - 104) / 2)
 
                 Canvas {
                     id: orbitGuide
@@ -239,8 +242,8 @@ ColumnLayout {
                             + index * (Math.PI * 2 / count)
                         readonly property bool highlighted: index === 0
 
-                        width: 58
-                        height: 72
+                        width: 52
+                        height: 64
                         x: orbitalTimeline.width / 2
                             + Math.cos(angle) * orbitalTimeline.radiusX - width / 2
                         y: orbitalTimeline.height / 2
@@ -249,7 +252,7 @@ ColumnLayout {
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: Appearance.rounding.large
+                            radius: Appearance.rounding.normal
                             color: hourPoint.highlighted
                                 ? Appearance.colors.colPrimaryContainer
                                 : Appearance.colors.colSurfaceContainerHigh

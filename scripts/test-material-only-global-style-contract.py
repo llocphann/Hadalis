@@ -35,6 +35,7 @@ CONFIG_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "ConfigSpinBox.qml"
 STYLED_SPIN_BOX = ROOT / "modules" / "common" / "widgets" / "StyledSpinBox.qml"
 SETTINGS_SWITCH = ROOT / "modules" / "common" / "widgets" / "SettingsSwitch.qml"
 SETTINGS_NOTE = ROOT / "modules" / "common" / "widgets" / "SettingsNote.qml"
+SETTINGS_CARD_SECTION = ROOT / "modules" / "common" / "widgets" / "SettingsCardSection.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -89,6 +90,7 @@ def main() -> None:
     styled_spin_box = STYLED_SPIN_BOX.read_text(encoding="utf-8")
     settings_switch = SETTINGS_SWITCH.read_text(encoding="utf-8")
     settings_note = SETTINGS_NOTE.read_text(encoding="utf-8")
+    settings_card_section = SETTINGS_CARD_SECTION.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -782,6 +784,44 @@ def main() -> None:
         "root.up.pressed ? Appearance.colors.colLayer2Active",
     ):
         require(styled_spin_box, token, "StyledSpinBox.qml")
+
+    for token in (
+        "Appearance.angelEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.cookieEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.angel.",
+        "Appearance.zzz.",
+        "Appearance.cookie.",
+        "Appearance.regalia.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "EscalonadoShadow {",
+        "ZzzPlate {",
+        "CookieFace {",
+        "RegaliaPlate {",
+        "AngelPartialBorder {",
+        "ZzzDiagonalPattern {",
+        "RegaliaControlFace {",
+        "ZzzGlyphBadge {",
+    ):
+        forbid(settings_card_section, token, "SettingsCardSection.qml")
+    for token in (
+        "visible: Appearance.effectsEnabled",
+        "y: card.y + 1.5",
+        "color: Appearance.colors.colShadow",
+        "color: SettingsMaterialPreset.cardColor",
+        "border.width: 1",
+        "border.color: SettingsMaterialPreset.cardBorderColor",
+        "implicitWidth: Appearance.font.pixelSize.larger",
+        "text: root.title",
+        "font.weight: Font.DemiBold",
+        "color: Appearance.colors.colSubtext",
+        "enabled: root.expanded",
+    ):
+        require(settings_card_section, token, "SettingsCardSection.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

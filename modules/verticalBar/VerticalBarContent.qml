@@ -19,7 +19,7 @@ Item { // Bar content region
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
-    readonly property string nativeBlurTopology: Appearance.blurTopology.roundedRectangle
+    readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
     readonly property bool nativeBlurActive: !root.isIslands
         && Appearance.useCompositorBlur("bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
@@ -61,7 +61,7 @@ Item { // Bar content region
             },
         ]
     }
-    readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && (Config.options?.bar?.cornerStyle === 3)
+    readonly property bool cardStyleEverywhere: false
     readonly property color separatorColor: Appearance.colors.colOutlineVariant
     readonly property bool gameModeMinimal: Appearance.gameModeMinimal
 
@@ -99,11 +99,10 @@ Item { // Bar content region
         color: root.separatorColor
     }
 
-    // Background shadow for supported floating/card styles.
+    // Detached Float/Card shadow is retired; VerticalBar.qml owns the one
+    // inward Hug shadow shared with Screen Edge and horizontal Bar.
     Loader {
-        active: (Config.options?.bar?.showBackground ?? true) && !root.gameModeMinimal
-            && !root.isIslands
-            && ((Config.options?.bar?.cornerStyle ?? 0) === 1 || (Config.options?.bar?.cornerStyle ?? 0) === 3)
+        active: false
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined // The loader's anchors act on this, and this should not have any anchor
@@ -114,26 +113,17 @@ Item { // Bar content region
     // Background
     Rectangle {
         id: barBackground
-        // Floating style: cornerStyle 1 (floating) or 3 (card) - NOT 0 (hug)
-        // Aurora style forces floating appearance but hug mode should still work
-        readonly property bool floatingStyle: (Config.options?.bar?.cornerStyle ?? 0) === 1 || (Config.options?.bar?.cornerStyle ?? 0) === 3
+        readonly property bool floatingStyle: false
 
         anchors {
             fill: parent
-            // Only add margins for floating styles, NOT for hug mode (cornerStyle 0)
-            margins: floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+            margins: 0
         }
         // Hug background is structural connected chrome; stale transparent
         // config must not remove the body below the shared edge shadow.
         visible: !root.gameModeMinimal && !root.isIslands
-        color: root.cardStyleEverywhere
-            ? Appearance.colors.colLayer1
-            : ((Config.options?.bar?.cornerStyle ?? 0) === 3
-                ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
-        radius: floatingStyle
-            ? ((Config.options?.bar?.cornerStyle ?? 0) === 3
-                ? Appearance.rounding.normal : Appearance.rounding.windowRounding)
-            : 0
+        color: Appearance.colors.colLayer0
+        radius: 0
         // No Behavior on the base radius — the per-corner radii below own the
         // corners, and a second interceptor on radius is unsupported (Qt warn).
 

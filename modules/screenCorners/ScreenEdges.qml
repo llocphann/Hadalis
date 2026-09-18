@@ -110,20 +110,20 @@ Scope {
 
         readonly property string outputName: String(modelData?.name ?? "")
         readonly property bool horizontal: edge === "top" || edge === "bottom"
-        // Horizontal Screen Edge windows now own their rounded endpoint
-        // decorators, exactly like the Hug Bar. Keep straight shadows outside
-        // that same-surface corner footprint; vertical edge shadows also skip
-        // the adjacent horizontal band before the curve begins.
+        // Mirror the Bar/Hug junction contract. Horizontal shadows start at
+        // the INNER boundary of an adjacent side Screen Edge and continue under
+        // the inverse-corner decorator; the radius shapes paint, not geometry.
+        // Vertical endpoint clearance remains a separate axis contract.
         readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
         readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
         readonly property real leadingShadowInset:
             root.barOwnsEdge(outputName, leadingAdjacentEdge)
                 ? 0
-                : (horizontal ? root.innerRadius : root.thickness + root.innerRadius)
+                : (horizontal ? root.thickness : root.thickness + root.innerRadius)
         readonly property real trailingShadowInset:
             root.barOwnsEdge(outputName, trailingAdjacentEdge)
                 ? 0
-                : (horizontal ? root.innerRadius : root.thickness + root.innerRadius)
+                : (horizontal ? root.thickness : root.thickness + root.innerRadius)
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -220,6 +220,7 @@ Scope {
             z: 2
             anchors {
                 left: parent.left
+                leftMargin: root.thickness
                 top: edge === "top" ? edgeBand.bottom : undefined
                 bottom: edge === "bottom" ? edgeBand.top : undefined
             }
@@ -236,6 +237,7 @@ Scope {
             z: 2
             anchors {
                 right: parent.right
+                rightMargin: root.thickness
                 top: edge === "top" ? edgeBand.bottom : undefined
                 bottom: edge === "bottom" ? edgeBand.top : undefined
             }

@@ -110,17 +110,30 @@ grep -Fq 'appearance.screenEdge.shadow.enabled' "$root/modules/settings/BarConfi
 grep -Fq 'readonly property color shadowColor:' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge runtime must paint the configured inward shadow'
 grep -Fq 'readonly property real leadingShadowInset:' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'Screen Edge straight shadows must leave the rounded corner footprint unobscured'
+    || fail 'Screen Edge runtime must expose explicit endpoint shadow insets'
 grep -Fq 'parent.width - leadingShadowInset - trailingShadowInset' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'horizontal Screen Edge shadow must stop before both rounded corner overlays'
+    || fail 'horizontal Screen Edge shadow width must derive from both endpoint insets'
 grep -Fq 'parent.height - leadingShadowInset - trailingShadowInset' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'vertical Screen Edge shadow must stop before both rounded corner overlays'
+    || fail 'vertical Screen Edge shadow height must derive from both endpoint insets'
 grep -Fq 'id: leadingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'horizontal Screen Edge must own its leading rounded endpoint'
 grep -Fq 'id: trailingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'horizontal Screen Edge must own its trailing rounded endpoint'
 grep -Fq 'bottom: edge === "bottom" ? edgeBand.top : undefined' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'bottom Screen Edge corners must attach directly to the bottom band like Hug Bar decorators'
+grep -A5 -F 'readonly property real leadingShadowInset:' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq ': (horizontal ? root.thickness : root.thickness + root.innerRadius)' \
+    || fail 'horizontal Screen Edge leading shadow must start at the adjacent side-band inner boundary'
+grep -A5 -F 'readonly property real trailingShadowInset:' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq ': (horizontal ? root.thickness : root.thickness + root.innerRadius)' \
+    || fail 'horizontal Screen Edge trailing shadow must start at the adjacent side-band inner boundary'
+grep -A12 -F 'id: leadingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq 'leftMargin: root.thickness' \
+    || fail 'leading inverse corner must begin after the left Screen Edge band'
+grep -A12 -F 'id: trailingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
+        | grep -Fq 'rightMargin: root.thickness' \
+    || fail 'trailing inverse corner must begin before the right Screen Edge band'
+
 grep -Fq '? root.thickness + Math.max(root.shadowExtent, root.innerRadius)' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'horizontal Screen Edge window must reserve visual-only room for its rounded endpoints'
 if grep -Fq 'component InnerCornerWindow: PanelWindow' "$root/modules/screenCorners/ScreenEdges.qml"; then
@@ -143,10 +156,10 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must share Screen Edge shadow settings'
-grep -Fq 'leftMargin: barRoot.hugCorners ? barRoot.roundDecoratorAllowance : 0' "$root/modules/bar/Bar.qml" \
-    || fail 'horizontal Bar shadow must stop before the left Hug corner shoulder'
-grep -Fq 'rightMargin: barRoot.hugCorners ? barRoot.roundDecoratorAllowance : 0' "$root/modules/bar/Bar.qml" \
-    || fail 'horizontal Bar shadow must stop before the right Hug corner shoulder'
+if grep -A16 -F 'id: barEdgeShadow' "$root/modules/bar/Bar.qml" \
+        | grep -Fq 'roundDecoratorAllowance'; then
+    fail 'horizontal Bar shadow must continue beneath Hug shoulders; RoundCorner owns the curved occlusion'
+fi
 grep -Fq 'topMargin: showBarBackground ? Appearance.rounding.screenRounding : 0' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must stop before the top Hug corner shoulder'
 grep -Fq 'bottomMargin: showBarBackground ? Appearance.rounding.screenRounding : 0' "$root/modules/verticalBar/VerticalBar.qml" \

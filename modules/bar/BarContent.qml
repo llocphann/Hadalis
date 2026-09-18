@@ -138,7 +138,6 @@ Item {
     readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
             "bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
-        && (Config.options?.bar?.showBackground ?? true)
         && !Appearance.gameModeMinimal
     readonly property bool zzzDetachedRounded: root.zzzEverywhere
         && Appearance.zzz.round
@@ -155,7 +154,6 @@ Item {
         || String(root.screen?.name ?? "") === String(GlobalStates.primaryScreen?.name ?? "")
     readonly property bool barSpectrumConfigured:
         (Config.options?.bar?.visualizer?.enable ?? false)
-        && (Config.options?.bar?.showBackground ?? true)
         && root.barSpectrumOutputEnabled
         && !Appearance.gameModeMinimal
         && root.visible
@@ -499,7 +497,9 @@ Item {
         readonly property bool isBottom: Config.options?.bar?.bottom ?? false
         readonly property QtObject blendedColors: root.blendedColors
 
-        visible: (Config.options?.bar?.showBackground ?? true) && !gameModeMinimal
+        // Hug background is structural connected chrome; legacy transparency
+        // no longer removes the surface from under its shoulders/shadow.
+        visible: !gameModeMinimal
         opacity: root.regaliaEverywhere ? 1
             : Math.max(0, Math.min(1, Config.options?.bar?.opacity ?? 1))
         Behavior on opacity {

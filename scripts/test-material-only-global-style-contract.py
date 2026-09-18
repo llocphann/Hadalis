@@ -59,6 +59,7 @@ CONTROL_PANEL_SLIDERS = ROOT / "modules" / "controlPanel" / "SlidersSection.qml"
 CONTROL_PANEL_SYSTEM = ROOT / "modules" / "controlPanel" / "SystemSection.qml"
 CONTROL_PANEL_PROFILE = ROOT / "modules" / "controlPanel" / "ProfileHeader.qml"
 CONTROL_PANEL_QUICK_ACTIONS = ROOT / "modules" / "controlPanel" / "QuickActionsSection.qml"
+CONTROL_PANEL_MEDIA = ROOT / "modules" / "controlPanel" / "MediaSection.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -135,6 +136,7 @@ def main() -> None:
     control_panel_system = CONTROL_PANEL_SYSTEM.read_text(encoding="utf-8")
     control_panel_profile = CONTROL_PANEL_PROFILE.read_text(encoding="utf-8")
     control_panel_quick_actions = CONTROL_PANEL_QUICK_ACTIONS.read_text(encoding="utf-8")
+    control_panel_media = CONTROL_PANEL_MEDIA.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1365,6 +1367,7 @@ def main() -> None:
         ("controlPanel/SystemSection.qml", control_panel_system),
         ("controlPanel/ProfileHeader.qml", control_panel_profile),
         ("controlPanel/QuickActionsSection.qml", control_panel_quick_actions),
+        ("controlPanel/MediaSection.qml", control_panel_media),
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
@@ -1477,6 +1480,39 @@ def main() -> None:
         "GlobalStates.sessionOpen = true",
     ):
         require(control_panel_quick_actions, token, "controlPanel/QuickActionsSection.qml")
+
+    forbid(control_panel_media, "AngelPartialBorder {", "controlPanel/MediaSection.qml")
+    for token in (
+        "CavaProcess {",
+        "active: root.visible && root.hasPlayer && GlobalStates.controlPanelOpen",
+        "ColorQuantizer {",
+        "AdaptedMaterialScheme {",
+        "radius: Appearance.rounding.normal",
+        "color: root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0",
+        "border.width: 0",
+        "opacity: root.displayedArtFilePath !== \"\" ? 0.5 : 0",
+        "blur: 0.15",
+        "saturation: 0.3",
+        "WaveVisualizer {",
+        "radius: Appearance.rounding.small",
+        "highlightColor: root.blendedColors?.colPrimary",
+        "trackColor: root.blendedColors?.colSecondaryContainer",
+        "buttonRadius: Appearance.rounding.full",
+        "onClicked: MprisController.previous()",
+        "onClicked: MprisController.togglePlaying()",
+        "onClicked: MprisController.next()",
+        "onMoved: root.player.position = value * root.player.length",
+        "running: root.player?.playbackState === MprisPlaybackState.Playing",
+    ):
+        require(control_panel_media, token, "controlPanel/MediaSection.qml")
+    for token in (
+        "readonly property color jiraCol",
+        "Appearance.inir.",
+        "Appearance.angel.",
+        "Appearance.aurora.",
+        "Appearance.zzz.",
+    ):
+        forbid(control_panel_media, token, "controlPanel/MediaSection.qml")
 
     print("Material-only global style contract: PASS")
 

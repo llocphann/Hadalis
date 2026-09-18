@@ -268,6 +268,7 @@ Source work already present on `dev`:
 - the Material-only Settings cleanup now removes the retired Global Style tab/sections/search entries and dangling legacy editor loaders from the base Themes page; the public facade retains only a narrow stale-section redirect plus persisted-value normalization, while runtime visual validation remains part of the local release pass;
 - the Calendar/Weather composition has source implementation for the requested Serpantinum-inspired left/center presentation while retaining Hadalis detailed weather ownership/content on the right;
 - Media Popup owns the existing CAVA -> `PlayerControl` -> `WaveVisualizer` path and gates visualizer activity by popup presentation/playback lifecycle;
+- the source-side runtime dependency audit now matches callers to packaging: CAVA is covered by distro/Nix paths plus generic guidance, Weather's hard dependency is `curl` with optional Geoclue GPS fallback, and Thinkfan remains an explicitly optional hardware capability whose upstream executable/service/config are never fabricated by Hadalis;
 - tray/context-menu output ownership, popup focus lifecycle, reverse retract and exact-menu delayed-close protections remain part of the connected-surface contract.
 
 Maintainer-reported follow-up checklist below is **source-side only**. A checked item means the source condition has been addressed or already exists on current `dev`; it does **not** mark the corresponding release/runtime gate as passed:
@@ -284,10 +285,9 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 
 Still open / must be treated as unfinished until audited or locally validated:
 
-1. **Packaging/runtime dependency audit is still open.** Confirm supported install/package paths cover `cava`, the Hadalis Thinkfan helper/polkit bridge plus its underlying runtime requirements, and weather dependencies. Source wiring alone is not sufficient.
-2. **Regression/docs residue is narrowed but still open.** `docs/PERIMETER.md` now documents only the supported connected-surface architecture and explicitly marks the broad `modules/perimeter` runtime as retired; continue auditing source-only common-perimeter compatibility helpers and any other stale docs/tests before deleting code. Do not change supported runtime behavior merely to satisfy stale tests.
-3. **Maintainer-reported connected-surface/UI issues remain open.** Popup connector geometry, Media visualizer visibility and Time/Date+Weather hover composition still require concrete source fixes; Overview bottom attachment is source-fixed but needs live validation; Sidebar connector ownership is source-fixed but needs live validation; same-edge Screen Edge ownership/color is source-fixed but still needs live validation.
-4. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
+1. **Regression/docs residue is narrowed but still open.** `docs/PERIMETER.md` now documents only the supported connected-surface architecture and explicitly marks the broad `modules/perimeter` runtime as retired; continue auditing source-only common-perimeter compatibility helpers and any other stale docs/tests before deleting code. Do not change supported runtime behavior merely to satisfy stale tests.
+2. **Maintainer-reported connected-surface/UI issues remain open.** Popup connector geometry, Media visualizer visibility and Time/Date+Weather hover composition still require concrete source fixes; Overview bottom attachment is source-fixed but needs live validation; Sidebar connector ownership is source-fixed but needs live validation; same-edge Screen Edge ownership/color is source-fixed but still needs live validation.
+3. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
 Recommended next source-side sequence:
 
@@ -295,9 +295,8 @@ Recommended next source-side sequence:
 2. fix the connected-surface cluster from the maintainer report: shared popup connector geometry, same-edge Bar/Screen Edge ownership/color, Sidebar vertical connector visibility and Overview bottom attachment, without rebuilding the retired broad perimeter runtime;
 3. diagnose/fix Media Popup CAVA/WaveVisualizer visibility on the existing media path;
 4. merge Time & Date hover behavior into the Weather/Calendar popup and tighten its Serpantinum-inspired left/center frontend while keeping Hadalis detailed weather on the right;
-5. finish the packaging/runtime dependency audit for Thinkfan's upstream runtime requirements and any remaining distro-specific gaps; CAVA is now declared/checkable on the generic/manual source-install path and Weather's hard curl dependency is already covered;
-6. finish the remaining source-only common-perimeter compatibility audit and remove/update any other stale regression contracts/docs that still describe retired runtime/theme behavior;
-7. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
+5. finish the remaining source-only common-perimeter compatibility audit and remove/update any other stale regression contracts/docs that still describe retired runtime/theme behavior;
+6. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 
 ## 12. New-conversation continuation prompt
 
@@ -333,7 +332,7 @@ Maintainer-reported việc còn phải sửa:
 5. Left/Right Sidebar connector hiện có source nhưng runtime report không thấy nối vào vertical Screen Edge; tìm root cause geometry/visibility.
 6. Overview/dashboard mở bằng Super/Meta+Space phải nối vào bottom Screen Edge.
 7. Thinkfan uninstall ownership symmetry: repo-managed uninstall chỉ dọn Hadalis helper/policy khi đúng context; không remove/disable upstream Thinkfan package/service/config và không phá package-manager ownership.
-8. Audit packaging/runtime dependency cho CAVA, Thinkfan và weather, rồi dọn stale regression/docs sau khi các source fix trên ổn định.
+8. Packaging/runtime dependency audit cho CAVA, Thinkfan và Weather đã có source contract; tiếp tục dọn common-perimeter residue + stale regression/docs mà không biến Thinkfan thành hard dependency hoặc tự tạo fan config.
 
 Sau mỗi nhóm thay đổi: refetch trước write, giữ patch nhỏ/atomic, commit trực tiếp lên `dev`, cập nhật checklist source-side trong README, xác nhận HEAD sau commit và báo root cause/goal, file đã đổi, SHA, source-level contract thay đổi và phần local/runtime validation còn lại.
 ```

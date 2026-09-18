@@ -201,6 +201,16 @@ QtObject {
     readonly property real animatedTangentStart: horizontal ? bodyRect.x : bodyRect.y
     readonly property real animationOffset: snap(
         (1 - revealProgress) * crossBodyExtent)
+    // A body clamped to either tangent boundary is physically in a screen
+    // corner. Reveal it along both axes so corner popups emerge diagonally;
+    // middle-of-edge popups keep the existing straight cross-axis motion.
+    readonly property real tangentBoundaryEpsilon: 1 / pixelScale()
+    readonly property int tangentRevealDirection:
+        Math.abs(tangentStart - tangentMinimum) <= tangentBoundaryEpsilon ? -1
+        : Math.abs(tangentStart - Math.max(tangentMinimum, tangentMaximum))
+            <= tangentBoundaryEpsilon ? 1 : 0
+    readonly property real tangentAnimationOffset: snap(
+        tangentRevealDirection * animationOffset)
 
     // Fixed viewport on the screen-facing side of the resting attachment seam.
     // Rendering inside this rect makes translated pixels disappear underneath
@@ -227,19 +237,19 @@ QtObject {
             outputRect.height)
 
     readonly property rect animatedBodyRect: edge === "top"
-        ? Qt.rect(bodyRect.x,
+        ? Qt.rect(snap(bodyRect.x + tangentAnimationOffset),
             snap(bodyRect.y - animationOffset),
             bodyRect.width, bodyRect.height)
         : edge === "bottom"
-            ? Qt.rect(bodyRect.x,
+            ? Qt.rect(snap(bodyRect.x + tangentAnimationOffset),
                 snap(bodyRect.y + animationOffset),
                 bodyRect.width, bodyRect.height)
         : edge === "left"
             ? Qt.rect(snap(bodyRect.x - animationOffset),
-                bodyRect.y,
+                snap(bodyRect.y + tangentAnimationOffset),
                 bodyRect.width, bodyRect.height)
         : Qt.rect(snap(bodyRect.x + animationOffset),
-            bodyRect.y,
+            snap(bodyRect.y + tangentAnimationOffset),
             bodyRect.width, bodyRect.height)
 
     readonly property real connectorTangentExtent: connectorBodyExtent

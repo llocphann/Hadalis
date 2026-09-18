@@ -58,6 +58,12 @@ Scope {
             }
             readonly property bool bottomBarOwnsEdge:
                 root.bottomBarConfigured && root.bottomBarTargetsOutput
+            readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+                Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+            readonly property real bottomAttachmentThickness: root.bottomBarOwnsEdge
+                ? Appearance.sizes.barHeight : root.screenEdgeThickness
+            readonly property real bottomAttachmentY: root.height
+                - root.bottomAttachmentThickness + PerimeterTokens.seamOverlap
             readonly property bool applicationDragActive: searchWidget.applicationDragActive
                 || (allAppsGridLoader.item?.applicationDragActive ?? false)
             screen: modelData
@@ -169,81 +175,6 @@ Scope {
                             : Appearance.animationCurves.standardAccel
                     }
                 }
-            }
-
-            function dashboardBottomAnchorPoint() {
-                const dashboard = dashboardPanel.item
-                if (!dashboard || !dashboardPanel.visible)
-                    return Qt.point(root.width / 2, root.height)
-                const rect = dashboard.connectedSurfaceRect
-                    ?? Qt.rect(0, 0, dashboard.width, dashboard.height)
-                // mapToItem() itself is non-reactive; touch all source geometry
-                // that can move/resize the dashboard before mapping.
-                dashboardPanel.x
-                dashboardPanel.y
-                dashboardPanel.width
-                dashboardPanel.height
-                dashboard.x
-                dashboard.y
-                dashboard.width
-                dashboard.height
-                rect.x
-                rect.y
-                rect.width
-                rect.height
-                return dashboard.mapToItem(
-                    overviewInputMask,
-                    rect.x + rect.width / 2,
-                    rect.y + rect.height)
-            }
-
-            QtObject {
-                id: overviewBottomConnectorGeometry
-                readonly property string edge: "bottom"
-                readonly property point bodyAnchor: root.dashboardBottomAnchorPoint()
-                readonly property real edgeThickness: Math.max(1, Math.min(32,
-                    Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-                readonly property real bodyExtent: Math.max(
-                    PerimeterTokens.connectorWidth,
-                    PerimeterTokens.connectorWidth + PerimeterTokens.outerRadius * 2)
-                readonly property real bodyStartY:
-                    bodyAnchor.y - PerimeterTokens.seamOverlap
-                readonly property real attachmentThickness:
-                    root.bottomBarOwnsEdge ? Appearance.sizes.barHeight : edgeThickness
-                readonly property real edgeJoinY:
-                    root.height - attachmentThickness + PerimeterTokens.seamOverlap
-                readonly property real connectorX: Math.max(0, Math.min(
-                    root.width - bodyExtent,
-                    bodyAnchor.x - bodyExtent / 2))
-                readonly property rect connectorRect: Qt.rect(
-                    connectorX,
-                    bodyStartY,
-                    bodyExtent,
-                    Math.max(0, edgeJoinY - bodyStartY))
-                readonly property real connectorSourceExtent:
-                    PerimeterTokens.connectorWidth
-                readonly property real connectorWidth:
-                    PerimeterTokens.connectorWidth
-                readonly property real borderWidth: 0
-                readonly property bool valid: root.iiFamily
-                    && root._presentedOpen
-                    && dashboardPanel.visible
-                    && dashboardPanel.item !== null
-                    && connectorRect.width > 0
-                    && connectorRect.height > 0
-                readonly property real progress: valid ? 1 : 0
-            }
-
-            ConnectedSurfaceConnector {
-                // Render above the dashboard body so seamOverlap can cover the
-                // body's bottom outline at the attachment point. This mirrors
-                // ConnectedSurfaceFrame's body-then-connector stacking contract.
-                z: 1
-                geometry: overviewBottomConnectorGeometry
-                fillColor: dashboardPanel.item?.connectedSurfaceColor
-                    ?? Appearance.colors.colBackgroundSurfaceContainer
-                strokeColor: "transparent"
-                strokeWidth: 0
             }
 
             MouseArea {
@@ -429,6 +360,15 @@ Scope {
                     topMargin: {
                         const ov = Config?.options?.overview;
                         const respectBar = ov && ov.respectBar !== undefined ? ov.respectBar : true;
+                        const dashboardMode = !root.taskViewMode
+                            && (Config.options?.overview?.dashboard?.enable ?? false)
+                        if (dashboardMode && dashboardPanel.visible && dashboardPanel.item) {
+                            const rect = dashboardPanel.item.connectedSurfaceRect
+                                ?? Qt.rect(0, 0, dashboardPanel.width, dashboardPanel.height)
+                            const bodyBottomInColumn = dashboardPanel.y + rect.y + rect.height
+                            return Math.round(Math.max(0,
+                                root.bottomAttachmentY - bodyBottomInColumn))
+                        }
                         
                         // Calculate bar/dock offset at top
                         let barOffset = 0;
@@ -564,6 +504,7 @@ Scope {
                     sourceComponent: Component {
                         OverviewDashboard {
                             panelVisible: root.visible
+                            directBottomAttachment: true
                             availableWidth: dashboardPanel.parent?.width ?? root.width
                             availableHeight: Math.max(260, root.height * 0.78)
                         }

@@ -64,6 +64,7 @@ CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent
 OVERVIEW_SEARCH_BAR = ROOT / "modules" / "overview" / "SearchBar.qml"
 OVERVIEW_SEARCH_ITEM = ROOT / "modules" / "overview" / "SearchItem.qml"
 OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
+OVERVIEW_ALL_APPS_GRID = ROOT / "modules" / "overview" / "OverviewAllAppsGrid.qml"
 OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
 
 
@@ -146,6 +147,7 @@ def main() -> None:
     overview_search_bar = OVERVIEW_SEARCH_BAR.read_text(encoding="utf-8")
     overview_search_item = OVERVIEW_SEARCH_ITEM.read_text(encoding="utf-8")
     overview_search_widget = OVERVIEW_SEARCH_WIDGET.read_text(encoding="utf-8")
+    overview_all_apps_grid = OVERVIEW_ALL_APPS_GRID.read_text(encoding="utf-8")
     overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
@@ -1452,6 +1454,34 @@ def main() -> None:
         "onApplicationDragChanged: active => root.applicationDragActive = active",
     ):
         require(overview_search_widget, token, "overview/SearchWidget.qml")
+
+    # The All Apps grid is an active Overview leaf. Its app model, category
+    # grouping, launch and drag behavior stay intact while chrome uses only the
+    # terminal Material colors/radii.
+    for token in legacy_style_tokens:
+        forbid(overview_all_apps_grid, token, "overview/OverviewAllAppsGrid.qml")
+    forbid(overview_all_apps_grid, "ZzzPanelBackdrop {", "overview/OverviewAllAppsGrid.qml")
+    for token in (
+        "readonly property int gridWidth: 760",
+        "readonly property color headerAccentColor: Appearance.colors.colPrimary",
+        "readonly property color surfaceColor: Appearance.colors.colLayer1",
+        "readonly property color surfaceHoverColor: Appearance.colors.colLayer1Hover",
+        "readonly property color surfaceActiveColor: Appearance.colors.colLayer1Active",
+        "readonly property color surfaceBorderColor: Appearance.colors.colLayer0Border",
+        "radius: Appearance.rounding.large",
+        "wallpaperBackdropEnabled: root.panelVisible",
+        "border.width: 1",
+        "anchors.margins: 18",
+        'text: Translation.tr("All apps")',
+        "color: Appearance.colors.colSubtext",
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer2",
+        "buttonRadius: Appearance.rounding.normal",
+        "buttonRadiusPressed: Appearance.rounding.small",
+        "AppSearch.launchEntry(entry)",
+        'Drag.keys: ["application/x-inir-desktop-entry"]',
+    ):
+        require(overview_all_apps_grid, token, "overview/OverviewAllAppsGrid.qml")
 
     # Hyprland OverviewWidget keeps its compositor behavior while its visual
     # Global Theme branches collapse to the terminal Material fallbacks.

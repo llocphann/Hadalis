@@ -118,11 +118,11 @@ BarConfig {
     }
 
     SettingsCardSection {
-        settingsTaskSection: "modules"
-        visible: root.isIiActive && root.activeSection === "modules"
+        settingsTaskSection: "system"
+        visible: root.isIiActive && root.activeSection === "system"
         expanded: true
         icon: "mode_fan"
-        title: Translation.tr("System Monitor & Thermals")
+        title: Translation.tr("Fan Control")
 
         SettingsGroup {
             SettingsSwitch {

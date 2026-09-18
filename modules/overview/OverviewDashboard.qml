@@ -157,6 +157,12 @@ Item {
 
     implicitWidth: dashContainer.implicitWidth + Appearance.sizes.elevationMargin * 2
     implicitHeight: dashContainer.implicitHeight + Appearance.sizes.elevationMargin * 2
+    // Expose only presentation geometry needed by the owning Overview window.
+    // This keeps the connector attached to the visible dashboard body rather
+    // than the Loader/shadow bounds.
+    readonly property rect connectedSurfaceRect: Qt.rect(
+        dashContainer.x, dashContainer.y, dashContainer.width, dashContainer.height)
+    readonly property color connectedSurfaceColor: dashContainer.fallbackColor
 
     Component.onCompleted: ResourceUsage.ensureRunning()
 

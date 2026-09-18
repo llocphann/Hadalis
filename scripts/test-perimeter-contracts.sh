@@ -6,6 +6,8 @@ common="$root/modules/common/perimeter"
 styled="$root/modules/bar/StyledPopup.qml"
 sidebar="$root/modules/sidebar/SidebarHost.qml"
 screen_edge="$root/modules/screenCorners/ScreenEdges.qml"
+overview="$root/modules/overview/Overview.qml"
+dashboard="$root/modules/overview/OverviewDashboard.qml"
 
 fail() {
     printf 'FAIL: perimeter shared contract: %s\n' "$1" >&2
@@ -44,6 +46,21 @@ for token in \
     grep -Fq "$token" "$sidebar" \
         || fail "SidebarHost must own its left/right edge bridge on the shared connector primitive: $token"
 done
+
+for token in \
+    'import qs.modules.common.perimeter' \
+    'id: overviewBottomConnectorGeometry' \
+    'readonly property string edge: "bottom"' \
+    'PerimeterTokens.seamOverlap' \
+    'ConnectedSurfaceConnector {' \
+    'dashboard.connectedSurfaceRect'; do
+    grep -Fq "$token" "$overview" \
+        || fail "Overview dashboard must remain connected to the bottom Screen Edge: $token"
+done
+grep -Fq 'readonly property rect connectedSurfaceRect:' "$dashboard" \
+    || fail 'OverviewDashboard must expose the visible dashboard surface geometry'
+grep -Fq 'readonly property color connectedSurfaceColor:' "$dashboard" \
+    || fail 'OverviewDashboard must expose its connector surface color'
 
 for token in \
     'readonly property color edgeColor: Appearance.colors.colLayer0' \

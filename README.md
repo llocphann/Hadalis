@@ -53,7 +53,7 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### A. Screen Edge and connected surfaces — P0
 
-> **Source status on `dev`: implementation is currently source-fixed; release gates remain unchecked until maintainer live validation.** Bar popups use placement-driven Bar + touched-Screen-Edge joins; attached corners are square, free corners remain rounded, and popup shadow follows the asymmetric body silhouette while clipping at every joined edge. OSK, left/right/compact Sidebars and Overview/dashboard now use the same no-stem direct-edge rule with joined-edge shadow suppression. Do not reintroduce connector geometry or module-specific Screen Edge opt-ins while validating this cluster.
+> **Source status on `dev`: Bar popup attachment is substantially implemented, but the latest maintainer runtime pass still shows unresolved Screen Edge attachment for both Sidebars and the On-Screen Keyboard.** Treat those as active P0 defects rather than source-fixed work. Ordinary Bar popups still use placement-driven Bar + touched-Screen-Edge joins with square attached corners, rounded free corners and shared shadow clipping. Do not reintroduce connector stems or private gaps while fixing the actual resting/window geometry of Sidebars/OSK.
 
 - [ ] **Screen Edge exists both while idle and while a window is maximized.** It must not disappear simply because no maximized window is present.
 - [ ] **Screen Edge width is configurable in Settings.** The setting must use one canonical configuration field, have a safe default/range and update the active edge without requiring an alternate renderer.
@@ -64,6 +64,8 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 - [ ] Reverse retract / hover bridge keeps the source and popup visually and interactively continuous during close/reopen transitions.
 
 ### B. Popup interaction correctness — P0
+
+> **Latest maintainer runtime finding (2026-09-18):** the shared popup reveal still reads as shrink/scale. The target motion language is a directional slide from the attached Bar/Screen Edge, following Caelestia's connected-surface feel without changing focus/outside-click lifecycle.
 
 - [ ] Existing bar popups continue to use `modules/bar/StyledPopup.qml` and the shared connected-surface primitives.
 - [ ] Popup placement anchors from the real visual source control / `hoverTarget`, not a loader or lifecycle wrapper.
@@ -92,6 +94,8 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### E. Media Popup equalizer — P0
 
+> **Latest maintainer runtime finding (2026-09-18):** the 10-band UI is visible, but the service reports `malformed-band-response`, so DSP control is not usable yet. The preset grid is also visually too loose, and transport-control hover tooltips such as Previous/Pause/Next are unnecessary in this compact popup.
+
 - [ ] The bar-attached Media Popup renders the existing **CAVA -> `PlayerControl` -> `WaveVisualizer`** path instead of an empty visualizer input.
 - [ ] The same Media Popup includes a **10-band DSP Equalizer** below the player card, using the existing optional `EqualizerService` / EasyEffects backend rather than a second ad-hoc equalizer process. User-facing bands are 31/63/125/250/500/1k/2k/4k/8k/16k Hz with the Serpantinum Flat/Bass/Treble/Vocal/Pop/Rock/Jazz/Classic curves.
 - [ ] Confirm the required CAVA runtime/package is present in the supported install/package paths, or document/install it where currently missing. EasyEffects + socat remain optional capabilities and must degrade gracefully when absent.
@@ -99,6 +103,8 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 - [ ] MPRIS controls, seek, volume and keyboard behavior do not regress while the visualizer/DSP controls are active.
 
 ### F. Calendar / Weather v1.0 composition — P0
+
+> **Latest maintainer runtime finding (2026-09-18):** the hourly orbit/timeline is present, but the circular hour cells are too large and visually crowd one another. Reduce their diameter while preserving legibility and the center composition.
 
 Adapt the useful part of the Serpantinum reference without copying its right-side weather presentation.
 
@@ -137,6 +143,17 @@ The broad `iiPerimeter` composition runtime and the shared connected-popup primi
 - [ ] Do not restore retired Pill/Mascot runtime behavior, historical Dock renderer families, Orbit/workspace experiments, removed Global Themes or similar dead presentation systems.
 - [ ] Old persisted values must degrade safely to the supported v1.0 behavior instead of resurrecting removed renderers or themes.
 - [ ] Keep Waffle separate and supported.
+
+## 3.1 Latest maintainer runtime findings
+
+The following issues were reproduced visually/runtime-side on 2026-09-18 and remain open until revalidated after source fixes:
+
+- Media transport controls: remove hover text tooltips for Previous / Pause-Play / Next in the compact Media Popup.
+- Media DSP: fix `malformed-band-response` so the existing 10-band Equalizer backend becomes functional; compact and align the eight preset buttons.
+- Shared popup motion: replace shrink/scale reveal with directional slide/retract from the connected edge.
+- Weather center timeline: reduce hourly circular-cell size and restore clear spacing between adjacent cells.
+- Left/Right Sidebars: the visible body still appears detached from the vertical Screen Edge; fix actual window/resting geometry, not only frame corner flags.
+- On-Screen Keyboard: the visible keyboard body still appears detached from the Screen Edge; fix actual window/resting geometry and preserve draggable/retract behavior.
 
 ## 4. Connected-surface architecture contract
 

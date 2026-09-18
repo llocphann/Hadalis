@@ -6,6 +6,7 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.models
 import qs.modules.common.perimeter
+import qs.modules.mediaControls
 import Qt5Compat.GraphicalEffects as GE
 import QtQuick
 import QtQuick.Controls
@@ -862,6 +863,32 @@ Item {
                             Item { Layout.fillWidth: true }
                         }
                     }
+                }
+            }
+
+            // Shared DSP lives with Dashboard Media just like Bar Media and the
+            // compact right Sidebar. Keep it available even when no MPRIS player
+            // is active; EqualizerService controls the audio backend independently.
+            Rectangle {
+                id: dashboardEqualizerCard
+                Layout.fillWidth: true
+                visible: root.cfgMedia
+                implicitHeight: visible ? dashboardEqualizer.implicitHeight + 24 : 0
+                radius: root.cardRadius
+                color: root.colCard
+                border.width: root.bw
+                border.color: root.colBorder
+                clip: true
+
+                EqualizerPanel {
+                    id: dashboardEqualizer
+                    anchors {
+                        fill: parent
+                        margins: 12
+                    }
+                    active: root.cfgMedia
+                        && root.panelVisible
+                        && root.popupPresented
                 }
             }
 

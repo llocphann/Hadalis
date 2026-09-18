@@ -17,6 +17,9 @@ LazyLoader {
     property bool popupHovered: false
     default property Item contentItem
     property real popupBackgroundMargin: 0
+    // Opt-in for corner-near popups that should visually join the orthogonal
+    // Screen Edge as well as their normal Bar connector.
+    property bool connectAdjacentScreenEdge: false
 
     // Presentation-only handle for the lazily-created connected surface. This is
     // useful to presentation peers such as the tray focus grab; feature/backend
@@ -35,6 +38,13 @@ LazyLoader {
         ? Appearance.sizes.verticalBarWidth
         : Appearance.sizes.barHeight
     readonly property real _contentPadding: 14
+    readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property real _popupScreenMargin: root.connectAdjacentScreenEdge
+        ? Math.max(PerimeterTokens.screenMargin,
+            root._screenEdgeThickness + PerimeterTokens.connectorLength
+                - PerimeterTokens.seamOverlap)
+        : PerimeterTokens.screenMargin
 
     // The visual anchor is the authority for output/window ownership. StyledPopup
     // itself is a LazyLoader and is not a visual child of the bar, so resolving
@@ -238,6 +248,7 @@ LazyLoader {
                 Math.max(1, (root.contentItem?.implicitHeight ?? 0)
                     + root._contentPadding * 2 + Math.max(0, root.popupBackgroundMargin)))
             outerRadius: root._surfaceRadius
+            screenMargin: root._popupScreenMargin
             progress: root.revealProgress
             devicePixelRatio: popupWindow.devicePixelRatio
         }
@@ -252,6 +263,90 @@ LazyLoader {
             // The connector owns the join. Leaving its outline off lets the
             // shoulder merge into both bar and body instead of drawing a stem.
             connectorBorderWidth: 0
+        }
+
+        // A corner-near popup can participate in two panel boundaries: its
+        // normal Bar attachment plus the orthogonal persistent Screen Edge.
+        // Use the resting body only to decide whether clamping put the popup at
+        // that edge; render against animatedBodyRect so the second shoulder
+        // follows the same reveal/retract motion as the main surface.
+        QtObject {
+            id: adjacentScreenEdgeGeometry
+
+            readonly property rect restBody: geometry.bodyRect
+            readonly property rect body: geometry.animatedBodyRect
+            readonly property real epsilon: 1 / Math.max(1, popupWindow.devicePixelRatio)
+            readonly property bool atLeft: root.connectAdjacentScreenEdge
+                && !root._barVertical
+                && Math.abs(restBody.x - geometry.effectiveScreenMargin) <= epsilon
+            readonly property bool atRight: root.connectAdjacentScreenEdge
+                && !root._barVertical
+                && Math.abs((popupWindow.width - geometry.effectiveScreenMargin)
+                    - (restBody.x + restBody.width)) <= epsilon
+            readonly property bool atTop: root.connectAdjacentScreenEdge
+                && root._barVertical
+                && Math.abs(restBody.y - geometry.effectiveScreenMargin) <= epsilon
+            readonly property bool atBottom: root.connectAdjacentScreenEdge
+                && root._barVertical
+                && Math.abs((popupWindow.height - geometry.effectiveScreenMargin)
+                    - (restBody.y + restBody.height)) <= epsilon
+            readonly property string edge: atLeft ? "left"
+                : atRight ? "right"
+                : atTop ? "top"
+                : atBottom ? "bottom" : ""
+            readonly property bool horizontal: edge === "top" || edge === "bottom"
+            readonly property real tangentBodyExtent: horizontal ? body.width : body.height
+            readonly property real extent: Math.max(0, Math.min(
+                tangentBodyExtent,
+                PerimeterTokens.connectorWidth + PerimeterTokens.outerRadius * 2))
+            readonly property real tangentCenter: horizontal
+                ? body.x + body.width / 2
+                : body.y + body.height / 2
+            readonly property real overlap: PerimeterTokens.seamOverlap
+            readonly property real sourceCross: edge === "left"
+                ? root._screenEdgeThickness - overlap
+                : edge === "right"
+                    ? popupWindow.width - root._screenEdgeThickness + overlap
+                : edge === "top"
+                    ? root._screenEdgeThickness - overlap
+                : popupWindow.height - root._screenEdgeThickness + overlap
+            readonly property real bodyCross: edge === "left"
+                ? body.x + overlap
+                : edge === "right"
+                    ? body.x + body.width - overlap
+                : edge === "top"
+                    ? body.y + overlap
+                : body.y + body.height - overlap
+            readonly property rect connectorRect: horizontal
+                ? Qt.rect(
+                    tangentCenter - extent / 2,
+                    Math.min(sourceCross, bodyCross),
+                    extent,
+                    Math.max(0, Math.abs(bodyCross - sourceCross)))
+                : Qt.rect(
+                    Math.min(sourceCross, bodyCross),
+                    tangentCenter - extent / 2,
+                    Math.max(0, Math.abs(bodyCross - sourceCross)),
+                    extent)
+            readonly property real connectorSourceExtent:
+                Math.min(extent, PerimeterTokens.connectorWidth)
+            readonly property real connectorWidth: PerimeterTokens.connectorWidth
+            readonly property real borderWidth: 0
+            readonly property bool valid: root.connectAdjacentScreenEdge
+                && edge.length > 0
+                && geometry.valid
+                && geometry.revealProgress > 0
+                && connectorRect.width > 0
+                && connectorRect.height > 0
+            readonly property real progress: valid ? 1 : 0
+        }
+
+        ConnectedSurfaceConnector {
+            z: 1
+            geometry: adjacentScreenEdgeGeometry
+            fillColor: root._surfaceColor
+            strokeColor: "transparent"
+            strokeWidth: 0
         }
 
         ConnectedSurfaceContentHost {

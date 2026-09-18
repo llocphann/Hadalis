@@ -10,17 +10,25 @@ ContentPage {
     settingsPageIndex: 1
     settingsPageName: Translation.tr("System")
     property string activeSection: "audio"
+    readonly property bool thinkFanManaged:
+        ThinkFanService.stateKnown && ThinkFanService.profile === "managed"
+    readonly property bool thinkFanCanApply:
+        ThinkFanService.stateKnown
+        && ThinkFanService.serviceInstalled
+        && !ThinkFanService.busy
+        && (root.thinkFanManaged || ThinkFanService.available)
 
     SettingsTaskNavigator {
         icon: "browse"
         title: Translation.tr("System")
-        description: Translation.tr("System settings are grouped by the thing you are trying to change, so audio controls do not compete with locale, input or safety policy.")
-        summary: Translation.tr("Audio · power · locale · input · safety")
+        description: Translation.tr("System settings are grouped by the thing you are trying to change, including power, cooling, locale, input and safety.")
+        summary: Translation.tr("Audio · power · fan control · locale · input · safety")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
         options: [
             { displayName: Translation.tr("Audio"), icon: "volume_up", value: "audio" },
             { displayName: Translation.tr("Power"), icon: "battery_android_full", value: "power" },
+            { displayName: Translation.tr("Fan Control"), icon: "mode_fan", value: "fan" },
             { displayName: Translation.tr("Locale"), icon: "language", value: "locale" },
             { displayName: Translation.tr("Input"), icon: "keyboard", value: "input" },
             { displayName: Translation.tr("Safety"), icon: "lock", value: "safety" }
@@ -173,6 +181,45 @@ ContentPage {
                         text: Translation.tr("Notify when battery reaches this level while charging (101 = disabled)")
                     }
                 }
+            }
+        }
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "fan"
+        visible: root.activeSection === "fan"
+        expanded: true
+        icon: "mode_fan"
+        title: Translation.tr("Fan Control")
+
+        SettingsGroup {
+            SettingsSwitch {
+                buttonIcon: "mode_fan"
+                text: Translation.tr("ThinkFan managed control")
+                description: Translation.tr("Use ThinkFan for fan control instead of firmware control. Changing ownership may require administrator authorization.")
+                autoToggle: false
+                checked: root.thinkFanManaged
+                enabled: root.thinkFanCanApply
+                onToggledByUser: nextChecked => ThinkFanService.applyProfile(
+                    nextChecked ? "managed" : "firmware")
+            }
+
+            SettingsNote {
+                icon: ThinkFanService.serviceInstalled ? "thermostat" : "info"
+                warning: ThinkFanService.stateKnown
+                    && (!ThinkFanService.serviceInstalled
+                        || ThinkFanService.statusReason.length > 0)
+                text: !ThinkFanService.stateKnown
+                    ? Translation.tr("Checking ThinkFan status…")
+                    : !ThinkFanService.serviceInstalled
+                        ? Translation.tr("thinkfan.service is unavailable; system monitoring remains available without fan controls.")
+                    : ThinkFanService.busy
+                        ? Translation.tr("Applying fan control profile…")
+                    : root.thinkFanManaged
+                        ? Translation.tr("ThinkFan is managing the fan. Changes here are reflected immediately in System Monitor.")
+                        : ThinkFanService.available
+                            ? Translation.tr("Firmware controls the fan. Changes here are reflected immediately in System Monitor.")
+                            : Translation.tr("ThinkFan is unavailable; firmware control remains active.")
             }
         }
     }

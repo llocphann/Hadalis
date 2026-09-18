@@ -76,6 +76,15 @@ Scope {
     // The visible sidebar body remains content-sized and centered in this host.
     readonly property real edgeDecorationMargin: Math.max(
         Appearance.sizes.hyprlandGapsOut, PerimeterTokens.joinFlareRadius)
+    readonly property bool screenEdgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+    readonly property color screenEdgeShadowColor:
+        ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
+            root.screenEdgeShadowOpacity)
     readonly property real availableContentHeight: Math.max(0,
         (sidebarRoot.screen?.height ?? 1080)
             - root.edgeDecorationMargin * 2)
@@ -1093,6 +1102,9 @@ Scope {
             fillColor: sidebarContentLoader.item?.connectedSurfaceColor
                 ?? Appearance.colors.colLayer0
             flareRadius: PerimeterTokens.joinFlareRadius
+            shadowEnabled: root.screenEdgeShadowEnabled
+            shadowExtent: root.screenEdgeShadowSize
+            shadowColor: root.screenEdgeShadowColor
 
             // JoinFlares maps bodyItem through mapToItem(), so the shoulder
             // already follows Loader translations exactly once. Keep it visible

@@ -178,6 +178,8 @@ Scope {
                         anchors {
                             top: parent.top
                             bottom: parent.bottom
+                            topMargin: showBarBackground ? Appearance.rounding.screenRounding : 0
+                            bottomMargin: showBarBackground ? Appearance.rounding.screenRounding : 0
                             left: !(Config.options?.bar?.bottom ?? false) ? barContent.right : undefined
                             right: (Config.options?.bar?.bottom ?? false) ? barContent.left : undefined
                         }

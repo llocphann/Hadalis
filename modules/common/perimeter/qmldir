@@ -1,6 +1,7 @@
 module qs.modules.common.perimeter
 singleton PerimeterTopology 1.0 PerimeterTopology.qml
 singleton PerimeterTokens 1.0 PerimeterTokens.qml
+PerimeterCornerShadow 1.0 PerimeterCornerShadow.qml
 ConnectedSurfaceGeometry 1.0 ConnectedSurfaceGeometry.qml
 ConnectedSurfaceConnector 1.0 ConnectedSurfaceConnector.qml
 ConnectedSurfaceFrame 1.0 ConnectedSurfaceFrame.qml

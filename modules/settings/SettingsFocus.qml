@@ -13,6 +13,7 @@ import qs.services
 import qs.modules.settings
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.modules.common.functions as CF
 
 /**
@@ -38,6 +39,20 @@ Scope {
     // instant settingsOpen flips and the backdrop cuts to black.
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
+    property real _surfaceReveal: settingsOpen ? 1 : 0
+
+    Behavior on _surfaceReveal {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: root.settingsOpen
+                ? Appearance.animation.elementMoveEnter.duration
+                : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.settingsOpen
+                ? Appearance.animationCurves.emphasizedDecel
+                : Appearance.animationCurves.emphasizedAccel
+        }
+    }
 
     // 0 = home grid, 1 = single page
     property int level: 0
@@ -60,6 +75,11 @@ Scope {
         if (settingsOpen) {
             _closeAnimRunning = false;
             closeAnimTimer.stop();
+            _surfaceReveal = 0;
+            Qt.callLater(() => {
+                if (root.settingsOpen)
+                    root._surfaceReveal = 1;
+            });
             root.clearSearch();
             const requested = GlobalStates.settingsOverlayRequestedPage ?? -1;
             if (requested >= 0 && requested < root.pages.length) {
@@ -69,6 +89,7 @@ Scope {
                 root.level = 0;
             }
         } else {
+            _surfaceReveal = 0;
             _closeAnimRunning = true;
             closeAnimTimer.restart();
         }
@@ -76,7 +97,7 @@ Scope {
 
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMoveFast.duration + 40
+        interval: Appearance.animation.elementMoveExit.duration + 40
         repeat: false
         onTriggered: root._closeAnimRunning = false
     }
@@ -408,10 +429,12 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:settingsFocus"
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
-                ? WlrLayer.Bottom : WlrLayer.Overlay
+                ? WlrLayer.Bottom
+                : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
             WlrLayershell.keyboardFocus: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
+                && !PolkitService.active
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"
@@ -571,11 +594,26 @@ Scope {
             MouseArea {
                 anchors.fill: parent
                 visible: GlobalStates.settingsOverlayOpen ?? false
-                enabled: !GlobalStates.settingsNativeDialogOpen
+                enabled: !GlobalStates.settingsNativeDialogOpen && !PolkitService.active
                 onClicked: GlobalStates.settingsOverlayOpen = false
             }
 
-            // ── Card ──
+            // ── Bottom-connected settings popup ──
+            StyledRectangularShadow {
+                target: card
+                joinBottom: true
+            }
+
+            ConnectedSurfaceJoinFlares {
+                anchors.fill: parent
+                bodyItem: card
+                fillColor: card.color
+                flareRadius: PerimeterTokens.joinFlareRadius
+                progress: root._surfaceReveal
+                joinBottom: true
+                z: 2
+            }
+
             Rectangle {
                 id: card
 
@@ -583,7 +621,9 @@ Scope {
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
 
-                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: settingsPanel.height - height
+                    + (1 - root._surfaceReveal) * height
                 width: Math.min(1040, Math.max(780, settingsPanel.width * 0.66))
                 height: Math.min(840, Math.max(600, settingsPanel.height * 0.82))
                 radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
@@ -591,6 +631,8 @@ Scope {
                       : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
                       : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
                       : Appearance.rounding.windowRounding
+                bottomLeftRadius: 0
+                bottomRightRadius: 0
                 // Same contract as the rail overlay: backgroundOpacity lands on
                 // the fill alpha (solid) or the blur transparentize (glass),
                 // never on Item opacity, which children inherit.
@@ -628,18 +670,9 @@ Scope {
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
 
-                // Opacity-only show/hide, matching the rail overlay: a scale fade
-                // was tried there and rejected as heavy. This binding is the
-                // open/close transition, not the background setting.
-                opacity: (GlobalStates.settingsOverlayOpen ?? false) ? 1 : 0
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    animation: NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                        easing.type: Appearance.animation.elementMoveFast.type
-                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                    }
-                }
+                // Keep the card mapped while the bottom-edge exit slide runs.
+                opacity: 1
+                visible: root.settingsOpen || root._closeAnimRunning
 
                 RegaliaPlate {
                     anchors.fill: parent

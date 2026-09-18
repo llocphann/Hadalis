@@ -110,6 +110,7 @@ StyledPopup {
             spacing: 12
 
             Column {
+                id: ramColumn
                 anchors.top: parent.top
                 spacing: 8
 
@@ -133,12 +134,13 @@ StyledPopup {
             }
 
             Column {
+                id: thermalColumn
                 anchors.top: parent.top
                 spacing: 8
 
                 ResourceHeaderItem {
                     icon: "thermostat"
-                    label: Translation.tr("Temperature")
+                    label: Translation.tr("Thermal")
                 }
                 Column {
                     spacing: 4
@@ -156,6 +158,7 @@ StyledPopup {
             }
 
             Column {
+                id: cpuColumn
                 anchors.top: parent.top
                 spacing: 8
 
@@ -168,12 +171,12 @@ StyledPopup {
                     ResourceItem {
                         icon: "bolt"
                         label: Translation.tr("Load:")
-                        value: (ResourceUsage.cpuUsage > 0.8 ? Translation.tr("High") : ResourceUsage.cpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low")) + ` (${Math.round(ResourceUsage.cpuUsage * 100)}%)`
+                        value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
                     }
                     ResourceItem {
                         icon: "memory_alt"
                         label: Translation.tr("GPU:")
-                        value: (ResourceUsage.gpuUsage > 0.8 ? Translation.tr("High") : ResourceUsage.gpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low")) + ` (${Math.round(ResourceUsage.gpuUsage * 100)}%)`
+                        value: `${Math.round(ResourceUsage.gpuUsage * 100)}%`
                     }
                 }
             }
@@ -186,72 +189,107 @@ StyledPopup {
             opacity: 0.65
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.minimumWidth: resourcesRow.implicitWidth
-            spacing: 8
+        Row {
+            id: fanMetricsRow
+            Layout.alignment: Qt.AlignHCenter
+            spacing: resourcesRow.spacing
 
-            MaterialSymbol {
-                text: "mode_fan"
-                fill: popup.thinkFanManaged ? 1 : 0
-                iconSize: Appearance.font.pixelSize.large
-                color: popup.thinkFanManaged
-                    ? Appearance.colors.colPrimary
-                    : Appearance.colors.colOnSurfaceVariant
-                Layout.alignment: Qt.AlignVCenter
-            }
+            Item {
+                width: ramColumn.width
+                height: fanControlRow.implicitHeight
 
-            StyledText {
-                text: Translation.tr("Fan")
-                font.weight: Font.Medium
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurfaceVariant
-                verticalAlignment: Text.AlignVCenter
-            }
+                RowLayout {
+                    id: fanControlRow
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
 
-            StyledSwitch {
-                id: thinkFanProfileSwitch
-                checked: popup.thinkFanManaged
-                enabled: popup.thinkFanCanApply
-                activeFocusOnTab: true
-                Accessible.name: Translation.tr("Use ThinkFan managed fan control")
+                    MaterialSymbol {
+                        text: "mode_fan"
+                        fill: popup.thinkFanManaged ? 1 : 0
+                        iconSize: Appearance.font.pixelSize.large
+                        color: popup.thinkFanManaged
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colOnSurfaceVariant
+                        Layout.alignment: Qt.AlignVCenter
+                    }
 
-                onToggled: {
-                    const requestedManaged = checked
-                    ThinkFanService.applyProfile(
-                        requestedManaged ? "managed" : "firmware")
-                    checked = Qt.binding(() => popup.thinkFanManaged)
+                    StyledText {
+                        text: Translation.tr("Fan")
+                        font.weight: Font.Medium
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurfaceVariant
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    StyledSwitch {
+                        id: thinkFanProfileSwitch
+                        checked: popup.thinkFanManaged
+                        enabled: popup.thinkFanCanApply
+                        activeFocusOnTab: true
+                        Accessible.name: Translation.tr("Use ThinkFan managed fan control")
+
+                        onToggled: {
+                            const requestedManaged = checked
+                            ThinkFanService.applyProfile(
+                                requestedManaged ? "managed" : "firmware")
+                            checked = Qt.binding(() => popup.thinkFanManaged)
+                        }
+                    }
                 }
             }
 
-            StyledText {
-                text: Translation.tr("Speed:")
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurfaceVariant
+            Item {
+                width: thermalColumn.width
+                height: speedRow.implicitHeight
+
+                RowLayout {
+                    id: speedRow
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+
+                    StyledText {
+                        text: Translation.tr("Speed:")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    StyledText {
+                        text: ThinkFanService.fanRpm >= 0
+                            ? Translation.tr("%1 RPM").arg(ThinkFanService.fanRpm)
+                            : "—"
+                        font.weight: Font.Medium
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurface
+                    }
+                }
             }
 
-            StyledText {
-                text: ThinkFanService.fanRpm >= 0
-                    ? Translation.tr("%1 RPM").arg(ThinkFanService.fanRpm)
-                    : "—"
-                font.weight: Font.Medium
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurface
-            }
+            Item {
+                width: cpuColumn.width
+                height: levelRow.implicitHeight
 
-            StyledText {
-                text: Translation.tr("Level:")
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurfaceVariant
-            }
+                RowLayout {
+                    id: levelRow
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
 
-            StyledText {
-                Layout.fillWidth: true
-                text: ThinkFanService.fanLevel.length > 0
-                    ? ThinkFanService.fanLevel : "—"
-                font.weight: Font.Medium
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurface
+                    StyledText {
+                        text: Translation.tr("Level:")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    StyledText {
+                        text: ThinkFanService.fanLevel.length > 0
+                            ? ThinkFanService.fanLevel : "—"
+                        font.weight: Font.Medium
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurface
+                    }
+                }
             }
         }
 

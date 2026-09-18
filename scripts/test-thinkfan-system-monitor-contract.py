@@ -64,6 +64,10 @@ def main() -> None:
         'Translation.tr("ThinkFan")',
         'Translation.tr("Fan speed")',
         'Translation.tr("Fan level")',
+        'Translation.tr("Temperature")',
+        'Translation.tr("High")',
+        'Translation.tr("Medium")',
+        'Translation.tr("Low")',
         "thinkFanStatusMessage",
         "describeThinkFanStatus",
     ):
@@ -76,6 +80,16 @@ def main() -> None:
     notice_pos = resources_popup.index("NoticeBox {", level_pos)
     check(fan_pos < speed_pos < level_pos < notice_pos,
           "ThinkFan monitor controls/metrics must remain one inline row before error feedback")
+
+    for token in (
+        'label: Translation.tr("Thermal")',
+        'value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`',
+        'value: `${Math.round(ResourceUsage.gpuUsage * 100)}%`',
+        "width: thermalColumn.width",
+        "width: cpuColumn.width",
+    ):
+        check(token in resources_popup,
+              f"System Monitor compact grid must keep screenshot-aligned metrics: {token}")
 
     for token in (
         "property bool connectAdjacentScreenEdge: false",

@@ -286,7 +286,7 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 
 Still open / must be treated as unfinished until audited or locally validated:
 
-1. **Regression/docs residue is narrowed but still open.** Perimeter docs/tests now match the retired broad runtime and the dead common host/config/cutover/route cluster is gone; continue the final stale-doc/test pass outside this cluster (especially retired Global Style/API assumptions) without changing supported runtime behavior merely to satisfy stale tests.
+1. **Regression/docs residue is narrowed but still open.** Perimeter docs/tests match the retired broad runtime, the dead common host/config/cutover/route cluster is gone, and the shell-surface regression no longer requires the retired Clock tooltip to exist. Continue the final stale-doc/test pass outside this cluster (especially retired Global Style/API assumptions) without changing supported runtime behavior merely to satisfy stale tests.
 2. **All maintainer-reported follow-up items now have source-side fixes.** Connected popup geometry, Media waveform visibility, Weather/Calendar sizing/hover, Overview bottom attachment, Sidebar connectors and same-edge Screen Edge ownership/color remain runtime-sensitive and require the maintainer's live desktop pass.
 3. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 

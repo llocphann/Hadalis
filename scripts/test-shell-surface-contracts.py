@@ -170,8 +170,10 @@ def main() -> None:
     check("active: root.trayOverflowOpen" not in tray,
           "Tray overflow must not bypass the retract lifecycle by overriding LazyLoader.active")
 
+    check(not (ROOT / "modules/bar/ClockWidgetTooltip.qml").exists(),
+          "Retired ClockWidgetTooltip must not return as a standalone hover surface")
+
     connected_bar_popouts = {
-        "modules/bar/ClockWidgetTooltip.qml": "StyledPopup {",
         "modules/bar/TimerIndicatorTooltip.qml": "StyledPopup {",
         "modules/bar/ShellUpdateIndicator.qml": "StyledPopup {",
         "modules/bar/BatteryPopup.qml": "StyledPopup {",

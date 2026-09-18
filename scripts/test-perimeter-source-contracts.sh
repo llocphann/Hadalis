@@ -8,13 +8,15 @@ media="$root/modules/bar/Media.qml"
 weather="$root/modules/bar/weather/WeatherBar.qml"
 styled_popup="$root/modules/bar/StyledPopup.qml"
 connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
+overview="$root/modules/overview/Overview.qml"
+overview_dashboard="$root/modules/overview/OverviewDashboard.qml"
 
 fail() {
     printf 'FAIL: perimeter source retirement contract: %s\n' "$1" >&2
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -121,6 +123,25 @@ if grep -Fq 'geometry: oskConnectorGeometry' "$root/modules/onScreenKeyboard/OnS
 fi
 grep -Fq 'screenEdgeShadowSize' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK shadow must share Screen Edge settings'
+
+if grep -Fq 'ConnectedSurfaceConnector {' "$overview"; then
+    fail 'Overview must attach its dashboard body directly instead of rendering a connector stem'
+fi
+if grep -Fq 'overviewBottomConnectorGeometry' "$overview"; then
+    fail 'Overview must not retain bottom connector geometry'
+fi
+grep -Fq 'readonly property real bottomAttachmentY:' "$overview" \
+    || fail 'Overview must derive the direct bottom Bar/Screen Edge boundary'
+grep -Fq 'root.bottomAttachmentY - bodyBottomInColumn' "$overview" \
+    || fail 'Overview must place the dashboard body directly on the bottom attachment boundary'
+grep -Fq 'directBottomAttachment: true' "$overview" \
+    || fail 'Overview must tell the dashboard surface that its bottom edge is joined'
+grep -Fq 'property bool directBottomAttachment: false' "$overview_dashboard" \
+    || fail 'OverviewDashboard must expose direct bottom attachment state'
+grep -Fq 'joinBottom: root.directBottomAttachment' "$overview_dashboard" \
+    || fail 'Overview dashboard shadow must stop at its joined bottom edge'
+grep -Fq 'bottomLeftRadius: root.directBottomAttachment ? 0 : radius' "$overview_dashboard" \
+    || fail 'Overview dashboard must square its joined bottom corners'
 
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'normal Media UX must stay on StyledPopup'

@@ -9,6 +9,9 @@ Item {
     property color borderColor: "transparent"
     property real borderWidth: geometry.borderWidth ?? 0
     property real connectorBorderWidth: 0
+    // Opt-in presentation used by bar popouts. Other connected surfaces keep
+    // the existing flared connector contract unchanged.
+    property bool edgeContactMode: false
 
     readonly property Item bodyItem: body
     readonly property Item connectorItem: connector
@@ -58,7 +61,7 @@ Item {
     Rectangle {
         id: attachedEdgeFill
         z: 1
-        visible: body.visible && root.contactRadius > 0
+        visible: root.edgeContactMode && body.visible && root.contactRadius > 0
         color: root.fillColor
 
         x: root.geometry.edge === "right"
@@ -79,7 +82,7 @@ Item {
     RoundCorner {
         id: contactStart
         z: 2
-        visible: body.visible && root.contactRadius > 0
+        visible: root.edgeContactMode && body.visible && root.contactRadius > 0
         width: root.contactRadius
         height: root.contactRadius
         implicitSize: Math.round(root.contactRadius)
@@ -116,7 +119,7 @@ Item {
     RoundCorner {
         id: contactEnd
         z: 2
-        visible: body.visible && root.contactRadius > 0
+        visible: root.edgeContactMode && body.visible && root.contactRadius > 0
         width: root.contactRadius
         height: root.contactRadius
         implicitSize: Math.round(root.contactRadius)
@@ -149,14 +152,15 @@ Item {
         }
     }
 
-    // Keep the connector object as a geometry/input compatibility shim. The
-    // visible presentation no longer uses the old narrow Bézier stem.
+    // Default path: preserve the flared connector used by perimeter-owned
+    // surfaces. Bar popouts opt into edgeContactMode, where the same object is
+    // retained only as a geometry/input compatibility shim.
     ConnectedSurfaceConnector {
         id: connector
         geometry: root.geometry
         fillColor: root.fillColor
         strokeColor: root.borderColor
         strokeWidth: root.connectorBorderWidth
-        opacity: 0
+        opacity: root.edgeContactMode ? 0 : 1
     }
 }

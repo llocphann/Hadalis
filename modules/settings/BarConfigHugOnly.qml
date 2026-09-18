@@ -54,14 +54,30 @@ BarConfig {
         title: Translation.tr("Screen Edge")
 
         SettingsGroup {
-            ConfigSpinBox {
-                icon: "width"
-                text: Translation.tr("Screen edge width (px)")
-                value: Config.options?.appearance?.screenEdge?.width ?? 10
-                from: 1
-                to: 32
-                stepSize: 1
-                onValueChanged: Config.setNestedValue("appearance.screenEdge.width", value)
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "width"
+                    text: Translation.tr("Screen edge width (px)")
+                    value: Config.options?.appearance?.screenEdge?.width ?? 10
+                    from: 1
+                    to: 32
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.width", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "rounded_corner"
+                    text: Translation.tr("Border radius (px)")
+                    value: Config.options?.appearance?.screenEdge?.radius ?? 25
+                    from: 0
+                    to: 64
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.radius", value)
+                }
             }
 
             SettingsSwitch {

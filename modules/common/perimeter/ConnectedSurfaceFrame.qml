@@ -115,9 +115,6 @@ Item {
         fillColor: root.fillColor
         flareRadius: root.joinFlareRadius
         progress: root.geometry.revealProgress ?? root.geometry.progress ?? 1
-        shadowEnabled: root.shadowEnabled
-        shadowExtent: root.shadowExtent
-        shadowColor: root.shadowColor
         joinTop: root.joinTop
         joinBottom: root.joinBottom
         joinLeft: root.joinLeft

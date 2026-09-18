@@ -77,6 +77,10 @@ Songs come from MPD `listallinfo`; saved MPD playlists, folder collections and t
 
 Normal transport integration uses the endpoint-matched `mpd-mpris` bridge: play/pause, previous/next, seeking, volume and shuffle prefer the MPD MPRIS player exposed through `MprisController`. Direct MPD commands are only a graceful fallback or are used for MPD-only operations such as queue replacement/database update. Bar, Media Popup and other media surfaces therefore observe the same session.
 
+The sidebar now-playing surface reuses the same `PlayerControl` component as the Bar Media popup, including the shared artwork, progress, transport controls and CAVA presentation. Songs, Playlists and Queue are explicit scrollable views; the Songs search field is height-capped so it cannot consume the library viewport.
+
+The **Lyrics** tab is local-only. For the current MPD track, Hadalis looks beside the resolved audio path for same-name `.lrc` (preferred) or `.txt` sidecars. Timed LRC lines follow MPRIS/MPD playback position; unsynchronized text remains manually scrollable. This tab performs no network lyric lookup.
+
 The historical `YtMusic` source remains only as compatibility code and is no longer routed from the Left Sidebar or its Settings UI.
 
 ### Media controls layouts

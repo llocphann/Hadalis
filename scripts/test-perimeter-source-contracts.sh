@@ -136,6 +136,10 @@ grep -A12 -F 'id: trailingCorner' "$root/modules/screenCorners/ScreenEdges.qml" 
     || fail 'trailing inverse corner must begin before the right Screen Edge band'
 grep -Fq 'PerimeterCornerShadow {' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'Screen Edge inverse corners must use the shared perimeter corner shadow'
+grep -Fq 'import qs.modules.common.perimeter' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge must import the shared perimeter corner shadow module'
+grep -Fq 'PerimeterCornerShadow 1.0 PerimeterCornerShadow.qml' "$root/modules/common/perimeter/qmldir" \
+    || fail 'shared perimeter corner shadow must be exported by the module'
 grep -Fq 'GE.RadialGradient {' "$corner_shadow" \
     || fail 'shared perimeter corner shadow must remain radius-aware'
 grep -Fq '1 - root.shadowExtent / Math.max(1, root.cornerRadius)' "$corner_shadow" \

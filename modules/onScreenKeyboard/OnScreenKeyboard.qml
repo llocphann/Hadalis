@@ -72,7 +72,7 @@ Scope { // Scope
     readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
         Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
     readonly property color screenEdgeShadowColor:
-        ColorUtils.applyAlpha(Appearance.colors.colShadow, screenEdgeShadowOpacity)
+        ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, screenEdgeShadowOpacity)
 
     // Aggregated competing-overlay signal. Whenever any of these toggles, this
     // value changes and the inner PanelWindow re-stacks itself on top of its

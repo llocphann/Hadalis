@@ -15,7 +15,10 @@ import qs.modules.common.functions
 
 Scope {
     id: bar
-    property bool showBarBackground: Config.options?.bar?.showBackground ?? true
+    // Hug is the only supported Classic Bar surface. Keep its structural
+    // background resident so endpoint shoulders and the shared perimeter shadow
+    // cannot disappear because of an old transparent-bar config value.
+    readonly property bool showBarBackground: true
     property bool _legacyCornerStyleMigrationDone: false
     // Note: Vignette effect moved to Backdrop.qml (backdrop wallpaper layer)
 
@@ -200,11 +203,11 @@ Scope {
                         }
                         Behavior on anchors.topMargin {
                             enabled: Appearance.animationsEnabled
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                            animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
                         }
                         Behavior on anchors.bottomMargin {
                             enabled: Appearance.animationsEnabled
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
+                            animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
                         }
 
                         states: State {

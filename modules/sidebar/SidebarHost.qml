@@ -1107,10 +1107,6 @@ Scope {
             fillColor: sidebarContentLoader.item?.connectedSurfaceColor
                 ?? Appearance.colors.colLayer0
             flareRadius: PerimeterTokens.joinFlareRadius
-            shadowEnabled: root.screenEdgeShadowEnabled
-            shadowExtent: root.screenEdgeShadowSize
-            shadowColor: root.screenEdgeShadowColor
-
             // JoinFlares maps bodyItem through mapToItem(), so the shoulder
             // already follows Loader translations exactly once. Keep it visible
             // through translated slide/drop motion; other morph modes still wait

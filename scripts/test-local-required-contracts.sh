@@ -148,14 +148,18 @@ for policy in \
     fi
 done
 
-for migration in \
+require_contains 'cmp -s "$policy" "$installed_policy"' \
     sdata/migrations/037-battery-charge-limit-helper.sh \
-    sdata/migrations/041-thinkfan-helper-bridge.sh; do
-    require_contains 'cmp -s "' "$migration" \
-        "$migration must compare installed privileged payloads against current repository assets"
-    require_contains 'pkg_sudo install -Dm644' "$migration" \
-        "$migration must refresh the root-owned polkit action when the repository policy changes"
-done
+    'battery helper migration must detect a changed installed polkit policy'
+require_contains 'pkg_sudo install -Dm644 "$policy" /usr/share/polkit-1/actions/org.inir.battery-charge-limit.policy' \
+    sdata/migrations/037-battery-charge-limit-helper.sh \
+    'battery helper migration must refresh the installed polkit policy'
+require_contains 'cmp -s "$policy_src" "$policy_dst"' \
+    sdata/migrations/041-thinkfan-helper-bridge.sh \
+    'ThinkFan bridge migration must detect a changed installed polkit policy'
+require_contains 'pkg_sudo install -Dm644 "$policy_src" "$policy_dst"' \
+    sdata/migrations/041-thinkfan-helper-bridge.sh \
+    'ThinkFan bridge migration must refresh the installed polkit policy'
 
 for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
     for marker in \

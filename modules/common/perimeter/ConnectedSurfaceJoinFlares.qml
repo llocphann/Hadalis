@@ -22,12 +22,18 @@ Item {
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
     readonly property point bodyOrigin: root.bodyItem
         ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
+    // Caelestia moves one already-formed blob through a clipped viewport; the
+    // corner geometry itself does not grow from zero during the reveal. Keep
+    // the shoulder at its full radius and let the translated body + clip own
+    // the animation. Scaling the radius by progress made the flare disappear
+    // for most of the transition and could leave it visually absent after a
+    // rapid reverse.
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,
         root.bodyItem?.width / 2 ?? 0,
-        root.bodyItem?.height / 2 ?? 0)) * root.reveal
+        root.bodyItem?.height / 2 ?? 0))
 
-    visible: root.radius > 0
+    visible: root.reveal > 0.001 && root.radius > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
     component Flare: Canvas {

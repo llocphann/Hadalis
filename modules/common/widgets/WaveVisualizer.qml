@@ -70,8 +70,10 @@ Canvas {
     }
 
     layer.enabled: root.visible && Appearance.effectsEnabled
+    // layer.effect receives this Canvas' offscreen texture automatically.
+    // Pointing MultiEffect.source back at the Canvas makes the effect include
+    // its own parent, which Qt explicitly does not support and can render blank.
     layer.effect: MultiEffect {
-        source: root
         saturation: 0.2
         blurEnabled: Appearance.effectsEnabled
         blurMax: 7

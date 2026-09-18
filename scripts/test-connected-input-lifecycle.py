@@ -30,9 +30,11 @@ def main() -> None:
           "StyledPopup must revoke click-popup input on close while preserving the hover bridge")
     check("mask: connectedMask" in popup,
           "StyledPopup must keep using the shaped connected-surface mask")
-    check("enabled: root.active" in popup
-          and "onHoveredChanged: root.popupHovered = hovered" in popup,
-          "Hover popouts must retain the body hover bridge during visual linger")
+    check("readonly property bool popupHovered: root._bodyHovered || root._contentHovered" in popup
+          and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in popup
+          and "enabled: root.active" in popup
+          and "onHoveredChanged: root._contentHovered = hovered" in popup,
+          "Hover popouts must retain hover across both the body and interactive content plane")
 
     for token in (
         "focusable: root.keyboardFocus && root.requestedVisible",

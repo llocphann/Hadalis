@@ -89,6 +89,10 @@ Scope {
                     ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, edgeShadowOpacity)
                 readonly property real inwardDecoratorAllowance:
                     Math.max(Appearance.rounding.screenRounding, edgeShadowExtent)
+                readonly property real shadowTangentInset: Math.max(
+                    screenEdgeThickness,
+                    screenEdgeThickness + Appearance.rounding.screenRounding
+                        - PerimeterTokens.shadowSeamOverlap)
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
@@ -163,12 +167,10 @@ Scope {
                             x: (Config.options?.bar?.bottom ?? false)
                                 ? autoHideEdgeBand.x - barRoot.edgeShadowExtent
                                 : autoHideEdgeBand.x + autoHideEdgeBand.width
-                            y: barRoot.screenEdgeThickness
-                                + Appearance.rounding.screenRounding
+                            y: barRoot.shadowTangentInset
                             width: barRoot.edgeShadowExtent
                             height: Math.max(0, parent.height
-                                - 2 * (barRoot.screenEdgeThickness
-                                    + Appearance.rounding.screenRounding))
+                                - 2 * barRoot.shadowTangentInset)
                             color: "transparent"
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
@@ -298,9 +300,9 @@ Scope {
                             top: parent.top
                             bottom: parent.bottom
                             topMargin: showBarBackground
-                                ? barRoot.screenEdgeThickness + Appearance.rounding.screenRounding : 0
+                                ? barRoot.shadowTangentInset : 0
                             bottomMargin: showBarBackground
-                                ? barRoot.screenEdgeThickness + Appearance.rounding.screenRounding : 0
+                                ? barRoot.shadowTangentInset : 0
                             left: !(Config.options?.bar?.bottom ?? false) ? barContent.right : undefined
                             right: (Config.options?.bar?.bottom ?? false) ? barContent.left : undefined
                         }

@@ -1432,6 +1432,7 @@ def main() -> None:
         "RegaliaPlate {",
         "ZzzGraphicPlate {",
         "ZzzPanelBackdrop {",
+        "root.zzzEverywhere",
     ):
         forbid(overview_search_widget, token, "overview/SearchWidget.qml")
     for token in (
@@ -1448,6 +1449,9 @@ def main() -> None:
         "Layout.rightMargin: 4",
         "Layout.topMargin: verticalPadding",
         "Layout.bottomMargin: verticalPadding",
+        "topMargin: 10",
+        "bottomMargin: 10",
+        "spacing: 2",
         "color: Appearance.colors.colOutlineVariant",
         "ActionModeView {",
         "delegate: SearchItem {",

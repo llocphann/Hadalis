@@ -532,9 +532,9 @@ Item { // Wrapper
                 Layout.fillWidth: true
                 implicitHeight: Math.min(root.resultsAvailableHeight, appResults.contentHeight + topMargin + bottomMargin)
                 clip: true
-                topMargin: root.zzzEverywhere ? 12 : 10
-                bottomMargin: root.zzzEverywhere ? 14 : 10
-                spacing: root.zzzEverywhere ? 6 : 2
+                topMargin: 10
+                bottomMargin: 10
+                spacing: 2
                 KeyNavigation.up: searchBar
                 highlightMoveDuration: 100
 

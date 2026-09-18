@@ -17,6 +17,51 @@ ContentPage {
         && ThinkFanService.serviceInstalled
         && !ThinkFanService.busy
         && (root.thinkFanManaged || ThinkFanService.available)
+    readonly property bool profileFanControlEnabled:
+        Config.options?.powerProfiles?.fanControl?.enabled ?? false
+    readonly property bool profileFanControlReady:
+        ThinkFanService.stateKnown
+        && ThinkFanService.directControlAvailable
+        && !root.thinkFanManaged
+        && !ThinkFanService.busy
+
+    function profileFanLevel(key: string): int {
+        const cfg = Config.options?.powerProfiles?.fanControl
+        let value = 0
+        switch (key) {
+        case "powerSaver": value = Number(cfg?.powerSaver ?? 0); break
+        case "performance": value = Number(cfg?.performance ?? 0); break
+        case "balanced":
+        default: value = Number(cfg?.balanced ?? 0); break
+        }
+        if (!isFinite(value))
+            return 0
+        return Math.max(0, Math.min(7, Math.round(value)))
+    }
+
+    function setProfileFanLevel(key: string, value): void {
+        const normalized = Math.max(0, Math.min(7, Math.round(Number(value))))
+        if (root.profileFanLevel(key) === normalized)
+            return
+        Config.setNestedValue("powerProfiles.fanControl." + key, normalized)
+        if (root.profileFanControlEnabled
+                && ThinkFanService.activePowerProfileKey === key
+                && ThinkFanService.profile !== "managed") {
+            Qt.callLater(() => ThinkFanService.applyFanLevel(normalized))
+        }
+    }
+
+    function setProfileFanControlEnabled(enabled: bool): void {
+        if (root.profileFanControlEnabled === enabled)
+            return
+        Config.setNestedValue("powerProfiles.fanControl.enabled", enabled)
+        if (!root.profileFanControlReady)
+            return
+        if (enabled)
+            Qt.callLater(() => ThinkFanService.applyConfiguredPowerProfileFanLevel())
+        else
+            Qt.callLater(() => ThinkFanService.applyFanLevel(0))
+    }
 
     SettingsTaskNavigator {
         icon: "browse"
@@ -211,15 +256,81 @@ ContentPage {
                         || ThinkFanService.statusReason.length > 0)
                 text: !ThinkFanService.stateKnown
                     ? Translation.tr("Checking ThinkFan status…")
-                    : !ThinkFanService.serviceInstalled
-                        ? Translation.tr("thinkfan.service is unavailable; system monitoring remains available without fan controls.")
                     : ThinkFanService.busy
-                        ? Translation.tr("Applying fan control profile…")
+                        ? Translation.tr("Applying fan control change…")
                     : root.thinkFanManaged
-                        ? Translation.tr("ThinkFan is managing the fan. Changes here are reflected immediately in System Monitor.")
-                        : ThinkFanService.available
-                            ? Translation.tr("Firmware controls the fan. Changes here are reflected immediately in System Monitor.")
-                            : Translation.tr("ThinkFan is unavailable; firmware control remains active.")
+                        ? Translation.tr("ThinkFan is managing the fan. Per-profile fixed levels are paused while managed mode is active.")
+                    : ThinkFanService.directControlAvailable
+                        ? Translation.tr("Direct fan control is available. Level 0 means automatic firmware control.")
+                    : ThinkFanService.available
+                        ? Translation.tr("ThinkFan is available, but direct profile fan levels require ThinkPad ACPI fan_control=1.")
+                        : Translation.tr("Fan-control integration is unavailable; firmware control remains active.")
+            }
+
+            SettingsDivider {}
+
+            SettingsSwitch {
+                buttonIcon: "sync"
+                text: Translation.tr("Follow power profile fan level")
+                description: Translation.tr("Apply the saved fan level when Power Saver, Balanced or Performance becomes active.")
+                autoToggle: false
+                checked: root.profileFanControlEnabled
+                enabled: root.profileFanControlReady
+                onToggledByUser: nextChecked =>
+                    root.setProfileFanControlEnabled(nextChecked)
+            }
+
+            ConfigRow {
+                uniform: true
+                enabled: ThinkFanService.directControlAvailable && !root.thinkFanManaged
+                opacity: enabled ? 1 : 0.5
+
+                ConfigSpinBox {
+                    icon: "energy_savings_leaf"
+                    text: Translation.tr("Power Saver fan level")
+                    value: root.profileFanLevel("powerSaver")
+                    from: 0
+                    to: 7
+                    stepSize: 1
+                    onValueChanged: root.setProfileFanLevel("powerSaver", value)
+                    StyledToolTip {
+                        text: Translation.tr("0 = Auto; 1–7 = fixed ThinkPad ACPI fan level")
+                    }
+                }
+
+                ConfigSpinBox {
+                    icon: "airwave"
+                    text: Translation.tr("Balanced fan level")
+                    value: root.profileFanLevel("balanced")
+                    from: 0
+                    to: 7
+                    stepSize: 1
+                    onValueChanged: root.setProfileFanLevel("balanced", value)
+                    StyledToolTip {
+                        text: Translation.tr("0 = Auto; 1–7 = fixed ThinkPad ACPI fan level")
+                    }
+                }
+
+                ConfigSpinBox {
+                    icon: "local_fire_department"
+                    text: Translation.tr("Performance fan level")
+                    value: root.profileFanLevel("performance")
+                    from: 0
+                    to: 7
+                    stepSize: 1
+                    onValueChanged: root.setProfileFanLevel("performance", value)
+                    StyledToolTip {
+                        text: Translation.tr("0 = Auto; 1–7 = fixed ThinkPad ACPI fan level")
+                    }
+                }
+            }
+
+            SettingsNote {
+                icon: ThinkFanService.directControlAvailable ? "warning" : "info"
+                warning: ThinkFanService.directControlAvailable
+                text: ThinkFanService.directControlAvailable
+                    ? Translation.tr("Fixed levels 1–7 bypass temperature-based fan curves. Keep 0 (Auto) unless you understand the cooling behavior of this machine.")
+                    : Translation.tr("Per-profile fan levels are hidden from runtime unless /proc/acpi/ibm/fan is available and thinkpad_acpi fan_control=1 is enabled.")
             }
         }
     }

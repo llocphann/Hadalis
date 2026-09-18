@@ -238,7 +238,7 @@ Scope {
             var labelLower = pendingSpotlightLabel.toLowerCase();
             var sectionLower = pendingSpotlightSection.toLowerCase();
             // Remove page name prefix from sectionGroup if present (supports both delimiters)
-            // e.g., "Themes · Global Style" or "Themes › Global Style" -> "Global Style"
+            // e.g., "Themes · Colors" or "Themes › Colors" -> "Colors"
             var sectionParts = sectionLower.split(/[·›]/).map(p => p.trim()).filter(p => p.length > 0);
             var sectionOnly = sectionParts.length > 1 ? sectionParts[sectionParts.length - 1] : sectionLower;
 
@@ -561,56 +561,28 @@ Scope {
 
                 readonly property real maxCardWidth: Math.min(1100, Math.max(820, settingsPanel.width * 0.7))
                 readonly property real maxCardHeight: Math.min(840, Math.max(600, settingsPanel.height * 0.82))
-                // Clamped, not read raw: the control used to bottom out at 20%,
-                // which left the solid styles showing a sharp wallpaper through
-                // the text and reduced aurora's tint to a raw 64 px blur. The
-                // panel is one surface — the cards on it carry the reading
-                // contrast — so the panel itself has to stay a real backdrop.
+                // Keep the Material panel opaque enough for readable content while
+                // allowing the supported overlay background-opacity control to tune it.
+                // This alpha belongs to the panel fill, never Item opacity, so child
+                // content remains unaffected.
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
 
                 anchors.centerIn: parent
                 width: maxCardWidth
                 height: maxCardHeight
-                radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
-                      : Appearance.regaliaEverywhere ? Appearance.regalia.panelRadius
-                      : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
-                      : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-                      : Appearance.rounding.windowRounding
+                radius: Appearance.rounding.windowRounding
                 Behavior on radius {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot }
                 }
-                // overlayAppearance.backgroundOpacity reaches every style: glass
-                // modulates the blur's transparentize below, solid styles take it
-                // on this fill's alpha. It must never ride on Item opacity —
-                // that is inherited by children and would dim the whole UI
-                // instead of the panel background. At the default 1.0 both paths
-                // are identity, so no style changes appearance.
-                color: Appearance.auroraEverywhere || Appearance.regaliaEverywhere ? "transparent"
-                     : CF.ColorUtils.applyAlpha(
-                         Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                       : Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                       : Appearance.colors.colLayer0Base,
-                         settingsCard.panelBgOpacity)
+                color: CF.ColorUtils.applyAlpha(
+                    Appearance.colors.colLayer0Base,
+                    settingsCard.panelBgOpacity)
                 clip: true
 
-                border.width: Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
-                            : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-                            : Appearance.inirEverywhere ? 1 : 0
-                border.color: Appearance.angelEverywhere ? Appearance.angel.colPanelBorder
-                            : Appearance.zzzEverywhere ? Appearance.zzz.hairline
-                            : Appearance.inirEverywhere
-                                ? (Appearance.inir?.colBorder ?? Appearance.colors.colLayer0Border)
-                                : "transparent"
-                Behavior on border.width {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-                Behavior on border.color {
-                    enabled: Appearance.animationsEnabled
-                    ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
+                border.width: 0
+                border.color: "transparent"
                 Behavior on color {
                     enabled: Appearance.animationsEnabled
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -625,68 +597,8 @@ Scope {
                 opacity: (GlobalStates.settingsOverlayOpen ?? false) ? 1 : 0
                 visible: opacity > 0
 
-                RegaliaPlate {
-                    anchors.fill: parent
-                    z: -1
-                    visible: Appearance.regaliaEverywhere
-                    fillColor: CF.ColorUtils.applyAlpha(Appearance.regalia.bg0,
-                        settingsCard.panelBgOpacity)
-                    radius: settingsCard.radius
-                    inset: Appearance.regalia.panelInset
-                    elevated: true
-                    glassEnabled: true
-                }
-
-                // Glass background for aurora/angel wallpaper blur
-                GlassBackground {
-                    anchors.fill: parent
-                    z: -1
-                    visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
-                    screenX: settingsCard.x
-                    screenY: settingsCard.y
-                    screenWidth: settingsPanel.width
-                    screenHeight: settingsPanel.height
-                    // GameMode disables the wallpaper blur backend. Aurora's
-                    // card itself is transparent, so a transparent fallback
-                    // made the complete settings surface disappear over a
-                    // fullscreen window. Keep glass normally and use the
-                    // regular opaque surface only while effects are suspended.
-                    fallbackColor: Appearance.effectsEnabled
-                        ? "transparent" : Appearance.colors.colLayer0Base
-                    // Modulates the style's tuned baseline rather than replacing
-                    // it: 1.0 keeps glass exactly as the style designed it, lower
-                    // values push toward fully transparent. A plain
-                    // `1 - backgroundOpacity` would make the default MORE opaque
-                    // than the style intends and flatten aurora's glass.
-                    auroraTransparency: {
-                        const base = Appearance.angelEverywhere
-                            ? Appearance.angel.panelTransparentize
-                            : Appearance.aurora.overlayTransparentize
-                        return base + (1 - base) * (1 - settingsCard.panelBgOpacity)
-                    }
-                    radius: parent.radius
-                }
-
-                ZzzPanelBackdrop {
-                    anchors.fill: parent
-                    label: Translation.tr("User manual")
-                    index: "UI"
-                    ghostText: "CONFIG"
-                    accentColor: Appearance.zzz.accent
-                    showTicks: false
-                    showBurst: false
-                    // Drop the grid cuadriculado behind the cards: it muddied the
-                    // panel and hurt card/text legibility. The lit-console gradient
-                    // + ghost + frame carry the ZZZ identity, cleaner. Also fewer
-                    // delegates → lighter. Ghost pulled back so it reads as a
-                    // watermark, not noise.
-                    showGrid: false
-                    horizontalBias: 0.12
-                    verticalBias: 0.03
-                    ghostWidthFactor: 0.88
-                    ghostStrength: 0.5
-                    z: 1
-                }
+                // Material-only v1.0: retired shell-wide style backdrops are not
+                // instantiated in the active Settings surface.
 
                 // Prevent clicks from closing
                 MouseArea {

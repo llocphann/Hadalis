@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
+SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -27,6 +28,7 @@ def main() -> None:
     appearance = APPEARANCE.read_text(encoding="utf-8")
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
+    settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -86,6 +88,31 @@ def main() -> None:
         "Appearance.auroraEverywhere",
     ):
         forbid(styled_popup, token, "StyledPopup.qml")
+
+    # The outer Settings panel is active Material runtime, not migration
+    # compatibility. Keep legacy style renderers out of this container.
+    card_start = settings_overlay.index("id: settingsCard")
+    card_end = settings_overlay.index("// Prevent clicks from closing", card_start)
+    settings_card = settings_overlay[card_start:card_end]
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "RegaliaPlate {",
+        "GlassBackground {",
+        "ZzzPanelBackdrop {",
+    ):
+        forbid(settings_card, token, "SettingsOverlay.qml outer Settings card")
+    for token in (
+        "radius: Appearance.rounding.windowRounding",
+        "Appearance.colors.colLayer0Base",
+        "border.width: 0",
+        'border.color: "transparent"',
+    ):
+        require(settings_card, token, "SettingsOverlay.qml outer Settings card")
+    forbid(settings_overlay, "Themes · Global Style", "SettingsOverlay.qml")
 
     print("Material-only global style contract: PASS")
 

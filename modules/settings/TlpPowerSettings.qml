@@ -76,7 +76,7 @@ ColumnLayout {
         expanded: true
         collapsible: false
         icon: "battery_saver"
-        title: Translation.tr("Battery and TLP power management")
+        title: Translation.tr("Battery & TLP")
 
         SettingsGroup {
             ConfigRow {
@@ -113,48 +113,6 @@ ColumnLayout {
                         text: Translation.tr("Show critical warning when battery drops below this level")
                     }
                 }
-            }
-
-            SettingsDivider {}
-
-            ConfigRow {
-                uniform: false
-                Layout.fillWidth: false
-
-                SettingsSwitch {
-                    buttonIcon: "pause"
-                    text: Translation.tr("Automatic suspend")
-                    checked: Config.options?.battery?.automaticSuspend ?? false
-                    onCheckedChanged: {
-                        Config.setNestedValue("battery.automaticSuspend", checked)
-                    }
-
-                    StyledToolTip {
-                        text: Translation.tr("Automatically suspends the system when battery is low")
-                    }
-                }
-
-                ConfigSpinBox {
-                    enabled: Config.options?.battery?.automaticSuspend ?? false
-                    text: Translation.tr("at")
-                    value: Config.options?.battery?.suspend ?? 0
-                    from: 0
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.setNestedValue("battery.suspend", value)
-                    }
-
-                    StyledToolTip {
-                        text: Translation.tr("Percentage of battery to trigger suspend")
-                    }
-                }
-            }
-
-            SettingsDivider {}
-
-            ConfigRow {
-                uniform: true
 
                 ConfigSpinBox {
                     icon: "charger"
@@ -170,6 +128,52 @@ ColumnLayout {
                     StyledToolTip {
                         text: Translation.tr("Notify when battery reaches this level while charging (101 = disabled)")
                     }
+                }
+            }
+
+            SettingsDivider {}
+
+            ConfigRow {
+                uniform: true
+
+                ConfigRow {
+                    Layout.fillWidth: true
+                    uniform: false
+
+                    SettingsSwitch {
+                        buttonIcon: "pause"
+                        text: Translation.tr("Automatic suspend")
+                        checked: Config.options?.battery?.automaticSuspend ?? false
+                        onCheckedChanged: {
+                            Config.setNestedValue("battery.automaticSuspend", checked)
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Automatically suspends the system when battery is low")
+                        }
+                    }
+
+                    ConfigSpinBox {
+                        enabled: Config.options?.battery?.automaticSuspend ?? false
+                        text: Translation.tr("at")
+                        value: Config.options?.battery?.suspend ?? 0
+                        from: 0
+                        to: 100
+                        stepSize: 5
+                        onValueChanged: {
+                            Config.setNestedValue("battery.suspend", value)
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Percentage of battery to trigger suspend")
+                        }
+                    }
+                }
+
+                BatteryChargeLimitSettings {
+                    Layout.fillWidth: true
+                    staged: true
+                    showStatus: false
                 }
             }
 
@@ -264,18 +268,6 @@ ColumnLayout {
                 }
             }
 
-            SettingsDivider {}
-
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("Battery care")
-                font.weight: Font.Medium
-            }
-
-            BatteryChargeLimitSettings {
-                staged: true
-                showStatus: true
-            }
         }
     }
 

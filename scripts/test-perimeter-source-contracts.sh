@@ -6,13 +6,15 @@ critical="$root/modules/ii/critical/ShellIiCriticalPanels.qml"
 deferred="$root/ShellIiPanels.qml"
 media="$root/modules/bar/Media.qml"
 weather="$root/modules/bar/weather/WeatherBar.qml"
+styled_popup="$root/modules/bar/StyledPopup.qml"
+connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
 
 fail() {
     printf 'FAIL: perimeter source retirement contract: %s\n' "$1" >&2
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -76,6 +78,25 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must share Screen Edge shadow settings'
+
+grep -Fq 'connectorVisible: false' "$styled_popup" \
+    || fail 'StyledPopup must not paint a connector stem'
+grep -Fq 'joinLeft: directEdgeAttachment.atLeft' "$styled_popup" \
+    || fail 'StyledPopup must square the body where it joins the left Screen Edge'
+grep -Fq 'joinRight: directEdgeAttachment.atRight' "$styled_popup" \
+    || fail 'StyledPopup must square the body where it joins the right Screen Edge'
+grep -Fq 'joinTop: directEdgeAttachment.atTop' "$styled_popup" \
+    || fail 'StyledPopup must square the body where it joins the top Screen Edge'
+grep -Fq 'joinBottom: directEdgeAttachment.atBottom' "$styled_popup" \
+    || fail 'StyledPopup must square the body where it joins the bottom Screen Edge'
+grep -Fq 'property bool joinLeft: false' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must expose direct-edge join state'
+grep -Fq 'topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must remove rounded-card notches at joined corners'
+grep -Fq 'shadowLeft: root._attachmentEdge !== "left"' "$styled_popup" \
+    || fail 'StyledPopup must suppress duplicate shadow on an attached edge'
+grep -Fq 'shadowRight: root._attachmentEdge !== "right"' "$styled_popup" \
+    || fail 'StyledPopup must keep Screen Edge-compatible free-side shadow routing'
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'
 grep -Fq 'Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

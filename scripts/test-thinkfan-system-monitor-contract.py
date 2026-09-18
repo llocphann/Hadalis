@@ -18,6 +18,9 @@ def check(condition: bool, message: str) -> None:
 def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
     styled_popup = read("modules/bar/StyledPopup.qml")
+    system_settings = read("modules/settings/GeneralConfigCore.qml")
+    system_facade = read("modules/settings/GeneralConfig.qml")
+    settings_registry = read("modules/settings/SettingsPageRegistryData.qml")
     bar_settings = read("modules/settings/BarConfigHugOnly.qml")
     bar_config = read("modules/settings/BarConfig.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
@@ -69,21 +72,44 @@ def main() -> None:
               f"StyledPopup must support the opt-in adjacent Screen Edge join: {token}")
 
     for token in (
-        'settingsTaskSection: "system"',
+        'settingsTaskSection: "fan"',
         'title: Translation.tr("Fan Control")',
         'text: Translation.tr("ThinkFan managed control")',
         "ThinkFanService.applyProfile(",
         "checked: root.thinkFanManaged",
+        '{ displayName: Translation.tr("Fan Control"), icon: "mode_fan", value: "fan" }',
     ):
-        check(token in bar_settings,
-              f"Bar Settings must expose the shared ThinkFan profile control: {token}")
+        check(token in system_settings,
+              f"System Settings must own the shared ThinkFan profile control: {token}")
 
     for token in (
+        'value.includes("fan")',
+        'root.activeSection = "fan"',
+    ):
+        check(token in system_facade,
+              f"System Settings search must route Fan Control correctly: {token}")
+
+    for token in (
+        'section: Translation.tr("Fan Control")',
+        'keywords: ["fan", "fan control", "thinkfan", "thermal", "cooling", "rpm", "temperature", "system"]',
+    ):
+        check(token in settings_registry,
+              f"Settings search index must expose System Fan Control: {token}")
+
+    for forbidden in (
+        'settingsTaskSection: "system"',
+        'title: Translation.tr("Fan Control")',
+        'text: Translation.tr("ThinkFan managed control")',
+    ):
+        check(forbidden not in bar_settings,
+              f"Bar Settings must not own Fan Control anymore: {forbidden}")
+
+    for forbidden in (
         '{ displayName: Translation.tr("System"), icon: "tune", value: "system" }',
         '"fan control": "system"',
     ):
-        check(token in bar_config,
-              f"Bar settings navigation must route Fan Control through System: {token}")
+        check(forbidden not in bar_config,
+              f"Bar navigation must not expose the removed pseudo-System task: {forbidden}")
 
     check(not (ROOT / "modules/perimeter").exists(),
           "Retired broad perimeter module must stay absent")

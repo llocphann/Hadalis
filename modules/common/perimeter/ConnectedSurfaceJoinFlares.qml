@@ -1,5 +1,4 @@
 import QtQuick
-import qs.modules.common.widgets
 
 // Concave union shoulders for direct Bar/Screen Edge attachments.
 //
@@ -19,9 +18,6 @@ Item {
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
-    property bool shadowEnabled: false
-    property real shadowExtent: 0
-    property color shadowColor: "transparent"
 
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
     readonly property point bodyOrigin: root.bodyItem
@@ -40,73 +36,104 @@ Item {
     visible: root.reveal > 0.001 && root.radius > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
-    // Reuse the same inverse-corner primitive as the Hug Bar. This removes a
-    // second Canvas implementation and guarantees identical shoulders for Bar,
-    // popup, Settings, Sidebar and Screen Edge connected surfaces.
-    component Flare: Item {
-        id: flare
-
-        required property string flareCorner
+    component Flare: Canvas {
+        required property string corner
         property color flareColor: root.fillColor
         property real r: root.radius
-        readonly property int cornerEnum: switch (flareCorner) {
-            case "topLeft": return RoundCorner.CornerEnum.TopRight
-            case "topRight": return RoundCorner.CornerEnum.TopLeft
-            case "bottomLeft": return RoundCorner.CornerEnum.BottomRight
-            case "bottomRight": return RoundCorner.CornerEnum.BottomLeft
-            case "leftTop": return RoundCorner.CornerEnum.BottomLeft
-            case "leftBottom": return RoundCorner.CornerEnum.TopLeft
-            case "rightTop": return RoundCorner.CornerEnum.BottomRight
-            case "rightBottom": return RoundCorner.CornerEnum.TopRight
-            default: return RoundCorner.CornerEnum.TopLeft
-        }
 
         width: r
         height: r
         visible: r > 0
 
-        // The shoulder is part of the same outside silhouette as the popup.
-        // Give its concave arc the exact same shadow ink/extent as Screen Edge,
-        // otherwise the rectangular body shadow stops abruptly at the join and
-        // the flare visually disappears on dark wallpapers.
-        PerimeterCornerShadow {
-            z: 0
-            corner: flare.cornerEnum
-            cornerRadius: flare.r
-            shadowExtent: root.shadowEnabled ? root.shadowExtent : 0
-            shadowColor: root.shadowColor
-        }
+        onRChanged: requestPaint()
+        onFlareColorChanged: requestPaint()
+        onCornerChanged: requestPaint()
+        Component.onCompleted: requestPaint()
 
-        RoundCorner {
-            z: 1
-            anchors.fill: parent
-            implicitSize: Math.max(1, Math.round(flare.r))
-            color: flare.flareColor
-            corner: flare.cornerEnum
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            const s = Math.min(width, height)
+            if (!(s > 0))
+                return
+
+            // Cubic approximation of a quarter circle. The filled region is
+            // the complement of that arc inside the r×r corner, producing the
+            // characteristic concave "shoulder" where two surfaces unite.
+            const k = 0.5522847498
+            ctx.beginPath()
+
+            if (corner === "topLeft") {
+                ctx.moveTo(0, 0)
+                ctx.lineTo(s, 0)
+                ctx.lineTo(s, s)
+                ctx.bezierCurveTo(s, s * (1 - k), s * k, 0, 0, 0)
+            } else if (corner === "topRight") {
+                ctx.moveTo(s, 0)
+                ctx.lineTo(0, 0)
+                ctx.lineTo(0, s)
+                ctx.bezierCurveTo(0, s * (1 - k), s * (1 - k), 0, s, 0)
+            } else if (corner === "bottomLeft") {
+                ctx.moveTo(0, s)
+                ctx.lineTo(s, s)
+                ctx.lineTo(s, 0)
+                ctx.bezierCurveTo(s, s * k, s * k, s, 0, s)
+            } else if (corner === "bottomRight") {
+                ctx.moveTo(s, s)
+                ctx.lineTo(0, s)
+                ctx.lineTo(0, 0)
+                ctx.bezierCurveTo(0, s * k, s * (1 - k), s, s, s)
+            } else if (corner === "leftTop") {
+                ctx.moveTo(0, 0)
+                ctx.lineTo(0, s)
+                ctx.lineTo(s, s)
+                ctx.bezierCurveTo(s * (1 - k), s, 0, s * k, 0, 0)
+            } else if (corner === "leftBottom") {
+                ctx.moveTo(0, s)
+                ctx.lineTo(0, 0)
+                ctx.lineTo(s, 0)
+                ctx.bezierCurveTo(s * (1 - k), 0, 0, s * (1 - k), 0, s)
+            } else if (corner === "rightTop") {
+                ctx.moveTo(s, 0)
+                ctx.lineTo(s, s)
+                ctx.lineTo(0, s)
+                ctx.bezierCurveTo(s * k, s, s, s * k, s, 0)
+            } else if (corner === "rightBottom") {
+                ctx.moveTo(s, s)
+                ctx.lineTo(s, 0)
+                ctx.lineTo(0, 0)
+                ctx.bezierCurveTo(s * k, 0, s, s * (1 - k), s, s)
+            } else {
+                return
+            }
+
+            ctx.closePath()
+            ctx.fillStyle = flareColor
+            ctx.fill()
         }
     }
 
     // Horizontal attachments: flare tangent-wise beyond the body endpoints.
     Flare {
-        flareCorner: "topLeft"
+        corner: "topLeft"
         visible: root.joinTop && !root.joinLeft && r > 0
         x: root.bodyOrigin.x - r
         y: root.bodyOrigin.y
     }
     Flare {
-        flareCorner: "topRight"
+        corner: "topRight"
         visible: root.joinTop && !root.joinRight && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width
         y: root.bodyOrigin.y
     }
     Flare {
-        flareCorner: "bottomLeft"
+        corner: "bottomLeft"
         visible: root.joinBottom && !root.joinLeft && r > 0
         x: root.bodyOrigin.x - r
         y: root.bodyOrigin.y + root.bodyItem.height - r
     }
     Flare {
-        flareCorner: "bottomRight"
+        corner: "bottomRight"
         visible: root.joinBottom && !root.joinRight && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width
         y: root.bodyOrigin.y + root.bodyItem.height - r
@@ -114,25 +141,25 @@ Item {
 
     // Vertical attachments: flare above/below the body endpoints.
     Flare {
-        flareCorner: "leftTop"
+        corner: "leftTop"
         visible: root.joinLeft && !root.joinTop && r > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y - r
     }
     Flare {
-        flareCorner: "leftBottom"
+        corner: "leftBottom"
         visible: root.joinLeft && !root.joinBottom && r > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y + root.bodyItem.height
     }
     Flare {
-        flareCorner: "rightTop"
+        corner: "rightTop"
         visible: root.joinRight && !root.joinTop && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width - r
         y: root.bodyOrigin.y - r
     }
     Flare {
-        flareCorner: "rightBottom"
+        corner: "rightBottom"
         visible: root.joinRight && !root.joinBottom && r > 0
         x: root.bodyOrigin.x + root.bodyItem.width - r
         y: root.bodyOrigin.y + root.bodyItem.height

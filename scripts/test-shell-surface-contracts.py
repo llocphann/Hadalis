@@ -271,6 +271,12 @@ def main() -> None:
           and "settingsPanel.height * 0.92" in settings_focus,
           "Focus Settings overlay must use the enlarged bottom-connected footprint")
 
+    dashboard = read("modules/overview/OverviewDashboard.qml")
+    check("fallbackColor: Appearance.colors.colLayer0" in dashboard
+          and "wallpaperBackdropEnabled: root.useWallpaperBackdrop" in dashboard
+          and "readonly property bool useWallpaperBackdrop: false" in dashboard,
+          "Dashboard connected body must stay on the same solid Material surface as connected popups")
+
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
           "ii critical shell must load persistent Screen Edge chrome")
@@ -394,8 +400,9 @@ def main() -> None:
           "Public Quick settings must route through the Hug-only facade")
     check('entry.label !== Translation.tr("Corner style")' in settings_registry,
           "Settings search must not expose the retired Bar corner-style selector")
-    check('entry.label !== Translation.tr("Sidebar style")' in settings_registry,
-          "Settings search must not expose the retired Sidebar surface selector")
+    settings_registry_data = read("modules/settings/SettingsPageRegistryData.qml")
+    check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
+          "Settings search source must not retain the retired Sidebar surface selector")
 
     sidebars_config = read("modules/settings/SidebarsConfig.qml")
     check('Translation.tr("Use Card style")' not in sidebars_config

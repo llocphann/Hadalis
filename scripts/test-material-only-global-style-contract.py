@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
+SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 
@@ -29,6 +30,7 @@ def main() -> None:
     appearance = APPEARANCE.read_text(encoding="utf-8")
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
+    sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
@@ -253,6 +255,28 @@ def main() -> None:
         "Appearance.auroraEverywhere",
     ):
         forbid(styled_popup, token, "StyledPopup.qml")
+
+    # Tray menu chrome is active runtime. Legacy Global Theme predicates are
+    # inert compatibility aliases and must not survive in this caller.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+        "ZzzPlate {",
+    ):
+        forbid(sys_tray_menu, token, "SysTrayMenu.qml")
+    for token in (
+        "color: Appearance.colors.colLayer0",
+        "radius: Appearance.rounding.windowRounding",
+        "border.width: 1",
+        "border.color: Appearance.colors.colLayer0Border",
+        "Appearance.motion.popupReveal.enableFade",
+        "Appearance.motion.popupReveal.enableScale",
+    ):
+        require(sys_tray_menu, token, "SysTrayMenu.qml")
 
     # The outer Settings panel is active Material runtime, not migration
     # compatibility. Keep legacy style renderers out of this container.

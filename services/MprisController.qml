@@ -89,6 +89,8 @@ Singleton {
 	property bool _manualPlayerSelection: false;
 	property var _streamMetadataById: ({})
 	property bool _mpdBridgeStartAttempted: false
+	property int _mpdBridgeAvailable: -1 // -1 unknown, 0 unavailable, 1 installed
+	property bool _mpdProcessSeen: false
 
 	function _hasMpdMprisPlayer(): bool {
 		for (const player of Mpris.players.values) {
@@ -119,7 +121,14 @@ Singleton {
 			_mpdBridgeRetry.stop()
 			return
 		}
-		if (!root._mpdPlaybackStreamPresent()
+		if (root._mpdBridgeAvailable === 0)
+			return
+		if (root._mpdBridgeAvailable < 0) {
+			if (!_mpdMprisProbeProc.running)
+				_mpdMprisProbeProc.running = true
+			return
+		}
+		if (!(root._mpdProcessSeen || root._mpdPlaybackStreamPresent())
 				|| root._mpdBridgeStartAttempted
 				|| _mpdMprisStartProc.running)
 			return
@@ -128,11 +137,34 @@ Singleton {
 		_mpdMprisStartProc.running = true
 	}
 
-	// rmpc is an MPD client, not an MPRIS provider. When MPD starts producing
-	// audio, opportunistically start the distro-provided mpd-mpris user service
-	// so the normal Quickshell MPRIS path can discover it. No custom MPD protocol
-	// implementation lives in the shell; if the bridge is absent, playback keeps
-	// working and only the media-control integration remains unavailable.
+	// rmpc is an MPD client, not an MPRIS provider. Probe for the packaged bridge
+	// and a local MPD process even before PipeWire exposes a stream; this also
+	// covers MPD configurations that output directly through ALSA. The normal
+	// Quickshell MPRIS path remains the sole Media API.
+	Process {
+		id: _mpdMprisProbeProc
+		running: false
+		command: ["/usr/bin/bash", "-c",
+			"command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1"]
+		onExited: (exitCode, _exitStatus) => {
+			if (exitCode === 2) {
+				root._mpdBridgeAvailable = 0
+				root._mpdProcessSeen = false
+				_mpdBridgeRetry.stop()
+				return
+			}
+			root._mpdBridgeAvailable = 1
+			root._mpdProcessSeen = exitCode === 0
+			if (root._mpdProcessSeen)
+				root._maybeStartMpdMprisBridge()
+			else
+				_mpdBridgeRetry.restart()
+		}
+	}
+
+	// Start the distro-provided mpd-mpris user service when local MPD becomes
+	// relevant. If the bridge is absent, playback keeps working and only the
+	// Media integration remains unavailable.
 	Process {
 		id: _mpdMprisStartProc
 		running: false
@@ -153,6 +185,10 @@ Singleton {
 		onTriggered: {
 			root._rebuildPlayerList()
 			_streamMetadataRefresh.restart()
+			if (!root._hasMpdMprisPlayer()) {
+				root._mpdBridgeStartAttempted = false
+				_mpdBridgeRetry.restart()
+			}
 		}
 	}
 
@@ -162,7 +198,8 @@ Singleton {
 		repeat: false
 		onTriggered: {
 			root._mpdBridgeStartAttempted = false
-			root._maybeStartMpdMprisBridge()
+			if (root._mpdBridgeAvailable !== 0 && !_mpdMprisProbeProc.running)
+				_mpdMprisProbeProc.running = true
 		}
 	}
 
@@ -275,6 +312,7 @@ Singleton {
 
 	Component.onCompleted: {
 		_streamMetadataRefresh.start()
+		_mpdMprisProbeProc.running = true
 		plasmaCheckDefer.start()
 	}
 

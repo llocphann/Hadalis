@@ -57,6 +57,7 @@ CONTROL_PANEL_WALLPAPER = ROOT / "modules" / "controlPanel" / "WallpaperSection.
 CONTROL_PANEL_WEATHER = ROOT / "modules" / "controlPanel" / "WeatherSection.qml"
 CONTROL_PANEL_SLIDERS = ROOT / "modules" / "controlPanel" / "SlidersSection.qml"
 CONTROL_PANEL_SYSTEM = ROOT / "modules" / "controlPanel" / "SystemSection.qml"
+CONTROL_PANEL_PROFILE = ROOT / "modules" / "controlPanel" / "ProfileHeader.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -131,6 +132,7 @@ def main() -> None:
     control_panel_weather = CONTROL_PANEL_WEATHER.read_text(encoding="utf-8")
     control_panel_sliders = CONTROL_PANEL_SLIDERS.read_text(encoding="utf-8")
     control_panel_system = CONTROL_PANEL_SYSTEM.read_text(encoding="utf-8")
+    control_panel_profile = CONTROL_PANEL_PROFILE.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -1359,6 +1361,7 @@ def main() -> None:
         ("controlPanel/WeatherSection.qml", control_panel_weather),
         ("controlPanel/SlidersSection.qml", control_panel_sliders),
         ("controlPanel/SystemSection.qml", control_panel_system),
+        ("controlPanel/ProfileHeader.qml", control_panel_profile),
     ):
         for token in legacy_style_tokens:
             forbid(content, token, source)
@@ -1431,6 +1434,23 @@ def main() -> None:
         require(control_panel_system, token, "controlPanel/SystemSection.qml")
     for token in ("id: segRail", "visible: Appearance.zzzEverywhere"):
         forbid(control_panel_system, token, "controlPanel/SystemSection.qml")
+
+    for token in ("CookieFace {", "visible: Appearance.cookieEverywhere"):
+        forbid(control_panel_profile, token, "controlPanel/ProfileHeader.qml")
+    for token in (
+        "border.color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colLayer2",
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOnLayer0",
+        "buttonRadius: Appearance.rounding.full",
+        "colBackgroundHover: Appearance.colors.colLayer2Hover",
+        "color: Appearance.colors.colError",
+        "color: Appearance.colors.colSubtext",
+        'AppLauncher.launch("manageUser")',
+        'Quickshell.shellPath("scripts/inir")',
+        "GlobalStates.sessionOpen = true",
+    ):
+        require(control_panel_profile, token, "controlPanel/ProfileHeader.qml")
 
     print("Material-only global style contract: PASS")
 

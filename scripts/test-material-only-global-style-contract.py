@@ -13,6 +13,8 @@ BATTERY_INDICATOR = ROOT / "modules" / "bar" / "BatteryIndicator.qml"
 CLOCK_WIDGET = ROOT / "modules" / "bar" / "ClockWidget.qml"
 NOTIFICATION_UNREAD_COUNT = ROOT / "modules" / "bar" / "NotificationUnreadCount.qml"
 ACTIVE_WINDOW = ROOT / "modules" / "bar" / "ActiveWindow.qml"
+RESOURCE = ROOT / "modules" / "bar" / "Resource.qml"
+CLIPPED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "ClippedProgressBar.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
@@ -51,6 +53,8 @@ def main() -> None:
     clock_widget = CLOCK_WIDGET.read_text(encoding="utf-8")
     notification_unread_count = NOTIFICATION_UNREAD_COUNT.read_text(encoding="utf-8")
     active_window = ACTIVE_WINDOW.read_text(encoding="utf-8")
+    resource = RESOURCE.read_text(encoding="utf-8")
+    clipped_progress_bar = CLIPPED_PROGRESS_BAR.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
@@ -459,6 +463,40 @@ def main() -> None:
             forbid(source, token, label)
         for token in required_tokens:
             require(source, token, label)
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.zzz.",
+        "Appearance.inir.",
+    ):
+        forbid(resource, token, "Resource.qml")
+    for token in (
+        "visible: true",
+        "Appearance.colors.colError",
+        "Appearance.colors.colTertiary",
+        "Appearance.colors.colOnSurfaceVariant",
+        "Appearance.colors.colOnLayer1",
+        "font.family: Appearance.font.family.main",
+        "font.weight: Font.Normal",
+        "font.italic: false",
+    ):
+        require(resource, token, "Resource.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+    ):
+        forbid(clipped_progress_bar, token, "ClippedProgressBar.qml")
+    for token in (
+        "property color highlightColor: Appearance.colors.colOnSecondaryContainer",
+        "property color trackColor: ColorUtils.transparentize(highlightColor, 0.5)",
+        "radius: Math.min(width, height) / 2",
+        "radius: Appearance.rounding.unsharpen",
+    ):
+        require(clipped_progress_bar, token, "ClippedProgressBar.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

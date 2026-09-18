@@ -237,6 +237,27 @@ def main() -> None:
     ):
         require(window_search, token, "settings.qml search chrome")
 
+    window_nav_start = settings_window.index("id: navCol")
+    window_nav_end = settings_window.index("id: navBottomActions", window_nav_start)
+    window_nav = settings_window[window_nav_start:window_nav_end]
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "ZzzPlate {",
+    ):
+        forbid(window_nav, token, "settings.qml navigation rail")
+    for token in (
+        "rippleEnabled: true",
+        "buttonRadius: Math.min(width, height) / 2",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "id: sharedNavIndicator",
+        "color: Appearance.colors.colPrimaryContainer",
+    ):
+        require(window_nav, token, "settings.qml navigation rail")
+
     print("Material-only global style contract: PASS")
 
 

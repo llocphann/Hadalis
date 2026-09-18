@@ -227,6 +227,13 @@ grep -Fq 'No stem is' "$join_flares" \
     || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
 grep -Fq 'root.bodyItem.mapToItem(root, 0, 0)' "$join_flares" \
     || fail 'join flares must map nested body geometry into the flare host coordinate space'
+grep -Fq 'import qs.modules.common.widgets' "$join_flares" \
+    || fail 'join flares must reuse the common Hug corner primitive'
+grep -Fq 'component Flare: RoundCorner {' "$join_flares" \
+    || fail 'connected shoulders must render through RoundCorner'
+if grep -Fq 'component Flare: Canvas {' "$join_flares"; then
+    fail 'connected shoulders must not keep a second Canvas corner renderer'
+fi
 grep -Fq 'visible: root.reveal > 0.001 && root.radius > 0' "$join_flares" \
     || fail 'connected join flares must remain fully formed while the body slides'
 if grep -Fq ') * root.reveal' "$join_flares"; then

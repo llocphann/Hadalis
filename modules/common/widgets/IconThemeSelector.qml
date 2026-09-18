@@ -58,12 +58,10 @@ Item {
         onOpened: IconThemeService.ensureInitialized()
         
         background: Rectangle {
-            color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                 : Appearance.colors.colLayer2Base
-            radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+            color: Appearance.colors.colLayer2Base
+            radius: Appearance.rounding.normal
             border.width: 1
-            border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder
-                        : Appearance.colors.colLayer0Border
+            border.color: Appearance.colors.colLayer0Border
         }
 
         ColumnLayout {

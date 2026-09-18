@@ -213,20 +213,20 @@ def main() -> None:
         check(token not in geometry,
               f"Connected popup slide must stay on the attachment axis like Caelestia: {token}")
 
+    corner_shadow = read("modules/common/perimeter/PerimeterCornerShadow.qml")
     for token in (
-        "id: innerCornerCanvas",
-        "readonly property bool topSide:",
-        "readonly property bool leftSide:",
-        "onTopSideChanged: requestPaint()",
-        "onLeftSideChanged: requestPaint()",
-        "if (topSide && leftSide)",
-        "else if (!topSide && leftSide)",
+        "GE.RadialGradient {",
+        "required property int corner",
+        "property real cornerRadius:",
+        "property real shadowExtent:",
+        "property color shadowColor:",
+        "1 - root.shadowExtent / Math.max(1, root.cornerRadius)",
     ):
-        check(token in screen_edge,
-              f"Screen Edge must paint all four inner-corner orientations explicitly: {token}")
-    check("ctx.scale(-1, 1)" not in screen_edge
-          and "ctx.scale(1, -1)" not in screen_edge,
-          "Screen Edge inner corners must not depend on first-paint mirror transforms")
+        check(token in corner_shadow,
+              f"Shared perimeter corner shadow contract missing: {token}")
+    check("PerimeterCornerShadow {" in screen_edge
+          and "function adjacentShadowInset(outputName, edge)" in screen_edge,
+          "Screen Edge corners must use the shared curved shadow junction")
 
     for token in (
         "id: sidebarEdgeFlares",
@@ -240,6 +240,10 @@ def main() -> None:
     sidebar_flare_block = sidebar_host[sidebar_flare_start:sidebar_flare_end]
     check("transform: Translate" not in sidebar_flare_block,
           "Sidebar flares must not double-apply the Loader translation after mapToItem()")
+    check("shadowEnabled: root.screenEdgeShadowEnabled" in sidebar_flare_block
+          and "shadowExtent: root.screenEdgeShadowSize" in sidebar_flare_block
+          and "shadowColor: root.screenEdgeShadowColor" in sidebar_flare_block,
+          "Sidebar flares must share the live Screen Edge shadow contract")
 
     media_popup = read("modules/mediaControls/BarMediaPopup.qml")
     check("EqualizerPanel {" in media_popup,
@@ -296,6 +300,10 @@ def main() -> None:
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface,
               "Connected Settings overlays must share the Screen Edge shadow contract")
+        check("shadowEnabled:" in settings_surface
+              and "shadowExtent:" in settings_surface
+              and "shadowColor:" in settings_surface,
+              "Connected Settings flares must carry the live Screen Edge shadow")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
     check("fallbackColor: Appearance.colors.colLayer0" in dashboard
@@ -308,6 +316,14 @@ def main() -> None:
     check("Appearance.m3colors.m3shadow" in dashboard
           and "Appearance.colors.colShadow" not in dashboard,
           "Dashboard connected shadow must use canonical Material shadow ink")
+    check("import qs.modules.mediaControls" in dashboard
+          and "EqualizerPanel {" in dashboard
+          and "id: dashboardEqualizer" in dashboard,
+          "Dashboard Media must expose the shared Equalizer DSP panel")
+    overview_runtime = read("modules/overview/Overview.qml")
+    check("opacity: root.dashboardPresentationMode" in overview_runtime
+          and '? 0 : (root._presentedOpen ? 1 : 0)' in overview_runtime,
+          "Dashboard popup mode must not inherit the full-screen Overview scrim")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
@@ -337,9 +353,14 @@ def main() -> None:
     check("cached: !(root.joinTop || root.joinBottom" in generic_shadow,
           "Joined connected shadows must render live while translated")
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
-    check("component Flare: RoundCorner" in join_flares
-          and "import qs.modules.common.widgets" in join_flares,
-          "Connected shoulders must reuse the same RoundCorner primitive as the Hug Bar")
+    check("component Flare: Item" in join_flares
+          and "RoundCorner {" in join_flares
+          and "PerimeterCornerShadow {" in join_flares,
+          "Connected shoulders must combine the Hug RoundCorner fill with its curved perimeter shadow")
+    check("property bool shadowEnabled: false" in join_flares
+          and "property real shadowExtent: 0" in join_flares
+          and 'property color shadowColor: "transparent"' in join_flares,
+          "Connected shoulders must accept the live Screen Edge shadow contract")
     check("component Flare: Canvas" not in join_flares,
           "Connected shoulders must not maintain a second Canvas corner renderer")
 
@@ -360,6 +381,11 @@ def main() -> None:
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")
+        check("id: autoHideScreenEdge" in runtime
+              and "visible: Config.options?.bar?.autoHide?.enable ?? false" in runtime,
+              "Auto-hidden Bar must reveal a resident physical Screen Edge fallback")
+        check(runtime.count("PerimeterCornerShadow {") >= 4,
+              "Bar and its auto-hide Screen Edge fallback must own curved corner shadows")
     check("visible: !gameModeMinimal" in bar_content,
           "Horizontal Hug body must not disappear because of legacy showBackground state")
     check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,

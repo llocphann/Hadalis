@@ -249,44 +249,46 @@ Loader {
                     - (body.y + body.height)) <= epsilon
         }
 
-        ConnectedSurfaceFrame {
-            id: frame
-
-            anchors.fill: parent
+        ConnectedSurfaceRevealClip {
+            id: popupRevealClip
             geometry: geometry
-            fillColor: Looks.colors.bg1Base
-            borderColor: Looks.colors.bg2Border
-            borderWidth: Math.max(0, root.ambientShadowWidth)
-            connectorBorderWidth: 0
-            connectorVisible: false
-            shadowEnabled: Looks.effectsEnabled
-                && root.visualMargin > 0
-            shadowExtent: Math.max(0, root.visualMargin)
-            shadowColor: Looks.colors.shadow
-            joinTop: root._attachmentEdge === "top"
-                || directEdgeAttachment.atTop
-            joinBottom: root._attachmentEdge === "bottom"
-                || directEdgeAttachment.atBottom
-            joinLeft: directEdgeAttachment.atLeft
-            joinRight: directEdgeAttachment.atRight
-            shadowTop: !frame.joinTop
-            shadowBottom: !frame.joinBottom
-            shadowLeft: !frame.joinLeft
-            shadowRight: !frame.joinRight
-        }
 
-        ConnectedSurfaceContentHost {
-            id: contentHost
+            ConnectedSurfaceFrame {
+                id: frame
+                anchors.fill: parent
+                geometry: geometry
+                fillColor: Looks.colors.bg1Base
+                borderColor: Looks.colors.bg2Border
+                borderWidth: Math.max(0, root.ambientShadowWidth)
+                connectorBorderWidth: 0
+                connectorVisible: false
+                shadowEnabled: Looks.effectsEnabled
+                    && root.visualMargin > 0
+                shadowExtent: Math.max(0, root.visualMargin)
+                shadowColor: Looks.colors.shadow
+                joinTop: root._attachmentEdge === "top"
+                    || directEdgeAttachment.atTop
+                joinBottom: root._attachmentEdge === "bottom"
+                    || directEdgeAttachment.atBottom
+                joinLeft: directEdgeAttachment.atLeft
+                joinRight: directEdgeAttachment.atRight
+                shadowTop: !frame.joinTop
+                shadowBottom: !frame.joinBottom
+                shadowLeft: !frame.joinLeft
+                shadowRight: !frame.joinRight
+            }
 
-            geometry: geometry
-            padding: root.padding
-            opacity: Math.max(0, Math.min(1,
-                (geometry.revealProgress - 0.18) / 0.82))
-            children: [root.contentItem]
+            ConnectedSurfaceContentHost {
+                id: contentHost
+                geometry: geometry
+                padding: root.padding
+                opacity: 1
+                children: [root.contentItem]
 
-            HoverHandler {
-                id: popupHoverHandler
-                enabled: root.active
+                HoverHandler {
+                    id: popupHoverHandler
+                    enabled: root.active
+                }
             }
         }
 

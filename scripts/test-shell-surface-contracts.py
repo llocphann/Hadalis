@@ -21,6 +21,7 @@ def main() -> None:
         "qs.modules.common.perimeter",
         "ConnectedSurfaceGeometry",
         "ConnectedSurfaceFrame",
+        "ConnectedSurfaceRevealClip",
         "ConnectedSurfaceContentHost",
         "ConnectedSurfaceMask",
         "mask: connectedMask",
@@ -76,16 +77,21 @@ def main() -> None:
           "ConnectedSurfaceGeometry must source popup connector width from the shared perimeter token")
     check("Math.max(Math.max(0, connectorWidth), anchorTangentExtent)" not in geometry,
           "Connected popup neck width must not expand or shrink with the source control width")
-    check("PerimeterTokens.revealSlideDistance" in geometry,
-          "Connected popup reveal must use the shared directional slide distance")
+    check("(1 - revealProgress) * crossBodyExtent" in geometry,
+          "Connected popup reveal must translate the complete body under its owning edge")
+    check("readonly property rect revealClipRect:" in geometry,
+          "Connected popup reveal must expose a fixed resting-edge clip")
+    check("readonly property rect visibleBodyRect:" in geometry,
+          "Connected popup input must follow only the revealed body segment")
     check("crossBodyExtent * revealProgress" not in geometry,
           "Connected popup reveal must not shrink the body cross-axis")
     check("(bodyTangentExtent - connectorSourceExtent) * revealProgress" not in geometry,
           "Connected popup reveal must not expand from a narrow neck")
     check("bodyRect.width, bodyRect.height" in geometry,
           "Connected popup slide must preserve the full body size")
-    check("opacity: geometry.revealProgress" in styled_popup,
-          "Connected popup content must follow slide progress without delayed shrink staging")
+    check("ConnectedSurfaceRevealClip {" in styled_popup
+          and "opacity: 1" in styled_popup,
+          "Connected popup must use pure slide-under clipping instead of staged fade/scale")
 
     content_host = read("modules/common/perimeter/ConnectedSurfaceContentHost.qml")
     for token in ("geometry.animatedBodyRect", "effectivePadding", "clip: true"):

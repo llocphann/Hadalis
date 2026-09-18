@@ -294,54 +294,53 @@ LazyLoader {
                     - (body.y + body.height)) <= epsilon
         }
 
-        ConnectedSurfaceFrame {
-            id: frame
-            anchors.fill: parent
+        // Fixed resting-edge viewport: the full popup translates behind this
+        // clip, so closing/opening reads as sliding underneath the Bar/Screen Edge.
+        ConnectedSurfaceRevealClip {
+            id: popupRevealClip
             geometry: geometry
-            fillColor: root._surfaceColor
-            borderColor: root._borderColor
-            borderWidth: root._borderWidth
-            // Direct body overlap owns both joins. Keep connector geometry only
-            // for mask/animation compatibility; do not paint a visible stem.
-            connectorBorderWidth: 0
-            connectorVisible: false
-            shadowEnabled: root._edgeShadowEnabled
-                && root._edgeShadowExtent > 0
-                && root._edgeShadowOpacity > 0
-            shadowExtent: root._edgeShadowExtent
-            shadowColor: root._edgeShadowColor
-            // Match Caelestia's one-surface composition principle: when
-            // the popup body reaches an orthogonal Screen Edge, its touching
-            // corners become square and the joined side has no duplicate shadow.
-            // The free sides keep the same configured Screen Edge shadow.
-            joinTop: root._attachmentEdge === "top"
-                || directEdgeAttachment.atTop
-            joinBottom: root._attachmentEdge === "bottom"
-                || directEdgeAttachment.atBottom
-            joinLeft: root._attachmentEdge === "left"
-                || directEdgeAttachment.atLeft
-            joinRight: root._attachmentEdge === "right"
-                || directEdgeAttachment.atRight
-            shadowTop: !frame.joinTop
-            shadowBottom: !frame.joinBottom
-            shadowLeft: !frame.joinLeft
-            shadowRight: !frame.joinRight
-        }
 
-        ConnectedSurfaceContentHost {
-            id: popupContentHost
-            geometry: geometry
-            padding: root._contentPadding
-            // The body stays full-size and slides from the connected edge.
-            // A light opacity ramp prevents text from appearing before the first
-            // translated frame without reintroducing shrink/scale motion.
-            opacity: geometry.revealProgress
-            children: [root.contentItem]
+            ConnectedSurfaceFrame {
+                id: frame
+                anchors.fill: parent
+                geometry: geometry
+                fillColor: root._surfaceColor
+                borderColor: root._borderColor
+                borderWidth: root._borderWidth
+                connectorBorderWidth: 0
+                connectorVisible: false
+                shadowEnabled: root._edgeShadowEnabled
+                    && root._edgeShadowExtent > 0
+                    && root._edgeShadowOpacity > 0
+                shadowExtent: root._edgeShadowExtent
+                shadowColor: root._edgeShadowColor
+                joinTop: root._attachmentEdge === "top"
+                    || directEdgeAttachment.atTop
+                joinBottom: root._attachmentEdge === "bottom"
+                    || directEdgeAttachment.atBottom
+                joinLeft: root._attachmentEdge === "left"
+                    || directEdgeAttachment.atLeft
+                joinRight: root._attachmentEdge === "right"
+                    || directEdgeAttachment.atRight
+                shadowTop: !frame.joinTop
+                shadowBottom: !frame.joinBottom
+                shadowLeft: !frame.joinLeft
+                shadowRight: !frame.joinRight
+            }
 
-            HoverHandler {
-                id: popupHoverHandler
-                enabled: root.active
-                onHoveredChanged: root.popupHovered = hovered
+            ConnectedSurfaceContentHost {
+                id: popupContentHost
+                geometry: geometry
+                padding: root._contentPadding
+                // Pure slide-under motion: no scale/shrink and no staged fade.
+                opacity: 1
+                children: [root.contentItem]
+
+                HoverHandler {
+                    id: popupHoverHandler
+                    enabled: root.active
+                    onHoveredChanged: root.popupHovered = hovered
+                }
             }
         }
 

@@ -103,6 +103,8 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/Ve
 
 grep -Fq 'connectorVisible: false' "$styled_popup" \
     || fail 'StyledPopup must not paint a connector stem'
+grep -Fq 'ConnectedSurfaceRevealClip {' "$styled_popup" \
+    || fail 'StyledPopup must slide underneath the Bar/Screen Edge through a fixed reveal clip'
 grep -Fq 'readonly property real _popupScreenMargin: Math.max(0,' "$styled_popup" \
     || fail 'StyledPopup Screen Edge clamping must be placement-driven for every Bar module'
 if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \
@@ -127,10 +129,11 @@ grep -Fq 'topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius' "$
     || fail 'ConnectedSurfaceFrame must remove radius from attached corners'
 grep -Fq 'id: shadowClip' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must clip radius-following shadow at attached edges'
-grep -Fq 'topLeftRadius: body.topLeftRadius' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame shadow source must follow the body corner silhouette'
-grep -Fq 'layer.effect: MultiEffect {' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must derive shadow from the popup silhouette'
+grep -Fq 'RectangularShadow {' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must use the stable radius-aware shell shadow renderer'
+if grep -Fq 'layer.effect: MultiEffect {' "$connected_frame"; then
+    fail 'ConnectedSurfaceFrame must not depend on the blank-prone MultiEffect popup shadow path'
+fi
 grep -Fq 'ConnectedSurfaceJoinFlares {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must add concave shoulders at directly joined edge endpoints'
 grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \
@@ -201,6 +204,7 @@ for token in \
     'sourceComponent: PanelWindow {' \
     'ConnectedSurfaceGeometry {' \
     'connectorLength: 0' \
+    'ConnectedSurfaceRevealClip {' \
     'ConnectedSurfaceFrame {' \
     'connectorVisible: false' \
     'ConnectedSurfaceContentHost {' \

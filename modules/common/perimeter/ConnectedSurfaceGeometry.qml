@@ -193,17 +193,38 @@ QtObject {
         connectorSourceExtent + Math.max(0, outerRadius) * 2))
 
     readonly property real revealProgress: clamp(progress, 0, 1)
-    // Caelestia-style motion language: preserve the popup body's full size and
-    // translate it a short distance from/to the owning edge. Do not resize the
-    // body during reveal; shrinking made controls and corner radii visibly pulse.
+    // Slide the complete body under the owning Bar/Screen Edge. The body never
+    // resizes; its full cross-axis extent travels behind a fixed reveal boundary.
     readonly property real animatedTangentExtent: bodyTangentExtent
     readonly property real animatedCrossExtent: crossBodyExtent
     readonly property real animatedTangentCenter: bodyTangentCenter
     readonly property real animatedTangentStart: horizontal ? bodyRect.x : bodyRect.y
     readonly property real animationOffset: snap(
-        (1 - revealProgress)
-            * Math.min(Math.max(0, PerimeterTokens.revealSlideDistance),
-                crossBodyExtent))
+        (1 - revealProgress) * crossBodyExtent)
+
+    // Fixed viewport on the screen-facing side of the resting attachment seam.
+    // Rendering inside this rect makes translated pixels disappear underneath
+    // the Bar/Screen Edge instead of painting over that compositor surface.
+    readonly property real attachmentBoundary: edge === "top"
+        ? anchorRect.y + anchorRect.height
+        : edge === "bottom" ? anchorRect.y
+        : edge === "left" ? anchorRect.x + anchorRect.width
+        : anchorRect.x
+    readonly property rect revealClipRect: edge === "top"
+        ? Qt.rect(outputRect.x, snap(attachmentBoundary),
+            outputRect.width,
+            Math.max(0, outputRect.y + outputRect.height - snap(attachmentBoundary)))
+        : edge === "bottom"
+            ? Qt.rect(outputRect.x, outputRect.y,
+                outputRect.width,
+                Math.max(0, snap(attachmentBoundary) - outputRect.y))
+        : edge === "left"
+            ? Qt.rect(snap(attachmentBoundary), outputRect.y,
+                Math.max(0, outputRect.x + outputRect.width - snap(attachmentBoundary)),
+                outputRect.height)
+        : Qt.rect(outputRect.x, outputRect.y,
+            Math.max(0, snap(attachmentBoundary) - outputRect.x),
+            outputRect.height)
 
     readonly property rect animatedBodyRect: edge === "top"
         ? Qt.rect(bodyRect.x,
@@ -281,6 +302,19 @@ QtObject {
 
     readonly property rect restVisualBounds: unionRect(bodyRect, restConnectorRect)
     readonly property rect visualBounds: unionRect(animatedBodyRect, connectorRect)
+
+    function intersectRect(a, b) {
+        const left = Math.max(a.x, b.x)
+        const top = Math.max(a.y, b.y)
+        const right = Math.min(a.x + a.width, b.x + b.width)
+        const bottom = Math.min(a.y + a.height, b.y + b.height)
+        return Qt.rect(left, top,
+            Math.max(0, right - left), Math.max(0, bottom - top))
+    }
+
+    // Input follows only the visible body segment during slide-under motion.
+    readonly property rect visibleBodyRect:
+        intersectRect(animatedBodyRect, revealClipRect)
     readonly property rect blurRect: {
         const expansion = Math.max(0, blurExpansion)
         const left = snapDown(visualBounds.x - expansion)

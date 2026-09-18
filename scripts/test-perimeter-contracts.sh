@@ -19,12 +19,14 @@ for file in \
     ConnectedSurfaceGeometry.qml \
     ConnectedSurfaceConnector.qml \
     ConnectedSurfaceFrame.qml \
+    ConnectedSurfaceJoinFlares.qml \
+    ConnectedSurfaceRevealClip.qml \
     ConnectedSurfaceContentHost.qml \
     ConnectedSurfaceMask.qml; do
     [[ -f "$common/$file" ]] || fail "missing shared primitive $file"
 done
 
-for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceContentHost ConnectedSurfaceMask; do
+for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceMask; do
     grep -Fq "$primitive" "$styled" \
         || fail "StyledPopup must keep using $primitive"
 done
@@ -32,7 +34,9 @@ done
 grep -Fq 'mask: connectedMask' "$styled" \
     || fail 'StyledPopup must keep the shaped connected input mask'
 grep -Fq 'progress: root.revealProgress' "$styled" \
-    || fail 'StyledPopup must keep morphing through shared reveal geometry'
+    || fail 'StyledPopup must keep driving shared reveal geometry'
+grep -Fq 'ConnectedSurfaceRevealClip {' "$styled" \
+    || fail 'StyledPopup must clip translated pixels at the resting Bar/Screen Edge seam'
 for token in \
     'readonly property real _barSurfaceThickness:' \
     'Appearance.sizes.verticalBarWidth' \

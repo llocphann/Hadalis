@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Effects
+import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
@@ -62,48 +62,36 @@ Item {
         visible: root.visible && width > 0 && height > 0
     }
 
-    // Shadow is generated from the same asymmetric rounded silhouette as the
-    // body, then clipped at every attached edge. This prevents shadow from
-    // painting across Bar/Screen Edge seams and keeps the free-corner falloff
-    // aligned with the popup border radius.
+    // Use the same radius-aware RectangularShadow renderer that the shell's
+    // stable surface primitives use. Attached sides hard-clip the shadow while
+    // every free side keeps the configured Screen Edge/Bar falloff.
     Item {
         id: shadowClip
         z: -1
         visible: root.shadowEnabled && root.shadowExtent > 0 && body.visible
             && (root.shadowTop || root.shadowBottom
                 || root.shadowLeft || root.shadowRight)
-        x: body.x - (root.shadowLeft ? root.shadowExtent : 0)
-        y: body.y - (root.shadowTop ? root.shadowExtent : 0)
+        x: body.x - (root.shadowLeft ? root.shadowExtent + 2 : 0)
+        y: body.y - (root.shadowTop ? root.shadowExtent + 2 : 0)
         width: body.width
-            + (root.shadowLeft ? root.shadowExtent : 0)
-            + (root.shadowRight ? root.shadowExtent : 0)
+            + (root.shadowLeft ? root.shadowExtent + 2 : 0)
+            + (root.shadowRight ? root.shadowExtent + 2 : 0)
         height: body.height
-            + (root.shadowTop ? root.shadowExtent : 0)
-            + (root.shadowBottom ? root.shadowExtent : 0)
+            + (root.shadowTop ? root.shadowExtent + 2 : 0)
+            + (root.shadowBottom ? root.shadowExtent + 2 : 0)
         clip: true
 
-        Rectangle {
-            id: shadowShape
+        RectangularShadow {
             x: body.x - shadowClip.x
             y: body.y - shadowClip.y
             width: body.width
             height: body.height
-            radius: body.surfaceRadius
-            topLeftRadius: body.topLeftRadius
-            topRightRadius: body.topRightRadius
-            bottomLeftRadius: body.bottomLeftRadius
-            bottomRightRadius: body.bottomRightRadius
-            color: root.fillColor
-
-            layer.enabled: shadowClip.visible
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowBlur: 1.0
-                blurMax: Math.max(1, Math.round(root.shadowExtent))
-                shadowColor: root.shadowColor
-                shadowHorizontalOffset: 0
-                shadowVerticalOffset: 0
-            }
+            radius: body.surfaceRadius + root.shadowExtent * 0.75
+            blur: root.shadowExtent
+            spread: 0
+            offset: Qt.vector2d(0, 0)
+            color: root.shadowColor
+            cached: true
         }
     }
 
@@ -111,6 +99,7 @@ Item {
     // attached edge. These are union flares, not a connector/stem: the body
     // still reaches the Bar/Screen Edge itself and the joined corners stay square.
     ConnectedSurfaceJoinFlares {
+        z: 2
         anchors.fill: parent
         bodyItem: body
         fillColor: root.fillColor

@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import qs
 import qs.modules.common
+import qs.modules.common.perimeter
 
 Singleton {
     id: root
@@ -258,11 +259,11 @@ Singleton {
                 const appGap = Config.options?.bar?.pill?.appGap ?? 1
                 thickness = Math.max(0, restHeight + topGap - 12 * (1 - appGap) * scale)
             } else if (barVertical) {
-                thickness = Appearance.sizes.verticalBarWidth + Appearance.rounding.screenRounding
+                thickness = Appearance.sizes.verticalBarWidth + PerimeterTokens.frameRadius
             } else if (appearanceStyle === "m3") {
                 // M3Bar's layer surface includes the rounded screen decorator;
                 // reserve its visual extent, not only the exclusive-zone core.
-                thickness = Appearance.sizes.barHeight + Appearance.rounding.screenRounding
+                thickness = Appearance.sizes.barHeight + PerimeterTokens.frameRadius
             } else {
                 // Classic Bar has one supported geometry: Hug. Reserve the
                 // structural body plus its inverse-corner shoulder extent.

@@ -231,6 +231,11 @@ def main() -> None:
     check("PerimeterCornerShadow {" in screen_edge
           and "function adjacentShadowInset(outputName, edge)" in screen_edge,
           "Screen Edge corners must use the shared curved shadow junction")
+    perimeter_tokens = read("modules/common/perimeter/PerimeterTokens.qml")
+    check("readonly property real shadowSeamOverlap: 1" in perimeter_tokens,
+          "Perimeter shadow tangent overlap must stay centralized")
+    check("PerimeterTokens.shadowSeamOverlap" in screen_edge,
+          "Screen Edge straight and curved shadows must overlap at their tangent")
 
     for token in (
         "id: sidebarEdgeFlares",
@@ -383,6 +388,12 @@ def main() -> None:
     vertical_bar_runtime = read("modules/verticalBar/VerticalBar.qml")
     bar_content = read("modules/bar/BarContent.qml")
     vertical_bar_content = read("modules/verticalBar/VerticalBarContent.qml")
+    check("readonly property real shadowTangentInset:" in bar_runtime
+          and "PerimeterTokens.shadowSeamOverlap" in bar_runtime,
+          "Horizontal Bar must keep a continuous straight/curved shadow tangent")
+    check("readonly property real shadowTangentInset:" in vertical_bar_runtime
+          and "PerimeterTokens.shadowSeamOverlap" in vertical_bar_runtime,
+          "Vertical Bar must keep a continuous straight/curved shadow tangent")
     for runtime in (bar_runtime, vertical_bar_runtime):
         check("readonly property bool showBarBackground: true" in runtime,
               "Supported Hug Bar chrome must remain structurally present")

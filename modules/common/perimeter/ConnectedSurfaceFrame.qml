@@ -16,6 +16,13 @@ Item {
     property bool shadowBottom: true
     property bool shadowLeft: true
     property bool shadowRight: true
+    // A directly joined edge is part of the same visual surface. Square only
+    // the body corners touching that edge so no rounded-card notch appears at
+    // the Screen Edge seam; callers that do not opt in keep normal rounding.
+    property bool joinTop: false
+    property bool joinBottom: false
+    property bool joinLeft: false
+    property bool joinRight: false
 
     readonly property Item bodyItem: body
     readonly property Item connectorItem: connector
@@ -40,7 +47,13 @@ Item {
         y: root.geometry.animatedBodyRect.y
         width: root.geometry.animatedBodyRect.width
         height: root.geometry.animatedBodyRect.height
-        radius: Math.min(root.geometry.outerRadius, width / 2, height / 2)
+        readonly property real surfaceRadius: Math.min(
+            root.geometry.outerRadius, width / 2, height / 2)
+        radius: surfaceRadius
+        topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius
+        topRightRadius: (root.joinTop || root.joinRight) ? 0 : surfaceRadius
+        bottomLeftRadius: (root.joinBottom || root.joinLeft) ? 0 : surfaceRadius
+        bottomRightRadius: (root.joinBottom || root.joinRight) ? 0 : surfaceRadius
         color: root.fillColor
         border.color: root.borderColor
         border.width: root.borderWidth

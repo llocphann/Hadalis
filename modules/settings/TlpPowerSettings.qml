@@ -107,7 +107,7 @@ ColumnLayout {
                         visible: TlpSettingsService.configAvailable
                             || TlpSettingsService.managedConfigPresent
                         Layout.fillWidth: true
-                        text: Translation.tr("Overrides: %1").arg(TlpSettingsService.configFile)
+                        text: Translation.tr("Config: %1").arg(TlpSettingsService.configFile)
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.family: Appearance.font.family.monospace
@@ -148,7 +148,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         text: TlpSettingsService.hasPendingChanges
                             ? Translation.tr("%1 staged change(s)").arg(TlpSettingsService.pendingCount)
-                            : Translation.tr("Effective TLP values")
+                            : Translation.tr("Effective values")
                         color: TlpSettingsService.hasPendingChanges
                             ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
                         font.weight: TlpSettingsService.hasPendingChanges ? Font.Medium : Font.Normal
@@ -235,6 +235,7 @@ ColumnLayout {
                         rightmost: true
                         buttonIcon: String(modelData?.icon ?? "tune")
                         buttonText: Translation.tr(TlpSettingsService.categoryLabel(modelData))
+                        leftAlignContent: true
                         toggled: root.selectedCategoryIndex === index
                         enabled: !TlpSettingsService.busy
                         onClicked: root.selectCategory(index)

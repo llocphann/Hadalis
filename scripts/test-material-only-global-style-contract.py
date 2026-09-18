@@ -64,6 +64,7 @@ CONTROL_PANEL_CONTENT = ROOT / "modules" / "controlPanel" / "ControlPanelContent
 ON_SCREEN_KEYBOARD = ROOT / "modules" / "onScreenKeyboard" / "OnScreenKeyboard.qml"
 OSK_KEY = ROOT / "modules" / "onScreenKeyboard" / "OskKey.qml"
 SCREEN_CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
+SIDEBAR_LEFT_CONTENT = ROOT / "modules" / "sidebarLeft" / "SidebarLeftContent.qml"
 VERTICAL_BAR_CONTENT = ROOT / "modules" / "verticalBar" / "VerticalBarContent.qml"
 VERTICAL_CLOCK_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalClockWidget.qml"
 VERTICAL_DATE_WIDGET = ROOT / "modules" / "verticalBar" / "VerticalDateWidget.qml"
@@ -156,6 +157,7 @@ def main() -> None:
     on_screen_keyboard = ON_SCREEN_KEYBOARD.read_text(encoding="utf-8")
     osk_key = OSK_KEY.read_text(encoding="utf-8")
     screen_corners = SCREEN_CORNERS.read_text(encoding="utf-8")
+    sidebar_left_content = SIDEBAR_LEFT_CONTENT.read_text(encoding="utf-8")
     vertical_bar_content = VERTICAL_BAR_CONTENT.read_text(encoding="utf-8")
     vertical_clock_widget = VERTICAL_CLOCK_WIDGET.read_text(encoding="utf-8")
     vertical_date_widget = VERTICAL_DATE_WIDGET.read_text(encoding="utf-8")
@@ -1455,6 +1457,60 @@ def main() -> None:
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+
+    # SidebarLeftContent is hosted by the shared physical-edge SidebarHost.
+    # Keep its explicit Ricelin island skin, connected-edge geometry and all
+    # tab/content behavior while collapsing normal chrome to Material.
+    for token in legacy_style_tokens:
+        forbid(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
+    for token in (
+        "zzzEverywhere",
+        "regaliaEverywhere",
+        "angelEverywhere",
+        "inirEverywhere",
+        "auroraEverywhere",
+        "RegaliaPlate {",
+        "ZzzPanelBackdrop {",
+        "AngelPartialBorder {",
+    ):
+        forbid(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
+    for token in (
+        "readonly property color connectedSurfaceColor: sidebarLeftBackground.color",
+        'readonly property bool islandStyle: surfaceDialect === "island"',
+        "IslandPanel {",
+        "visible: sidebarLeftBackground.islandStyle",
+        "color: (gameModeMinimal || islandStyle) ? \"transparent\"",
+        "Appearance.colors.colLayer1",
+        "Appearance.colors.colLayer0",
+        "radius: cardStyle",
+        'joinLeft: root.attachedEdge === "left"',
+        'joinRight: root.attachedEdge === "right"',
+        'topLeftRadius: root.attachedEdge === "left" ? 0 : radius',
+        'topRightRadius: root.attachedEdge === "right" ? 0 : radius',
+        "anchors.topMargin: sidebarPadding - 4",
+        "spacing: sidebarPadding",
+        "transparent: false",
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer1",
+        "border.width: 0",
+        'border.color: "transparent"',
+        "radius: Appearance.rounding.small",
+        'Config.setNestedValue("sidebar.left.tabOrder", order)',
+        "Ai.ensureInitialized()",
+        "SwipeView {",
+        "interactive: !root.tabEditMode",
+        "WidgetsView {}",
+        "AiChat {}",
+        "Translator {}",
+        "Anime {}",
+        "AnimeScheduleView {}",
+        "WallhavenView {",
+        "NewsView {}",
+        "InnerTuneView {}",
+        "ToolsView {}",
+        "SoftwareView {}",
+    ):
+        require(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
 
     # VerticalBarContent owns the supported ii vertical bar chrome. Keep the
     # independent islands/cornerStyle/cardStyle, compositor blur and connected

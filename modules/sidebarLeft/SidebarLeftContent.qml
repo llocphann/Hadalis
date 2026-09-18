@@ -256,55 +256,22 @@ Item {
             }
         }
         property bool cardStyle: Config.options?.sidebar?.cardStyle ?? false
-        // Resolve one owner for the complete surface. Explicit Ricelin islands
-        // override the global worldview; otherwise the selected global style owns it.
+        // Ricelin island mode remains an explicit supported sidebar skin;
+        // otherwise the sidebar uses the canonical Material surface.
         readonly property string surfaceDialect: Appearance.surfaceDialectFor(
             (Config.options?.sidebar?.style ?? "panel") === "island" ? "island" : "")
         readonly property bool islandStyle: surfaceDialect === "island"
-        readonly property bool zzzEverywhere: surfaceDialect === "zzz"
-        readonly property bool regaliaEverywhere: surfaceDialect === "regalia"
-        readonly property bool angelEverywhere: surfaceDialect === "angel"
-        readonly property bool auroraEverywhere: surfaceDialect === "aurora" || angelEverywhere
-        readonly property bool inirEverywhere: surfaceDialect === "inir"
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
-        readonly property string wallpaperUrl: {
-            const _dep1 = WallpaperListener.multiMonitorEnabled
-            const _dep2 = WallpaperListener.effectivePerMonitor
-            const _dep3 = Wallpapers.effectiveWallpaperUrl
-            return WallpaperListener.wallpaperUrlForScreen(root.panelScreen)
-        }
-        readonly property bool useWallpaperBackdrop: root.panelVisible
-            && auroraEverywhere
-            && !gameModeMinimal
-            && wallpaperUrl.length > 0
-
-        ColorQuantizer {
-            id: sidebarLeftWallpaperQuantizer
-            source: sidebarLeftBackground.auroraEverywhere ? sidebarLeftBackground.wallpaperUrl : ""
-            depth: 0
-            rescaleSize: 10
-        }
-
-        readonly property color wallpaperDominantColor: (sidebarLeftWallpaperQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary)
-        readonly property QtObject blendedColors: AdaptedMaterialScheme {
-            color: ColorUtils.mix(sidebarLeftBackground.wallpaperDominantColor, Appearance.colors.colPrimaryContainer, 0.8) || Appearance.colors.colSecondaryContainer
-        }
 
         color: (gameModeMinimal || islandStyle) ? "transparent"
-             : zzzEverywhere ? Appearance.zzz.chrome
-             : regaliaEverywhere ? "transparent"
-             : inirEverywhere ? (cardStyle ? Appearance.inir.colLayer1 : Appearance.inir.colLayer0)
-             : auroraEverywhere ? ColorUtils.applyAlpha((blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
-             : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
+            : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
         // Screen Edge owns the outer shell boundary. Drawing a second outline
         // here makes the edge/sidebar join read as two stacked cards.
         border.width: 0 // Screen Edge seam owns the outer boundary
         border.color: "transparent"
-        radius: zzzEverywhere ? Appearance.zzz.panelRadius
-            : regaliaEverywhere ? Appearance.regalia.panelRadius
-            : angelEverywhere ? Appearance.angel.roundingNormal
-            : inirEverywhere ? Appearance.inir.roundingNormal
-            : cardStyle ? Appearance.rounding.normal : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+        radius: cardStyle
+            ? Appearance.rounding.normal
+            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         topLeftRadius: root.attachedEdge === "left" ? 0 : radius
         bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
         topRightRadius: root.attachedEdge === "right" ? 0 : radius
@@ -319,131 +286,14 @@ Item {
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
 
-        RegaliaPlate {
-            anchors.fill: parent
-            visible: sidebarLeftBackground.regaliaEverywhere
-            fillColor: sidebarLeftBackground.cardStyle ? Appearance.regalia.chassis1 : Appearance.regalia.bg0
-            radius: sidebarLeftBackground.radius
-            inset: Appearance.regalia.panelInset
-            elevated: sidebarLeftBackground.cardStyle
-            deepFrame: !sidebarLeftBackground.cardStyle
-            glassEnabled: true
-        }
-
         clip: true
-
-        // Mask to the rounded panel shape in ZZZ so NO child (backdrop grid,
-        // corner ticks, cards) can re-square the corners — surfaces must never break.
-        layer.enabled: root.panelVisible
-            && (useWallpaperBackdrop || (zzzEverywhere && !gameModeMinimal))
-        layer.smooth: false
-        layer.mipmap: false
-        layer.effect: GE.OpacityMask {
-            maskSource: Rectangle {
-                width: sidebarLeftBackground.width
-                height: sidebarLeftBackground.height
-                radius: sidebarLeftBackground.radius
-                topLeftRadius: sidebarLeftBackground.topLeftRadius
-                topRightRadius: sidebarLeftBackground.topRightRadius
-                bottomLeftRadius: sidebarLeftBackground.bottomLeftRadius
-                bottomRightRadius: sidebarLeftBackground.bottomRightRadius
-            }
-        }
-
-        Image {
-            id: sidebarLeftBlurredWallpaper
-            x: -Appearance.sizes.hyprlandGapsOut
-            y: -Appearance.sizes.hyprlandGapsOut
-            width: root.screenWidth
-            height: root.screenHeight
-            visible: sidebarLeftBackground.useWallpaperBackdrop
-            source: sidebarLeftBackground.useWallpaperBackdrop ? sidebarLeftBackground.wallpaperUrl : ""
-            fillMode: Image.PreserveAspectCrop
-            cache: true
-            sourceSize.width: root.screenWidth
-            sourceSize.height: root.screenHeight
-            asynchronous: true
-
-            // OPTIMIZATION: Release FBO when sidebar is hidden (saves ~16 MiB VRAM)
-            layer.enabled: Appearance.effectsEnabled && sidebarLeftBackground.useWallpaperBackdrop && root.panelVisible
-            layer.effect: MultiEffect {
-                source: sidebarLeftBlurredWallpaper
-                anchors.fill: source
-                saturation: sidebarLeftBackground.angelEverywhere
-                    ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
-                    : (Appearance.effectsEnabled ? 0.2 : 0)
-                blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
-                blur: Appearance.effectsEnabled
-                    ? (sidebarLeftBackground.angelEverywhere ? Appearance.angel.blurIntensity : 1)
-                    : 0
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                color: sidebarLeftBackground.angelEverywhere
-                    ? ColorUtils.transparentize((sidebarLeftBackground.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.angel.overlayOpacity * Appearance.angel.panelTransparentize)
-                    : ColorUtils.transparentize((sidebarLeftBackground.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.aurora.overlayTransparentize)
-            }
-        }
-
-        // Angel inset glow — top edge
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Appearance.angel.insetGlowHeight
-            visible: sidebarLeftBackground.angelEverywhere
-            color: Appearance.angel.colInsetGlow
-            z: 10
-        }
-
-        // Angel partial border — elegant half-borders
-        AngelPartialBorder {
-            visible: sidebarLeftBackground.angelEverywhere
-            targetRadius: sidebarLeftBackground.radius
-            z: 10
-        }
-
-        ZzzPanelBackdrop {
-            anchors.fill: parent
-            visible: sidebarLeftBackground.zzzEverywhere && opacity > 0
-            label: "INTELLIGENCE"
-            index: "L"
-            ghostText: "LEFT"
-            accentColor: Appearance.zzz.chromeStroke
-            showTicks: false
-            showBurst: false
-            showGrid: true
-            horizontalBias: 0.18
-            verticalBias: 0.04
-            ghostWidthFactor: 0.86
-            ghostStrength: 0.7
-            z: 0
-        }
-
-        // ZZZ content wash: a subtle stepped tile plate lifts the content area
-        // off the bare chrome so cards/text read cleanly while the structural
-        // hairlines stay. Kept low-alpha so chrome + ghost marks still breathe.
-        Rectangle {
-            anchors.fill: parent
-            visible: sidebarLeftBackground.zzzEverywhere
-            color: ColorUtils.applyAlpha(Appearance.zzz.tile, 0.55)
-            z: 0
-            Behavior on color {
-                enabled: Appearance.animationsEnabled
-                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-        }
 
         ColumnLayout {
             id: contentColumn
             anchors.fill: parent
             anchors.margins: sidebarPadding
-            anchors.topMargin: sidebarLeftBackground.angelEverywhere ? sidebarPadding + 4
-                : sidebarLeftBackground.inirEverywhere ? sidebarPadding + 6 : sidebarPadding - 4
-            spacing: sidebarLeftBackground.angelEverywhere ? sidebarPadding + 2
-                : sidebarLeftBackground.inirEverywhere ? sidebarPadding + 4 : sidebarPadding
+            anchors.topMargin: sidebarPadding - 4
+            spacing: sidebarPadding
 
             // Tab bar — hidden when webapp is fullscreen in sidebar
             Toolbar {
@@ -452,7 +302,7 @@ Item {
                 enableShadow: false
                 padding: 6
                 implicitHeight: tabBar.implicitHeight + padding * 2
-                transparent: Appearance.zzzEverywhere || Appearance.auroraEverywhere || Appearance.inirEverywhere
+                transparent: false
                 visible: !root.pluginViewActive
 
                 ToolbarTabBar {
@@ -501,20 +351,10 @@ Item {
                         Math.min(root.activeTabContentHeight,
                             root.height - chromeHeight)))
                 }
-                radius: Appearance.zzzEverywhere ? Appearance.zzz.cardRadius
-                    : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                    : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-                color: Appearance.zzzEverywhere ? "transparent"
-                    : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                     : Appearance.auroraEverywhere ? "transparent"
-                     : Appearance.colors.colLayer1
-                border.width: Appearance.zzzEverywhere ? 0
-                    : Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                    : Appearance.inirEverywhere ? 1 : 0
-                border.color: Appearance.zzzEverywhere ? "transparent"
-                    : Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                    : Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent"
+                radius: Appearance.rounding.normal
+                color: Appearance.colors.colLayer1
+                border.width: 0
+                border.color: "transparent"
                 // Organic morph on style/shape switch (organic-transitions)
                 Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
@@ -546,7 +386,7 @@ Item {
                         maskSource: Rectangle {
                             width: swipeView.width
                             height: swipeView.height
-                            radius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
+                            radius: Appearance.rounding.small
                             Behavior on radius {
                                 enabled: Appearance.animationsEnabled
                                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration }

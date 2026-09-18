@@ -55,7 +55,7 @@ The media player widget appears in:
 
 ### MPD and rmpc
 
-`rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself. Hadalis therefore keeps Media on its normal MPRIS boundary and uses `mpd-mpris` as the bridge. On Arch, install the `mpd-mpris` package. Its default user service connects to MPD on `localhost:6600`.
+`rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself. Hadalis therefore keeps Media on its normal MPRIS boundary and uses `mpd-mpris` as the bridge. Arch audio/full-experience packages include `mpd-mpris`; existing repo-managed Arch installs receive it through required migration `042-mpd-mpris-bridge` on `inir update`/migration. Its default user service connects to MPD on `localhost:6600`.
 
 Hadalis probes for a local MPD process and the `mpd-mpris` binary at startup, and also watches PipeWire for an MPD output stream. If MPD is present but no `org.mpris.MediaPlayer2.mpd` player exists, it starts `mpd-mpris.service`. This covers both PipeWire-backed MPD and direct-ALSA output. The bridge then appears through the same Quickshell MPRIS service as every other player, so the Bar, Media popup and Sidebars need no MPD-specific UI path. If the bridge package/service is unavailable, MPD playback continues normally and only Hadalis Media integration stays unavailable.
 

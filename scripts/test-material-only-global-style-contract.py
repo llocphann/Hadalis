@@ -146,6 +146,27 @@ def main() -> None:
     ):
         require(search_chrome, token, "SettingsOverlay.qml search chrome")
 
+    nav_start = settings_overlay.index("id: navColumn")
+    nav_end = settings_overlay.index("id: overlayNavActions", nav_start)
+    nav_chrome = settings_overlay[nav_start:nav_end]
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "ZzzPlate {",
+    ):
+        forbid(nav_chrome, token, "SettingsOverlay.qml navigation rail")
+    for token in (
+        "rippleEnabled: true",
+        "buttonRadius: Math.min(width, height) / 2",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "id: sharedNavIndicator",
+        "color: Appearance.colors.colPrimaryContainer",
+    ):
+        require(nav_chrome, token, "SettingsOverlay.qml navigation rail")
+
     print("Material-only global style contract: PASS")
 
 

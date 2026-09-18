@@ -14,7 +14,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.common.perimeter
 
 Scope {
     id: bar
@@ -89,10 +88,6 @@ Scope {
                     ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
                 readonly property real inwardDecoratorAllowance:
                     Math.max(Appearance.rounding.screenRounding, edgeShadowExtent)
-                readonly property real shadowTangentInset: Math.max(
-                    screenEdgeThickness,
-                    screenEdgeThickness + Appearance.rounding.screenRounding
-                        - PerimeterTokens.shadowSeamOverlap)
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
@@ -167,10 +162,12 @@ Scope {
                             x: (Config.options?.bar?.bottom ?? false)
                                 ? autoHideEdgeBand.x - barRoot.edgeShadowExtent
                                 : autoHideEdgeBand.x + autoHideEdgeBand.width
-                            y: barRoot.shadowTangentInset
+                            y: barRoot.screenEdgeThickness
+                                + Appearance.rounding.screenRounding
                             width: barRoot.edgeShadowExtent
                             height: Math.max(0, parent.height
-                                - 2 * barRoot.shadowTangentInset)
+                                - 2 * (barRoot.screenEdgeThickness
+                                    + Appearance.rounding.screenRounding))
                             color: "transparent"
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
@@ -187,38 +184,6 @@ Scope {
                             }
                         }
 
-                        PerimeterCornerShadow {
-                            cornerRadius: Appearance.rounding.screenRounding
-                            shadowExtent: barRoot.edgeShadowExtent
-                            shadowColor: barRoot.edgeShadowColor
-                            corner: (Config.options?.bar?.bottom ?? false)
-                                ? RoundCorner.CornerEnum.TopRight
-                                : RoundCorner.CornerEnum.TopLeft
-                            anchors {
-                                top: parent.top
-                                topMargin: barRoot.screenEdgeThickness
-                                left: !(Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.right : undefined
-                                right: (Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.left : undefined
-                            }
-                        }
-                        PerimeterCornerShadow {
-                            cornerRadius: Appearance.rounding.screenRounding
-                            shadowExtent: barRoot.edgeShadowExtent
-                            shadowColor: barRoot.edgeShadowColor
-                            corner: (Config.options?.bar?.bottom ?? false)
-                                ? RoundCorner.CornerEnum.BottomRight
-                                : RoundCorner.CornerEnum.BottomLeft
-                            anchors {
-                                bottom: parent.bottom
-                                bottomMargin: barRoot.screenEdgeThickness
-                                left: !(Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.right : undefined
-                                right: (Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.left : undefined
-                            }
-                        }
                         RoundCorner {
                             implicitSize: Appearance.rounding.screenRounding
                             color: Appearance.colors.colLayer0
@@ -296,13 +261,10 @@ Scope {
                         visible: barRoot.edgeShadowEnabled
                             && barRoot.edgeShadowExtent > 0
                             && barRoot.edgeShadowOpacity > 0
+                            && barRoot.surfacePresented
                         anchors {
                             top: parent.top
                             bottom: parent.bottom
-                            topMargin: showBarBackground
-                                ? barRoot.shadowTangentInset : 0
-                            bottomMargin: showBarBackground
-                                ? barRoot.shadowTangentInset : 0
                             left: !(Config.options?.bar?.bottom ?? false) ? barContent.right : undefined
                             right: (Config.options?.bar?.bottom ?? false) ? barContent.left : undefined
                         }
@@ -385,36 +347,7 @@ Scope {
                                 ? Appearance.colors.colLayer0
                                 : "transparent"
 
-                            PerimeterCornerShadow {
-                                cornerRadius: Appearance.rounding.screenRounding
-                                shadowExtent: barRoot.edgeShadowExtent
-                                shadowColor: barRoot.edgeShadowColor
-                                corner: hugDecorators.isRight
-                                    ? RoundCorner.CornerEnum.TopRight
-                                    : RoundCorner.CornerEnum.TopLeft
-                                anchors {
-                                    top: parent.top
-                                    topMargin: barRoot.screenEdgeThickness
-                                    left: !hugDecorators.isRight ? parent.left : undefined
-                                    right: hugDecorators.isRight ? parent.right : undefined
-                                }
-                            }
-                            PerimeterCornerShadow {
-                                cornerRadius: Appearance.rounding.screenRounding
-                                shadowExtent: barRoot.edgeShadowExtent
-                                shadowColor: barRoot.edgeShadowColor
-                                corner: hugDecorators.isRight
-                                    ? RoundCorner.CornerEnum.BottomRight
-                                    : RoundCorner.CornerEnum.BottomLeft
-                                anchors {
-                                    bottom: parent.bottom
-                                    bottomMargin: barRoot.screenEdgeThickness
-                                    left: !hugDecorators.isRight ? parent.left : undefined
-                                    right: hugDecorators.isRight ? parent.right : undefined
-                                }
-                            }
-
-                            // Top Material corner.
+                                    // Top Material corner.
                             RoundCorner {
                                 id: topCorner
                                 anchors {

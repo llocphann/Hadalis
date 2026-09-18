@@ -69,7 +69,7 @@ Item {
         const r = root.overviewMaxPanelWidthRatio;
         return Math.max(0.1, Math.min(1.0, r));
     }
-    property color activeBorderColor: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colSecondary
+    property color activeBorderColor: Appearance.colors.colSecondary
     property bool focusAnimEnabled: root.overviewFocusAnimEnabled
     property int focusAnimDuration: root.overviewFocusAnimDurationMs
     property bool keepOverviewOpenOnWindowClick: root.overviewKeepOpenOnWindowClick
@@ -210,7 +210,6 @@ Item {
 
     StyledRectangularShadow {
         target: overviewBackground
-        visible: Appearance.angelEverywhere || (!Appearance.inirEverywhere && !Appearance.auroraEverywhere)
     }
 
     Rectangle {
@@ -221,19 +220,11 @@ Item {
 
         implicitWidth: workspaceColumnLayout.implicitWidth + padding * 2
         implicitHeight: workspaceColumnLayout.implicitHeight + padding * 2
-        radius: Appearance.angelEverywhere ? Appearance.angel.roundingLarge
-            : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-            : (Appearance.rounding.large + padding)
+        radius: Appearance.rounding.large + padding
         clip: false
-        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-             : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-             : Appearance.auroraEverywhere ? Appearance.aurora.colPopupSurface
-             : Appearance.colors.colBackgroundSurfaceContainer
-        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
-        border.color: Appearance.angelEverywhere ? Appearance.angel.colBorder
-            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-            : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.72)
-            : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
+        color: Appearance.colors.colBackgroundSurfaceContainer
+        border.width: 1
+        border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
 
         Column {
             id: workspaceColumnLayout
@@ -272,19 +263,12 @@ Item {
                             property bool workspaceExists: workspaceObj !== null
                             property bool isActive: workspaceObj && workspaceObj.is_active
                             property color defaultWorkspaceColor: workspaceExists
-                                ? (Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-                                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2 
-                                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface 
-                                    : Appearance.colors.colBackgroundSurfaceContainer)
-                                : ColorUtils.transparentize(Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-                                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2 
-                                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface 
-                                    : Appearance.colors.colBackgroundSurfaceContainer, 0.3)
-                            property color hoveredWorkspaceColor: ColorUtils.mix(defaultWorkspaceColor, 
-                                Appearance.angelEverywhere ? Appearance.angel.colGlassPopupHover
-                                : Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover : Appearance.colors.colLayer1Hover, 0.1)
-                            property color hoveredBorderColor: Appearance.angelEverywhere ? Appearance.angel.colBorderHover
-                                : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer2Hover
+                                ? Appearance.colors.colBackgroundSurfaceContainer
+                                : ColorUtils.transparentize(
+                                    Appearance.colors.colBackgroundSurfaceContainer, 0.3)
+                            property color hoveredWorkspaceColor: ColorUtils.mix(
+                                defaultWorkspaceColor, Appearance.colors.colLayer1Hover, 0.1)
+                            property color hoveredBorderColor: Appearance.colors.colLayer2Hover
                             property bool hoveredWhileDragging: false
 
                             implicitWidth: root.workspaceImplicitWidth
@@ -296,10 +280,8 @@ Item {
                             property bool workspaceAtRight: colIndex === root.overviewColumns - 1
                             property bool workspaceAtTop: row.index === 0
                             property bool workspaceAtBottom: row.index === root.overviewRows - 1
-                            property real largeWorkspaceRadius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                                : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.large
-                            property real smallWorkspaceRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                                : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.verysmall
+                            property real largeWorkspaceRadius: Appearance.rounding.large
+                            property real smallWorkspaceRadius: Appearance.rounding.verysmall
                             topLeftRadius: (workspaceAtLeft && workspaceAtTop) ? largeWorkspaceRadius : smallWorkspaceRadius
                             topRightRadius: (workspaceAtRight && workspaceAtTop) ? largeWorkspaceRadius : smallWorkspaceRadius
                             bottomLeftRadius: (workspaceAtLeft && workspaceAtBottom) ? largeWorkspaceRadius : smallWorkspaceRadius
@@ -401,10 +383,7 @@ Item {
                                 // El estado activo se dibuja con focusedWorkspaceIndicator para evitar solapamientos.
                                 border.color: hoveredWhileDragging
                                     ? hoveredBorderColor
-                                    : (Appearance.angelEverywhere ? ColorUtils.transparentize(Appearance.angel.colBorder, 0.64)
-                                        : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.45)
-                                        : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.78)
-                                        : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.74))
+                                    : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.74)
                                 topLeftRadius: workspace.topLeftRadius
                                 topRightRadius: workspace.topRightRadius
                                 bottomLeftRadius: workspace.bottomLeftRadius
@@ -420,12 +399,7 @@ Item {
                                     family: Appearance.font.family.expressive
                                 }
                                 color: ColorUtils.transparentize(
-                                    Appearance.angelEverywhere ? Appearance.angel.colText
-                                    : Appearance.inirEverywhere ? Appearance.inir.colText
-                                    : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer1
-                                    : Appearance.colors.colOnLayer1,
-                                    0.7
-                                )
+                                    Appearance.colors.colOnLayer1, 0.7)
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 visible: root.showWorkspaceNumber
@@ -672,10 +646,7 @@ Item {
                                                                          || (NiriService.activeWindow
                                                                              && NiriService.activeWindow.id === windowData.id))
 
-                    // Window item radius adapts to angel theme editor rounding values
-                    readonly property real windowRadius: Appearance.angelEverywhere 
-                        ? Appearance.angel.roundingSmall 
-                        : Appearance.rounding.small
+                    readonly property real windowRadius: Appearance.rounding.small
 
                     Rectangle {
                         anchors.fill: parent
@@ -869,18 +840,10 @@ Item {
                 z: root.windowZ + 51
                 width: col.implicitWidth
                 height: col.implicitHeight
-                radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                    : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                    : Appearance.rounding.normal
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-                     : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                     : Appearance.auroraEverywhere ? Appearance.colors.colLayer2Base
-                     : Appearance.colors.colLayer4
+                radius: Appearance.rounding.normal
+                color: Appearance.colors.colLayer4
                 border.width: 1
-                border.color: Appearance.angelEverywhere ? Appearance.angel.colBorder
-                    : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder
-                    : ColorUtils.transparentize(Appearance.colors.colOutline, 0.5)
+                border.color: ColorUtils.transparentize(Appearance.colors.colOutline, 0.5)
 
                 Column {
                     id: col
@@ -893,12 +856,9 @@ Item {
                     RippleButton {
                         implicitWidth: contentItem.implicitWidth + 24
                         height: 32
-                        buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+                        buttonRadius: Appearance.rounding.small
                         buttonText: Translation.tr("Focus")
-                        colBackgroundHover: Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
-                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer3Hover
-                            : Appearance.colors.colLayer4Hover
+                        colBackgroundHover: Appearance.colors.colLayer4Hover
                         onClicked: {
                             if (!root.contextWindowData) return
                             NiriService.focusWindow(root.contextWindowData.id)
@@ -910,12 +870,9 @@ Item {
                     RippleButton {
                         implicitWidth: contentItem.implicitWidth + 24
                         height: 32
-                        buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+                        buttonRadius: Appearance.rounding.small
                         buttonText: Translation.tr("Close")
-                        colBackgroundHover: Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
-                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer3Hover
-                            : Appearance.colors.colLayer4Hover
+                        colBackgroundHover: Appearance.colors.colLayer4Hover
                         onClicked: {
                             if (!root.contextWindowData) return
                             NiriService.closeWindow(root.contextWindowData.id)
@@ -943,10 +900,8 @@ Item {
                 property bool workspaceAtRight: colIndex === root.overviewColumns - 1
                 property bool workspaceAtTop: rowIndex === 0
                 property bool workspaceAtBottom: rowIndex === root.overviewRows - 1
-                property real largeWorkspaceRadius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                    : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.large
-                property real smallWorkspaceRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                    : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.verysmall
+                property real largeWorkspaceRadius: Appearance.rounding.large
+                property real smallWorkspaceRadius: Appearance.rounding.verysmall
                 topLeftRadius: (workspaceAtLeft && workspaceAtTop) ? largeWorkspaceRadius : smallWorkspaceRadius
                 topRightRadius: (workspaceAtRight && workspaceAtTop) ? largeWorkspaceRadius : smallWorkspaceRadius
                 bottomLeftRadius: (workspaceAtLeft && workspaceAtBottom) ? largeWorkspaceRadius : smallWorkspaceRadius

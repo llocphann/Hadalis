@@ -66,6 +66,7 @@ OVERVIEW_SEARCH_ITEM = ROOT / "modules" / "overview" / "SearchItem.qml"
 OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
 OVERVIEW_ACTION_MODE_VIEW = ROOT / "modules" / "overview" / "ActionModeView.qml"
 OVERVIEW_ALL_APPS_GRID = ROOT / "modules" / "overview" / "OverviewAllAppsGrid.qml"
+OVERVIEW_NIRI_WIDGET = ROOT / "modules" / "overview" / "OverviewNiriWidget.qml"
 OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
 
 
@@ -150,6 +151,7 @@ def main() -> None:
     overview_search_widget = OVERVIEW_SEARCH_WIDGET.read_text(encoding="utf-8")
     overview_action_mode_view = OVERVIEW_ACTION_MODE_VIEW.read_text(encoding="utf-8")
     overview_all_apps_grid = OVERVIEW_ALL_APPS_GRID.read_text(encoding="utf-8")
+    overview_niri_widget = OVERVIEW_NIRI_WIDGET.read_text(encoding="utf-8")
     overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
@@ -1522,6 +1524,41 @@ def main() -> None:
         'Drag.keys: ["application/x-inir-desktop-entry"]',
     ):
         require(overview_all_apps_grid, token, "overview/OverviewAllAppsGrid.qml")
+
+    # Niri's Overview workspace/window path is the primary compositor surface.
+    # Its workspace/background/context-menu chrome is Material-only while Niri
+    # workspace switching, window drag/focus/close and preview capture stay intact.
+    for token in legacy_style_tokens:
+        forbid(overview_niri_widget, token, "overview/OverviewNiriWidget.qml")
+    for token in (
+        "property color activeBorderColor: Appearance.colors.colSecondary",
+        "StyledRectangularShadow {",
+        "target: overviewBackground",
+        "radius: Appearance.rounding.large + padding",
+        "color: Appearance.colors.colBackgroundSurfaceContainer",
+        "border.width: 1",
+        "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)",
+        "? Appearance.colors.colBackgroundSurfaceContainer",
+        "Appearance.colors.colBackgroundSurfaceContainer, 0.3",
+        "defaultWorkspaceColor, Appearance.colors.colLayer1Hover, 0.1",
+        "property color hoveredBorderColor: Appearance.colors.colLayer2Hover",
+        "property real largeWorkspaceRadius: Appearance.rounding.large",
+        "property real smallWorkspaceRadius: Appearance.rounding.verysmall",
+        "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.74)",
+        "Appearance.colors.colOnLayer1, 0.7",
+        "readonly property real windowRadius: Appearance.rounding.small",
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer4",
+        "ColorUtils.transparentize(Appearance.colors.colOutline, 0.5)",
+        "buttonRadius: Appearance.rounding.small",
+        "colBackgroundHover: Appearance.colors.colLayer4Hover",
+        "NiriService.switchToWorkspaceById(nextWorkspace.id)",
+        "NiriService.moveWindowToWorkspaceById(windowData.id, targetWorkspace, true)",
+        "NiriService.focusWindow(windowData.id)",
+        "NiriService.closeWindow(windowData.id)",
+        "WindowPreviewService.getPreviewUrl",
+    ):
+        require(overview_niri_widget, token, "overview/OverviewNiriWidget.qml")
 
     # Hyprland OverviewWidget keeps its compositor behavior while its visual
     # Global Theme branches collapse to the terminal Material fallbacks.

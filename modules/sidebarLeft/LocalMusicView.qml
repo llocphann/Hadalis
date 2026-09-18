@@ -356,7 +356,7 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: LocalMusic.hasCurrentTrack ? 142 : 0
+            Layout.preferredHeight: LocalMusic.hasCurrentTrack ? 176 : 0
             visible: LocalMusic.hasCurrentTrack
             radius: Appearance.rounding.normal
             color: Appearance.colors.colLayer2
@@ -459,6 +459,32 @@ Item {
                     Item { Layout.fillWidth: true }
                     StyledText {
                         text: root.formatTime(LocalMusic.currentDuration)
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.family: Appearance.font.family.numbers
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    MaterialSymbol {
+                        text: LocalMusic.volume <= 0 ? "volume_off"
+                            : (LocalMusic.volume < 0.5 ? "volume_down" : "volume_up")
+                        iconSize: 18
+                        color: Appearance.colors.colSubtext
+                    }
+                    StyledSlider {
+                        Layout.fillWidth: true
+                        from: 0
+                        to: 1
+                        value: LocalMusic.volume
+                        onMoved: LocalMusic.setVolume(value)
+                    }
+                    StyledText {
+                        Layout.preferredWidth: 34
+                        horizontalAlignment: Text.AlignRight
+                        text: Math.round(LocalMusic.volume * 100) + "%"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.family: Appearance.font.family.numbers

@@ -47,7 +47,8 @@ for token in (
     'Directories.scriptsPath + "/local_music_scan.py"',
     'Directories.scriptsPath + "/local_music_ipc.py"',
     '"--input-ipc-server=" + ipcSocket',
-    '"--script=/usr/lib/mpv-mpris/mpris.so"',
+    'property string mpvMprisPath: ""',
+    '"--script=" + mpvMprisPath',
     'id: _mprisCheckProc',
     'function playCollection(collection, index = 0): void',
     'function toggleShuffle(): void',
@@ -67,6 +68,7 @@ for token in (
     'LocalMusic.playCollection',
     'LocalMusic.playPath',
     'LocalMusic.seek',
+    'LocalMusic.setVolume',
 ):
     require(view, token, f"Local Music frontend contract missing: {token}")
 for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):

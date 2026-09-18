@@ -18,8 +18,8 @@ Singleton {
 
     property bool available: false
     property string mpvPath: ""
-    property bool _mpvMprisExists: false
-    readonly property bool mprisAvailable: _mpvMprisExists
+    property string mpvMprisPath: ""
+    readonly property bool mprisAvailable: mpvMprisPath.length > 0
     property bool scanning: false
     property bool playing: false
     property bool paused: true
@@ -187,7 +187,7 @@ Singleton {
             mpvPath,
             "--no-video", "--force-window=no", "--audio-display=no",
             "--input-ipc-server=" + ipcSocket,
-            ...(_mpvMprisExists ? ["--script=/usr/lib/mpv-mpris/mpris.so"] : []),
+            ...(mprisAvailable ? ["--script=" + mpvMprisPath] : []),
             "--volume=" + Math.round(volume * 100), "--volume-max=100",
             "--gapless-audio=weak", "--playlist-start=" + index,
             ...(normalizeVolume ? ["--af=loudnorm=I=-14:TP=-1.5:LRA=11"] : []),
@@ -282,8 +282,12 @@ Singleton {
 
     Process {
         id: _mprisCheckProc
-        command: ["/bin/sh", "-c", "test -f /usr/lib/mpv-mpris/mpris.so"]
-        onExited: (code, _status) => root._mpvMprisExists = code === 0
+        stdout: StdioCollector { id: mpvMprisPathCollector }
+        command: ["/bin/sh", "-c",
+            "for p in /usr/lib/mpv-mpris/mpris.so /usr/lib64/mpv-mpris/mpris.so /usr/lib/x86_64-linux-gnu/mpv-mpris/mpris.so; do [ -f \"$p\" ] && { printf '%s\\n' \"$p\"; exit 0; }; done; exit 1"]
+        onExited: (code, _status) => {
+            root.mpvMprisPath = code === 0 ? (mpvMprisPathCollector.text ?? "").trim() : ""
+        }
     }
 
     Process {

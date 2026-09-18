@@ -18,6 +18,8 @@ CLIPPED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "ClippedProgres
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
+LEFT_SIDEBAR_BUTTON = ROOT / "modules" / "bar" / "LeftSidebarButton.qml"
+BAR_CONTENT = ROOT / "modules" / "bar" / "BarContent.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
@@ -61,6 +63,12 @@ def main() -> None:
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
+    left_sidebar_button = LEFT_SIDEBAR_BUTTON.read_text(encoding="utf-8")
+    bar_content = BAR_CONTENT.read_text(encoding="utf-8")
+    right_sidebar_start = bar_content.index("id: rightSidebarButtonComponent")
+    right_sidebar_end = bar_content.find("\n    Component {", right_sidebar_start + 1)
+    right_sidebar_block = bar_content[right_sidebar_start:
+        right_sidebar_end if right_sidebar_end >= 0 else len(bar_content)]
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
@@ -564,6 +572,54 @@ def main() -> None:
         ": root.neutralIconColor",
     ):
         require(util_buttons, token, "UtilButtons.qml")
+
+    for token in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.regalia.",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+        "ZzzPlate {",
+    ):
+        forbid(left_sidebar_button, token, "LeftSidebarButton.qml")
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "colRipple: Appearance.colors.colLayer1Active",
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "color: Appearance.colors.colOnLayer0",
+        "color: Appearance.colors.colTertiary",
+    ):
+        require(left_sidebar_button, token, "LeftSidebarButton.qml")
+
+    for token in (
+        "root.regaliaEverywhere",
+        "root.zzzEverywhere",
+        "root.auroraEverywhere",
+        "Appearance.regalia.",
+        "Appearance.zzz.",
+        "Appearance.aurora.",
+        "ZzzPlate {",
+    ):
+        forbid(right_sidebar_block, token, "BarContent right sidebar button")
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "colRipple: Appearance.colors.colLayer1Active",
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "Appearance.colors.colOnSecondaryContainer",
+        "Appearance.colors.colOnLayer0",
+    ):
+        require(right_sidebar_block, token, "BarContent right sidebar button")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

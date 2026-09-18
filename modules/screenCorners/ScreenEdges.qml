@@ -47,6 +47,7 @@ Scope {
     function barOwnsEdge(outputName, edge) {
         return root.barPanelEnabled
             && GlobalStates.barOpen
+            && !GlobalStates.widgetEditMode
             && edge === root.barEdge
             && root.barTargetsOutput(outputName)
     }

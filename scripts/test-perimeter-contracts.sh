@@ -79,6 +79,7 @@ grep -Fq 'readonly property color connectedSurfaceColor:' "$dashboard" \
 for token in \
     'readonly property color edgeColor: Appearance.colors.colLayer0' \
     'function barOwnsEdge(outputName, edge)' \
+    '&& !GlobalStates.widgetEditMode' \
     'Config.options?.bar?.screenList' \
     '&& !root.barOwnsEdge(outputName, edge)' \
     'readonly property bool adjacentBarOwned:' \

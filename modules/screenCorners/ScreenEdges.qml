@@ -106,8 +106,10 @@ Scope {
     }
 
     function adjacentShadowInset(outputName, edge) {
+        const seam = PerimeterTokens.shadowSeamOverlap
         if (!root.barOwnsEdge(outputName, edge))
-            return root.thickness + root.innerRadius
+            return Math.max(root.thickness,
+                root.thickness + root.innerRadius - seam)
 
         // A visible Classic Bar replaces the physical Screen Edge on its edge.
         // The adjacent straight Screen Edge shadow therefore starts only after
@@ -122,16 +124,19 @@ Scope {
             // moving Bar. Adjacent edge shadows must meet that fallback at the
             // normal Screen Edge corner even while the Bar is temporarily shown.
             if (Config.options?.bar?.autoHide?.enable ?? false)
-                return root.thickness + root.innerRadius
+                return Math.max(root.thickness,
+                    root.thickness + root.innerRadius - seam)
             const barThickness = root.barVertical
                 ? Appearance.sizes.verticalBarWidth
                 : Appearance.sizes.barHeight
-            return barThickness + root.innerRadius
+            return Math.max(barThickness,
+                barThickness + root.innerRadius - seam)
         }
 
         // Waffle is a separate family; keep its junction clear of the physical
         // edge corner even though it does not consume Classic Bar geometry.
-        return root.thickness + root.innerRadius
+        return Math.max(root.thickness,
+            root.thickness + root.innerRadius - seam)
     }
 
     component EdgeWindow: PanelWindow {

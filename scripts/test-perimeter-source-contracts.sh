@@ -9,6 +9,7 @@ weather="$root/modules/bar/weather/WeatherBar.qml"
 styled_popup="$root/modules/bar/StyledPopup.qml"
 connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
 connected_geometry="$root/modules/common/perimeter/ConnectedSurfaceGeometry.qml"
+corner_shadow="$root/modules/common/perimeter/PerimeterCornerShadow.qml"
 join_flares="$root/modules/common/perimeter/ConnectedSurfaceJoinFlares.qml"
 bar_context_menu="$root/modules/bar/BarContextMenu.qml"
 bar_taskbar_button="$root/modules/bar/BarTaskbarButton.qml"
@@ -25,7 +26,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$connected_geometry" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$waffle_bar_popup" "$waffle_bar_content" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$connected_geometry" "$corner_shadow" "$join_flares" "$bar_context_menu" "$bar_taskbar_button" "$bar_content" "$vertical_bar_content" "$vertical_media" "$waffle_bar_popup" "$waffle_bar_content" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -121,26 +122,26 @@ grep -Fq 'id: trailingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'horizontal Screen Edge must own its trailing rounded endpoint'
 grep -Fq 'bottom: edge === "bottom" ? edgeBand.top : undefined' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'bottom Screen Edge corners must attach directly to the bottom band like Hug Bar decorators'
-grep -A4 -F 'readonly property real leadingShadowInset:' "$root/modules/screenCorners/ScreenEdges.qml" \
-        | grep -Fq '? 0 : root.thickness + root.innerRadius' \
-    || fail 'straight Screen Edge shadow must terminate at the inverse-corner box'
-grep -A4 -F 'readonly property real trailingShadowInset:' "$root/modules/screenCorners/ScreenEdges.qml" \
-        | grep -Fq '? 0 : root.thickness + root.innerRadius' \
-    || fail 'straight Screen Edge trailing shadow must terminate at the inverse-corner box'
+grep -Fq 'function adjacentShadowInset(outputName, edge)' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge shadow junctions must centralize adjacent owner geometry'
+grep -Fq 'return barThickness + root.innerRadius' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'visible Bar junction must reserve Bar thickness plus the curved corner box'
+grep -Fq 'if (Config.options?.bar?.autoHide?.enable ?? false)' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'auto-hide Bar junction must fall back to physical Screen Edge geometry'
 grep -A12 -F 'id: leadingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
         | grep -Fq 'leftMargin: root.thickness' \
     || fail 'leading inverse corner must begin after the left Screen Edge band'
 grep -A12 -F 'id: trailingCorner' "$root/modules/screenCorners/ScreenEdges.qml" \
         | grep -Fq 'rightMargin: root.thickness' \
     || fail 'trailing inverse corner must begin before the right Screen Edge band'
-grep -Fq 'component CornerShadow: GE.RadialGradient' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'inverse Screen Edge corners must own a radial shadow primitive'
-grep -Fq '1 - root.shadowExtent / Math.max(1, root.innerRadius)' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'corner shadow inner stop must derive from shadow extent over corner radius'
-grep -Fq 'horizontalRadius: root.innerRadius' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'corner shadow must use the same horizontal radius as the inverse corner'
-grep -Fq 'verticalRadius: root.innerRadius' "$root/modules/screenCorners/ScreenEdges.qml" \
-    || fail 'corner shadow must use the same vertical radius as the inverse corner'
+grep -Fq 'PerimeterCornerShadow {' "$root/modules/screenCorners/ScreenEdges.qml" \
+    || fail 'Screen Edge inverse corners must use the shared perimeter corner shadow'
+grep -Fq 'GE.RadialGradient {' "$corner_shadow" \
+    || fail 'shared perimeter corner shadow must remain radius-aware'
+grep -Fq '1 - root.shadowExtent / Math.max(1, root.cornerRadius)' "$corner_shadow" \
+    || fail 'shared corner shadow inner stop must derive from configured extent and radius'
+grep -Fq 'required property int corner' "$corner_shadow" \
+    || fail 'shared corner shadow must follow the same RoundCorner orientation'
 grep -Fq 'id: leadingCornerShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
     || fail 'leading inverse corner must render its radial shadow'
 grep -Fq 'id: trailingCornerShadow' "$root/modules/screenCorners/ScreenEdges.qml" \
@@ -170,14 +171,23 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must share Screen Edge shadow settings'
-if grep -A16 -F 'id: barEdgeShadow' "$root/modules/bar/Bar.qml" \
-        | grep -Fq 'roundDecoratorAllowance'; then
-    fail 'horizontal Bar shadow must continue beneath Hug shoulders; RoundCorner owns the curved occlusion'
-fi
-grep -Fq 'topMargin: showBarBackground ? Appearance.rounding.screenRounding : 0' "$root/modules/verticalBar/VerticalBar.qml" \
-    || fail 'vertical Bar shadow must stop before the top Hug corner shoulder'
-grep -Fq 'bottomMargin: showBarBackground ? Appearance.rounding.screenRounding : 0' "$root/modules/verticalBar/VerticalBar.qml" \
-    || fail 'vertical Bar shadow must stop before the bottom Hug corner shoulder'
+grep -A18 -F 'id: barEdgeShadow' "$root/modules/bar/Bar.qml" \
+        | grep -Fq 'leftMargin: barRoot.screenEdgeThickness' \
+    || fail 'horizontal Bar straight shadow must stop before the curved left junction'
+grep -A18 -F 'id: barEdgeShadow' "$root/modules/bar/Bar.qml" \
+        | grep -Fq 'rightMargin: barRoot.screenEdgeThickness' \
+    || fail 'horizontal Bar straight shadow must stop before the curved right junction'
+grep -Fq 'barRoot.screenEdgeThickness + Appearance.rounding.screenRounding' "$root/modules/verticalBar/VerticalBar.qml" \
+    || fail 'vertical Bar straight shadow must stop before top/bottom curved junctions'
+for bar_source in "$root/modules/bar/Bar.qml" "$root/modules/verticalBar/VerticalBar.qml"; do
+    grep -Fq 'id: autoHideScreenEdge' "$bar_source" \
+        || fail "${bar_source#$root/} must keep a physical Screen Edge fallback while auto-hidden"
+    grep -Fq 'visible: Config.options?.bar?.autoHide?.enable ?? false' "$bar_source" \
+        || fail "${bar_source#$root/} auto-hide fallback must follow the Bar auto-hide setting"
+    count=$(grep -Fc 'PerimeterCornerShadow {' "$bar_source")
+    [ "$count" -ge 4 ] \
+        || fail "${bar_source#$root/} must curve both Bar and auto-hide Screen Edge corner shadows"
+done
 grep -Fq 'readonly property bool showBarBackground: true' "$root/modules/bar/Bar.qml" \
     || fail 'horizontal Hug structural chrome must not disappear with legacy background state'
 grep -Fq 'readonly property bool showBarBackground: true' "$root/modules/verticalBar/VerticalBar.qml" \
@@ -263,8 +273,19 @@ grep -Fq 'root.bodyItem.mapToItem(root, 0, 0)' "$join_flares" \
     || fail 'join flares must map nested body geometry into the flare host coordinate space'
 grep -Fq 'import qs.modules.common.widgets' "$join_flares" \
     || fail 'join flares must reuse the common Hug corner primitive'
-grep -Fq 'component Flare: RoundCorner {' "$join_flares" \
-    || fail 'connected shoulders must render through RoundCorner'
+grep -Fq 'component Flare: Item {' "$join_flares" \
+    || fail 'connected shoulders must compose fill and curved shadow in one flare item'
+grep -Fq 'RoundCorner {' "$join_flares" \
+    || fail 'connected shoulder fill must reuse the Hug RoundCorner primitive'
+grep -Fq 'PerimeterCornerShadow {' "$join_flares" \
+    || fail 'connected shoulder shadow must follow the same concave arc'
+for token in \
+    'property bool shadowEnabled: false' \
+    'property real shadowExtent: 0' \
+    'property color shadowColor: "transparent"'; do
+    grep -Fq "$token" "$join_flares" \
+        || fail "connected shoulders must expose live perimeter shadow state: $token"
+done
 for mapping in \
     'case "topLeft": return RoundCorner.CornerEnum.TopRight' \
     'case "topRight": return RoundCorner.CornerEnum.TopLeft' \

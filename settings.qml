@@ -481,28 +481,12 @@ ApplicationWindow {
     width: 1100
     height: 750
     color: root.uiReady
-        ? (Appearance.inirEverywhere ? Appearance.inir.colLayer0
-          : Appearance.zzzEverywhere ? Appearance.colors.colLayer0
-          : Appearance.m3colors.m3background)
+        ? Appearance.m3colors.m3background
         : "transparent"
 
     Shortcut {
         sequences: [StandardKey.Find]
         onActivated: settingsSearchField.forceActiveFocus()
-    }
-
-    ZzzDiagonalPattern {
-        stripeSpacing: 28
-        stripeThickness: 1
-    }
-
-    ZzzSurfaceAccent {
-        // No top registration tape on this large utility window — it reads as an
-        // ugly hard border along the top edge. Keep only the diagonal backdrop.
-        showTape: false
-        stripeCount: 34
-        edgeMargin: root.contentPadding
-        z: 1
     }
 
     ColumnLayout {
@@ -736,21 +720,12 @@ ApplicationWindow {
                 anchors.bottomMargin: root.navEditMode ? 8 : 6
                 radius: Appearance.rounding.full
                 color: settingsSearchField.activeFocus
-                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                      : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                      : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                      : Appearance.colors.colLayer1)
-                    : (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                      : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                      : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                      : Appearance.colors.colLayer0)
-                border.width: settingsSearchField.activeFocus ? 2
-                    : (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1)
+                    ? Appearance.colors.colLayer1
+                    : Appearance.colors.colLayer0
+                border.width: settingsSearchField.activeFocus ? 2 : 1
                 border.color: settingsSearchField.activeFocus
                     ? Appearance.colors.colPrimary
-                    : (Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                      : Appearance.inirEverywhere ? Appearance.inir.colBorderMuted
-                      : Appearance.m3colors.m3outlineVariant)
+                    : Appearance.m3colors.m3outlineVariant
 
                 Behavior on color { ColorAnimation { duration: 150 } }
                 Behavior on border.color { ColorAnimation { duration: 150 } }

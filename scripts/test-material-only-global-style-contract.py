@@ -8,6 +8,7 @@ APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
+SETTINGS_WINDOW = ROOT / "settings.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -29,6 +30,7 @@ def main() -> None:
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
+    settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -207,6 +209,33 @@ def main() -> None:
         "Appearance.cookieEverywhere",
     ):
         forbid(settings_overlay, token, "SettingsOverlay.qml")
+
+    # Window-mode Settings uses the same Material-only public contract.
+    for token in ("ZzzDiagonalPattern {", "ZzzSurfaceAccent {"):
+        forbid(settings_window, token, "settings.qml root chrome")
+    require(
+        settings_window,
+        "? Appearance.m3colors.m3background",
+        "settings.qml root chrome",
+    )
+    window_search_start = settings_window.index("id: searchContainer")
+    window_nav_start = settings_window.index("id: navRail", window_search_start)
+    window_search = settings_window[window_search_start:window_nav_start]
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+    ):
+        forbid(window_search, token, "settings.qml search chrome")
+    for token in (
+        "? Appearance.colors.colLayer1",
+        ": Appearance.colors.colLayer0",
+        "border.width: settingsSearchField.activeFocus ? 2 : 1",
+        ": Appearance.m3colors.m3outlineVariant",
+    ):
+        require(window_search, token, "settings.qml search chrome")
 
     print("Material-only global style contract: PASS")
 

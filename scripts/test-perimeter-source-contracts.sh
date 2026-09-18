@@ -8,6 +8,7 @@ media="$root/modules/bar/Media.qml"
 weather="$root/modules/bar/weather/WeatherBar.qml"
 styled_popup="$root/modules/bar/StyledPopup.qml"
 connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
+join_flares="$root/modules/common/perimeter/ConnectedSurfaceJoinFlares.qml"
 overview="$root/modules/overview/Overview.qml"
 overview_dashboard="$root/modules/overview/OverviewDashboard.qml"
 
@@ -16,7 +17,7 @@ fail() {
     exit 1
 }
 
-for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$overview" "$overview_dashboard"; do
+for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connected_frame" "$join_flares" "$overview" "$overview_dashboard"; do
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
@@ -111,6 +112,14 @@ grep -Fq 'topLeftRadius: body.topLeftRadius' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame shadow source must follow the body corner silhouette'
 grep -Fq 'layer.effect: MultiEffect {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must derive shadow from the popup silhouette'
+grep -Fq 'ConnectedSurfaceJoinFlares {' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must add concave shoulders at directly joined edge endpoints'
+grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \
+    || fail 'ConnectedSurfaceFrame must source join flare size from shared perimeter tokens'
+grep -Fq 'No stem is' "$join_flares" \
+    || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
+grep -Fq 'root.joinTop && !root.joinLeft' "$join_flares" \
+    || fail 'top flare must suppress itself when the adjacent Screen Edge is also joined'
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
     || fail 'OSK must use shared perimeter seam tokens'
 grep -Fq 'Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

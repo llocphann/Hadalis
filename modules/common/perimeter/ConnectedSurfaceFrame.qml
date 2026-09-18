@@ -24,6 +24,7 @@ Item {
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
+    property real joinFlareRadius: PerimeterTokens.joinFlareRadius
 
     readonly property Item bodyItem: body
     readonly property Item connectorItem: connector
@@ -106,9 +107,24 @@ Item {
         }
     }
 
-    // Render after the body so the flared connector erases the body outline at
-    // the attachment edge. The connector itself stays unoutlined by default so
-    // the bar, shoulder and body read as one continuous surface.
+    // Caelestia-style concave shoulders at the endpoints of every directly
+    // attached edge. These are union flares, not a connector/stem: the body
+    // still reaches the Bar/Screen Edge itself and the joined corners stay square.
+    ConnectedSurfaceJoinFlares {
+        anchors.fill: parent
+        bodyItem: body
+        fillColor: root.fillColor
+        flareRadius: root.joinFlareRadius
+        progress: root.geometry.revealProgress ?? root.geometry.progress ?? 1
+        joinTop: root.joinTop
+        joinBottom: root.joinBottom
+        joinLeft: root.joinLeft
+        joinRight: root.joinRight
+    }
+
+    // Retained only for consumers that explicitly need legacy connector
+    // geometry. StyledPopup keeps connectorVisible=false, so ordinary Bar
+    // popups are direct-body surfaces plus the concave shoulders above.
     ConnectedSurfaceConnector {
         id: connector
         geometry: root.geometry

@@ -154,13 +154,6 @@ ColumnLayout {
                         font.weight: TlpSettingsService.hasPendingChanges ? Font.Medium : Font.Normal
                     }
 
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: Translation.tr("Apply saves staged changes with one authorization.")
-                        color: Appearance.colors.colSubtext
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                    }
                 }
 
                 DialogButton {
@@ -189,15 +182,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: SettingsMaterialPreset.groupSpacing
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: TlpSettingsService.statusReason === "managed-config-invalid"
-                        ? Translation.tr("Reset removes the invalid iNiR TLP override.")
-                        : Translation.tr("Reset clears the iNiR TLP overrides.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    wrapMode: Text.WordWrap
-                }
+                Item { Layout.fillWidth: true }
 
                 DialogButton {
                     buttonText: Translation.tr("Reset overrides")

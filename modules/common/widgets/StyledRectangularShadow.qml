@@ -14,7 +14,10 @@ Item {
     property real blur: (Appearance.sizes && Appearance.sizes.elevationMargin !== undefined)
         ? (0.9 * Number(Appearance.sizes.elevationMargin)) : 0
     property real spread: 1
-    property color color: Appearance.colors.colShadow
+    // Use canonical Material shadow ink directly. Appearance.colors.colShadow
+    // intentionally becomes transparent for transparent-surface palettes, which
+    // made connected Bar/Screen Edge surfaces lose their depth unexpectedly.
+    property color color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow, 0.30)
     property vector2d offset: Qt.vector2d(0.0, 1.0)
     // Attached surfaces suppress shadow on joined edges. Clipping a normal
     // radius-aware RectangularShadow at the body boundary keeps the free-corner
@@ -56,7 +59,11 @@ Item {
             offset: root.offset
             spread: root.spread
             color: root.color
-            cached: true
+            // A joined/connected surface is commonly translated every frame.
+            // Keep those shadows live to avoid stale/blank cached FBOs; ordinary
+            // stationary card shadows retain caching.
+            cached: !(root.joinTop || root.joinBottom
+                || root.joinLeft || root.joinRight)
         }
     }
 }

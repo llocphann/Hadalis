@@ -1,176 +1,111 @@
-# Connected Perimeter
+# Connected Surfaces
 
-The Connected Perimeter is Hadalis' shared geometry/composition layer for shell surfaces. The reusable infrastructure lives in `modules/common/perimeter/`, while Hadalis feature adapters live in `modules/perimeter/`.
+Hadalis 1.0 uses a **shared connected-surface presentation layer**, not the retired full `iiPerimeter` composition runtime.
 
-Two related concerns must remain distinct during stabilization:
+The authoritative connected-popup path is:
 
-- **Connected-surface presentation** is already used by the existing bar popup architecture through `modules/bar/StyledPopup.qml`. This is the default popup presentation path and does not require a new setting or feature flag.
-- **Full `iiPerimeter` composition ownership** is a broader panel cutover. It remains opt-in until its feature set is equivalent to the legacy composition; it must not be enabled merely to obtain connected popup geometry.
+```text
+modules/bar/StyledPopup.qml
+  -> modules/common/perimeter/ConnectedSurfaceGeometry.qml
+  -> modules/common/perimeter/ConnectedSurfaceFrame.qml
+  -> modules/common/perimeter/ConnectedSurfaceConnector.qml
+  -> modules/common/perimeter/ConnectedSurfaceContentHost.qml
+  -> modules/common/perimeter/ConnectedSurfaceMask.qml
+  -> modules/common/perimeter/PerimeterTokens.qml
+```
+
+`ConnectedSurfaceGeometry.qml` also uses the small `PerimeterTopology.qml` edge utility for edge validation and inward-direction mapping. That utility is not a panel-composition runtime.
+
+## What is retired
+
+The broad `modules/perimeter/` runtime, feature adapters, registry, reservation/presentation policies and `iiPerimeter` cutover ownership were retired from the active shell. They must not be recreated to solve popup, Sidebar, Screen Edge or Overview geometry.
+
+In particular:
+
+- there is no supported `modules/perimeter/PerimeterRuntime.qml` owner;
+- there is no supported `PerimeterFeatureRegistry` module-placement system;
+- `iiPerimeter` is not a third panel family;
+- normal Media, Weather, Sidebar, Dock or System Monitor UX must not depend on a perimeter cutover flag;
+- Waffle remains its own supported panel family.
+
+Some source-only helper/compatibility files may still remain under `modules/common/perimeter/` while cleanup is audited. They are **not** runtime authority and must not gain new callers merely because they still exist.
 
 ## Connected popup contract
 
-`StyledPopup.qml` keeps the established popup role and composes the shared perimeter primitives instead of introducing a second popup framework.
+`StyledPopup.qml` remains the entry point for existing bar popouts. Consumers provide their content and real source control through `hoverTarget`; the shared shell owns the geometry and presentation window.
 
-The shared geometry supports every bar edge:
+The shared geometry supports top, bottom, left and right attachment:
 
-| Bar attachment | Popup inward direction |
+| Source edge | Popup grows inward |
 |---|---|
 | top | down |
 | bottom | up |
 | left | right |
 | right | left |
 
-`ConnectedSurfaceGeometry.qml` is the geometry authority for the popup body, connector, reveal progress, output bounds and attachment edge. `ConnectedSurfaceFrame.qml`, `ConnectedSurfaceConnector.qml`, and `ConnectedSurfaceMask.qml` consume that geometry for presentation and input shape.
+The presentation contract is:
 
-The visual target is a bar-owned deformation rather than a detached card:
+- anchor/output ownership comes from the real source control and its window;
+- connector width, length, seam overlap and radii come from `PerimeterTokens.qml`;
+- body and connector morph from the source instead of rendering as a detached card plus stem;
+- close reverses the same geometry and may keep the presentation resident briefly for reverse retract/hover transfer;
+- transparent regions of the full-output presentation remain click-through;
+- input masking follows the visible connected shape rather than the connector's rectangular bounding box;
+- focused popouts preserve keyboard focus, Escape/close handoff and compositor focus behavior;
+- outside-click catchers, when enabled, stay on the same output as the source popup.
 
-- the surface starts at approximately the real source control width and grows inward from that rendered anchor;
-- the connector flares from the source through cubic Bézier shoulders into the wider body instead of rendering as a thin rectangular stem;
-- the body expands on both its tangent and inward axes, so opening reads as one surface extruding from the bar;
-- the outer shell uses the active Classic Bar surface family instead of the old generic popup-card material;
-- close reverses the same geometry and keeps the loader resident until the body has retracted into the bar;
-- hover-triggered popouts keep their short retract tail interactive so a pointer crossing the connected shoulder can enter the popup body without collapsing it;
-- focused popouts retain layer-shell/compositor focus behavior rather than requiring a detached window implementation.
+Do not add per-feature connector geometry when the shared primitive can represent the surface.
 
-The seam/input contract is equally intentional:
+## Screen Edge ownership
 
-- body and connector overlap by a device-pixel-aware amount;
-- the connector overlaps the source edge as well as the popup body so fractional scale cannot expose a transparent gap;
-- the input mask approximates the Bézier flare with a tighter union rather than treating the connector's transparent bounding rectangle as clickable;
-- transparent portions of the full-output popup window remain click-through.
+`modules/screenCorners/ScreenEdges.qml` owns the persistent visual Screen Edge.
 
-Current bar popouts using this shared shell include the existing battery, resources, weather, clock, timer, update and tray surfaces, plus the migrated Media volume HUD, expanded bar Media controls and taskbar window previews. Context menus retain context-menu semantics instead of being forced into the connected-popout presentation.
+Current invariants:
 
-Do not add per-feature copies of this geometry. A bar popup that can use `StyledPopup.qml` should inherit the connected behavior there.
-
-## Topology
-
-The full perimeter runtime exposes eight placement slots:
-
-| User-facing position | Slot ID |
-|---|---|
-| Top-left | `top.start` |
-| Top-center | `top.center` |
-| Top-right | `top.end` |
-| Left edge | `left.center` |
-| Right edge | `right.center` |
-| Bottom-left | `bottom.start` |
-| Bottom-center | `bottom.center` |
-| Bottom-right | `bottom.end` |
-
-A slot may be empty or contain one or more ordered module instances. Placement belongs to perimeter configuration, not to the module implementation itself.
-
-## Current default composition
-
-`PerimeterConfig.qml` provides the architecture preset used when no explicit perimeter placement overrides are present:
-
-| Slot | Default module instances |
-|---|---|
-| `top.start` | ThinkFan, System Monitor |
-| `top.center` | Workspaces, Media, Weather |
-| `top.end` | empty |
-| `left.center` | Left Sidebar |
-| `right.center` | Right Sidebar |
-| `bottom.start` | empty |
-| `bottom.center` | Dock |
-| `bottom.end` | empty |
-
-These are defaults, not hard bindings. Explicit slot configuration can reorder instances, move them to another valid slot, or leave a slot empty.
-
-## Registered modules
-
-`modules/perimeter/PerimeterFeatureRegistry.qml` currently registers these module IDs:
-
-- `thinkfan`
-- `system-monitor`
-- `workspaces`
-- `media`
-- `weather`
-- `left-sidebar`
-- `right-sidebar`
-- `dock`
-
-The registry resolves module IDs to QML sources. Hosts consume instance descriptors and placement from `PerimeterConfig`; feature adapters do not choose their own permanent edge or slot.
-
-## Configuration model
-
-The typed `Config.qml` schema exposes a `perimeter` node with schema version `1`, shared instance descriptors, shared/default slot entries, and per-output overrides. `PerimeterConfig.qml` also accepts the older object/map representation when reading data, while the typed adapter-friendly representation uses lists.
-
-A representative persisted shape is:
-
-```json
-{
-  "perimeter": {
-    "schemaVersion": 1,
-    "instances": [],
-    "defaultSlots": [
-      {
-        "slotId": "top.start",
-        "instanceIds": ["thinkfan-main", "system-monitor-main"]
-      },
-      {
-        "slotId": "top.end",
-        "instanceIds": []
-      }
-    ],
-    "outputs": []
-  }
-}
-```
-
-An omitted slot entry inherits the architecture preset. An explicit slot entry with an empty `instanceIds` array leaves that slot empty. An empty shared `instances` list uses the built-in descriptor catalog; removing a module from the rendered composition is therefore a placement operation, not a requirement to delete its descriptor.
-
-Per-output entries may override slot placement and instance descriptors for a named output. Invalid slot IDs, duplicate descriptors, malformed output entries, unsupported schema versions, or unresolved configured module sources fail perimeter validation instead of being rendered blindly.
-
-## Runtime and cutover
-
-`modules/perimeter/PerimeterRuntime.qml` creates the per-output host and edge reservation surfaces. `PerimeterCutoverPolicy.qml` enables full perimeter ownership only when all of the following are true:
-
-1. `iiPerimeter` is requested in `enabledPanels`;
-2. the current legacy bar/dock policies are compatible with cutover;
-3. the perimeter configuration validates for every connected output; and
-4. every configured module resolves through the module registry.
-
-If the perimeter was requested but one of those conditions is not satisfied, the cutover policy reports a fallback state instead of treating a partial composition as valid.
-
-At the current `dev` defaults, full `iiPerimeter` ownership is not enabled by default. This is deliberate: the legacy composition keeps functionality that must not disappear during migration. Connected popup presentation through `StyledPopup.qml` does not depend on this cutover.
-
-## Dock and Waffle
-
-Dock's supported user-facing style is **Panel**. Legacy persisted Dock style values are normalized to `panel` during startup and the Dock settings page no longer exposes Pill/macOS/Island/M3 choices.
-
-Waffle is not a Dock style. It remains a separate panel family and must not be folded into `dock.style` migration or styling logic.
+- Screen Edge is presentation-only and uses `exclusiveZone: 0` / `ExclusionMode.Ignore`;
+- edge and corner windows are click-through;
+- visual width/radius do not own Sidebar hit regions or compositor reservation;
+- the exact edge occupied by an ii Bar is suppressed on that output so Bar and Screen Edge do not double-paint the same edge;
+- the Screen Edge uses the Material Bar surface token on the supported ii path;
+- rounded wallpaper-facing inner corners are visual overlays and do not change the rectangular physical edge bands.
 
 ## Sidebars
 
-Left and right sidebars are registered perimeter modules. Their semantic feature/system state remains global, while perimeter placement controls where a sidebar presentation is available. Runtime routing also respects `sidebar.screenList` when choosing eligible connected outputs.
+Left and right Sidebar bridges are owned inside `modules/sidebar/SidebarHost.qml`, not by a separate perimeter module or standalone bridge window.
 
-The edge host is not defined as a permanently full-height sidebar. Size, placement and input ownership are handled by the perimeter host/surface policies so the sidebar adapter can remain movable with the rest of the composition.
+The connector:
+
+- shares the Sidebar's output, visibility and lifecycle;
+- connects the left Sidebar to the left Screen Edge and the right Sidebar to the right Screen Edge;
+- uses `ConnectedSurfaceConnector` and the canonical `PerimeterTokens` seam/width values;
+- does not depend on top/bottom Bar placement.
+
+Sidebar semantic state, resizing and routing remain owned by the existing Sidebar architecture.
+
+## Overview
+
+The Overview/dashboard remains in the existing Overview architecture. Its bottom attachment is a presentation bridge, not a perimeter-runtime route.
+
+`modules/overview/Overview.qml` draws a shared `ConnectedSurfaceConnector` from the visible dashboard body to the inner boundary of the bottom Screen Edge, using the dashboard's actual body rect/color and the canonical connector/seam tokens.
+
+## Context menus and other surfaces
+
+Context menus keep context-menu semantics. They are not forced into `StyledPopup` merely for visual consistency.
+
+Likewise, a feature that already owns an appropriate native surface should reuse the shared connector primitive directly when needed rather than creating a parallel popup framework.
 
 ## Contributor rules
 
-When extending the perimeter:
+When changing connected surfaces:
 
-- reuse `StyledPopup.qml` for existing bar popups instead of creating a parallel popup framework;
-- preserve the source-width morph, curved shoulder, reverse-retract, and shape-aware input contracts instead of replacing them with a floating card plus stem;
-- add reusable composition behavior under `modules/common/perimeter/`;
-- add Hadalis-specific module adapters under `modules/perimeter/`;
-- register module IDs through `PerimeterFeatureRegistry` rather than hard-coding them into a host;
-- keep module state/functionality separate from placement;
-- preserve empty-slot and multiple-instance behavior;
-- validate per-output configuration before rendering or reserving compositor space;
-- preserve Waffle as its own panel family;
-- keep legacy fallback behavior intact until the cutover policy explicitly considers the requested composition ready;
-- do not add a user-facing Connected Perimeter appearance toggle just to control connected popup geometry.
+- preserve `StyledPopup.qml` as the normal bar-popout entry point;
+- fix systemic connector/seam/input defects in the shared primitive instead of adding per-popup magic numbers;
+- preserve source-screen ownership and top/bottom/left/right placement;
+- keep transparent full-output regions click-through;
+- preserve reverse retract, hover transfer, keyboard focus, Escape and outside-click behavior;
+- use `PerimeterTokens.qml` for shared geometry constants;
+- keep Screen Edge, Sidebar and Overview ownership in their existing feature architectures;
+- do not reintroduce `modules/perimeter/`, `iiPerimeter`, feature registries, cutover toggles or panel-slot composition;
+- preserve Waffle as a separate supported panel family.
 
-The key flow is:
-
-```text
-module -> registry/config -> placement -> host -> rendered surface
-```
-
-not:
-
-```text
-component -> hard-coded screen position
-```
+Any remaining broad-runtime helper under `modules/common/perimeter/` should be removed only after exact caller auditing proves it is unused; do not delete the supported `ConnectedSurface*` primitives or `PerimeterTokens.qml` as part of that cleanup.

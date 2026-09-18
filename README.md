@@ -265,7 +265,7 @@ Source work already present on `dev`:
 - `modules/common/widgets/KeyboardFocusRing.qml` imports `qs.modules.common` on current `dev`, so the earlier `Appearance is not defined` warning belongs to an older runtime snapshot and must be rechecked only after the local shell updates/reloads to current source;
 - `Settings > Bar` has a real supported v1.0 facade/content path instead of the previous blank route;
 - public Global Theme Settings are constrained to Material, persisted legacy style values normalize/write back to Material, and the runtime `Appearance.globalStyle` boundary is clamped to Material so a persisted legacy style cannot transiently reactivate an old Global Theme branch during startup;
-- the final source-side Material runtime audit removed the live legacy Global Style editors while retaining only migration/config/local-token compatibility that still has a supported caller; runtime visual validation remains part of the local release pass;
+- the Material-only Settings cleanup now removes the retired Global Style tab/sections/search entries and dangling legacy editor loaders from the base Themes page; the public facade retains only a narrow stale-section redirect plus persisted-value normalization, while runtime visual validation remains part of the local release pass;
 - the Calendar/Weather composition has source implementation for the requested Serpantinum-inspired left/center presentation while retaining Hadalis detailed weather ownership/content on the right;
 - Media Popup owns the existing CAVA -> `PlayerControl` -> `WaveVisualizer` path and gates visualizer activity by popup presentation/playback lifecycle;
 - tray/context-menu output ownership, popup focus lifecycle, reverse retract and exact-menu delayed-close protections remain part of the connected-surface contract.
@@ -285,7 +285,7 @@ Maintainer-reported follow-up checklist below is **source-side only**. A checked
 Still open / must be treated as unfinished until audited or locally validated:
 
 1. **Packaging/runtime dependency audit is still open.** Confirm supported install/package paths cover `cava`, the Hadalis Thinkfan helper/polkit bridge plus its underlying runtime requirements, and weather dependencies. Source wiring alone is not sufficient.
-2. **Regression/docs residue needs a final pass after perimeter retirement.** Remove or rewrite stale contracts/documentation that still assume the deleted broad runtime, retired Global Styles or unsupported APIs. Do not change supported runtime behavior merely to satisfy stale tests.
+2. **Regression/docs residue is narrowed but still open.** `docs/PERIMETER.md` now documents only the supported connected-surface architecture and explicitly marks the broad `modules/perimeter` runtime as retired; continue auditing source-only common-perimeter compatibility helpers and any other stale docs/tests before deleting code. Do not change supported runtime behavior merely to satisfy stale tests.
 3. **Maintainer-reported connected-surface/UI issues remain open.** Popup connector geometry, Media visualizer visibility and Time/Date+Weather hover composition still require concrete source fixes; Overview bottom attachment is source-fixed but needs live validation; Sidebar connector ownership is source-fixed but needs live validation; same-edge Screen Edge ownership/color is source-fixed but still needs live validation.
 4. **No authoritative local pass has been run for this source state.** Calendar/Weather sizing/scaling, Thinkfan bridge reconciliation, CAVA lifecycle, Screen Edge behavior and compositor interactions still require the maintainer's local validator plus live Niri/Hyprland smoke checks.
 
@@ -295,8 +295,8 @@ Recommended next source-side sequence:
 2. fix the connected-surface cluster from the maintainer report: shared popup connector geometry, same-edge Bar/Screen Edge ownership/color, Sidebar vertical connector visibility and Overview bottom attachment, without rebuilding the retired broad perimeter runtime;
 3. diagnose/fix Media Popup CAVA/WaveVisualizer visibility on the existing media path;
 4. merge Time & Date hover behavior into the Weather/Calendar popup and tighten its Serpantinum-inspired left/center frontend while keeping Hadalis detailed weather on the right;
-5. finish the packaging/runtime dependency audit for CAVA, Thinkfan and weather;
-6. remove/update stale regression contracts/docs that still describe retired runtime/theme behavior;
+5. finish the packaging/runtime dependency audit for Thinkfan's upstream runtime requirements and any remaining distro-specific gaps; CAVA is now declared/checkable on the generic/manual source-install path and Weather's hard curl dependency is already covered;
+6. finish the remaining source-only common-perimeter compatibility audit and remove/update any other stale regression contracts/docs that still describe retired runtime/theme behavior;
 7. hand the exact candidate SHA to the maintainer for `bash scripts/validate-maintainer-local.sh` plus the live desktop smoke matrix. Do not mark release gates complete before that result exists.
 
 ## 12. New-conversation continuation prompt

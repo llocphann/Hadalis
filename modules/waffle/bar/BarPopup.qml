@@ -36,6 +36,8 @@ Loader {
     property bool popupBelow: false
     property real ambientShadowWidth: 1
     property int _anchorRevision: 0
+    readonly property bool popupContainsMouse:
+        root.item?.popupContainsMouse ?? false
 
     readonly property string _attachmentEdge:
         root.popupBelow ? "top" : (root.barAtBottom ? "bottom" : "top")

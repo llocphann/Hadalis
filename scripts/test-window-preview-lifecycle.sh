@@ -6,6 +6,9 @@ service="$repo_root/services/WindowPreviewService.qml"
 capture_script="$repo_root/scripts/capture-windows.sh"
 bar_preview="$repo_root/modules/bar/BarTaskbarPreview.qml"
 workspaces="$repo_root/modules/bar/Workspaces.qml"
+waffle_preview="$repo_root/modules/waffle/bar/tasks/TaskPreview.qml"
+waffle_tasks="$repo_root/modules/waffle/bar/tasks/Tasks.qml"
+waffle_bar_popup="$repo_root/modules/waffle/bar/BarPopup.qml"
 
 fail() {
     printf 'window preview lifecycle guard failed: %s\n' "$1" >&2
@@ -34,6 +37,12 @@ require_workspaces() {
     local needle="$1"
     local message="$2"
     grep -Fq -- "$needle" "$workspaces" || fail "$message"
+}
+
+require_waffle_preview() {
+    local needle="$1"
+    local message="$2"
+    grep -Fq -- "$needle" "$waffle_preview" || fail "$message"
 }
 
 require 'console.warn("[WindowPreviewService] preview directory helper failed to start")' \
@@ -78,6 +87,21 @@ require_workspaces 'interval: Config.options?.dock?.hoverPreviewDelay ?? 400' \
     'workspace preview must reuse the existing hover-preview delay'
 require_workspaces 'BarTaskbarPreview {' \
     'workspace strip must reuse BarTaskbarPreview rather than creating a second preview framework'
+
+require_waffle_preview 'BarPopup {' \
+    'Waffle task preview must reuse the shared Waffle connected BarPopup'
+require_waffle_preview 'root.popupContainsMouse' \
+    'Waffle task preview hover bridge must consume BarPopup hover state'
+require_waffle_preview 'WindowPreviewService.captureForTaskView()' \
+    'Waffle task preview must preserve the existing capture lifecycle'
+if grep -Fq 'PopupWindow {' "$waffle_preview"; then
+    fail 'Waffle task preview must not retain detached PopupWindow presentation'
+fi
+if grep -Fq 'anchor.window:' "$waffle_tasks"; then
+    fail 'Waffle Tasks must not configure the retired PopupWindow anchor API'
+fi
+grep -Fq 'readonly property bool popupContainsMouse:' "$waffle_bar_popup" \
+    || fail 'Waffle BarPopup must expose popup hover state to task preview lifecycle'
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
 if (( start_guard_count < 5 )); then

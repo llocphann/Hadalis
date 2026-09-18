@@ -1086,16 +1086,30 @@ Scope {
         // in the host (outside revealViewport clipping) so both endpoints remain
         // visible for slide/reveal animation modes.
         ConnectedSurfaceJoinFlares {
+            id: sidebarEdgeFlares
             z: 9000
             anchors.fill: parent
             bodyItem: sidebarContentLoader
             fillColor: sidebarContentLoader.item?.connectedSurfaceColor
                 ?? Appearance.colors.colLayer0
             flareRadius: PerimeterTokens.joinFlareRadius
-            // SidebarHost owns independent slide/reveal transforms. Keep the
-            // shoulders tied to the settled connected body so they never ghost
-            // at a stale endpoint while that body is in flight.
-            progress: root.presentationOpen && !sidebarContentLoader.animating ? 1 : 0
+
+            // The default sidebar motion is a translated slide. Move the
+            // endpoint shoulders with that same transform instead of hiding
+            // them for the whole transition; otherwise the attached corners
+            // briefly read as square even though the settled body is joined.
+            readonly property bool tracksBodyTranslation:
+                root.animationType === "slide" || root.animationType === "drop"
+            progress: root.presentationOpen
+                && (!sidebarContentLoader.animating || tracksBodyTranslation)
+                ? 1 : 0
+            transform: Translate {
+                x: sidebarEdgeFlares.tracksBodyTranslation
+                    ? sidebarContentLoader.animTranslateX : 0
+                y: sidebarEdgeFlares.tracksBodyTranslation
+                    ? sidebarContentLoader.animTranslateY : 0
+            }
+
             joinLeft: root.isLeftEdge
             joinRight: !root.isLeftEdge
         }

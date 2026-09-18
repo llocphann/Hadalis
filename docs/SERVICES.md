@@ -19,8 +19,9 @@
 | Service | What it does |
 |---------|-------------|
 | **Audio** | PipeWire integration. Default sink/source, volume, mute, per-app mixer. EasyEffects virtual sink detection. IPC target: `audio`. |
-| **MprisController** | MPRIS player management. Filters real players, deduplicates YT Music instances, tracks active player with grace period for track transitions. IPC target: `mpris`. |
-| **YtMusic** | YouTube Music player. Search, queue, playback via mpv + yt-dlp. IPC target: `ytmusic`. |
+| **MprisController** | MPRIS player management. Filters real players, retains legacy YT Music deduplication compatibility, and tracks the active player with a grace period for track transitions. IPC target: `mpris`. |
+| **LocalMusic** | Left Sidebar local-library backend. Scans a chosen local folder, discovers M3U/M3U8 and folder collections, and controls an mpv queue over local Unix-socket IPC. |
+| **YtMusic** | Legacy YouTube Music compatibility backend retained in source while the Left Sidebar has moved to `LocalMusic`; it is no longer the user-facing sidebar music route. IPC target: `ytmusic`. |
 | **SongRec** | Music recognition via SongRec (Shazam-like audio fingerprinting). |
 
 ## System

@@ -69,11 +69,13 @@ When multiple players are active, iNiR picks the most relevant one:
 2. The user's manually selected ("tracked") player beats auto-detection
 3. If nothing is playing, the last active player stays visible
 
-### YT Music
+### Local Music
 
-The left sidebar includes a full YT Music player. It uses mpv for playback and yt-dlp for stream extraction. Search, queue management, playlists, and playback controls all work from within the shell.
+The left sidebar Music tab is local-only. Choose a library folder (the XDG Music directory is the default) and Hadalis recursively indexes common audio formats. It reads tags and duration when the optional Python `mutagen` module is present, otherwise it falls back to filenames and folder names. Common cover-image names such as `cover`, `folder`, `front`, `album` and `artwork` are picked up from each track folder.
 
-When YT Music is playing via the sidebar AND a browser tab is also showing YT Music, iNiR deduplicates them in the media controls (you see one player, not two).
+The player discovers `.m3u`/`.m3u8` playlists and also exposes folders containing multiple tracks as playable collections. Songs, playlists and the active queue are selectable directly in the sidebar. Playback, seek, next/previous, shuffle, repeat and volume are driven through mpv's local Unix-socket IPC; no YouTube session, browser cookies, yt-dlp or network music API is needed.
+
+The historical `YtMusic` source remains only as compatibility code for now and is no longer routed from the Left Sidebar or its Settings UI.
 
 ### Media controls layouts
 

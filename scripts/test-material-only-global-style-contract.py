@@ -15,6 +15,7 @@ NOTIFICATION_UNREAD_COUNT = ROOT / "modules" / "bar" / "NotificationUnreadCount.
 ACTIVE_WINDOW = ROOT / "modules" / "bar" / "ActiveWindow.qml"
 RESOURCE = ROOT / "modules" / "bar" / "Resource.qml"
 CLIPPED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "ClippedProgressBar.qml"
+TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
@@ -55,6 +56,7 @@ def main() -> None:
     active_window = ACTIVE_WINDOW.read_text(encoding="utf-8")
     resource = RESOURCE.read_text(encoding="utf-8")
     clipped_progress_bar = CLIPPED_PROGRESS_BAR.read_text(encoding="utf-8")
+    timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     sys_tray_menu = SYS_TRAY_MENU.read_text(encoding="utf-8")
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
@@ -497,6 +499,30 @@ def main() -> None:
         "radius: Appearance.rounding.unsharpen",
     ):
         require(clipped_progress_bar, token, "ClippedProgressBar.qml")
+
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.zzz.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+    ):
+        forbid(timer_indicator, token, "TimerIndicator.qml")
+    for token in (
+        "Appearance.colors.colTertiary",
+        "Appearance.colors.colPrimary",
+        "Appearance.colors.colSecondary",
+        "Appearance.colors.colOnLayer1",
+        "Appearance.colors.colLayer1Active",
+        "Appearance.colors.colLayer2Active",
+        "Appearance.colors.colLayer2Hover",
+        "Appearance.colors.colLayer1Hover",
+        "Appearance.colors.colOnLayer1Inactive",
+    ):
+        require(timer_indicator, token, "TimerIndicator.qml")
 
     # StyledRectangularShadow is shared by active Media/Overview/Settings
     # surfaces. Keep caller-facing knobs, but render only the Material shadow.

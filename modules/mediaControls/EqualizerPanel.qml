@@ -12,7 +12,54 @@ Item {
 
     property bool active: false
     property bool _registered: false
+    property real eqLightningProgress: 0.0
+    property real eqLightningFade: 1.0
+    property var _lightningGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    readonly property color eqAccentColor: Appearance.colors.colPrimary
     implicitHeight: 214
+
+    function triggerEqLightning(): void {
+        eqLightningAnim.restart()
+    }
+
+    function applyPresetWithLightning(name): void {
+        const curve = EqualizerService.dspPresetCurves[name]
+        if (!curve)
+            return
+        if (EqualizerService.applyDspPreset(name)) {
+            root._lightningGains = curve.slice()
+            root.triggerEqLightning()
+        }
+    }
+
+    SequentialAnimation {
+        id: eqLightningAnim
+        running: false
+        ScriptAction {
+            script: {
+                root.eqLightningFade = 0.0
+                root.eqLightningProgress = 0.0
+            }
+        }
+        NumberAnimation {
+            target: root
+            property: "eqLightningProgress"
+            from: 0.0
+            to: 10.0
+            duration: 650
+            easing.type: Easing.OutSine
+        }
+        PauseAnimation { duration: 150 }
+        NumberAnimation {
+            target: root
+            property: "eqLightningFade"
+            from: 0.0
+            to: 1.0
+            duration: 800
+            easing.type: Easing.OutQuad
+        }
+        ScriptAction { script: root.eqLightningProgress = 0.0 }
+    }
 
     function syncRegistration(): void {
         if (root.active && !root._registered) {
@@ -107,9 +154,106 @@ Item {
             Layout.leftMargin: 4
             Layout.rightMargin: 4
 
+            Canvas {
+                id: lightningCanvas
+                anchors.fill: parent
+                z: 0
+                opacity: 1.0 - root.eqLightningFade
+                visible: opacity > 0.001 && root.eqLightningProgress > 0.0
+
+                Timer {
+                    interval: 16
+                    running: lightningCanvas.visible
+                    repeat: true
+                    onTriggered: lightningCanvas.requestPaint()
+                }
+
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                onVisibleChanged: if (visible) requestPaint()
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+                    if (root.eqLightningProgress <= 0.0
+                            || root.eqLightningFade >= 1.0)
+                        return
+
+                    const gains = root._lightningGains ?? []
+                    const points = []
+                    for (let i = 0; i < 10; ++i) {
+                        const gain = Number(gains[i] ?? 0)
+                        const normalized = 1.0
+                            - ((Math.max(-12, Math.min(12, gain)) + 12) / 24)
+                        points.push({
+                            x: (i + 0.5) * (width / 10),
+                            y: 8 + normalized * Math.max(1, height - 24)
+                        })
+                    }
+
+                    const now = Date.now() / 1000
+                    const maxIndex = root.eqLightningProgress
+                    ctx.lineJoin = "round"
+                    ctx.lineCap = "round"
+
+                    for (let stroke = 0; stroke < 4; ++stroke) {
+                        ctx.beginPath()
+                        ctx.moveTo(points[0].x, points[0].y)
+
+                        for (let i = 0; i < points.length - 1; ++i) {
+                            if (i > maxIndex)
+                                break
+                            const p1 = points[i]
+                            const p2 = points[i + 1]
+                            let fraction = 1.0
+                            if (maxIndex < i + 1)
+                                fraction = Math.max(0, maxIndex - i)
+                            const steps = stroke === 3 ? 6 : 8
+                            for (let j = 1; j <= steps; ++j) {
+                                let t = Math.min(fraction, j / steps)
+                                const envelope = Math.sin(t * Math.PI)
+                                const x = p1.x + (p2.x - p1.x) * t
+                                const y = p1.y + (p2.y - p1.y) * t
+                                const noiseX = Math.sin(now * (10 + stroke) + i + j)
+                                    * Math.cos(now * 8 - i + j)
+                                    * (stroke === 3 ? 1 : (4 - stroke) * 2.6)
+                                    * envelope * (1 - root.eqLightningFade)
+                                const noiseY = Math.cos(now * (9 - stroke) + i - j)
+                                    * Math.sin(now * 7 + i - j)
+                                    * (stroke === 3 ? 1 : (4 - stroke) * 3.4)
+                                    * envelope * (1 - root.eqLightningFade)
+                                ctx.lineTo(x + noiseX, y + noiseY)
+                                if (t >= fraction)
+                                    break
+                            }
+                        }
+
+                        if (stroke === 0) {
+                            ctx.lineWidth = 14
+                            ctx.strokeStyle = root.eqAccentColor
+                            ctx.globalAlpha = 0.28
+                        } else if (stroke === 1) {
+                            ctx.lineWidth = 7
+                            ctx.strokeStyle = Qt.lighter(root.eqAccentColor, 1.2)
+                            ctx.globalAlpha = 0.58
+                        } else if (stroke === 2) {
+                            ctx.lineWidth = 3.5
+                            ctx.strokeStyle = Qt.lighter(root.eqAccentColor, 1.45)
+                            ctx.globalAlpha = 0.88
+                        } else {
+                            ctx.lineWidth = 1.6
+                            ctx.strokeStyle = "#ffffff"
+                            ctx.globalAlpha = 1.0
+                        }
+                        ctx.stroke()
+                    }
+                    ctx.globalAlpha = 1.0
+                }
+            }
+
             Row {
                 anchors.fill: parent
                 spacing: 0
+                z: 1
 
                 Repeater {
                     model: EqualizerService.dspBands
@@ -121,6 +265,11 @@ Item {
                         width: parent.width / 10
                         height: parent.height
                         readonly property real backendGain: Number(modelData?.gain) || 0
+                        readonly property real lightningDistance:
+                            root.eqLightningProgress - index
+                        readonly property real lightningPulse:
+                            lightningDistance >= 0 && lightningDistance < 1
+                                ? Math.sin(lightningDistance * Math.PI) : 0
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -172,6 +321,7 @@ Item {
                                         radius: parent.radius
                                         color: Appearance.colors.colPrimary
                                         opacity: bandSlider.enabled ? 0.9 : 0.35
+                                        scale: 1 + bandDelegate.lightningPulse * 0.12
                                     }
                                 }
 
@@ -189,8 +339,9 @@ Item {
                                         : Appearance.colors.colOnPrimary
                                     border.width: 1
                                     border.color: Appearance.colors.colPrimary
-                                    scale: bandSlider.pressed ? 1.15
-                                        : (bandSlider.hovered ? 1.06 : 1.0)
+                                    scale: (bandSlider.pressed ? 1.15
+                                        : (bandSlider.hovered ? 1.06 : 1.0))
+                                        + bandDelegate.lightningPulse * 0.18
 
                                     Behavior on scale {
                                         enabled: Appearance.animationsEnabled
@@ -244,7 +395,7 @@ Item {
                     colBackgroundHover: Appearance.colors.colLayer1Hover
                     colBackgroundToggled: Appearance.colors.colPrimaryContainer
                     colBackgroundToggledHover: Appearance.colors.colPrimaryContainer
-                    onClicked: EqualizerService.applyDspPreset(modelData)
+                    onClicked: root.applyPresetWithLightning(modelData)
 
                     contentItem: StyledText {
                         text: presetButton.modelData

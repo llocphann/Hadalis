@@ -116,7 +116,16 @@ for token in (
     "EqualizerService.unregisterConsumer()",
     "model: EqualizerService.dspBands",
     "EqualizerService.setDspBandGain(",
-    "EqualizerService.applyDspPreset(modelData)",
+    "function applyPresetWithLightning(name): void",
+    "EqualizerService.applyDspPreset(name)",
+    "root.triggerEqLightning()",
+    "property real eqLightningProgress: 0.0",
+    "property real eqLightningFade: 1.0",
+    'property: "eqLightningProgress"',
+    "to: 10.0",
+    "duration: 650",
+    "id: lightningCanvas",
+    "root.eqLightningProgress - index",
     "uniformCellWidths: true",
     "implicitHeight: 24",
 ):
@@ -148,5 +157,5 @@ for token in (
 ):
     require(backend, token, "EasyEffects")
 
-print("PASS: Media DSP uses version-compatible preset loading and compact transport UI")
+print("PASS: Media DSP uses version-compatible preset loading, Serpantinum lightning, and compact transport UI")
 PY

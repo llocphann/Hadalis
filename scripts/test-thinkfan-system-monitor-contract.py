@@ -68,12 +68,20 @@ def main() -> None:
 
     for token in (
         "property bool connectAdjacentScreenEdge: false",
-        "id: adjacentScreenEdgeGeometry",
+        "id: directEdgeAttachment",
         "screenMargin: root._popupScreenMargin",
-        "ConnectedSurfaceConnector {",
+        "connectorLength: 0",
+        "connectorVisible: false",
+        "shadowEnabled: root._edgeShadowEnabled",
     ):
         check(token in styled_popup,
-              f"StyledPopup must support the opt-in adjacent Screen Edge join: {token}")
+              f"StyledPopup must use direct Caelestia-style edge attachment: {token}")
+    for forbidden in (
+        "id: adjacentScreenEdgeGeometry",
+        "geometry: adjacentScreenEdgeGeometry",
+    ):
+        check(forbidden not in styled_popup,
+              f"StyledPopup must not render a separate adjacent connector stem: {forbidden}")
 
     for token in (
         "property JsonObject fanControl: JsonObject {",

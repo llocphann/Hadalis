@@ -65,13 +65,17 @@ grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/bar/Bar.qml" \
 grep -Fq 'appearance?.screenEdge?.shadow?.enabled' "$root/modules/verticalBar/VerticalBar.qml" \
     || fail 'vertical Bar shadow must share Screen Edge shadow settings'
 grep -Fq 'import qs.modules.common.perimeter' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
-    || fail 'OSK must use shared connected-surface primitives'
-grep -Fq 'id: oskConnectorGeometry' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
-    || fail 'OSK must expose Screen Edge connector geometry'
-grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
-    || fail 'OSK must render a shared Screen Edge connector'
-grep -Fq 'root.screenAttachInset' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
-    || fail 'OSK snap position must account for Screen Edge attachment'
+    || fail 'OSK must use shared perimeter seam tokens'
+grep -Fq 'Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
+    || fail 'OSK body must overlap the Screen Edge directly'
+if grep -Fq 'id: oskConnectorGeometry' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml"; then
+    fail 'OSK must not recreate a detached connector stem'
+fi
+if grep -Fq 'geometry: oskConnectorGeometry' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml"; then
+    fail 'OSK must not render the retired connector geometry'
+fi
+grep -Fq 'screenEdgeShadowSize' "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \
+    || fail 'OSK shadow must share Screen Edge settings'
 
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'normal Media UX must stay on StyledPopup'

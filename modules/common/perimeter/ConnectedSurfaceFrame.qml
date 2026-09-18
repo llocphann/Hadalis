@@ -8,6 +8,14 @@ Item {
     property color borderColor: "transparent"
     property real borderWidth: geometry.borderWidth ?? 0
     property real connectorBorderWidth: 0
+    property bool connectorVisible: true
+    property bool shadowEnabled: false
+    property real shadowExtent: 0
+    property color shadowColor: "transparent"
+    property bool shadowTop: true
+    property bool shadowBottom: true
+    property bool shadowLeft: true
+    property bool shadowRight: true
 
     readonly property Item bodyItem: body
     readonly property Item connectorItem: connector
@@ -39,6 +47,70 @@ Item {
         visible: root.visible && width > 0 && height > 0
     }
 
+    // Caelestia-style direct-edge surfaces have no separate neck shadow. Draw
+    // the same one-sided gradient used by Screen Edge only on the popup's free
+    // sides, leaving attached Bar/Screen-Edge seams shadow-free.
+    Rectangle {
+        z: -1
+        visible: root.shadowEnabled && root.shadowTop
+            && root.shadowExtent > 0 && body.visible
+        x: body.x
+        y: body.y - root.shadowExtent
+        width: body.width
+        height: root.shadowExtent
+        color: "transparent"
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: 1; color: root.shadowColor }
+        }
+    }
+    Rectangle {
+        z: -1
+        visible: root.shadowEnabled && root.shadowBottom
+            && root.shadowExtent > 0 && body.visible
+        x: body.x
+        y: body.y + body.height
+        width: body.width
+        height: root.shadowExtent
+        color: "transparent"
+        gradient: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0; color: root.shadowColor }
+            GradientStop { position: 1; color: "transparent" }
+        }
+    }
+    Rectangle {
+        z: -1
+        visible: root.shadowEnabled && root.shadowLeft
+            && root.shadowExtent > 0 && body.visible
+        x: body.x - root.shadowExtent
+        y: body.y
+        width: root.shadowExtent
+        height: body.height
+        color: "transparent"
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: 1; color: root.shadowColor }
+        }
+    }
+    Rectangle {
+        z: -1
+        visible: root.shadowEnabled && root.shadowRight
+            && root.shadowExtent > 0 && body.visible
+        x: body.x + body.width
+        y: body.y
+        width: root.shadowExtent
+        height: body.height
+        color: "transparent"
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: root.shadowColor }
+            GradientStop { position: 1; color: "transparent" }
+        }
+    }
+
     // Render after the body so the flared connector erases the body outline at
     // the attachment edge. The connector itself stays unoutlined by default so
     // the bar, shoulder and body read as one continuous surface.
@@ -48,5 +120,6 @@ Item {
         fillColor: root.fillColor
         strokeColor: root.borderColor
         strokeWidth: root.connectorBorderWidth
+        connectorEnabled: root.connectorVisible
     }
 }

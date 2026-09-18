@@ -8,6 +8,7 @@ import Quickshell.Hyprland
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.modules.common.perimeter
 import qs.services
 import qs.services.deferred
@@ -19,8 +20,15 @@ Scope { // Scope
     readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property real screenAttachInset:
-        screenEdgeThickness + PerimeterTokens.connectorLength
-            - PerimeterTokens.seamOverlap
+        Math.max(0, screenEdgeThickness - PerimeterTokens.seamOverlap)
+    readonly property bool screenEdgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+    readonly property color screenEdgeShadowColor:
+        ColorUtils.applyAlpha(Appearance.colors.colShadow, screenEdgeShadowOpacity)
 
     // Aggregated competing-overlay signal. Whenever any of these toggles, this
     // value changes and the inner PanelWindow re-stacks itself on top of its
@@ -149,48 +157,15 @@ Scope { // Scope
                 item: oskBackground
             }
 
-            QtObject {
-                id: oskConnectorGeometry
-                readonly property string edge: oskRoot.snappedEdge
-                readonly property real extent: Math.min(oskBackground.width,
-                    PerimeterTokens.connectorWidth
-                        + PerimeterTokens.outerRadius * 2)
-                readonly property real centerX:
-                    oskBackground.x + oskBackground.width / 2
-                readonly property real overlap: PerimeterTokens.seamOverlap
-                readonly property real sourceY: edge === "top"
-                    ? root.screenEdgeThickness - overlap
-                    : oskRoot.height - root.screenEdgeThickness + overlap
-                readonly property real bodyY: edge === "top"
-                    ? oskBackground.y + overlap
-                    : oskBackground.y + oskBackground.height - overlap
-                readonly property rect connectorRect: Qt.rect(
-                    Math.max(0, centerX - extent / 2),
-                    Math.min(sourceY, bodyY),
-                    extent,
-                    Math.max(0, Math.abs(bodyY - sourceY)))
-                readonly property real connectorSourceExtent:
-                    Math.min(extent, PerimeterTokens.connectorWidth)
-                readonly property real connectorWidth:
-                    PerimeterTokens.connectorWidth
-                readonly property real borderWidth: 0
-                readonly property bool valid: oskRoot.visible
-                    && !oskDragHandler.active
-                    && (edge === "top" || edge === "bottom")
-                readonly property real progress: valid ? 1 : 0
-            }
-
-            ConnectedSurfaceConnector {
-                z: 2
-                geometry: oskConnectorGeometry
-                fillColor: Appearance.colors.colLayer0
-                strokeColor: "transparent"
-                strokeWidth: 0
-            }
-
-            // Background shadow follows keyboard
+            // Use the same configurable shadow contract as Screen Edge/Bar.
+            // The body itself overlaps the edge seam; no separate stem exists.
             StyledRectangularShadow {
                 target: oskBackground
+                blur: root.screenEdgeShadowSize
+                spread: 0
+                offset: Qt.vector2d(0, 0)
+                color: root.screenEdgeShadowEnabled
+                    ? root.screenEdgeShadowColor : "transparent"
             }
             Rectangle {
                 id: oskBackground
@@ -200,8 +175,8 @@ Scope { // Scope
                 width: oskRowLayout.implicitWidth + padding * 2
                 height: oskRowLayout.implicitHeight + padding * 2
 
-                // Initial position: bottom center, attached to the inner Screen
-                // Edge boundary through the shared connector contract.
+                // Initial position: bottom center, directly overlapped with the
+                // inner Screen Edge boundary (Caelestia-style, no connector stem).
                 x: parent ? (parent.width - width) / 2 : 0
                 y: parent ? parent.height - height - root.screenAttachInset : 0
 

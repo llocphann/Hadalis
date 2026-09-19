@@ -51,6 +51,8 @@ Retired per-component renderer/style experiments must not be revived merely to p
 
 The maintainer requires the physical Screen Edge corners to match Caelestia without painted edge/corner patches, wedges or overlay geometry.
 
+**Four-corner geometry lock (maintainer-approved 2026-09-19):** the currently live-validated four Screen Edge corners are the canonical visual reference for Hadalis. Future Bar, popup, reservation, scaling, refactor or compositor work must preserve these four corners unchanged. If any later change deforms, offsets, squares, double-rounds or otherwise alters them, the required recovery action is to restore the locked `ScreenEdges.qml` inverted-frame geometry and placement contract below—not to compensate with a second renderer. Only an explicit maintainer request may replace this reference geometry.
+
 - **Normal Bar mode owns only the Bar body.** Horizontal and vertical Bar runtimes must not paint `roundDecorators`, Screen Edge contact rectangles, Bar-local Screen Edge fallback bands, physical-edge shadow rectangles, `RoundCorner` wedges, or any synthetic perimeter extension outside the body.
 - **`ScreenEdges.qml` is the only physical Screen Edge renderer.** Each output has exactly one painted full-screen frame surface.
 - The frame is one odd-even path: a padded outer rectangle minus one rounded inner workspace rectangle. This mirrors the isolated geometry of Caelestia's `BlobInvertedRect` instead of approximating it with four strips plus four corner patches.

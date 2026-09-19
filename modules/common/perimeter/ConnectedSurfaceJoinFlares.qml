@@ -1,22 +1,20 @@
 import QtQuick
-import QtQuick.Shapes
 
-// Exact Screen Edge inverse corners for direct popup/sidebar/dashboard joins.
+// Flattened circular-smooth-union shoulders for direct Bar/Screen Edge joins.
 //
-// Caelestia renders border + panels in one SDF group, so their contact corners
-// naturally inherit the border silhouette. Hadalis uses independent layer-shell
-// surfaces; reproduce that contact deterministically by cloning the physical
-// Screen Edge quarter-circle itself at every attachment endpoint.
-//
-// There is one canonical inverse top-left PathArc below. Every other orientation
-// is only a mirror of that same path, so all contact corners stay mathematically
-// identical to one another and share the same radius as ScreenEdges.qml.
+// Caelestia's blob shader uses a circular smin with smoothing=20 and then
+// compresses the SDF on the axis facing the border (boost=3). Because Hadalis
+// currently composes Bar and popup in separate layer-shell surfaces, reproduce
+// that visible result with a 20px tangent shoulder and a shallower cross-axis
+// ellipse. The contact therefore reads broad/flat at the edge instead of like a
+// detached rounded card with two circular ears.
 Item {
     id: root
 
     required property Item bodyItem
     property color fillColor: "white"
     property real flareRadius: PerimeterTokens.joinFlareRadius
+    property real crossScale: PerimeterTokens.joinFlareCrossScale
     property real progress: 1
     property bool joinTop: false
     property bool joinBottom: false
@@ -31,84 +29,82 @@ Item {
         root.flareRadius,
         root.bodyItem?.width / 2 ?? 0,
         root.bodyItem?.height / 2 ?? 0))
+    readonly property real depth: Math.max(0,
+        Math.min(root.radius, root.radius * Math.max(0.20, Math.min(1, root.crossScale))))
 
-    visible: root.reveal > 0.001 && root.radius > 0
+    visible: root.reveal > 0.001 && root.radius > 0 && root.depth > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
-    component Flare: Item {
+    component Flare: Canvas {
         id: flare
 
         required property string flareCorner
         property color flareColor: root.fillColor
 
-        // Existing endpoint names describe where the contact sits relative to
-        // the body. Convert them to the actual inverse Screen Edge corner that
-        // must be painted in that square.
-        readonly property string inverseCorner:
-            flareCorner === "topLeft" || flareCorner === "rightBottom"
-                ? "topRight"
-            : flareCorner === "topRight" || flareCorner === "leftBottom"
-                ? "topLeft"
-            : flareCorner === "bottomLeft" || flareCorner === "rightTop"
-                ? "bottomRight"
-            : "bottomLeft"
-
-        readonly property bool mirrorX: inverseCorner.endsWith("Right")
-        readonly property bool mirrorY: inverseCorner.startsWith("bottom")
-
         visible: width > 0 && height > 0
+        antialiasing: true
 
-        Shape {
-            id: cornerShape
-            anchors.fill: parent
-            antialiasing: true
-            preferredRendererType: Shape.CurveRenderer
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onFlareColorChanged: requestPaint()
+        onFlareCornerChanged: requestPaint()
 
-            transform: Scale {
-                origin.x: cornerShape.width / 2
-                origin.y: cornerShape.height / 2
-                xScale: flare.mirrorX ? -1 : 1
-                yScale: flare.mirrorY ? -1 : 1
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            if (!(width > 0 && height > 0))
+                return
+
+            const k = 0.5522847498307936
+            const w = width
+            const h = height
+            const corner = flare.flareCorner
+
+            ctx.beginPath()
+
+            if (corner === "topLeft" || corner === "rightBottom") {
+                // Inverse top-right ellipse.
+                ctx.moveTo(w, 0)
+                ctx.lineTo(w, h)
+                ctx.bezierCurveTo(w, h * (1 - k), w * k, 0, 0, 0)
+                ctx.lineTo(w, 0)
+            } else if (corner === "topRight" || corner === "leftBottom") {
+                // Inverse top-left ellipse.
+                ctx.moveTo(0, 0)
+                ctx.lineTo(0, h)
+                ctx.bezierCurveTo(0, h * (1 - k), w * (1 - k), 0, w, 0)
+                ctx.lineTo(0, 0)
+            } else if (corner === "bottomLeft" || corner === "rightTop") {
+                // Inverse bottom-right ellipse.
+                ctx.moveTo(w, h)
+                ctx.lineTo(w, 0)
+                ctx.bezierCurveTo(w, h * k, w * k, h, 0, h)
+                ctx.lineTo(w, h)
+            } else if (corner === "bottomRight" || corner === "leftTop") {
+                // Inverse bottom-left ellipse.
+                ctx.moveTo(0, h)
+                ctx.lineTo(0, 0)
+                ctx.bezierCurveTo(0, h * k, w * (1 - k), h, w, h)
+                ctx.lineTo(0, h)
+            } else {
+                return
             }
 
-            // Canonical inverse top-left Screen Edge corner:
-            // (0,0) -> (0,r) -> quarter arc -> (r,0) -> (0,0).
-            // This is the same circular boundary used by the locked physical
-            // frame, not a Bezier/ellipse approximation.
-            ShapePath {
-                fillColor: flare.flareColor
-                strokeColor: "transparent"
-                strokeWidth: 0
-                startX: 0
-                startY: 0
-
-                PathLine {
-                    x: 0
-                    y: cornerShape.height
-                }
-                PathArc {
-                    x: cornerShape.width
-                    y: 0
-                    radiusX: cornerShape.width
-                    radiusY: cornerShape.height
-                    direction: PathArc.Clockwise
-                }
-                PathLine {
-                    x: 0
-                    y: 0
-                }
-            }
+            ctx.closePath()
+            ctx.fillStyle = flare.flareColor
+            ctx.fill()
         }
     }
 
-    // Top attachment: popup body is below the Screen Edge.
+    // Top/bottom attachment: tangent smoothing stays 20px wide while border
+    // depth is compressed. This is the characteristic flat Caelestia contact.
     Flare {
         flareCorner: "topLeft"
         visible: root.joinTop && !root.joinLeft && root.radius > 0
         x: root.bodyOrigin.x - root.radius
         y: root.bodyOrigin.y
         width: root.radius
-        height: root.radius
+        height: root.depth
     }
     Flare {
         flareCorner: "topRight"
@@ -116,34 +112,32 @@ Item {
         x: root.bodyOrigin.x + root.bodyItem.width
         y: root.bodyOrigin.y
         width: root.radius
-        height: root.radius
+        height: root.depth
     }
-
-    // Bottom attachment: popup/dashboard body is above the Screen Edge.
     Flare {
         flareCorner: "bottomLeft"
         visible: root.joinBottom && !root.joinLeft && root.radius > 0
         x: root.bodyOrigin.x - root.radius
-        y: root.bodyOrigin.y + root.bodyItem.height - root.radius
+        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
         width: root.radius
-        height: root.radius
+        height: root.depth
     }
     Flare {
         flareCorner: "bottomRight"
         visible: root.joinBottom && !root.joinRight && root.radius > 0
         x: root.bodyOrigin.x + root.bodyItem.width
-        y: root.bodyOrigin.y + root.bodyItem.height - root.radius
+        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
         width: root.radius
-        height: root.radius
+        height: root.depth
     }
 
-    // Left/right attachment uses the exact same four corners rotated by mirroring.
+    // Left/right attachment uses the same geometry rotated 90 degrees.
     Flare {
         flareCorner: "leftTop"
         visible: root.joinLeft && !root.joinTop && root.radius > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y - root.radius
-        width: root.radius
+        width: root.depth
         height: root.radius
     }
     Flare {
@@ -151,23 +145,23 @@ Item {
         visible: root.joinLeft && !root.joinBottom && root.radius > 0
         x: root.bodyOrigin.x
         y: root.bodyOrigin.y + root.bodyItem.height
-        width: root.radius
+        width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "rightTop"
         visible: root.joinRight && !root.joinTop && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width - root.radius
+        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
         y: root.bodyOrigin.y - root.radius
-        width: root.radius
+        width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "rightBottom"
         visible: root.joinRight && !root.joinBottom && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width - root.radius
+        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
         y: root.bodyOrigin.y + root.bodyItem.height
-        width: root.radius
+        width: root.depth
         height: root.radius
     }
 }

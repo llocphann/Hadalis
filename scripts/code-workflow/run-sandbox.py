@@ -2,6 +2,7 @@
 """Standalone Spike B. Requires PySide6; never imports or launches Hadalis."""
 
 import argparse
+from collections import deque
 from hashlib import sha256
 import json
 import math
@@ -9,6 +10,7 @@ import os
 from pathlib import Path
 import platform
 import statistics
+import subprocess
 import time
 
 
@@ -20,22 +22,38 @@ def main():
     ap.add_argument("--renderer", choices=["curve", "geometry"], default="curve")
     ap.add_argument("--screenshot", type=Path)
     ap.add_argument("--output", type=Path)
-    args = ap.parse_args()
-    if not 20 <= args.nodes <= 500 or args.benchmark < 0:
+    ap.add_argument("--qml-source", type=Path, default=Path(__file__).with_name("GraphSandbox.qml"),
+                    help="Replay an immutable baseline QML file with this same measurement harness")
+    ap.add_argument("--warmup", type=float, default=.5)
+    ap.add_argument("--rebuild-every", type=float, default=0, metavar="SECONDS")
+    ap.add_argument("--sample-every", type=float, default=10, metavar="SECONDS")
+    ap.add_argument("--screen", help="Explicit compositor output name; fail if absent")
+    args, qt_args = ap.parse_known_args()
+    if any(not arg.startswith("-qmljsdebugger=") for arg in qt_args):
+        ap.error("Unknown arguments: " + repr(qt_args))
+    if not 20 <= args.nodes <= 500 or min(args.benchmark, args.warmup, args.rebuild_every) < 0 or args.sample_every <= 0:
         ap.error("Use 20..500 nodes and a nonnegative benchmark duration")
     from PySide6.QtCore import QEvent, QPoint, QPointF, Qt, QTimer, QUrl, qVersion
     from PySide6.QtGui import QGuiApplication, QMouseEvent
     from PySide6.QtQuick import QQuickItem, QQuickView
     from PySide6.QtTest import QTest
 
-    app = QGuiApplication([])
+    if qt_args:
+        from PySide6.QtQml import QQmlDebuggingEnabler
+        QQmlDebuggingEnabler.enableDebugging(True)
+    app = QGuiApplication(["workflow-sandbox", *qt_args])
     view = QQuickView()
+    if args.screen:
+        screens = {screen.name(): screen for screen in app.screens()}
+        if args.screen not in screens:
+            raise RuntimeError(f"Missing output {args.screen}; available: {list(screens)}")
+        view.setScreen(screens[args.screen])
     view.setResizeMode(QQuickView.ResizeMode.SizeRootObjectToView)
     view.resize(1160,760)
     view.setTitle("Hadalis Phase 0 graph sandbox")
     warnings = []
     view.engine().warnings.connect(lambda items: warnings.extend(e.toString() for e in items))
-    view.setSource(QUrl.fromLocalFile(str(Path(__file__).with_name("GraphSandbox.qml").resolve())))
+    view.setSource(QUrl.fromLocalFile(str(args.qml_source.resolve())))
     if view.errors():
         raise RuntimeError([e.toString() for e in view.errors()])
     root = view.rootObject()
@@ -88,6 +106,24 @@ def main():
     checks, failure = [], None
     try:
         if args.test:
+            root.resetGraph(250)
+            routes_before = json.loads(root.routeSnapshot())
+            root.setNodePosition(120, 641, 329)
+            routes_after = json.loads(root.routeSnapshot())
+            nodes_after = state()["nodes"]
+            affected = 0
+            for before, after in zip(routes_before, routes_after):
+                affected += 120 in (after["fromNode"], after["toNode"])
+                node_a, node_b = nodes_after[after["fromNode"]], nodes_after[after["toNode"]]
+                assert (after["fromX"], after["fromY"], after["toX"], after["toY"]) == (
+                    node_a["px"]+156, node_a["py"]+35, node_b["px"], node_b["py"]+35)
+                assert after["updates"]-before["updates"] == int(120 in (after["fromNode"], after["toNode"]))
+            expect(0 < affected < len(routes_after) and state()["lastRoutedPaths"] == affected,
+                   "dense node move updates exactly its incident routes with correct endpoints")
+            root.fitGraph()
+            root.zoomAround(500,300,.6)
+            expect(json.loads(root.routeSnapshot()) == routes_after, "view transforms do not reroute geometry")
+            root.resetGraph(args.nodes)
             expect(state()["pathCount"] == state()["edgeCount"] > 0, "one Shape contains all routed paths")
             click(0)
             expect(state()["selected"] == [0], "node tap selects without background clearing it")
@@ -167,27 +203,52 @@ def main():
                 return int(line.split()[1])
         return None
 
-    intervals, heartbeat, mutation = [], [], []
+    # Fixed-size timing buffers cannot masquerade as a leak during a long soak.
+    sample_capacity = 16384
+    intervals, heartbeat, mutation = (deque(maxlen=sample_capacity) for _ in range(3))
+    sample_totals = {"frames":0, "heartbeat":0}
     last_frame, last_tick = [time.perf_counter()], [time.perf_counter()]
 
     def frame():
         now = time.perf_counter()
         intervals.append((now-last_frame[0])*1000)
+        sample_totals["frames"] += 1
         last_frame[0] = now
 
     def pulse():
         now = time.perf_counter()
         heartbeat.append((now-last_tick[0])*1000)
+        sample_totals["heartbeat"] += 1
         last_tick[0] = now
         mutation.append(root.property("mutationMs"))
 
     before_rss = rss_kib()
     timer = QTimer()
+    memory_timer, rebuild_timer = QTimer(), QTimer()
+    memory_samples, rebuild_samples = [], []
+    started = time.perf_counter()
+    def sample_memory():
+        memory_samples.append({"seconds":round(time.perf_counter()-started,3),
+            "rss_kib":rss_kib(), "qobjects":object_count(),
+            "paths":state()["pathCount"], "trace_retained":state()["traceCount"]})
+    def rebuild():
+        began = time.perf_counter()
+        root.resetGraph(args.nodes)
+        root.fitGraph()
+        rebuild_samples.append({"seconds":round(began-started,3),
+            "reset_ms":round((time.perf_counter()-began)*1000,3)})
     if args.benchmark and not failure:
         root.fitGraph()
         root.setProperty("benchmarkRunning", True)
-        QTest.qWait(500)
+        QTest.qWait(round(args.warmup*1000))
         before_rss = rss_kib()
+        started = time.perf_counter()
+        sample_memory()
+        memory_timer.timeout.connect(sample_memory)
+        memory_timer.start(round(args.sample_every*1000))
+        if args.rebuild_every:
+            rebuild_timer.timeout.connect(rebuild)
+            rebuild_timer.start(round(args.rebuild_every*1000))
         last_frame[0] = last_tick[0] = time.perf_counter()
         view.frameSwapped.connect(frame)
         timer.timeout.connect(pulse)
@@ -195,7 +256,11 @@ def main():
         QTest.qWait(round(args.benchmark*1000))
         root.setProperty("benchmarkRunning", False)
         timer.stop()
+        memory_timer.stop()
+        rebuild_timer.stop()
         view.frameSwapped.disconnect(frame)
+        QTest.qWait(100)
+        sample_memory()
     if args.screenshot:
         if not view.grabWindow().save(str(args.screenshot)):
             failure = failure or "Could not save screenshot"
@@ -203,18 +268,25 @@ def main():
         failure = failure or ("QML warnings: " + repr(warnings))
 
     def stats(values):
-        values = sorted(values[3:])  # Ignore startup samples.
+        values = sorted(list(values)[3:])  # Ignore startup samples.
         return {"samples":len(values), "p50":round(statistics.median(values),3),
                 "p95":round(values[min(len(values)-1,math.ceil(len(values)*0.95)-1)],3),
                 "max":round(max(values),3)} if values else None
 
+    try:
+        source_revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).parent, text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        source_revision = None
     result = {"spike":"B", "qt":qVersion(), "platform":platform.platform(),
-              "qml_sha256":sha256(Path(__file__).with_name("GraphSandbox.qml").read_bytes()).hexdigest(),
+              "source_revision":source_revision, "qml_source":str(args.qml_source),
+              "qml_sha256":sha256(args.qml_source.read_bytes()).hexdigest(),
               "harness_sha256":sha256(Path(__file__).read_bytes()).hexdigest(),
               "qpa":app.platformName(), "device_pixel_ratio":view.devicePixelRatio(),
               "window_logical_size":[view.width(),view.height()],
               "graphics_api":str(view.rendererInterface().graphicsApi()),
               "render_loop":os.environ.get("QSG_RENDER_LOOP", "Qt default"),
+              "screen_name":view.screen().name(),
+              "screens":[{"name":s.name(), "dpr":s.devicePixelRatio(), "size":[s.size().width(),s.size().height()]} for s in app.screens()],
               "requested_renderer":args.renderer, "actual_renderer":state()["renderer"],
               "renderer_request_honored":args.renderer == state()["renderer"],
               "nodes":len(state()["nodes"]), "edges":state()["edgeCount"],
@@ -224,6 +296,11 @@ def main():
               "benchmark_seconds":args.benchmark, "frame_intervals_ms":stats(intervals),
               "gui_timer_intervals_ms":stats(heartbeat), "model_mutation_ms":stats(mutation),
               "rss_before_kib":before_rss, "rss_after_kib":rss_kib(), "trace_retained":state()["traceCount"],
+              "warmup_seconds":args.warmup, "last_routed_paths":state().get("lastRoutedPaths"),
+              "timing_sample_capacity":sample_capacity, "timing_sample_totals":sample_totals,
+              "timing_window":"last 16384 samples, excluding first three retained samples",
+              "memory_samples":memory_samples, "rebuild_every_seconds":args.rebuild_every,
+              "rebuild_samples":rebuild_samples,
               "limitations":["Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
                              "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
                              "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",

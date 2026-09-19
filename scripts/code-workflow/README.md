@@ -93,11 +93,40 @@ benchmarks fit the entire graph before applying the combined workload. Hit
 testing uses curve bounding boxes plus sampled segment distances, independent
 of Shape containment, with a screen-space tolerance.
 
-The 18 input checks include wheel/pixel scroll, node drag, middle-button pan,
+The 20 input checks include wheel/pixel scroll, node drag, middle-button pan,
 Ctrl selection, Shift lasso, subflow restoration, arrow/Tab focus and synthetic
 two-point pinch. QtTest wheel positions need the measured device-pixel adapter
 on this Qt 6.11 host; production QML coordinates remain logical. The unchanged
 pivot assertion will catch a different QtTest behavior on another version.
+
+Routes use a per-node adjacency index. Both endpoints update once after a complete
+node move; pan/zoom changes only the view transform. The dense routing test checks
+every painted endpoint and verifies that unrelated paths are not updated.
+
+```sh
+# Owned nested Niri, paired old/new QML with the same harness and workload.
+python3 scripts/code-workflow/run-graph-matrix.py --work-dir /tmp/graph-matrix-new \
+  --baseline-revision 7387ef0a26081d56df816369d4d9d74fedbe2324 --seconds 8 --soak 600
+
+# Native fractional scaling on an independent headless compositor.
+python3 scripts/code-workflow/run-graph-matrix.py --work-dir /tmp/graph-scale-new \
+  --sway /usr/bin/sway --scale 1.25 --seconds 8
+```
+
+The matrix creates private XDG paths and stops only its own compositor. It checks
+the actual screen DPR and Shape renderer and retains every paired result. The
+soak samples RSS, object/path counts and trace retention every ten seconds while
+rebuilding every fifteen seconds. Timing buffers retain at most 16,384 samples;
+their totals/window are explicit so harness storage cannot grow without bound.
+Run one performance matrix at a time. These are opt-in desktop tools.
+
+For Qt's profiler, use the Qt 6 `qmlprofiler` and an executable wrapper that runs
+`python3 run-sandbox.py "$@"`; a direct Python executable consumes the profiler's
+injected `-qmljsdebugger` argument as a Python option. The harness enables QML
+debugging only when that explicit argument is present. Keep profiling separate
+from uninstrumented timing runs. `summarize-profile.py trace.qtd` produces a compact
+summary with a trace hash and inclusive durations; nested durations must not be
+summed as wall time. Large raw traces stay in the supplied temporary work folder.
 
 These are short experiments on one machine. QTest cadence and Python callbacks
 affect timing. Synthetic pinch is not hardware touchpad acceptance; a per-process

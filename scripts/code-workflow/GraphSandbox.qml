@@ -14,9 +14,10 @@ FocusScope {
     property real panY: 28
     property var selected: []
     property int selectedEdge: -1
-    property int layoutRevision: 0
     property var edges: []
     property var paths: []
+    property var incidentPaths: []
+    property int lastRoutedPaths: 0
     property var history: []
     property int runtimeTick: 0
     property var trace: []
@@ -47,7 +48,6 @@ FocusScope {
         panY = y - point.y * zoom;
     }
     function endpoint(index, output) {
-        layoutRevision;
         if (index < 0 || index >= nodeModel.count)
             return Qt.point(0, 0);
         const node = nodeModel.get(index);
@@ -85,7 +85,9 @@ FocusScope {
     function setNodePosition(index, x, y) {
         nodeModel.setProperty(index, "px", x);
         nodeModel.setProperty(index, "py", y);
-        layoutRevision++;
+        const affected = incidentPaths[index] || [];
+        for (const path of affected) path.updateEndpoints();
+        lastRoutedPaths = affected.length;
     }
     function nodeAt(x, y) {
         const p = graphPoint(x,y);
@@ -118,13 +120,21 @@ FocusScope {
     function rebuildPaths() {
         wires.data = [];
         for (const path of paths) path.destroy();
-        const next = [];
+        const next = [], adjacency = [];
         for (let i=0; i<edges.length; i++) {
-            const path = pathFactory.createObject(wires, {edgeIndex: i});
+            const edge = edges[i];
+            const path = pathFactory.createObject(wires, {edgeIndex: i, edge: edge});
+            path.updateEndpoints();
             wires.data.push(path);
             next.push(path);
+            for (const node of [edge.from, edge.to]) {
+                if (!adjacency[node]) adjacency[node] = [];
+                adjacency[node].push(path);
+            }
         }
         paths = next;
+        incidentPaths = adjacency;
+        lastRoutedPaths = next.length;
     }
     function resetGraph(count: int): void {
         // Flush paths before replacing their model. All endpoints tolerate removal.
@@ -150,7 +160,6 @@ FocusScope {
         zoom = 0.8;
         panX = 32;
         panY = 28;
-        layoutRevision++;
         root.forceActiveFocus();
     }
     function fitGraph(): void {
@@ -192,7 +201,11 @@ FocusScope {
         zoom = previous.zoom;
         panX = previous.x;
         panY = previous.y;
-        layoutRevision++;
+    }
+    function routeSnapshot(): string {
+        return JSON.stringify(paths.map(path => ({fromNode:path.edge.from, toNode:path.edge.to,
+            fromX:path.from.x, fromY:path.from.y, toX:path.to.x, toY:path.to.y,
+            updates:path.updates})));
     }
     function snapshot(): string {
         const nodes = [];
@@ -200,7 +213,7 @@ FocusScope {
         return JSON.stringify({nodes:nodes, edgeCount:edges.length, selected:selected, selectedEdge:selectedEdge,
                                zoom:zoom, panX:panX, panY:panY, scopeDepth:scopeDepth, renderer:rendererName,
                                pathCount:paths.length, visibleNodes:visibleNodes(), runtimeTick:runtimeTick, traceCount:trace.length,
-                               focus:root.activeFocus, mutationMs:mutationMs});
+                               focus:root.activeFocus, mutationMs:mutationMs, lastRoutedPaths:lastRoutedPaths});
     }
     function nodeScreen(index: int): string {
         const n=nodeModel.get(index);
@@ -216,9 +229,17 @@ FocusScope {
         ShapePath {
             id: edgePath
             required property int edgeIndex
-            property var edge: root.edges[edgeIndex] || {from:-1,to:-1,kind:0}
-            property point from: root.endpoint(edge.from,true)
-            property point to: root.endpoint(edge.to,false)
+            required property var edge
+            // Resolve both endpoints once after each complete node move. The
+            // adjacency index owns invalidation; pan/zoom never reroutes paths.
+            property point from
+            property point to
+            property int updates: 0
+            function updateEndpoints() {
+                from = root.endpoint(edge.from,true);
+                to = root.endpoint(edge.to,false);
+                updates++;
+            }
             property real bend: Math.max(55,Math.abs(to.x-from.x)/2)
             strokeColor: root.selectedEdge === edgeIndex ? "white" : root.edgeColors[edge.kind]
             strokeWidth: root.selectedEdge === edgeIndex ? 3 : 1.5

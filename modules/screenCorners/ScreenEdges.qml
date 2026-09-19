@@ -99,13 +99,26 @@ Scope {
     function barOwnsEdge(outputName, edge) {
         if (!GlobalStates.barOpen || GlobalStates.widgetEditMode)
             return false
-        const iiOwned = root.iiBarPanelEnabled
+        const iiOwned = !root.waffleFamily
+            && root.iiBarPanelEnabled
             && edge === root.iiBarEdge
             && root.iiBarTargetsOutput(outputName)
         const waffleOwned = root.waffleBarPanelEnabled
             && edge === root.waffleBarEdge
             && root.waffleBarTargetsOutput(outputName)
         return iiOwned || waffleOwned
+    }
+
+    function adjacentShadowInset(outputName, edge, iiVisualSpan) {
+        // The Material ii Bar has explicit contact strips and RoundCorner
+        // shoulders, so its visual span is the authoritative owner here.
+        // Preserve Waffle's existing intersection behavior; it has a separate
+        // taskbar surface contract and does not use the ii inverse-corner host.
+        const iiOwned = !root.waffleFamily
+            && root.iiBarPanelEnabled
+            && edge === root.iiBarEdge
+            && root.iiBarTargetsOutput(outputName)
+        return iiOwned ? Math.max(0, iiVisualSpan) : 0
     }
 
     component EdgeWindow: PanelWindow {
@@ -116,12 +129,27 @@ Scope {
         readonly property bool horizontal: edge === "top" || edge === "bottom"
         readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
         readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
+
+        // The Bar owns its body plus the inverse-corner box on the two
+        // perpendicular Screen Edge intersections. Do not let this EdgeWindow's
+        // straight inward shadow continue underneath that transparent corner
+        // box: it becomes visible through RoundCorner's workspace-side cutout
+        // as a grey/black wedge. Caelestia avoids this class of overlap by
+        // composing bar + border in one surface; Hadalis keeps separate layer
+        // surfaces, so ownership must be made explicit at the intersection.
+        readonly property real adjacentIiBarVisualSpan: root.barVertical
+            ? Appearance.sizes.verticalBarWidth + root.innerRadius
+            : Appearance.sizes.barHeight + root.innerRadius
         readonly property real leadingShadowInset:
             root.barOwnsEdge(outputName, leadingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
+                ? root.adjacentShadowInset(outputName, leadingAdjacentEdge,
+                    adjacentIiBarVisualSpan)
+                : root.thickness + root.innerRadius
         readonly property real trailingShadowInset:
             root.barOwnsEdge(outputName, trailingAdjacentEdge)
-                ? 0 : root.thickness + root.innerRadius
+                ? root.adjacentShadowInset(outputName, trailingAdjacentEdge,
+                    adjacentIiBarVisualSpan)
+                : root.thickness + root.innerRadius
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready

@@ -193,11 +193,13 @@ Scope {
             // frame Shape, so there is no second painted item, overlay, wedge,
             // corner patch or shadow rectangle. At the defaults this matches
             // Caelestia ContentWindow: blurMax=15 and m3shadow alpha=0.70.
-            layer.enabled: true
+            readonly property bool physicalShadowActive:
+                root.physicalShadowEnabled
+                && root.physicalShadowSize > 0
+                && root.physicalShadowOpacity > 0
+            layer.enabled: frameShape.physicalShadowActive
             layer.effect: MultiEffect {
-                shadowEnabled: root.physicalShadowEnabled
-                    && root.physicalShadowSize > 0
-                    && root.physicalShadowOpacity > 0
+                shadowEnabled: frameShape.physicalShadowActive
                 blurMax: Math.max(1, root.physicalShadowSize)
                 shadowColor: Qt.alpha(
                     Appearance.m3colors.m3shadow,

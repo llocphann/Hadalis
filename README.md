@@ -47,6 +47,16 @@ Required direction:
 
 Retired per-component renderer/style experiments must not be revived merely to preserve obsolete configuration values.
 
+### 2.1 Locked visual contract — four perimeter corners
+
+The maintainer-approved Screen Edge/Bar corner geometry is **locked** as of 2026-09-19. This lock covers the four physical frame corners: the two Bar↔Screen Edge contact corners at the Bar end of the frame and the two free Screen Edge corners on the opposite side.
+
+- All four corners use the shared circular `RoundCorner` cubic geometry and the same `appearance.screenEdge.radius` value. The radius setting is the supported way to make an intentional size change; do not introduce per-corner radii.
+- For a horizontal Bar, the Bar-owned left/right inverse corners start at the outer Bar-window origin (`leftMargin: 0` / `rightMargin: 0`). **Do not add `screenEdgeThickness` to those corner anchors.** That double-insets the top pair and breaks symmetry with the approved lower pair.
+- The free horizontal Screen Edge endpoints remain owned by `ScreenEdges.qml` with exactly one physical Screen Edge thickness inset (`leftMargin: root.thickness` / `rightMargin: root.thickness`).
+- Do not independently change corner orientation mapping, ownership between Bar and Screen Edge, the quarter-circle primitive, or the contact-strip relationship merely as cleanup/refactoring.
+- `scripts/test-shell-surface-contracts.py` is the regression gate for this contract. Any deliberate redesign of these four corners must be explicitly approved by the maintainer and update the implementation, regression contract and runtime reference together.
+
 ## 3. v1.0 release blockers
 
 Checkboxes below are **release gates**, not an assertion that no partial implementation exists. Check an item only after source review and the relevant local/runtime validation.

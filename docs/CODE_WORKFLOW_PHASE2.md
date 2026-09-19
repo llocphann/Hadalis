@@ -95,9 +95,37 @@ Implemented:
 - scripts/test-code-workflow-reload-handoff.py guards reload persistence,
   primitive-only pending identity and the no-write boundary.
 
+## Milestone 2E — exact Apply preparation artifacts
+
+Implemented:
+
+- scripts/code-workflow/apply.py re-validates the same literal-property semantic
+  command against current source, parser diagnostics, stable anchor and expected
+  candidate SHA.
+- Preparation still does not modify tracked QML source.
+- A successful preparation writes three private mode-0600 files beneath the
+  Quickshell state directory: snapshot.qml, candidate.qml and manifest.json.
+- snapshot.qml is the exact current/base bytes for rollback; candidate.qml is the
+  exact fully re-parsed candidate; manifest.json records only primitive semantic
+  identity, hashes and artifact paths.
+- The artifact transaction ID is deterministic from source path, base/candidate
+  SHA, semantic anchor and replacement.
+- CodeWorkflowTransaction upgrades pendingApplyPhase from prepared to
+  artifacts-prepared only when the helper response exactly matches the staged
+  path/base SHA/candidate SHA/semantic anchor.
+- Source change, Clear, Undo, Redo or a new preview invalidates any prepared
+  handoff/artifact state before another command can be staged.
+- Settings exposes Prepare Apply and ARTIFACTS READY, while explicitly stating
+  that source QML remains unchanged. applyEnabled is still false and there is no
+  Apply action.
+- scripts/test-code-workflow-apply-preparation.py verifies exact artifact bytes,
+  private permissions, source immutability, runtime packaging and no-write UI
+  boundaries.
+
 ## Not implemented yet
 
 - source writes or Apply;
+- atomic commit of a prepared artifact transaction;
 - direct binding transforms;
 - connect/disconnect data dependencies;
 - signal/action transforms;
@@ -107,10 +135,10 @@ Implemented:
 
 ## Next gate
 
-The next implementation gate is an atomic one-file Apply controller. It must
-upgrade the prepared handoff to write-issued/waiting-reload states, perform a
-second/final source-identity check immediately before writing, retain an exact
-rollback snapshot, rely on the normal Quickshell watcher, observe
-reloadCompleted/reloadFailed, and rebind the semantic target after reload.
-Apply remains disabled until that complete lifecycle is implemented and
+The next implementation gate is the atomic commit half of the one-file Apply
+controller. It must consume only an artifacts-prepared transaction, perform a
+second/final source-identity check immediately before replacement, upgrade the
+handoff to write-issued/waiting-reload, rely on the normal Quickshell watcher,
+observe reloadCompleted/reloadFailed, and use snapshot.qml for conflict-checked
+rollback. Apply remains disabled until that lifecycle is implemented and
 contracted; no stale byte range from history may authorize a write.

@@ -798,12 +798,25 @@ Item {
                         accent: Appearance.colors.colSubtext
                     }
                     Pill {
-                        label: CodeWorkflowTransaction.preApplyReady
-                            ? "PRE-APPLY READY"
-                            : "PRE-APPLY BLOCKED"
-                        accent: CodeWorkflowTransaction.preApplyReady
+                        label: CodeWorkflowTransaction.applyArtifactsReady
+                            ? "ARTIFACTS READY"
+                            : CodeWorkflowTransaction.preApplyReady
+                                ? "PRE-APPLY READY"
+                                : "PRE-APPLY BLOCKED"
+                        accent: CodeWorkflowTransaction.applyArtifactsReady
                             ? Appearance.colors.colPrimary
-                            : Appearance.colors.colTertiary
+                            : CodeWorkflowTransaction.preApplyReady
+                                ? Appearance.colors.colPrimary
+                                : Appearance.colors.colTertiary
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.preApplyReady
+                            && !CodeWorkflowTransaction.applyArtifactsReady
+                        materialIcon: "inventory_2"
+                        mainText: "Prepare Apply"
+                        enabled: CodeWorkflowTransaction.prepareApplyEnabled
+                        onClicked:
+                            CodeWorkflowTransaction.prepareApplyArtifacts()
                     }
                     RippleButtonWithIcon {
                         materialIcon: "undo"
@@ -831,6 +844,28 @@ Item {
                         enabled: CodeWorkflowTransaction.status !== "previewing"
                         onClicked: CodeWorkflowTransaction.clear()
                     }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.applyArtifactsReady
+                    text: "Apply artifacts ready · rollback snapshot + "
+                        + "candidate + manifest are stored in shell state · "
+                        + "source QML is still unchanged"
+                    color: Appearance.colors.colPrimary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.applyPreparationError
+                        .length > 0
+                    text: "Prepare Apply: "
+                        + CodeWorkflowTransaction.applyPreparationError
+                    color: Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
                 }
 
                 StyledText {

@@ -19,6 +19,8 @@ Singleton {
     property var patch: ({})
     property string previewText: ""
     property string error: ""
+    property var applyPreparation: ({})
+    property string applyPreparationError: ""
 
     // Semantic preview commands. Patch byte ranges are evidence attached to a
     // command, never the command identity.
@@ -52,6 +54,12 @@ Singleton {
         reloadState.pendingApplyPhase
     readonly property bool pendingApplyPrepared:
         reloadState.pendingApplyPhase === "prepared"
+    readonly property bool applyArtifactsReady:
+        reloadState.pendingApplyPhase === "artifacts-prepared"
+    readonly property bool prepareApplyEnabled:
+        root.preApplyReady
+        && reloadState.pendingApplyPhase === "idle"
+        && !applyPrepareProcess.running
 
     function _syncReloadState(): void {
         if (!root._reloadStateReady || root._restoringReloadState)
@@ -82,6 +90,13 @@ Singleton {
         root._showCommand(root.activeCommand)
     }
 
+    function _invalidateApplyHandoff(): void {
+        if (reloadState.pendingApplyPhase !== "idle")
+            root.clearApplyHandoff()
+        root.applyPreparation = ({})
+        root.applyPreparationError = ""
+    }
+
     function stageApplyHandoff(): bool {
         const command = root.activeCommand
         if (!root.preApplyReady || !command)
@@ -99,6 +114,9 @@ Singleton {
         reloadState.pendingApplyReplacement = String(
             command.replacement ?? "")
         reloadState.pendingApplyHistoryIndex = root.historyIndex
+        reloadState.pendingApplySnapshotPath = ""
+        reloadState.pendingApplyCandidatePath = ""
+        reloadState.pendingApplyManifestPath = ""
         return true
     }
 
@@ -110,6 +128,88 @@ Singleton {
         reloadState.pendingApplySemanticAnchor = ""
         reloadState.pendingApplyReplacement = ""
         reloadState.pendingApplyHistoryIndex = -1
+        reloadState.pendingApplySnapshotPath = ""
+        reloadState.pendingApplyCandidatePath = ""
+        reloadState.pendingApplyManifestPath = ""
+    }
+
+    function prepareApplyArtifacts(): bool {
+        const command = root.activeCommand
+        if (!root.prepareApplyEnabled || !command)
+            return false
+        if (!root.stageApplyHandoff())
+            return false
+
+        root.status = "preparing-apply"
+        root.applyPreparation = ({})
+        root.applyPreparationError = ""
+
+        applyPrepareProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/apply.py"),
+            "--path", String(command.sourcePath ?? ""),
+            "--base-sha256", String(command.baseSha256 ?? ""),
+            "--expected-candidate-sha256",
+                String(command.candidateSha256 ?? ""),
+            "--semantic-anchor", String(command.semanticAnchor ?? ""),
+            "--replacement", String(command.replacement ?? ""),
+            "--state-dir",
+                Quickshell.statePath("code-workflow/transactions")
+        ]
+        applyPrepareProcess.running = true
+        return true
+    }
+
+    function finishApplyPreparation(exitCode: int): void {
+        const raw = String(applyPrepareStdout.text ?? "").trim()
+        let payload = null
+        try {
+            payload = raw.length > 0 ? JSON.parse(raw) : null
+        } catch (e) {
+            payload = null
+        }
+
+        const matchesHandoff = payload?.protocol === 1
+            && String(payload?.sourcePath ?? "")
+                === reloadState.pendingApplySourcePath
+            && String(payload?.baseSha256 ?? "")
+                === reloadState.pendingApplyBaseSha256
+            && String(payload?.candidateSha256 ?? "")
+                === reloadState.pendingApplyCandidateSha256
+            && String(payload?.semanticAnchor ?? "")
+                === reloadState.pendingApplySemanticAnchor
+
+        if (payload?.status === "prepared-artifacts"
+                && matchesHandoff) {
+            reloadState.pendingApplyPhase = "artifacts-prepared"
+            reloadState.pendingApplySnapshotPath = String(
+                payload.snapshotPath ?? "")
+            reloadState.pendingApplyCandidatePath = String(
+                payload.candidatePath ?? "")
+            reloadState.pendingApplyManifestPath = String(
+                payload.manifestPath ?? "")
+            root.applyPreparation = payload
+            root.applyPreparationError = ""
+            root.status = "apply-prepared"
+            root.preApplyDiagnostics = ({
+                status: "not-evaluated",
+                ready: false,
+                blockers: ["artifacts-prepared"],
+                applyEnabled: false
+            })
+            return
+        }
+
+        const stderrText = String(
+            applyPrepareStderr.text ?? "").trim()
+        root.applyPreparation = payload ?? ({})
+        root.applyPreparationError = String(
+            payload?.detail
+            ?? payload?.reason
+            ?? stderrText
+            ?? ("apply preparation exited " + exitCode))
+        root.clearApplyHandoff()
+        root._showCommand(root.activeCommand)
     }
 
     function _clearPresentation(): void {
@@ -224,8 +324,9 @@ Singleton {
     }
 
     function clear(): void {
-        if (previewProcess.running)
+        if (previewProcess.running || applyPrepareProcess.running)
             return
+        root._invalidateApplyHandoff()
         root.history = []
         root.historyIndex = -1
         root._pendingReplaceIndex = -1
@@ -235,6 +336,7 @@ Singleton {
     function undoPreview(): bool {
         if (!root.canUndo)
             return false
+        root._invalidateApplyHandoff()
         root.historyIndex--
         root._showCommand(root.activeCommand)
         return true
@@ -243,6 +345,7 @@ Singleton {
     function redoPreview(): bool {
         if (!root.canRedo)
             return false
+        root._invalidateApplyHandoff()
         root.historyIndex++
         root._showCommand(root.activeCommand)
         return true
@@ -271,6 +374,12 @@ Singleton {
             return
 
         root._markHistoryStale(changedPath)
+        if (reloadState.pendingApplyPhase !== "idle"
+                && changedPath
+                    === reloadState.pendingApplySourcePath) {
+            root._invalidateApplyHandoff()
+            root._showCommand(root.activeCommand)
+        }
         if (changedPath === root.sourcePath
                 && root.status === "preview") {
             root.status = "conflict"
@@ -305,6 +414,7 @@ Singleton {
                 || nextReplacement.length === 0)
             return false
 
+        root._invalidateApplyHandoff()
         root._pendingReplaceIndex = replaceIndex
         root.status = "previewing"
         root.sourcePath = nextPath
@@ -441,9 +551,21 @@ Singleton {
         property string pendingApplySemanticAnchor: ""
         property string pendingApplyReplacement: ""
         property int pendingApplyHistoryIndex: -1
+        property string pendingApplySnapshotPath: ""
+        property string pendingApplyCandidatePath: ""
+        property string pendingApplyManifestPath: ""
 
         onLoaded: root._restoreReloadState()
         onReloaded: root._restoreReloadState()
+    }
+
+    Process {
+        id: applyPrepareProcess
+        running: false
+        stdout: StdioCollector { id: applyPrepareStdout }
+        stderr: StdioCollector { id: applyPrepareStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishApplyPreparation(exitCode)
     }
 
     Process {

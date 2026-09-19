@@ -10,7 +10,7 @@ QuickToggleButton {
     toggled: Hyprsunset.active
     buttonIcon: (Config.options?.light?.night?.automatic ?? false) ? "night_sight_auto" : "bedtime"
     onClicked: {
-        Hyprsunset.toggle(!Hyprsunset.active)
+        Hyprsunset.toggle()
     }
 
     altAction: () => {

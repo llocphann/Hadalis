@@ -228,6 +228,35 @@ def main() -> None:
           and "fillRule: ShapePath.OddEvenFill" in screen_edge
           and "preferredRendererType: Shape.CurveRenderer" in screen_edge,
           "Physical Screen Edge must be one antialiased odd-even frame geometry")
+    check("SCREEN-EDGE-GEOMETRY-LOCK (maintainer approved 2026-09-19)" in screen_edge,
+          "Approved Screen Edge four-corner geometry lock marker must remain present")
+    check(screen_edge.count("Shape {") == 1
+          and screen_edge.count("ShapePath {") == 1
+          and screen_edge.count("PathMove {") == 1
+          and screen_edge.count("direction: PathArc.Clockwise") == 4,
+          "Screen Edge must keep one and only one painted inverted-frame path")
+    for locked_geometry in (
+        "readonly property int rounding: 25",
+        "readonly property int outerPadding: 50",
+        "readonly property real innerLeft: t",
+        "readonly property real innerTop: t",
+        "readonly property real innerRight: frameShape.width - t",
+        "readonly property real innerBottom: frameShape.height - t",
+        "startX: -root.outerPadding",
+        "startY: -root.outerPadding",
+        "x: frameShape.width + root.outerPadding",
+        "y: frameShape.height + root.outerPadding",
+        "x: framePath.innerLeft + framePath.r",
+        "x: framePath.innerRight - framePath.r",
+        "x: framePath.innerRight",
+        "x: framePath.innerLeft",
+        "y: framePath.innerTop",
+        "y: framePath.innerBottom",
+        "radiusX: framePath.r",
+        "radiusY: framePath.r",
+    ):
+        check(locked_geometry in screen_edge,
+              f"Approved Screen Edge corner geometry changed: {locked_geometry}")
     check("PathMove {" in screen_edge
           and screen_edge.count("direction: PathArc.Clockwise") == 4
           and "x: framePath.innerLeft + framePath.r" in screen_edge

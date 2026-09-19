@@ -64,7 +64,7 @@ require "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth' 'ii skew AltSwitch
 reject "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth * 2' 'ii skew AltSwitcher must not restore the doubled preview cache'
 require "$alt_switcher" 'layer.samples: Appearance.effectsEnabled ? 4 : 1' 'ii skew mask sampling must scale down with effects'
 require "$waffle_alt" 'id: focusRetryTimer' 'Waffle AltSwitcher focus must use bounded retries'
-reject "$waffle_alt" 'repeat: true\n        onTriggered: {\n            if (GlobalStates.waffleAltSwitcherOpen)\n                keyHandler.forceActiveFocus()' 'Waffle AltSwitcher must not restore 33 Hz focus polling'
+reject "$waffle_alt" 'id: focusTimer' 'Waffle AltSwitcher must not restore 33 Hz focus polling'
 require "$waffle_alt_content" 'cacheBuffer: root.skewExpandedWidth' 'Waffle skew AltSwitcher cache must stay bounded'
 require "$waffle_alt_content" 'layer.samples: Looks.effectsEnabled ? 4 : 1' 'Waffle skew mask sampling must scale down with effects'
 

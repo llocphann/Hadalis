@@ -47,6 +47,7 @@ overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
+recorder_status="$repo_root/services/RecorderStatus.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -102,5 +103,7 @@ require "$resource_usage" 'readonly property int _expensiveGpuUpdateIntervalMs:'
 require "$resource_usage" '? Math.max(15000, root._effectiveUpdateIntervalMs)' 'Low Power must throttle nvidia-smi/intel_gpu_top sampling to at least 15 seconds'
 require "$bar_resources" 'root.visible && !GameMode.active' 'horizontal Bar resource polling must pause in GameMode'
 require "$vertical_bar_resources" 'root.visible && !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
+require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
+require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
 
 printf 'performance lifecycle guards: ok\n'

@@ -1443,7 +1443,7 @@ Item {
                                                         buttonIcon: (Config.options?.light?.night?.automatic ?? false)
                                                             ? "night_sight_auto" : "bedtime"
                                                         toggled: Hyprsunset.active ?? false
-                                                        onClicked: Hyprsunset.toggle(!(Hyprsunset.active ?? false))
+                                                        onClicked: Hyprsunset.toggle()
                                                         altAction: () => { root.showNightLightDialog = true }
 
                                                         Component.onCompleted: Hyprsunset.fetchState()

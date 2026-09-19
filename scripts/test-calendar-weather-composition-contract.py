@@ -50,6 +50,7 @@ def main() -> None:
         require(calendar, token, "ClockCalendarContent.qml")
 
     for token in (
+        "import qs.services",
         "id: calendarHeader",
         "Layout.preferredWidth: calendarGrid.implicitWidth",
         "id: mondayMeasure",

@@ -2,16 +2,14 @@ pragma ComponentBehavior: Bound
 
 import qs
 import qs.modules.common
-import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.common.perimeter
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
 
-// Persistent Caelestia-style screen-edge surface. This is presentation-only:
+// Persistent square screen-edge surface. This is presentation-only:
 // it never reserves work area or captures input, and therefore remains separate
 // from sidebar edge-open hit regions and from connected-popup geometry.
 Scope {
@@ -19,11 +17,6 @@ Scope {
 
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    // Caelestia BorderConfig defaults to rounding=25 independently from
-    // component/card rounding. Keep the physical frame on that exact geometry.
-    readonly property int innerRadius: Math.max(0, Math.min(96,
-        Math.round(Config.options?.appearance?.screenEdge?.radius
-            ?? PerimeterTokens.frameRadius)))
     readonly property bool shadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property int shadowSize: Math.max(0, Math.min(32,
@@ -129,11 +122,11 @@ Scope {
         readonly property real leadingShadowInset:
             root.barOwnsEdge(outputName, leadingAdjacentEdge)
                 ? (root.waffleBarPanelEnabled ? 0 : adjacentIiBarBodySpan)
-                : root.thickness + root.innerRadius
+                : root.thickness
         readonly property real trailingShadowInset:
             root.barOwnsEdge(outputName, trailingAdjacentEdge)
                 ? (root.waffleBarPanelEnabled ? 0 : adjacentIiBarBodySpan)
-                : root.thickness + root.innerRadius
+                : root.thickness
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
         readonly property bool mapped: Config.ready
@@ -152,12 +145,7 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
 
         implicitWidth: horizontal ? 1 : root.thickness + root.shadowExtent
-        // Horizontal edges need room for both the 25px inverse corner and the
-        // inward 15px Caelestia-style shadow; using max() clipped the shadow at
-        // the curved endpoints and made the lower edge look flat/unshadowed.
-        implicitHeight: horizontal
-            ? root.thickness + root.innerRadius + root.shadowExtent
-            : 1
+        implicitHeight: horizontal ? root.thickness + root.shadowExtent : 1
 
         WlrLayershell.namespace: "hadalis:screen-edge-" + edge
         WlrLayershell.layer: WlrLayer.Top
@@ -240,61 +228,11 @@ Scope {
                 }
             }
 
-            // PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19):
-            // The bottom-left/bottom-right free Screen Edge arcs are the approved
-            // lower pair of the four-corner frame contract. Keep their geometry
-            // symmetric with the Bar-owned top pair. The horizontal edge owns
-            // these endpoints with a single screen-edge-thickness inset; do not
-            // move them inward/outward independently. Radius may change only via
-            // appearance.screenEdge.radius, shared with Bar.qml.
-            //
-            // Horizontal EdgeWindow owns the free endpoint curves. The curved
-            // shadow is drawn by RoundCorner itself so it follows the actual
-            // circular boundary instead of stopping at the straight segment.
-            RoundCorner {
-                id: leadingCorner
-                z: 2
-                visible: horizontal && !root.barOwnsEdge(outputName, "left")
-                implicitSize: root.innerRadius
-                color: root.edgeColor
-                shadowEnabled: root.shadowEnabled
-                shadowExtent: root.shadowExtent
-                shadowColor: root.shadowColor
-                anchors {
-                    left: parent.left
-                    leftMargin: root.thickness
-                    top: edge === "top" ? edgeBand.bottom : undefined
-                    bottom: edge === "bottom" ? edgeBand.top : undefined
-                }
-                corner: edge === "top"
-                    ? RoundCorner.CornerEnum.TopLeft
-                    : RoundCorner.CornerEnum.BottomLeft
-            }
-
-            RoundCorner {
-                id: trailingCorner
-                z: 2
-                visible: horizontal && !root.barOwnsEdge(outputName, "right")
-                implicitSize: root.innerRadius
-                color: root.edgeColor
-                shadowEnabled: root.shadowEnabled
-                shadowExtent: root.shadowExtent
-                shadowColor: root.shadowColor
-                anchors {
-                    right: parent.right
-                    rightMargin: root.thickness
-                    top: edge === "top" ? edgeBand.bottom : undefined
-                    bottom: edge === "bottom" ? edgeBand.top : undefined
-                }
-                corner: edge === "top"
-                    ? RoundCorner.CornerEnum.TopRight
-                    : RoundCorner.CornerEnum.BottomRight
-            }
         }
     }
 
-    // Horizontal EdgeWindow owns the endpoint curves; left/right EdgeWindow
-    // only provide the straight physical bands and their inward shadows.
+    // Four orthogonal EdgeWindows own one square physical frame. No curved
+    // endpoint or inverse-corner geometry is allowed in this baseline.
     Variants {
         model: Quickshell.screens
         EdgeWindow { edge: "top" }

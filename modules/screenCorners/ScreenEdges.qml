@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import qs
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
@@ -28,10 +29,12 @@ import Quickshell.Wayland
 Scope {
     id: root
 
-    // Caelestia BorderConfig defaults: thickness=10, rounding=25.
+    // Caelestia BorderConfig defaults: thickness=10, rounding=25. The
+    // maintainer-approved geometry model stays locked, while the radius itself
+    // is now the shared user-adjustable perimeter token.
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    readonly property int rounding: 25
+    readonly property real rounding: PerimeterTokens.frameRadius
 
     // Physical Screen Edge shadow has its own config owner. Do not reuse
     // appearance.screenEdge.shadow: that key belongs to connected popup/sidebar

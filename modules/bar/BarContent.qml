@@ -478,8 +478,9 @@ Item {
         readonly property QtObject blendedColors: root.blendedColors
 
         // Hug background is structural connected chrome. Fullscreen/GameMode
-        // may disable expensive effects, but it must never hide the Bar body:
-        // the PanelWindow itself owns fullscreen mapping and restores cleanly.
+        // may disable expensive effects, but it must never hide the Bar body.
+        // The PanelWindow remains mapped; compositor stacking covers it while a
+        // fullscreen client is active and reveals it again without remapping.
         visible: true
         opacity: root.regaliaEverywhere ? 1
             : Math.max(0, Math.min(1, Config.options?.bar?.opacity ?? 1))

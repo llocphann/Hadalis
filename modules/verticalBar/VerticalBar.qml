@@ -70,24 +70,6 @@ Scope {
                 property bool superShow: false
                 property bool mustShow: hoverRegion.containsMouse || superShow
                     || ShellEditSession.active
-                readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
-                    Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-                readonly property bool edgeShadowEnabled: bar.showBarBackground
-                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                readonly property int edgeShadowExtent: edgeShadowEnabled
-                    ? Math.max(0, Math.min(32,
-                        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-                    : 0
-                readonly property real edgeShadowOpacity: Math.max(0, Math.min(1.0,
-                    Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
-                readonly property color edgeShadowColor:
-                    ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
-                readonly property bool autoHideEnabled:
-                    Config.options?.bar?.autoHide?.enable ?? false
-                // Normal Bar mode owns only the Bar body. Extra inward host
-                // room exists solely for the auto-hide Screen Edge fallback.
-                readonly property real inwardDecoratorAllowance:
-                    autoHideEnabled ? edgeShadowExtent : 0
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
@@ -97,7 +79,7 @@ Scope {
                 // above Top, so videos/games naturally cover the bar. Overlay
                 // would draw the bar over fullscreen content (GameMode only
                 // detects games, not videos).
-                implicitWidth: Appearance.sizes.verticalBarWidth + barRoot.inwardDecoratorAllowance
+                implicitWidth: Appearance.sizes.verticalBarWidth
                 Item { id: emptyMask; width: 0; height: 0 }
                 mask: Region {
                     item: hoverMaskRegion
@@ -130,58 +112,6 @@ Scope {
                             leftMargin: -(Config.options?.bar?.autoHide?.hoverRegionWidth ?? 2)
                             rightMargin: -(Config.options?.bar?.autoHide?.hoverRegionWidth ?? 2)
                         }
-                    }
-
-                    Item {
-                        id: autoHideScreenEdge
-                        z: -10
-                        anchors.fill: parent
-                        visible: barRoot.autoHideEnabled
-                        opacity: {
-                            const displacement = (Config.options?.bar?.bottom ?? false)
-                                ? Math.abs(barContent.anchors.rightMargin)
-                                : Math.abs(barContent.anchors.leftMargin)
-                            return Math.max(0, Math.min(1,
-                                displacement / Math.max(1, Appearance.sizes.verticalBarWidth)))
-                        }
-
-                        Rectangle {
-                            id: autoHideEdgeBand
-                            x: (Config.options?.bar?.bottom ?? false)
-                                ? parent.width - barRoot.screenEdgeThickness : 0
-                            y: 0
-                            width: barRoot.screenEdgeThickness
-                            height: parent.height
-                            color: Appearance.colors.colLayer0
-                        }
-
-                        Rectangle {
-                            visible: barRoot.edgeShadowEnabled
-                                && barRoot.edgeShadowExtent > 0
-                                && barRoot.edgeShadowOpacity > 0
-                            x: (Config.options?.bar?.bottom ?? false)
-                                ? autoHideEdgeBand.x - barRoot.edgeShadowExtent
-                                : autoHideEdgeBand.x + autoHideEdgeBand.width
-                            y: barRoot.screenEdgeThickness
-                            width: barRoot.edgeShadowExtent
-                            height: Math.max(0, parent.height
-                                - 2 * barRoot.screenEdgeThickness)
-                            color: "transparent"
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop {
-                                    position: 0
-                                    color: (Config.options?.bar?.bottom ?? false)
-                                        ? "transparent" : barRoot.edgeShadowColor
-                                }
-                                GradientStop {
-                                    position: 1
-                                    color: (Config.options?.bar?.bottom ?? false)
-                                        ? barRoot.edgeShadowColor : "transparent"
-                                }
-                            }
-                        }
-
                     }
 
                     VerticalBarContent {

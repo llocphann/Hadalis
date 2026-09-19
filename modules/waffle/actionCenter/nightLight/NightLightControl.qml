@@ -77,20 +77,18 @@ Item {
             name: Translation.tr("Automatic")
             description: Translation.tr("Turn on from sunset to sunrise")
             iconName: "auto"
+            autoToggle: false
             checked: Config.options?.light?.night?.automatic ?? false
-            onCheckedChanged: {
-                Config.setNestedValue("light.night.automatic", checked)
-            }
+            onToggledByUser: checked => Config.setNestedValue("light.night.automatic", checked)
         }
 
         ToggleItem {
             name: Translation.tr("Enable now")
             description: Translation.tr("More comfortable viewing at night")
             iconName: WIcons.nightLightIcon
+            autoToggle: false
             checked: Hyprsunset.active
-            onCheckedChanged: {
-                Hyprsunset.toggle(checked);
-            }
+            onToggledByUser: checked => Hyprsunset.toggle(checked)
         }
 
         IntensityEntry {
@@ -105,10 +103,9 @@ Item {
             name: Translation.tr("Enable")
             description: Translation.tr("Balance brightness based on content")
             iconName: "flash-off"
+            autoToggle: false
             checked: Config.options?.light?.antiFlashbang?.enable ?? false
-            onCheckedChanged: {
-                Config.setNestedValue("light.antiFlashbang.enable", checked)
-            }
+            onToggledByUser: checked => Config.setNestedValue("light.antiFlashbang.enable", checked)
         }
     }
 

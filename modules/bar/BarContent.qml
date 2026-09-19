@@ -15,6 +15,11 @@ import Qt5Compat.GraphicalEffects as GE
 Item {
     id: root
 
+    CodeWorkflowRuntimeTarget {
+        runtimeObject: root
+        targetId: "bar"
+    }
+
     layer.enabled: Appearance.shouldDesaturate("bar") && root.visible
     layer.effect: ShellDesaturationEffect {}
 

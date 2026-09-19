@@ -262,6 +262,14 @@ Singleton {
             desc: Translation.tr("Workspace hover and workspace preview layout"),
             essential: false,
             component: "modules/settings/OverviewConfig.qml"
+        },
+        {
+            key: "code-workflow",
+            name: Translation.tr("Code Workflow"),
+            icon: "account_tree",
+            desc: Translation.tr("Inspect live QML as a read-only workflow"),
+            essential: false,
+            component: "modules/settings/CodeWorkflow.qml"
         }
     ]
 
@@ -270,7 +278,7 @@ Singleton {
         { label: Translation.tr("Appearance"), pages: [4, 25, 3, 14] },
         { label: Translation.tr("Shell"), pages: [2, 26, 5, 29, 22, 23, 16, 10, 11, 20] },
         { label: Translation.tr("System"), pages: [1, 24, 7, 6, 12, 15, 8, 17] },
-        { label: Translation.tr("Reference"), pages: [9, 13] }
+        { label: Translation.tr("Reference"), pages: [30, 9, 13] }
     ]
 
     readonly property var _arrangement: {
@@ -323,6 +331,13 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
+        {
+            pageIndex: 30, pageName: root.pages[30].name,
+            section: Translation.tr("Code Workflow"),
+            label: Translation.tr("Read-only workflow"),
+            description: Translation.tr("Inspect live ii Bar components and source as a workflow"),
+            keywords: ["workflow", "qml", "graph", "dataflow", "binding", "event", "lifecycle", "source", "inspect", "debug", "bar", "media", "clock", "resources"]
+        },
         {
             pageIndex: 28, pageName: root.pages[28].name,
             section: Translation.tr("Power management"),

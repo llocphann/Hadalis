@@ -1,10 +1,14 @@
 # Workflow-first QML Code Editor
 
-Status: Phase 0 A–E investigation complete within the documented prototype scope.
-Geometry is viable for read-only Phase 1; Curve sustained-memory acceptance is
-HOLD. Repository validation still has baseline failures. Production editor is not implemented.
-See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md) and
-[continuation instructions](CODE_WORKFLOW_HANDOFF.md).
+Status: Phase 0 A–E investigation is complete within the documented prototype
+scope. Phase 1 production work is now in progress: Reference -> Code Workflow,
+primitive session persistence, horizontal ii Bar runtime registration, a Geometry
+read-only canvas and Source Preview form the first production foundation. Picker
+promotion, semantic parser/Workflow IR integration and every source-writing
+transform remain unfinished. Curve sustained-memory acceptance remains HOLD.
+See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
+[Phase 1 status](CODE_WORKFLOW_PHASE1.md) and
+[Phase 0 continuation constraints](CODE_WORKFLOW_HANDOFF.md).
 
 This document records the design direction for a Hadalis code editor that exposes the running Quickshell/QML shell as an editable workflow/dataflow graph.
 

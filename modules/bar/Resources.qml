@@ -6,6 +6,12 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
+
+    CodeWorkflowRuntimeTarget {
+        runtimeObject: root
+        targetId: "bar/resources"
+    }
+
     property bool alwaysShowAllResources: false
     implicitWidth: rowLayout.implicitWidth + rowLayout.anchors.leftMargin + rowLayout.anchors.rightMargin
     implicitHeight: Appearance.sizes.barHeight

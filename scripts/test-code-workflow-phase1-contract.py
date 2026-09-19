@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+def read(path):
+    return (ROOT / path).read_text(encoding="utf-8")
+
+def require(text, token, message):
+    if token not in text:
+        raise SystemExit("FAIL: " + message)
+
+registry = read("modules/settings/SettingsPageRegistryData.qml")
+arrangement = read("modules/settings/SettingsArrangement.qml")
+persistent = read("modules/common/Persistent.qml")
+qmldir = read("services/qmldir")
+page = read("modules/settings/CodeWorkflow.qml")
+runtime = read("services/CodeWorkflowRuntime.qml")
+target = read("services/CodeWorkflowRuntimeTarget.qml")
+session = read("services/CodeWorkflowSession.qml")
+
+require(registry, 'key: "code-workflow"', "registry missing Code Workflow")
+require(registry, 'pages: [30, 9, 13]', "Reference ordering must be Code Workflow, Shortcuts, About")
+require(arrangement, "layoutSchemaVersion: 6", "saved layouts need v6 migration")
+require(arrangement, "codeWorkflowPageIndex: 30", "Code Workflow must keep appended index 30")
+
+for token in ("codeWorkflowTargetId", "codeWorkflowInstanceId", "codeWorkflowOutputName",
+              "codeWorkflowPanX", "codeWorkflowPanY", "codeWorkflowZoom"):
+    require(persistent, token, "missing primitive workspace state " + token)
+
+for token in ("singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml",
+              "singleton CodeWorkflowSession 1.0 CodeWorkflowSession.qml",
+              "CodeWorkflowRuntimeTarget 1.0 CodeWorkflowRuntimeTarget.qml"):
+    require(qmldir, token, "services/qmldir missing " + token)
+
+for token in ('targetId: "bar"', 'targetId: "bar/media"',
+              'targetId: "bar/clock"', 'targetId: "bar/resources"'):
+    require(runtime, token, "runtime catalog missing " + token)
+
+require(target, "horizontal ii Bar", "runtime geometry scope must remain explicit")
+require(target, "Explicit allowlist", "runtime values must stay allowlisted")
+require(session, "Persistent.states", "session must survive Settings page eviction")
+require(page, "preferredRendererType: Shape.GeometryRenderer", "page must use qualified Geometry renderer")
+require(page, "readOnly: true", "Source Preview must be read-only")
+require(page, "FileView {", "Source Preview must read selected source")
+if "setText(" in page:
+    raise SystemExit("FAIL: read-only Phase 1 page must not write source")
+
+hooks = {
+    "modules/bar/BarContent.qml": 'targetId: "bar"',
+    "modules/bar/Media.qml": 'targetId: "bar/media"',
+    "modules/bar/ClockWidget.qml": 'targetId: "bar/clock"',
+    "modules/bar/Resources.qml": 'targetId: "bar/resources"',
+}
+for path, target_id in hooks.items():
+    source = read(path)
+    require(source, "CodeWorkflowRuntimeTarget {", path + " missing runtime registration")
+    require(source, target_id, path + " has wrong semantic target ID")
+
+print("ok - Code Workflow Phase 1 production foundation contract")

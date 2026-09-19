@@ -6,6 +6,12 @@ import QtQuick.Layouts
 
 Item {
     id: root
+
+    CodeWorkflowRuntimeTarget {
+        runtimeObject: root
+        targetId: "bar/clock"
+    }
+
     property bool borderless: Config.options?.bar?.borderless ?? false
     property bool showDate: Config.options?.bar?.verbose ?? true
     readonly property string _timeFontFamily: Config.options?.bar?.clock?.timeFontFamily ?? ""

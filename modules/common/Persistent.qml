@@ -249,6 +249,16 @@ Singleton {
                 property string gowallFormat: "png"
                 property string gowallTheme: ""
                 property string gowallEffect: "grayscale"
+
+                // Code Workflow editor continuity. Live QObject references are
+                // never persisted across Quickshell engine generations.
+                property string codeWorkflowTargetId: "bar"
+                property string codeWorkflowInstanceId: ""
+                property string codeWorkflowOutputName: ""
+                property real codeWorkflowPanX: 32
+                property real codeWorkflowPanY: 28
+                property real codeWorkflowZoom: 1
+                property bool codeWorkflowSourcePreview: true
             }
 
             // Desktop-widget editor workspace state. This is transient UI

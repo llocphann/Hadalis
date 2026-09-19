@@ -14,6 +14,12 @@ import Quickshell.Wayland
 
 Item {
     id: root
+
+    CodeWorkflowRuntimeTarget {
+        runtimeObject: root
+        targetId: "bar/media"
+    }
+
     property bool borderless: Config.options?.bar?.borderless ?? false
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")

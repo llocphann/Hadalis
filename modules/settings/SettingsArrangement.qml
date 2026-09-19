@@ -7,9 +7,10 @@ import qs.modules.common
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 5
+    readonly property int layoutSchemaVersion: 6
     readonly property int retiredTlpPageIndex: 28
     readonly property int overviewPageIndex: 29
+    readonly property int codeWorkflowPageIndex: 30
 
     function snapshot(): var {
         return ({
@@ -138,6 +139,50 @@ QtObject {
                 const panelsIndex = pages.indexOf(5)
                 pages.splice(panelsIndex >= 0 ? panelsIndex + 1 : pages.length,
                     0, root.overviewPageIndex)
+            }
+        }
+
+        // v6 appends Code Workflow without shifting historical indices.
+        // Saved layouts would otherwise discover page 30 under a generated More
+        // group. Find the group that already owns the Reference peers and insert
+        // Code Workflow before them.
+        if (sourceVersion < 6
+                && !migratedHidden.includes(root.codeWorkflowPageIndex)) {
+            for (const group of migratedGroups) {
+                if (!group || !Array.isArray(group.pages))
+                    continue
+                group.pages = group.pages.filter(
+                    index => index !== root.codeWorkflowPageIndex)
+            }
+
+            const defaults = SettingsPageRegistry.defaultCategories.find(
+                category => category.pages.includes(root.codeWorkflowPageIndex))
+            const peers = defaults?.pages?.filter(
+                index => index !== root.codeWorkflowPageIndex) ?? [9, 13]
+
+            let targetIndex = -1
+            let bestScore = -1
+            for (let i = 0; i < migratedGroups.length; i++) {
+                const pages = migratedGroups[i]?.pages ?? []
+                let score = 0
+                for (const peer of peers)
+                    if (pages.includes(peer))
+                        score++
+                if (score > bestScore) {
+                    bestScore = score
+                    targetIndex = i
+                }
+            }
+
+            if (targetIndex >= 0) {
+                const pages = migratedGroups[targetIndex].pages
+                let insertIndex = pages.length
+                for (const peer of peers) {
+                    const peerIndex = pages.indexOf(peer)
+                    if (peerIndex >= 0)
+                        insertIndex = Math.min(insertIndex, peerIndex)
+                }
+                pages.splice(insertIndex, 0, root.codeWorkflowPageIndex)
             }
         }
 

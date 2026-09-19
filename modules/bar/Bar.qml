@@ -336,8 +336,8 @@ Scope {
                         anchors {
                             left: parent.left
                             right: parent.right
-                            leftMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
-                            rightMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
+                            leftMargin: barRoot.frameRadius
+                            rightMargin: barRoot.frameRadius
                             top: !(Config.options?.bar?.bottom ?? false) ? barContent.bottom : undefined
                             bottom: (Config.options?.bar?.bottom ?? false) ? barContent.top : undefined
                         }
@@ -449,7 +449,7 @@ Scope {
                                     top: parent.top
                                     bottom: parent.bottom
                                     left: parent.left
-                                    leftMargin: barRoot.screenEdgeThickness
+                                    leftMargin: 0
                                 }
 
                                 implicitSize: barRoot.frameRadius
@@ -474,7 +474,7 @@ Scope {
                                 id: rightCorner
                                 anchors {
                                     right: parent.right
-                                    rightMargin: barRoot.screenEdgeThickness
+                                    rightMargin: 0
                                     top: !hugDecorators.isBottom ? parent.top : undefined
                                     bottom: hugDecorators.isBottom ? parent.bottom : undefined
                                 }

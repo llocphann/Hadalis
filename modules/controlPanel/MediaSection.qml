@@ -79,6 +79,7 @@ Item {
     readonly property int primaryControlButtonSize: root.compactMode ? 38 : 44
     readonly property int controlIconSize: root.compactMode ? 20 : 22
     readonly property int primaryControlIconSize: root.compactMode ? 22 : 26
+    readonly property real _dpr: root.window ? root.window.devicePixelRatio : 1
 
     Rectangle {
         id: card
@@ -90,7 +91,7 @@ Item {
         border.color: "transparent"
         clip: true
 
-        layer.enabled: true
+        layer.enabled: root.visible && GlobalStates.controlPanelOpen
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle {
                 width: card.width
@@ -107,7 +108,9 @@ Item {
             asynchronous: true
             cache: false
             smooth: true
-            mipmap: true
+            mipmap: false
+            sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))
+            sourceSize.height: Math.max(1, Math.ceil(card.height * root._dpr))
             opacity: root.displayedArtFilePath !== "" ? 0.5 : 0
             visible: opacity > 0
 
@@ -120,7 +123,7 @@ Item {
                 }
             }
 
-            layer.enabled: Appearance.effectsEnabled
+            layer.enabled: root.visible && GlobalStates.controlPanelOpen && Appearance.effectsEnabled
             layer.effect: MultiEffect {
                 blurEnabled: true
                 blur: 0.15
@@ -176,7 +179,7 @@ Item {
                 color: "transparent"
                 clip: true
 
-                layer.enabled: true
+                layer.enabled: root.visible && GlobalStates.controlPanelOpen
                 layer.effect: GE.OpacityMask {
                     maskSource: Rectangle {
                         width: root.coverArtSize
@@ -193,7 +196,7 @@ Item {
                     asynchronous: true
                     cache: false
                     smooth: true
-                    mipmap: true
+                    mipmap: false
                     sourceSize.width: root.coverArtSize * 2
                     sourceSize.height: root.coverArtSize * 2
                 }

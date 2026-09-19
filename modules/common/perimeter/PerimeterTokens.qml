@@ -21,6 +21,15 @@ QtObject {
     // until the connected-surface geometry is revisited explicitly.
     readonly property real smoothUnionRadius: 20
     readonly property real popupRadius: 28
+
+    // Connected bodies keep their existing free-corner radius, but every corner
+    // that physically meets Screen Edge/Bar inherits the exact physical frame
+    // radius. This mirrors Caelestia's model where a rounded PanelBg participates
+    // in the same border union instead of being squared at the contact edge.
+    readonly property real attachedCornerRadius: frameRadius
+
+    // Smooth-union shoulders remain a separate approximation of Caelestia's
+    // BlobGroup smoothing. Do not conflate smoothing width with corner radius.
     readonly property real joinFlareRadius: smoothUnionRadius
     readonly property real joinFlareCrossScale: 0.55
 

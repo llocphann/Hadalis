@@ -51,6 +51,7 @@
 | **CodeWorkflowIr** | Loads the versioned read-only semantic projection manifest used by the workflow graph; source-range parsing remains a separate boundary. |
 | **CodeWorkflowPicker** | In-process per-output component picker lifecycle for overlay Settings; no standalone cross-process bridge. |
 | **CodeWorkflowSession** | Persists primitive Workflow target, subflow, selected-node and viewport state across lazy page/reload lifetimes. |
+| **CodeWorkflowTransaction** | Owns one Phase 2 dry-run literal-property patch preview with base-SHA conflict state; applyEnabled remains false and it has no source-write FileView. |
 
 ## Theming and Appearance
 

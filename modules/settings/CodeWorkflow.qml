@@ -110,6 +110,25 @@ Item {
             ? "PENDING"
             : "—"
     }
+    readonly property var literalValueKinds: [
+        "true", "false", "number", "string"
+    ]
+    readonly property bool literalPreviewEligible:
+        root.analyzerMatchesAnchor
+        && CodeWorkflowAnalyzer.status === "ready"
+        && root.sourceAnchorEvidence?.status === "resolved"
+        && root.sourceAnchorEvidence?.semanticAnchorUnique === true
+        && root.sourceAnchorEvidence?.semanticKind === "property"
+        && root.literalValueKinds.includes(
+            String(root.sourceAnchorEvidence?.semanticValueKind ?? ""))
+        && root.storedSemanticAnchor.length > 0
+    readonly property string currentLiteralText:
+        root.literalPreviewEligible
+            ? String(root.sourceAnchorEvidence?.semanticValueText ?? "")
+            : ""
+    readonly property bool transactionMatchesSelection:
+        CodeWorkflowTransaction.sourcePath === root.sourcePath
+        && CodeWorkflowTransaction.semanticAnchor === root.storedSemanticAnchor
     readonly property string analyzerStatusText: {
         if (!root.analyzerMatchesAnchor)
             return "IDLE"
@@ -210,6 +229,20 @@ Item {
             anchor)
     }
 
+    function previewLiteral(nextValue: string): void {
+        if (!root.literalPreviewEligible)
+            return
+        const baseSha = String(
+            CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+        if (baseSha.length === 0)
+            return
+        CodeWorkflowTransaction.previewLiteral(
+            root.sourcePath,
+            baseSha,
+            root.storedSemanticAnchor,
+            String(nextValue ?? ""))
+    }
+
     function focusSourceAnchor(): void {
         if (root.sourceNeedle.length === 0 || root.sourceText.length === 0)
             return
@@ -262,6 +295,7 @@ Item {
             Qt.callLater(root.focusSourceAnchor)
         }
         onFileChanged: {
+            CodeWorkflowTransaction.markSourceChanged(root.sourcePath)
             sourceReader.reload()
             root.requestAnalysis(true)
         }
@@ -333,6 +367,15 @@ Item {
                 }
 
                 Pill { label: "READ ONLY"; accent: Appearance.colors.colTertiary }
+                Pill {
+                    visible: CodeWorkflowTransaction.dirty
+                    label: CodeWorkflowTransaction.status === "preview"
+                        ? "PATCH PREVIEW"
+                        : String(CodeWorkflowTransaction.status).toUpperCase()
+                    accent: CodeWorkflowTransaction.status === "conflict"
+                        ? Appearance.colors.colError
+                        : Appearance.colors.colTertiary
+                }
                 Pill {
                     label: root.live ? "LIVE RUNTIME" : "STATIC SOURCE"
                     accent: root.live ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
@@ -608,6 +651,44 @@ Item {
                         wrapMode: Text.WrapAnywhere
                     }
                     StyledText {
+                        visible: root.literalPreviewEligible
+                            || root.transactionMatchesSelection
+                        text: "Phase 2 dry-run"
+                        color: Appearance.colors.colSubtext
+                    }
+                    ToolbarTextField {
+                        id: literalPreviewField
+                        visible: root.literalPreviewEligible
+                        Layout.fillWidth: true
+                        Layout.fillHeight: false
+                        Layout.preferredHeight: 34
+                        text: root.currentLiteralText
+                        placeholderText: "QML literal"
+                        onAccepted: root.previewLiteral(text)
+                    }
+                    RippleButtonWithIcon {
+                        visible: root.literalPreviewEligible
+                        Layout.fillWidth: true
+                        materialIcon: "difference"
+                        mainText: "Preview literal patch"
+                        onClicked: root.previewLiteral(literalPreviewField.text)
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.transactionMatchesSelection
+                            && CodeWorkflowTransaction.status !== "clean"
+                        text: "Transaction: "
+                            + String(CodeWorkflowTransaction.status).toUpperCase()
+                            + (CodeWorkflowTransaction.error.length > 0
+                                ? " · " + CodeWorkflowTransaction.error
+                                : "")
+                        color: CodeWorkflowTransaction.status === "conflict"
+                            ? Appearance.colors.colError
+                            : Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
+                    }
+                    StyledText {
                         Layout.fillWidth: true
                         visible: root.analyzerMatchesAnchor
                             && CodeWorkflowAnalyzer.error.length > 0
@@ -631,6 +712,60 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
                     }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: CodeWorkflowTransaction.dirty ? 118 : 0
+            visible: CodeWorkflowTransaction.dirty
+            radius: Appearance.rounding.normal
+            color: Appearance.colors.colLayer1
+            border.width: 1
+            border.color: CodeWorkflowTransaction.status === "conflict"
+                ? Appearance.colors.colError
+                : Appearance.colors.colOutlineVariant
+            clip: true
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    MaterialSymbol {
+                        text: "difference"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colTertiary
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: "Patch Preview · DRY RUN · "
+                            + String(CodeWorkflowTransaction.status).toUpperCase()
+                        color: Appearance.colors.colOnLayer1
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
+                    }
+                    RippleButtonWithIcon {
+                        materialIcon: "close"
+                        mainText: "Clear"
+                        enabled: CodeWorkflowTransaction.status !== "previewing"
+                        onClicked: CodeWorkflowTransaction.clear()
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    text: CodeWorkflowTransaction.previewText.length > 0
+                        ? CodeWorkflowTransaction.previewText
+                        : CodeWorkflowTransaction.error
+                    color: Appearance.colors.colOnLayer1
+                    font.family: Appearance.font.family.monospace
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WrapAnywhere
                 }
             }
         }

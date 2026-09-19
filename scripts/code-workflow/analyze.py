@@ -144,6 +144,19 @@ def resolve_reviewed_anchor(
         result["semanticKind"] = semantic_entry.get("kind", "")
         result["semanticName"] = semantic_entry.get("name", "")
         result["semanticRange"] = semantic_entry.get("range")
+        value_range = semantic_entry.get("value_range")
+        result["semanticValueRange"] = value_range
+        result["semanticValueKind"] = semantic_entry.get("value_kind")
+        if (
+            isinstance(value_range, list)
+            and len(value_range) == 2
+            and 0 <= value_range[0] <= value_range[1] <= len(source)
+        ):
+            result["semanticValueText"] = source[
+                value_range[0]:value_range[1]
+            ].decode("utf-8")
+        result["semanticDeclaredType"] = semantic_entry.get(
+            "declared_type", "")
     return result
 
 

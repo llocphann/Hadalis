@@ -12,9 +12,12 @@ source-writing transform remain unfinished. Unique parser semantic anchors can
 now rebind read-only inspector identity across source movement, but they are not
 yet authorization for rewriting source. The on-demand
 parser boundary still degrades to reviewed IR when native capability is absent.
-Curve sustained-memory acceptance remains HOLD.
+Curve sustained-memory acceptance remains HOLD. Phase 2 has started only as a
+dry-run literal-property patch preview with applyEnabled=false; there is still no
+production source-write path.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
-[Phase 1 status](CODE_WORKFLOW_PHASE1.md) and
+[Phase 1 status](CODE_WORKFLOW_PHASE1.md),
+[Phase 2 status](CODE_WORKFLOW_PHASE2.md) and
 [Phase 0 continuation constraints](CODE_WORKFLOW_HANDOFF.md).
 
 This document records the design direction for a Hadalis code editor that exposes the running Quickshell/QML shell as an editable workflow/dataflow graph.

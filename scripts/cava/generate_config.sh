@@ -13,7 +13,7 @@ case "$1" in
 esac
 
 OUTPUT_FILE="${1:-/tmp/cava_config.txt}"
-FRAMERATE="${2:-60}"
+FRAMERATE="${2:-30}"
 SENSITIVITY="${3:-100}"
 BARS="${4:-50}"
 STEREO="${5:-false}"

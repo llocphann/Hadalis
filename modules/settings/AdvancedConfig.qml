@@ -327,7 +327,7 @@ ContentPage {
                 ConfigSpinBox {
                     icon: "speed"
                     text: Translation.tr("Framerate")
-                    value: Config.options?.appearance?.cava?.framerate ?? 60
+                    value: Config.options?.appearance?.cava?.framerate ?? 30
                     from: 30
                     to: 165
                     stepSize: 5

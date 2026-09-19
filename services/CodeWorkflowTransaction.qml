@@ -21,8 +21,15 @@ Singleton {
     property var history: []
     property int historyIndex: -1
     property int _pendingReplaceIndex: -1
+    property var preApplyDiagnostics: ({
+        status: "not-evaluated",
+        ready: false,
+        blockers: ["not-evaluated"]
+    })
 
     readonly property bool dirty: root.status !== "clean"
+    readonly property bool preApplyReady:
+        root.preApplyDiagnostics?.ready === true
     readonly property bool applyEnabled: false
     readonly property bool canUndo:
         !previewProcess.running && root.historyIndex >= 0
@@ -48,6 +55,76 @@ Singleton {
         root.patch = ({})
         root.previewText = ""
         root.error = ""
+        root.preApplyDiagnostics = ({
+            status: "not-evaluated",
+            ready: false,
+            blockers: ["no-active-preview"]
+        })
+    }
+
+    function evaluatePreApply(
+        currentPath: string,
+        currentSha: string,
+        currentAnchor: string,
+        analyzerReady: bool,
+        currentRebindResolved: bool,
+        currentDiagnosticsCount: int
+    ): var {
+        const command = root.activeCommand
+        const blockers = []
+
+        if (!command) {
+            blockers.push("no-active-command")
+        } else {
+            if (root.status !== "preview")
+                blockers.push("transaction-not-preview")
+            if (command.stale === true)
+                blockers.push("preview-stale")
+            if (!analyzerReady)
+                blockers.push("analyzer-not-ready")
+            if (String(currentPath ?? "")
+                    !== String(command.sourcePath ?? ""))
+                blockers.push("source-selection-mismatch")
+            if (String(currentSha ?? "").length === 0
+                    || String(currentSha ?? "")
+                        !== String(command.baseSha256 ?? ""))
+                blockers.push("base-sha-mismatch")
+            if (String(currentAnchor ?? "").length === 0
+                    || String(currentAnchor ?? "")
+                        !== String(command.semanticAnchor ?? ""))
+                blockers.push("semantic-anchor-mismatch")
+            if (!currentRebindResolved)
+                blockers.push("current-semantic-rebind-unresolved")
+            if (Number(currentDiagnosticsCount) !== 0)
+                blockers.push("parser-diagnostics-present")
+            if (command.result?.semanticRebind?.status !== "resolved")
+                blockers.push("candidate-semantic-rebind-unresolved")
+            const candidateSha = String(
+                command.candidateSha256 ?? "")
+            if (candidateSha.length === 0)
+                blockers.push("candidate-sha-missing")
+            else if (candidateSha === String(command.baseSha256 ?? ""))
+                blockers.push("candidate-noop")
+            if (command.sourceWritable !== true)
+                blockers.push("source-read-only")
+        }
+
+        const ready = blockers.length === 0
+        root.preApplyDiagnostics = ({
+            status: ready ? "ready" : "blocked",
+            ready: ready,
+            blockers: blockers,
+            sourcePath: String(command?.sourcePath ?? ""),
+            baseSha256: String(command?.baseSha256 ?? ""),
+            candidateSha256: String(command?.candidateSha256 ?? ""),
+            semanticAnchor: String(command?.semanticAnchor ?? ""),
+            sourceWritable: command?.sourceWritable === true,
+            analyzerReady: analyzerReady,
+            currentRebindResolved: currentRebindResolved,
+            currentDiagnosticsCount: Number(currentDiagnosticsCount),
+            applyEnabled: false
+        })
+        return root.preApplyDiagnostics
     }
 
     function _showCommand(command): void {
@@ -72,6 +149,11 @@ Singleton {
             root.status = "preview"
             root.error = ""
         }
+        root.preApplyDiagnostics = ({
+            status: "not-evaluated",
+            ready: false,
+            blockers: ["evaluation-required"]
+        })
     }
 
     function clear(): void {
@@ -127,6 +209,12 @@ Singleton {
             root.status = "conflict"
             root.error =
                 "Source changed after patch preview; regenerate before any future Apply."
+            root.preApplyDiagnostics = ({
+                status: "blocked",
+                ready: false,
+                blockers: ["preview-stale"],
+                applyEnabled: false
+            })
         }
     }
 

@@ -243,6 +243,26 @@ Item {
             String(nextValue ?? ""))
     }
 
+    function evaluatePreApplyGate(): void {
+        const analyzerReady = root.analyzerMatchesAnchor
+            && CodeWorkflowAnalyzer.status === "ready"
+        const currentSha = analyzerReady
+            ? String(CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+            : ""
+        const rebindResolved = analyzerReady
+            && root.semanticRebindEvidence?.status === "resolved"
+        const diagnosticsCount = analyzerReady
+            ? CodeWorkflowAnalyzer.diagnostics.length
+            : -1
+        CodeWorkflowTransaction.evaluatePreApply(
+            root.sourcePath,
+            currentSha,
+            root.storedSemanticAnchor,
+            analyzerReady,
+            rebindResolved,
+            diagnosticsCount)
+    }
+
     function regenerateTransaction(): void {
         if (!root.transactionMatchesSelection
                 || CodeWorkflowAnalyzer.status !== "ready")
@@ -272,19 +292,33 @@ Item {
     onSourcePathChanged: {
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
+        Qt.callLater(root.evaluatePreApplyGate)
     }
     onSourceNeedleChanged: {
         Qt.callLater(root.focusSourceAnchor)
         Qt.callLater(() => root.requestAnalysis(false))
     }
-    onStoredSemanticAnchorChanged:
+    onStoredSemanticAnchorChanged: {
         Qt.callLater(() => root.requestAnalysis(false))
+        Qt.callLater(root.evaluatePreApplyGate)
+    }
 
     Connections {
         target: CodeWorkflowAnalyzer
         function onStatusChanged(): void {
             if (CodeWorkflowAnalyzer.status === "ready")
                 Qt.callLater(root.captureSemanticAnchor)
+            Qt.callLater(root.evaluatePreApplyGate)
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowTransaction
+        function onStatusChanged(): void {
+            Qt.callLater(root.evaluatePreApplyGate)
+        }
+        function onHistoryIndexChanged(): void {
+            Qt.callLater(root.evaluatePreApplyGate)
         }
     }
 
@@ -763,6 +797,14 @@ Item {
                         label: CodeWorkflowTransaction.historyLabel
                         accent: Appearance.colors.colSubtext
                     }
+                    Pill {
+                        label: CodeWorkflowTransaction.preApplyReady
+                            ? "PRE-APPLY READY"
+                            : "PRE-APPLY BLOCKED"
+                        accent: CodeWorkflowTransaction.preApplyReady
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colTertiary
+                    }
                     RippleButtonWithIcon {
                         materialIcon: "undo"
                         mainText: "Undo"
@@ -789,6 +831,24 @@ Item {
                         enabled: CodeWorkflowTransaction.status !== "previewing"
                         onClicked: CodeWorkflowTransaction.clear()
                     }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.preApplyDiagnostics
+                        ?.status !== "not-evaluated"
+                    text: CodeWorkflowTransaction.preApplyReady
+                        ? "Pre-Apply diagnostics: READY · source writable · "
+                            + "current/candidate parser evidence valid · "
+                            + "write path still disabled"
+                        : "Pre-Apply blockers: "
+                            + (CodeWorkflowTransaction.preApplyDiagnostics
+                                ?.blockers ?? []).join(", ")
+                    color: CodeWorkflowTransaction.preApplyReady
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
                 }
 
                 StyledText {

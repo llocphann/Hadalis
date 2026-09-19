@@ -54,6 +54,27 @@ Implemented:
 - scripts/test-code-workflow-transaction-history.py guards history/regenerate
   semantics and the no-write boundary.
 
+## Milestone 2C — pre-Apply diagnostics gate
+
+Implemented:
+
+- CodeWorkflowTransaction exposes preApplyDiagnostics and preApplyReady while
+  keeping applyEnabled=false.
+- The gate evaluates the active semantic preview command against the analyzer's
+  current source identity, never against saved byte ranges.
+- READY requires an active non-stale preview, analyzer readiness, matching source
+  path/base SHA/stable semantic anchor, resolved current semantic rebind, zero
+  current parser diagnostics, resolved candidate semantic rebind, a non-empty
+  non-noop candidate SHA, and writable source.
+- Package-managed/read-only source is an explicit source-read-only blocker.
+- External source change immediately invalidates readiness with preview-stale.
+- Undo/Redo restore semantic commands but force a fresh readiness evaluation.
+- Settings surfaces PRE-APPLY READY/BLOCKED plus blocker names. READY means the
+  evidence is sufficient for a future write controller; it does not enable or
+  expose Apply.
+- scripts/test-code-workflow-preapply-gate.py guards the diagnostic criteria and
+  the no-write invariant.
+
 ## Not implemented yet
 
 - source writes or Apply;
@@ -67,9 +88,10 @@ Implemented:
 
 ## Next gate
 
-Before enabling any source write, add an explicit pre-Apply diagnostics gate
-for package-managed/read-only source and candidate validation state. Then add an
-atomic one-file Apply path with a final pre-write hash check, normal Quickshell
-watcher reload, reloadCompleted/reloadFailed observation and semantic target
-rebind. The write path must consume the same semantic command; it must never
-reuse stale byte ranges from history.
+The next implementation gate is an atomic one-file Apply controller with a
+second/final hash+semantic-anchor check immediately before writing, an exact
+rollback snapshot, normal Quickshell watcher reload,
+reloadCompleted/reloadFailed observation and semantic target rebind. Apply must
+remain disabled until that controller can prove the complete lifecycle; the
+write path must consume the same semantic command and never reuse stale byte
+ranges from history.

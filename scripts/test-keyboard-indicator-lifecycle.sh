@@ -34,5 +34,9 @@ require 'if (evdevProbeProc.startObserved || root._destroying)' \
     'probe startup guard must not run during destruction'
 require 'if (evdevMonitorProc.startObserved || root._destroying)' \
     'monitor startup guard must not run during destruction'
+require 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' \
+    'sysfs LED path rediscovery must remain low cadence'
+require 'watchChanges: true' \
+    'known LED paths must use file watching instead of fast rediscovery polling'
 
 printf 'keyboard indicator lifecycle guards: ok\n'

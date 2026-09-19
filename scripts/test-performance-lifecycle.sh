@@ -49,6 +49,8 @@ bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
+weather="$repo_root/services/Weather.qml"
+keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -111,5 +113,7 @@ require "$bar_resources" 'root.visible && !GameMode.active' 'horizontal Bar reso
 require "$vertical_bar_resources" 'root.visible && !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
+require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
+require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
 
 printf 'performance lifecycle guards: ok\n'

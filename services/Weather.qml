@@ -92,7 +92,10 @@ Singleton {
         id: clockTickTimer
         interval: 60000
         repeat: true
-        running: true
+        // Weather's live sun/moon context is only consumed when the weather
+        // service itself is enabled. Do not keep a global minute wakeup alive
+        // for users that disable weather entirely.
+        running: root.enabled
         onTriggered: root._clockTick++
     }
 

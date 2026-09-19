@@ -44,6 +44,9 @@ power_profiles="$repo_root/services/PowerProfilePersistence.qml"
 world_clock="$repo_root/services/WorldClock.qml"
 game_mode="$repo_root/services/GameMode.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
+resource_usage="$repo_root/services/ResourceUsage.qml"
+bar_resources="$repo_root/modules/bar/Resources.qml"
+vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -93,5 +96,9 @@ require "$world_clock" 'id: minuteTick' 'WorldClock must tick at minute precisio
 reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'
 require "$game_mode" 'Math.max(10000, Math.round(configured))' 'GameMode fallback polling must remain low cadence'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
+require "$resource_usage" '? Math.max(6000, root._configuredUpdateIntervalMs)' 'Low Power must slow resource sampling to at least 6 seconds'
+require "$resource_usage" 'interval: root._effectiveUpdateIntervalMs' 'resource sensor timer must use the effective power-aware cadence'
+require "$bar_resources" 'root.visible && !GameMode.active' 'horizontal Bar resource polling must pause in GameMode'
+require "$vertical_bar_resources" 'root.visible && !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
 
 printf 'performance lifecycle guards: ok\n'

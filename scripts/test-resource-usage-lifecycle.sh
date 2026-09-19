@@ -10,6 +10,8 @@ sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
 overview_dashboard="$repo_root/modules/overview/OverviewDashboard.qml"
 inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
+bar_resources="$repo_root/modules/bar/Resources.qml"
+vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 
 fail() {
     printf 'resource usage lifecycle guard failed: %s\n' "$1" >&2
@@ -58,6 +60,9 @@ assert_contains 'detectHybridGpu.running = true' "$ensure_block" 'hybrid GPU pro
 assert_contains 'findCpuMaxFreqProc.running = true' "$ensure_block" 'CPU frequency probe must participate in initialization'
 assert_contains 'autoStopTimer.restart();' "$ensure_block" 'transient consumer request must arm the auto-stop lease'
 assert_not_contains 'autoStopTimer.restart();' "$poll_block" 'sensor polling must not renew the transient lease forever'
+assert_contains 'readonly property int _effectiveUpdateIntervalMs:' "$(cat "$service")" 'resource polling must expose a power-aware effective cadence'
+assert_contains '? Math.max(6000, root._configuredUpdateIntervalMs)' "$(cat "$service")" 'Low Power resource polling must not run faster than 6 seconds'
+assert_contains 'interval: root._effectiveUpdateIntervalMs' "$(cat "$service")" 'sensor timer must use the power-aware cadence'
 
 assert_contains 'root._gpuUsageSource = "none"' "$gpu_block" 'GPU startup failure must fail closed to no usage source'
 assert_contains 'root._gpuUsagePath = ""' "$gpu_block" 'GPU startup failure must clear stale sysfs path'
@@ -68,7 +73,7 @@ assert_contains 'root._gpuTempPath = ""' "$temp_block" 'temperature startup fail
 assert_contains 'root._dGpuRuntimeStatusPath = ""' "$hybrid_block" 'hybrid GPU startup failure must clear stale runtime-status path'
 assert_contains 'root.maxAvailableCpuString = "--"' "$cpu_block" 'CPU frequency startup failure must restore unknown display state'
 
-for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$overview_dashboard"; do
+for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$overview_dashboard" "$bar_resources" "$vertical_bar_resources"; do
     lifecycle_text="$(cat "$lifecycle_file")"
     assert_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must acquire resource polling only while presented"
     assert_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must release resource polling when hidden or destroyed"
@@ -78,5 +83,9 @@ assert_contains 'running: root.panelVisible && root.effectiveIsPlaying' "$(cat "
     'hidden Overview dashboard must stop its media position timer'
 assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
     'hidden InnerTune thumbnail must stop its decorative equalizer timer'
+assert_contains 'root.visible && !GameMode.active' "$(cat "$bar_resources")" \
+    'horizontal Bar resource polling must pause during GameMode'
+assert_contains 'root.visible && !GameMode.active' "$(cat "$vertical_bar_resources")" \
+    'vertical Bar resource polling must pause during GameMode'
 
 printf 'resource usage and visual idle lifecycle guards: ok\n'

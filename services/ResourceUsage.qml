@@ -21,6 +21,14 @@ Singleton {
     // Persistent consumers (bar, vertical bar) prevent auto-stop entirely.
     readonly property int _autoStopDelayMs: Config.options?.resources?.autoStopDelay ?? 15000
     readonly property int _diskUpdateIntervalMs: 30000
+    readonly property int _configuredUpdateIntervalMs: {
+        const configured = Number(Config.options?.resources?.updateInterval ?? 3000)
+        return Number.isFinite(configured) ? Math.max(100, Math.round(configured)) : 3000
+    }
+    readonly property int _effectiveUpdateIntervalMs:
+        (Config.options?.performance?.lowPower ?? false)
+            ? Math.max(6000, root._configuredUpdateIntervalMs)
+            : root._configuredUpdateIntervalMs
     // 0 + zero-guard avoids fake "100%" before first poll.
     property real memoryTotal: 0
     property real memoryFree: 0
@@ -388,7 +396,7 @@ Singleton {
 
     Timer {
         id: pollTimer
-        interval: Config.options?.resources?.updateInterval ?? 3000
+        interval: root._effectiveUpdateIntervalMs
         running: root._runningRequested
         repeat: true
         onTriggered: root._pollSensors()

@@ -1402,14 +1402,18 @@ Item {
 
                                                     QuickToggleButton {
                                                         anchors.centerIn: parent
-                                                        accessibleName: Translation.tr("Dark mode")
-                                                        buttonIcon: "dark_mode"
+                                                        accessibleName: (Appearance.m3colors?.darkmode ?? false)
+                                                            ? Translation.tr("Switch to light mode")
+                                                            : Translation.tr("Switch to dark mode")
+                                                        buttonIcon: (Appearance.m3colors?.darkmode ?? false)
+                                                            ? "light_mode" : "dark_mode"
                                                         toggled: Appearance.m3colors?.darkmode ?? false
-                                                        onClicked: {
-                                                            const current = Config.options?.appearance?.customTheme?.darkmode ?? true
-                                                            Config.setNestedValue("appearance.customTheme.darkmode", !current)
+                                                        onClicked: Appearance.toggleDarkMode()
+                                                        StyledToolTip {
+                                                            text: (Appearance.m3colors?.darkmode ?? false)
+                                                                ? Translation.tr("Switch to light mode")
+                                                                : Translation.tr("Switch to dark mode")
                                                         }
-                                                        StyledToolTip { text: Translation.tr("Dark mode") }
                                                     }
                                                 }
 
@@ -1433,9 +1437,20 @@ Item {
                                                     implicitHeight: 40
                                                     visible: Config.options?.sidebar?.widgets?.controlsCard?.showNightLight ?? true
 
-                                                    NightLight {
+                                                    QuickToggleButton {
                                                         anchors.centerIn: parent
+                                                        accessibleName: Translation.tr("Night Light")
+                                                        buttonIcon: (Config.options?.light?.night?.automatic ?? false)
+                                                            ? "night_sight_auto" : "bedtime"
+                                                        toggled: Hyprsunset.active ?? false
+                                                        onClicked: Hyprsunset.toggle(!(Hyprsunset.active ?? false))
                                                         altAction: () => { root.showNightLightDialog = true }
+
+                                                        Component.onCompleted: Hyprsunset.fetchState()
+
+                                                        StyledToolTip {
+                                                            text: Translation.tr("Night Light | Right-click for settings")
+                                                        }
                                                     }
                                                 }
 

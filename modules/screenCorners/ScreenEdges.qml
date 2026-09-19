@@ -6,6 +6,7 @@ import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -31,6 +32,15 @@ Scope {
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property int rounding: 25
+
+    // Caelestia ContentWindow shadow baseline. The effect is applied to the
+    // single locked inverted frame itself, never to a second painted geometry.
+    readonly property bool shadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property int shadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+    readonly property real shadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
 
     // Caelestia's BlobInvertedRect extends 50px beyond the ContentWindow so the
     // visible outer screen boundary is clipped by the window rather than by an
@@ -133,18 +143,36 @@ Scope {
         }
         mask: Region { item: emptyFrameInput }
 
-        // LOCKED CORNER GEOMETRY: exactly one painted geometry. Odd-even fill
-        // subtracts the rounded workspace rect from the padded outer rect,
-        // matching the isolated Caelestia BlobInvertedRect border silhouette.
-        // Do not split this into edge/corner renderers or add painted helpers.
-        Shape {
-            id: frameShape
+        // Shadow follows Caelestia ContentWindow exactly: one MultiEffect is
+        // applied to the same locked frame alpha. This creates the inward
+        // perimeter shadow around the rounded workspace hole without adding any
+        // painted wedge, rectangle, corner patch or second geometry.
+        Item {
+            id: frameVisual
             anchors.fill: parent
-            antialiasing: true
-            preferredRendererType: Shape.CurveRenderer
+            layer.enabled: root.shadowEnabled
+                && root.shadowSize > 0
+                && root.shadowOpacity > 0
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                blurMax: root.shadowSize
+                shadowColor: Qt.alpha(
+                    Appearance.m3colors.m3shadow,
+                    Math.max(0, root.shadowOpacity))
+            }
 
-            ShapePath {
-                id: framePath
+            // LOCKED CORNER GEOMETRY: exactly one painted geometry. Odd-even fill
+            // subtracts the rounded workspace rect from the padded outer rect,
+            // matching the isolated Caelestia BlobInvertedRect border silhouette.
+            // Do not split this into edge/corner renderers or add painted helpers.
+            Shape {
+                id: frameShape
+                anchors.fill: parent
+                antialiasing: true
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    id: framePath
 
                 fillColor: root.edgeColor
                 fillRule: ShapePath.OddEvenFill
@@ -231,6 +259,7 @@ Scope {
                     radiusX: framePath.r
                     radiusY: framePath.r
                     direction: PathArc.Clockwise
+                }
                 }
             }
         }

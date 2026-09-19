@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import Qt.labs.qmlmodels
 import Quickshell
 import qs
 import qs.services
@@ -41,7 +42,12 @@ Item {
     }
 
     function normalizedFolder(value): string {
-        return String(value ?? "").replace(/^\\/+|\\/+$/g, "")
+        let normalized = String(value ?? "")
+        while (normalized.startsWith("/"))
+            normalized = normalized.substring(1)
+        while (normalized.endsWith("/"))
+            normalized = normalized.substring(0, normalized.length - 1)
+        return normalized
     }
 
     function buildSongEntries(): var {
@@ -306,8 +312,10 @@ Item {
         colBackground: activeState
             ? (palette?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer)
             : "transparent"
-        colBackgroundHover: palette?.colLayer1Hover ?? Appearance.colors.colLayer1Hover
-        colRipple: palette?.colLayer1Active ?? Appearance.colors.colLayer1Active
+        colBackgroundHover: palette?.colSecondaryContainerHover
+            ?? Appearance.colors.colSecondaryContainerHover
+        colRipple: palette?.colSecondaryContainerActive
+            ?? Appearance.colors.colSecondaryContainerActive
         contentItem: MaterialSymbol {
             anchors.centerIn: parent
             text: mediaButton.symbol

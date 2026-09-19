@@ -68,16 +68,6 @@ BarConfig {
                         "appearance.screenEdge.width", value)
                 }
 
-                ConfigSpinBox {
-                    icon: "rounded_corner"
-                    text: Translation.tr("Border radius (px)")
-                    value: Config.options?.appearance?.screenEdge?.radius ?? 25
-                    from: 0
-                    to: 64
-                    stepSize: 1
-                    onValueChanged: Config.setNestedValue(
-                        "appearance.screenEdge.radius", value)
-                }
             }
 
             SettingsSwitch {

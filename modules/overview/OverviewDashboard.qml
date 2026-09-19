@@ -184,7 +184,7 @@ Item {
     }
 
     Timer {
-        running: root.effectiveIsPlaying
+        running: root.panelVisible && root.effectiveIsPlaying
         interval: 1000; repeat: true
         onTriggered: { if (!root.isYtMusic && root.player) root.player.positionChanged() }
     }

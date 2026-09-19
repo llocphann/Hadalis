@@ -19,7 +19,8 @@ for token in (
     "function redoPreview(): bool",
     "function regenerate(baseSha: string): bool",
     "function _markHistoryStale(path: string): void",
-    "root.history.slice(0, root.historyIndex + 1)",
+    "const next = root.history.slice(",
+    "0, root.historyIndex + 1)",
     "next[root._pendingReplaceIndex] = command",
     'kind: "literal-property"',
     "semanticAnchor: root.semanticAnchor",
@@ -38,7 +39,7 @@ for token in (
     "CodeWorkflowTransaction.redoPreview()",
     "CodeWorkflowTransaction.regenerate(currentSha)",
     'mainText: "Regenerate"',
-    '"STALE: "',
+    "STALE: ",
 ):
     if token not in page:
         fail("patch drawer history/regenerate UI missing " + token)

@@ -725,9 +725,20 @@ def main() -> None:
         connected_shadow_source = read(connected_shadow_path)
         check("ColorUtils.applyAlpha(Appearance.colors.colShadow" in connected_shadow_source
               and "Appearance.m3colors.m3shadow" not in connected_shadow_source,
-              f"{connected_shadow_path} must use the same themed shadow ink as Screen Edge and Bar")
+              f"{connected_shadow_path} must retain the connected-surface themed shadow ink")
         check("physicalShadow" not in connected_shadow_source,
               f"{connected_shadow_path} must not consume the physical Screen Edge shadow owner")
+
+    for independent_connected_shadow_path in (
+        "modules/sidebar/SidebarHost.qml",
+        "modules/overview/OverviewDashboard.qml",
+        "modules/settings/SettingsOverlay.qml",
+        "modules/settings/SettingsFocus.qml",
+        "modules/bar/StyledPopup.qml",
+    ):
+        independent_connected_shadow_source = read(independent_connected_shadow_path)
+        check("physicalShadow" not in independent_connected_shadow_source,
+              f"{independent_connected_shadow_path} must remain independent from the physical Screen Edge shadow owner")
 
     osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     check("visible: root._oskResident" in osk_shadow

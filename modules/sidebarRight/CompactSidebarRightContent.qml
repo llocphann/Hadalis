@@ -14,6 +14,7 @@
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -785,10 +786,12 @@ Item {
         radius: cardStyle
             ? Appearance.rounding.normal
             : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
-        topLeftRadius: root.attachedEdge === "left" ? 0 : radius
-        bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
-        topRightRadius: root.attachedEdge === "right" ? 0 : radius
-        bottomRightRadius: root.attachedEdge === "right" ? 0 : radius
+        readonly property real attachedRadius: Math.max(0, Math.min(
+            PerimeterTokens.attachedCornerRadius, width / 2, height / 2))
+        topLeftRadius: root.attachedEdge === "left" ? attachedRadius : radius
+        bottomLeftRadius: root.attachedEdge === "left" ? attachedRadius : radius
+        topRightRadius: root.attachedEdge === "right" ? attachedRadius : radius
+        bottomRightRadius: root.attachedEdge === "right" ? attachedRadius : radius
         Behavior on radius {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

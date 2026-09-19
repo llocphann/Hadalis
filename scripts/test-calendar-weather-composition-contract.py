@@ -59,6 +59,9 @@ def main() -> None:
         'root.locale.toString(root.viewingDate, "MMM")',
         'root.locale.toString(root.viewingDate, "yyyy")',
         'Translation.tr("Today").toUpperCase()',
+        "readonly property bool currentMonth:",
+        "opacity: 1",
+        "color: todayButton.currentMonth ? root.colMuted : root.colAccent",
         'iconName: "chevron_left"',
         'iconName: "chevron_right"',
         "opacity: dayCell.modelData?.currentMonth === false ? 0.25 : 1",
@@ -76,6 +79,10 @@ def main() -> None:
         "CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, 1)",
     ):
         require(sidebar_calendar, token, "Sidebar CalendarWidget.qml")
+
+    forbid(shared_month,
+           "todayButton.opacity < 1 ? root.colMuted : root.colAccent",
+           "ObsidianMonthCalendar.qml")
 
     for token in (
         "CalendarDayButton {",

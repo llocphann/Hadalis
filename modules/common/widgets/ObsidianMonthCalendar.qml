@@ -112,11 +112,12 @@ Item {
 
                 Item {
                     id: todayButton
+                    readonly property bool currentMonth:
+                        root.viewingDate.getMonth() === root.today.getMonth()
+                        && root.viewingDate.getFullYear() === root.today.getFullYear()
                     implicitWidth: 50
                     implicitHeight: 28
-                    opacity: root.viewingDate.getMonth() === root.today.getMonth()
-                        && root.viewingDate.getFullYear() === root.today.getFullYear()
-                        ? 0.55 : 1
+                    opacity: 1
                     activeFocusOnTab: true
 
                     Accessible.role: Accessible.Button
@@ -133,7 +134,7 @@ Item {
                     StyledText {
                         anchors.centerIn: parent
                         text: Translation.tr("Today").toUpperCase()
-                        color: todayButton.opacity < 1 ? root.colMuted : root.colAccent
+                        color: todayButton.currentMonth ? root.colMuted : root.colAccent
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.weight: Font.DemiBold
                         font.letterSpacing: 1

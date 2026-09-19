@@ -419,6 +419,16 @@ Scope {
                                 ? Appearance.colors.colLayer0
                                 : "transparent"
 
+                            // PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19):
+                            // These two Bar↔Screen-Edge corners are the approved
+                            // top-left/top-right members of the four-corner frame
+                            // contract. Their inverse arcs MUST start at the Bar
+                            // window's outer x origin (leftMargin/rightMargin = 0).
+                            // Do not add screenEdgeThickness here: that recreates
+                            // the double-inset regression and makes the top pair
+                            // differ from the lower Screen Edge pair. Radius may
+                            // change only through appearance.screenEdge.radius.
+                            //
                             // Paint the two physical Screen Edge contact strips
                             // inside the Bar's own layer surface. Previously these
                             // 10px columns were left transparent and depended on

@@ -90,8 +90,12 @@ Scope {
                     Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
                 readonly property color edgeShadowColor:
                     ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
+                readonly property bool autoHideEnabled:
+                    Config.options?.bar?.autoHide?.enable ?? false
+                // Normal Bar mode owns only the Bar body. Extra inward host
+                // room exists solely for the auto-hide Screen Edge fallback.
                 readonly property real inwardDecoratorAllowance:
-                    Math.max(frameRadius, edgeShadowExtent)
+                    Math.max(autoHideEnabled ? frameRadius : 0, edgeShadowExtent)
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
@@ -140,7 +144,7 @@ Scope {
                         id: autoHideScreenEdge
                         z: -10
                         anchors.fill: parent
-                        visible: Config.options?.bar?.autoHide?.enable ?? false
+                        visible: barRoot.autoHideEnabled
                         opacity: {
                             const displacement = (Config.options?.bar?.bottom ?? false)
                                 ? Math.abs(barContent.anchors.rightMargin)
@@ -265,38 +269,6 @@ Scope {
                         }
                     }
 
-                    // Same inward shadow contract as Screen Edge / horizontal Bar.
-                    Rectangle {
-                        id: barEdgeShadow
-                        visible: barRoot.edgeShadowEnabled
-                            && barRoot.edgeShadowExtent > 0
-                            && barRoot.edgeShadowOpacity > 0
-                            && barRoot.surfacePresented
-                        anchors {
-                            top: parent.top
-                            bottom: parent.bottom
-                            topMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
-                            bottomMargin: barRoot.screenEdgeThickness + barRoot.frameRadius
-                            left: !(Config.options?.bar?.bottom ?? false) ? barContent.right : undefined
-                            right: (Config.options?.bar?.bottom ?? false) ? barContent.left : undefined
-                        }
-                        width: barRoot.edgeShadowExtent
-                        color: "transparent"
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop {
-                                position: 0
-                                color: (Config.options?.bar?.bottom ?? false)
-                                    ? "transparent" : barRoot.edgeShadowColor
-                            }
-                            GradientStop {
-                                position: 1
-                                color: (Config.options?.bar?.bottom ?? false)
-                                    ? barRoot.edgeShadowColor : "transparent"
-                            }
-                        }
-                    }
-
                     ShellEditSurfaceFrame {
                         anchors.fill: barContent
                         surfaceId: "iiBar"
@@ -323,118 +295,6 @@ Scope {
                         onActivated: surface => ShellEditSession.selectSurface(surface)
                     }
 
-                    // Round decorators
-                    Loader {
-                        id: roundDecorators
-                        anchors {
-                            top: parent.top
-                            bottom: parent.bottom
-                            left: barContent.right
-                            right: undefined
-                        }
-                        width: barRoot.frameRadius
-                        active: showBarBackground
-
-                        states: State {
-                            name: "right"
-                            when: (Config.options?.bar?.bottom ?? false)
-                            AnchorChanges {
-                                target: roundDecorators
-                                anchors {
-                                    top: parent.top
-                                    bottom: parent.bottom
-                                    left: undefined
-                                    right: barContent.left
-                                }
-                            }
-                        }
-
-                        sourceComponent: Item {
-                            id: hugDecorators
-                            implicitHeight: barRoot.frameRadius
-
-                            readonly property bool isRight: Config.options?.bar?.bottom ?? false
-                            // Color must match the Material bar background exactly.
-                            readonly property color solidColor: showBarBackground
-                                ? Appearance.colors.colLayer0
-                                : "transparent"
-
-                            // Same ownership rule as the horizontal Bar: draw
-                            // the two physical Screen Edge contact strips in the
-                            // bar window itself so top/bottom contacts cannot be
-                            // lost to layer-surface ordering.
-                            Rectangle {
-                                id: topScreenEdgeContact
-                                anchors.top: parent.top
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: barRoot.screenEdgeThickness
-                                color: hugDecorators.solidColor
-                            }
-
-                            Rectangle {
-                                id: bottomScreenEdgeContact
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: barRoot.screenEdgeThickness
-                                color: hugDecorators.solidColor
-                            }
-
-                                    // Top Material corner.
-                            RoundCorner {
-                                id: topCorner
-                                anchors {
-                                    left: parent.left
-                                    right: parent.right
-                                    top: parent.top
-                                    topMargin: barRoot.screenEdgeThickness
-                                }
-
-                                implicitSize: barRoot.frameRadius
-                                color: hugDecorators.solidColor
-                                shadowEnabled: barRoot.edgeShadowEnabled
-                                    && barRoot.surfacePresented
-                                shadowExtent: barRoot.edgeShadowExtent
-                                shadowColor: barRoot.edgeShadowColor
-
-                                corner: RoundCorner.CornerEnum.TopLeft
-                                states: State {
-                                    name: "right"
-                                    when: hugDecorators.isRight
-                                    PropertyChanges {
-                                        topCorner.corner: RoundCorner.CornerEnum.TopRight
-                                    }
-                                }
-                            }
-
-                            // Bottom Material corner.
-                            RoundCorner {
-                                id: bottomCorner
-                                anchors {
-                                    bottom: parent.bottom
-                                    bottomMargin: barRoot.screenEdgeThickness
-                                    left: !hugDecorators.isRight ? parent.left : undefined
-                                    right: hugDecorators.isRight ? parent.right : undefined
-                                }
-                                implicitSize: barRoot.frameRadius
-                                color: hugDecorators.solidColor
-                                shadowEnabled: barRoot.edgeShadowEnabled
-                                    && barRoot.surfacePresented
-                                shadowExtent: barRoot.edgeShadowExtent
-                                shadowColor: barRoot.edgeShadowColor
-
-                                corner: RoundCorner.CornerEnum.BottomLeft
-                                states: State {
-                                    name: "right"
-                                    when: hugDecorators.isRight
-                                    PropertyChanges {
-                                        bottomCorner.corner: RoundCorner.CornerEnum.BottomRight
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

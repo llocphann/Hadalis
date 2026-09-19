@@ -19,6 +19,7 @@ Item {
     property string section: "songs"
     property string browserFolder: ""
     property var selectedTrackKeys: []
+    property var selectedFolderPaths: []
     property int selectionAnchorIndex: -1
     property Item contextAnchor: null
     property var contextMenuModel: []
@@ -36,6 +37,8 @@ Item {
     }
     readonly property var songEntries: root.buildSongEntries()
     readonly property var selectedTracks: root.resolveSelectedTracks()
+    readonly property int selectedEntryCount:
+        root.selectedTrackKeys.length + root.selectedFolderPaths.length
 
     function trackKey(track): string {
         return String(track?.uri ?? track?.path ?? "")
@@ -125,6 +128,7 @@ Item {
 
     function clearSelection(): void {
         root.selectedTrackKeys = []
+        root.selectedFolderPaths = []
         root.selectionAnchorIndex = -1
     }
 
@@ -132,9 +136,46 @@ Item {
         return root.selectedTrackKeys.includes(root.trackKey(track))
     }
 
+    function isFolderSelected(path): bool {
+        return root.selectedFolderPaths.includes(root.normalizedFolder(path))
+    }
+
     function resolveSelectedTracks(): var {
-        const selected = new Set(root.selectedTrackKeys)
-        return LocalMusic.libraryTracks.filter(track => selected.has(root.trackKey(track)))
+        const selectedTracks = new Set(root.selectedTrackKeys)
+        const selectedFolders = root.selectedFolderPaths
+            .map(path => root.normalizedFolder(path))
+            .filter(path => path.length > 0)
+
+        return LocalMusic.libraryTracks.filter(track => {
+            const key = root.trackKey(track)
+            if (selectedTracks.has(key))
+                return true
+            const folder = root.normalizedFolder(track?.folder)
+            return selectedFolders.some(path =>
+                folder === path || folder.startsWith(path + "/"))
+        })
+    }
+
+    function applyRangeSelection(entryIndex, additive): void {
+        const from = Math.min(root.selectionAnchorIndex, entryIndex)
+        const to = Math.max(root.selectionAnchorIndex, entryIndex)
+        const tracks = additive ? root.selectedTrackKeys.slice() : []
+        const folders = additive ? root.selectedFolderPaths.slice() : []
+
+        for (const entry of root.songEntries.slice(from, to + 1)) {
+            if (entry?.entryType === "folder") {
+                const path = root.normalizedFolder(entry?.path)
+                if (path.length > 0 && !folders.includes(path))
+                    folders.push(path)
+            } else if (entry?.entryType === "track") {
+                const key = root.trackKey(entry)
+                if (key.length > 0 && !tracks.includes(key))
+                    tracks.push(key)
+            }
+        }
+
+        root.selectedTrackKeys = tracks
+        root.selectedFolderPaths = folders
     }
 
     function selectTrack(track, entryIndex, modifiers): void {
@@ -145,15 +186,7 @@ Item {
         const shiftHeld = (modifiers & Qt.ShiftModifier) !== 0
 
         if (shiftHeld && root.selectionAnchorIndex >= 0) {
-            const from = Math.min(root.selectionAnchorIndex, entryIndex)
-            const to = Math.max(root.selectionAnchorIndex, entryIndex)
-            const rangeKeys = root.songEntries.slice(from, to + 1)
-                .filter(entry => entry?.entryType === "track")
-                .map(entry => root.trackKey(entry))
-                .filter(value => value.length > 0)
-            root.selectedTrackKeys = controlHeld
-                ? Array.from(new Set(root.selectedTrackKeys.concat(rangeKeys)))
-                : Array.from(new Set(rangeKeys))
+            root.applyRangeSelection(entryIndex, controlHeld)
             return
         }
 
@@ -170,6 +203,36 @@ Item {
         }
 
         root.selectedTrackKeys = [key]
+        root.selectedFolderPaths = []
+        root.selectionAnchorIndex = entryIndex
+    }
+
+    function selectFolder(folder, entryIndex, modifiers): void {
+        const path = root.normalizedFolder(folder?.path)
+        if (!path) return
+
+        const controlHeld = (modifiers & Qt.ControlModifier) !== 0
+        const shiftHeld = (modifiers & Qt.ShiftModifier) !== 0
+
+        if (shiftHeld && root.selectionAnchorIndex >= 0) {
+            root.applyRangeSelection(entryIndex, controlHeld)
+            return
+        }
+
+        if (controlHeld) {
+            const next = root.selectedFolderPaths.slice()
+            const existing = next.indexOf(path)
+            if (existing >= 0)
+                next.splice(existing, 1)
+            else
+                next.push(path)
+            root.selectedFolderPaths = next
+            root.selectionAnchorIndex = entryIndex
+            return
+        }
+
+        root.selectedTrackKeys = []
+        root.selectedFolderPaths = [path]
         root.selectionAnchorIndex = entryIndex
     }
 
@@ -223,11 +286,16 @@ Item {
         musicContextMenu.requestOpen()
     }
 
-    function openFolderContext(folder, anchor): void {
-        const tracks = root.folderTracks(folder?.path)
+    function openFolderContext(folder, entryIndex, anchor): void {
+        if (!root.isFolderSelected(folder?.path))
+            root.selectFolder(folder, entryIndex, 0)
+        const tracks = root.selectedTracks
         root.contextAnchor = anchor
         root.contextMenuModel = root.buildTrackContextMenu(
-            tracks, Translation.tr("Play folder"))
+            tracks,
+            root.selectedEntryCount > 1
+                ? Translation.tr("Play selection")
+                : Translation.tr("Play folder"))
         musicContextMenu.requestOpen()
     }
 
@@ -307,12 +375,17 @@ Item {
     component FolderRow: Rectangle {
         id: folderRow
         required property var folder
+        required property int folderIndex
+        property bool selected: false
         signal activated()
+        signal selectionRequested(int modifiers)
         signal contextRequested()
 
         implicitHeight: 52
         radius: Appearance.rounding.small
-        color: folderMouse.containsMouse ? Appearance.colors.colLayer2Hover : "transparent"
+        color: selected
+            ? Appearance.colors.colPrimaryContainer
+            : (folderMouse.containsMouse ? Appearance.colors.colLayer2Hover : "transparent")
 
         RowLayout {
             anchors.fill: parent
@@ -324,12 +397,16 @@ Item {
                 Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
                 radius: Appearance.rounding.small
-                color: Appearance.colors.colSecondaryContainer
+                color: folderRow.selected
+                    ? Appearance.colors.colSecondaryContainer
+                    : Appearance.colors.colSecondaryContainer
                 MaterialSymbol {
                     anchors.centerIn: parent
-                    text: "folder"
+                    text: folderRow.selected ? "folder_check" : "folder"
                     iconSize: 21
-                    color: Appearance.colors.colOnSecondaryContainer
+                    color: folderRow.selected
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colOnSecondaryContainer
                 }
             }
 
@@ -339,7 +416,9 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     text: String(folderRow.folder?.name ?? "")
-                    color: Appearance.colors.colOnLayer1
+                    color: folderRow.selected
+                        ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colOnLayer1
                     font.pixelSize: Appearance.font.pixelSize.normal
                     font.weight: Font.Medium
                     elide: Text.ElideRight
@@ -347,7 +426,9 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     text: Translation.tr("%1 songs").arg(folderRow.folder?.count ?? 0)
-                    color: Appearance.colors.colSubtext
+                    color: folderRow.selected
+                        ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     elide: Text.ElideRight
                 }
@@ -356,7 +437,9 @@ Item {
             MaterialSymbol {
                 text: "chevron_right"
                 iconSize: 20
-                color: Appearance.colors.colSubtext
+                color: folderRow.selected
+                    ? Appearance.colors.colOnPrimaryContainer
+                    : Appearance.colors.colSubtext
             }
         }
 
@@ -367,8 +450,14 @@ Item {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: Qt.PointingHandCursor
             onClicked: event => {
-                if (event.button === Qt.RightButton)
+                if (event.button === Qt.RightButton) {
                     folderRow.contextRequested()
+                    return
+                }
+                const selecting = (event.modifiers & Qt.ControlModifier) !== 0
+                    || (event.modifiers & Qt.ShiftModifier) !== 0
+                if (selecting)
+                    folderRow.selectionRequested(event.modifiers)
                 else
                     folderRow.activated()
             }
@@ -758,15 +847,15 @@ Item {
                             }
 
                             StyledText {
-                                visible: root.selectedTrackKeys.length > 0
-                                text: Translation.tr("%1 selected").arg(root.selectedTrackKeys.length)
+                                visible: root.selectedEntryCount > 0
+                                text: Translation.tr("%1 selected").arg(root.selectedEntryCount)
                                 color: Appearance.colors.colPrimary
                                 font.pixelSize: Appearance.font.pixelSize.smaller
                                 font.weight: Font.Medium
                             }
 
                             ToolIconButton {
-                                visible: root.selectedTrackKeys.length > 0
+                                visible: root.selectedEntryCount > 0
                                 Layout.preferredWidth: visible ? 30 : 0
                                 Layout.preferredHeight: 30
                                 symbol: "deselect"
@@ -793,10 +882,16 @@ Item {
                                     FolderRow {
                                         id: folderDelegate
                                         required property var modelData
+                                        required property int index
                                         width: ListView.view.width
                                         folder: modelData
+                                        folderIndex: index
+                                        selected: root.isFolderSelected(modelData.path)
                                         onActivated: root.navigateFolder(modelData.path)
-                                        onContextRequested: root.openFolderContext(modelData, folderDelegate)
+                                        onSelectionRequested: modifiers =>
+                                            root.selectFolder(modelData, index, modifiers)
+                                        onContextRequested:
+                                            root.openFolderContext(modelData, index, folderDelegate)
                                     }
                                 }
 
@@ -940,18 +1035,25 @@ Item {
                             buttonRadius: Appearance.rounding.full
                             colBackground: Appearance.colors.colLayer2
                             onClicked: LocalMusic.clearQueue()
-                            contentItem: RowLayout {
-                                id: clearQueueContent
-                                spacing: 5
-                                MaterialSymbol {
-                                    text: "delete_sweep"
-                                    iconSize: 17
-                                    color: Appearance.colors.colOnLayer2
-                                }
-                                StyledText {
-                                    text: Translation.tr("Clear")
-                                    color: Appearance.colors.colOnLayer2
-                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                            contentItem: Item {
+                                RowLayout {
+                                    id: clearQueueContent
+                                    anchors.centerIn: parent
+                                    spacing: 5
+                                    MaterialSymbol {
+                                        Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                                        text: "delete_sweep"
+                                        iconSize: 17
+                                        color: Appearance.colors.colOnLayer2
+                                    }
+                                    StyledText {
+                                        Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                                        text: Translation.tr("Clear")
+                                        color: Appearance.colors.colOnLayer2
+                                        font.pixelSize: Appearance.font.pixelSize.smaller
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
                                 }
                             }
                         }

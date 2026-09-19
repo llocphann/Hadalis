@@ -64,6 +64,9 @@ for token in (
     'LocalMusic.localLyricsLines',
     'readonly property var songEntries: root.buildSongEntries()',
     'property var selectedTrackKeys: []',
+    'property var selectedFolderPaths: []',
+    'function selectFolder(folder, entryIndex, modifiers): void',
+    'root.isFolderSelected(modelData.path)',
     'Qt.ControlModifier',
     'Qt.ShiftModifier',
     'model: LocalMusic.playlists',
@@ -76,6 +79,8 @@ for token in (
     'LocalMusic.toggleShuffle()',
     'LocalMusic.cycleRepeatMode()',
     'LocalMusic.setVolume(value)',
+    'id: clearQueueContent',
+    'anchors.centerIn: parent',
 ):
     require(view, token, f"Local Music frontend contract missing: {token}")
 for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):

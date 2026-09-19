@@ -52,7 +52,7 @@ Item {
 
     CavaProcess {
         id: cavaProcess
-        active: root.visible && root.hasPlayer && GlobalStates.controlPanelOpen
+        active: root.visible && root.hasPlayer && root.effectiveIsPlaying && GlobalStates.controlPanelOpen
     }
 
     property list<real> visualizerPoints: cavaProcess.points

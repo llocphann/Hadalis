@@ -187,6 +187,21 @@ def main() -> None:
           "Screen Edge shadow must not depend on compositor-sensitive layer-effect padding")
     check("root.thickness + root.innerRadius + root.shadowExtent" in screen_edge,
           "Horizontal Screen Edge host must reserve room for curve plus inward shadow")
+    check("PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19)" in screen_edge,
+          "Approved lower Screen Edge corner lock marker must remain present")
+    for token in (
+        "id: leadingCorner",
+        "id: trailingCorner",
+        "leftMargin: root.thickness",
+        "rightMargin: root.thickness",
+        "implicitSize: root.innerRadius",
+        "? RoundCorner.CornerEnum.TopLeft",
+        ": RoundCorner.CornerEnum.BottomLeft",
+        "? RoundCorner.CornerEnum.TopRight",
+        ": RoundCorner.CornerEnum.BottomRight",
+    ):
+        check(token in screen_edge,
+              f"Locked lower Screen Edge corner geometry changed: {token}")
     for edge in ("top", "bottom", "left", "right"):
         check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must render the persistent {edge} output edge")
@@ -454,6 +469,19 @@ def main() -> None:
           and "leftMargin: barRoot.frameRadius" in bar_runtime
           and "rightMargin: barRoot.frameRadius" in bar_runtime,
           "Horizontal Bar contact arcs must not double-inset by Screen Edge thickness")
+    check("PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19)" in bar_runtime,
+          "Approved upper Bar/Screen Edge corner lock marker must remain present")
+    for token in (
+        "id: leftCorner",
+        "id: rightCorner",
+        "leftMargin: 0",
+        "rightMargin: 0",
+        "implicitSize: barRoot.frameRadius",
+        "leftCorner.corner: RoundCorner.CornerEnum.BottomLeft",
+        "rightCorner.corner: RoundCorner.CornerEnum.BottomRight",
+    ):
+        check(token in bar_runtime,
+              f"Locked upper Bar/Screen Edge corner geometry changed: {token}")
     check("id: topScreenEdgeContact" in vertical_bar_runtime
           and "id: bottomScreenEdgeContact" in vertical_bar_runtime,
           "Vertical Bar must own both physical Screen Edge contact strips")

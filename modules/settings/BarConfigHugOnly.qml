@@ -67,7 +67,45 @@ BarConfig {
                     onValueChanged: Config.setNestedValue(
                         "appearance.screenEdge.width", value)
                 }
+            }
 
+            SettingsSwitch {
+                buttonIcon: "shadow"
+                text: Translation.tr("Screen edge shadow")
+                checked: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                onCheckedChanged: Config.setNestedValue(
+                    "appearance.screenEdge.physicalShadow.enabled", checked)
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "blur_on"
+                    text: Translation.tr("Shadow size (px)")
+                    value: Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15
+                    from: 0
+                    to: 32
+                    stepSize: 1
+                    enabled: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.physicalShadow.size", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "opacity"
+                    text: Translation.tr("Shadow opacity (%)")
+                    value: Math.round(
+                        (Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70) * 100)
+                    from: 0
+                    to: 100
+                    stepSize: 2
+                    enabled: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.physicalShadow.opacity", value / 100)
+                }
             }
 
             SettingsNote {

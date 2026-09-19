@@ -39,10 +39,11 @@ def main() -> None:
     check("inputEnabled: root.requestedVisible" in popup,
           "StyledPopup must revoke semantic input when a click popup closes")
 
-    check(media.count("StyledPopup {") >= 2,
-          "Media wheel HUD and expanded controls must use StyledPopup")
-    check("keyboardFocus: true" in media,
-          "Expanded Media popup must retain keyboard focus ownership")
+    check(media.count("StyledPopup {") >= 1,
+          "Media expanded controls must use StyledPopup")
+    check("hoverActivates: true" in media
+          and "keyboardFocus: root.barMediaPopupVisible" in media,
+          "Media popup must open on hover without taking focus until explicitly pinned")
     check("SurfaceRouteController" not in media
           and "qs.modules.perimeter" not in media,
           "Normal Media UX must not depend on retired broad perimeter routing")

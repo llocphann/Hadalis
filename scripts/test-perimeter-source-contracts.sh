@@ -378,10 +378,11 @@ if grep -Eq '^[[:space:]]*ContextMenu[[:space:]]*\{' "$vertical_bar_content"; th
 fi
 for token in \
     'Bar.StyledPopup {' \
+    'hoverActivates: true' \
     'alternativeVisibleCondition:' \
     'root.barMediaPopupVisible && root.popupMode === "bar"' \
-    'closeOnOutsideClick: true' \
-    'keyboardFocus: true' \
+    'closeOnOutsideClick: root.barMediaPopupVisible' \
+    'keyboardFocus: root.barMediaPopupVisible' \
     'mediaPopupContent.focusInitialControl()'; do
     grep -Fq "$token" "$vertical_media" \
         || fail "Vertical Media expanded popup must use shared connected surface: $token"
@@ -392,8 +393,8 @@ fi
 if grep -Fq 'sourceComponent: PanelWindow {' "$vertical_media"; then
     fail 'VerticalMedia must not own a private outside-click PanelWindow'
 fi
-if grep -Fq 'active: (root.volumePopupVisible || root.containsMouse)' "$vertical_media"; then
-    fail 'VerticalMedia volume HUD must not override StyledPopup LazyLoader.active'
+if grep -Fq 'onWheel:' "$vertical_media" || grep -Fq 'volumePopupVisible' "$vertical_media"; then
+    fail 'VerticalMedia must not retain wheel-driven volume behavior or HUD state'
 fi
 for token in \
     'import qs.modules.common.perimeter' \

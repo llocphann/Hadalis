@@ -61,10 +61,10 @@ def main() -> None:
           and "screen: root._anchorScreen" in popup,
           "Outside-click catcher must follow semantic visibility and explicit source-screen ownership")
 
-    check("hoverActivates: false" in media
-          and "closeOnOutsideClick: true" in media
-          and "keyboardFocus: true" in media,
-          "Expanded Media must remain a click-activated focused popup covered by the input/focus policy")
+    check("hoverActivates: true" in media
+          and "closeOnOutsideClick: root.barMediaPopupVisible" in media
+          and "keyboardFocus: root.barMediaPopupVisible" in media,
+          "Media must open on hover while reserving outside-click and keyboard focus for explicit pinning")
 
     if failures:
         print("Connected popup input/focus lifecycle regression(s):")

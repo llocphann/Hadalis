@@ -146,7 +146,7 @@
             "background": "",
             "sensitivity": 100,
             "bars": 0,
-            "framerate": 60,
+            "framerate": 30,
             "barWidth": 2,
             "barSpacing": 1,
             "stereo": true,

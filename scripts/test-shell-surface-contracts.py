@@ -625,6 +625,12 @@ def main() -> None:
           "Classic Bar schema default must be Hug")
     check('"cornerStyle": 0' in defaults_json,
           "Classic Bar persisted default must be Hug")
+    check("property JsonObject screenEdge: JsonObject {" in config_qml
+          and "property int radius: 25" in config_qml,
+          "Screen Edge schema must retain the shared 25px corner-radius default")
+    check('"screenEdge": {' in defaults_json
+          and '"radius": 25' in defaults_json,
+          "Persisted Screen Edge radius default must remain 25px")
     check("property JsonObject physicalShadow: JsonObject {" in config_qml
           and "property bool enabled: true" in config_qml
           and "property int size: 15" in config_qml
@@ -719,6 +725,9 @@ def main() -> None:
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
+    check('label: Translation.tr("Corner radius (px)")' in settings_registry_data
+          and 'description: Translation.tr("Set Screen Edge and connected-surface corner radius")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/contact-corner radius")
     check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
           and 'description: Translation.tr("Configure only the physical Screen Edge shadow")' in settings_registry_data,
           "Settings search must expose the dedicated physical Screen Edge shadow controls")
@@ -746,6 +755,18 @@ def main() -> None:
         independent_connected_shadow_source = read(independent_connected_shadow_path)
         check("physicalShadow" not in independent_connected_shadow_source,
               f"{independent_connected_shadow_path} must remain independent from the physical Screen Edge shadow owner")
+
+    for exact_contact_surface_path in (
+        "modules/sidebar/SidebarHost.qml",
+        "modules/overview/OverviewDashboard.qml",
+        "modules/settings/SettingsOverlay.qml",
+        "modules/settings/SettingsFocus.qml",
+        "modules/onScreenKeyboard/OnScreenKeyboard.qml",
+    ):
+        exact_contact_surface_source = read(exact_contact_surface_path)
+        check("ConnectedSurfaceJoinFlares {" in exact_contact_surface_source
+              and "flareRadius: PerimeterTokens.joinFlareRadius" in exact_contact_surface_source,
+              f"{exact_contact_surface_path} must reuse the shared Screen Edge inverse-corner radius")
 
     osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     check("visible: root._oskResident" in osk_shadow

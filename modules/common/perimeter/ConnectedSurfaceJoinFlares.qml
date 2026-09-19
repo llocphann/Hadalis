@@ -1,23 +1,21 @@
 import QtQuick
 
 // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (maintainer clarified 2026-09-19):
-// Contact corners MUST flare outward from the popup/sidebar/dashboard body into
-// Screen Edge/Bar. They must never be implemented by rounding the attached body
-// corner inward. The joined body edge stays square; these inverse elliptical
-// shoulders occupy only the OUTSIDE endpoint space.
+// Contact corners belong to the popup/sidebar/dashboard surface, never to the
+// locked physical Screen Edge/Bar renderer. Joined body corners stay square.
+// ConnectedSurfaceContactFlare owns one canonical circular-smooth-union lobe;
+// this item only places and mirror/rotates that primitive for all 8 endpoints.
 //
-// Caelestia's BlobGroup smooth-union reads broad/flat at the border. Hadalis
-// keeps that spatial language with a radius-wide tangent and compressed
-// cross-axis depth. PerimeterTokens.joinFlareRadius follows the same user
-// Border Radius as Screen Edge/Bar, while joinFlareCrossScale controls only the
-// flattening depth. Do not modify ScreenEdges.qml or Bar corner ownership here.
+// The canonical curve is the local smin=0 silhouette used by Caelestia's
+// BlobGroup when a panel BlobRect meets the inverted border field. Hadalis
+// cannot share one SDF across separate layer-shell windows, so it renders only
+// the excess union lobe on the connected-surface side.
 Item {
     id: root
 
     required property Item bodyItem
     property color fillColor: "white"
     property real flareRadius: PerimeterTokens.joinFlareRadius
-    property real crossScale: PerimeterTokens.joinFlareCrossScale
     property real progress: 1
     property bool joinTop: false
     property bool joinBottom: false
@@ -27,144 +25,110 @@ Item {
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
     readonly property point bodyOrigin: root.bodyItem
         ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
-
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,
         root.bodyItem?.width / 2 ?? 0,
         root.bodyItem?.height / 2 ?? 0))
-    readonly property real depth: Math.max(0,
-        Math.min(root.radius, root.radius * Math.max(0.20, Math.min(1, root.crossScale))))
 
-    visible: root.reveal > 0.001 && root.radius > 0 && root.depth > 0
+    visible: root.reveal > 0.001 && root.radius > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
-    component Flare: Canvas {
-        id: flare
-
-        required property string flareCorner
-        property color flareColor: root.fillColor
-
-        visible: width > 0 && height > 0
-        antialiasing: true
-
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        onFlareColorChanged: requestPaint()
-        onFlareCornerChanged: requestPaint()
-
-        onPaint: {
-            const ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            if (!(width > 0 && height > 0))
-                return
-
-            const k = 0.5522847498307936
-            const w = width
-            const h = height
-            const corner = flare.flareCorner
-
-            ctx.beginPath()
-
-            if (corner === "topLeft" || corner === "rightBottom") {
-                // Inverse top-right ellipse.
-                ctx.moveTo(w, 0)
-                ctx.lineTo(w, h)
-                ctx.bezierCurveTo(w, h * (1 - k), w * k, 0, 0, 0)
-                ctx.lineTo(w, 0)
-            } else if (corner === "topRight" || corner === "leftBottom") {
-                // Inverse top-left ellipse.
-                ctx.moveTo(0, 0)
-                ctx.lineTo(0, h)
-                ctx.bezierCurveTo(0, h * (1 - k), w * (1 - k), 0, w, 0)
-                ctx.lineTo(0, 0)
-            } else if (corner === "bottomLeft" || corner === "rightTop") {
-                // Inverse bottom-right ellipse.
-                ctx.moveTo(w, h)
-                ctx.lineTo(w, 0)
-                ctx.bezierCurveTo(w, h * k, w * k, h, 0, h)
-                ctx.lineTo(w, h)
-            } else if (corner === "bottomRight" || corner === "leftTop") {
-                // Inverse bottom-left ellipse.
-                ctx.moveTo(0, h)
-                ctx.lineTo(0, 0)
-                ctx.bezierCurveTo(0, h * k, w * (1 - k), h, w, h)
-                ctx.lineTo(0, h)
-            } else {
-                return
-            }
-
-            ctx.closePath()
-            ctx.fillStyle = flare.flareColor
-            ctx.fill()
+    // Endpoint indices:
+    // 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right,
+    // 4 left-top, 5 left-bottom, 6 right-top, 7 right-bottom.
+    function flareVisible(index) {
+        switch (index) {
+        case 0: return root.joinTop && !root.joinLeft
+        case 1: return root.joinTop && !root.joinRight
+        case 2: return root.joinBottom && !root.joinLeft
+        case 3: return root.joinBottom && !root.joinRight
+        case 4: return root.joinLeft && !root.joinTop
+        case 5: return root.joinLeft && !root.joinBottom
+        case 6: return root.joinRight && !root.joinTop
+        case 7: return root.joinRight && !root.joinBottom
+        default: return false
         }
     }
 
-    // Top/bottom attachment: tangent smoothing stays 20px wide while border
-    // depth is compressed. This is the characteristic flat Caelestia contact.
-    Flare {
-        flareCorner: "topLeft"
-        visible: root.joinTop && !root.joinLeft && root.radius > 0
-        x: root.bodyOrigin.x - root.radius
-        y: root.bodyOrigin.y
-        width: root.radius
-        height: root.depth
-    }
-    Flare {
-        flareCorner: "topRight"
-        visible: root.joinTop && !root.joinRight && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width
-        y: root.bodyOrigin.y
-        width: root.radius
-        height: root.depth
-    }
-    Flare {
-        flareCorner: "bottomLeft"
-        visible: root.joinBottom && !root.joinLeft && root.radius > 0
-        x: root.bodyOrigin.x - root.radius
-        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
-        width: root.radius
-        height: root.depth
-    }
-    Flare {
-        flareCorner: "bottomRight"
-        visible: root.joinBottom && !root.joinRight && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width
-        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
-        width: root.radius
-        height: root.depth
+    function flareX(index) {
+        const x = root.bodyOrigin.x
+        const w = root.bodyItem?.width ?? 0
+        switch (index) {
+        case 0:
+        case 2:
+            return x - root.radius
+        case 1:
+        case 3:
+            return x + w
+        case 4:
+        case 5:
+            return x
+        case 6:
+        case 7:
+            return x + w - root.radius
+        default:
+            return x
+        }
     }
 
-    // Left/right attachment uses the same geometry rotated 90 degrees.
-    Flare {
-        flareCorner: "leftTop"
-        visible: root.joinLeft && !root.joinTop && root.radius > 0
-        x: root.bodyOrigin.x
-        y: root.bodyOrigin.y - root.radius
-        width: root.depth
-        height: root.radius
+    function flareY(index) {
+        const y = root.bodyOrigin.y
+        const h = root.bodyItem?.height ?? 0
+        switch (index) {
+        case 0:
+        case 1:
+            return y
+        case 2:
+        case 3:
+            return y + h - root.radius
+        case 4:
+        case 6:
+            return y - root.radius
+        case 5:
+        case 7:
+            return y + h
+        default:
+            return y
+        }
     }
-    Flare {
-        flareCorner: "leftBottom"
-        visible: root.joinLeft && !root.joinBottom && root.radius > 0
-        x: root.bodyOrigin.x
-        y: root.bodyOrigin.y + root.bodyItem.height
-        width: root.depth
-        height: root.radius
+
+    // Canonical orientation has seam=top and body=right. These D4 transforms
+    // produce every other endpoint without duplicating path math.
+    function flareQuarterTurns(index) {
+        switch (index) {
+        case 0:
+        case 1:
+            return 0
+        case 2:
+        case 3:
+            return 2
+        case 4:
+        case 5:
+            return 3
+        case 6:
+        case 7:
+            return 1
+        default:
+            return 0
+        }
     }
-    Flare {
-        flareCorner: "rightTop"
-        visible: root.joinRight && !root.joinTop && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
-        y: root.bodyOrigin.y - root.radius
-        width: root.depth
-        height: root.radius
+
+    function flareMirrored(index) {
+        return index === 1 || index === 2 || index === 4 || index === 7
     }
-    Flare {
-        flareCorner: "rightBottom"
-        visible: root.joinRight && !root.joinBottom && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
-        y: root.bodyOrigin.y + root.bodyItem.height
-        width: root.depth
-        height: root.radius
+
+    Repeater {
+        model: 8
+
+        delegate: ConnectedSurfaceContactFlare {
+            x: root.flareX(index)
+            y: root.flareY(index)
+            width: root.radius
+            height: root.radius
+            visible: root.flareVisible(index)
+            fillColor: root.fillColor
+            quarterTurns: root.flareQuarterTurns(index)
+            mirrored: root.flareMirrored(index)
+        }
     }
 }

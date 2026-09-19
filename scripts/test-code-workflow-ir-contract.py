@@ -19,7 +19,7 @@ if data.get("mode") != "reviewed-source-projection":
 if data.get("editable") is not False:
     fail("Phase 1 IR must remain globally read-only")
 if data.get("sourceAnchorMode") != "reviewed-source-needle":
-    fail("IR must not claim parser ranges before parser packaging")
+    fail("IR manifest must keep reviewed needles; CST ranges are runtime evidence")
 
 graphs = data.get("graphs")
 if set(graphs or {}) != {"bar", "bar/media", "bar/clock", "bar/resources"}:

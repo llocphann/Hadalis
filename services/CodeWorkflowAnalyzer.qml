@@ -8,40 +8,53 @@ Singleton {
 
     property string status: "idle"
     property string sourcePath: ""
+    property string sourceNeedle: ""
     property var result: ({})
+    property var reviewedAnchor: ({ status: "not-requested" })
     property var diagnostics: []
     property string error: ""
     property string _pendingPath: ""
+    property string _pendingNeedle: ""
     property bool _pendingForce: false
 
     readonly property int entryCount: root.result?.entries?.length ?? 0
 
-    function request(path: string, force: bool): void {
+    function request(path: string, needle: string, force: bool): void {
         const nextPath = String(path ?? "")
+        const nextNeedle = String(needle ?? "")
         if (nextPath.length === 0)
             return
 
         if (analyzerProcess.running) {
             root._pendingPath = nextPath
+            root._pendingNeedle = nextNeedle
             root._pendingForce = root._pendingForce || force
             return
         }
 
-        if (!force && root.sourcePath === nextPath
+        if (!force
+                && root.sourcePath === nextPath
+                && root.sourceNeedle === nextNeedle
                 && (root.status === "ready"
                     || root.status === "unavailable"))
             return
 
         root.sourcePath = nextPath
+        root.sourceNeedle = nextNeedle
         root.status = "analyzing"
         root.error = ""
         root.result = ({})
+        root.reviewedAnchor = ({ status: "analyzing" })
         root.diagnostics = []
-        analyzerProcess.command = [
+
+        const command = [
             "python3",
             Quickshell.shellPath("scripts/code-workflow/analyze.py"),
             "--path", nextPath
         ]
+        if (nextNeedle.length > 0)
+            command.push("--needle", nextNeedle)
+        analyzerProcess.command = command
         analyzerProcess.running = true
     }
 
@@ -56,17 +69,21 @@ Singleton {
 
         if (payload?.protocol === 1 && payload?.status === "ok") {
             root.result = payload
+            root.reviewedAnchor = payload.reviewedAnchor
+                ?? ({ status: "not-requested" })
             root.diagnostics = payload.diagnostics ?? []
             root.error = ""
             root.status = "ready"
         } else if (payload?.protocol === 1
                 && payload?.status === "unavailable") {
             root.result = payload
+            root.reviewedAnchor = ({ status: "unavailable" })
             root.diagnostics = []
             root.error = String(payload.reason ?? "parser unavailable")
             root.status = "unavailable"
         } else {
             root.result = payload ?? ({})
+            root.reviewedAnchor = ({ status: "error" })
             root.diagnostics = payload?.diagnostics ?? []
             const stderrText = String(analyzerStderr.text ?? "").trim()
             root.error = String(payload?.detail
@@ -78,10 +95,15 @@ Singleton {
 
         if (root._pendingPath.length > 0) {
             const pending = root._pendingPath
+            const pendingNeedle = root._pendingNeedle
             const force = root._pendingForce
             root._pendingPath = ""
+            root._pendingNeedle = ""
             root._pendingForce = false
-            Qt.callLater(() => root.request(pending, force))
+            Qt.callLater(() => root.request(
+                pending,
+                pendingNeedle,
+                force))
         }
     }
 

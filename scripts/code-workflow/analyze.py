@@ -59,6 +59,92 @@ def resolve_grammar(root: Path, explicit: str) -> Path | None:
     return None
 
 
+def _byte_point(source: bytes, offset: int) -> list[int]:
+    prefix = source[:offset]
+    return [prefix.count(b"\n"), len(prefix.rsplit(b"\n", 1)[-1])]
+
+
+def resolve_reviewed_anchor(
+    source: bytes,
+    nodes,
+    entries: list[dict],
+    needle: str,
+) -> dict:
+    if not needle:
+        return {"status": "not-requested", "occurrences": 0}
+
+    target = needle.encode("utf-8")
+    starts = []
+    cursor = 0
+    while True:
+        found = source.find(target, cursor)
+        if found < 0:
+            break
+        starts.append(found)
+        cursor = found + max(1, len(target))
+
+    if len(starts) == 0:
+        return {"status": "missing", "occurrences": 0}
+    if len(starts) != 1:
+        return {"status": "ambiguous", "occurrences": len(starts)}
+
+    start = starts[0]
+    end = start + len(target)
+
+    cst_candidates = [
+        node for node in nodes
+        if node.named
+        and not node.error
+        and not node.missing
+        and node.start <= start
+        and end <= node.end
+    ]
+    cst_node = min(
+        cst_candidates,
+        key=lambda node: (node.end - node.start, node.start, node.kind),
+        default=None,
+    )
+
+    semantic_candidates = []
+    for entry in entries:
+        span = entry.get("range")
+        if (
+            isinstance(span, list)
+            and len(span) == 2
+            and span[0] <= start
+            and end <= span[1]
+        ):
+            semantic_candidates.append(entry)
+    semantic_entry = min(
+        semantic_candidates,
+        key=lambda entry: (
+            entry["range"][1] - entry["range"][0],
+            entry["range"][0],
+            entry.get("anchor", ""),
+        ),
+        default=None,
+    )
+
+    result = {
+        "status": "resolved",
+        "occurrences": 1,
+        "needleRange": [start, end],
+        "needleStartPoint": _byte_point(source, start),
+        "needleEndPoint": _byte_point(source, end),
+    }
+    if cst_node is not None:
+        result["cstKind"] = cst_node.kind
+        result["cstRange"] = [cst_node.start, cst_node.end]
+        result["cstStartPoint"] = list(cst_node.start_point)
+        result["cstEndPoint"] = list(cst_node.end_point)
+    if semantic_entry is not None:
+        result["semanticAnchor"] = semantic_entry.get("anchor", "")
+        result["semanticKind"] = semantic_entry.get("kind", "")
+        result["semanticName"] = semantic_entry.get("name", "")
+        result["semanticRange"] = semantic_entry.get("range")
+    return result
+
+
 def resolve_source(root: Path, relative: str) -> Path:
     request = Path(relative)
     if request.is_absolute():
@@ -81,6 +167,11 @@ def main() -> int:
     parser.add_argument("--path", required=True, help="QML path relative to --root")
     parser.add_argument("--grammar", default="")
     parser.add_argument("--library", default="")
+    parser.add_argument(
+        "--needle",
+        default="",
+        help="reviewed source needle to resolve to transient CST evidence",
+    )
     args = parser.parse_args()
 
     root = Path(args.root).expanduser().resolve()
@@ -114,6 +205,12 @@ def main() -> int:
         with native_parser.parse(source) as (_, nodes):
             preservation = verify_ranges(source, nodes)
             semantic = extract(args.path, source, nodes)
+            reviewed_anchor = resolve_reviewed_anchor(
+                source,
+                nodes,
+                semantic["entries"],
+                args.needle,
+            )
     except OSError as exc:
         return unavailable("tree-sitter-library-missing", str(exc))
     except (RuntimeError, AssertionError, UnicodeError) as exc:
@@ -138,6 +235,7 @@ def main() -> int:
         "diagnostics": semantic["diagnostics"],
         "counts": semantic["counts"],
         "anchorCollisions": semantic["anchor_collisions"],
+        "reviewedAnchor": reviewed_anchor,
         "parser": {
             "grammar": str(grammar),
             "qmljsVersion": QMLJS_VERSION,

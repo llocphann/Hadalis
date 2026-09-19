@@ -7,6 +7,10 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ANALYZER = ROOT / "scripts/code-workflow/analyze.py"
+sys.path.insert(0, str(ANALYZER.parent))
+
+import analyze as workflow_analyze
+from native import Node
 
 
 def fail(message: str) -> None:
@@ -34,6 +38,62 @@ if 'SYSTEM_GRAMMAR = Path("/usr/lib/inir/code-workflow/qmljs.so")' not in source
     fail("analyzer must discover the optional system grammar package")
 if 'QMLJS_VERSION = "0.3.1"' not in source:
     fail("analyzer grammar version metadata drifted")
+if '"--needle",' not in source or "resolve_reviewed_anchor(" not in source:
+    fail("analyzer must accept and resolve a reviewed source needle")
+
+sample = b"Item {\n    foo: 1\n}\n"
+sample_start = sample.index(b"foo: 1")
+sample_end = sample_start + len(b"foo: 1")
+sample_node = Node(
+    "ui_binding",
+    sample_start,
+    sample_end,
+    (1, 4),
+    (1, 10),
+    None,
+    True,
+    False,
+    False,
+    None,
+)
+sample_entry = {
+    "anchor": "sample-anchor",
+    "kind": "binding",
+    "name": "foo",
+    "range": [sample_start, sample_end],
+}
+resolved = workflow_analyze.resolve_reviewed_anchor(
+    sample,
+    [sample_node],
+    [sample_entry],
+    "foo: 1",
+)
+if resolved.get("status") != "resolved":
+    fail("unique reviewed needle must resolve")
+if resolved.get("needleRange") != [sample_start, sample_end]:
+    fail("resolved reviewed needle byte range drifted")
+if resolved.get("cstKind") != "ui_binding":
+    fail("resolved reviewed needle must expose enclosing CST kind")
+if resolved.get("semanticAnchor") != "sample-anchor":
+    fail("resolved reviewed needle must expose enclosing semantic entry")
+
+ambiguous = workflow_analyze.resolve_reviewed_anchor(
+    b"foo: 1\nfoo: 1\n",
+    [sample_node],
+    [sample_entry],
+    "foo: 1",
+)
+if ambiguous.get("status") != "ambiguous" or ambiguous.get("occurrences") != 2:
+    fail("ambiguous reviewed needle must fail closed")
+
+missing_anchor = workflow_analyze.resolve_reviewed_anchor(
+    sample,
+    [sample_node],
+    [sample_entry],
+    "bar: 2",
+)
+if missing_anchor.get("status") != "missing":
+    fail("missing reviewed needle must fail closed")
 
 missing = run(
     "--root", str(ROOT),
@@ -86,8 +146,12 @@ for token in (
 
 for token in (
     'property string status: "idle"',
+    'property string sourceNeedle: ""',
+    'property var reviewedAnchor: ({ status: "not-requested" })',
+    'function request(path: string, needle: string, force: bool): void',
     'Quickshell.shellPath("scripts/code-workflow/analyze.py")',
     '"--path", nextPath',
+    'command.push("--needle", nextNeedle)',
     'payload?.status === "unavailable"',
     "StdioCollector",
 ):
@@ -95,8 +159,10 @@ for token in (
         fail("analyzer service missing " + token)
 
 for token in (
-    "CodeWorkflowAnalyzer.request(root.sourcePath, false)",
-    "CodeWorkflowAnalyzer.request(root.sourcePath, true)",
+    "CodeWorkflowAnalyzer.request(",
+    "root.sourceNeedle,",
+    "root.sourceAnchorEvidence",
+    "root.sourceRangeText",
     "CodeWorkflowAnalyzer.entryCount",
     "CodeWorkflowAnalyzer.diagnostics.length",
 ):

@@ -43,8 +43,41 @@ Item {
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
     readonly property bool analyzerMatchesSource:
         CodeWorkflowAnalyzer.sourcePath === root.sourcePath
+    readonly property bool analyzerMatchesAnchor:
+        root.analyzerMatchesSource
+        && CodeWorkflowAnalyzer.sourceNeedle === root.sourceNeedle
+    readonly property var sourceAnchorEvidence:
+        root.analyzerMatchesAnchor
+            ? CodeWorkflowAnalyzer.reviewedAnchor
+            : ({ status: "idle" })
+    readonly property string sourceRangeText: {
+        const evidence = root.sourceAnchorEvidence
+        if (evidence?.status === "resolved") {
+            const range = evidence.needleRange ?? []
+            let label = range.length === 2
+                ? "bytes " + range[0] + "–" + range[1]
+                : "resolved"
+            if (String(evidence.cstKind ?? "").length > 0)
+                label += " · CST " + evidence.cstKind
+            if (String(evidence.semanticKind ?? "").length > 0)
+                label += " · " + evidence.semanticKind
+            return label
+        }
+        if (evidence?.status === "ambiguous")
+            return "AMBIGUOUS · " + Number(evidence.occurrences ?? 0)
+                + " occurrences"
+        if (evidence?.status === "missing")
+            return "MISSING"
+        if (evidence?.status === "unavailable")
+            return "UNAVAILABLE"
+        if (evidence?.status === "error")
+            return "ERROR"
+        if (evidence?.status === "analyzing")
+            return "ANALYZING"
+        return "—"
+    }
     readonly property string analyzerStatusText: {
-        if (!root.analyzerMatchesSource)
+        if (!root.analyzerMatchesAnchor)
             return "IDLE"
         if (CodeWorkflowAnalyzer.status === "analyzing")
             return "ANALYZING"
@@ -117,11 +150,25 @@ Item {
             sourceReader.reload()
     }
 
+    function requestAnalysis(force: bool): void {
+        if (root.sourcePath.length === 0)
+            return
+        CodeWorkflowAnalyzer.request(
+            root.sourcePath,
+            root.sourceNeedle,
+            force)
+    }
+
     function focusSourceAnchor(): void {
         if (root.sourceNeedle.length === 0 || root.sourceText.length === 0)
             return
         const start = root.sourceText.indexOf(root.sourceNeedle)
         if (start < 0)
+            return
+        const duplicate = root.sourceText.indexOf(
+            root.sourceNeedle,
+            start + Math.max(1, root.sourceNeedle.length))
+        if (duplicate >= 0)
             return
         sourcePreviewText.select(start, start + root.sourceNeedle.length)
         sourcePreviewText.cursorPosition = start
@@ -129,18 +176,19 @@ Item {
 
     onSourcePathChanged: {
         Qt.callLater(root.reloadSource)
-        Qt.callLater(() =>
-            CodeWorkflowAnalyzer.request(root.sourcePath, false))
+        Qt.callLater(() => root.requestAnalysis(false))
     }
-    onSourceNeedleChanged: Qt.callLater(root.focusSourceAnchor)
+    onSourceNeedleChanged: {
+        Qt.callLater(root.focusSourceAnchor)
+        Qt.callLater(() => root.requestAnalysis(false))
+    }
 
     Component.onCompleted: {
         const outputs = root.snapshot.outputs ?? []
         if (CodeWorkflowSession.outputName.length === 0 && outputs.length > 0)
             CodeWorkflowSession.setOutputName(outputs[0])
         Qt.callLater(root.reloadSource)
-        Qt.callLater(() =>
-            CodeWorkflowAnalyzer.request(root.sourcePath, false))
+        Qt.callLater(() => root.requestAnalysis(false))
     }
 
     FileView {
@@ -154,7 +202,7 @@ Item {
         }
         onFileChanged: {
             sourceReader.reload()
-            CodeWorkflowAnalyzer.request(root.sourcePath, true)
+            root.requestAnalysis(true)
         }
         onLoadFailed: root.sourceText = ""
     }
@@ -446,7 +494,7 @@ Item {
                         Layout.fillWidth: true
                         text: root.sourceNeedle.length > 0
                             ? root.sourceNeedle
-                            : "Parser range not attached yet"
+                            : "No reviewed source anchor"
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
@@ -464,9 +512,20 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
                     }
+                    StyledText { text: "CST evidence"; color: Appearance.colors.colSubtext }
                     StyledText {
                         Layout.fillWidth: true
-                        visible: root.analyzerMatchesSource
+                        text: root.sourceRangeText
+                        color: root.sourceAnchorEvidence?.status === "resolved"
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colSubtext
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.analyzerMatchesAnchor
                             && CodeWorkflowAnalyzer.error.length > 0
                         text: CodeWorkflowAnalyzer.error
                         color: Appearance.colors.colSubtext

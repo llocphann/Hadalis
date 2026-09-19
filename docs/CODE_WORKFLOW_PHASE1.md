@@ -100,12 +100,32 @@ qualified by Phase 0 and does not introduce source writes.
   that source/capability identity boundary.
 - The shell payload remains architecture-neutral and works without the parser.
 
+## Milestone 6 implemented
+
+- Every reviewed Phase 1 sourceNeedle is now contractually unique in its source
+  file; the three ambiguous Bar/Media/Resources anchors were tightened before
+  parser ranges were trusted.
+- analyze.py accepts one reviewed --needle and, after a successful native parse,
+  resolves it only when exactly one byte occurrence exists.
+- The analyzer returns transient needle byte/point ranges, the smallest enclosing
+  named CST node, and the smallest enclosing extracted semantic entry when one
+  exists. Missing or ambiguous anchors stay explicit and unresolved.
+- CodeWorkflowAnalyzer includes sourceNeedle in its cache/queue identity, so
+  selecting two nodes in the same file cannot reuse stale range evidence.
+- Inspector exposes CST evidence for the selected reviewed IR node. The manifest
+  itself still stores no sourceRange; range evidence is recomputed from current
+  source and is never persisted as editor state.
+- Source Preview highlighting also refuses ambiguous needles even when the native
+  parser capability is unavailable.
+- No source-writing path, patch generation, Apply action or editability flag was
+  introduced.
+
 ## Still deliberately unfinished
 
 - production picker live-compositor acceptance on the shipped shell;
 - Nix-native grammar packaging and stable-source promotion of the Arch optdepend;
-- CST-backed byte-range mapping from parser entries into the reviewed IR;
 - generic semantic extraction beyond the reviewed ii Bar projection;
+- persistent/stable semantic anchors for future source-writing transforms;
 - source patches, Apply, transactions, conflicts or undo/redo;
 - Sidebar, Dashboard, Dock, Waffle and shell-wide coverage;
 - Curve renderer promotion; memory acceptance remains HOLD.
@@ -113,8 +133,9 @@ qualified by Phase 0 and does not introduce source writes.
 ## Next milestone
 
 Run the production picker through the same Niri/Sway acceptance ideas proven in
-Phase 0, without weakening its contracts. Next, map analyzer CST ranges into the
-existing reviewed graph-domain schema while keeping unsupported constructs opaque;
-Nix-native parser packaging can follow the same optional-capability boundary.
+Phase 0, without weakening its contracts. In parallel, expand semantic extraction
+only where QML constructs can be represented honestly; unsupported constructs
+remain opaque. Nix-native parser packaging can follow the same optional-capability
+boundary.
 
 No manual or live smoke result is implied here.

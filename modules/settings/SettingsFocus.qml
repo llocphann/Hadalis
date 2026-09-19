@@ -646,8 +646,10 @@ Scope {
                       : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
                       : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
                       : Appearance.rounding.windowRounding
-                bottomLeftRadius: 0
-                bottomRightRadius: 0
+                readonly property real attachedRadius: Math.max(0, Math.min(
+                    PerimeterTokens.attachedCornerRadius, width / 2, height / 2))
+                bottomLeftRadius: attachedRadius
+                bottomRightRadius: attachedRadius
                 // Same contract as the rail overlay: backgroundOpacity lands on
                 // the fill alpha (solid) or the blur transparentize (glass),
                 // never on Item opacity, which children inherit.

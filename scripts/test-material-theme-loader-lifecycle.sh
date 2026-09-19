@@ -27,14 +27,14 @@ require 'delayedExternalApply.restart()' \
 
 require 'root._finishGenerator("scheme variant", -1, true, true)' \
     'scheme variant startup failure must enter shared recovery'
-require 'root._finishGenerator("dark mode", -1, false, true)' \
+require 'root._finishGenerator("dark mode", -1, true, true)' \
     'dark-mode startup failure must enter shared recovery'
 require 'root._finishGenerator("color invert", -1, false, true)' \
     'color-invert startup failure must enter shared recovery'
 require 'root._finishGenerator("scheme variant", code, true, false)' \
     'scheme variant normal exit must use shared recovery'
-require 'root._finishGenerator("dark mode", code, false, false)' \
-    'dark-mode normal exit must use shared recovery'
+require 'root._finishGenerator("dark mode", code, true, false)' \
+    'dark-mode normal exit must use shared recovery and reload immediately'
 require 'root._finishGenerator("color invert", code, false, false)' \
     'color-invert normal exit must use shared recovery'
 

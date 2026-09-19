@@ -13,6 +13,8 @@ import Quickshell.Io
  * are version-dependent. The DSP facade instead mirrors Serpantinum's proven
  * model: persist ten gains, render them into one 32-band EasyEffects preset,
  * then load that preset through EasyEffects' generic local-server command.
+ * The helper talks to EasyEffectsServer directly with Python's AF_UNIX socket;
+ * socat is not required for the DSP path.
  */
 Singleton {
     id: root
@@ -320,7 +322,7 @@ Singleton {
         id: transportProbe
         property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
-            "command -v socat >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1"]
+            "command -v python3 >/dev/null 2>&1"]
 
         onExited: (exitCode, exitStatus) => {
             if (!root.enabled || generation !== root._lifecycleGeneration)

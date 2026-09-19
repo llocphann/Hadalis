@@ -48,6 +48,7 @@ for token in (
     "function applyDspPreset(name)",
     'Quickshell.shellPath("scripts/equalizer-control.sh")',
     'EasyEffects.nativeInstalled ? "native" : "flatpak"',
+    '"command -v python3 >/dev/null 2>&1"',
 ):
     require(service, token, "EqualizerService")
 
@@ -76,7 +77,8 @@ for token in (
     require(service, token, "EqualizerService")
 
 # Helper mirrors Serpantinum's 10 -> 32 mapping and only commits persisted state
-# after EasyEffects accepts the generic preset-load command.
+# after EasyEffects accepts the generic preset-load command. The local server is
+# reached directly with Python AF_UNIX so missing socat cannot disable DSP.
 for token in (
     'preset_name="hadalis_live_eq"',
     "slider_map = {",
@@ -93,24 +95,29 @@ for token in (
     '"num-bands": 32',
     '"split-channels": False',
     'plugins_order": ["equalizer"]',
-    'printf \'load_preset:output:%s\\n\' "$preset_name"',
+    "socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)",
+    'client.sendall(f"load_preset:output:{preset}\\n".encode("utf-8"))',
     'mv -f "$state_candidate" "$state_file"',
 ):
     require(helper, token, "equalizer-control.sh")
 
-load_pos = helper.index("load_preset:output")
+load_pos = helper.index('client.sendall(f"load_preset:output:{preset}\\n"')
 state_commit_pos = helper.index('mv -f "$state_candidate" "$state_file"')
 if state_commit_pos < load_pos:
     raise SystemExit("FAIL: Equalizer state is persisted before backend preset load succeeds")
 
+forbid(helper, "socat", "equalizer-control.sh")
+
 for token in (
     '$HOME/.var/app/com.github.wwmm.easyeffects/config/easyeffects/output',
     '${XDG_CONFIG_HOME:-$HOME/.config}/easyeffects/output',
-    "command -v socat",
+    "command -v python3",
 ):
     require(helper, token, "equalizer-control.sh")
 
 # UI owns only facade calls. It must not contain backend/socket/preset-file logic.
+# The persistent trace must use actual rendered handle centers, not a second
+# gain-to-y approximation that can drift away from the circles.
 for token in (
     "EqualizerService.registerConsumer()",
     "EqualizerService.unregisterConsumer()",
@@ -118,14 +125,15 @@ for token in (
     "EqualizerService.setDspBandGain(",
     "function applyPresetWithLightning(name): void",
     "EqualizerService.applyDspPreset(name)",
-    "root.triggerEqLightning()",
-    "property real eqLightningProgress: 0.0",
-    "property real eqLightningFade: 1.0",
-    'property: "eqLightningProgress"',
-    "to: 10.0",
-    "duration: 650",
+    "property real eqLightningHighlight: 0.0",
     "id: lightningCanvas",
-    "root.eqLightningProgress - index",
+    "id: bandRepeater",
+    "function lightningPoint()",
+    "handleItem.mapToItem(",
+    "bandRepeater.itemAt(i)",
+    "ctx.lineWidth = 5.5",
+    "ctx.lineWidth = 2.4",
+    "ctx.lineWidth = 1.0",
     "uniformCellWidths: true",
     "implicitHeight: 24",
 ):

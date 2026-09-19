@@ -146,9 +146,22 @@ PY
 
         sock="${XDG_RUNTIME_DIR:-}/EasyEffectsServer"
         [[ -n "${XDG_RUNTIME_DIR:-}" && -S "$sock" ]] || exit 65
-        command -v socat >/dev/null 2>&1 || exit 127
-        if printf 'load_preset:output:%s\n' "$preset_name" |
-                socat -T 3 - UNIX-CONNECT:"$sock" >/dev/null; then
+        command -v python3 >/dev/null 2>&1 || exit 127
+        if python3 - "$sock" "$preset_name" <<'PY'
+import socket
+import sys
+
+socket_path = sys.argv[1]
+preset = sys.argv[2]
+client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+client.settimeout(3.0)
+try:
+    client.connect(socket_path)
+    client.sendall(f"load_preset:output:{preset}\n".encode("utf-8"))
+finally:
+    client.close()
+PY
+        then
             mv -f "$state_candidate" "$state_file"
         else
             status=$?

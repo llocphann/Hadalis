@@ -48,7 +48,11 @@ for token in \
     'function previewBandLightning(' \
     'function endBandLightning(' \
     'root.previewBandLightning(' \
-    'root.applyPresetWithLightning(modelData)'; do
+    'root.applyPresetWithLightning(modelData)' \
+    'id: bandRepeater' \
+    'function lightningPoint()' \
+    'handleItem.mapToItem(' \
+    'bandRepeater.itemAt(i)'; do
     grep -Fq "$token" "$equalizer_panel" \
         || fail "persistent DSP electricity contract missing $token"
 done

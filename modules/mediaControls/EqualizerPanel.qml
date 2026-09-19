@@ -110,7 +110,7 @@ Item {
             return "EasyEffects unavailable"
         case "transport-unavailable":
         case "transport-probe-failed":
-            return "socat unavailable"
+            return "EQ transport unavailable"
         case "dsp-unavailable":
             return "10-band DSP unavailable"
         case "dsp-state-read-failed":
@@ -226,6 +226,15 @@ Item {
                     const gains = root._lightningGains ?? []
                     const points = []
                     for (let i = 0; i < 10; ++i) {
+                        const delegate = bandRepeater.itemAt(i)
+                        if (delegate) {
+                            const mapped = delegate.lightningPoint()
+                            points.push({ x: mapped.x, y: mapped.y })
+                            continue
+                        }
+
+                        // Construction-time fallback only. Once delegates exist,
+                        // the trace is mapped from the real handle centers below.
                         const gain = Number(gains[i] ?? 0)
                         const normalized = 1.0
                             - ((Math.max(-12, Math.min(12, gain)) + 12) / 24)
@@ -296,6 +305,7 @@ Item {
                 z: 1
 
                 Repeater {
+                    id: bandRepeater
                     model: EqualizerService.dspBands
 
                     delegate: Item {
@@ -305,6 +315,20 @@ Item {
                         width: parent.width / 10
                         height: parent.height
                         readonly property real backendGain: Number(modelData?.gain) || 0
+
+                        function lightningPoint() {
+                            const handleItem = bandSlider.handle
+                            if (!handleItem) {
+                                return Qt.point(
+                                    (bandDelegate.index + 0.5)
+                                        * (lightningCanvas.width / 10),
+                                    lightningCanvas.height / 2)
+                            }
+                            return handleItem.mapToItem(
+                                lightningCanvas,
+                                handleItem.width / 2,
+                                handleItem.height / 2)
+                        }
 
                         ColumnLayout {
                             anchors.fill: parent

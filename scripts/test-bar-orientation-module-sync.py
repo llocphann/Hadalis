@@ -28,8 +28,12 @@ def main() -> None:
     defaults = read("defaults/config.json")
     util = read("modules/bar/UtilButtons.qml")
     weather_bar = read("modules/bar/weather/WeatherBar.qml")
+    horizontal_media = read("modules/bar/Media.qml")
     vertical_media = read("modules/verticalBar/VerticalMedia.qml")
+    workspaces = read("modules/bar/Workspaces.qml")
     workspace_overview = read("modules/bar/BarWorkspaceOverview.qml")
+    styled_popup = read("modules/bar/StyledPopup.qml")
+    screen_edges = read("modules/screenCorners/ScreenEdges.qml")
     overview_niri = read("modules/overview/OverviewNiriWidget.qml")
     overview_hypr = read("modules/overview/OverviewWidget.qml")
     timer_indicator = read("modules/bar/TimerIndicator.qml")
@@ -136,33 +140,36 @@ def main() -> None:
     require(weather_bar, "WeatherPopup {",
             "Shared Weather control must retain the Weather popup for both orientations.")
 
-    require(vertical_media,
-            "alternativeVisibleCondition:\n            root.volumePopupVisible",
-            "Left/Right Media volume HUD must appear only after a volume action.")
-    forbid(vertical_media, "(root.volumePopupVisible || root.containsMouse)",
-           "Plain hover over Left/Right Media must not show the speaker/volume HUD.")
+    for media, name in ((horizontal_media, "Top/Bottom"),
+                        (vertical_media, "Left/Right")):
+        require(media, "hoverActivates: true",
+                f"{name} Media must open the connected Media popup on hover.")
+        forbid(media, "onWheel:",
+               f"{name} Media must not mutate player volume from wheel input.")
+        forbid(media, "volumePopupVisible",
+               f"{name} Media must not retain the retired wheel-volume HUD.")
+        require(media, "BarMediaPopup {",
+                f"{name} Media must retain the shared Media popup content.")
 
-    require(workspace_overview, "readonly property bool transposeOverviewGrid:",
-            "Workspace hover Overview must detect Left/Right Bar orientation.")
-    if workspace_overview.count("transposeGrid: root.transposeOverviewGrid") != 2:
-        raise SystemExit(
-            "Workspace hover Overview must transpose both Niri and Hyprland renderers."
-        )
+    require(workspaces, "readonly property bool workspaceHoverPopupEnabled: !root.vertical",
+            "Workspace buttons must suppress hover popups on Left/Right Bar.")
+    require(workspaces, "if (!button.hovered || !root.workspaceHoverPopupEnabled)",
+            "Workspace hover timer must stop routing popups for Left/Right Bar.")
 
-    for overview, name in ((overview_niri, "Niri"), (overview_hypr, "Hyprland")):
-        require(overview, "property bool transposeGrid: false",
-                f"{name} Overview must expose presentation-only grid transpose.")
-        require(overview, "configuredOverviewRows",
-                f"{name} Overview must preserve the configured row count.")
-        require(overview, "configuredOverviewColumns",
-                f"{name} Overview must preserve the configured column count.")
-        require(overview, "root.transposeGrid",
-                f"{name} Overview must derive effective rows/columns from orientation.")
-
-    forbid(overview_hypr, "Config.options.overview.rows",
-           "Hyprland Overview workspace layout must use effective overviewRows.")
-    forbid(overview_hypr, "Config.options.overview.columns",
-           "Hyprland Overview workspace layout must use effective overviewColumns.")
+    forbid(workspace_overview, "transposeGrid:",
+           "Workspace Overview must keep configured rows/columns unchanged.")
+    require(styled_popup, "property string attachmentEdgeOverride:",
+            "Connected popups must support explicit Screen Edge attachment.")
+    require(styled_popup, "property real attachmentThicknessOverride:",
+            "Connected popups must support physical Screen Edge thickness.")
+    require(workspace_overview, "attachmentEdgeOverride: root.barPosition",
+            "Workspace Overview must route through its explicit attachment edge.")
+    require(screen_edges, "workspaceOverviewEdgeTriggerEnabled",
+            "Top Screen Edge must own the Left/Right workspace Overview hover trigger.")
+    require(screen_edges, 'barPosition: "top"',
+            "Left/Right workspace Overview must attach to the Top Screen Edge.")
+    require(screen_edges, "attachmentThickness: root.thickness",
+            "Top-edge Overview must use physical Screen Edge thickness without changing geometry.")
     require(timer_indicator,
             "? ((anyActive || showPinnedIdle) ? 34 : 0)",
             "Inactive vertical Timer must collapse to zero main-axis height.")

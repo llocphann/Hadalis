@@ -201,9 +201,11 @@ def main() -> None:
     check("GameMode.hasFullscreenOnOutput(outputName)" in reservation_window_block
           and "!fullscreenCovered" in reservation_window_block,
           "Transparent Screen Edge reservation windows may release work-area reservations during fullscreen")
-    check("mask: Region { item: emptyFrameInput }" in screen_edge
-          and "mask: Region { item: emptyReservationInput }" in screen_edge,
-          "Screen Edge frame and reservation surfaces must remain completely click-through")
+    check("mask: Region { item: emptyFrameInput }" in screen_edge,
+          "Painted Screen Edge frame must remain completely click-through")
+    check("workspaceOverviewEdgeTriggerEnabled" in screen_edge
+          and "? workspaceOverviewHitArea : emptyReservationInput" in screen_edge,
+          "Reservation surfaces may accept input only for the explicit vertical-Bar Top-edge Overview trigger")
     for retired_shadow_geometry in (
         "id: edgeShadow",
         "shadowExtent",
@@ -690,12 +692,13 @@ def main() -> None:
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,
           "Bar Media must not restore detached PopupWindow surfaces")
-    check(media.count("StyledPopup {") >= 2,
-          "Bar Media wheel HUD and expanded controls must both use StyledPopup")
+    check(media.count("StyledPopup {") >= 1,
+          "Bar Media expanded controls must use the connected StyledPopup")
     check("BarMediaPopup {" in media,
           "Bar Media must preserve its expanded control content inside the connected surface")
-    check("keyboardFocus: true" in media,
-          "Expanded Media connected popout must preserve keyboard focus")
+    check("hoverActivates: true" in media
+          and "keyboardFocus: root.barMediaPopupVisible" in media,
+          "Media hover popup must not steal keyboard focus unless explicitly pinned")
 
     taskbar_preview = read("modules/bar/BarTaskbarPreview.qml")
     check("StyledPopup {" in taskbar_preview,

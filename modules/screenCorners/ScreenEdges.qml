@@ -228,6 +228,14 @@ Scope {
                 }
             }
 
+            // PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19):
+            // The bottom-left/bottom-right free Screen Edge arcs are the approved
+            // lower pair of the four-corner frame contract. Keep their geometry
+            // symmetric with the Bar-owned top pair. The horizontal edge owns
+            // these endpoints with a single screen-edge-thickness inset; do not
+            // move them inward/outward independently. Radius may change only via
+            // appearance.screenEdge.radius, shared with Bar.qml.
+            //
             // Horizontal EdgeWindow owns the free endpoint curves. The curved
             // shadow is drawn by RoundCorner itself so it follows the actual
             // circular boundary instead of stopping at the straight segment.

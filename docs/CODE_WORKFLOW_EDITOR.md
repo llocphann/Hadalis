@@ -7,8 +7,8 @@ picker, Geometry canvas, Source Preview and a source-backed semantic projection 
 now form the production read-only foundation. Selected reviewed anchors gain
 transient CST byte-range evidence when native parser capability is present;
 missing/ambiguous anchors fail closed and no ranges are persisted into the IR
-manifest. Generic semantic extraction, Nix-native parser packaging/stable Arch
-promotion and every source-writing transform remain unfinished. The on-demand
+manifest. Generic semantic extraction, stable Arch parser promotion and every
+source-writing transform remain unfinished. The on-demand
 parser boundary still degrades to reviewed IR when native capability is absent.
 Curve sustained-memory acceptance remains HOLD.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),

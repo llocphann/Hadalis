@@ -120,10 +120,24 @@ qualified by Phase 0 and does not introduce source writes.
 - No source-writing path, patch generation, Apply action or editability flag was
   introduced.
 
+## Milestone 7 implemented
+
+- nix/workflow-parser.nix packages the same pinned qmljs 0.3.1 generated C
+  parser/scanner used by the Arch capability boundary.
+- The default Nix Hadalis package remains parser-free through
+  withWorkflowParser=false.
+- The flake exports inir-workflow-parser and inir-with-workflow-parser; the
+  latter wraps the launcher with immutable grammar and libtree-sitter store
+  paths, so child analyzer processes inherit both paths.
+- NixOS/Home Manager need no new mutable service option: users opt in by
+  overriding programs.inir.package to the parser-capable flake package.
+- Nix CI builds the parser-capable variant in addition to the default package.
+- No Node/npm/tree-sitter-cli or runtime grammar generation is introduced.
+
 ## Still deliberately unfinished
 
 - production picker live-compositor acceptance on the shipped shell;
-- Nix-native grammar packaging and stable-source promotion of the Arch optdepend;
+- stable-source promotion of the Arch parser optdepend;
 - generic semantic extraction beyond the reviewed ii Bar projection;
 - persistent/stable semantic anchors for future source-writing transforms;
 - source patches, Apply, transactions, conflicts or undo/redo;

@@ -20,10 +20,17 @@
       packages = forAllSystems (pkgs:
         let
           package = pkgs.callPackage ./nix/package.nix { inherit pkgs; };
+          workflowParser = pkgs.callPackage ./nix/workflow-parser.nix { inherit pkgs; };
+          packageWithWorkflowParser = pkgs.callPackage ./nix/package.nix {
+            inherit pkgs;
+            withWorkflowParser = true;
+          };
         in
         {
           default = package;
           inir = package;
+          inir-workflow-parser = workflowParser;
+          inir-with-workflow-parser = packageWithWorkflowParser;
         });
 
       nixosModules.default = nixosModule;

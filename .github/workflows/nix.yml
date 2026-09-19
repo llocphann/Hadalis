@@ -71,3 +71,6 @@ jobs:
 
       - name: Build Hadalis package
         run: nix build .#inir --print-build-logs
+
+      - name: Build Code Workflow parser variant
+        run: nix build .#inir-with-workflow-parser --print-build-logs

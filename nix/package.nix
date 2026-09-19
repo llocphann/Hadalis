@@ -1,8 +1,15 @@
-{ pkgs }:
+{ pkgs, withWorkflowParser ? false }:
 
 let
   lib = pkgs.lib;
   packageVersion = lib.removeSuffix "\n" (builtins.readFile ../VERSION);
+  workflowParser =
+    if withWorkflowParser
+    then import ./workflow-parser.nix { inherit pkgs; }
+    else null;
+  workflowParserWrapperArgs =
+    lib.optionalString withWorkflowParser
+      "--set-default HADALIS_WORKFLOW_GRAMMAR \"${workflowParser}/lib/inir/code-workflow/qmljs.so\" --set-default HADALIS_TREE_SITTER_LIBRARY \"${workflowParser.passthru.treeSitterLibrary}\"";
 
   optionalTop = name:
     lib.optional (builtins.hasAttr name pkgs) (builtins.getAttr name pkgs);
@@ -137,7 +144,7 @@ let
     ++ optionalQt6 "qtwayland";
 in
 pkgs.stdenvNoCC.mkDerivation {
-  pname = "inir";
+  pname = if withWorkflowParser then "inir-with-workflow-parser" else "inir";
   version = packageVersion;
   src = lib.cleanSource ../.;
 
@@ -317,6 +324,7 @@ EOF
       --prefix QML2_IMPORT_PATH : "${lib.makeSearchPath "lib/qt-6/qml" qmlDeps}" \
       --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" qmlDeps}" \
       ${materialSymbolsWrapperArg} \
+      ${workflowParserWrapperArgs} \
       --set-default INIR_SYSTEM_RUNTIME_DIR "$runtime" \
       --set-default INIR_FALLBACK_SYSTEM_RUNTIME_DIR "$runtime"
 
@@ -339,7 +347,10 @@ EOF
     runHook postInstall
   '';
 
-  passthru.runtimeDependencies = runtimeDeps;
+  passthru = {
+    runtimeDependencies = runtimeDeps;
+    inherit withWorkflowParser workflowParser;
+  };
 
   meta = {
     description = "Hadalis desktop shell runtime built on Quickshell";

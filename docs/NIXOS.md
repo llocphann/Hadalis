@@ -8,6 +8,8 @@ Hadalis ships Nix packaging for the existing `inir` runtime/launcher identity. T
 |---|---|
 | `packages.<system>.default` | Packaged Hadalis/iNiR runtime and `inir` launcher |
 | `packages.<system>.inir` | Alias of the default package |
+| `packages.<system>.inir-workflow-parser` | Native qmljs grammar capability used by Code Workflow |
+| `packages.<system>.inir-with-workflow-parser` | Hadalis variant whose launcher exports the grammar + Tree-sitter library paths |
 | `nixosModules.default` / `nixosModules.inir` | NixOS module for the package and user service |
 | `homeModules.default` / `homeModules.inir` | Home Manager module |
 | `homeManagerModules.default` / `homeManagerModules.inir` | Conventional Home Manager aliases |
@@ -46,6 +48,19 @@ in
 ```
 
 For Home Manager, import `nix/home-module.nix` instead. `programs.inir.package` can be overridden when you need a custom build.
+
+For Code Workflow CST diagnostics/range evidence, use the opt-in parser-capable
+variant rather than adding Tree-sitter to the default closure:
+
+```nix
+programs.inir.package =
+  inputs.hadalis.packages.${pkgs.system}.inir-with-workflow-parser;
+```
+
+That variant sets `HADALIS_WORKFLOW_GRAMMAR` and
+`HADALIS_TREE_SITTER_LIBRARY` in the wrapped launcher. The default
+`packages.<system>.inir` remains parser-free and Code Workflow continues to
+degrade to the reviewed read-only IR when native parser capability is absent.
 
 ## With flakes and niri-flake
 

@@ -65,6 +65,7 @@
         "globalStyle": "material",
         "screenEdge": {
             "width": 10,
+            "radius": 25,
             "shadow": {
                 "enabled": true,
                 "size": 15,

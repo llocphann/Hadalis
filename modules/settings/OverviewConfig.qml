@@ -25,17 +25,6 @@ ContentPage {
             ContentSubsection {
                 title: Translation.tr("Workspace hover")
 
-                SettingsSwitch {
-                    buttonIcon: "hovering"
-                    text: Translation.tr("Open Overview when hovering a workspace")
-                    checked: Config.options?.overview?.workspaceHover?.enable ?? true
-                    onCheckedChanged: Config.setNestedValue(
-                        "overview.workspaceHover.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Use the Bar workspace buttons as the Overview trigger")
-                    }
-                }
-
                 ConfigRow {
                     uniform: true
 
@@ -68,8 +57,9 @@ ContentPage {
             SettingsSwitch {
                 buttonIcon: "check"
                 text: Translation.tr("Enable workspace Overview")
-                checked: Config.options?.overview?.enable ?? true
-                onCheckedChanged: Config.setNestedValue("overview.enable", checked)
+                checked: Config.options?.overview?.workspaceHover?.enable ?? true
+                onCheckedChanged: Config.setNestedValue(
+                    "overview.workspaceHover.enable", checked)
                 StyledToolTip {
                     text: Translation.tr("Show the workspace Overview popup from Bar workspace hover")
                 }

@@ -21,8 +21,7 @@ Item {
     property Item lastHoveredWorkspaceButton: null
     property bool workspaceButtonHovered: false
     readonly property bool workspaceOverviewHoverEnabled:
-        (Config.options?.overview?.enable ?? true)
-        && (Config.options?.overview?.workspaceHover?.enable ?? true)
+        Config.options?.overview?.workspaceHover?.enable ?? true
     property bool borderless: Config.options?.bar?.borderless ?? false
     readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(root.QsWindow.window?.screen) : null
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel

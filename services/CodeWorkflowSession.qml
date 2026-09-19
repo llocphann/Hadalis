@@ -24,7 +24,7 @@ Singleton {
     }
 
     function restore(): void {
-        if (!Persistent.ready)
+        if (!Persistent.ready || !CodeWorkflowIr.ready)
             return
         const state = root._state()
         if (!state)
@@ -146,6 +146,14 @@ Singleton {
         target: Persistent
         function onReadyChanged(): void {
             if (Persistent.ready)
+                root.restore()
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowIr
+        function onReadyChanged(): void {
+            if (CodeWorkflowIr.ready)
                 root.restore()
         }
     }

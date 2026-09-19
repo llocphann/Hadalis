@@ -112,6 +112,8 @@ for token in (
     'property string selectedNodeId: "bar.component"',
     "function selectNode(nodeId: string): void",
     "function openSubflow(targetId: string): bool",
+    "if (!Persistent.ready || !CodeWorkflowIr.ready)",
+    "target: CodeWorkflowIr",
 ):
     if token not in session:
         fail("session missing " + token)

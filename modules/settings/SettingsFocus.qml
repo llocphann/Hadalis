@@ -53,6 +53,12 @@ Scope {
     property int level: 0
     property int currentPage: -1
 
+    CodeWorkflowPickerHost {
+        hostId: "focus"
+        settingsLoaded: root._panelLoaded
+        currentPage: root.level === 1 ? root.currentPage : -1
+    }
+
     readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
 
     // Component paths are registry-relative; resolve to absolute shell URLs

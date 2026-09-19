@@ -33,6 +33,12 @@ Scope {
     property bool _closeAnimRunning: false
     property real _surfaceReveal: settingsOpen ? 1 : 0
 
+    CodeWorkflowPickerHost {
+        hostId: "rail"
+        settingsLoaded: root._panelLoaded
+        currentPage: root.overlayCurrentPage
+    }
+
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
         NumberAnimation {

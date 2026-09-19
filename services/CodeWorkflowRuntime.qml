@@ -85,4 +85,23 @@ Singleton {
         }
         return { epoch: root.epoch, outputs: outputs, records: records, events: root.events }
     }
+
+    function hit(output: string, x: real, y: real): string {
+        const candidates = root.snapshot().records.filter(record => {
+            const rect = record.rect
+            return record.output === output
+                && record.state === "resident"
+                && rect?.eligible
+                && x >= rect.x && y >= rect.y
+                && x < rect.x + rect.width
+                && y < rect.y + rect.height
+        })
+
+        candidates.sort((a, b) =>
+            b.depth - a.depth
+            || a.rect.width * a.rect.height
+                - b.rect.width * b.rect.height)
+
+        return candidates.length > 0 ? candidates[0].instanceId : ""
+    }
 }

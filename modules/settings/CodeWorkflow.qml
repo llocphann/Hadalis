@@ -29,6 +29,7 @@ Item {
     readonly property string sourcePath: root.descriptor?.sourcePath ?? ""
     readonly property bool live:
         root.snapshot.records?.some(item => item.state === "resident") ?? false
+    readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
 
     function recordFor(targetId: string): var {
         const records = root.snapshot.records ?? []
@@ -291,6 +292,20 @@ Item {
                         ? CodeWorkflowSession.outputName : "Output"
                     enabled: (root.snapshot.outputs?.length ?? 0) > 0
                     onClicked: root.cycleOutput()
+                }
+                RippleButtonWithIcon {
+                    materialIcon: "ads_click"
+                    mainText: CodeWorkflowPicker.phase === "idle"
+                        ? "Pick component" : "Picking…"
+                    enabled: root.pickerAvailable
+                    onClicked: CodeWorkflowPicker.begin()
+                    StyledToolTip {
+                        text: root.pickerAvailable
+                            ? "Hide Settings and select a live ii Bar component"
+                            : (root.live
+                                ? "Picker is available from overlay Settings only"
+                                : "No live ii Bar targets in this Settings process")
+                    }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"

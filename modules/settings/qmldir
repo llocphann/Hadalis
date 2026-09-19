@@ -22,6 +22,7 @@ DockConfig 1.0 DockConfig.qml
 SidebarsConfig 1.0 SidebarsConfig.qml
 SettingsOverlay 1.0 SettingsOverlay.qml
 SettingsFocus 1.0 SettingsFocus.qml
+CodeWorkflowPickerHost 1.0 CodeWorkflowPickerHost.qml
 SettingsPageHost 1.0 SettingsPageHost.qml
 SettingsNavEditPane 1.0 SettingsNavEditPane.qml
 SettingsChromeEditFrame 1.0 SettingsChromeEditFrame.qml

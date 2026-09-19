@@ -54,14 +54,17 @@ def main() -> None:
         require(weather_popup, token, "WeatherPopup.qml")
     for token in (
         "readonly property real compactBreakpoint: 900",
-        "columns: root.compact ? 1 : 2",
+        "readonly property int tabCount: 2",
+        "property int currentTab: 0",
+        "id: tabIndicator",
+        "WheelHandler {",
         "id: timeWeatherPanel",
         "id: orbitalTimeline",
         "(Weather.data?.hourly ?? []).slice(0, 8)",
         "id: detailPanel",
     ):
         require(weather, token, "WeatherPopupContent.qml")
-    for token in ("id: calendarPanel", "function calendarDay(index)", "columns: root.compact ? 1 : 3"):
+    for token in ("id: calendarPanel", "function calendarDay(index)", "columns: root.compact ? 1 : 2", "columns: root.compact ? 1 : 3"):
         forbid(weather, token, "WeatherPopupContent.qml")
 
     for token in ("component VerticalClockModule: Item", "Bar.ClockCalendarPopup {", "hoverTarget: clockHoverArea"):

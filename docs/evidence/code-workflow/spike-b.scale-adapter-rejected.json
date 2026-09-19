@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "spike": "B",
+  "runs": [
+    {
+      "name": "input-geometry",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-scale-input/input-geometry.json",
+        "--test",
+        "--nodes",
+        "60",
+        "--renderer",
+        "geometry"
+      ],
+      "exit_code": 1,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "8cd5b793920e89e194f18481183325239c184fa1",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "ab38b02c6f870b1fee300b6722f4e6a4af46a3cc2609b57e305d2afa4825ecb0",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 60,
+        "edges": 114,
+        "visible_nodes_at_end": 40,
+        "qobjects": 921,
+        "input_checks": [
+          "dense node move updates exactly its incident routes with correct endpoints",
+          "view transforms do not reroute geometry",
+          "one Shape contains all routed paths",
+          "node tap selects without background clearing it",
+          "Ctrl-click adds to selection",
+          "arrow navigation moves node focus",
+          "Tab moves keyboard focus",
+          "Enter navigates into subflow",
+          "Escape restores parent graph and layout",
+          "middle drag pans without moving graph metadata"
+        ],
+        "failure": "AssertionError('wheel zoom preserves cursor pivot and layout: {\"nodes\":[{\"stableId\":\"node-0\",\"label\":\"Config.bar\",\"px\":0,\"py\":0},{\"stableId\":\"node-1\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":0},{\"stableId\":\"node-2\",\"label\":\"Media.player\",\"px\":460,\"py\":0},{\"stableId\":\"node-3\",\"label\":\"Binding / title\",\"px\":690,\"py\":0},{\"stableId\":\"node-4\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":0},{\"stableId\":\"node-5\",\"label\":\"Action / play\",\"px\":0,\"py\":115},{\"stableId\":\"node-6\",\"label\":\"Connections\",\"px\":230,\"py\":115},{\"stableId\":\"node-7\",\"label\":\"Loader / popup\",\"px\":460,\"py\":115},{\"stableId\":\"node-8\",\"label\":\"Condition\",\"px\":690,\"py\":115},{\"stableId\":\"node-9\",\"label\":\"Subflow\",\"px\":920,\"py\":115},{\"stableId\":\"node-10\",\"label\":\"Config.bar\",\"px\":0,\"py\":230},{\"stableId\":\"node-11\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":230},{\"stableId\":\"node-12\",\"label\":\"Media.player\",\"px\":460,\"py\":230},{\"stableId\":\"node-13\",\"label\":\"Binding / title\",\"px\":690,\"py\":230},{\"stableId\":\"node-14\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":230},{\"stableId\":\"node-15\",\"label\":\"Action / play\",\"px\":0,\"py\":345},{\"stableId\":\"node-16\",\"label\":\"Connections\",\"px\":230,\"py\":345},{\"stableId\":\"node-17\",\"label\":\"Loader / popup\",\"px\":460,\"py\":345},{\"stableId\":\"node-18\",\"label\":\"Condition\",\"px\":690,\"py\":345},{\"stableId\":\"node-19\",\"label\":\"Subflow\",\"px\":920,\"py\":345},{\"stableId\":\"node-20\",\"label\":\"Config.bar\",\"px\":0,\"py\":460},{\"stableId\":\"node-21\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":460},{\"stableId\":\"node-22\",\"label\":\"Media.player\",\"px\":460,\"py\":460},{\"stableId\":\"node-23\",\"label\":\"Binding / title\",\"px\":690,\"py\":460},{\"stableId\":\"node-24\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":460},{\"stableId\":\"node-25\",\"label\":\"Action / play\",\"px\":0,\"py\":575},{\"stableId\":\"node-26\",\"label\":\"Connections\",\"px\":230,\"py\":575},{\"stableId\":\"node-27\",\"label\":\"Loader / popup\",\"px\":460,\"py\":575},{\"stableId\":\"node-28\",\"label\":\"Condition\",\"px\":690,\"py\":575},{\"stableId\":\"node-29\",\"label\":\"Subflow\",\"px\":920,\"py\":575},{\"stableId\":\"node-30\",\"label\":\"Config.bar\",\"px\":0,\"py\":690},{\"stableId\":\"node-31\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":690},{\"stableId\":\"node-32\",\"label\":\"Media.player\",\"px\":460,\"py\":690},{\"stableId\":\"node-33\",\"label\":\"Binding / title\",\"px\":690,\"py\":690},{\"stableId\":\"node-34\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":690},{\"stableId\":\"node-35\",\"label\":\"Action / play\",\"px\":0,\"py\":805},{\"stableId\":\"node-36\",\"label\":\"Connections\",\"px\":230,\"py\":805},{\"stableId\":\"node-37\",\"label\":\"Loader / popup\",\"px\":460,\"py\":805},{\"stableId\":\"node-38\",\"label\":\"Condition\",\"px\":690,\"py\":805},{\"stableId\":\"node-39\",\"label\":\"Subflow\",\"px\":920,\"py\":805},{\"stableId\":\"node-40\",\"label\":\"Config.bar\",\"px\":0,\"py\":920},{\"stableId\":\"node-41\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":920},{\"stableId\":\"node-42\",\"label\":\"Media.player\",\"px\":460,\"py\":920},{\"stableId\":\"node-43\",\"label\":\"Binding / title\",\"px\":690,\"py\":920},{\"stableId\":\"node-44\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":920},{\"stableId\":\"node-45\",\"label\":\"Action / play\",\"px\":0,\"py\":1035},{\"stableId\":\"node-46\",\"label\":\"Connections\",\"px\":230,\"py\":1035},{\"stableId\":\"node-47\",\"label\":\"Loader / popup\",\"px\":460,\"py\":1035},{\"stableId\":\"node-48\",\"label\":\"Condition\",\"px\":690,\"py\":1035},{\"stableId\":\"node-49\",\"label\":\"Subflow\",\"px\":920,\"py\":1035},{\"stableId\":\"node-50\",\"label\":\"Config.bar\",\"px\":0,\"py\":1150},{\"stableId\":\"node-51\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":1150},{\"stableId\":\"node-52\",\"label\":\"Media.player\",\"px\":460,\"py\":1150},{\"stableId\":\"node-53\",\"label\":\"Binding / title\",\"px\":690,\"py\":1150},{\"stableId\":\"node-54\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":1150},{\"stableId\":\"node-55\",\"label\":\"Action / play\",\"px\":0,\"py\":1265},{\"stableId\":\"node-56\",\"label\":\"Connections\",\"px\":230,\"py\":1265},{\"stableId\":\"node-57\",\"label\":\"Loader / popup\",\"px\":460,\"py\":1265},{\"stableId\":\"node-58\",\"label\":\"Condition\",\"px\":690,\"py\":1265},{\"stableId\":\"node-59\",\"label\":\"Subflow\",\"px\":920,\"py\":1265}],\"edgeCount\":114,\"selected\":[1],\"selectedEdge\":-1,\"zoom\":0.9576447288863211,\"panX\":-130.08318679605668,\"panY\":-89.16381761426965,\"scopeDepth\":0,\"renderer\":\"geometry\",\"pathCount\":114,\"visibleNodes\":40,\"runtimeTick\":0,\"traceCount\":0,\"focus\":true,\"mutationMs\":0,\"lastRoutedPaths\":114}')",
+        "qml_warnings": [],
+        "benchmark_seconds": 0,
+        "frame_intervals_ms": null,
+        "gui_timer_intervals_ms": null,
+        "model_mutation_ms": null,
+        "rss_before_kib": 380432,
+        "rss_after_kib": 391176,
+        "trace_retained": 0,
+        "warmup_seconds": 0.5,
+        "last_routed_paths": 114,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 0,
+          "heartbeat": 0
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    }
+  ],
+  "failure": "RuntimeError('input-geometry: AssertionError(\\'wheel zoom preserves cursor pivot and layout: {\"nodes\":[{\"stableId\":\"node-0\",\"label\":\"Config.bar\",\"px\":0,\"py\":0},{\"stableId\":\"node-1\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":0},{\"stableId\":\"node-2\",\"label\":\"Media.player\",\"px\":460,\"py\":0},{\"stableId\":\"node-3\",\"label\":\"Binding / title\",\"px\":690,\"py\":0},{\"stableId\":\"node-4\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":0},{\"stableId\":\"node-5\",\"label\":\"Action / play\",\"px\":0,\"py\":115},{\"stableId\":\"node-6\",\"label\":\"Connections\",\"px\":230,\"py\":115},{\"stableId\":\"node-7\",\"label\":\"Loader / popup\",\"px\":460,\"py\":115},{\"stableId\":\"node-8\",\"label\":\"Condition\",\"px\":690,\"py\":115},{\"stableId\":\"node-9\",\"label\":\"Subflow\",\"px\":920,\"py\":115},{\"stableId\":\"node-10\",\"label\":\"Config.bar\",\"px\":0,\"py\":230},{\"stableId\":\"node-11\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":230},{\"stableId\":\"node-12\",\"label\":\"Media.player\",\"px\":460,\"py\":230},{\"stableId\":\"node-13\",\"label\":\"Binding / title\",\"px\":690,\"py\":230},{\"stableId\":\"node-14\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":230},{\"stableId\":\"node-15\",\"label\":\"Action / play\",\"px\":0,\"py\":345},{\"stableId\":\"node-16\",\"label\":\"Connections\",\"px\":230,\"py\":345},{\"stableId\":\"node-17\",\"label\":\"Loader / popup\",\"px\":460,\"py\":345},{\"stableId\":\"node-18\",\"label\":\"Condition\",\"px\":690,\"py\":345},{\"stableId\":\"node-19\",\"label\":\"Subflow\",\"px\":920,\"py\":345},{\"stableId\":\"node-20\",\"label\":\"Config.bar\",\"px\":0,\"py\":460},{\"stableId\":\"node-21\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":460},{\"stableId\":\"node-22\",\"label\":\"Media.player\",\"px\":460,\"py\":460},{\"stableId\":\"node-23\",\"label\":\"Binding / title\",\"px\":690,\"py\":460},{\"stableId\":\"node-24\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":460},{\"stableId\":\"node-25\",\"label\":\"Action / play\",\"px\":0,\"py\":575},{\"stableId\":\"node-26\",\"label\":\"Connections\",\"px\":230,\"py\":575},{\"stableId\":\"node-27\",\"label\":\"Loader / popup\",\"px\":460,\"py\":575},{\"stableId\":\"node-28\",\"label\":\"Condition\",\"px\":690,\"py\":575},{\"stableId\":\"node-29\",\"label\":\"Subflow\",\"px\":920,\"py\":575},{\"stableId\":\"node-30\",\"label\":\"Config.bar\",\"px\":0,\"py\":690},{\"stableId\":\"node-31\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":690},{\"stableId\":\"node-32\",\"label\":\"Media.player\",\"px\":460,\"py\":690},{\"stableId\":\"node-33\",\"label\":\"Binding / title\",\"px\":690,\"py\":690},{\"stableId\":\"node-34\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":690},{\"stableId\":\"node-35\",\"label\":\"Action / play\",\"px\":0,\"py\":805},{\"stableId\":\"node-36\",\"label\":\"Connections\",\"px\":230,\"py\":805},{\"stableId\":\"node-37\",\"label\":\"Loader / popup\",\"px\":460,\"py\":805},{\"stableId\":\"node-38\",\"label\":\"Condition\",\"px\":690,\"py\":805},{\"stableId\":\"node-39\",\"label\":\"Subflow\",\"px\":920,\"py\":805},{\"stableId\":\"node-40\",\"label\":\"Config.bar\",\"px\":0,\"py\":920},{\"stableId\":\"node-41\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":920},{\"stableId\":\"node-42\",\"label\":\"Media.player\",\"px\":460,\"py\":920},{\"stableId\":\"node-43\",\"label\":\"Binding / title\",\"px\":690,\"py\":920},{\"stableId\":\"node-44\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":920},{\"stableId\":\"node-45\",\"label\":\"Action / play\",\"px\":0,\"py\":1035},{\"stableId\":\"node-46\",\"label\":\"Connections\",\"px\":230,\"py\":1035},{\"stableId\":\"node-47\",\"label\":\"Loader / popup\",\"px\":460,\"py\":1035},{\"stableId\":\"node-48\",\"label\":\"Condition\",\"px\":690,\"py\":1035},{\"stableId\":\"node-49\",\"label\":\"Subflow\",\"px\":920,\"py\":1035},{\"stableId\":\"node-50\",\"label\":\"Config.bar\",\"px\":0,\"py\":1150},{\"stableId\":\"node-51\",\"label\":\"Mpris.activePlayer\",\"px\":230,\"py\":1150},{\"stableId\":\"node-52\",\"label\":\"Media.player\",\"px\":460,\"py\":1150},{\"stableId\":\"node-53\",\"label\":\"Binding / title\",\"px\":690,\"py\":1150},{\"stableId\":\"node-54\",\"label\":\"Signal / clicked\",\"px\":920,\"py\":1150},{\"stableId\":\"node-55\",\"label\":\"Action / play\",\"px\":0,\"py\":1265},{\"stableId\":\"node-56\",\"label\":\"Connections\",\"px\":230,\"py\":1265},{\"stableId\":\"node-57\",\"label\":\"Loader / popup\",\"px\":460,\"py\":1265},{\"stableId\":\"node-58\",\"label\":\"Condition\",\"px\":690,\"py\":1265},{\"stableId\":\"node-59\",\"label\":\"Subflow\",\"px\":920,\"py\":1265}],\"edgeCount\":114,\"selected\":[1],\"selectedEdge\":-1,\"zoom\":0.9576447288863211,\"panX\":-130.08318679605668,\"panY\":-89.16381761426965,\"scopeDepth\":0,\"renderer\":\"geometry\",\"pathCount\":114,\"visibleNodes\":40,\"runtimeTick\":0,\"traceCount\":0,\"focus\":true,\"mutationMs\":0,\"lastRoutedPaths\":114}\\')')",
+  "matrix_driver_sha256": "bf70697570dbda7656f600efe1434f3da63f273d2a25fa6dc35787773deeaecb",
+  "source_revision": "8cd5b793920e89e194f18481183325239c184fa1",
+  "source_status": "",
+  "backend": "sway-headless",
+  "requested_scale": 1.25,
+  "outputs": [
+    {
+      "id": 3,
+      "type": "output",
+      "orientation": "none",
+      "percent": 1.0,
+      "urgent": false,
+      "marks": [],
+      "layout": "output",
+      "border": "none",
+      "current_border_width": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1536,
+        "height": 960
+      },
+      "deco_rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "window_rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "name": "HEADLESS-1",
+      "window": null,
+      "nodes": [],
+      "floating_nodes": [],
+      "focus": [
+        4
+      ],
+      "fullscreen_mode": 0,
+      "sticky": false,
+      "floating": null,
+      "scratchpad_state": null,
+      "primary": false,
+      "make": "Unknown",
+      "model": "Unknown",
+      "serial": "Unknown",
+      "modes": [],
+      "features": {
+        "adaptive_sync": false,
+        "hdr": false
+      },
+      "non_desktop": false,
+      "active": true,
+      "dpms": true,
+      "power": true,
+      "scale": 1.25,
+      "scale_filter": "linear",
+      "transform": "normal",
+      "adaptive_sync_status": "disabled",
+      "current_workspace": "1",
+      "current_mode": {
+        "width": 1920,
+        "height": 1200,
+        "refresh": 0
+      },
+      "max_render_time": 0,
+      "allow_tearing": false,
+      "hdr": false,
+      "focused": true,
+      "subpixel_hinting": "unknown"
+    }
+  ]
+}

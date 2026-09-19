@@ -1,0 +1,5159 @@
+[
+  {
+    "path": "modules/waffle/actionCenter/WaffleActionCenter.qml",
+    "sha256": "ccc9494e5b0dd6b87ef17c3efd78ae592bebc70192763c35a598cc42481f58af",
+    "bytes": 2278,
+    "preservation": {
+      "nodes": 498,
+      "leaf_slices": 310,
+      "trivia_gap_bytes": 686,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Scope": 1,
+      "Connections": 1,
+      "PanelWindow": 2,
+      "anchors": 2,
+      "MouseArea": 1,
+      "ActionCenterContent": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 24,
+      "connections": 1,
+      "function": 1,
+      "handler-candidate": 4,
+      "id": 3,
+      "object": 5,
+      "opaque": 2,
+      "property": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          980,
+          1040
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          1667,
+          1842
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/bluetooth/BluetoothControl.qml",
+    "sha256": "7bb5048359c5202fa42ae868dbca56d3f29eba18b2c7256c579fd20d1ff360cc",
+    "bytes": 4701,
+    "preservation": {
+      "nodes": 842,
+      "leaf_slices": 533,
+      "trivia_gap_bytes": 2309,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 1,
+      "WPanelPageColumn": 1,
+      "BodyRectangle": 1,
+      "ColumnLayout": 2,
+      "RowLayout": 1,
+      "HeaderRow": 1,
+      "WSwitch": 1,
+      "FadeLoader": 1,
+      "WIndeterminateProgressBar": 1,
+      "StyledListView": 1,
+      "ScriptModel": 1,
+      "BluetoothDeviceItem": 1,
+      "required-property": 1,
+      "WPanelSeparator": 1,
+      "FooterRectangle": 1,
+      "FooterMoreButton": 1,
+      "anchors": 1,
+      "WBorderlessButton": 1,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 42,
+      "handler-candidate": 5,
+      "id": 4,
+      "object": 18,
+      "opaque": 1,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          3800,
+          3923
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/bluetooth/BluetoothDeviceItem.qml",
+    "sha256": "28052cec2eb685ee7c4ed4469c6b74862cf7be0ad35a1ab93a111deb60a30fc6",
+    "bytes": 3108,
+    "preservation": {
+      "nodes": 752,
+      "leaf_slices": 480,
+      "trivia_gap_bytes": 1165,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ExpandableChoiceButton": 1,
+      "required-property": 1,
+      "RowLayout": 1,
+      "FluentIcon": 1,
+      "ColumnLayout": 1,
+      "WText": 2,
+      "Behavior": 1,
+      "NumberAnimation": 1,
+      "WButton": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 36,
+      "handler-candidate": 1,
+      "id": 3,
+      "object": 8,
+      "opaque": 1,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1493,
+          1757
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/hotspot/HotspotControl.qml",
+    "sha256": "e873dd5e07676c020dcd25eab596cf43e52630e09347dc642e1547ba679bea7d",
+    "bytes": 4524,
+    "preservation": {
+      "nodes": 780,
+      "leaf_slices": 490,
+      "trivia_gap_bytes": 2382,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 1,
+      "HotspotToggle": 1,
+      "WPanelPageColumn": 1,
+      "BodyRectangle": 1,
+      "ColumnLayout": 4,
+      "RowLayout": 1,
+      "HeaderRow": 1,
+      "WSwitch": 1,
+      "StyledFlickable": 1,
+      "SectionText": 1,
+      "WText": 2,
+      "WTextField": 2,
+      "ToggleItem": 1,
+      "WPanelSeparator": 1,
+      "FooterRectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 47,
+      "handler-candidate": 4,
+      "id": 5,
+      "object": 20,
+      "pragma": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/actionCenter/mainPage/MainPageBody.qml",
+    "sha256": "2442ee3b79ee1409889bb6a665b2ef643bce47b8993795a43c7f3114c84e0053",
+    "bytes": 2276,
+    "preservation": {
+      "nodes": 518,
+      "leaf_slices": 324,
+      "trivia_gap_bytes": 913,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BodyRectangle": 1,
+      "ColumnLayout": 1,
+      "MainPageBodyToggles": 1,
+      "Rectangle": 1,
+      "MainPageBodySliders": 1,
+      "WBorderlessButton": 1,
+      "Component": 1,
+      "ScreenTimePage": 1,
+      "RowLayout": 1,
+      "FluentIcon": 2,
+      "WText": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 28,
+      "component": 1,
+      "handler-candidate": 1,
+      "id": 4,
+      "object": 12
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/actionCenter/mainPage/MainPageBodySliders.qml",
+    "sha256": "976a139eeded19d232d4d936466aa1b600957c3476567ab6ef5919cabfc2ca70",
+    "bytes": 3253,
+    "preservation": {
+      "nodes": 681,
+      "leaf_slices": 429,
+      "trivia_gap_bytes": 1279,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ColumnLayout": 1,
+      "RowLayout": 2,
+      "WPanelIconButton": 4,
+      "Behavior": 1,
+      "NumberAnimation": 1,
+      "WSlider": 2,
+      "Binding": 2,
+      "Component": 1,
+      "VolumeControl": 1,
+      "Item": 1,
+      "Row": 1,
+      "FluentIcon": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 37,
+      "component": 1,
+      "explicit-binding": 2,
+      "handler-candidate": 4,
+      "id": 4,
+      "object": 15,
+      "opaque": 1,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          759,
+          994
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/mainPage/MainPageBodyToggles.qml",
+    "sha256": "672dcf0fc6d156e4850f38ea16735be278cd246fb2da21efa70bd99518a7d608",
+    "bytes": 4440,
+    "preservation": {
+      "nodes": 1034,
+      "leaf_slices": 668,
+      "trivia_gap_bytes": 1508,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 1,
+      "SwipeView": 1,
+      "anchors": 1,
+      "Repeater": 3,
+      "GridLayout": 1,
+      "required-property": 3,
+      "ScriptModel": 1,
+      "ActionCenterTogglesDelegateChooser": 1,
+      "Column": 1,
+      "NavigationArrow": 2,
+      "MouseArea": 2,
+      "Circle": 1,
+      "FocusedScrollMouseArea": 1,
+      "inline-component": 1,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 49,
+      "function": 3,
+      "handler-candidate": 5,
+      "id": 6,
+      "inline-component": 1,
+      "lifecycle": 3,
+      "object": 13,
+      "opaque": 1,
+      "pragma": 1,
+      "property": 11
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1308,
+          1495
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/mainPage/MainPageFooter.qml",
+    "sha256": "7578018d19a4c50f56039cb8cac98a8ad4a9862770084ad5bf05ec3137ca733c",
+    "bytes": 1441,
+    "preservation": {
+      "nodes": 356,
+      "leaf_slices": 228,
+      "trivia_gap_bytes": 459,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "FooterRectangle": 1,
+      "WBorderlessButton": 2,
+      "Row": 1,
+      "FluentIcon": 3,
+      "WText": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 17,
+      "handler-candidate": 1,
+      "object": 8
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/actionCenter/nightLight/NightLightControl.qml",
+    "sha256": "b36026c9f82235c388de5ddbefdef629bb8a206de21cbe421bed6f23b417fdfc",
+    "bytes": 4462,
+    "preservation": {
+      "nodes": 964,
+      "leaf_slices": 604,
+      "trivia_gap_bytes": 1739,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 1,
+      "WPanelPageColumn": 1,
+      "BodyRectangle": 1,
+      "ColumnLayout": 4,
+      "HeaderRow": 1,
+      "StyledFlickable": 1,
+      "NightLightOptions": 1,
+      "WPanelSeparator": 1,
+      "FooterRectangle": 1,
+      "inline-component": 2,
+      "SectionText": 2,
+      "ToggleItem": 3,
+      "IntensityEntry": 1,
+      "RowLayout": 1,
+      "FluentIcon": 1,
+      "WText": 2,
+      "WSlider": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 57,
+      "handler-candidate": 6,
+      "id": 5,
+      "inline-component": 2,
+      "object": 23
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/actionCenter/screenTime/ScreenTimePage.qml",
+    "sha256": "515d3ce1b3e4dcf26388c688aa09067b035390d601507f10fde994073e31dd16",
+    "bytes": 26785,
+    "preservation": {
+      "nodes": 4421,
+      "leaf_slices": 2837,
+      "trivia_gap_bytes": 16123,
+      "comments": 7,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 3,
+      "Connections": 1,
+      "WPanelPageColumn": 1,
+      "BodyRectangle": 1,
+      "ColumnLayout": 9,
+      "HeaderRow": 1,
+      "StyledFlickable": 1,
+      "RowLayout": 4,
+      "Repeater": 5,
+      "WBorderlessButton": 1,
+      "required-property": 8,
+      "WText": 12,
+      "Behavior": 6,
+      "NumberAnimation": 5,
+      "WPanelSeparator": 4,
+      "SectionText": 2,
+      "Row": 2,
+      "Rectangle": 6,
+      "HoverHandler": 1,
+      "TapHandler": 1,
+      "ColorAnimation": 1,
+      "FluentIcon": 2,
+      "MouseArea": 1,
+      "FooterRectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 225,
+      "connections": 1,
+      "function": 3,
+      "handler-candidate": 7,
+      "id": 4,
+      "lifecycle": 5,
+      "object": 59,
+      "opaque": 6,
+      "pragma": 1,
+      "property": 24
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          5168,
+          5711
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          11050,
+          11650
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          11699,
+          12300
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          16423,
+          16937
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          20230,
+          20773
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          24526,
+          25069
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/toggles/ActionCenterToggleButton.qml",
+    "sha256": "8d831e6eb5e3f99514febdef94bcbb5786111247538b8d651fa866aa1921b7a4",
+    "bytes": 4507,
+    "preservation": {
+      "nodes": 991,
+      "leaf_slices": 641,
+      "trivia_gap_bytes": 1394,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "ColumnLayout": 1,
+      "required-property": 3,
+      "AcrylicRectangle": 1,
+      "RowLayout": 1,
+      "ToggleFragment": 2,
+      "FadeLoader": 1,
+      "Item": 2,
+      "WText": 1,
+      "anchors": 1,
+      "inline-component": 1,
+      "WButton": 1,
+      "TapHandler": 1,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 48,
+      "handler-candidate": 3,
+      "id": 4,
+      "inline-component": 1,
+      "object": 12,
+      "opaque": 1,
+      "pragma": 1,
+      "property": 19
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          3223,
+          3370
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/toggles/ActionCenterTogglesDelegateChooser.qml",
+    "sha256": "42c83e3fead43811bcd00db3913affeb03073f47811dc716859af13a4c9c6cec",
+    "bytes": 4720,
+    "preservation": {
+      "nodes": 946,
+      "leaf_slices": 595,
+      "trivia_gap_bytes": 1712,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "DelegateChooser": 1,
+      "DelegateChoice": 18,
+      "ActionCenterToggleButton": 18,
+      "AntiFlashbangToggle": 1,
+      "Component": 7,
+      "NightLightControl": 2,
+      "AudioToggle": 1,
+      "VolumeControl": 2,
+      "BluetoothToggle": 1,
+      "BluetoothControl": 1,
+      "CloudflareWarpToggle": 1,
+      "ColorPickerToggle": 1,
+      "DarkModeToggle": 1,
+      "EasyEffectsToggle": 1,
+      "GameModeToggle": 1,
+      "HotspotToggle": 1,
+      "HotspotControl": 1,
+      "IdleInhibitorToggle": 1,
+      "MicToggle": 1,
+      "MusicRecognitionToggle": 1,
+      "NetworkToggle": 1,
+      "WifiControl": 1,
+      "NightLightToggle": 1,
+      "NotificationToggle": 1,
+      "OnScreenKeyboardToggle": 1,
+      "PowerProfilesToggle": 1,
+      "ScreenSnipToggle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 65,
+      "component": 7,
+      "id": 1,
+      "object": 62,
+      "pragma": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/actionCenter/toggles/WNetworkToggle.qml",
+    "sha256": "fa80592c6fb0354e2b01c0c0529d28653973760e85ec0aa7011da1a3b2a789f9",
+    "bytes": 321,
+    "preservation": {
+      "nodes": 101,
+      "leaf_slices": 66,
+      "trivia_gap_bytes": 39,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ActionCenterToggle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 1,
+      "id": 1,
+      "object": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/actionCenter/volumeControl/VolumeControl.qml",
+    "sha256": "080892cd01fd31cf3f04a388cc257ae2453ec9e7d6fd4648afadedd71265f1e1",
+    "bytes": 4022,
+    "preservation": {
+      "nodes": 876,
+      "leaf_slices": 556,
+      "trivia_gap_bytes": 1643,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 1,
+      "WPanelPageColumn": 1,
+      "BodyRectangle": 1,
+      "ColumnLayout": 2,
+      "HeaderRow": 1,
+      "StyledFlickable": 1,
+      "Loader": 1,
+      "AudioChoicesComponent": 1,
+      "WPanelSeparator": 3,
+      "FooterRectangle": 1,
+      "FooterMoreButton": 1,
+      "anchors": 1,
+      "inline-component": 1,
+      "SectionText": 3,
+      "Repeater": 2,
+      "WChoiceButton": 3,
+      "required-property": 2,
+      "VolumeEntry": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 45,
+      "handler-candidate": 4,
+      "id": 3,
+      "inline-component": 1,
+      "lifecycle": 3,
+      "object": 21,
+      "opaque": 1,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1545,
+          1668
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/volumeControl/VolumeEntry.qml",
+    "sha256": "a157552591bc14ff2407fe1bb4a7c96245c21b648a5d887c4ca1518cb0e6f349",
+    "bytes": 2925,
+    "preservation": {
+      "nodes": 820,
+      "leaf_slices": 529,
+      "trivia_gap_bytes": 888,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "RowLayout": 1,
+      "required-property": 1,
+      "PwObjectTracker": 1,
+      "Image": 1,
+      "FluentIcon": 2,
+      "WSlider": 1,
+      "Binding": 1,
+      "WBorderlessButton": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 28,
+      "explicit-binding": 1,
+      "handler-candidate": 3,
+      "id": 3,
+      "object": 7,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/actionCenter/wifi/WWifiNetworkItem.qml",
+    "sha256": "387de5d678bb1ef5fc35358a158d39070e1b2692a05a936dbf4ec227fa0cb4b3",
+    "bytes": 4120,
+    "preservation": {
+      "nodes": 956,
+      "leaf_slices": 614,
+      "trivia_gap_bytes": 1556,
+      "comments": 5,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ExpandableChoiceButton": 1,
+      "required-property": 1,
+      "RowLayout": 1,
+      "FluentIcon": 3,
+      "anchors": 1,
+      "ColumnLayout": 1,
+      "Behavior": 2,
+      "NumberAnimation": 2,
+      "WText": 2,
+      "WButton": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 50,
+      "handler-candidate": 1,
+      "id": 3,
+      "object": 11,
+      "opaque": 3,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1061,
+          1182
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          1641,
+          1906
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2960,
+          3224
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/actionCenter/wifi/WifiControl.qml",
+    "sha256": "47732d5e186aed040d4fad7eadf7f178aa937c4dee386e81817746be20700122",
+    "bytes": 4021,
+    "preservation": {
+      "nodes": 713,
+      "leaf_slices": 448,
+      "trivia_gap_bytes": 2029,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 1,
+      "WPanelPageColumn": 1,
+      "BodyRectangle": 1,
+      "ColumnLayout": 2,
+      "RowLayout": 1,
+      "HeaderRow": 1,
+      "WSwitch": 1,
+      "FadeLoader": 1,
+      "WIndeterminateProgressBar": 1,
+      "StyledListView": 1,
+      "ScriptModel": 1,
+      "WWifiNetworkItem": 1,
+      "required-property": 1,
+      "WPanelSeparator": 1,
+      "FooterRectangle": 1,
+      "FooterMoreButton": 1,
+      "anchors": 1,
+      "WBorderlessButton": 1,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 42,
+      "handler-candidate": 4,
+      "id": 4,
+      "object": 18,
+      "opaque": 1,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          3178,
+          3301
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/altSwitcher/WaffleAltSwitcher.qml",
+    "sha256": "bb0db84e691ee448958e29855bd83a5d5b21cd42f6a72f6fda4c9256efe05af0",
+    "bytes": 19057,
+    "preservation": {
+      "nodes": 4638,
+      "leaf_slices": 2943,
+      "trivia_gap_bytes": 7240,
+      "comments": 22,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Scope": 1,
+      "Timer": 5,
+      "Connections": 2,
+      "Variants": 1,
+      "PanelWindow": 2,
+      "required-property": 1,
+      "anchors": 2,
+      "Rectangle": 1,
+      "MouseArea": 2,
+      "FocusScope": 1,
+      "WaffleAltSwitcherContent": 1,
+      "IpcHandler": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 47,
+      "connections": 2,
+      "function": 31,
+      "handler-candidate": 14,
+      "id": 9,
+      "lifecycle": 1,
+      "object": 14,
+      "opaque": 2,
+      "property": 13
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          11836,
+          11896
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          12547,
+          12607
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/altSwitcher/WaffleAltSwitcherContent.qml",
+    "sha256": "f83539d13a564c1f0db290dd9fc1c79d0bb470f062b8cbc44e12587ca930aac8",
+    "bytes": 38486,
+    "preservation": {
+      "nodes": 7339,
+      "leaf_slices": 4742,
+      "trivia_gap_bytes": 19501,
+      "comments": 18,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 16,
+      "required-property": 11,
+      "Connections": 2,
+      "ParallelAnimation": 2,
+      "NumberAnimation": 12,
+      "SequentialAnimation": 1,
+      "ScriptAction": 1,
+      "Loader": 1,
+      "Component": 6,
+      "Column": 4,
+      "Grid": 1,
+      "Repeater": 4,
+      "ScriptModel": 5,
+      "WaffleAltSwitcherThumbnail": 1,
+      "Rectangle": 12,
+      "WText": 11,
+      "WPane": 2,
+      "Row": 2,
+      "WaffleAltSwitcherTile": 2,
+      "RowLayout": 2,
+      "WPanelSeparator": 1,
+      "MouseArea": 3,
+      "ListView": 1,
+      "Behavior": 11,
+      "Canvas": 1,
+      "MultiEffect": 1,
+      "ShaderEffectSource": 1,
+      "Shape": 2,
+      "ShapePath": 2,
+      "PathLine": 8,
+      "Gradient": 1,
+      "GradientStop": 2,
+      "Image": 4,
+      "ColorAnimation": 4,
+      "Text": 1,
+      "WRectangularShadow": 2,
+      "ColumnLayout": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 404,
+      "component": 6,
+      "connections": 2,
+      "function": 9,
+      "handler-candidate": 17,
+      "id": 31,
+      "lifecycle": 5,
+      "object": 109,
+      "opaque": 11,
+      "pragma": 1,
+      "property": 40,
+      "signal": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          14110,
+          14348
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          20479,
+          20653
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          22579,
+          22757
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          22787,
+          22935
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          22965,
+          23110
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          23801,
+          23976
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          24006,
+          24154
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          24990,
+          25167
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          29541,
+          29632
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          32166,
+          32371
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          32400,
+          32655
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/altSwitcher/WaffleAltSwitcherThumbnail.qml",
+    "sha256": "4a863f65e2fd907472836278747d95d1569bfd5df52497ba9e2cc9f2a2f4d88e",
+    "bytes": 5499,
+    "preservation": {
+      "nodes": 1310,
+      "leaf_slices": 848,
+      "trivia_gap_bytes": 1809,
+      "comments": 12,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 1,
+      "required-property": 1,
+      "Rectangle": 7,
+      "Behavior": 4,
+      "NumberAnimation": 4,
+      "Gradient": 1,
+      "GradientStop": 2,
+      "Image": 2,
+      "WText": 2,
+      "Row": 1,
+      "MouseArea": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 84,
+      "handler-candidate": 1,
+      "id": 7,
+      "object": 21,
+      "opaque": 4,
+      "pragma": 1,
+      "property": 6,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          918,
+          1166
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1175,
+          1428
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2392,
+          2648
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          4094,
+          4300
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml",
+    "sha256": "8bbb138a2d0d345ad52d9f2a56ebf98eb5224dc3955fff181b244f1dd4bb0b60",
+    "bytes": 8137,
+    "preservation": {
+      "nodes": 1643,
+      "leaf_slices": 1059,
+      "trivia_gap_bytes": 3806,
+      "comments": 9,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 3,
+      "required-property": 1,
+      "Loader": 2,
+      "AcrylicRectangle": 2,
+      "Behavior": 3,
+      "ColorAnimation": 2,
+      "NumberAnimation": 1,
+      "Image": 2,
+      "Rectangle": 3,
+      "MouseArea": 2,
+      "WPopupToolTip": 1,
+      "RowLayout": 1,
+      "ColumnLayout": 1,
+      "WText": 3
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 96,
+      "handler-candidate": 2,
+      "id": 6,
+      "lifecycle": 2,
+      "object": 21,
+      "opaque": 3,
+      "pragma": 1,
+      "property": 3,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1293,
+          1524
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1541,
+          1804
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          3842,
+          4073
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/backdrop/WaffleBackdrop.qml",
+    "sha256": "2756ce720a9be9dc3ed0cbe407b7fd87211cb6acde9bc7db9e9b434071aa4e2a",
+    "bytes": 13749,
+    "preservation": {
+      "nodes": 2484,
+      "leaf_slices": 1596,
+      "trivia_gap_bytes": 4469,
+      "comments": 25,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Variants": 1,
+      "PanelWindow": 1,
+      "required-property": 1,
+      "Item": 1,
+      "WallpaperCrossfader": 1,
+      "AnimatedImage": 1,
+      "MultiEffect": 4,
+      "Image": 1,
+      "Video": 1,
+      "Rectangle": 2,
+      "Gradient": 1,
+      "GradientStop": 3
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 89,
+      "function": 1,
+      "handler-candidate": 3,
+      "id": 6,
+      "lifecycle": 1,
+      "object": 16,
+      "pragma": 1,
+      "property": 25
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/background/WaffleBackground.qml",
+    "sha256": "7d422d394691a883eeecbf3211ef08201d0ffdee12b800dc181e6abbc78f685e",
+    "bytes": 19379,
+    "preservation": {
+      "nodes": 3821,
+      "leaf_slices": 2476,
+      "trivia_gap_bytes": 6338,
+      "comments": 22,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Variants": 1,
+      "PanelWindow": 1,
+      "required-property": 1,
+      "anchors": 2,
+      "Behavior": 2,
+      "NumberAnimation": 3,
+      "SequentialAnimation": 1,
+      "PauseAnimation": 1,
+      "Timer": 1,
+      "Connections": 1,
+      "Item": 2,
+      "WallpaperCrossfader": 1,
+      "sourceSize": 1,
+      "AnimatedImage": 1,
+      "MultiEffect": 3,
+      "VideoCrossfader": 1,
+      "Rectangle": 2,
+      "ColorAnimation": 1,
+      "Gradient": 1,
+      "GradientStop": 3,
+      "WidgetCanvas": 1,
+      "WaffleBackgroundClock": 1,
+      "Column": 1,
+      "Text": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 119,
+      "connections": 1,
+      "function": 1,
+      "handler-candidate": 3,
+      "id": 11,
+      "lifecycle": 1,
+      "object": 27,
+      "opaque": 5,
+      "pragma": 1,
+      "property": 34
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          4838,
+          4898
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          7838,
+          8100
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          11750,
+          11894
+        ],
+        "name": "sourceSize",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          16079,
+          16310
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          18384,
+          18615
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/background/WaffleBackgroundClock.qml",
+    "sha256": "c83cf9e76734cc6b2cbe6e1ebdce24ea06682aaa52f7984725106426c696f1ff",
+    "bytes": 13263,
+    "preservation": {
+      "nodes": 3473,
+      "leaf_slices": 2291,
+      "trivia_gap_bytes": 3387,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "AbstractWidget": 1,
+      "required-property": 7,
+      "Binding": 4,
+      "Connections": 2,
+      "SystemClock": 1,
+      "Process": 1,
+      "StdioCollector": 1,
+      "ColumnLayout": 1,
+      "StyledText": 3,
+      "font": 3,
+      "RowLayout": 1,
+      "MaterialSymbol": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 68,
+      "connections": 2,
+      "explicit-binding": 4,
+      "function": 4,
+      "handler-candidate": 9,
+      "id": 5,
+      "object": 10,
+      "opaque": 3,
+      "pragma": 1,
+      "property": 45
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          11398,
+          11596
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          12077,
+          12227
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          13062,
+          13230
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/background/WaffleShellEditHud.qml",
+    "sha256": "2bde8f1335a9da3ce07cd0fab9c52a2a785c0c8a082fa349f30e9d8a5ef45d96",
+    "bytes": 745,
+    "preservation": {
+      "nodes": 220,
+      "leaf_slices": 142,
+      "trivia_gap_bytes": 114,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "ShellLayoutEditorWindow": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 15,
+      "object": 1,
+      "pragma": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/AppButton.qml",
+    "sha256": "a4e2585a1b55cab7ff1f5e30c8d4a8c855dc77b454d5edb956a33e0648411ae1",
+    "bytes": 3058,
+    "preservation": {
+      "nodes": 700,
+      "leaf_slices": 456,
+      "trivia_gap_bytes": 950,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarButton": 1,
+      "required-property": 1,
+      "property-alias": 1,
+      "Item": 3,
+      "BackgroundAcrylicRectangle": 2,
+      "OpacityMask": 1,
+      "Rectangle": 1,
+      "Loader": 1,
+      "Behavior": 2,
+      "NumberAnimation": 1,
+      "WAppIcon": 1,
+      "inline-component": 1,
+      "AcrylicRectangle": 1,
+      "ColorAnimation": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 37,
+      "handler-candidate": 1,
+      "id": 6,
+      "inline-component": 1,
+      "lifecycle": 1,
+      "object": 12,
+      "opaque": 2,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          2254,
+          2406
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2827,
+          3049
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/BarButton.qml",
+    "sha256": "e65112a733df82f505aba84704e4e9081cfabdf3f815b25ff819c704d855faf6",
+    "bytes": 1078,
+    "preservation": {
+      "nodes": 334,
+      "leaf_slices": 215,
+      "trivia_gap_bytes": 214,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "AcrylicButton": 1,
+      "MouseArea": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 10,
+      "handler-candidate": 1,
+      "id": 1,
+      "object": 2,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/BarIconButton.qml",
+    "sha256": "cbb6e5aaed20cbb9e827184e6e16d7aece8c02979e750bb06c65cf603b53e043",
+    "bytes": 1217,
+    "preservation": {
+      "nodes": 284,
+      "leaf_slices": 185,
+      "trivia_gap_bytes": 278,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarButton": 1,
+      "property-alias": 8,
+      "Item": 1,
+      "FluentIcon": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 10,
+      "id": 3,
+      "object": 4,
+      "property": 9
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/BarMenu.qml",
+    "sha256": "a41b2d63562bac274f46192eb0428c60f747a348d07f152933c85ad371233541",
+    "bytes": 2604,
+    "preservation": {
+      "nodes": 515,
+      "leaf_slices": 332,
+      "trivia_gap_bytes": 1136,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarPopup": 1,
+      "ColumnLayout": 1,
+      "Repeater": 1,
+      "DelegateChooser": 1,
+      "DelegateChoice": 2,
+      "Rectangle": 1,
+      "WButton": 1,
+      "required-property": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 28,
+      "handler-candidate": 1,
+      "id": 2,
+      "lifecycle": 1,
+      "object": 7,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/BarPopup.qml",
+    "sha256": "d4771e2871d616b550167b850c2f69bc6eb8971cd0374f838978e6bd177c0e88",
+    "bytes": 11671,
+    "preservation": {
+      "nodes": 2453,
+      "leaf_slices": 1591,
+      "trivia_gap_bytes": 3862,
+      "comments": 11,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Loader": 1,
+      "required-property": 1,
+      "PanelWindow": 2,
+      "anchors": 2,
+      "property-alias": 1,
+      "NumberAnimation": 2,
+      "SequentialAnimation": 1,
+      "ScriptAction": 1,
+      "Shortcut": 1,
+      "CompositorFocusGrab": 1,
+      "Timer": 1,
+      "ConnectedSurfaceGeometry": 1,
+      "QtObject": 1,
+      "ConnectedSurfaceRevealClip": 1,
+      "ConnectedSurfaceFrame": 1,
+      "ConnectedSurfaceContentHost": 1,
+      "HoverHandler": 1,
+      "ConnectedSurfaceMask": 1,
+      "MouseArea": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 88,
+      "function": 6,
+      "handler-candidate": 5,
+      "id": 13,
+      "lifecycle": 1,
+      "object": 17,
+      "opaque": 2,
+      "pragma": 1,
+      "property": 33,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          4463,
+          4576
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          11403,
+          11536
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/BarToolTip.qml",
+    "sha256": "23cef776d5b56ab9f69473009fb7ff7c8fe9ee0f1f27d363241449284ea3fbb6",
+    "bytes": 696,
+    "preservation": {
+      "nodes": 149,
+      "leaf_slices": 96,
+      "trivia_gap_bytes": 120,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "WPopupToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 2,
+      "id": 1,
+      "object": 1,
+      "property": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/DesktopPeekButton.qml",
+    "sha256": "e8526d8b2ca5e116ce843af6960feb293b48d341e24b280578ae97a37c800ed9",
+    "bytes": 2288,
+    "preservation": {
+      "nodes": 558,
+      "leaf_slices": 349,
+      "trivia_gap_bytes": 825,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Rectangle": 1,
+      "Behavior": 1,
+      "ColorAnimation": 1,
+      "Timer": 1,
+      "MouseArea": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 12,
+      "handler-candidate": 4,
+      "id": 3,
+      "object": 5,
+      "opaque": 1,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          516,
+          711
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/SearchButton.qml",
+    "sha256": "5d1dfb8adcd9a191f87433e5d5677dbffe31b549e5bbbd268ad2b5f308cb876b",
+    "bytes": 601,
+    "preservation": {
+      "nodes": 163,
+      "leaf_slices": 105,
+      "trivia_gap_bytes": 120,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "AppButton": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 5,
+      "handler-candidate": 1,
+      "id": 2,
+      "object": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/StartButton.qml",
+    "sha256": "fbe922516f285c6377c85f15eda81214d23c582264836e774929276cf427810b",
+    "bytes": 2313,
+    "preservation": {
+      "nodes": 516,
+      "leaf_slices": 339,
+      "trivia_gap_bytes": 730,
+      "comments": 5,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "AppButton": 1,
+      "BarToolTip": 1,
+      "BarMenu": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 7,
+      "handler-candidate": 1,
+      "id": 3,
+      "object": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/SystemButton.qml",
+    "sha256": "6d4827c33fc6b8a09cab5961470fbbf1eb31a50bc2e59bd8a0dd34848d00393f",
+    "bytes": 9250,
+    "preservation": {
+      "nodes": 1894,
+      "leaf_slices": 1199,
+      "trivia_gap_bytes": 3580,
+      "comments": 11,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarButton": 1,
+      "Item": 3,
+      "Row": 2,
+      "anchors": 3,
+      "IconHoverArea": 9,
+      "FluentIcon": 8,
+      "Rectangle": 2,
+      "SequentialAnimation": 2,
+      "NumberAnimation": 4,
+      "WText": 2,
+      "inline-component": 1,
+      "FocusedScrollMouseArea": 1,
+      "required-property": 1,
+      "BarToolTip": 9
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 113,
+      "handler-candidate": 6,
+      "id": 12,
+      "inline-component": 1,
+      "object": 41,
+      "opaque": 5,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          925,
+          1060
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          1780,
+          1860
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          1886,
+          2206
+        ],
+        "name": "SequentialAnimation",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          3183,
+          3263
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          3289,
+          3623
+        ],
+        "name": "SequentialAnimation",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/TaskViewButton.qml",
+    "sha256": "fc1f106f0e3a6346af6560367d189b4e696a2b317b60f752b312badd4325e7d9",
+    "bytes": 710,
+    "preservation": {
+      "nodes": 184,
+      "leaf_slices": 121,
+      "trivia_gap_bytes": 127,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "AppButton": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 6,
+      "handler-candidate": 1,
+      "id": 1,
+      "object": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/TimeButton.qml",
+    "sha256": "3a45c421991a16a4593b87ff5f5f8da0e9ae7c09e9edb60ae1573e039c49c864",
+    "bytes": 4072,
+    "preservation": {
+      "nodes": 915,
+      "leaf_slices": 593,
+      "trivia_gap_bytes": 1502,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarButton": 1,
+      "Item": 1,
+      "Row": 1,
+      "Column": 1,
+      "WText": 3,
+      "Rectangle": 1,
+      "Behavior": 3,
+      "NumberAnimation": 3,
+      "FluentIcon": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 43,
+      "handler-candidate": 1,
+      "id": 4,
+      "object": 13,
+      "opaque": 3,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          2046,
+          2385
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2402,
+          2651
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          3174,
+          3261
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/TimerButton.qml",
+    "sha256": "ad87633e215173e7150a34de99a9575bad59e62ad0998d40bd914c7de18ac60a",
+    "bytes": 4080,
+    "preservation": {
+      "nodes": 1093,
+      "leaf_slices": 705,
+      "trivia_gap_bytes": 1252,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarButton": 1,
+      "Item": 1,
+      "Row": 1,
+      "FluentIcon": 1,
+      "SequentialAnimation": 1,
+      "NumberAnimation": 2,
+      "WText": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 22,
+      "handler-candidate": 1,
+      "id": 2,
+      "object": 8,
+      "opaque": 1,
+      "property": 6
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          2709,
+          3085
+        ],
+        "name": "SequentialAnimation",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/UpdatesButton.qml",
+    "sha256": "e970308c765a136a4e1d0d0e3d34c18a4efa726fb3fada233d1fb9e2fc189992",
+    "bytes": 3262,
+    "preservation": {
+      "nodes": 746,
+      "leaf_slices": 463,
+      "trivia_gap_bytes": 1391,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarIconButton": 1,
+      "Rectangle": 2,
+      "anchors": 1,
+      "BarPopup": 1,
+      "ColumnLayout": 1,
+      "WButton": 3,
+      "RowLayout": 3,
+      "FluentIcon": 3,
+      "WText": 3
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 56,
+      "function": 1,
+      "handler-candidate": 4,
+      "id": 2,
+      "object": 17,
+      "opaque": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          751,
+          859
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/WaffleBar.qml",
+    "sha256": "4c8a7b85fddaee6807522a3a5a7c2da39321bd832013317aeca845af919cf6a8",
+    "bytes": 6088,
+    "preservation": {
+      "nodes": 1220,
+      "leaf_slices": 783,
+      "trivia_gap_bytes": 2289,
+      "comments": 10,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Scope": 1,
+      "Variants": 1,
+      "LazyLoader": 1,
+      "required-property": 1,
+      "PanelWindow": 1,
+      "Region": 2,
+      "anchors": 2,
+      "WaffleBarContent": 1,
+      "Translate": 1,
+      "SequentialAnimation": 1,
+      "NumberAnimation": 4,
+      "Connections": 1,
+      "ShellEditSurfaceFrame": 1,
+      "IpcHandler": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 66,
+      "connections": 1,
+      "function": 3,
+      "handler-candidate": 6,
+      "id": 5,
+      "lifecycle": 2,
+      "object": 13,
+      "opaque": 2,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1883,
+          2055
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          3882,
+          4142
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/WaffleBarContent.qml",
+    "sha256": "1c1d02419667a45236ac58198dcd2a390abda552d41f8041376e9f50fd70abc7",
+    "bytes": 5512,
+    "preservation": {
+      "nodes": 1333,
+      "leaf_slices": 861,
+      "trivia_gap_bytes": 1529,
+      "comments": 5,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Rectangle": 2,
+      "MouseArea": 1,
+      "BarMenu": 1,
+      "GlassBackground": 1,
+      "anchors": 1,
+      "BarGroupRow": 3,
+      "Behavior": 1,
+      "NumberAnimation": 1,
+      "WeatherButton": 2,
+      "State": 1,
+      "AnchorChanges": 1,
+      "Transition": 1,
+      "AnchorAnimation": 1,
+      "StartButton": 1,
+      "SearchButton": 1,
+      "TaskViewButton": 1,
+      "WTaskbarSeparator": 1,
+      "Tasks": 1,
+      "FadeLoader": 1,
+      "Tray": 1,
+      "TimerButton": 1,
+      "UpdatesButton": 1,
+      "SystemButton": 1,
+      "TimeButton": 1,
+      "DesktopPeekButton": 1,
+      "inline-component": 1,
+      "RowLayout": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 52,
+      "handler-candidate": 1,
+      "id": 7,
+      "inline-component": 1,
+      "object": 28,
+      "opaque": 2,
+      "pragma": 1,
+      "property": 11
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          3269,
+          3474
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          3881,
+          4129
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/WeatherButton.qml",
+    "sha256": "f14ecba9f85c735c18dc48d3a28b64568a8bf735b0effb60870920576e2553bf",
+    "bytes": 1892,
+    "preservation": {
+      "nodes": 461,
+      "leaf_slices": 292,
+      "trivia_gap_bytes": 594,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarButton": 1,
+      "RowLayout": 1,
+      "MaterialSymbol": 1,
+      "Column": 1,
+      "WText": 2,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 26,
+      "handler-candidate": 1,
+      "id": 2,
+      "object": 7,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/WidgetsButton.qml",
+    "sha256": "b3e1b3bdf287118d242c3190fb23e225653029a5d9a0c0a848b9e958771d63ea",
+    "bytes": 652,
+    "preservation": {
+      "nodes": 173,
+      "leaf_slices": 110,
+      "trivia_gap_bytes": 115,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "AppButton": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 6,
+      "handler-candidate": 1,
+      "id": 1,
+      "object": 2,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/tasks/TaskAppButton.qml",
+    "sha256": "ef564963340e72f4be46b7ec980e8bf84b1e83a8004db600c35de494d4ae9ef3",
+    "bytes": 11662,
+    "preservation": {
+      "nodes": 2767,
+      "leaf_slices": 1830,
+      "trivia_gap_bytes": 3727,
+      "comments": 25,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "AppButton": 1,
+      "required-property": 2,
+      "Connections": 1,
+      "Row": 1,
+      "anchors": 1,
+      "Repeater": 2,
+      "Rectangle": 2,
+      "Behavior": 3,
+      "NumberAnimation": 2,
+      "ColorAnimation": 1,
+      "BarToolTip": 1,
+      "BarMenu": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 44,
+      "connections": 1,
+      "function": 2,
+      "handler-candidate": 3,
+      "id": 3,
+      "lifecycle": 2,
+      "object": 9,
+      "opaque": 4,
+      "property": 12,
+      "signal": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          6455,
+          6608
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          7123,
+          7394
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          7411,
+          7642
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          8033,
+          8281
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/tasks/TaskPreview.qml",
+    "sha256": "557e00e39c4158a9d873d2c9e75245acc96b660a71e7655a82f8ccfcc98a0684",
+    "bytes": 3328,
+    "preservation": {
+      "nodes": 733,
+      "leaf_slices": 459,
+      "trivia_gap_bytes": 1100,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "BarPopup": 1,
+      "required-property": 2,
+      "Timer": 2,
+      "Item": 1,
+      "Loader": 1,
+      "Component": 1,
+      "RowLayout": 1,
+      "Repeater": 1,
+      "ScriptModel": 1,
+      "WindowPreview": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 18,
+      "component": 1,
+      "function": 3,
+      "handler-candidate": 3,
+      "id": 5,
+      "lifecycle": 2,
+      "object": 7,
+      "pragma": 1,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/bar/tasks/Tasks.qml",
+    "sha256": "9a85b343c9d31edb40620100f3a70b7da36ab786719c96d10c023a5c66029d34",
+    "bytes": 2445,
+    "preservation": {
+      "nodes": 515,
+      "leaf_slices": 331,
+      "trivia_gap_bytes": 882,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "MouseArea": 1,
+      "Behavior": 1,
+      "NumberAnimation": 1,
+      "RowLayout": 1,
+      "anchors": 1,
+      "Repeater": 2,
+      "ScriptModel": 2,
+      "TaskAppButton": 2,
+      "required-property": 2,
+      "WTaskbarSeparator": 1,
+      "TaskPreview": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 25,
+      "function": 1,
+      "handler-candidate": 4,
+      "id": 3,
+      "lifecycle": 2,
+      "object": 9,
+      "opaque": 2,
+      "property": 4,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          709,
+          955
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1013,
+          1094
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/tasks/WindowPreview.qml",
+    "sha256": "af8627bae7350ba56459955c77b77cb48ff4623c521bda803695ab3da91b9fe6",
+    "bytes": 6717,
+    "preservation": {
+      "nodes": 1398,
+      "leaf_slices": 893,
+      "trivia_gap_bytes": 2793,
+      "comments": 5,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Button": 1,
+      "required-property": 1,
+      "Rectangle": 2,
+      "Behavior": 2,
+      "ColorAnimation": 1,
+      "ColumnLayout": 1,
+      "RowLayout": 1,
+      "WAppIcon": 2,
+      "Item": 2,
+      "WText": 1,
+      "WindowCloseButton": 1,
+      "Loader": 1,
+      "Image": 1,
+      "NumberAnimation": 1,
+      "Connections": 1,
+      "OpacityMask": 1,
+      "inline-component": 1,
+      "CloseButton": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 62,
+      "connections": 1,
+      "handler-candidate": 5,
+      "id": 10,
+      "inline-component": 1,
+      "lifecycle": 1,
+      "object": 16,
+      "opaque": 2,
+      "property": 6
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1265,
+          1513
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          4191,
+          4590
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/tray/Tray.qml",
+    "sha256": "852c53c5fb6d82920fa0da0eae373ccd3b653a3eff822c027e6d2d3c19433502",
+    "bytes": 4356,
+    "preservation": {
+      "nodes": 870,
+      "leaf_slices": 562,
+      "trivia_gap_bytes": 1757,
+      "comments": 4,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "RowLayout": 1,
+      "BarIconButton": 1,
+      "Behavior": 1,
+      "NumberAnimation": 1,
+      "TrayOverflowMenu": 1,
+      "BarToolTip": 2,
+      "DropArea": 1,
+      "ScriptModel": 1,
+      "Repeater": 1,
+      "TrayButton": 1,
+      "required-property": 1,
+      "MouseArea": 1,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 31,
+      "handler-candidate": 7,
+      "id": 8,
+      "lifecycle": 1,
+      "object": 11,
+      "opaque": 1,
+      "pragma": 1,
+      "property": 7,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          809,
+          1062
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/tray/TrayButton.qml",
+    "sha256": "18eed0a35f144670a8a8bff926bd8a10c809742cd688e9ae5f41e23fe22f0b60",
+    "bytes": 3216,
+    "preservation": {
+      "nodes": 723,
+      "leaf_slices": 459,
+      "trivia_gap_bytes": 951,
+      "comments": 8,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "BarIconButton": 1,
+      "required-property": 1,
+      "property-alias": 1,
+      "Behavior": 1,
+      "NumberAnimation": 1,
+      "Connections": 1,
+      "IconImage": 2,
+      "Loader": 1,
+      "Item": 1,
+      "Desaturate": 1,
+      "ColorOverlay": 1,
+      "WaffleTrayMenu": 1,
+      "BarToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 33,
+      "connections": 1,
+      "handler-candidate": 3,
+      "id": 4,
+      "lifecycle": 1,
+      "object": 9,
+      "opaque": 1,
+      "pragma": 1,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          814,
+          1057
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/tray/TrayOverflowMenu.qml",
+    "sha256": "8e8594712359a8cb8fd2740901d70dfc090125b250fba2fcf554b655975e2804",
+    "bytes": 5118,
+    "preservation": {
+      "nodes": 913,
+      "leaf_slices": 591,
+      "trivia_gap_bytes": 2249,
+      "comments": 7,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "BarPopup": 1,
+      "Item": 1,
+      "GridLayout": 1,
+      "Repeater": 1,
+      "ScriptModel": 1,
+      "TrayButton": 1,
+      "required-property": 1,
+      "Behavior": 2,
+      "NumberAnimation": 2,
+      "MouseArea": 1,
+      "DropArea": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 35,
+      "handler-candidate": 7,
+      "id": 6,
+      "lifecycle": 1,
+      "object": 9,
+      "opaque": 2,
+      "pragma": 1,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          2723,
+          2989
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          3010,
+          3276
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/tray/WaffleTrayMenu.qml",
+    "sha256": "b5001912db5b0040e454c33ff835c350086a69a1816eb650f26b1f66e2153742",
+    "bytes": 4430,
+    "preservation": {
+      "nodes": 888,
+      "leaf_slices": 575,
+      "trivia_gap_bytes": 1831,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "BarPopup": 1,
+      "required-property": 3,
+      "Item": 1,
+      "StackView": 1,
+      "NoAnim": 4,
+      "SubMenu": 2,
+      "inline-component": 2,
+      "Transition": 1,
+      "NumberAnimation": 2,
+      "ColumnLayout": 1,
+      "Behavior": 1,
+      "QsMenuOpener": 1,
+      "Loader": 2,
+      "WButton": 1,
+      "Repeater": 1,
+      "Component": 3,
+      "Rectangle": 1,
+      "WaffleTrayMenuEntry": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 43,
+      "component": 3,
+      "handler-candidate": 7,
+      "id": 8,
+      "inline-component": 2,
+      "lifecycle": 3,
+      "object": 17,
+      "opaque": 1,
+      "property": 7
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1334,
+          1582
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/bar/tray/WaffleTrayMenuEntry.qml",
+    "sha256": "25748f7475862ca08f3ee3a50d79a7d864b3b302090d4289516e81bb574a78bb",
+    "bytes": 3376,
+    "preservation": {
+      "nodes": 764,
+      "leaf_slices": 494,
+      "trivia_gap_bytes": 1031,
+      "comments": 5,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "WButton": 1,
+      "required-property": 1,
+      "RowLayout": 1,
+      "Item": 2,
+      "MaterialSymbol": 2,
+      "IconImage": 1,
+      "WText": 1,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 46,
+      "handler-candidate": 1,
+      "id": 1,
+      "object": 9,
+      "pragma": 1,
+      "property": 5,
+      "signal": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/clipboard/WaffleClipboard.qml",
+    "sha256": "e089b5442b8269c982425541e415bae72549ee83d48fdf46b1cbd56751a375c1",
+    "bytes": 2409,
+    "preservation": {
+      "nodes": 459,
+      "leaf_slices": 295,
+      "trivia_gap_bytes": 880,
+      "comments": 4,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Scope": 1,
+      "Connections": 2,
+      "Loader": 1,
+      "PanelWindow": 1,
+      "anchors": 1,
+      "MouseArea": 1,
+      "WaffleClipboardContent": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 16,
+      "connections": 2,
+      "handler-candidate": 4,
+      "id": 4,
+      "lifecycle": 1,
+      "object": 4,
+      "opaque": 1,
+      "pragma": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          908,
+          1041
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/clipboard/WaffleClipboardContent.qml",
+    "sha256": "aa6661a85dd251526d645e4bec664bcd61ca4da0cb603755235dac20a68505e9",
+    "bytes": 18863,
+    "preservation": {
+      "nodes": 3505,
+      "leaf_slices": 2231,
+      "trivia_gap_bytes": 8178,
+      "comments": 31,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 3,
+      "Connections": 2,
+      "ListModel": 1,
+      "WPane": 1,
+      "ColumnLayout": 2,
+      "FooterRectangle": 3,
+      "RowLayout": 3,
+      "FluentIcon": 1,
+      "WText": 9,
+      "WPanelIconButton": 4,
+      "WToolTip": 4,
+      "Rectangle": 2,
+      "WAppIcon": 1,
+      "WTextInput": 1,
+      "BodyRectangle": 1,
+      "ListView": 1,
+      "WaffleClipboardItem": 1,
+      "required-property": 4,
+      "MascotImage": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 123,
+      "connections": 2,
+      "function": 11,
+      "handler-candidate": 20,
+      "id": 6,
+      "object": 39,
+      "pragma": 1,
+      "property": 9,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/clipboard/WaffleClipboardItem.qml",
+    "sha256": "7e55a5d488d4592f3cd53285de1b2e21d3bd47c7eb16e3304cbf5d5dd651e7b2",
+    "bytes": 5337,
+    "preservation": {
+      "nodes": 1240,
+      "leaf_slices": 802,
+      "trivia_gap_bytes": 1800,
+      "comments": 11,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "WBorderlessButton": 3,
+      "required-property": 1,
+      "RowLayout": 1,
+      "Rectangle": 1,
+      "FluentIcon": 3,
+      "ColumnLayout": 1,
+      "WText": 3,
+      "Loader": 1,
+      "CliphistImage": 1,
+      "WToolTip": 2,
+      "MouseArea": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 60,
+      "handler-candidate": 3,
+      "id": 4,
+      "lifecycle": 1,
+      "object": 16,
+      "pragma": 1,
+      "property": 11,
+      "signal": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/critical/ShellWaffleCriticalPanels.qml",
+    "sha256": "69d5d4184bc628a43d5cc1528b339a1188470456a04c3889fd198122b14685a7",
+    "bytes": 1003,
+    "preservation": {
+      "nodes": 231,
+      "leaf_slices": 148,
+      "trivia_gap_bytes": 221,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 1,
+      "inline-component": 1,
+      "LazyLoader": 1,
+      "required-property": 1,
+      "CriticalPanelLoader": 3,
+      "WaffleBar": 1,
+      "WaffleBackground": 1,
+      "WaffleBackdrop": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "id": 1,
+      "inline-component": 1,
+      "lifecycle": 1,
+      "object": 7,
+      "pragma": 1,
+      "property": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/lock/WaffleLockSurface.qml",
+    "sha256": "18d8c184dece32e88489dddcbe1da786f4077d665d0a54d0161a73a098e53e1a",
+    "bytes": 84262,
+    "preservation": {
+      "nodes": 14846,
+      "leaf_slices": 9495,
+      "trivia_gap_bytes": 41168,
+      "comments": 92,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "MouseArea": 5,
+      "required-property": 5,
+      "Rectangle": 19,
+      "Image": 3,
+      "FastBlur": 3,
+      "Scale": 3,
+      "AnimatedImage": 1,
+      "Video": 1,
+      "Behavior": 14,
+      "NumberAnimation": 14,
+      "Item": 7,
+      "Loader": 10,
+      "anchors": 6,
+      "Row": 8,
+      "MaterialSymbol": 5,
+      "DropShadow": 26,
+      "Text": 24,
+      "State": 6,
+      "AnchorChanges": 6,
+      "PropertyChanges": 5,
+      "ColumnLayout": 5,
+      "Timer": 4,
+      "CookieClock": 1,
+      "RowLayout": 8,
+      "Column": 4,
+      "FluentIcon": 9,
+      "WaffleLockMediaButton": 3,
+      "Repeater": 2,
+      "ColorAnimation": 5,
+      "IconImage": 2,
+      "Connections": 5,
+      "OpacityMask": 1,
+      "QtObject": 1,
+      "TextInput": 1,
+      "Translate": 1,
+      "SequentialAnimation": 1,
+      "WIndeterminateProgressBar": 1,
+      "WaffleLockButton": 4,
+      "LockKeyboard": 1,
+      "inline-component": 2,
+      "WToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 906,
+      "connections": 5,
+      "function": 4,
+      "handler-candidate": 37,
+      "id": 46,
+      "inline-component": 2,
+      "lifecycle": 12,
+      "object": 189,
+      "opaque": 20,
+      "pragma": 1,
+      "property": 56,
+      "signal": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          8148,
+          8397
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          8638,
+          8877
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          9110,
+          9359
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          9368,
+          9663
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          10120,
+          10263
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          20450,
+          20650
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          31859,
+          31954
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          35186,
+          35627
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          36764,
+          37020
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          39525,
+          39838
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          45579,
+          45866
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          51846,
+          52106
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          52351,
+          52600
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          52609,
+          52904
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          58471,
+          58709
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          58726,
+          58995
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          59455,
+          59725
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          63890,
+          64137
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          81867,
+          82082
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          83543,
+          83758
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/lock/WaffleLockSurfaceSafe.qml",
+    "sha256": "d2f5dcb41d7fa43995c4654dea49287973773117ec60bae15c1a71bc48380c8c",
+    "bytes": 67401,
+    "preservation": {
+      "nodes": 12773,
+      "leaf_slices": 8163,
+      "trivia_gap_bytes": 31839,
+      "comments": 34,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "MouseArea": 5,
+      "required-property": 5,
+      "Rectangle": 18,
+      "Image": 3,
+      "AnimatedImage": 1,
+      "Video": 1,
+      "MultiEffect": 2,
+      "Behavior": 15,
+      "NumberAnimation": 14,
+      "Item": 7,
+      "RowLayout": 8,
+      "Loader": 9,
+      "Row": 7,
+      "MaterialSymbol": 5,
+      "Column": 4,
+      "Text": 23,
+      "FluentIcon": 8,
+      "ColumnLayout": 5,
+      "WaffleLockMediaButton": 3,
+      "anchors": 6,
+      "State": 6,
+      "AnchorChanges": 6,
+      "PropertyChanges": 5,
+      "Timer": 4,
+      "CookieClock": 1,
+      "Repeater": 2,
+      "ColorAnimation": 6,
+      "IconImage": 2,
+      "Connections": 5,
+      "QtObject": 1,
+      "ShaderEffectSource": 1,
+      "TextInput": 1,
+      "Translate": 1,
+      "SequentialAnimation": 1,
+      "WIndeterminateProgressBar": 1,
+      "WaffleLockButton": 4,
+      "LockKeyboard": 1,
+      "inline-component": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 696,
+      "connections": 5,
+      "function": 4,
+      "handler-candidate": 36,
+      "id": 45,
+      "inline-component": 2,
+      "lifecycle": 11,
+      "object": 155,
+      "opaque": 21,
+      "pragma": 1,
+      "property": 55,
+      "signal": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          5578,
+          5826
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          5991,
+          6240
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          6481,
+          6720
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          6945,
+          7194
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          7203,
+          7498
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          14777,
+          14920
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          22351,
+          22551
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          23900,
+          23995
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          27227,
+          27668
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          28398,
+          28654
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          31177,
+          31490
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          37021,
+          37308
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          42540,
+          42800
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          43037,
+          43286
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          43295,
+          43590
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          48164,
+          48366
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          48383,
+          48616
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          51832,
+          52027
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          65167,
+          65362
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          65371,
+          65573
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          66762,
+          66957
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/AcrylicButton.qml",
+    "sha256": "e88e9e03e4c8527eead432313eadc025b0d538391147ec0b89a3b5badcf83177",
+    "bytes": 2119,
+    "preservation": {
+      "nodes": 550,
+      "leaf_slices": 366,
+      "trivia_gap_bytes": 565,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "WButton": 1,
+      "property-alias": 2,
+      "AcrylicRectangle": 1,
+      "Behavior": 3,
+      "ColorAnimation": 1,
+      "NumberAnimation": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 21,
+      "id": 2,
+      "object": 5,
+      "opaque": 3,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1448,
+          1670
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1679,
+          1889
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1898,
+          2110
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/AcrylicRectangle.qml",
+    "sha256": "04734675c3c5012f2ccf7a07c7470494737520a280acb4372870fa839ce282da",
+    "bytes": 2535,
+    "preservation": {
+      "nodes": 692,
+      "leaf_slices": 469,
+      "trivia_gap_bytes": 735,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Rectangle": 1,
+      "Behavior": 2,
+      "ColorAnimation": 2,
+      "Loader": 1,
+      "Canvas": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 14,
+      "handler-candidate": 2,
+      "id": 2,
+      "lifecycle": 1,
+      "object": 4,
+      "opaque": 2,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          475,
+          682
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          687,
+          908
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/BodyRectangle.qml",
+    "sha256": "57cdaa5a469742e1475622d2af527466af9e1a71facbb52c1062670d030de496",
+    "bytes": 282,
+    "preservation": {
+      "nodes": 87,
+      "leaf_slices": 56,
+      "trivia_gap_bytes": 38,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Rectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 3,
+      "object": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/CloseButton.qml",
+    "sha256": "f5906e2efdb13c0dfa237da83d79809c25c031e34feb89189b79b8bb2c58ab91",
+    "bytes": 1472,
+    "preservation": {
+      "nodes": 398,
+      "leaf_slices": 259,
+      "trivia_gap_bytes": 354,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Button": 1,
+      "property-alias": 1,
+      "Rectangle": 2,
+      "Behavior": 2,
+      "NumberAnimation": 1,
+      "ColorAnimation": 1,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 27,
+      "id": 2,
+      "object": 6,
+      "opaque": 2,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          855,
+          1103
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1112,
+          1327
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/FluentIcon.qml",
+    "sha256": "047146800bed0ecac4cb371293a31897177a9bc29b71b3f5eccabf8bd03b38a7",
+    "bytes": 874,
+    "preservation": {
+      "nodes": 198,
+      "leaf_slices": 132,
+      "trivia_gap_bytes": 137,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Icon": 1,
+      "required-property": 1,
+      "property-alias": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "id": 1,
+      "object": 1,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/FooterMoreButton.qml",
+    "sha256": "e3b32e4a91a0ee90471d32ab55878c437af2a7551312bb156cae4e93c698c754",
+    "bytes": 526,
+    "preservation": {
+      "nodes": 135,
+      "leaf_slices": 86,
+      "trivia_gap_bytes": 160,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "WButton": 1,
+      "Item": 1,
+      "WText": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 9,
+      "id": 3,
+      "object": 3,
+      "pragma": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/FooterRectangle.qml",
+    "sha256": "b5f69374af66f66213016972a36fb6205a61fbb907fef7e26019c1e63831e23a",
+    "bytes": 319,
+    "preservation": {
+      "nodes": 94,
+      "leaf_slices": 60,
+      "trivia_gap_bytes": 51,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Rectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 5,
+      "object": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/Looks.qml",
+    "sha256": "ec81871fddad26553871772f41415a637504081ba0592fef40cadf75c42775cd",
+    "bytes": 32434,
+    "preservation": {
+      "nodes": 6933,
+      "leaf_slices": 4792,
+      "trivia_gap_bytes": 8959,
+      "comments": 56,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Singleton": 1,
+      "QtObject": 14,
+      "Component": 21,
+      "ColorAnimation": 1,
+      "NumberAnimation": 21,
+      "AnchorAnimation": 1,
+      "ParallelAnimation": 2,
+      "SequentialAnimation": 1,
+      "PauseAnimation": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 80,
+      "component": 21,
+      "function": 12,
+      "id": 7,
+      "object": 42,
+      "pragma": 2,
+      "property": 208
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WAmbientShadow.qml",
+    "sha256": "15017e447d4922aa834f36ffedf49434ff512a5ab36a23f9f2795322b531bc0a",
+    "bytes": 475,
+    "preservation": {
+      "nodes": 142,
+      "leaf_slices": 91,
+      "trivia_gap_bytes": 101,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Rectangle": 1,
+      "required-property": 1,
+      "anchors": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 7,
+      "id": 1,
+      "object": 1,
+      "opaque": 1,
+      "pragma": 1,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          273,
+          340
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WAppIcon.qml",
+    "sha256": "6388ee4c2eb51ea0769f9e30eff7733c484d2492289723cfdae706a9d069962f",
+    "bytes": 1853,
+    "preservation": {
+      "nodes": 387,
+      "leaf_slices": 250,
+      "trivia_gap_bytes": 480,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 2,
+      "required-property": 1,
+      "Icon": 1,
+      "Loader": 1,
+      "Desaturate": 1,
+      "ColorOverlay": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 17,
+      "id": 3,
+      "lifecycle": 1,
+      "object": 5,
+      "property": 7
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WBarAttachedPanelContent.qml",
+    "sha256": "acab24445a1c3b360311a50bd341d76c876543f4f1fe1b315f74b15545cfda6a",
+    "bytes": 7769,
+    "preservation": {
+      "nodes": 1680,
+      "leaf_slices": 1090,
+      "trivia_gap_bytes": 2574,
+      "comments": 9,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 2,
+      "required-property": 1,
+      "anchors": 1,
+      "ParallelAnimation": 2,
+      "NumberAnimation": 8,
+      "SequentialAnimation": 1,
+      "ScriptAction": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 66,
+      "function": 2,
+      "handler-candidate": 3,
+      "id": 4,
+      "object": 14,
+      "opaque": 1,
+      "pragma": 1,
+      "property": 20,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          2684,
+          3497
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WBorderedButton.qml",
+    "sha256": "f196993eb47a0fb4bc78194e6eff5d235dc577fb92306e09072d1dcd9a602f59",
+    "bytes": 614,
+    "preservation": {
+      "nodes": 169,
+      "leaf_slices": 113,
+      "trivia_gap_bytes": 85,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "WButton": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 5,
+      "id": 1,
+      "object": 1,
+      "property": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WBorderlessButton.qml",
+    "sha256": "0012c42103ae81720b92143fea7cdab9068bf0f2bf4480f72d52fbca212a3513",
+    "bytes": 1668,
+    "preservation": {
+      "nodes": 420,
+      "leaf_slices": 278,
+      "trivia_gap_bytes": 480,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Button": 1,
+      "property-alias": 1,
+      "Rectangle": 1,
+      "Behavior": 2,
+      "ColorAnimation": 1,
+      "NumberAnimation": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 12,
+      "id": 2,
+      "object": 4,
+      "opaque": 2,
+      "property": 6
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1239,
+          1445
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1454,
+          1659
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WButton.qml",
+    "sha256": "b849f60e8853d13f08a94c1a07873d70cb214db8e9e3c6ca247c95d4e0757b9d",
+    "bytes": 7320,
+    "preservation": {
+      "nodes": 1620,
+      "leaf_slices": 1068,
+      "trivia_gap_bytes": 2255,
+      "comments": 5,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Button": 1,
+      "property-alias": 10,
+      "font": 1,
+      "Timer": 1,
+      "Rectangle": 1,
+      "Loader": 1,
+      "CookieFace": 1,
+      "Behavior": 3,
+      "ColorAnimation": 1,
+      "NumberAnimation": 2,
+      "MouseArea": 1,
+      "Item": 2,
+      "anchors": 2,
+      "RowLayout": 1,
+      "FluentIcon": 1,
+      "WText": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 66,
+      "handler-candidate": 4,
+      "id": 6,
+      "lifecycle": 1,
+      "object": 13,
+      "opaque": 6,
+      "property": 29,
+      "signal": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1915,
+          2052
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          4791,
+          5085
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          5094,
+          5304
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          5313,
+          5525
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          5970,
+          6046
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          6213,
+          6368
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WChoiceButton.qml",
+    "sha256": "f5ba3f85f4086227de1aad8c9e65e221a313e5e1ef564b973a2b39d9457a9020",
+    "bytes": 2512,
+    "preservation": {
+      "nodes": 601,
+      "leaf_slices": 395,
+      "trivia_gap_bytes": 852,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "WButton": 1,
+      "Rectangle": 2,
+      "Behavior": 3,
+      "ColorAnimation": 1,
+      "NumberAnimation": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 28,
+      "id": 3,
+      "object": 6,
+      "opaque": 3,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1127,
+          1342
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1827,
+          2107
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2120,
+          2493
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WFadeLoader.qml",
+    "sha256": "cd946b5bd8c71f3e042a56d9cf3f9c817e8d358c6c94f4d9fbc224a7f21c9d82",
+    "bytes": 678,
+    "preservation": {
+      "nodes": 156,
+      "leaf_slices": 104,
+      "trivia_gap_bytes": 112,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Loader": 1,
+      "property-alias": 2,
+      "Behavior": 1,
+      "NumberAnimation": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 7,
+      "id": 2,
+      "lifecycle": 1,
+      "object": 1,
+      "opaque": 1,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          407,
+          675
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WIcons.qml",
+    "sha256": "318c47208e8e1b9b4bb8c47fb1e28a0c678f6238b065c7cd4b78ddb295573dd7",
+    "bytes": 10934,
+    "preservation": {
+      "nodes": 3296,
+      "leaf_slices": 2271,
+      "trivia_gap_bytes": 2870,
+      "comments": 13,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Singleton": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "function": 8,
+      "id": 1,
+      "object": 1,
+      "pragma": 1,
+      "property": 10
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WIndeterminateProgressBar.qml",
+    "sha256": "e008a1637f355f73eda55988c7795e9f884e604b41b1bd5cfc18969921bf574c",
+    "bytes": 470,
+    "preservation": {
+      "nodes": 120,
+      "leaf_slices": 76,
+      "trivia_gap_bytes": 116,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "StyledIndeterminateProgressBar": 1,
+      "OpacityMask": 1,
+      "Rectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "id": 1,
+      "object": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WListView.qml",
+    "sha256": "8b4d3f1b209302529ad9db9f095205d00b93e07b3d86989ee04b3c36b13b694f",
+    "bytes": 894,
+    "preservation": {
+      "nodes": 272,
+      "leaf_slices": 179,
+      "trivia_gap_bytes": 171,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ListView": 1,
+      "WScrollBar": 1,
+      "Transition": 3,
+      "NumberAnimation": 3
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 18,
+      "id": 1,
+      "object": 8
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WMenu.qml",
+    "sha256": "86cdde3fbea5d3f354f404da99572c4238de7e530afa4d5d931d9acdf7e81844",
+    "bytes": 4447,
+    "preservation": {
+      "nodes": 1050,
+      "leaf_slices": 679,
+      "trivia_gap_bytes": 1515,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Menu": 1,
+      "property-alias": 1,
+      "Transition": 2,
+      "ParallelAnimation": 2,
+      "NumberAnimation": 4,
+      "Item": 2,
+      "WPane": 1,
+      "anchors": 2,
+      "Rectangle": 1,
+      "ListView": 1,
+      "WMenuItem": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 60,
+      "function": 1,
+      "handler-candidate": 1,
+      "id": 5,
+      "object": 15,
+      "opaque": 2,
+      "pragma": 1,
+      "property": 5
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          2758,
+          3198
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          3647,
+          4087
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WMenuItem.qml",
+    "sha256": "8b0a02abb9c5b1dbfc22e42129d0aa89a977f0f00caec2d5451b3ef9a7a0a023",
+    "bytes": 3587,
+    "preservation": {
+      "nodes": 883,
+      "leaf_slices": 581,
+      "trivia_gap_bytes": 994,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "MenuItem": 1,
+      "Rectangle": 1,
+      "Behavior": 1,
+      "ColorAnimation": 1,
+      "RowLayout": 1,
+      "FluentIcon": 1,
+      "Item": 1,
+      "WText": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 36,
+      "id": 5,
+      "object": 7,
+      "opaque": 1,
+      "pragma": 1,
+      "property": 12
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          2191,
+          2406
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WPageLoader.qml",
+    "sha256": "a50f5d938a8b25e8f29703936e9bed73ed28b45646ba70fec88951c41326b583",
+    "bytes": 1903,
+    "preservation": {
+      "nodes": 344,
+      "leaf_slices": 233,
+      "trivia_gap_bytes": 457,
+      "comments": 8,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Loader": 1,
+      "Behavior": 2,
+      "NumberAnimation": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 11,
+      "handler-candidate": 2,
+      "id": 1,
+      "lifecycle": 1,
+      "object": 2,
+      "opaque": 2,
+      "property": 7
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1378,
+          1635
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1645,
+          1900
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WPane.qml",
+    "sha256": "daff3d7f28a1a689b2897f2492d0815f2399698780124070cee4eccebfc733ad",
+    "bytes": 3233,
+    "preservation": {
+      "nodes": 670,
+      "leaf_slices": 438,
+      "trivia_gap_bytes": 776,
+      "comments": 5,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 1,
+      "property-alias": 3,
+      "WRectangularShadow": 1,
+      "Rectangle": 3,
+      "OpacityMask": 1,
+      "GlassBackground": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 34,
+      "id": 5,
+      "object": 7,
+      "pragma": 1,
+      "property": 10
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WPanelIconButton.qml",
+    "sha256": "dc334f2d397ad17f24beaa5f09eaef4137a6cda01388a6c173f9494e3cec85f6",
+    "bytes": 637,
+    "preservation": {
+      "nodes": 179,
+      "leaf_slices": 116,
+      "trivia_gap_bytes": 120,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "WButton": 1,
+      "property-alias": 2,
+      "FluentIcon": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 6,
+      "id": 2,
+      "object": 2,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WPanelPageColumn.qml",
+    "sha256": "fac4811f6e6155885c335110d3e3b86c450b52222f5ea12e22bbdf135ee97b0b",
+    "bytes": 71,
+    "preservation": {
+      "nodes": 20,
+      "leaf_slices": 12,
+      "trivia_gap_bytes": 14,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ColumnLayout": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 1,
+      "object": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WPanelSeparator.qml",
+    "sha256": "43d56ac8fa24d34fcf95c93d4afaa1bb6de26968fb6e9860972b8387c1cf13b5",
+    "bytes": 203,
+    "preservation": {
+      "nodes": 59,
+      "leaf_slices": 37,
+      "trivia_gap_bytes": 34,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Rectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 4,
+      "object": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WPopupToolTip.qml",
+    "sha256": "8b21dca39374d2759015c6a3ebe5d06d936a51abf7cf4331167d1f3ab432c34e",
+    "bytes": 706,
+    "preservation": {
+      "nodes": 164,
+      "leaf_slices": 105,
+      "trivia_gap_bytes": 147,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "PopupToolTip": 1,
+      "WText": 1,
+      "WToolTipContent": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 10,
+      "id": 2,
+      "object": 3,
+      "property": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WProgressBar.qml",
+    "sha256": "954bcc5dc5a91ee11322d071137fb3724de71a3a23fa00b3b96e5b049bbcfd3d",
+    "bytes": 1177,
+    "preservation": {
+      "nodes": 260,
+      "leaf_slices": 165,
+      "trivia_gap_bytes": 430,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "ProgressBar": 1,
+      "Behavior": 1,
+      "SmoothedAnimation": 1,
+      "Item": 1,
+      "Rectangle": 2,
+      "anchors": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 16,
+      "id": 4,
+      "object": 5,
+      "opaque": 3,
+      "pragma": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          242,
+          353
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          511,
+          658
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          867,
+          978
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WRectangularShadow.qml",
+    "sha256": "40cec06b806327f0c2261b17c9076deec05cc68127e243d385db470cf24d15cd",
+    "bytes": 215,
+    "preservation": {
+      "nodes": 72,
+      "leaf_slices": 46,
+      "trivia_gap_bytes": 37,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "StyledRectangularShadow": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 4,
+      "object": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WScrollBar.qml",
+    "sha256": "bc567a4a163e19e74c30a20b8aff10459b8a71196d9f46107c31e248d97e36fd",
+    "bytes": 833,
+    "preservation": {
+      "nodes": 246,
+      "leaf_slices": 162,
+      "trivia_gap_bytes": 180,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ScrollBar": 1,
+      "Rectangle": 1,
+      "Behavior": 1,
+      "NumberAnimation": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 12,
+      "id": 1,
+      "object": 3,
+      "opaque": 1,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          576,
+          824
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WSlider.qml",
+    "sha256": "13c370eae7504c9484408e9ecca2657a9a6a0a854e6539748c041fecad1480bd",
+    "bytes": 4302,
+    "preservation": {
+      "nodes": 1015,
+      "leaf_slices": 658,
+      "trivia_gap_bytes": 1514,
+      "comments": 2,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Slider": 1,
+      "Timer": 1,
+      "MouseArea": 2,
+      "Rectangle": 2,
+      "anchors": 2,
+      "Behavior": 4,
+      "NumberAnimation": 3,
+      "ColorAnimation": 1,
+      "Circle": 2,
+      "WToolTip": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 51,
+      "handler-candidate": 2,
+      "id": 8,
+      "object": 13,
+      "opaque": 6,
+      "pragma": 1,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          1492,
+          1603
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          1904,
+          2138
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2151,
+          2374
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2446,
+          2559
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          2871,
+          3105
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          3724,
+          3982
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WStackView.qml",
+    "sha256": "a43827a60c7976ca258c452e87ceac7da72c9b6e0847e68ccb613660274dabcd",
+    "bytes": 518,
+    "preservation": {
+      "nodes": 115,
+      "leaf_slices": 71,
+      "trivia_gap_bytes": 138,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "StackView": 1,
+      "Transition": 4,
+      "NumberAnimation": 4
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 10,
+      "id": 1,
+      "object": 9
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WSwitch.qml",
+    "sha256": "c9a596011f829f6b6b4a871912faa4e710253ee4cbb5b9f6433017a845c5156a",
+    "bytes": 3138,
+    "preservation": {
+      "nodes": 764,
+      "leaf_slices": 509,
+      "trivia_gap_bytes": 900,
+      "comments": 1,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Switch": 1,
+      "Rectangle": 2,
+      "Behavior": 6,
+      "ColorAnimation": 3,
+      "NumberAnimation": 3
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 32,
+      "id": 1,
+      "object": 9,
+      "opaque": 6,
+      "property": 7
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          872,
+          1078
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          1087,
+          1300
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2157,
+          2460
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2469,
+          2682
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2691,
+          2905
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          2914,
+          3129
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WTaskbarSeparator.qml",
+    "sha256": "878ef60e9e57cb55c05449c189e17e8d349a4c8a3729e1fa28b0bdc129d9e498",
+    "bytes": 484,
+    "preservation": {
+      "nodes": 144,
+      "leaf_slices": 93,
+      "trivia_gap_bytes": 133,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 1,
+      "Rectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "id": 1,
+      "object": 2,
+      "property": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WText.qml",
+    "sha256": "44c4d800cd807f9a4801e5a93f9870d180a7e928da9f0060ec1bb83fd8ad2b98",
+    "bytes": 430,
+    "preservation": {
+      "nodes": 130,
+      "leaf_slices": 81,
+      "trivia_gap_bytes": 102,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Text": 1,
+      "font": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 9,
+      "id": 1,
+      "object": 1,
+      "opaque": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          147,
+          393
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WTextField.qml",
+    "sha256": "953a0404436724d509713dc67de58cf5f711523d5b8a15ca07702dff4842639f",
+    "bytes": 748,
+    "preservation": {
+      "nodes": 197,
+      "leaf_slices": 124,
+      "trivia_gap_bytes": 197,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "TextField": 1,
+      "palette": 1,
+      "font": 1,
+      "MouseArea": 1,
+      "TextInputContextMenu": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 14,
+      "id": 1,
+      "object": 3,
+      "opaque": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          290,
+          341
+        ],
+        "name": "palette",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          347,
+          538
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WTextInput.qml",
+    "sha256": "79b987a324c4addcd15aca0bfad5f79bc6186aa5a353f5d4f73789272cf8fa87",
+    "bytes": 409,
+    "preservation": {
+      "nodes": 113,
+      "leaf_slices": 71,
+      "trivia_gap_bytes": 91,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "TextInput": 1,
+      "font": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "id": 1,
+      "object": 1,
+      "opaque": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          175,
+          362
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WTextWithFixedWidth.qml",
+    "sha256": "2e568f22e091c1a54da25fc8fd1b8453e1d58148bc765ca39da6f7c2d5f8f48f",
+    "bytes": 784,
+    "preservation": {
+      "nodes": 184,
+      "leaf_slices": 119,
+      "trivia_gap_bytes": 208,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 1,
+      "property-alias": 5,
+      "TextMetrics": 1,
+      "font": 1,
+      "WText": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "id": 3,
+      "object": 3,
+      "opaque": 1,
+      "property": 6
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          502,
+          655
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WToolTip.qml",
+    "sha256": "fa8fe9f58bec7f6c5b2d15e228f1bbc380dea75b87ef9d892a8792c9ad30d304",
+    "bytes": 816,
+    "preservation": {
+      "nodes": 211,
+      "leaf_slices": 134,
+      "trivia_gap_bytes": 191,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "StyledToolTip": 1,
+      "required-property": 1,
+      "font": 1,
+      "WText": 1,
+      "WToolTipContent": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 14,
+      "id": 2,
+      "object": 3,
+      "opaque": 1,
+      "property": 1
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          282,
+          420
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "modules/waffle/looks/WToolTipContent.qml",
+    "sha256": "f59cf64bb1cdc615580672b9d68d7135cddf832544f28730e9712e5ff7bea5b9",
+    "bytes": 999,
+    "preservation": {
+      "nodes": 263,
+      "leaf_slices": 171,
+      "trivia_gap_bytes": 229,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Item": 1,
+      "required-property": 1,
+      "property-alias": 1,
+      "WAmbientShadow": 1,
+      "Rectangle": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 13,
+      "id": 2,
+      "object": 3,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/looks/WUserAvatar.qml",
+    "sha256": "17e7110f10e146336c939e71c8c353da30b4f6abef1bd912a4c8a2d227dde03b",
+    "bytes": 2386,
+    "preservation": {
+      "nodes": 546,
+      "leaf_slices": 351,
+      "trivia_gap_bytes": 652,
+      "comments": 3,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Item": 1,
+      "Rectangle": 2,
+      "Image": 1,
+      "QtObject": 1,
+      "OpacityMask": 1,
+      "MaterialSymbol": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 31,
+      "handler-candidate": 2,
+      "id": 4,
+      "object": 7,
+      "pragma": 1,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "modules/waffle/notificationCenter/CalendarWidget.qml",
+    "sha256": "b8a9e6ede9e673cc77582e4745e1ae17235acdfbb7cfd247533e9f470f93494d",
+    "bytes": 20888,
+    "preservation": {
+      "nodes": 4607,
+      "leaf_slices": 2969,
+      "trivia_gap_bytes": 8421,
+      "comments": 26,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "BodyRectangle": 1,
+      "Connections": 2,
+      "Item": 7,
+      "ColumnLayout": 5,
+      "CalendarHeader": 1,
+      "DayOfWeekRow": 1,
+      "required-property": 10,
+      "WText": 9,
+      "CalendarView": 1,
+      "DayButton": 1,
+      "Behavior": 5,
+      "NumberAnimation": 4,
+      "Rectangle": 5,
+      "RowLayout": 3,
+      "WBorderlessButton": 3,
+      "FluentIcon": 2,
+      "Repeater": 3,
+      "WaffleEventRow": 2,
+      "inline-component": 4,
+      "ColorAnimation": 1,
+      "MouseArea": 1,
+      "WButton": 1,
+      "Row": 1,
+      "ScrollMonthButton": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 196,
+      "connections": 2,
+      "function": 4,
+      "handler-candidate": 7,
+      "id": 11,
+      "inline-component": 4,
+      "lifecycle": 3,
+      "object": 51,
+      "opaque": 5,
+      "pragma": 1,
+      "property": 25
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          7304,
+          7627
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          7644,
+          7965
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          11362,
+          11615
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          11632,
+          11883
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          13664,
+          13812
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  }
+]

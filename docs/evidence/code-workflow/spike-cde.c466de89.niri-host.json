@@ -1,0 +1,17 @@
+{
+  "driver_sha256": "d7b0e17a2c7c44d6d5d90812a4a281d0bac8e876ff95f5a8439055bf43b93c09",
+  "sway_binary_sha256": "7ba78b7531a3b3cb1852b3b1e464b4458cce1749c6c0fe3c6fb4b16ece9d5b9c",
+  "inner_report": "probe/report.json",
+  "input_isolation": "Niri winit backend in an owned headless Sway; no desktop pointer ingress",
+  "failure": null,
+  "command": [
+    "/usr/bin/python3",
+    "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-runtime.py",
+    "--work-dir",
+    "/tmp/hadalis-phase0-isolated-c466de89/probe",
+    "--spikes",
+    "CDE",
+    "--pointer",
+    "/tmp/hadalis-wayland-tools/pointer"
+  ]
+}

@@ -1,118 +1,134 @@
-# Code Workflow Phase 0 — desktop to online continuation
+# Code Workflow Phase 0 — completed investigation and online handoff
 
-Updated 2026-09-20. Read AGENTS.md and refetch current `dev` before audit/writes.
-Work directly on `dev`, preserve concurrent work, commit atomic milestones,
-never mutate `stable`. This note is explicitly requested by the maintainer.
+Updated 2026-09-20. The maintainer explicitly requested **Phase 0 A–E and its
+complete evidence**, not the production editor. Refetch current `dev` before
+audit and every write, read AGENTS.md, work directly on `dev`, preserve concurrent
+work, commit atomic milestones, never mutate `stable`. This handoff is requested.
 
-## Current result
+## Decision
 
-**C, D and E pass within the isolated live prototype scope.**
-The complete matrix passes 40 checks on nested Niri and 44 on two-output headless
-Sway, with actual Quickshell 0.3.1 and Hadalis Bar/Media/Clock/Settings components.
+**The scoped A–E experiments are complete. Geometry is viable for a read-only
+Phase 1 prototype; Curve remains HOLD for sustained memory acceptance.** This is
+not a whole-repository PASS, production renderer promotion, 60 FPS claim, or
+permission to skip semantic/source-transaction gates. No production editor UI
+or source-writing transform was implemented.
 
-- C: semantic/output-qualified IDs, allowlisted snapshots, resident/unloaded
-  transitions, explicit stale events and no dormant LazyLoader activation.
-- D: actual Overlay picker, compositor input, click isolation, Settings
-  teardown/restore, viewport, auto-hide presentation hold, right-click cancel,
-  top/bottom geometry, shell-lock signal and closed-Bar behavior. Two real
-  wl_outputs at scale 1/1.25 cover removal/reconnection and selected-output state.
-- E: three source-triggered ordinary Quickshell reloads per backend; selection
-  and viewport survive new QQmlEngine/QObject generations. Actual old Media
-  destruction is observed. Unloaded selection remains static through reload.
+| Spike | Final result | Evidence |
+| --- | --- | --- |
+| A — parser corpus | 1,010/1,010 QML files pass syntax, byte preservation, incremental equivalence and prefix-anchor checks; 16 native regression tests pass. Four collision-bearing files stay read-only. | [Full corpus index](evidence/code-workflow/spike-a.c466de89.json) |
+| B — renderer/input | 20 checks per Shape renderer on Niri and native-scale Sway; software fallback also 20. Paired 20/60/100/250-node measurements, QML profiling and two 600-second/40-rebuild soaks complete. Geometry viable; Curve memory HOLD. | [Conclusion and metrics](evidence/code-workflow/spike-b.conclusion.json), [all matrix runs](evidence/code-workflow/spike-b.sway-matrix.2ac7583b.json) |
+| C — registry | 10 checks per compositor: semantic/output IDs, allowlisted snapshots, unloaded state, no dormant LazyLoader activation, destruction/rebind. | [Niri](evidence/code-workflow/spike-cde.c466de89.niri.json), [Sway](evidence/code-workflow/spike-cde.c466de89.sway.json) |
+| D — picker | 21 Niri / 25 Sway checks: real compositor input, consumed selection click, Settings teardown/restore, hold/cancel/lock signal and two-output scale 1/1.25 lifecycle. | Same CDE reports |
+| E — reload | 9 checks per compositor, including three ordinary source-triggered reloads, old-object destruction, new generation, selection/viewport and unloaded-selection persistence. | Same CDE reports |
 
-[Niri evidence](evidence/code-workflow/spike-cde.niri.json) and
-[Sway evidence](evidence/code-workflow/spike-cde.sway.json) pin source revision,
-QML/driver/binary hashes, assertions, snapshots and protocol lifetimes. The first
-C milestone is `dddae31695f1a6d73e4a8025821da68839148c48`. Its generated-import
-regression was independently fixed in `b8ab566d5138d5dbcc18217b956f45f560a45817`;
-that fix and its guard tests are retained.
-The D/E implementation checkpoint is
-`2171f6d69fe05e4106f79f8a95495c81c39b21f7`.
-The strengthened state/lifetime checkpoint and final tested implementation is
-`997caa0f8453bcbc9b4b6fe37f21676185d03845`. Both current runtime JSON reports
-were run from that exact committed revision: C 10 + D 21 + E 9 checks on Niri,
-and C 10 + D 25 + E 9 on Sway. The protocol assertions cover 5 and 14 transient
-picker surface lifetimes respectively.
+A and final CDE/canonical validation target committed source
+`c466de89581ebf5edf55be47aac3f10709e050a5`. B's controlled matrix targets
+`2ac7583bc8c37ce8190992d080ef03bec4ed1df2`; no code-workflow implementation files
+changed between these revisions. Every report pins its source and driver hashes.
+The outer headless-Niri wrapper was then added and executed successfully; its
+[provenance](evidence/code-workflow/spike-cde.c466de89.niri-host.json) hashes the
+published wrapper. That wrapper is the only new executable in this final evidence
+milestone. No later production changes are implicitly covered by these results.
 
-The final evidence-only publication preserves concurrent `dev` work through
-`6248def18705e28a3049b0f36991365637566fcc` (Weather/VerticalBar).
-Validation below applies to `997caa0f`, not later concurrent changes.
+## B findings and unresolved limits
 
-A already passed the parser corpus at `2289105d686f38a7a682cef0b781f3bc0ee781c6`:
-1,006 QML files, no-op byte preservation, incremental CST equality and prefix
-anchor stability; 16 native tests. It is a CST/range candidate, not resolved IR.
-B has 18 passing input checks and Geometry/Curve 20–250 node measurements, but
-profiling, long memory soak, hardware touchpad and platform acceptance remain open.
+Incident-only routing replaces global edge invalidation. A 250-node move updates
+only its connected paths; pan/zoom does not reroute. Separate QML profiler runs
+show mean inclusive setNodePosition time 6.713 to 1.299 ms and endpoint calls
+399,475 to 3,160. These are instrumented function observations, not GPU time.
+Raw 123/42 MiB traces stay temporary; committed summaries retain their SHA-256,
+counts and reproduction instructions in the probe README.
 
-**Do not start production editor UI or source-writing transforms yet.** C–E
-do not close B's remaining gate or make the whole repository green.
+The paired 100-node p95 frame cadence **regresses**: Geometry 18.121 to 23.965 ms,
+Curve 21.042 to 23.906 ms. At 250 nodes it improves to 37.885/49.291 ms from
+43.085/53.077 ms. This single paired matrix cannot establish a universal winner
+or a production node budget. All failed qualification attempts are retained.
 
-## Critical implementation lessons
+Both soaks rebuild 40 times. Geometry ends with 4,213 objects, with second-half
+RSS changing by +1,044 KiB. Curve also ends with 4,213 objects, but its second-half
+RSS grows +87,824 KiB and whole-run RSS grows +200,744 KiB. Transient 5,643-object
+samples coincide with rebuild before deferred deletion; they are not proof of
+permanent QObject leakage. Sustained Curve RSS growth is unresolved and blocks
+its promotion. It requires allocation profiling, not a relabelled PASS.
 
-1. Keep runtimeRef ephemeral. PersistentProperties should contain primitive
-   semantic IDs and JSON strings, not QObject/QJSValue objects from the old engine.
-2. Wait for persistence loaded before applying state to the recreated runtime.
-3. Geometry is QML-owned and output-local. The probe explicitly models horizontal
-   Bar anchors; do not generalize mapToGlobal into cross-layer-shell authority.
-4. Picker input surfaces exist only during picking. Wait for Settings teardown,
-   consume the entire click, destroy surfaces, then restore Settings and selection.
-5. None keyboard interactivity plus right-click cancel is the proven path.
-   Do not change this to Exclusive. Trace evidence checks each surface lifetime,
-   because Wayland object IDs can later be reused by Settings or popup surfaces.
-6. Fixture config changes use Config.setNestedValue so the JSON mirror agrees.
-   Virtual pointer device lifetime must span the hover experiment on headless seats.
-7. Never treat a QObject address as a lifetime ID: allocators reuse addresses.
-   The qualified probe uses an object-owned birth marker plus destruction signal.
-   Restore tests use non-default Settings page 2 and custom viewport values.
+The controlled B matrix uses Sway 1.12, Qt 6.11.2, actual OpenGL API, native DPR
+1.25 and matched 1532x931 windows. Actual GPU/vendor identity was not captured.
+Synthetic touch/pinch does not qualify physical touchpad arbitration; virtual
+output lifecycle does not prove physical hotplug or Niri multi-monitor support.
+Occasional screenshots/input/static checks overlapped the long soaks: use them
+for observed memory/lifetime behavior, not clean comparative frame timings.
 
-## Reproduce
+## Runtime lessons and qualification corrections
 
-See [probe README](../scripts/code-workflow/README.md) for dependencies and exact
-commands. `run-runtime.py --spikes CDE` stages a new committed Git export and
-instruments only that temporary copy. The installed shell, user config and
-desktop IPC are untouched. Supply a new --work-dir and the built pointer helper.
-Optional --sway selects the two-output headless matrix. Finally cleanup stops
-only processes started by the runner; JSON and logs remain in its work directory.
+Persist primitive semantic IDs and JSON strings, not old-engine QObject/QJSValue
+references. Restore only after PersistentProperties loads. Use object-owned
+birth markers and destruction signals because memory addresses can be reused.
+Use Config.setNestedValue to keep the fixture's normal JSON mirror consistent.
+Keep the virtual input device alive for the complete hover experiment.
 
-Read [the full evidence/limits](CODE_WORKFLOW_FEASIBILITY.md) and
-[the design](CODE_WORKFLOW_EDITOR.md). Lock tests drive GlobalStates.screenLocked;
-they do not prove PAM/compositor-lock security. Headless output lifecycle is not
-physical hotplug or Niri multi-monitor testing. Popup focus-grab interactions and
-other shell surfaces are outside the first picker scope. Existing Settings and
-Media warnings are reported, not silently treated as probe failures or fixes.
+Picker surfaces exist only during picking. Wait for Settings teardown, consume
+the full click, destroy surfaces, then restore Settings page 2 and custom viewport.
+The proven keyboard mode is None with right-click cancel. The protocol checks
+individual surface lifetimes, not reused Wayland object numbers. Geometry is
+QML-owned/output-local and only the horizontal ii Bar adapter is qualified.
+Lock tests drive GlobalStates.screenLocked, not PAM or session-lock security.
 
-An online environment without Wayland can review and extend the code and run
-static tests, but must not claim new live runtime validation.
+One desktop-nested Niri run stopped at the ordinary Media click positive control;
+its trace contained pointer motions outside the probe sequence. The unchanged
+assertions pass 40/40 when Niri runs in an owned headless Sway, excluding desktop
+pointer ingress. Both [rejected attempt](evidence/code-workflow/spike-cde.c466de89.desktop-input-rejected.json)
+and qualified result are retained. Do not diagnose a production defect from that
+contaminated run. Earlier B failures similarly exposed a half-width cropped/
+throttled Niri window and a QtTest DPR adapter error; fixture fixes preserve the
+strict visibility/frame-delivery and wheel-pivot assertions.
 
-## Next work
+## Repository gate and next readiness
 
-Close B with targeted edge invalidation/profiling and a longer memory/rebuild
-soak, retaining the measured workload. Resolve relevant baseline failures before
-production integration. Then qualify the supported platform/input matrix and
-design the first source transaction against real diagnostics, not CST success
-alone. No runtime dependency/packaging choice or source-writing authorization
-follows from these prototypes.
+Canonical local validation at c466de89 is **79 passed, 22 failed, one deferred
+Nix check**. At 2ac7583b it was 80/21/1, with all normalized failure bodies
+identical to 997caa0f. Concurrent popup work adds
+`test-styled-popup-content-contract.py` to the failure labels. No code-workflow
+implementation changed in that interval. Read the full logs; this comparison
+is not a claim that every old assertion body is unchanged at c466de89.
 
-## Final validation and committed files
+- [Latest full validator log](evidence/code-workflow/validation.c466de89.txt)
+- [Latest label comparison](evidence/code-workflow/validation-comparison.c466de89.json)
+- [Prior full validator log](evidence/code-workflow/validation.2ac7583b.txt)
+- [Prior normalized comparison](evidence/code-workflow/validation-comparison.2ac7583b.json)
 
-Canonical validation at `997caa0f8453bcbc9b4b6fe37f21676185d03845` reports
-**80 passed, 21 failed, one deferred Nix check**. Baseline
-`b8ab566d5138d5dbcc18217b956f45f560a45817` has the same totals and all 21 failure
-labels. The only normalized failure-body changes remove a probe Config warning;
-fatal counts do not increase. These are local results, not CI or a whole-repo PASS.
+These are **LOCAL VALIDATED** results, not CI VERIFIED. Relevant baseline failures
+remain integration blockers. Phase 1 can investigate a read-only Bar projection
+with Geometry, semantic resolution and helper packaging; writable transforms
+still require diagnostics-aware transactions, conflict handling and minimal
+source-patch proofs. Broader hardware/platform qualification remains future work.
+No further implementation beyond Phase 0 is part of this handoff.
 
-- [Exact implementation validation log](evidence/code-workflow/validation.997caa0f.txt)
-- [Baseline validation log](evidence/code-workflow/validation.b8ab566d.txt)
-- [Machine-readable comparison and full failure labels](evidence/code-workflow/validation-comparison.json)
+## Published milestones and files
 
-The implementation lives in `scripts/code-workflow/prepare-runtime.py`,
-`run-runtime.py`, `runtime/*.qml`, `virtual-pointer.c` and `build-pointer.sh`.
-The probe README documents reproduction. Design/feasibility/this handoff live in
-`docs/CODE_WORKFLOW_*.md`; tracked JSON reports and canonical logs are under
-`docs/evidence/code-workflow/`. No production editor UI or production runtime
-registration was added; instrumentation only changes temporary exported copies.
+- A: `1d98e2e7e1d38bcd79c2bb4362f9082c874b8949`.
+- A/B sandbox: `2289105d686f38a7a682cef0b781f3bc0ee781c6`.
+- C: `dddae31695f1a6d73e4a8025821da68839148c48`.
+- D/E: `2171f6d69fe05e4106f79f8a95495c81c39b21f7`.
+- CDE state/lifetime qualification: `997caa0f8453bcbc9b4b6fe37f21676185d03845`.
+- B incident routing, matrix and profiler tooling: `aa3d12f892718dba43cbc61928cfb039ff168006`.
+- B viewport and native fractional input qualification: `2ac7583bc8c37ce8190992d080ef03bec4ed1df2`.
+- This final evidence commit is identified by Git history for this file; a commit
+  cannot contain its own SHA. Its parent source is c466de89 above.
 
-For online continuation, start with this file on freshly fetched `dev`, then
-read the full feasibility report and probe README. All required implementation,
-results and baseline logs are in the repository; no desktop chat attachment is
-needed. Preserve existing evidence and do not weaken contracts to improve status.
+Implementation is under `scripts/code-workflow/`: parser/corpus, GraphSandbox,
+sandbox/matrix/profiler drivers, staged runtime QML and pointer helper. The final
+milestone adds `run-headless-niri.py`, updates the probe README and three
+`docs/CODE_WORKFLOW_*.md` files, and commits reports/logs/screenshots under
+`docs/evidence/code-workflow/`. Reviewed corpus reports split per-file arrays into
+hashed chunks; indexes retain all other fields and the original report hash.
+No source file under the ChatGPT project's synced sources was edited.
+
+For online continuation, start here on freshly fetched `dev`, then read
+[full feasibility](CODE_WORKFLOW_FEASIBILITY.md), [design](CODE_WORKFLOW_EDITOR.md)
+and [reproduction commands](../scripts/code-workflow/README.md). All per-run JSON,
+corpus records, profiler summaries, inspected screenshots and canonical logs are
+on the repository. Large raw profiler traces and verbose runtime logs stay in
+local temporary folders; reports retain assertions/snapshots/protocol lifetime
+evidence and hashes. An online environment without Wayland may review these
+results and run static checks, but cannot claim new live validation. Preserve
+negative evidence and do not weaken contracts to improve status.

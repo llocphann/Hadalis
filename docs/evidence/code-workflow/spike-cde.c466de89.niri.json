@@ -1,0 +1,2340 @@
+{
+  "schema": 1,
+  "spikes": [
+    "C",
+    "D",
+    "E"
+  ],
+  "manifest": {
+    "source_revision": "c466de89581ebf5edf55be47aac3f10709e050a5",
+    "instrumented_files": [
+      "modules/bar/BarContent.qml",
+      "modules/bar/Media.qml",
+      "modules/bar/ClockWidget.qml",
+      "modules/bar/Resources.qml",
+      "modules/bar/Bar.qml",
+      "shell.qml"
+    ],
+    "probe_sha256": {
+      "PickerProbe.qml": "712063507c88a9f27fee622857b24a57e8abb89f67b02dbe567b6f7798c8c520",
+      "ProbeShell.qml": "bbc42e5c807376f02ca965c31886cbe0fb0429cc850d5e358ef3f49104f3889a",
+      "RuntimeRegistry.qml": "cf8bfeb1358a5f1e0bec73ec7d4e057cacf82bbf9302da8cc9a59133921b8b0e",
+      "RuntimeTarget.qml": "5f75433867454e2fa0c6ea451efec6fbaf5a750209b3838f72410193e58d2a87"
+    },
+    "driver_sha256": {
+      "prepare-runtime.py": "b6f835724a97b92ec53a9785cda4fb94a3f63c967e4ca2a4193ccbf528f09e6d",
+      "run-runtime.py": "88c18cbb98a3d3fa3b4c68363e5c835ea43c6a718019be301a64dfe197f53f5e",
+      "virtual-pointer.c": "4b4da7bdc52953821da02eae526ba75d788db1cc1545b5cb81bd9d44f433fea5"
+    },
+    "policy": "Temporary copy only; actual Bar/Media/Clock implementations; no production registration."
+  },
+  "checks": [
+    {
+      "name": "C actual Bar, Media and Clock objects resident",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C static unloaded Resources available",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C semantic IDs distinct from per-output instance IDs",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C repeated inspection never activates dormant LazyLoader",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C snapshots contain only allowlisted runtime values",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C sensitive property sentinel excluded",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C unload clears QObject reference and preserves static source",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C explicit stale/unloading event",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C stable selection rebinds to a new runtime generation",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "C registry has no duplicate instance IDs",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D actual Settings overlay loaded",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D begin picker succeeds",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D Settings fully unloaded before picker activates",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D transient full-output layer surfaces exist",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D pointer-first picker never takes keyboard focus",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D only registered shell targets can be inspected",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D a second pick session is rejected",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D most specific target selected through compositor input",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D selection press/release never activates underlying Media",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D picker surfaces destroyed and hold released",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D Settings page and viewport restored",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D ordinary Media click works after picker removal",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D presentation hold survives pointer leaving Bar",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D right-click cancel preserves selection",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D presentation hold ends immediately",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D QML geometry follows Bar top-to-bottom movement",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D shell lock signal cancels surfaces without restoring Settings",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D locked shell rejects new picker",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D picker does not load a closed Bar",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "E reload 1 preserves semantic selection and viewport",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "E reload 1 replaces actual QObject and runtime generation",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "E reload 1 emits actual old QObject destruction",
+      "passed": true,
+      "evidence": {
+        "birthId": "1789845740606-b82curkw4twlkkaeunxj8x",
+        "object": "Media_QMLTYPE_1086(0x7fbe1448d300)"
+      }
+    },
+    {
+      "name": "E reload 2 preserves semantic selection and viewport",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "E reload 2 replaces actual QObject and runtime generation",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "E reload 2 emits actual old QObject destruction",
+      "passed": true,
+      "evidence": {
+        "birthId": "1789845741972-35z1lcqo0gy915u498xt2e",
+        "object": "Media_QMLTYPE_1086(0x7fbe30edb6a0)"
+      }
+    },
+    {
+      "name": "E unloading selected target enters static mode",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "E ordinary reload does not force selected unloaded module resident",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "E selected static target rebinds when module returns",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D protocol confirms Overlay, full anchors, no keyboard grab or reservation",
+      "passed": true,
+      "evidence": null
+    },
+    {
+      "name": "D every picker layer-surface was destroyed before test cleanup",
+      "passed": true,
+      "evidence": null
+    }
+  ],
+  "quickshell": "Quickshell 0.3.1 (revision , distributed by Arch Linux)",
+  "niri": "niri 26.04 (8ed0da4)",
+  "environment": "nested Niri, actual Hadalis Bar, isolated XDG and private session bus",
+  "limitations": [
+    "No hardware hotplug or physical input claim.",
+    "System services/audio deliberately unavailable in isolated session."
+  ],
+  "pointer_binary_sha256": "70627ee893e46a858fb6da2ef2e81c756d1e9e1500e834f1da36031a2a55dd74",
+  "C_initial": {
+    "epoch": "1789845730463-hzv8954hhl6ltu1rajbeg",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:3",
+        "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe310153c0)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 0,
+          "y": -40,
+          "width": 0,
+          "height": 40,
+          "revision": 0,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": false
+        },
+        "values": {
+          "width": 0,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:2",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe18389f40)",
+        "objectBirthId": "1789845730607-3b4joh6hqbf4udqt5gaex6",
+        "rect": {
+          "x": -188,
+          "y": -40,
+          "width": 105,
+          "height": 40,
+          "revision": 0,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe1443c480)",
+        "objectBirthId": null,
+        "rect": {
+          "x": -67,
+          "y": -40,
+          "width": 134,
+          "height": 40,
+          "revision": 0,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 134,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      }
+    ],
+    "selectedInstanceId": "",
+    "selectedTargetId": "",
+    "selectionState": "none",
+    "viewport": {
+      "x": 31,
+      "y": -17,
+      "zoom": 1.25,
+      "subflow": "bar"
+    },
+    "pickHold": false,
+    "heldOutputs": [],
+    "sourceRevision": 1,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 0,
+    "mediaActions": 0,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 0,
+    "settingsPublishedPage": -1,
+    "picker": {
+      "phase": "idle",
+      "overlays": 0,
+      "lastReason": "",
+      "consumedClicks": 0,
+      "keyboardFocus": "None",
+      "saved": {},
+      "lastClick": {}
+    }
+  },
+  "C_unloaded": {
+    "epoch": "1789845730463-hzv8954hhl6ltu1rajbeg",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:3",
+        "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe310153c0)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 0,
+          "y": -40,
+          "width": 1916,
+          "height": 40,
+          "revision": 5,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 1916,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe1443c480)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 891,
+          "y": -40,
+          "width": 134,
+          "height": 40,
+          "revision": 7,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 134,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      }
+    ],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "unloaded",
+    "viewport": {
+      "x": 31,
+      "y": -17,
+      "zoom": 1.25,
+      "subflow": "bar"
+    },
+    "pickHold": false,
+    "heldOutputs": [],
+    "sourceRevision": 1,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 0,
+    "mediaActions": 0,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 0,
+    "settingsPublishedPage": -1,
+    "picker": {
+      "phase": "idle",
+      "overlays": 0,
+      "lastReason": "",
+      "consumedClicks": 0,
+      "keyboardFocus": "None",
+      "saved": {},
+      "lastClick": {}
+    }
+  },
+  "C_rebound": {
+    "epoch": "1789845730463-hzv8954hhl6ltu1rajbeg",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:3",
+        "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe310153c0)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 0,
+          "y": -40,
+          "width": 1916,
+          "height": 40,
+          "revision": 5,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 1916,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:4",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe1838a480)",
+        "objectBirthId": "1789845731820-89otguuj5syzkc55tif1rl",
+        "rect": {
+          "x": 878,
+          "y": -20,
+          "width": 105,
+          "height": 40,
+          "revision": 3,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": false
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": false,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe1443c480)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 891,
+          "y": -40,
+          "width": 134,
+          "height": 40,
+          "revision": 7,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 134,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      }
+    ],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "resident",
+    "viewport": {
+      "x": 31,
+      "y": -17,
+      "zoom": 1.25,
+      "subflow": "bar"
+    },
+    "pickHold": false,
+    "heldOutputs": [],
+    "sourceRevision": 1,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 0,
+    "mediaActions": 0,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 0,
+    "settingsPublishedPage": -1,
+    "picker": {
+      "phase": "idle",
+      "overlays": 0,
+      "lastReason": "",
+      "consumedClicks": 0,
+      "keyboardFocus": "None",
+      "saved": {},
+      "lastClick": {}
+    }
+  },
+  "D_layers": [
+    {
+      "namespace": "quickshell:bar",
+      "output": "winit",
+      "layer": "Top",
+      "keyboard_interactivity": "None"
+    },
+    {
+      "namespace": "quickshell:code-workflow-picker",
+      "output": "winit",
+      "layer": "Overlay",
+      "keyboard_interactivity": "None"
+    }
+  ],
+  "D_picking": {
+    "epoch": "1789845730463-hzv8954hhl6ltu1rajbeg",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:7",
+        "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe145ba660)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1916,
+          "height": 40,
+          "revision": 20,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 1916,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:6",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe16c3c760)",
+        "objectBirthId": "1789845731981-8htvcok7h0s52o6b5nn42hu",
+        "rect": {
+          "x": 767,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 28,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe145620e0)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 891,
+          "y": 0,
+          "width": 134,
+          "height": 40,
+          "revision": 22,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 134,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:5"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:6"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:7"
+      }
+    ],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "resident",
+    "viewport": {
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
+    },
+    "pickHold": true,
+    "heldOutputs": [
+      "winit"
+    ],
+    "sourceRevision": 1,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 0,
+    "mediaActions": 0,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
+    "picker": {
+      "phase": "picking",
+      "overlays": 1,
+      "lastReason": "",
+      "consumedClicks": 0,
+      "keyboardFocus": "None",
+      "saved": {
+        "open": true,
+        "page": 2,
+        "viewport": {
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
+        },
+        "selected": "bar/media@winit"
+      },
+      "lastClick": {}
+    }
+  },
+  "last_pointer_command": {
+    "x": 819.5,
+    "y": 1151.0,
+    "width": 1916,
+    "height": 1171,
+    "button": "left"
+  },
+  "D_selected": {
+    "epoch": "1789845730463-hzv8954hhl6ltu1rajbeg",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:7",
+        "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe145ba660)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1916,
+          "height": 40,
+          "revision": 20,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 1916,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:6",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe16c3c760)",
+        "objectBirthId": "1789845731981-8htvcok7h0s52o6b5nn42hu",
+        "rect": {
+          "x": 767,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 28,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe145620e0)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 891,
+          "y": 0,
+          "width": 134,
+          "height": 40,
+          "revision": 22,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 134,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:5"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:6"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:7"
+      }
+    ],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "resident",
+    "viewport": {
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
+    },
+    "pickHold": false,
+    "heldOutputs": [],
+    "sourceRevision": 1,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 0,
+    "mediaActions": 0,
+    "mediaPopupsOpen": false,
+    "settingsOpen": true,
+    "settingsLoaded": true,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
+    "picker": {
+      "phase": "idle",
+      "overlays": 0,
+      "lastReason": "selected",
+      "consumedClicks": 1,
+      "keyboardFocus": "None",
+      "saved": {
+        "open": true,
+        "page": 2,
+        "viewport": {
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
+        },
+        "selected": "bar/media@winit"
+      },
+      "lastClick": {
+        "x": 820,
+        "y": 20,
+        "output": "winit",
+        "hit": "bar/media@winit"
+      }
+    }
+  },
+  "D_held": {
+    "epoch": "1789845730463-hzv8954hhl6ltu1rajbeg",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:7",
+        "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe145ba660)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1916,
+          "height": 40,
+          "revision": 20,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 1916,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:6",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe16c3c760)",
+        "objectBirthId": "1789845731981-8htvcok7h0s52o6b5nn42hu",
+        "rect": {
+          "x": 767,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 28,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe145620e0)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 891,
+          "y": 0,
+          "width": 134,
+          "height": 40,
+          "revision": 22,
+          "dpr": 1,
+          "barMustShow": true,
+          "barAutoHide": true,
+          "eligible": true
+        },
+        "values": {
+          "width": 134,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:5"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:6"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:7"
+      }
+    ],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "resident",
+    "viewport": {
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
+    },
+    "pickHold": true,
+    "heldOutputs": [
+      "winit"
+    ],
+    "sourceRevision": 1,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 0,
+    "mediaActions": 1,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
+    "picker": {
+      "phase": "picking",
+      "overlays": 1,
+      "lastReason": "",
+      "consumedClicks": 1,
+      "keyboardFocus": "None",
+      "saved": {
+        "open": false,
+        "page": 2,
+        "viewport": {
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
+        },
+        "selected": "bar/media@winit"
+      },
+      "lastClick": {
+        "x": 820,
+        "y": 20,
+        "output": "winit",
+        "hit": "bar/media@winit"
+      }
+    }
+  },
+  "D_locked": {
+    "epoch": "1789845730463-hzv8954hhl6ltu1rajbeg",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:4"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:1"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:3"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:5"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:6"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:7"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:5"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:6"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar@winit",
+        "token": "1789845730463-hzv8954hhl6ltu1rajbeg:7"
+      }
+    ],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "unloaded",
+    "viewport": {
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
+    },
+    "pickHold": false,
+    "heldOutputs": [],
+    "sourceRevision": 1,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": true,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 0,
+    "mediaActions": 1,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
+    "picker": {
+      "phase": "idle",
+      "overlays": 0,
+      "lastReason": "locked",
+      "consumedClicks": 3,
+      "keyboardFocus": "None",
+      "saved": {
+        "open": false,
+        "page": 2,
+        "viewport": {
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
+        },
+        "selected": "bar/media@winit"
+      },
+      "lastClick": {
+        "x": 820,
+        "y": 1151,
+        "output": "winit",
+        "hit": "bar/media@winit"
+      }
+    }
+  },
+  "E_object_lifetimes": [
+    {
+      "before": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845730463-hzv8954hhl6ltu1rajbeg:12",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe1448d300)",
+        "objectBirthId": "1789845740606-b82curkw4twlkkaeunxj8x",
+        "rect": {
+          "x": 767,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 14,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      "after": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845741864-6noqx62hxyg0yzy6rtr7ht:2",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe30edb6a0)",
+        "objectBirthId": "1789845741972-35z1lcqo0gy915u498xt2e",
+        "rect": {
+          "x": 767,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 13,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      }
+    },
+    {
+      "before": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845741864-6noqx62hxyg0yzy6rtr7ht:2",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe30edb6a0)",
+        "objectBirthId": "1789845741972-35z1lcqo0gy915u498xt2e",
+        "rect": {
+          "x": 767,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 13,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      "after": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845743180-zlkojj9itc7xz3hqhe376:2",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe310146a0)",
+        "objectBirthId": "1789845743293-eo1y1u5iuwzm5plxenp5r",
+        "rect": {
+          "x": 767,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 13,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      }
+    }
+  ],
+  "E_reloads": [
+    {
+      "epoch": "1789845741864-6noqx62hxyg0yzy6rtr7ht",
+      "outputs": [
+        "winit"
+      ],
+      "records": [
+        {
+          "targetId": "bar",
+          "instanceId": "bar@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/BarContent.qml",
+          "depth": 0,
+          "state": "resident",
+          "runtimeToken": "1789845741864-6noqx62hxyg0yzy6rtr7ht:3",
+          "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe311fbe40)",
+          "objectBirthId": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1916,
+            "height": 40,
+            "revision": 5,
+            "dpr": 1,
+            "barMustShow": false,
+            "barAutoHide": false,
+            "eligible": true
+          },
+          "values": {
+            "width": 1916,
+            "height": 40,
+            "visible": true,
+            "enabled": true
+          }
+        },
+        {
+          "targetId": "bar/media",
+          "instanceId": "bar/media@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/Media.qml",
+          "depth": 1,
+          "state": "resident",
+          "runtimeToken": "1789845741864-6noqx62hxyg0yzy6rtr7ht:2",
+          "objectIdentity": "Media_QMLTYPE_1086(0x7fbe30edb6a0)",
+          "objectBirthId": "1789845741972-35z1lcqo0gy915u498xt2e",
+          "rect": {
+            "x": 767,
+            "y": 0,
+            "width": 105,
+            "height": 40,
+            "revision": 13,
+            "dpr": 1,
+            "barMustShow": false,
+            "barAutoHide": false,
+            "eligible": true
+          },
+          "values": {
+            "width": 105,
+            "height": 40,
+            "visible": true,
+            "enabled": true
+          }
+        },
+        {
+          "targetId": "bar/clock",
+          "instanceId": "bar/clock@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "depth": 1,
+          "state": "resident",
+          "runtimeToken": "1789845741864-6noqx62hxyg0yzy6rtr7ht:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe16c3f400)",
+          "objectBirthId": null,
+          "rect": {
+            "x": 891,
+            "y": 0,
+            "width": 134,
+            "height": 40,
+            "revision": 7,
+            "dpr": 1,
+            "barMustShow": false,
+            "barAutoHide": false,
+            "eligible": true
+          },
+          "values": {
+            "width": 134,
+            "height": 40,
+            "visible": true,
+            "enabled": true
+          }
+        },
+        {
+          "targetId": "bar/resources",
+          "instanceId": "bar/resources@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/Resources.qml",
+          "depth": 1,
+          "state": "unloaded",
+          "runtimeToken": null,
+          "objectIdentity": null,
+          "objectBirthId": null,
+          "rect": null,
+          "values": null
+        }
+      ],
+      "events": [
+        {
+          "kind": "resident",
+          "instanceId": "bar/clock@winit",
+          "token": "1789845741864-6noqx62hxyg0yzy6rtr7ht:1"
+        },
+        {
+          "kind": "resident",
+          "instanceId": "bar/media@winit",
+          "token": "1789845741864-6noqx62hxyg0yzy6rtr7ht:2"
+        },
+        {
+          "kind": "resident",
+          "instanceId": "bar@winit",
+          "token": "1789845741864-6noqx62hxyg0yzy6rtr7ht:3"
+        }
+      ],
+      "selectedInstanceId": "bar/media@winit",
+      "selectedTargetId": "bar/media",
+      "selectionState": "resident",
+      "viewport": {
+        "x": 217,
+        "y": -109,
+        "zoom": 1.7,
+        "subflow": "bar/media"
+      },
+      "pickHold": false,
+      "heldOutputs": [],
+      "sourceRevision": 2,
+      "ready": true,
+      "dormantActive": false,
+      "dormantLoading": false,
+      "dormantCreations": 0,
+      "screenLocked": false,
+      "barOpen": true,
+      "mediaControlsOpen": false,
+      "reloadCompletions": 1,
+      "mediaActions": 0,
+      "mediaPopupsOpen": false,
+      "settingsOpen": false,
+      "settingsLoaded": false,
+      "settingsPage": 2,
+      "settingsPublishedPage": 2,
+      "picker": {
+        "phase": "idle",
+        "overlays": 0,
+        "lastReason": "",
+        "consumedClicks": 0,
+        "keyboardFocus": "None",
+        "saved": {},
+        "lastClick": {}
+      }
+    },
+    {
+      "epoch": "1789845743180-zlkojj9itc7xz3hqhe376",
+      "outputs": [
+        "winit"
+      ],
+      "records": [
+        {
+          "targetId": "bar",
+          "instanceId": "bar@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/BarContent.qml",
+          "depth": 0,
+          "state": "resident",
+          "runtimeToken": "1789845743180-zlkojj9itc7xz3hqhe376:3",
+          "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe1838cb00)",
+          "objectBirthId": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1916,
+            "height": 40,
+            "revision": 5,
+            "dpr": 1,
+            "barMustShow": false,
+            "barAutoHide": false,
+            "eligible": true
+          },
+          "values": {
+            "width": 1916,
+            "height": 40,
+            "visible": true,
+            "enabled": true
+          }
+        },
+        {
+          "targetId": "bar/media",
+          "instanceId": "bar/media@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/Media.qml",
+          "depth": 1,
+          "state": "resident",
+          "runtimeToken": "1789845743180-zlkojj9itc7xz3hqhe376:2",
+          "objectIdentity": "Media_QMLTYPE_1086(0x7fbe310146a0)",
+          "objectBirthId": "1789845743293-eo1y1u5iuwzm5plxenp5r",
+          "rect": {
+            "x": 767,
+            "y": 0,
+            "width": 105,
+            "height": 40,
+            "revision": 13,
+            "dpr": 1,
+            "barMustShow": false,
+            "barAutoHide": false,
+            "eligible": true
+          },
+          "values": {
+            "width": 105,
+            "height": 40,
+            "visible": true,
+            "enabled": true
+          }
+        },
+        {
+          "targetId": "bar/clock",
+          "instanceId": "bar/clock@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "depth": 1,
+          "state": "resident",
+          "runtimeToken": "1789845743180-zlkojj9itc7xz3hqhe376:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe16c3d480)",
+          "objectBirthId": null,
+          "rect": {
+            "x": 891,
+            "y": 0,
+            "width": 134,
+            "height": 40,
+            "revision": 7,
+            "dpr": 1,
+            "barMustShow": false,
+            "barAutoHide": false,
+            "eligible": true
+          },
+          "values": {
+            "width": 134,
+            "height": 40,
+            "visible": true,
+            "enabled": true
+          }
+        },
+        {
+          "targetId": "bar/resources",
+          "instanceId": "bar/resources@winit",
+          "output": "winit",
+          "sourcePath": "modules/bar/Resources.qml",
+          "depth": 1,
+          "state": "unloaded",
+          "runtimeToken": null,
+          "objectIdentity": null,
+          "objectBirthId": null,
+          "rect": null,
+          "values": null
+        }
+      ],
+      "events": [
+        {
+          "kind": "resident",
+          "instanceId": "bar/clock@winit",
+          "token": "1789845743180-zlkojj9itc7xz3hqhe376:1"
+        },
+        {
+          "kind": "resident",
+          "instanceId": "bar/media@winit",
+          "token": "1789845743180-zlkojj9itc7xz3hqhe376:2"
+        },
+        {
+          "kind": "resident",
+          "instanceId": "bar@winit",
+          "token": "1789845743180-zlkojj9itc7xz3hqhe376:3"
+        }
+      ],
+      "selectedInstanceId": "bar/media@winit",
+      "selectedTargetId": "bar/media",
+      "selectionState": "resident",
+      "viewport": {
+        "x": 217,
+        "y": -109,
+        "zoom": 1.7,
+        "subflow": "bar/media"
+      },
+      "pickHold": false,
+      "heldOutputs": [],
+      "sourceRevision": 3,
+      "ready": true,
+      "dormantActive": false,
+      "dormantLoading": false,
+      "dormantCreations": 0,
+      "screenLocked": false,
+      "barOpen": true,
+      "mediaControlsOpen": false,
+      "reloadCompletions": 1,
+      "mediaActions": 0,
+      "mediaPopupsOpen": false,
+      "settingsOpen": false,
+      "settingsLoaded": false,
+      "settingsPage": 2,
+      "settingsPublishedPage": 2,
+      "picker": {
+        "phase": "idle",
+        "overlays": 0,
+        "lastReason": "",
+        "consumedClicks": 0,
+        "keyboardFocus": "None",
+        "saved": {},
+        "lastClick": {}
+      }
+    }
+  ],
+  "E_static_after_reload": {
+    "epoch": "1789845744463-bf97e4q81k61149g03e3cv",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "unloaded",
+    "viewport": {
+      "x": 217,
+      "y": -109,
+      "zoom": 1.7,
+      "subflow": "bar/media"
+    },
+    "pickHold": false,
+    "heldOutputs": [],
+    "sourceRevision": 4,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 1,
+    "mediaActions": 0,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
+    "picker": {
+      "phase": "idle",
+      "overlays": 0,
+      "lastReason": "",
+      "consumedClicks": 0,
+      "keyboardFocus": "None",
+      "saved": {},
+      "lastClick": {}
+    }
+  },
+  "E_rebound": {
+    "epoch": "1789845744463-bf97e4q81k61149g03e3cv",
+    "outputs": [
+      "winit"
+    ],
+    "records": [
+      {
+        "targetId": "bar",
+        "instanceId": "bar@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/BarContent.qml",
+        "depth": 0,
+        "state": "resident",
+        "runtimeToken": "1789845744463-bf97e4q81k61149g03e3cv:2",
+        "objectIdentity": "BarContent_QMLTYPE_854(0x7fbe1ae06700)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1916,
+          "height": 40,
+          "revision": 5,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 1916,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845744463-bf97e4q81k61149g03e3cv:4",
+        "objectIdentity": "Media_QMLTYPE_1086(0x7fbe31011760)",
+        "objectBirthId": "1789845746795-ujrpvi0k3388z6hw0vseg",
+        "rect": {
+          "x": 878,
+          "y": 20,
+          "width": 105,
+          "height": 40,
+          "revision": 3,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": false
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": false,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/clock",
+        "instanceId": "bar/clock@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789845744463-bf97e4q81k61149g03e3cv:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_855(0x7fbe31013d00)",
+        "objectBirthId": null,
+        "rect": {
+          "x": 891,
+          "y": 0,
+          "width": 134,
+          "height": 40,
+          "revision": 7,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 134,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      {
+        "targetId": "bar/resources",
+        "instanceId": "bar/resources@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Resources.qml",
+        "depth": 1,
+        "state": "unloaded",
+        "runtimeToken": null,
+        "objectIdentity": null,
+        "objectBirthId": null,
+        "rect": null,
+        "values": null
+      }
+    ],
+    "events": [
+      {
+        "kind": "resident",
+        "instanceId": "bar/clock@winit",
+        "token": "1789845744463-bf97e4q81k61149g03e3cv:1"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar@winit",
+        "token": "1789845744463-bf97e4q81k61149g03e3cv:2"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845744463-bf97e4q81k61149g03e3cv:3"
+      },
+      {
+        "kind": "stale/unloading",
+        "instanceId": "bar/media@winit",
+        "token": "1789845744463-bf97e4q81k61149g03e3cv:3"
+      },
+      {
+        "kind": "resident",
+        "instanceId": "bar/media@winit",
+        "token": "1789845744463-bf97e4q81k61149g03e3cv:4"
+      }
+    ],
+    "selectedInstanceId": "bar/media@winit",
+    "selectedTargetId": "bar/media",
+    "selectionState": "resident",
+    "viewport": {
+      "x": 217,
+      "y": -109,
+      "zoom": 1.7,
+      "subflow": "bar/media"
+    },
+    "pickHold": false,
+    "heldOutputs": [],
+    "sourceRevision": 4,
+    "ready": true,
+    "dormantActive": false,
+    "dormantLoading": false,
+    "dormantCreations": 0,
+    "screenLocked": false,
+    "barOpen": true,
+    "mediaControlsOpen": false,
+    "reloadCompletions": 1,
+    "mediaActions": 0,
+    "mediaPopupsOpen": false,
+    "settingsOpen": false,
+    "settingsLoaded": false,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
+    "picker": {
+      "phase": "idle",
+      "overlays": 0,
+      "lastReason": "",
+      "consumedClicks": 0,
+      "keyboardFocus": "None",
+      "saved": {},
+      "lastClick": {}
+    }
+  },
+  "D_protocol_lifetimes": [
+    {
+      "id": "65",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "58",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "60",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "68",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "48",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    }
+  ]
+}

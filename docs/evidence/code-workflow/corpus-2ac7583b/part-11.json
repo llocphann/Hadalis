@@ -1,0 +1,895 @@
+[
+  {
+    "path": "services/deferred/NiriKeybinds.qml",
+    "sha256": "f6c88301140520f014b7432a3c8447d1427def4204a7f8155a05b8d98ce106b5",
+    "bytes": 17239,
+    "preservation": {
+      "nodes": 4274,
+      "leaf_slices": 2945,
+      "trivia_gap_bytes": 5718,
+      "comments": 15,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Singleton": 1,
+      "Process": 4,
+      "StdioCollector": 4,
+      "FileView": 2,
+      "Timer": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 15,
+      "function": 3,
+      "handler-candidate": 8,
+      "id": 12,
+      "object": 12,
+      "pragma": 2,
+      "property": 11,
+      "signal": 3
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "services/deferred/PackageSearch.qml",
+    "sha256": "3d3916196ec8a639622bf8b811295e917297d1e6ff860ea7a758b56c49cf445b",
+    "bytes": 12702,
+    "preservation": {
+      "nodes": 2950,
+      "leaf_slices": 1912,
+      "trivia_gap_bytes": 3874,
+      "comments": 11,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Singleton": 1,
+      "Timer": 2,
+      "Process": 2,
+      "SplitParser": 2,
+      "IpcHandler": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "function": 19,
+      "handler-candidate": 6,
+      "id": 5,
+      "object": 8,
+      "pragma": 2,
+      "property": 14
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "services/deferred/SessionWarnings.qml",
+    "sha256": "64fcc0f1aee04d624b78f2b934c1f9f2379ba54c773245daf2cceb2219850ea0",
+    "bytes": 1095,
+    "preservation": {
+      "nodes": 308,
+      "leaf_slices": 212,
+      "trivia_gap_bytes": 283,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Singleton": 1,
+      "Process": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 2,
+      "function": 1,
+      "handler-candidate": 2,
+      "id": 3,
+      "object": 3,
+      "pragma": 2,
+      "property": 2
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "services/deferred/SongRec.qml",
+    "sha256": "a1fe69e972ae02bebd9914e25a459de2fc826427423fa296d4540340c6a3ca88",
+    "bytes": 5445,
+    "preservation": {
+      "nodes": 1372,
+      "leaf_slices": 909,
+      "trivia_gap_bytes": 1547,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ComponentBehavior:Bound": 1,
+      "Singleton": 1,
+      "Process": 3,
+      "StdioCollector": 2
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 8,
+      "function": 5,
+      "handler-candidate": 7,
+      "id": 4,
+      "object": 6,
+      "pragma": 2,
+      "property": 10
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "services/deferred/Ydotool.qml",
+    "sha256": "b5c769006ec269aecb4c51d8c61406428ed438bc3152235b4820c605806ca086",
+    "bytes": 1329,
+    "preservation": {
+      "nodes": 369,
+      "leaf_slices": 258,
+      "trivia_gap_bytes": 386,
+      "comments": 6,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Singleton": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "function": 4,
+      "id": 1,
+      "object": 1,
+      "pragma": 1,
+      "property": 4
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "services/network/WifiAccessPoint.qml",
+    "sha256": "67e6cfd1f23334de656f70b998c4cedd3c3e854f6fcd4e5eb445da91597dcb15",
+    "bytes": 742,
+    "preservation": {
+      "nodes": 175,
+      "leaf_slices": 117,
+      "trivia_gap_bytes": 150,
+      "comments": 0,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "QtObject": 1,
+      "required-property": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "object": 1,
+      "property": 11
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "settings.qml",
+    "sha256": "b2feff422fd99e4b1926ec0c456ddf00771f12122f6749fd694bb93494cc4254",
+    "bytes": 82649,
+    "preservation": {
+      "nodes": 14275,
+      "leaf_slices": 9301,
+      "trivia_gap_bytes": 38987,
+      "comments": 84,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ApplicationWindow": 1,
+      "Timer": 3,
+      "Connections": 5,
+      "Shortcut": 1,
+      "ColumnLayout": 5,
+      "anchors": 5,
+      "Behavior": 18,
+      "NumberAnimation": 15,
+      "Item": 13,
+      "RowLayout": 11,
+      "Rectangle": 12,
+      "Image": 1,
+      "OpacityMask": 1,
+      "QtObject": 1,
+      "MaterialSymbol": 13,
+      "StyledText": 14,
+      "font": 10,
+      "SettingsChromeEditFrame": 3,
+      "ColorAnimation": 7,
+      "MaterialShapeWrappedMaterialSymbol": 2,
+      "TextInput": 1,
+      "SequentialAnimation": 2,
+      "RippleButton": 9,
+      "StyledToolTip": 4,
+      "Flickable": 1,
+      "StyledScrollBar": 1,
+      "Repeater": 1,
+      "Column": 1,
+      "required-property": 4,
+      "Loader": 1,
+      "Component": 1,
+      "SettingsNavEditPane": 1,
+      "SettingsPageHost": 1,
+      "SettingsPageLoadingOverlay": 1,
+      "MouseArea": 1,
+      "StyledRectangularShadow": 1,
+      "GlassBackground": 2,
+      "DropShadow": 1,
+      "ListView": 1,
+      "Text": 1,
+      "Row": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 598,
+      "component": 1,
+      "connections": 5,
+      "function": 17,
+      "handler-candidate": 34,
+      "id": 43,
+      "lifecycle": 2,
+      "object": 132,
+      "opaque": 34,
+      "property": 50
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          19752,
+          19832
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          19917,
+          19974
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          20862,
+          21056
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          28092,
+          28353
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          30098,
+          30152
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          30169,
+          30230
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          31657,
+          31837
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          32492,
+          32672
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          33053,
+          33414
+        ],
+        "name": "SequentialAnimation",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          35637,
+          35694
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          38824,
+          39187
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          41449,
+          41858
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          43533,
+          43916
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          44346,
+          44770
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          44939,
+          45338
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          47865,
+          48288
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          48595,
+          48937
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          49304,
+          49727
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          50448,
+          50796
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          50825,
+          51177
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          51683,
+          52043
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          52072,
+          52454
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          54087,
+          54464
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          54524,
+          54890
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          55712,
+          55962
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          56166,
+          56371
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          59369,
+          59560
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          62097,
+          62288
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          63978,
+          64169
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          65451,
+          65518
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          66281,
+          66516
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          67822,
+          67928
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          68199,
+          68302
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          75832,
+          76127
+        ],
+        "name": "font",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  },
+  {
+    "path": "shell.qml",
+    "sha256": "35fbe2e646d38a298f79771518b51414d3023a74ac7ccf3be533f599844be5be",
+    "bytes": 35682,
+    "preservation": {
+      "nodes": 6784,
+      "leaf_slices": 4405,
+      "trivia_gap_bytes": 8208,
+      "comments": 130,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ShellRoot": 1,
+      "Timer": 3,
+      "Connections": 2,
+      "FileView": 1,
+      "IpcHandler": 20,
+      "LazyLoader": 12,
+      "SettingsOverlay": 1,
+      "SettingsFocus": 1,
+      "ToastManager": 1,
+      "Loader": 1
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 60,
+      "connections": 2,
+      "function": 77,
+      "handler-candidate": 7,
+      "id": 5,
+      "lifecycle": 13,
+      "object": 28,
+      "property": 35
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": []
+  },
+  {
+    "path": "waffleSettings.qml",
+    "sha256": "9ea0d8b6cde3a0322e9e968c400f13405979e4ce452abd04ed1f21098c09bbbe",
+    "bytes": 9220,
+    "preservation": {
+      "nodes": 2156,
+      "leaf_slices": 1429,
+      "trivia_gap_bytes": 2914,
+      "comments": 9,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "ApplicationWindow": 1,
+      "Connections": 2,
+      "Item": 1,
+      "ColumnLayout": 1,
+      "FluentIcon": 1,
+      "SequentialAnimation": 1,
+      "NumberAnimation": 3,
+      "RotationAnimation": 1,
+      "WText": 1,
+      "WSettingsContent": 1,
+      "Behavior": 1,
+      "Shortcut": 4
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 47,
+      "connections": 2,
+      "function": 3,
+      "handler-candidate": 12,
+      "id": 3,
+      "object": 13,
+      "opaque": 3,
+      "property": 6
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          7022,
+          7386
+        ],
+        "name": "SequentialAnimation",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          7420,
+          7630
+        ],
+        "name": "RotationAnimation",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          8491,
+          8597
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      }
+    ]
+  },
+  {
+    "path": "welcome.qml",
+    "sha256": "c4532234de798d18823076d9777326da847e3bb2eee0d8cf6e39d6021af0d696",
+    "bytes": 100986,
+    "preservation": {
+      "nodes": 17182,
+      "leaf_slices": 11228,
+      "trivia_gap_bytes": 46375,
+      "comments": 74,
+      "byte_identical": true
+    },
+    "incremental_equals_fresh": true,
+    "anchors_stable_after_prefix": true,
+    "features": {
+      "Scope": 1,
+      "Timer": 3,
+      "PanelWindow": 1,
+      "anchors": 7,
+      "Item": 26,
+      "Behavior": 15,
+      "NumberAnimation": 15,
+      "Image": 3,
+      "MultiEffect": 2,
+      "Rectangle": 23,
+      "RadialGradient": 1,
+      "Gradient": 1,
+      "GradientStop": 3,
+      "MouseArea": 6,
+      "StyledRectangularShadow": 1,
+      "ColorAnimation": 6,
+      "OpacityMask": 2,
+      "ColumnLayout": 25,
+      "Row": 4,
+      "Repeater": 5,
+      "required-property": 8,
+      "MaterialSymbol": 25,
+      "StyledText": 44,
+      "StackLayout": 1,
+      "Translate": 1,
+      "ParallelAnimation": 3,
+      "SequentialAnimation": 2,
+      "PropertyAction": 1,
+      "WelcomeContent": 1,
+      "ScrollEdgeFade": 6,
+      "FeaturesContent": 1,
+      "ThemeContent": 1,
+      "LayoutContent": 1,
+      "ReadyContent": 1,
+      "RowLayout": 27,
+      "DialogButton": 2,
+      "KeyboardKey": 3,
+      "RippleButton": 6,
+      "StyledToolTip": 1,
+      "HoverHandler": 1,
+      "inline-component": 5,
+      "Flickable": 5,
+      "MaterialShapeWrappedMaterialSymbol": 2,
+      "SettingsGroup": 10,
+      "LightDarkPreferenceButton": 2,
+      "ConfigSelectionArray": 5,
+      "Process": 1,
+      "SplitParser": 1,
+      "ListView": 1,
+      "WheelHandler": 1,
+      "GridLayout": 1,
+      "ConfigSwitch": 9
+    },
+    "diagnostics": [],
+    "counts": {
+      "binding": 905,
+      "function": 4,
+      "handler-candidate": 42,
+      "id": 52,
+      "inline-component": 5,
+      "lifecycle": 5,
+      "object": 289,
+      "opaque": 22,
+      "property": 48
+    },
+    "anchor_collisions": [],
+    "opaque_ranges": [
+      {
+        "range": [
+          15389,
+          15449
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          15765,
+          16023
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          18432,
+          18805
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          18818,
+          19076
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          20758,
+          20854
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          20871,
+          20974
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          24879,
+          24975
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          25016,
+          25361
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          25402,
+          25506
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          26270,
+          26370
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          27962,
+          28058
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          29101,
+          29582
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          39852,
+          39951
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          43740,
+          43832
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          48229,
+          48568
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          48669,
+          48785
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          52961,
+          53300
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          53405,
+          53521
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          66658,
+          66742
+        ],
+        "name": "Behavior",
+        "reason": "property-value-source/interceptor; needs type resolution"
+      },
+      {
+        "range": [
+          77477,
+          77593
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          86414,
+          86530
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      },
+      {
+        "range": [
+          89933,
+          90049
+        ],
+        "name": "anchors",
+        "reason": "grouped-binding-or-object; needs type/scope resolution"
+      }
+    ]
+  }
+]

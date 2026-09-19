@@ -1,0 +1,403 @@
+{
+  "trace_sha256": "50522a3b5192faae86a70b662d8fad63e0bc7e33566f526d2616775cfa4874b9",
+  "trace_bytes": 44149325,
+  "bounds": {
+    "version": "1.02",
+    "traceStart": "818270682",
+    "traceEnd": "6282452223"
+  },
+  "duration_unit": "nanoseconds; inclusive nested durations overlap",
+  "top_events": [
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:408",
+        "type": "HandlingSignal",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "408",
+        "column": "9"
+      },
+      "calls": 277,
+      "inclusive_ns": 1346160602,
+      "max_ns": 8479510
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:408",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "408",
+        "column": "9",
+        "details": "expression for onTriggered"
+      },
+      "calls": 277,
+      "inclusive_ns": 1345121828,
+      "max_ns": 8475873
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:353",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "353",
+        "column": "40",
+        "bindingType": "-1"
+      },
+      "calls": 69520,
+      "inclusive_ns": 647421659,
+      "max_ns": 3182301
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:85",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "85",
+        "column": "5",
+        "details": "setNodePosition"
+      },
+      "calls": 277,
+      "inclusive_ns": 359845853,
+      "max_ns": 1831529
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:238",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "238",
+        "column": "13",
+        "details": "updateEndpoints"
+      },
+      "calls": 1580,
+      "inclusive_ns": 356330442,
+      "max_ns": 708322
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:251",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "251",
+        "column": "17",
+        "bindingType": "-1"
+      },
+      "calls": 4329,
+      "inclusive_ns": 154030268,
+      "max_ns": 450301
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:353",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "353",
+        "column": "40",
+        "details": "expression for text"
+      },
+      "calls": 69520,
+      "inclusive_ns": 140151138,
+      "max_ns": 3082295
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:139",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "139",
+        "column": "5",
+        "details": "resetGraph"
+      },
+      "calls": 2,
+      "inclusive_ns": 105229158,
+      "max_ns": 98019949
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:347",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "347",
+        "column": "21",
+        "bindingType": "-1"
+      },
+      "calls": 69810,
+      "inclusive_ns": 86882101,
+      "max_ns": 32952
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:243",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "243",
+        "column": "13",
+        "bindingType": "-1"
+      },
+      "calls": 3078,
+      "inclusive_ns": 70303224,
+      "max_ns": 201827
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:120",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "120",
+        "column": "5",
+        "details": "rebuildPaths"
+      },
+      "calls": 4,
+      "inclusive_ns": 66469619,
+      "max_ns": 64036777
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:346",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "346",
+        "column": "21",
+        "bindingType": "-1"
+      },
+      "calls": 69810,
+      "inclusive_ns": 54420505,
+      "max_ns": 119383
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:251",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "251",
+        "column": "59",
+        "bindingType": "-1"
+      },
+      "calls": 2329,
+      "inclusive_ns": 49323867,
+      "max_ns": 317703
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:247",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "247",
+        "column": "13",
+        "bindingType": "-1"
+      },
+      "calls": 2329,
+      "inclusive_ns": 47752007,
+      "max_ns": 106148
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:248",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "248",
+        "column": "13",
+        "bindingType": "-1"
+      },
+      "calls": 2329,
+      "inclusive_ns": 46901119,
+      "max_ns": 127317
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:348",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "348",
+        "column": "21",
+        "bindingType": "-1"
+      },
+      "calls": 69810,
+      "inclusive_ns": 35780311,
+      "max_ns": 98313
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:210",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "210",
+        "column": "5",
+        "details": "snapshot"
+      },
+      "calls": 11,
+      "inclusive_ns": 35456081,
+      "max_ns": 6682445
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:252",
+        "type": "Binding",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "252",
+        "column": "17",
+        "bindingType": "-1"
+      },
+      "calls": 2799,
+      "inclusive_ns": 32713053,
+      "max_ns": 114584
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:347",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "347",
+        "column": "21",
+        "details": "expression for color"
+      },
+      "calls": 69810,
+      "inclusive_ns": 27709458,
+      "max_ns": 31839
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:348",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "348",
+        "column": "21",
+        "details": "expression for width"
+      },
+      "calls": 69810,
+      "inclusive_ns": 17245893,
+      "max_ns": 24245
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:346",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "346",
+        "column": "21",
+        "details": "expression for color"
+      },
+      "calls": 69810,
+      "inclusive_ns": 14816403,
+      "max_ns": 30767
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:50",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "50",
+        "column": "5",
+        "details": "endpoint"
+      },
+      "calls": 3160,
+      "inclusive_ns": 12398195,
+      "max_ns": 43982
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:44",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "44",
+        "column": "5",
+        "details": "zoomAround"
+      },
+      "calls": 277,
+      "inclusive_ns": 11780357,
+      "max_ns": 190976
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:420",
+        "type": "HandlingSignal",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "420",
+        "column": "5"
+      },
+      "calls": 1,
+      "inclusive_ns": 7227302,
+      "max_ns": 7227302
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:420",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "420",
+        "column": "5",
+        "details": "expression for onCompleted"
+      },
+      "calls": 1,
+      "inclusive_ns": 7222573,
+      "max_ns": 7222573
+    }
+  ],
+  "routing_events": [
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:85",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "85",
+        "column": "5",
+        "details": "setNodePosition"
+      },
+      "calls": 277,
+      "inclusive_ns": 359845853,
+      "max_ns": 1831529
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:238",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "238",
+        "column": "13",
+        "details": "updateEndpoints"
+      },
+      "calls": 1580,
+      "inclusive_ns": 356330442,
+      "max_ns": 708322
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:139",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "139",
+        "column": "5",
+        "details": "resetGraph"
+      },
+      "calls": 2,
+      "inclusive_ns": 105229158,
+      "max_ns": 98019949
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:120",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "120",
+        "column": "5",
+        "details": "rebuildPaths"
+      },
+      "calls": 4,
+      "inclusive_ns": 66469619,
+      "max_ns": 64036777
+    },
+    {
+      "event": {
+        "displayname": "GraphSandbox.qml:50",
+        "type": "Javascript",
+        "filename": "file:///home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "line": "50",
+        "column": "5",
+        "details": "endpoint"
+      },
+      "calls": 3160,
+      "inclusive_ns": 12398195,
+      "max_ns": 43982
+    }
+  ],
+  "total_ranges": 618323
+}

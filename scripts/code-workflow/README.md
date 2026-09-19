@@ -25,7 +25,8 @@ HADALIS_WORKFLOW_GRAMMAR="$HADALIS_WORKFLOW_GRAMMAR" bash scripts/validate-maint
 The builder pins grammar 0.3.1, checks the crate SHA-256, retains its MIT license
 in the temporary build directory and compiles its released C files without Node
 or a grammar generator. Supply a downloaded crate as the optional second argument
-for offline builds. Never commit the grammar, library, cache or generated report.
+for offline builds. Keep grammar, library and build caches temporary. Reviewed evidence snapshots
+requested by the maintainer belong under docs/evidence/code-workflow/.
 
 The corpus runner resolves a commit first, reads every tracked `.qml` from that
 commit, and records the revision, file hashes and corpus manifest hash. Untracked
@@ -70,7 +71,7 @@ runner: desktop access and graphics drivers must be available explicitly.
 
 ```sh
 # Interactive, independent window; never starts/reloads the shell.
-python3 scripts/code-workflow/run-sandbox.py
+python3 scripts/code-workflow/run-sandbox.py --renderer geometry
 
 # Repeatable input tests, software fallback; not a GPU performance comparison.
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
@@ -122,9 +123,8 @@ silently crop the dense graph. Missing visible nodes or fewer than ten frame
 callbacks per second fail qualification. A nested compositor may be throttled
 when its outer desktop window is obscured; retain that failure and use headless
 Sway for controlled timing/soak rather than treating the throttled run as valid.
-Scene graph logs record the actual OpenGL device for interpreting software drivers.
-The
-soak samples RSS, object/path counts and trace retention every ten seconds while
+Reports establish the graphics API; the final matrix did not capture the actual
+GPU/vendor identity. Driver/hardware coverage remains separate. The soak samples RSS, object/path counts and trace retention every ten seconds while
 rebuilding every fifteen seconds. Timing buffers retain at most 16,384 samples;
 their totals/window are explicit so harness storage cannot grow without bound.
 Run one performance matrix at a time. These are opt-in desktop tools.
@@ -226,3 +226,24 @@ Reports pin the source revision, QML/driver hashes and pointer binary hash.
 The complete CDE matrix currently has 40 passing checks on Niri and 44 on Sway.
 These probes are opt-in; do not add them to unattended static CI or run them
 against the installed shell. The standard local module guard remains unchanged.
+
+## Final Phase 0 qualification
+
+The [final handoff](../../docs/CODE_WORKFLOW_HANDOFF.md) links all retained runs,
+corpus chunks, profiler summaries and canonical logs. Geometry is viable within
+the observed scope; Curve is HOLD because its 600-second soak keeps growing RSS.
+The 100-node paired frame-p95 regression is retained. Do not infer a universal
+performance improvement or production memory acceptance from harness exit zero.
+
+To exclude desktop pointer motion from the Niri runtime probe, host it in an
+owned headless Sway. This runs the same CDE assertions and stops only its own
+process group; the destination must not exist:
+
+```sh
+python3 scripts/code-workflow/run-headless-niri.py --work-dir /tmp/cde-isolated-new \
+  --sway /usr/bin/sway --pointer /tmp/hadalis-workflow-pointer/pointer
+```
+
+The outer report hashes this wrapper and Sway; probe/report.json pins the
+committed source and inner driver hashes. The qualified result is 40 checks.
+Keep failed desktop-input runs as evidence; do not loosen the click assertions.

@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "tested_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+  "matrix": "spike-b.sway-matrix.2ac7583b.json",
+  "matrix_sha256": "986d35ec879831a5f6783af184293804bde28ee009fdceb1482b2d46260db312",
+  "decision": "Phase 0 investigation complete; Geometry viable for a read-only Phase 1 prototype, Curve memory acceptance HOLD. No universal renderer or FPS claim.",
+  "paired_observations": [
+    {
+      "renderer": "geometry",
+      "nodes": 20,
+      "frame_p95_ms": {
+        "baseline": 29.589,
+        "candidate": 29.359
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 1.0,
+        "candidate": 1.0
+      }
+    },
+    {
+      "renderer": "geometry",
+      "nodes": 60,
+      "frame_p95_ms": {
+        "baseline": 25.122,
+        "candidate": 25.336
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 3.0,
+        "candidate": 2.0
+      }
+    },
+    {
+      "renderer": "geometry",
+      "nodes": 100,
+      "frame_p95_ms": {
+        "baseline": 18.121,
+        "candidate": 23.965
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 4.0,
+        "candidate": 3.0
+      }
+    },
+    {
+      "renderer": "geometry",
+      "nodes": 250,
+      "frame_p95_ms": {
+        "baseline": 43.085,
+        "candidate": 37.885
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 13.0,
+        "candidate": 7.0
+      }
+    },
+    {
+      "renderer": "curve",
+      "nodes": 20,
+      "frame_p95_ms": {
+        "baseline": 31.228,
+        "candidate": 29.429
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 1.0,
+        "candidate": 1.0
+      }
+    },
+    {
+      "renderer": "curve",
+      "nodes": 60,
+      "frame_p95_ms": {
+        "baseline": 25.266,
+        "candidate": 24.488
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 3.0,
+        "candidate": 2.0
+      }
+    },
+    {
+      "renderer": "curve",
+      "nodes": 100,
+      "frame_p95_ms": {
+        "baseline": 21.042,
+        "candidate": 23.906
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 5.0,
+        "candidate": 3.0
+      }
+    },
+    {
+      "renderer": "curve",
+      "nodes": 250,
+      "frame_p95_ms": {
+        "baseline": 53.077,
+        "candidate": 49.291
+      },
+      "model_mutation_p95_ms": {
+        "baseline": 14.0,
+        "candidate": 7.0
+      }
+    }
+  ],
+  "soaks": {
+    "geometry": {
+      "seconds": 600.0,
+      "rebuilds": 40,
+      "memory_samples": 61,
+      "rss_before_kib": 448000,
+      "rss_after_kib": 475772,
+      "second_half_first_rss_kib": 474224,
+      "second_half_last_rss_kib": 475268,
+      "second_half_delta_kib": 1044,
+      "qobject_sample_counts": [
+        4213
+      ],
+      "final_qobjects": 4213,
+      "decision": "VIABLE IN OBSERVED WINDOW"
+    },
+    "curve": {
+      "seconds": 600.0,
+      "rebuilds": 40,
+      "memory_samples": 62,
+      "rss_before_kib": 474460,
+      "rss_after_kib": 675204,
+      "second_half_first_rss_kib": 588812,
+      "second_half_last_rss_kib": 676636,
+      "second_half_delta_kib": 87824,
+      "qobject_sample_counts": [
+        4213,
+        5643
+      ],
+      "final_qobjects": 4213,
+      "decision": "HOLD: sustained RSS growth; native allocation profiling required"
+    }
+  },
+  "limits": [
+    "Single paired run per case; 100-node p95 cadence regression retained.",
+    "Frame cadence includes QtTest/Python scheduling, not GPU duration.",
+    "OpenGL API verified; actual GPU/vendor identity not captured.",
+    "Synthetic hardware input and virtual outputs do not prove physical touchpad/hotplug or driver breadth.",
+    "Profiler traces are separate instrumented runs; only hash/count summaries are committed.",
+    "Soaks overlapped occasional screenshot/input/static-check work; use memory/lifetime observations, not clean comparative cadence.",
+    "Curve transient 5643 objects coincide with rebuild before deferred destruction; final 4213 does not explain RSS growth."
+  ],
+  "screenshots": {
+    "spike-b.geometry-soak.png": "ff7d5f43978295d745c92f70747422a94ec8a6fa961d310211a97b94570013e9",
+    "spike-b.curve-soak.png": "2a076a77050cc372787abaae5c82bbc7bb497d0aafa1208cb4cf10e12bc6d046"
+  }
+}

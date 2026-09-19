@@ -1,7 +1,8 @@
 # Workflow-first QML Code Editor
 
-Status: Phase 0 in progress. A and isolated live C–E probes pass; B still has
-performance/platform acceptance work. Production editor is not implemented.
+Status: Phase 0 A–E investigation complete within the documented prototype scope.
+Geometry is viable for read-only Phase 1; Curve sustained-memory acceptance is
+HOLD. Repository validation still has baseline failures. Production editor is not implemented.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md) and
 [continuation instructions](CODE_WORKFLOW_HANDOFF.md).
 

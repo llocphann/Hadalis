@@ -1,0 +1,3524 @@
+{
+  "schema": 1,
+  "spike": "B",
+  "runs": [
+    {
+      "name": "input-geometry",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/input-geometry.json",
+        "--test",
+        "--nodes",
+        "60",
+        "--renderer",
+        "geometry"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 60,
+        "edges": 114,
+        "visible_nodes_at_end": 45,
+        "qobjects": 921,
+        "input_checks": [
+          "dense node move updates exactly its incident routes with correct endpoints",
+          "view transforms do not reroute geometry",
+          "one Shape contains all routed paths",
+          "node tap selects without background clearing it",
+          "Ctrl-click adds to selection",
+          "arrow navigation moves node focus",
+          "Tab moves keyboard focus",
+          "Enter navigates into subflow",
+          "Escape restores parent graph and layout",
+          "middle drag pans without moving graph metadata",
+          "wheel zoom preserves cursor pivot and layout",
+          "pixel-only touchpad scroll changes zoom",
+          "node drag changes only node layout in graph units",
+          "wire is picked independently of Shape containment",
+          "wire hit tolerance remains in screen pixels at zoom 0.5",
+          "wire hit tolerance remains in screen pixels at zoom 1.0",
+          "wire hit tolerance remains in screen pixels at zoom 2.0",
+          "Shift-drag lasso selects the enclosed nodes",
+          "synthetic two-point pinch zoom preserves graph layout",
+          "rebuilding graph does not accumulate QObject delegates"
+        ],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 0,
+        "frame_intervals_ms": null,
+        "gui_timer_intervals_ms": null,
+        "model_mutation_ms": null,
+        "rss_before_kib": 402396,
+        "rss_after_kib": 402808,
+        "trace_retained": 0,
+        "warmup_seconds": 0.5,
+        "last_routed_paths": 114,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 0,
+          "heartbeat": 0
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "input-curve",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/input-curve.json",
+        "--test",
+        "--nodes",
+        "60",
+        "--renderer",
+        "curve"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 60,
+        "edges": 114,
+        "visible_nodes_at_end": 45,
+        "qobjects": 921,
+        "input_checks": [
+          "dense node move updates exactly its incident routes with correct endpoints",
+          "view transforms do not reroute geometry",
+          "one Shape contains all routed paths",
+          "node tap selects without background clearing it",
+          "Ctrl-click adds to selection",
+          "arrow navigation moves node focus",
+          "Tab moves keyboard focus",
+          "Enter navigates into subflow",
+          "Escape restores parent graph and layout",
+          "middle drag pans without moving graph metadata",
+          "wheel zoom preserves cursor pivot and layout",
+          "pixel-only touchpad scroll changes zoom",
+          "node drag changes only node layout in graph units",
+          "wire is picked independently of Shape containment",
+          "wire hit tolerance remains in screen pixels at zoom 0.5",
+          "wire hit tolerance remains in screen pixels at zoom 1.0",
+          "wire hit tolerance remains in screen pixels at zoom 2.0",
+          "Shift-drag lasso selects the enclosed nodes",
+          "synthetic two-point pinch zoom preserves graph layout",
+          "rebuilding graph does not accumulate QObject delegates"
+        ],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 0,
+        "frame_intervals_ms": null,
+        "gui_timer_intervals_ms": null,
+        "model_mutation_ms": null,
+        "rss_before_kib": 405860,
+        "rss_after_kib": 406148,
+        "trace_retained": 0,
+        "warmup_seconds": 0.5,
+        "last_routed_paths": 114,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 0,
+          "heartbeat": 0
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-geometry-20",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-geometry-20.json",
+        "--nodes",
+        "20",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 20,
+        "edges": 34,
+        "visible_nodes_at_end": 20,
+        "qobjects": 321,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 462,
+          "p50": 17.816,
+          "p95": 29.589,
+          "max": 33.866
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 778,
+          "p50": 10.597,
+          "p95": 15.192,
+          "max": 19.078
+        },
+        "model_mutation_ms": {
+          "samples": 778,
+          "p50": 1.0,
+          "p95": 1.0,
+          "max": 2.0
+        },
+        "rss_before_kib": 358776,
+        "rss_after_kib": 372624,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 465,
+          "heartbeat": 781
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 358776,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.148,
+            "rss_kib": 372184,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-geometry-20",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-geometry-20.json",
+        "--nodes",
+        "20",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 20,
+        "edges": 34,
+        "visible_nodes_at_end": 20,
+        "qobjects": 321,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 460,
+          "p50": 17.562,
+          "p95": 29.359,
+          "max": 43.158
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 775,
+          "p50": 10.695,
+          "p95": 16.047,
+          "max": 18.77
+        },
+        "model_mutation_ms": {
+          "samples": 775,
+          "p50": 1.0,
+          "p95": 1.0,
+          "max": 3.0
+        },
+        "rss_before_kib": 353144,
+        "rss_after_kib": 368496,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 2,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 463,
+          "heartbeat": 778
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 353144,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.147,
+            "rss_kib": 368212,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-curve-20",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-curve-20.json",
+        "--nodes",
+        "20",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 20,
+        "edges": 34,
+        "visible_nodes_at_end": 20,
+        "qobjects": 321,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 458,
+          "p50": 18.39,
+          "p95": 31.228,
+          "max": 34.536
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 766,
+          "p50": 10.649,
+          "p95": 14.961,
+          "max": 26.184
+        },
+        "model_mutation_ms": {
+          "samples": 766,
+          "p50": 1.0,
+          "p95": 1.0,
+          "max": 3.0
+        },
+        "rss_before_kib": 358812,
+        "rss_after_kib": 371052,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 461,
+          "heartbeat": 769
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 358812,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.149,
+            "rss_kib": 370628,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-curve-20",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-curve-20.json",
+        "--nodes",
+        "20",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 20,
+        "edges": 34,
+        "visible_nodes_at_end": 20,
+        "qobjects": 321,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 463,
+          "p50": 18.222,
+          "p95": 29.429,
+          "max": 33.363
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 776,
+          "p50": 10.628,
+          "p95": 12.317,
+          "max": 18.401
+        },
+        "model_mutation_ms": {
+          "samples": 776,
+          "p50": 1.0,
+          "p95": 1.0,
+          "max": 2.0
+        },
+        "rss_before_kib": 353204,
+        "rss_after_kib": 367296,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 2,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 466,
+          "heartbeat": 779
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 353204,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.146,
+            "rss_kib": 366908,
+            "qobjects": 321,
+            "paths": 34,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-geometry-60",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-geometry-60.json",
+        "--nodes",
+        "60",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 60,
+        "edges": 114,
+        "visible_nodes_at_end": 60,
+        "qobjects": 921,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 442,
+          "p50": 15.603,
+          "p95": 25.336,
+          "max": 36.111
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 696,
+          "p50": 12.178,
+          "p95": 15.5,
+          "max": 32.301
+        },
+        "model_mutation_ms": {
+          "samples": 696,
+          "p50": 1.0,
+          "p95": 2.0,
+          "max": 4.0
+        },
+        "rss_before_kib": 366544,
+        "rss_after_kib": 381100,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 2,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 445,
+          "heartbeat": 699
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 366732,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.201,
+            "rss_kib": 380684,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-geometry-60",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-geometry-60.json",
+        "--nodes",
+        "60",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 60,
+        "edges": 114,
+        "visible_nodes_at_end": 60,
+        "qobjects": 921,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 453,
+          "p50": 15.334,
+          "p95": 25.122,
+          "max": 35.572
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 708,
+          "p50": 12.187,
+          "p95": 15.306,
+          "max": 20.988
+        },
+        "model_mutation_ms": {
+          "samples": 708,
+          "p50": 2.0,
+          "p95": 3.0,
+          "max": 4.0
+        },
+        "rss_before_kib": 364880,
+        "rss_after_kib": 389528,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 456,
+          "heartbeat": 711
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 364880,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.161,
+            "rss_kib": 389212,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-curve-60",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-curve-60.json",
+        "--nodes",
+        "60",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 60,
+        "edges": 114,
+        "visible_nodes_at_end": 60,
+        "qobjects": 921,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 452,
+          "p50": 16.701,
+          "p95": 24.488,
+          "max": 33.841
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 736,
+          "p50": 11.403,
+          "p95": 13.37,
+          "max": 20.828
+        },
+        "model_mutation_ms": {
+          "samples": 736,
+          "p50": 1.0,
+          "p95": 2.0,
+          "max": 3.0
+        },
+        "rss_before_kib": 372620,
+        "rss_after_kib": 394948,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 2,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 455,
+          "heartbeat": 739
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 372620,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.159,
+            "rss_kib": 394568,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-curve-60",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-curve-60.json",
+        "--nodes",
+        "60",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 60,
+        "edges": 114,
+        "visible_nodes_at_end": 60,
+        "qobjects": 921,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 449,
+          "p50": 14.576,
+          "p95": 25.266,
+          "max": 35.939
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 717,
+          "p50": 11.726,
+          "p95": 14.35,
+          "max": 17.082
+        },
+        "model_mutation_ms": {
+          "samples": 717,
+          "p50": 2.0,
+          "p95": 3.0,
+          "max": 5.0
+        },
+        "rss_before_kib": 371024,
+        "rss_after_kib": 384612,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 452,
+          "heartbeat": 720
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 371024,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.161,
+            "rss_kib": 384344,
+            "qobjects": 921,
+            "paths": 114,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-geometry-100",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-geometry-100.json",
+        "--nodes",
+        "100",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 100,
+        "edges": 194,
+        "visible_nodes_at_end": 100,
+        "qobjects": 1521,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 464,
+          "p50": 17.056,
+          "p95": 18.121,
+          "max": 26.071
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 680,
+          "p50": 12.321,
+          "p95": 17.342,
+          "max": 23.604
+        },
+        "model_mutation_ms": {
+          "samples": 680,
+          "p50": 3.0,
+          "p95": 4.0,
+          "max": 6.0
+        },
+        "rss_before_kib": 382984,
+        "rss_after_kib": 397492,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 467,
+          "heartbeat": 683
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 382984,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.176,
+            "rss_kib": 397092,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-geometry-100",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-geometry-100.json",
+        "--nodes",
+        "100",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 100,
+        "edges": 194,
+        "visible_nodes_at_end": 100,
+        "qobjects": 1521,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 456,
+          "p50": 16.989,
+          "p95": 23.965,
+          "max": 28.874
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 693,
+          "p50": 11.81,
+          "p95": 17.211,
+          "max": 23.424
+        },
+        "model_mutation_ms": {
+          "samples": 693,
+          "p50": 2.0,
+          "p95": 3.0,
+          "max": 5.0
+        },
+        "rss_before_kib": 378760,
+        "rss_after_kib": 393252,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 2,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 459,
+          "heartbeat": 696
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 378760,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.174,
+            "rss_kib": 392768,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-curve-100",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-curve-100.json",
+        "--nodes",
+        "100",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 100,
+        "edges": 194,
+        "visible_nodes_at_end": 100,
+        "qobjects": 1521,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 454,
+          "p50": 16.864,
+          "p95": 21.042,
+          "max": 39.999
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 520,
+          "p50": 16.508,
+          "p95": 19.016,
+          "max": 29.958
+        },
+        "model_mutation_ms": {
+          "samples": 520,
+          "p50": 4.0,
+          "p95": 5.0,
+          "max": 6.0
+        },
+        "rss_before_kib": 389712,
+        "rss_after_kib": 405200,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 457,
+          "heartbeat": 523
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 389712,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.177,
+            "rss_kib": 405012,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-curve-100",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-curve-100.json",
+        "--nodes",
+        "100",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 100,
+        "edges": 194,
+        "visible_nodes_at_end": 100,
+        "qobjects": 1521,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 452,
+          "p50": 16.83,
+          "p95": 23.906,
+          "max": 38.329
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 594,
+          "p50": 15.648,
+          "p95": 17.586,
+          "max": 24.487
+        },
+        "model_mutation_ms": {
+          "samples": 594,
+          "p50": 2.0,
+          "p95": 3.0,
+          "max": 5.0
+        },
+        "rss_before_kib": 393228,
+        "rss_after_kib": 406776,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 2,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 455,
+          "heartbeat": 597
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 393228,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.177,
+            "rss_kib": 406232,
+            "qobjects": 1521,
+            "paths": 194,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-geometry-250",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-geometry-250.json",
+        "--nodes",
+        "250",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 250,
+        "edges": 715,
+        "visible_nodes_at_end": 250,
+        "qobjects": 4213,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 225,
+          "p50": 34.911,
+          "p95": 37.885,
+          "max": 40.339
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 224,
+          "p50": 34.935,
+          "p95": 37.878,
+          "max": 40.346
+        },
+        "model_mutation_ms": {
+          "samples": 224,
+          "p50": 5.0,
+          "p95": 7.0,
+          "max": 7.0
+        },
+        "rss_before_kib": 448316,
+        "rss_after_kib": 461668,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 3,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 228,
+          "heartbeat": 227
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 448316,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.237,
+            "rss_kib": 461172,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-geometry-250",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-geometry-250.json",
+        "--nodes",
+        "250",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 250,
+        "edges": 715,
+        "visible_nodes_at_end": 250,
+        "qobjects": 4213,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 206,
+          "p50": 38.105,
+          "p95": 43.085,
+          "max": 45.067
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 206,
+          "p50": 38.098,
+          "p95": 43.082,
+          "max": 45.065
+        },
+        "model_mutation_ms": {
+          "samples": 206,
+          "p50": 10.0,
+          "p95": 13.0,
+          "max": 16.0
+        },
+        "rss_before_kib": 448616,
+        "rss_after_kib": 463344,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 209,
+          "heartbeat": 209
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 448620,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.27,
+            "rss_kib": 462968,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "candidate-curve-250",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/candidate-curve-250.json",
+        "--nodes",
+        "250",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 250,
+        "edges": 715,
+        "visible_nodes_at_end": 250,
+        "qobjects": 4213,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 178,
+          "p50": 43.52,
+          "p95": 49.291,
+          "max": 53.728
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 179,
+          "p50": 43.564,
+          "p95": 49.293,
+          "max": 53.606
+        },
+        "model_mutation_ms": {
+          "samples": 179,
+          "p50": 5.0,
+          "p95": 7.0,
+          "max": 10.0
+        },
+        "rss_before_kib": 458488,
+        "rss_after_kib": 478952,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": 3,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 181,
+          "heartbeat": 182
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 458488,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.265,
+            "rss_kib": 478612,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "baseline-curve-250",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline-curve-250.json",
+        "--nodes",
+        "250",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "8.0",
+        "--warmup",
+        "2",
+        "--qml-source",
+        "/tmp/hadalis-b-sway-2ac7583b/baseline.qml"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/tmp/hadalis-b-sway-2ac7583b/baseline.qml",
+        "qml_sha256": "652393102cba0c3a66b41699a74998563f5b8f0ea18f213ac5b0d0bac67071be",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 250,
+        "edges": 715,
+        "visible_nodes_at_end": 250,
+        "qobjects": 4213,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 8.0,
+        "frame_intervals_ms": {
+          "samples": 172,
+          "p50": 45.076,
+          "p95": 53.077,
+          "max": 59.581
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 172,
+          "p50": 45.074,
+          "p95": 53.05,
+          "max": 59.591
+        },
+        "model_mutation_ms": {
+          "samples": 172,
+          "p50": 11.0,
+          "p95": 14.0,
+          "max": 16.0
+        },
+        "rss_before_kib": 468736,
+        "rss_after_kib": 489316,
+        "trace_retained": 64,
+        "warmup_seconds": 2.0,
+        "last_routed_paths": null,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 175,
+          "heartbeat": 175
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 468736,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 8.264,
+            "rss_kib": 489356,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 0,
+        "rebuild_samples": [],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "soak-geometry",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/soak-geometry.json",
+        "--nodes",
+        "250",
+        "--renderer",
+        "geometry",
+        "--benchmark",
+        "600.0",
+        "--warmup",
+        "20",
+        "--sample-every",
+        "10",
+        "--rebuild-every",
+        "15"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "geometry",
+        "actual_renderer": "geometry",
+        "renderer_request_honored": true,
+        "nodes": 250,
+        "edges": 715,
+        "visible_nodes_at_end": 250,
+        "qobjects": 4213,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 600.0,
+        "frame_intervals_ms": {
+          "samples": 15439,
+          "p50": 37.592,
+          "p95": 45.255,
+          "max": 175.003
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 15434,
+          "p50": 37.598,
+          "p95": 45.168,
+          "max": 214.784
+        },
+        "model_mutation_ms": {
+          "samples": 15434,
+          "p50": 6.0,
+          "p95": 8.0,
+          "max": 27.0
+        },
+        "rss_before_kib": 448000,
+        "rss_after_kib": 475772,
+        "trace_retained": 64,
+        "warmup_seconds": 20.0,
+        "last_routed_paths": 3,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 15442,
+          "heartbeat": 15437
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 448000,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 10.567,
+            "rss_kib": 462020,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 20.594,
+            "rss_kib": 470976,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 30.584,
+            "rss_kib": 471336,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 40.576,
+            "rss_kib": 472832,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 50.583,
+            "rss_kib": 473336,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 60.571,
+            "rss_kib": 473448,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 70.578,
+            "rss_kib": 473660,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 80.575,
+            "rss_kib": 474124,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 90.574,
+            "rss_kib": 473444,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 100.606,
+            "rss_kib": 473700,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 110.586,
+            "rss_kib": 472380,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 120.583,
+            "rss_kib": 473296,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 130.595,
+            "rss_kib": 473632,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 140.577,
+            "rss_kib": 473584,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 150.596,
+            "rss_kib": 473880,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 160.568,
+            "rss_kib": 474228,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 170.582,
+            "rss_kib": 474076,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 180.582,
+            "rss_kib": 474268,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 190.584,
+            "rss_kib": 474300,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 200.594,
+            "rss_kib": 473988,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 210.582,
+            "rss_kib": 473716,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 220.6,
+            "rss_kib": 474216,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 230.585,
+            "rss_kib": 474448,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 240.575,
+            "rss_kib": 474760,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 250.572,
+            "rss_kib": 474664,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 260.57,
+            "rss_kib": 473104,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 270.571,
+            "rss_kib": 474460,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 280.578,
+            "rss_kib": 474652,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 290.58,
+            "rss_kib": 474912,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 300.584,
+            "rss_kib": 474224,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 310.582,
+            "rss_kib": 473168,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 320.572,
+            "rss_kib": 474420,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 330.597,
+            "rss_kib": 474528,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 340.581,
+            "rss_kib": 474704,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 350.586,
+            "rss_kib": 474660,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 360.58,
+            "rss_kib": 474320,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 370.591,
+            "rss_kib": 474352,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 380.571,
+            "rss_kib": 474584,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 390.601,
+            "rss_kib": 474944,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 400.591,
+            "rss_kib": 474828,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 410.588,
+            "rss_kib": 473612,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 420.602,
+            "rss_kib": 475044,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 430.586,
+            "rss_kib": 473668,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 440.595,
+            "rss_kib": 474796,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 450.579,
+            "rss_kib": 475020,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 460.587,
+            "rss_kib": 475064,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 470.566,
+            "rss_kib": 475484,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 480.574,
+            "rss_kib": 475424,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 490.599,
+            "rss_kib": 475360,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 500.579,
+            "rss_kib": 475408,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 510.6,
+            "rss_kib": 473992,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 520.584,
+            "rss_kib": 475400,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 530.571,
+            "rss_kib": 475040,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 540.574,
+            "rss_kib": 475384,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 550.573,
+            "rss_kib": 475580,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 560.577,
+            "rss_kib": 475532,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 570.597,
+            "rss_kib": 475828,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 580.582,
+            "rss_kib": 475708,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 590.577,
+            "rss_kib": 474656,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 600.265,
+            "rss_kib": 475268,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 15.0,
+        "rebuild_samples": [
+          {
+            "seconds": 14.583,
+            "reset_ms": 102.507
+          },
+          {
+            "seconds": 29.577,
+            "reset_ms": 103.153
+          },
+          {
+            "seconds": 44.597,
+            "reset_ms": 119.888
+          },
+          {
+            "seconds": 59.578,
+            "reset_ms": 111.187
+          },
+          {
+            "seconds": 74.584,
+            "reset_ms": 124.371
+          },
+          {
+            "seconds": 89.593,
+            "reset_ms": 124.16
+          },
+          {
+            "seconds": 104.568,
+            "reset_ms": 130.25
+          },
+          {
+            "seconds": 119.564,
+            "reset_ms": 112.192
+          },
+          {
+            "seconds": 134.597,
+            "reset_ms": 108.053
+          },
+          {
+            "seconds": 149.602,
+            "reset_ms": 117.832
+          },
+          {
+            "seconds": 164.569,
+            "reset_ms": 131.679
+          },
+          {
+            "seconds": 179.577,
+            "reset_ms": 105.37
+          },
+          {
+            "seconds": 194.594,
+            "reset_ms": 106.141
+          },
+          {
+            "seconds": 209.577,
+            "reset_ms": 99.596
+          },
+          {
+            "seconds": 224.568,
+            "reset_ms": 110.34
+          },
+          {
+            "seconds": 239.59,
+            "reset_ms": 100.545
+          },
+          {
+            "seconds": 254.568,
+            "reset_ms": 95.3
+          },
+          {
+            "seconds": 269.592,
+            "reset_ms": 102.516
+          },
+          {
+            "seconds": 284.593,
+            "reset_ms": 123.907
+          },
+          {
+            "seconds": 299.589,
+            "reset_ms": 113.31
+          },
+          {
+            "seconds": 314.591,
+            "reset_ms": 100.256
+          },
+          {
+            "seconds": 329.581,
+            "reset_ms": 102.634
+          },
+          {
+            "seconds": 344.587,
+            "reset_ms": 105.96
+          },
+          {
+            "seconds": 359.588,
+            "reset_ms": 109.244
+          },
+          {
+            "seconds": 374.595,
+            "reset_ms": 109.38
+          },
+          {
+            "seconds": 389.563,
+            "reset_ms": 124.177
+          },
+          {
+            "seconds": 404.587,
+            "reset_ms": 104.298
+          },
+          {
+            "seconds": 419.564,
+            "reset_ms": 112.616
+          },
+          {
+            "seconds": 434.584,
+            "reset_ms": 95.227
+          },
+          {
+            "seconds": 449.564,
+            "reset_ms": 104.057
+          },
+          {
+            "seconds": 464.566,
+            "reset_ms": 99.593
+          },
+          {
+            "seconds": 479.587,
+            "reset_ms": 104.849
+          },
+          {
+            "seconds": 494.565,
+            "reset_ms": 107.195
+          },
+          {
+            "seconds": 509.576,
+            "reset_ms": 98.481
+          },
+          {
+            "seconds": 524.604,
+            "reset_ms": 127.088
+          },
+          {
+            "seconds": 539.57,
+            "reset_ms": 126.534
+          },
+          {
+            "seconds": 554.592,
+            "reset_ms": 113.641
+          },
+          {
+            "seconds": 569.577,
+            "reset_ms": 102.027
+          },
+          {
+            "seconds": 584.572,
+            "reset_ms": 103.462
+          },
+          {
+            "seconds": 599.571,
+            "reset_ms": 112.482
+          }
+        ],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    },
+    {
+      "name": "soak-curve",
+      "command": [
+        "/usr/bin/python3",
+        "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/run-sandbox.py",
+        "--screen",
+        "HEADLESS-1",
+        "--output",
+        "/tmp/hadalis-b-sway-2ac7583b/soak-curve.json",
+        "--nodes",
+        "250",
+        "--renderer",
+        "curve",
+        "--benchmark",
+        "600.0",
+        "--warmup",
+        "20",
+        "--sample-every",
+        "10",
+        "--rebuild-every",
+        "15"
+      ],
+      "exit_code": 0,
+      "result": {
+        "spike": "B",
+        "qt": "6.11.2",
+        "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+        "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+        "qml_source": "/home/llocphann/.codex/.chatgpt-projects/g-p-6aabf5702fac8191b96853ad53df8577/Hadalis/scripts/code-workflow/GraphSandbox.qml",
+        "qml_sha256": "7026b33c256d9ea0d39928158ee7bf6d6351d79c1e0f0c675aa9b6836d81c7a5",
+        "harness_sha256": "64d028caca9b6661445554d0d7acbbff062802a2f833becf4ef6dd21ca541063",
+        "qpa": "wayland",
+        "device_pixel_ratio": 1.25,
+        "wheel_test_adapter": "QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
+        "window_logical_size": [
+          1532,
+          931
+        ],
+        "graphics_api": "GraphicsApi.OpenGL",
+        "render_loop": "Qt default",
+        "screen_name": "HEADLESS-1",
+        "screens": [
+          {
+            "name": "HEADLESS-1",
+            "dpr": 2.0,
+            "size": [
+              1536,
+              960
+            ]
+          }
+        ],
+        "requested_renderer": "curve",
+        "actual_renderer": "curve",
+        "renderer_request_honored": true,
+        "nodes": 250,
+        "edges": 715,
+        "visible_nodes_at_end": 250,
+        "qobjects": 4213,
+        "input_checks": [],
+        "failure": null,
+        "qml_warnings": [],
+        "benchmark_seconds": 600.0,
+        "frame_intervals_ms": {
+          "samples": 12835,
+          "p50": 45.585,
+          "p95": 51.875,
+          "max": 472.79
+        },
+        "gui_timer_intervals_ms": {
+          "samples": 12822,
+          "p50": 45.778,
+          "p95": 51.755,
+          "max": 359.579
+        },
+        "model_mutation_ms": {
+          "samples": 12822,
+          "p50": 6.0,
+          "p95": 8.0,
+          "max": 19.0
+        },
+        "rss_before_kib": 474460,
+        "rss_after_kib": 675204,
+        "trace_retained": 64,
+        "warmup_seconds": 20.0,
+        "last_routed_paths": 715,
+        "timing_sample_capacity": 16384,
+        "timing_sample_totals": {
+          "frames": 12838,
+          "heartbeat": 12825
+        },
+        "timing_window": "last 16384 samples, excluding first three retained samples",
+        "memory_samples": [
+          {
+            "seconds": 0.0,
+            "rss_kib": 474460,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 10.111,
+            "rss_kib": 486948,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 20.094,
+            "rss_kib": 500652,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 30.216,
+            "rss_kib": 520120,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 40.099,
+            "rss_kib": 525148,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 50.108,
+            "rss_kib": 525452,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 60.21,
+            "rss_kib": 525772,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 70.082,
+            "rss_kib": 533756,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 80.123,
+            "rss_kib": 535384,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 90.188,
+            "rss_kib": 536644,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 100.114,
+            "rss_kib": 538832,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 110.088,
+            "rss_kib": 538256,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 120.195,
+            "rss_kib": 539872,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 130.119,
+            "rss_kib": 545820,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 140.098,
+            "rss_kib": 545020,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 150.213,
+            "rss_kib": 547172,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 160.125,
+            "rss_kib": 550656,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 170.104,
+            "rss_kib": 551320,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 180.219,
+            "rss_kib": 550592,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 190.102,
+            "rss_kib": 555676,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 200.092,
+            "rss_kib": 556628,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 210.229,
+            "rss_kib": 556824,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 220.097,
+            "rss_kib": 562964,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 230.128,
+            "rss_kib": 563644,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 240.24,
+            "rss_kib": 563716,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 250.088,
+            "rss_kib": 568528,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 260.108,
+            "rss_kib": 568888,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 270.242,
+            "rss_kib": 568952,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 280.092,
+            "rss_kib": 584156,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 290.102,
+            "rss_kib": 586444,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 300.211,
+            "rss_kib": 588812,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 310.1,
+            "rss_kib": 592804,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 320.102,
+            "rss_kib": 592988,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 330.192,
+            "rss_kib": 598440,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 340.088,
+            "rss_kib": 603936,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 350.107,
+            "rss_kib": 605908,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 360.236,
+            "rss_kib": 606712,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 370.087,
+            "rss_kib": 612032,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 380.122,
+            "rss_kib": 614600,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 390.197,
+            "rss_kib": 615792,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 400.119,
+            "rss_kib": 623624,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 410.083,
+            "rss_kib": 623840,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 420.23,
+            "rss_kib": 624816,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 430.118,
+            "rss_kib": 629740,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 440.105,
+            "rss_kib": 631380,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 450.199,
+            "rss_kib": 632628,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 460.108,
+            "rss_kib": 636936,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 470.11,
+            "rss_kib": 638432,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 480.219,
+            "rss_kib": 638540,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 490.106,
+            "rss_kib": 644112,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 500.105,
+            "rss_kib": 646472,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 510.217,
+            "rss_kib": 647704,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 520.117,
+            "rss_kib": 652020,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 530.11,
+            "rss_kib": 659024,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 540.2,
+            "rss_kib": 660060,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 550.113,
+            "rss_kib": 664280,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 560.101,
+            "rss_kib": 667496,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 570.229,
+            "rss_kib": 668204,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 580.097,
+            "rss_kib": 673836,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 590.088,
+            "rss_kib": 675832,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 600.23,
+            "rss_kib": 677084,
+            "qobjects": 5643,
+            "paths": 715,
+            "trace_retained": 64
+          },
+          {
+            "seconds": 600.655,
+            "rss_kib": 676636,
+            "qobjects": 4213,
+            "paths": 715,
+            "trace_retained": 64
+          }
+        ],
+        "rebuild_every_seconds": 15.0,
+        "rebuild_samples": [
+          {
+            "seconds": 15.09,
+            "reset_ms": 104.208
+          },
+          {
+            "seconds": 30.115,
+            "reset_ms": 101.26
+          },
+          {
+            "seconds": 45.119,
+            "reset_ms": 104.027
+          },
+          {
+            "seconds": 60.092,
+            "reset_ms": 117.991
+          },
+          {
+            "seconds": 75.085,
+            "reset_ms": 101.026
+          },
+          {
+            "seconds": 90.081,
+            "reset_ms": 106.47
+          },
+          {
+            "seconds": 105.119,
+            "reset_ms": 108.042
+          },
+          {
+            "seconds": 120.089,
+            "reset_ms": 106.28
+          },
+          {
+            "seconds": 135.083,
+            "reset_ms": 109.158
+          },
+          {
+            "seconds": 150.103,
+            "reset_ms": 110.112
+          },
+          {
+            "seconds": 165.098,
+            "reset_ms": 112.252
+          },
+          {
+            "seconds": 180.11,
+            "reset_ms": 108.371
+          },
+          {
+            "seconds": 195.095,
+            "reset_ms": 111.989
+          },
+          {
+            "seconds": 210.12,
+            "reset_ms": 109.039
+          },
+          {
+            "seconds": 225.126,
+            "reset_ms": 116.552
+          },
+          {
+            "seconds": 240.129,
+            "reset_ms": 111.082
+          },
+          {
+            "seconds": 255.119,
+            "reset_ms": 114.9
+          },
+          {
+            "seconds": 270.124,
+            "reset_ms": 117.384
+          },
+          {
+            "seconds": 285.107,
+            "reset_ms": 114.868
+          },
+          {
+            "seconds": 300.103,
+            "reset_ms": 108.414
+          },
+          {
+            "seconds": 315.091,
+            "reset_ms": 113.215
+          },
+          {
+            "seconds": 330.083,
+            "reset_ms": 108.405
+          },
+          {
+            "seconds": 345.091,
+            "reset_ms": 118.646
+          },
+          {
+            "seconds": 360.124,
+            "reset_ms": 111.806
+          },
+          {
+            "seconds": 375.101,
+            "reset_ms": 113.269
+          },
+          {
+            "seconds": 390.082,
+            "reset_ms": 114.68
+          },
+          {
+            "seconds": 405.12,
+            "reset_ms": 113.573
+          },
+          {
+            "seconds": 420.118,
+            "reset_ms": 111.346
+          },
+          {
+            "seconds": 435.091,
+            "reset_ms": 112.125
+          },
+          {
+            "seconds": 450.091,
+            "reset_ms": 107.287
+          },
+          {
+            "seconds": 465.082,
+            "reset_ms": 118.029
+          },
+          {
+            "seconds": 480.106,
+            "reset_ms": 113.309
+          },
+          {
+            "seconds": 495.11,
+            "reset_ms": 121.266
+          },
+          {
+            "seconds": 510.102,
+            "reset_ms": 115.189
+          },
+          {
+            "seconds": 525.12,
+            "reset_ms": 119.751
+          },
+          {
+            "seconds": 540.083,
+            "reset_ms": 117.445
+          },
+          {
+            "seconds": 555.09,
+            "reset_ms": 120.54
+          },
+          {
+            "seconds": 570.123,
+            "reset_ms": 105.055
+          },
+          {
+            "seconds": 585.084,
+            "reset_ms": 104.821
+          },
+          {
+            "seconds": 600.121,
+            "reset_ms": 108.562
+          }
+        ],
+        "limitations": [
+          "Synthetic graph shaped after Bar/Media categories; no resolved production IR.",
+          "Combined node/wire mutation, pan/zoom, multi-selection, runtime values and bounded trace bursts.",
+          "Frame-swapped intervals are cadence observations, not GPU duration or a visible-node budget.",
+          "Synthetic touch events do not prove hardware touchpad gesture arbitration.",
+          "No live shell, multiple-output/hotplug/lock/reload integration."
+        ]
+      }
+    }
+  ],
+  "failure": null,
+  "matrix_driver_sha256": "bf70697570dbda7656f600efe1434f3da63f273d2a25fa6dc35787773deeaecb",
+  "source_revision": "2ac7583bc8c37ce8190992d080ef03bec4ed1df2",
+  "source_status": "",
+  "backend": "sway-headless",
+  "requested_scale": 1.25,
+  "baseline_revision": "7387ef0a26081d56df816369d4d9d74fedbe2324",
+  "outputs": [
+    {
+      "id": 3,
+      "type": "output",
+      "orientation": "none",
+      "percent": 1.0,
+      "urgent": false,
+      "marks": [],
+      "layout": "output",
+      "border": "none",
+      "current_border_width": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1536,
+        "height": 960
+      },
+      "deco_rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "window_rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "geometry": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "name": "HEADLESS-1",
+      "window": null,
+      "nodes": [],
+      "floating_nodes": [],
+      "focus": [
+        4
+      ],
+      "fullscreen_mode": 0,
+      "sticky": false,
+      "floating": null,
+      "scratchpad_state": null,
+      "primary": false,
+      "make": "Unknown",
+      "model": "Unknown",
+      "serial": "Unknown",
+      "modes": [],
+      "features": {
+        "adaptive_sync": false,
+        "hdr": false
+      },
+      "non_desktop": false,
+      "active": true,
+      "dpms": true,
+      "power": true,
+      "scale": 1.25,
+      "scale_filter": "linear",
+      "transform": "normal",
+      "adaptive_sync_status": "disabled",
+      "current_workspace": "1",
+      "current_mode": {
+        "width": 1920,
+        "height": 1200,
+        "refresh": 0
+      },
+      "max_render_time": 0,
+      "allow_tearing": false,
+      "hdr": false,
+      "focused": true,
+      "subpixel_hinting": "unknown"
+    }
+  ]
+}

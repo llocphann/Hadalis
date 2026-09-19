@@ -98,7 +98,7 @@ checked: 1,006/1,006 QML files (including the sandbox), 12,033,891 source bytes,
 2,495,924 CST nodes, and all preservation/incremental/anchor checks passed.
 That corpus manifest is `e810b79fc9d7f3b8a4788e5f0d5b84d066cab4e2a80e93f820895b43bcd2719d`.
 
-## Spike B — working sandbox; performance/platform acceptance remains open
+## Spike B — initial sandbox observations (superseded by final qualification below)
 
 The standalone QML canvas uses one Shape with many ShapePaths, explicit graph
 coordinates, Pointer Handlers, independent bounding-box/segment wire hit tests,
@@ -116,9 +116,9 @@ inspected for actual wire/node rendering.
 
 The probe caught and fixed two integration assumptions: WheelHandler requires
 `Mouse | TouchPad` to accept this host's touchpad device, and the canvas must
-follow the compositor-granted window size. The QtTest 6.11 wheel adapter uses
-device-pixel positions on this host, while QML graph math remains in logical
-coordinates; the pivot assertion guards against a future adapter mismatch.
+follow the compositor-granted window size. The initial QtTest wheel adapter used device-pixel positions. Native fractional
+output qualification later rejected that assumption; public QWheelEvent logical
+coordinates now pass the unchanged pivot assertion.
 
 ### Short benchmark observations
 
@@ -149,10 +149,10 @@ leak; a longer steady-state/rebuild soak is still needed. A separate 5-second
 60-node Curve run at effective DPR 1.25 had frame p50/p95 14.47/27.32 ms. This
 used per-process `QT_SCALE_FACTOR`, not a change to compositor output settings.
 
-Remaining B evidence: actual hardware touchpad arbitration, longer memory and
-profiling runs, other supported Qt/driver combinations, and compositor-native
-fractional scaling. Offscreen software fallback was tested but does not count
-as a geometry-versus-curve comparison. Production renderer selection remains open.
+At this initial checkpoint, longer memory/profiling and native fractional
+qualification were still open. The final experiments below close that investigation
+with an explicit Curve HOLD. Hardware touchpad and wider driver coverage remain
+product integration work. Software fallback is not a Shape renderer comparison.
 
 ## Repository validation and continuation blockers
 
@@ -269,18 +269,84 @@ The concurrent `b8ab566d` fix for generated-only imports is preserved, including
 its regression coverage. ProbeShell's module import is injected only into the
 staged runtime. No production shell file imports the registry or picker.
 
-## Remaining spikes and readiness
+## Final qualification — 2026-09-20
 
-| Spike | Evidence status | Next gate |
-| --- | --- | --- |
-| B — renderer/input | Prototype checks pass; acceptance incomplete | Profile edge invalidation, memory soak, real input/platform matrix |
-| C — ii Bar registry | 10 live probe checks pass | Broader module/output matrix remains product integration work |
-| D — picker | Live Niri + two-output Sway checks pass | Physical/Niri multi-output and broader surfaces are later integration coverage |
-| E — reload/rebind | Three ordinary reloads pass per backend | Broader production semantic reconciliation remains later work |
+A revalidation on c466de89581ebf5edf55be47aac3f10709e050a5 passes all four corpus
+checks for 1,010 files, 12,054,434 bytes and 2,500,520 CST nodes. The
+[full index](evidence/code-workflow/spike-a.c466de89.json) includes grammar pins,
+manifest, semantics limits and hashed per-file chunks. Four files with anchor
+collisions remain read-only. Native regressions remain 16 passed.
 
-No production Code Workflow UI or source-writing operation is ready. Phase 0
-must complete A–E before implementing the first source-writing transform.
-The maintainer authorized and C–E now complete their isolated live prototype
-scope. B's performance/platform acceptance work remains, and the existing shell
-validation baseline is still a separate gate. Do not start a production editor
-or source-writing transform yet. See [the continuation note](CODE_WORKFLOW_HANDOFF.md).
+B now has 20 input checks per renderer on Niri and native DPR 1.25 Sway, plus
+20 software-fallback checks. The [complete controlled matrix](evidence/code-workflow/spike-b.sway-matrix.2ac7583b.json)
+pins 2ac7583bc8c37ce8190992d080ef03bec4ed1df2, Qt 6.11.2, Sway 1.12,
+OpenGL API, matched 1532x931 windows and actual Shape renderer. Baseline QML is
+7387ef0a26081d56df816369d4d9d74fedbe2324, replayed with the same current harness.
+Each paired case runs 8 seconds after 2 seconds warmup; all 16 cases are retained.
+
+| Nodes | Geometry frame p95, baseline → candidate (ms) | Curve frame p95 (ms) |
+| --- | ---: | ---: |
+| 20 | 29.589 → 29.359 | 31.228 → 29.429 |
+| 60 | 25.122 → 25.336 | 25.266 → 24.488 |
+| 100 | 18.121 → 23.965 | 21.042 → 23.906 |
+| 250 | 43.085 → 37.885 | 53.077 → 49.291 |
+
+The 100-node regression is real in this retained paired observation. No universal
+speedup, FPS target or node budget follows from one short paired run. Model-update
+p95 at 250 nodes improves 13/14 to 7/7 ms. The per-node adjacency index updates only
+incident ShapePaths after both node coordinates change; view transforms do not
+reroute. A separate instrumented QML profile records mean setNodePosition
+6.713 to 1.299 ms and endpoint calls 399,475 to 3,160. Committed
+[baseline](evidence/code-workflow/spike-b.profile-baseline.json) and
+[candidate](evidence/code-workflow/spike-b.profile-candidate.json) summaries pin
+raw trace hashes and inclusive counts/times. Nested inclusive time is not GPU or
+wall time; large raw traces stay temporary and can be reproduced with the README.
+
+Both 250-node soaks run 600 seconds after 20 seconds warmup and rebuild 40 times.
+Geometry second-half RSS changes +1,044 KiB with stable 4,213 sampled/final objects.
+Curve second-half RSS grows +87,824 KiB; full-run growth is +200,744 KiB. Its final
+object count is also 4,213; transient 5,643 samples coincide with rebuild before
+deferred destruction. This does not diagnose a leak, but **Curve sustained-memory
+acceptance is HOLD**. Geometry is the viable next prototype path within the
+observed window. [Machine-readable conclusion](evidence/code-workflow/spike-b.conclusion.json)
+retains all derived metrics and limits. Inspected
+[Geometry](evidence/code-workflow/spike-b.geometry-soak.png) and
+[Curve](evidence/code-workflow/spike-b.curve-soak.png) screenshots show actual
+rendering; thin Geometry wires alias at the dense zoom level. They do not certify
+production layout or legibility.
+
+Rejected B runs are preserved: [cropped/throttled Niri](evidence/code-workflow/spike-b.niri-rejected.json)
+and [native DPR wheel adapter failure](evidence/code-workflow/spike-b.scale-adapter-rejected.json).
+The matrix now requires all benchmark nodes visible and minimum frame delivery;
+Niri maximizes its own window. Wheel dispatch now uses logical coordinates.
+Assertions were not weakened. Actual GPU/vendor identity was not captured;
+physical touchpad, physical hotplug and wider Qt/driver combinations remain open.
+Occasional screenshot/input/static work overlapped soaks, so their frame cadence
+is not clean comparative timing. Timing buffers and traces have bounded storage.
+
+CDE was revalidated against c466de89: **Niri 40/40, Sway 44/44**. The
+[Niri](evidence/code-workflow/spike-cde.c466de89.niri.json) and
+[Sway](evidence/code-workflow/spike-cde.c466de89.sway.json) reports supersede the
+997caa0f source result for these scopes. A desktop-nested Niri click-control run
+was contaminated by out-of-sequence pointer motions and is retained separately.
+The unchanged probe passes in Niri hosted by an owned headless Sway, with
+[wrapper provenance](evidence/code-workflow/spike-cde.c466de89.niri-host.json).
+The existing lock, geometry, popup and hardware scope limits still apply.
+
+Latest canonical validation at c466de89 is **79 passed / 22 failed / 1 deferred
+Nix check**. Concurrent popup work adds the styled-popup-content regression label
+to the earlier 80/21/1 baseline; no code-workflow implementation changed between
+2ac7583b and c466de89. [Full latest log](evidence/code-workflow/validation.c466de89.txt)
+and [comparison](evidence/code-workflow/validation-comparison.c466de89.json) retain
+diagnostics and exact source. Local results are not CI VERIFIED or a whole-repo PASS.
+
+## Phase 0 exit and next readiness
+
+The scoped A–E investigation is complete, including negative results. A/C/D/E
+pass their prototype contracts; B establishes Geometry feasibility and leaves
+Curve on HOLD. This is a constrained path to a read-only Phase 1 Bar projection,
+not production UI or writable transforms. Semantic resolution, helper packaging,
+diagnostics-aware transactions and relevant repository baseline failures remain
+next gates. The maintainer requested Phase 0 only. See
+[the complete handoff](CODE_WORKFLOW_HANDOFF.md) for public milestone SHAs,
+all evidence, reproduction and continuation constraints.

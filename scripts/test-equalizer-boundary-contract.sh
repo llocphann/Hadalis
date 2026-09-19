@@ -36,6 +36,35 @@ grep -Fq 'EqualizerService.unregisterConsumer()' "$equalizer_panel"     || fail 
 grep -Fq 'model: ["Flat", "Bass", "Treble", "Vocal",' "$equalizer_panel"     || fail 'Serpantinum DSP preset row is missing'
 grep -Fq 'model: EqualizerService.dspBands' "$equalizer_panel"     || fail 'DSP panel is not driven by the service 10-band facade'
 
+for token in \
+    'property real eqLightningHighlight: 0.0' \
+    'visible: true' \
+    'interval: 33' \
+    'running: root.active && lightningCanvas.visible' \
+    'ctx.lineWidth = 5.5' \
+    'ctx.lineWidth = 2.4' \
+    'ctx.lineWidth = 1.0' \
+    'function beginBandLightning(' \
+    'function previewBandLightning(' \
+    'function endBandLightning(' \
+    'root.previewBandLightning(' \
+    'root.applyPresetWithLightning(modelData)'; do
+    grep -Fq "$token" "$equalizer_panel" \
+        || fail "persistent DSP electricity contract missing $token"
+done
+
+for retired in \
+    'eqLightningProgress' \
+    'eqLightningFade' \
+    'lightningPulse' \
+    'ctx.lineWidth = 14' \
+    'ctx.lineWidth = 7' \
+    'ctx.lineWidth = 3.5'; do
+    if grep -Fq "$retired" "$equalizer_panel"; then
+        fail "oversized/transient DSP lightning token returned: $retired"
+    fi
+done
+
 # Presentation consumes only the facade. Backend/process/socket protocol remains
 # service-owned, so Media Controls cannot grow a second Equalizer implementation.
 backend_pattern='EasyEffects\\.|socat|EasyEffectsServer|equalizer-control\\.sh|load_preset:output:|set_property:output:equalizer|get_property:output:equalizer'

@@ -12,14 +12,52 @@ Item {
 
     property bool active: false
     property bool _registered: false
-    property real eqLightningProgress: 0.0
-    property real eqLightningFade: 1.0
+    // The DSP curve always carries a compact electric trace. Interaction only
+    // raises luminance/contrast; stroke widths and jitter amplitude never grow.
+    property real eqLightningHighlight: 0.0
+    property int _editingBand: -1
     property var _lightningGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     readonly property color eqAccentColor: Appearance.colors.colPrimary
     implicitHeight: 214
 
+    function syncLightningGains(): void {
+        const source = EqualizerService.dspBands ?? []
+        const gains = []
+        for (let i = 0; i < 10; ++i)
+            gains.push(Number(source[i]?.gain) || 0)
+        root._lightningGains = gains
+        lightningCanvas.requestPaint()
+    }
+
+    function setLightningGain(index, gain): void {
+        const gains = (root._lightningGains ?? []).slice()
+        while (gains.length < 10)
+            gains.push(0)
+        gains[index] = Math.round(Number(gain) || 0)
+        root._lightningGains = gains
+        lightningCanvas.requestPaint()
+    }
+
     function triggerEqLightning(): void {
         eqLightningAnim.restart()
+    }
+
+    function beginBandLightning(index, gain): void {
+        eqLightningAnim.stop()
+        root._editingBand = index
+        root.eqLightningHighlight = 1.0
+        root.setLightningGain(index, gain)
+    }
+
+    function previewBandLightning(index, gain): void {
+        root.eqLightningHighlight = 1.0
+        root.setLightningGain(index, gain)
+    }
+
+    function endBandLightning(index, gain): void {
+        root.setLightningGain(index, gain)
+        root._editingBand = -1
+        root.triggerEqLightning()
     }
 
     function applyPresetWithLightning(name): void {
@@ -28,6 +66,7 @@ Item {
             return
         if (EqualizerService.applyDspPreset(name)) {
             root._lightningGains = curve.slice()
+            lightningCanvas.requestPaint()
             root.triggerEqLightning()
         }
     }
@@ -36,29 +75,17 @@ Item {
         id: eqLightningAnim
         running: false
         ScriptAction {
-            script: {
-                root.eqLightningFade = 0.0
-                root.eqLightningProgress = 0.0
-            }
+            script: root.eqLightningHighlight = 1.0
         }
+        PauseAnimation { duration: 120 }
         NumberAnimation {
             target: root
-            property: "eqLightningProgress"
-            from: 0.0
-            to: 10.0
-            duration: 650
-            easing.type: Easing.OutSine
+            property: "eqLightningHighlight"
+            from: 1.0
+            to: 0.0
+            duration: Appearance.animationsEnabled ? 720 : 1
+            easing.type: Easing.OutCubic
         }
-        PauseAnimation { duration: 150 }
-        NumberAnimation {
-            target: root
-            property: "eqLightningFade"
-            from: 0.0
-            to: 1.0
-            duration: 800
-            easing.type: Easing.OutQuad
-        }
-        ScriptAction { script: root.eqLightningProgress = 0.0 }
     }
 
     function syncRegistration(): void {
@@ -96,8 +123,27 @@ Item {
         }
     }
 
-    onActiveChanged: root.syncRegistration()
-    Component.onCompleted: root.syncRegistration()
+    onActiveChanged: {
+        root.syncRegistration()
+        if (active) {
+            root.syncLightningGains()
+            lightningCanvas.requestPaint()
+        }
+    }
+
+    Connections {
+        target: EqualizerService
+
+        function onDspBandsChanged(): void {
+            if (root._editingBand < 0)
+                root.syncLightningGains()
+        }
+    }
+
+    Component.onCompleted: {
+        root.syncRegistration()
+        root.syncLightningGains()
+    }
     Component.onDestruction: {
         if (root._registered)
             EqualizerService.unregisterConsumer()
@@ -158,12 +204,12 @@ Item {
                 id: lightningCanvas
                 anchors.fill: parent
                 z: 0
-                opacity: 1.0 - root.eqLightningFade
-                visible: opacity > 0.001 && root.eqLightningProgress > 0.0
+                opacity: 1.0
+                visible: true
 
                 Timer {
-                    interval: 16
-                    running: lightningCanvas.visible
+                    interval: 33
+                    running: root.active && lightningCanvas.visible
                     repeat: true
                     onTriggered: lightningCanvas.requestPaint()
                 }
@@ -174,8 +220,7 @@ Item {
                 onPaint: {
                     const ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
-                    if (root.eqLightningProgress <= 0.0
-                            || root.eqLightningFade >= 1.0)
+                    if (width <= 0 || height <= 0)
                         return
 
                     const gains = root._lightningGains ?? []
@@ -190,59 +235,54 @@ Item {
                         })
                     }
 
+                    const highlight = Math.max(0,
+                        Math.min(1, root.eqLightningHighlight))
                     const now = Date.now() / 1000
-                    const maxIndex = root.eqLightningProgress
                     ctx.lineJoin = "round"
                     ctx.lineCap = "round"
 
-                    for (let stroke = 0; stroke < 4; ++stroke) {
+                    // Three compact strokes form one current. Highlighting only
+                    // changes brightness/color — never width or displacement.
+                    for (let stroke = 0; stroke < 3; ++stroke) {
                         ctx.beginPath()
                         ctx.moveTo(points[0].x, points[0].y)
 
                         for (let i = 0; i < points.length - 1; ++i) {
-                            if (i > maxIndex)
-                                break
                             const p1 = points[i]
                             const p2 = points[i + 1]
-                            let fraction = 1.0
-                            if (maxIndex < i + 1)
-                                fraction = Math.max(0, maxIndex - i)
-                            const steps = stroke === 3 ? 6 : 8
+                            const steps = stroke === 2 ? 6 : 8
                             for (let j = 1; j <= steps; ++j) {
-                                let t = Math.min(fraction, j / steps)
+                                const t = j / steps
                                 const envelope = Math.sin(t * Math.PI)
                                 const x = p1.x + (p2.x - p1.x) * t
                                 const y = p1.y + (p2.y - p1.y) * t
-                                const noiseX = Math.sin(now * (10 + stroke) + i + j)
-                                    * Math.cos(now * 8 - i + j)
-                                    * (stroke === 3 ? 1 : (4 - stroke) * 2.6)
-                                    * envelope * (1 - root.eqLightningFade)
-                                const noiseY = Math.cos(now * (9 - stroke) + i - j)
-                                    * Math.sin(now * 7 + i - j)
-                                    * (stroke === 3 ? 1 : (4 - stroke) * 3.4)
-                                    * envelope * (1 - root.eqLightningFade)
+                                const amplitudeX = stroke === 0 ? 2.2
+                                    : (stroke === 1 ? 1.2 : 0.55)
+                                const amplitudeY = stroke === 0 ? 2.8
+                                    : (stroke === 1 ? 1.55 : 0.7)
+                                const noiseX = Math.sin(now * (6.5 + stroke) + i + j)
+                                    * Math.cos(now * 5.2 - i + j)
+                                    * amplitudeX * envelope
+                                const noiseY = Math.cos(now * (6.1 - stroke * 0.4) + i - j)
+                                    * Math.sin(now * 4.8 + i - j)
+                                    * amplitudeY * envelope
                                 ctx.lineTo(x + noiseX, y + noiseY)
-                                if (t >= fraction)
-                                    break
                             }
                         }
 
                         if (stroke === 0) {
-                            ctx.lineWidth = 14
+                            ctx.lineWidth = 5.5
                             ctx.strokeStyle = root.eqAccentColor
-                            ctx.globalAlpha = 0.28
+                            ctx.globalAlpha = 0.16 + highlight * 0.14
                         } else if (stroke === 1) {
-                            ctx.lineWidth = 7
-                            ctx.strokeStyle = Qt.lighter(root.eqAccentColor, 1.2)
-                            ctx.globalAlpha = 0.58
-                        } else if (stroke === 2) {
-                            ctx.lineWidth = 3.5
-                            ctx.strokeStyle = Qt.lighter(root.eqAccentColor, 1.45)
-                            ctx.globalAlpha = 0.88
+                            ctx.lineWidth = 2.4
+                            ctx.strokeStyle = Qt.lighter(root.eqAccentColor,
+                                1.12 + highlight * 0.28)
+                            ctx.globalAlpha = 0.40 + highlight * 0.34
                         } else {
-                            ctx.lineWidth = 1.6
+                            ctx.lineWidth = 1.0
                             ctx.strokeStyle = "#ffffff"
-                            ctx.globalAlpha = 1.0
+                            ctx.globalAlpha = 0.55 + highlight * 0.45
                         }
                         ctx.stroke()
                     }
@@ -265,11 +305,6 @@ Item {
                         width: parent.width / 10
                         height: parent.height
                         readonly property real backendGain: Number(modelData?.gain) || 0
-                        readonly property real lightningDistance:
-                            root.eqLightningProgress - index
-                        readonly property real lightningPulse:
-                            lightningDistance >= 0 && lightningDistance < 1
-                                ? Math.sin(lightningDistance * Math.PI) : 0
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -290,11 +325,22 @@ Item {
                                 value: bandDelegate.backendGain
 
                                 onPressedChanged: {
-                                    if (!pressed && enabled)
+                                    if (pressed) {
+                                        root.beginBandLightning(
+                                            bandDelegate.index, value)
+                                    } else if (enabled) {
+                                        const rounded = Math.round(value)
                                         EqualizerService.setDspBandGain(
-                                            bandDelegate.index, Math.round(value))
+                                            bandDelegate.index, rounded)
+                                        root.endBandLightning(
+                                            bandDelegate.index, rounded)
+                                    }
                                 }
-                                onMoved: value = Math.round(value)
+                                onMoved: {
+                                    value = Math.round(value)
+                                    root.previewBandLightning(
+                                        bandDelegate.index, value)
+                                }
                                 Connections {
                                     target: EqualizerService
                                     function onDspBandsChanged(): void {
@@ -321,7 +367,6 @@ Item {
                                         radius: parent.radius
                                         color: Appearance.colors.colPrimary
                                         opacity: bandSlider.enabled ? 0.9 : 0.35
-                                        scale: 1 + bandDelegate.lightningPulse * 0.12
                                     }
                                 }
 
@@ -339,9 +384,8 @@ Item {
                                         : Appearance.colors.colOnPrimary
                                     border.width: 1
                                     border.color: Appearance.colors.colPrimary
-                                    scale: (bandSlider.pressed ? 1.15
-                                        : (bandSlider.hovered ? 1.06 : 1.0))
-                                        + bandDelegate.lightningPulse * 0.18
+                                    scale: bandSlider.pressed ? 1.15
+                                        : (bandSlider.hovered ? 1.06 : 1.0)
 
                                     Behavior on scale {
                                         enabled: Appearance.animationsEnabled

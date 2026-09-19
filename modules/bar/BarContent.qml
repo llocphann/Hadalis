@@ -477,9 +477,10 @@ Item {
         readonly property bool isBottom: Config.options?.bar?.bottom ?? false
         readonly property QtObject blendedColors: root.blendedColors
 
-        // Hug background is structural connected chrome; legacy transparency
-        // no longer removes the surface from under its shoulders/shadow.
-        visible: !gameModeMinimal
+        // Hug background is structural connected chrome. Fullscreen/GameMode
+        // may disable expensive effects, but it must never hide the Bar body:
+        // the PanelWindow itself owns fullscreen mapping and restores cleanly.
+        visible: true
         opacity: root.regaliaEverywhere ? 1
             : Math.max(0, Math.min(1, Config.options?.bar?.opacity ?? 1))
         Behavior on opacity {

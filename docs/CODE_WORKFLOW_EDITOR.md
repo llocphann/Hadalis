@@ -2160,9 +2160,17 @@ The initial corpus should include at minimum:
 - one Waffle composition file
 - one file with explicit Qt.binding
 - one file with Binding
-- one file with nested inline components
+- one file with inline component declarations and nested Component/Loader boundaries
 - one file with State/Transition
 - one file with Variants/LazyLoader
+
+Phase 0 correction: nested inline component **declarations** are not supported
+by QML. Keep them as a negative validation fixture, not a required valid corpus
+example. Tree-sitter 0.3.1 and qmlformat 6.11.2 accept this construct;
+qmllint 6.11.2 emits a `[syntax]` diagnostic but can still exit zero. Validation
+must consume diagnostics, not only parse success or process exit status.
+See [Qt inline components](https://doc.qt.io/qt-6/qtqml-documents-definetypes.html)
+and [the Phase 0 evidence](CODE_WORKFLOW_FEASIBILITY.md).
 
 ### Parser backend decision: separate syntax engine, semantic analyzer and validator
 

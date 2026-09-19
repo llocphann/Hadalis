@@ -22,6 +22,12 @@ grep -Fq 'command: ["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"
 grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Music UI must expose MPD update'
 grep -Fq 'PlayerControl {' "$view" || fail 'Music now-playing UI must reuse Media popup PlayerControl'
 grep -Fq 'id: nowPlayingPanel' "$view" || fail 'Music media must live above its section tabs'
+grep -Fq 'id: classicPlaybackOptions' "$view" || fail 'Music shuffle/repeat/volume must use the classic standalone row'
+grep -Fq 'showTip: false' "$view" || fail 'Obvious shuffle/repeat actions must not show hover text'
+grep -Fq 'Layout.preferredWidth: 120' "$view" || fail 'Classic Music volume slider width drifted'
+if grep -Fq 'component MediaToggleButton' "$view"; then
+    fail 'Music must not merge shuffle/repeat/volume into the artwork-tinted media card'
+fi
 grep -Fq 'player: LocalMusic.mprisPlayer' "$view" || fail 'Music PlayerControl must bind the MPD MPRIS session'
 grep -Fq 'model: LocalMusic.playlists' "$view" || fail 'Playlists tab must expose saved MPD playlists only'
 grep -Fq 'property var selectedTrackKeys: []' "$view" || fail 'Songs must expose desktop bulk selection state'

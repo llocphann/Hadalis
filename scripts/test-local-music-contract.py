@@ -70,6 +70,9 @@ for token in (
     'ContextMenu {',
     'LocalMusic.createPlaylist(name, root.pendingPlaylistTracks)',
     'LocalMusic.addTracksToPlaylist(name, snapshot)',
+    'id: classicPlaybackOptions',
+    'showTip: false',
+    'Layout.preferredWidth: 120',
     'LocalMusic.toggleShuffle()',
     'LocalMusic.cycleRepeatMode()',
     'LocalMusic.setVolume(value)',
@@ -80,6 +83,8 @@ for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):
 
 if "model: LocalMusic.collections" in view:
     raise SystemExit("Playlists must contain only saved MPD playlists, not folder collections.")
+if "component MediaToggleButton" in view:
+    raise SystemExit("Local Music playback options must keep the classic standalone control row.")
 if view.index("id: nowPlayingPanel") > view.index('model: ['):
     raise SystemExit("Now-playing media must render above the Music section tabs.")
 

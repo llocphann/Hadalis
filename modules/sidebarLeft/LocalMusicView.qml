@@ -281,6 +281,7 @@ Item {
         id: toolButton
         property string symbol: ""
         property string tip: ""
+        property bool showTip: true
         property color iconColor: Appearance.colors.colOnLayer1
         property color backgroundColor: "transparent"
         property color hoverColor: Appearance.colors.colLayer1Hover
@@ -297,34 +298,10 @@ Item {
             iconSize: 20
             color: toolButton.iconColor
         }
-        StyledToolTip { text: toolButton.tip }
-    }
-
-    component MediaToggleButton: RippleButton {
-        id: mediaButton
-        property string symbol: ""
-        property string tip: ""
-        property bool activeState: false
-        property var palette: null
-        implicitWidth: 32
-        implicitHeight: 32
-        buttonRadius: Appearance.rounding.full
-        colBackground: activeState
-            ? (palette?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer)
-            : "transparent"
-        colBackgroundHover: palette?.colSecondaryContainerHover
-            ?? Appearance.colors.colSecondaryContainerHover
-        colRipple: palette?.colSecondaryContainerActive
-            ?? Appearance.colors.colSecondaryContainerActive
-        contentItem: MaterialSymbol {
-            anchors.centerIn: parent
-            text: mediaButton.symbol
-            iconSize: 18
-            color: mediaButton.activeState
-                ? (mediaButton.palette?.colPrimary ?? Appearance.colors.colPrimary)
-                : (mediaButton.palette?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+        StyledToolTip {
+            visible: toolButton.showTip && toolButton.tip.length > 0
+            text: toolButton.tip
         }
-        StyledToolTip { text: mediaButton.tip }
     }
 
     component FolderRow: Rectangle {
@@ -564,82 +541,58 @@ Item {
             }
         }
 
-        // Now-playing belongs to the Music surface itself, before navigation.
+        // Keep now-playing above navigation, but preserve the classic Music
+        // transport-adjacent controls as their own simple row.
         Item {
             id: nowPlayingPanel
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? Appearance.sizes.mediaControlsHeight + 36 : 0
+            Layout.preferredHeight: visible ? Appearance.sizes.mediaControlsHeight : 0
             visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
 
             PlayerControl {
-                id: localPlayerControl
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: Appearance.sizes.mediaControlsHeight
+                anchors.fill: parent
                 player: LocalMusic.mprisPlayer
                 visualizerPoints: localMusicCava.points
                 visualizerMaxValue: Math.max(1, localMusicCava.normalizationCeiling)
                 radius: Appearance.rounding.normal
             }
+        }
 
-            Rectangle {
-                anchors.top: localPlayerControl.bottom
-                anchors.topMargin: -Math.max(2, Appearance.sizes.elevationMargin * 0.5)
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: Appearance.sizes.elevationMargin * 0.5
-                anchors.rightMargin: Appearance.sizes.elevationMargin * 0.5
-                height: 40
-                z: 2
-                radius: Appearance.rounding.normal
-                topLeftRadius: 0
-                topRightRadius: 0
-                color: localPlayerControl.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
+        RowLayout {
+            id: classicPlaybackOptions
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 34 : 0
+            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
+            spacing: 6
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
-                    spacing: 5
-
-                    MediaToggleButton {
-                        symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"
-                        tip: Translation.tr("Shuffle")
-                        activeState: LocalMusic.shuffleMode
-                        palette: localPlayerControl.blendedColors
-                        onClicked: LocalMusic.toggleShuffle()
-                    }
-                    MediaToggleButton {
-                        symbol: LocalMusic.repeatMode === 1 ? "repeat_one_on"
-                            : (LocalMusic.repeatMode === 2 ? "repeat_on" : "repeat")
-                        tip: Translation.tr("Repeat")
-                        activeState: LocalMusic.repeatMode !== 0
-                        palette: localPlayerControl.blendedColors
-                        onClicked: LocalMusic.cycleRepeatMode()
-                    }
-                    Item { Layout.fillWidth: true }
-                    MaterialSymbol {
-                        text: LocalMusic.volume <= 0 ? "volume_off"
-                            : (LocalMusic.volume < 0.5 ? "volume_down" : "volume_up")
-                        iconSize: 18
-                        color: localPlayerControl.blendedColors?.colOnLayer0
-                            ?? Appearance.colors.colOnLayer0
-                    }
-                    StyledSlider {
-                        Layout.preferredWidth: 110
-                        from: 0
-                        to: 1
-                        value: LocalMusic.volume
-                        highlightColor: localPlayerControl.blendedColors?.colPrimary
-                            ?? Appearance.colors.colPrimary
-                        trackColor: localPlayerControl.blendedColors?.colSecondaryContainer
-                            ?? Appearance.colors.colSecondaryContainer
-                        handleColor: localPlayerControl.blendedColors?.colPrimary
-                            ?? Appearance.colors.colPrimary
-                        onMoved: LocalMusic.setVolume(value)
-                    }
-                }
+            ToolIconButton {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"
+                showTip: false
+                onClicked: LocalMusic.toggleShuffle()
+            }
+            ToolIconButton {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                symbol: LocalMusic.repeatMode === 1 ? "repeat_one_on"
+                    : (LocalMusic.repeatMode === 2 ? "repeat_on" : "repeat")
+                showTip: false
+                onClicked: LocalMusic.cycleRepeatMode()
+            }
+            Item { Layout.fillWidth: true }
+            MaterialSymbol {
+                text: LocalMusic.volume <= 0 ? "volume_off"
+                    : (LocalMusic.volume < 0.5 ? "volume_down" : "volume_up")
+                iconSize: 18
+                color: Appearance.colors.colSubtext
+            }
+            StyledSlider {
+                Layout.preferredWidth: 120
+                from: 0
+                to: 1
+                value: LocalMusic.volume
+                onMoved: LocalMusic.setVolume(value)
             }
         }
 
@@ -659,9 +612,9 @@ Item {
                     required property var modelData
                     readonly property bool selected: root.section === modelData.id
                     implicitWidth: selected
-                        ? Math.max(76, sectionContent.implicitWidth + 24)
-                        : 38
-                    implicitHeight: 38
+                        ? Math.max(72, sectionContent.implicitWidth + 20)
+                        : 30
+                    implicitHeight: 36
                     buttonRadius: Appearance.rounding.full
                     colBackground: selected
                         ? Appearance.colors.colSecondaryContainer
@@ -678,22 +631,31 @@ Item {
                         }
                     }
 
-                    contentItem: RowLayout {
-                        id: sectionContent
-                        anchors.centerIn: parent
-                        spacing: 5
-                        MaterialSymbol {
-                            text: sectionButton.modelData.icon
-                            iconSize: 18
-                            color: sectionButton.selected
-                                ? Appearance.colors.colOnSecondaryContainer
-                                : Appearance.colors.colOnLayer2
-                        }
-                        StyledText {
-                            visible: sectionButton.selected
-                            text: sectionButton.modelData.label
-                            color: Appearance.colors.colOnSecondaryContainer
-                            font.pixelSize: Appearance.font.pixelSize.smaller
+                    contentItem: Item {
+                        RowLayout {
+                            id: sectionContent
+                            anchors.centerIn: parent
+                            spacing: sectionButton.selected ? 5 : 0
+
+                            MaterialSymbol {
+                                Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                                text: sectionButton.modelData.icon
+                                iconSize: sectionButton.selected ? 17 : 15
+                                fill: sectionButton.selected ? 1 : 0
+                                color: sectionButton.selected
+                                    ? Appearance.colors.colOnSecondaryContainer
+                                    : Appearance.colors.colSubtext
+                            }
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                                visible: sectionButton.selected
+                                text: sectionButton.modelData.label
+                                color: Appearance.colors.colOnSecondaryContainer
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
                         }
                     }
                 }

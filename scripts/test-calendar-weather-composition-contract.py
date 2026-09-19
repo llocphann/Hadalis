@@ -9,6 +9,8 @@ WEATHER_POPUP = ROOT / "modules/bar/weather/WeatherPopup.qml"
 CLOCK = ROOT / "modules/bar/ClockWidget.qml"
 CALENDAR_POPUP = ROOT / "modules/bar/ClockCalendarPopup.qml"
 CALENDAR_CONTENT = ROOT / "modules/bar/ClockCalendarContent.qml"
+SHARED_MONTH = ROOT / "modules/common/widgets/ObsidianMonthCalendar.qml"
+SIDEBAR_CALENDAR = ROOT / "modules/sidebarRight/calendar/CalendarWidget.qml"
 CLOCK_TOOLTIP = ROOT / "modules/bar/ClockWidgetTooltip.qml"
 VERTICAL = ROOT / "modules/verticalBar/VerticalBarContent.qml"
 
@@ -26,6 +28,8 @@ def main() -> None:
     clock = CLOCK.read_text(encoding="utf-8")
     calendar_popup = CALENDAR_POPUP.read_text(encoding="utf-8")
     calendar = CALENDAR_CONTENT.read_text(encoding="utf-8")
+    shared_month = SHARED_MONTH.read_text(encoding="utf-8")
+    sidebar_calendar = SIDEBAR_CALENDAR.read_text(encoding="utf-8")
     vertical = VERTICAL.read_text(encoding="utf-8")
 
     if CLOCK_TOOLTIP.exists():
@@ -39,16 +43,40 @@ def main() -> None:
 
     for token in (
         "property int monthShift: 0",
-        "const monday = new Date(2024, 0, 1)",
         "for (let i = 0; i < 42; ++i)",
+        "ObsidianMonthCalendar {",
+        "anchors.horizontalCenter: parent.horizontalCenter",
+    ):
+        require(calendar, token, "ClockCalendarContent.qml")
+
+    for token in (
+        "id: calendarHeader",
+        "Layout.preferredWidth: calendarGrid.implicitWidth",
+        "Layout.alignment: Qt.AlignHCenter",
         'root.locale.toString(root.viewingDate, "MMM")',
         'root.locale.toString(root.viewingDate, "yyyy")',
         'Translation.tr("Today").toUpperCase()',
         'iconName: "chevron_left"',
         'iconName: "chevron_right"',
-        "opacity: dayCell.modelData.currentMonth ? 1 : 0.25",
+        "opacity: dayCell.modelData?.currentMonth === false ? 0.25 : 1",
     ):
-        require(calendar, token, "ClockCalendarContent.qml")
+        require(shared_month, token, "ObsidianMonthCalendar.qml")
+
+    for token in (
+        "ObsidianMonthCalendar {",
+        "calendarCells: root.monthCells",
+        "interactiveDays: true",
+        "showEventDots: true",
+        "CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, 1)",
+    ):
+        require(sidebar_calendar, token, "Sidebar CalendarWidget.qml")
+
+    for token in (
+        "CalendarDayButton {",
+        "id: todayCol",
+        'locale.toString(viewingDate, "MMMM")',
+    ):
+        forbid(sidebar_calendar, token, "Sidebar CalendarWidget.qml")
 
     for token in ("StyledPopup {", "id: weatherContent", "root.presentationWindow?.width"):
         require(weather_popup, token, "WeatherPopup.qml")

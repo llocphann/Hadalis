@@ -35,25 +35,9 @@ Item {
         function onEventsUpdated() { root._externalTrigger++ }
     }
 
-    // Style tokens (5-style support)
-    readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
-        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
-    readonly property color colTextSecondary: Appearance.zzzEverywhere ? Appearance.zzz.inkMuted
-        : Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-        : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
-    readonly property color colPrimary: Appearance.zzzEverywhere ? Appearance.zzz.accent
-        : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-        : Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
-    readonly property color colOnPrimary: Appearance.zzzEverywhere ? Appearance.zzz.onSticker
-        : Appearance.angelEverywhere ? Appearance.angel.colOnPrimary
-        : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary : Appearance.colors.colOnPrimary
-    readonly property color colCard: Appearance.zzzEverywhere ? "transparent"
-        : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer1
-    readonly property real radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+    // Shared month presentation is Material-only and owned by
+    // ObsidianMonthCalendar. CalendarWidget keeps only event data/state.
+    readonly property color colPrimary: Appearance.colors.colPrimary
 
     property var locale: {
         const envLocale = Quickshell.env("LC_TIME") || Quickshell.env("LC_ALL") || Quickshell.env("LANG") || ""
@@ -61,24 +45,32 @@ Item {
         return cleaned ? Qt.locale(cleaned) : Qt.locale()
     }
 
-    property list<var> weekDaysModel: {
-        const fdow = locale?.firstDayOfWeek ?? Qt.locale().firstDayOfWeek
-        const first = DateUtils.getFirstDayOfWeek(new Date(), fdow)
-        const days = []
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(first)
-            d.setDate(first.getDate() + i)
-            days.push({
-                label: locale.toString(d, "ddd"),
-                today: DateUtils.sameDate(d, DateTime.clock.date)
-            })
-        }
-        return days
-    }
-
     property int monthShift: 0
     property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift)
-    property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, locale?.firstDayOfWeek ?? 1)
+    property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, 1)
+    readonly property var monthCells: {
+        root._eventsTrigger
+        root._externalTrigger
+        const cells = []
+
+        for (let weekRow = 0; weekRow < 6; ++weekRow) {
+            for (let dayIndex = 0; dayIndex < 7; ++dayIndex) {
+                const cell = root.calendarLayout[weekRow]?.[dayIndex]
+                if (!cell)
+                    continue
+                const date = root._getDateForCell(cell.day, weekRow, dayIndex)
+                cells.push({
+                    date: date,
+                    day: cell.day,
+                    currentMonth: cell.today !== -1,
+                    today: cell.today === 1,
+                    eventCount: root.getEventCountForDay(cell.day, weekRow, dayIndex),
+                    eventColors: root.getSourceColorsForDay(cell.day, weekRow, dayIndex),
+                })
+            }
+        }
+        return cells
+    }
     implicitHeight: contentStack.implicitHeight
     implicitWidth: contentStack.implicitWidth
 
@@ -191,11 +183,13 @@ Item {
                 }
             }
 
-            MouseArea {
-                anchors.fill: parent
-                onWheel: (event) => {
-                    if (event.angleDelta.y > 0) monthShift--
-                    else if (event.angleDelta.y < 0) monthShift++
+            WheelHandler {
+                target: monthView
+                orientation: Qt.Vertical
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: event => {
+                    if (event.angleDelta.y > 0) root.monthShift--
+                    else if (event.angleDelta.y < 0) root.monthShift++
                 }
             }
 
@@ -205,144 +199,20 @@ Item {
                 anchors.right: parent.right
                 spacing: 8
 
-                // Calendar header
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    // Today's date highlight
-                    Rectangle {
-                        visible: monthShift === 0
-                        Layout.preferredWidth: todayCol.implicitWidth + 16
-                        Layout.preferredHeight: todayCol.implicitHeight + 8
-                        radius: root.radius
-                        color: root.colPrimary
-
-                        ColumnLayout {
-                            id: todayCol
-                            anchors.centerIn: parent
-                            spacing: -2
-
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: DateTime.clock.date.getDate()
-                                font.pixelSize: Appearance.font.pixelSize.larger
-                                font.weight: Font.Bold
-                                font.family: Appearance.font.family.numbers
-                                color: root.colOnPrimary
-                            }
-
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: locale.toString(DateTime.clock.date, "ddd")
-                                font.pixelSize: Appearance.font.pixelSize.smallest
-                                font.weight: Font.Medium
-                                color: root.colOnPrimary
-                                opacity: 0.9
-                            }
-                        }
-                    }
-
-                    // Month/Year title
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        StyledText {
-                            text: locale.toString(viewingDate, "MMMM")
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            font.weight: Font.Medium
-                            color: root.colText
-                        }
-
-                        StyledText {
-                            text: locale.toString(viewingDate, "yyyy")
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: root.colTextSecondary
-                        }
-                    }
-
-                    // Navigation buttons
-                    RowLayout {
-                        spacing: 4
-
-                        CalNavButton {
-                            visible: monthShift !== 0
-                            icon: "today"
-                            tooltipText: Translation.tr("Jump to today")
-                            onClicked: monthShift = 0
-                        }
-
-                        CalNavButton {
-                            icon: "chevron_left"
-                            tooltipText: Translation.tr("Previous month")
-                            onClicked: monthShift--
-                        }
-
-                        CalNavButton {
-                            icon: "chevron_right"
-                            tooltipText: Translation.tr("Next month")
-                            onClicked: monthShift++
-                        }
-                    }
-                }
-
-                // Week days row
-                RowLayout {
+                ObsidianMonthCalendar {
+                    id: sharedMonthCalendar
                     Layout.alignment: Qt.AlignHCenter
-                    Layout.fillHeight: false
-                    Layout.topMargin: 4
-                    spacing: 5
-                    Repeater {
-                        model: weekDaysModel
-                        delegate: CalendarDayButton {
-                            required property var modelData
-                            day: modelData.label
-                            isToday: modelData.today ? 1 : 0
-                            isHeader: true
-                            bold: true
-                            enabled: false
-                        }
-                    }
-                }
+                    viewingDate: root.viewingDate
+                    today: DateTime.clock.date
+                    locale: root.locale
+                    calendarCells: root.monthCells
+                    interactiveDays: true
+                    showEventDots: true
 
-                // Calendar grid rows
-                Repeater {
-                    id: calendarRows
-                    model: 6
-                    delegate: RowLayout {
-                        required property int index
-                        property int weekRow: index
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.fillHeight: false
-                        spacing: 5
-                        Repeater {
-                            model: Array(7).fill(parent.weekRow)
-                            delegate: CalendarDayButton {
-                                required property int index
-                                required property int modelData
-                                day: root.calendarLayout[modelData][index].day
-                                buttonText: {
-                                    const targetDate = root._getDateForCell(root.calendarLayout[modelData][index].day, modelData, index)
-                                    return targetDate ? root.locale.toString(targetDate, "d MMMM yyyy") : day
-                                }
-                                isToday: root.calendarLayout[modelData][index].today
-                                eventCount: root.getEventCountForDay(root.calendarLayout[modelData][index].day, modelData, index)
-                                sourceColors: root.getSourceColorsForDay(root.calendarLayout[modelData][index].day, modelData, index)
-                                onClicked: {
-                                    const targetDate = root._getDateForCell(root.calendarLayout[modelData][index].day, modelData, index)
-                                    if (targetDate) {
-                                        if (eventCount > 0) {
-                                            root.openDayDetail(targetDate)
-                                        } else {
-                                            // Still allow clicking empty days to add events
-                                            root.openDayDetail(targetDate)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    onPreviousMonthRequested: root.monthShift--
+                    onNextMonthRequested: root.monthShift++
+                    onTodayRequested: root.monthShift = 0
+                    onDayActivated: date => root.openDayDetail(date)
                 }
 
             }
@@ -383,70 +253,5 @@ Item {
         }
     }
 
-    // Navigation button component
-    component CalNavButton: Item {
-        id: navBtn
-        required property string icon
-        property string tooltipText: ""
 
-        signal clicked()
-
-        implicitWidth: 32
-        implicitHeight: 32
-        activeFocusOnTab: true
-        Accessible.role: Accessible.Button
-        Accessible.name: navBtn.tooltipText.length > 0
-            ? navBtn.tooltipText : navBtn.icon.replace(/_/g, " ")
-        Accessible.focusable: true
-        Accessible.onPressAction: navBtn.clicked()
-
-        Keys.onPressed: event => {
-            if (event.isAutoRepeat
-                    || (event.key !== Qt.Key_Return
-                        && event.key !== Qt.Key_Enter
-                        && event.key !== Qt.Key_Space))
-                return
-            navBtn.clicked()
-            event.accepted = true
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: root.radius
-            border.width: navBtn.activeFocus ? 1 : 0
-            border.color: root.colPrimary
-            color: {
-                if (navBtnMA.containsPress)
-                    return Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
-                        : Appearance.inirEverywhere ? Appearance.inir.colLayer1Active
-                        : Appearance.colors.colLayer1Active
-                if (navBtnMA.containsMouse)
-                    return Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                        : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-                        : Appearance.colors.colLayer1Hover
-                return "transparent"
-            }
-            Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
-
-            MaterialSymbol {
-                anchors.centerIn: parent
-                text: navBtn.icon
-                iconSize: 18
-                color: root.colTextSecondary
-            }
-
-            MouseArea {
-                id: navBtnMA
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: navBtn.clicked()
-            }
-
-            StyledToolTip {
-                visible: (navBtnMA.containsMouse || navBtn.activeFocus) && navBtn.tooltipText !== ""
-                text: navBtn.tooltipText
-            }
-        }
-    }
 }

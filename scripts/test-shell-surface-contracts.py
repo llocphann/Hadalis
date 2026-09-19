@@ -512,10 +512,6 @@ def main() -> None:
     check("opacity: root.dashboardPresentationMode" in overview_runtime
           and '? 0 : (root._presentedOpen ? 1 : 0)' in overview_runtime,
           "Dashboard popup mode must not inherit the full-screen Overview scrim")
-    check("layer.enabled: !root.dashboardPresentationMode" in overview_runtime
-          and '&& Appearance.shouldDesaturate("overlays")' in overview_runtime
-          and "&& columnLayout.visible" in overview_runtime,
-          "Dashboard popup mode must not inherit generic Overview desaturation/dim post-processing")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,

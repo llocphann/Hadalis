@@ -48,6 +48,8 @@ if 'QMLJS_VERSION = "0.3.1"' not in source:
     fail("analyzer grammar version metadata drifted")
 if '"--needle",' not in source or "resolve_reviewed_anchor(" not in source:
     fail("analyzer must accept and resolve a reviewed source needle")
+if '"--semantic-anchor",' not in source or "resolve_semantic_anchor(" not in source:
+    fail("analyzer must accept and re-resolve a stable semantic anchor")
 
 sample = b"Item {\n    foo: 1\n}\n"
 sample_start = sample.index(b"foo: 1")
@@ -156,7 +158,8 @@ for token in (
     'property string status: "idle"',
     'property string sourceNeedle: ""',
     'property var reviewedAnchor: ({ status: "not-requested" })',
-    'function request(path: string, needle: string, force: bool): void',
+    'function request(path: string, needle: string, semanticAnchor: string, force: bool): void',
+    'command.push("--semantic-anchor", nextSemanticAnchor)',
     'Quickshell.shellPath("scripts/code-workflow/analyze.py")',
     '"--path", nextPath',
     'command.push("--needle", nextNeedle)',
@@ -169,6 +172,7 @@ for token in (
 for token in (
     "CodeWorkflowAnalyzer.request(",
     "root.sourceNeedle,",
+    "root.storedSemanticAnchor,",
     "root.sourceAnchorEvidence",
     "root.sourceRangeText",
     "CodeWorkflowAnalyzer.entryCount",

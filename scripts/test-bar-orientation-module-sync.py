@@ -28,6 +28,10 @@ def main() -> None:
     defaults = read("defaults/config.json")
     util = read("modules/bar/UtilButtons.qml")
     weather_bar = read("modules/bar/weather/WeatherBar.qml")
+    vertical_media = read("modules/verticalBar/VerticalMedia.qml")
+    workspace_overview = read("modules/bar/BarWorkspaceOverview.qml")
+    overview_niri = read("modules/overview/OverviewNiriWidget.qml")
+    overview_hypr = read("modules/overview/OverviewWidget.qml")
     timer_indicator = read("modules/bar/TimerIndicator.qml")
     shell_update_indicator = read("modules/bar/ShellUpdateIndicator.qml")
     critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
@@ -131,6 +135,34 @@ def main() -> None:
             "Vertical Weather must hide its inline temperature text.")
     require(weather_bar, "WeatherPopup {",
             "Shared Weather control must retain the Weather popup for both orientations.")
+
+    require(vertical_media,
+            "alternativeVisibleCondition:\n            root.volumePopupVisible",
+            "Left/Right Media volume HUD must appear only after a volume action.")
+    forbid(vertical_media, "(root.volumePopupVisible || root.containsMouse)",
+           "Plain hover over Left/Right Media must not show the speaker/volume HUD.")
+
+    require(workspace_overview, "readonly property bool transposeOverviewGrid:",
+            "Workspace hover Overview must detect Left/Right Bar orientation.")
+    if workspace_overview.count("transposeGrid: root.transposeOverviewGrid") != 2:
+        raise SystemExit(
+            "Workspace hover Overview must transpose both Niri and Hyprland renderers."
+        )
+
+    for overview, name in ((overview_niri, "Niri"), (overview_hypr, "Hyprland")):
+        require(overview, "property bool transposeGrid: false",
+                f"{name} Overview must expose presentation-only grid transpose.")
+        require(overview, "configuredOverviewRows",
+                f"{name} Overview must preserve the configured row count.")
+        require(overview, "configuredOverviewColumns",
+                f"{name} Overview must preserve the configured column count.")
+        require(overview, "root.transposeGrid",
+                f"{name} Overview must derive effective rows/columns from orientation.")
+
+    forbid(overview_hypr, "Config.options.overview.rows",
+           "Hyprland Overview workspace layout must use effective overviewRows.")
+    forbid(overview_hypr, "Config.options.overview.columns",
+           "Hyprland Overview workspace layout must use effective overviewColumns.")
     require(timer_indicator,
             "? ((anyActive || showPinnedIdle) ? 34 : 0)",
             "Inactive vertical Timer must collapse to zero main-axis height.")

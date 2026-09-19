@@ -96,7 +96,7 @@ MouseArea {
         hoverTarget: root
         hoverActivates: false
         alternativeVisibleCondition:
-            (root.volumePopupVisible || root.containsMouse)
+            root.volumePopupVisible
             && !GlobalStates.mediaControlsOpen
             && !root.barMediaPopupVisible
 

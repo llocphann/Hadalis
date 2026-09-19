@@ -42,6 +42,9 @@ for token in (
     'Directories.scriptsPath + "/local_music_lyrics.py"',
     'property var localLyricsLines: []',
     'readonly property int localLyricsActiveIndex:',
+    'function enqueueTracks(tracks): void',
+    'function createPlaylist(name: string, tracks): void',
+    'function addTracksToPlaylist(name: string, tracks): void',
 ):
     require(service, token, f"LocalMusic backend contract missing: {token}")
 for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic", "--input-ipc-server"):
@@ -55,13 +58,30 @@ for token in (
     'Layout.fillHeight: false',
     'ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }',
     'PlayerControl {',
+    'id: nowPlayingPanel',
     'player: LocalMusic.mprisPlayer',
     'visualizerPoints: localMusicCava.points',
     'LocalMusic.localLyricsLines',
+    'readonly property var songEntries: root.buildSongEntries()',
+    'property var selectedTrackKeys: []',
+    'Qt.ControlModifier',
+    'Qt.ShiftModifier',
+    'model: LocalMusic.playlists',
+    'ContextMenu {',
+    'LocalMusic.createPlaylist(name, root.pendingPlaylistTracks)',
+    'LocalMusic.addTracksToPlaylist(name, snapshot)',
+    'LocalMusic.toggleShuffle()',
+    'LocalMusic.cycleRepeatMode()',
+    'LocalMusic.setVolume(value)',
 ):
     require(view, token, f"Local Music frontend contract missing: {token}")
 for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):
     forbid(view, forbidden, f"Local Music frontend must stay local-only: {forbidden}")
+
+if "model: LocalMusic.collections" in view:
+    raise SystemExit("Playlists must contain only saved MPD playlists, not folder collections.")
+if view.index("id: nowPlayingPanel") > view.index('model: ['):
+    raise SystemExit("Now-playing media must render above the Music section tabs.")
 
 require(sidebar, 'Component { id: musicComp; LocalMusicView {} }',
         "Left Sidebar must load LocalMusicView.")
@@ -69,7 +89,10 @@ require(settings, 'Config.setNestedValue("sidebar.music.enable", checked)',
         "Sidebar Settings must use canonical Music state.")
 
 for token in ('client.command("listallinfo")', 'client.command("listplaylists")',
-              'client.command("playlistinfo")', "def replace_queue("):
+              'client.command("playlistinfo")', "def replace_queue(",
+              'client.command("playlistadd", playlist_name, uri)',
+              'if mode in ("playlist-create", "playlist-add")',
+              'if mode == "enqueue-many"'):
     require(mpd, token, f"MPD library contract missing: {token}")
 for token in ("STAMP_RE", 'track.with_suffix(".lrc")',
               'track.with_suffix(".txt")', '"synced": synced'):

@@ -16,6 +16,13 @@ Item {
     id: root
     property alias inputField: searchField
     property string section: "songs"
+    property string browserFolder: ""
+    property var selectedTrackKeys: []
+    property int selectionAnchorIndex: -1
+    property Item contextAnchor: null
+    property var contextMenuModel: []
+    property bool playlistDialogVisible: false
+    property var pendingPlaylistTracks: []
 
     readonly property string query: searchField.text.trim().toLowerCase()
     readonly property var filteredTracks: {
@@ -26,6 +33,221 @@ Item {
             return haystack.includes(root.query)
         })
     }
+    readonly property var songEntries: root.buildSongEntries()
+    readonly property var selectedTracks: root.resolveSelectedTracks()
+
+    function trackKey(track): string {
+        return String(track?.uri ?? track?.path ?? "")
+    }
+
+    function normalizedFolder(value): string {
+        return String(value ?? "").replace(/^\\/+|\\/+$/g, "")
+    }
+
+    function buildSongEntries(): var {
+        if (root.query.length > 0) {
+            return root.filteredTracks.map(track =>
+                Object.assign({ entryType: "track" }, track))
+        }
+
+        const current = root.normalizedFolder(root.browserFolder)
+        const prefix = current.length > 0 ? current + "/" : ""
+        const childMap = {}
+        const directTracks = []
+
+        for (const track of LocalMusic.libraryTracks) {
+            const folder = root.normalizedFolder(track?.folder)
+            if (current.length > 0) {
+                if (folder === current) {
+                    directTracks.push(track)
+                    continue
+                }
+                if (!folder.startsWith(prefix))
+                    continue
+            } else if (folder.length === 0) {
+                directTracks.push(track)
+                continue
+            }
+
+            const rest = current.length > 0 ? folder.substring(prefix.length) : folder
+            if (rest.length === 0) {
+                directTracks.push(track)
+                continue
+            }
+
+            const childName = rest.split("/")[0]
+            const childPath = prefix + childName
+            if (!childMap[childPath]) {
+                childMap[childPath] = {
+                    entryType: "folder",
+                    name: childName,
+                    path: childPath,
+                    subtitle: childPath,
+                    count: 0
+                }
+            }
+            childMap[childPath].count += 1
+        }
+
+        const folders = Object.keys(childMap)
+            .map(path => childMap[path])
+            .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+        const tracks = directTracks.map(track =>
+            Object.assign({ entryType: "track" }, track))
+        return folders.concat(tracks)
+    }
+
+    function folderTracks(path): var {
+        const normalized = root.normalizedFolder(path)
+        const prefix = normalized.length > 0 ? normalized + "/" : ""
+        return LocalMusic.libraryTracks.filter(track => {
+            const folder = root.normalizedFolder(track?.folder)
+            return folder === normalized || (prefix.length > 0 && folder.startsWith(prefix))
+        })
+    }
+
+    function parentFolder(path): string {
+        const normalized = root.normalizedFolder(path)
+        const split = normalized.lastIndexOf("/")
+        return split < 0 ? "" : normalized.substring(0, split)
+    }
+
+    function navigateFolder(path): void {
+        root.browserFolder = root.normalizedFolder(path)
+        root.clearSelection()
+    }
+
+    function clearSelection(): void {
+        root.selectedTrackKeys = []
+        root.selectionAnchorIndex = -1
+    }
+
+    function isTrackSelected(track): bool {
+        return root.selectedTrackKeys.includes(root.trackKey(track))
+    }
+
+    function resolveSelectedTracks(): var {
+        const selected = new Set(root.selectedTrackKeys)
+        return LocalMusic.libraryTracks.filter(track => selected.has(root.trackKey(track)))
+    }
+
+    function selectTrack(track, entryIndex, modifiers): void {
+        const key = root.trackKey(track)
+        if (!key) return
+
+        const controlHeld = (modifiers & Qt.ControlModifier) !== 0
+        const shiftHeld = (modifiers & Qt.ShiftModifier) !== 0
+
+        if (shiftHeld && root.selectionAnchorIndex >= 0) {
+            const from = Math.min(root.selectionAnchorIndex, entryIndex)
+            const to = Math.max(root.selectionAnchorIndex, entryIndex)
+            const rangeKeys = root.songEntries.slice(from, to + 1)
+                .filter(entry => entry?.entryType === "track")
+                .map(entry => root.trackKey(entry))
+                .filter(value => value.length > 0)
+            root.selectedTrackKeys = controlHeld
+                ? Array.from(new Set(root.selectedTrackKeys.concat(rangeKeys)))
+                : Array.from(new Set(rangeKeys))
+            return
+        }
+
+        if (controlHeld) {
+            const next = root.selectedTrackKeys.slice()
+            const existing = next.indexOf(key)
+            if (existing >= 0)
+                next.splice(existing, 1)
+            else
+                next.push(key)
+            root.selectedTrackKeys = next
+            root.selectionAnchorIndex = entryIndex
+            return
+        }
+
+        root.selectedTrackKeys = [key]
+        root.selectionAnchorIndex = entryIndex
+    }
+
+    function buildTrackContextMenu(tracks, playText): var {
+        const snapshot = (tracks ?? []).slice()
+        if (snapshot.length === 0) return []
+
+        const model = [
+            {
+                iconName: "play_arrow",
+                monochromeIcon: true,
+                text: playText,
+                action: () => LocalMusic.playQueue(snapshot, 0, playText)
+            },
+            {
+                iconName: "playlist_add",
+                monochromeIcon: true,
+                text: Translation.tr("Add to queue"),
+                action: () => LocalMusic.enqueueTracks(snapshot)
+            },
+            { type: "separator" },
+            {
+                iconName: "library_add",
+                monochromeIcon: true,
+                text: Translation.tr("Create playlist…"),
+                action: () => root.openCreatePlaylist(snapshot)
+            }
+        ]
+
+        for (const playlist of LocalMusic.playlists) {
+            const name = String(playlist?.name ?? "")
+            if (!name) continue
+            model.push({
+                iconName: "queue_music",
+                monochromeIcon: true,
+                text: Translation.tr("Add to %1").arg(name),
+                action: () => LocalMusic.addTracksToPlaylist(name, snapshot)
+            })
+        }
+        return model
+    }
+
+    function openTrackContext(track, entryIndex, anchor): void {
+        if (!root.isTrackSelected(track))
+            root.selectTrack(track, entryIndex, 0)
+        const tracks = root.isTrackSelected(track) ? root.selectedTracks : [track]
+        root.contextAnchor = anchor
+        root.contextMenuModel = root.buildTrackContextMenu(
+            tracks,
+            tracks.length > 1 ? Translation.tr("Play selection") : Translation.tr("Play"))
+        musicContextMenu.requestOpen()
+    }
+
+    function openFolderContext(folder, anchor): void {
+        const tracks = root.folderTracks(folder?.path)
+        root.contextAnchor = anchor
+        root.contextMenuModel = root.buildTrackContextMenu(
+            tracks, Translation.tr("Play folder"))
+        musicContextMenu.requestOpen()
+    }
+
+    function openCreatePlaylist(tracks): void {
+        root.pendingPlaylistTracks = (tracks ?? []).slice()
+        if (root.pendingPlaylistTracks.length === 0) return
+        playlistNameField.text = ""
+        root.playlistDialogVisible = true
+        Qt.callLater(() => playlistNameField.forceActiveFocus())
+    }
+
+    function closePlaylistDialog(): void {
+        root.playlistDialogVisible = false
+        root.pendingPlaylistTracks = []
+        playlistNameField.text = ""
+    }
+
+    function commitPlaylistDialog(): void {
+        const name = playlistNameField.text.trim()
+        if (!name || root.pendingPlaylistTracks.length === 0) return
+        LocalMusic.createPlaylist(name, root.pendingPlaylistTracks)
+        root.closePlaylistDialog()
+    }
+
+    onQueryChanged: root.clearSelection()
+    onSectionChanged: if (root.section !== "songs") root.clearSelection()
 
     function formatTime(seconds): string {
         const value = Math.max(0, Math.floor(Number(seconds) || 0))
@@ -53,17 +275,119 @@ Item {
         id: toolButton
         property string symbol: ""
         property string tip: ""
+        property color iconColor: Appearance.colors.colOnLayer1
+        property color backgroundColor: "transparent"
+        property color hoverColor: Appearance.colors.colLayer1Hover
+        property color rippleColor: Appearance.colors.colLayer1Active
         implicitWidth: 38
         implicitHeight: 38
         buttonRadius: Appearance.rounding.full
-        colBackground: "transparent"
+        colBackground: toolButton.backgroundColor
+        colBackgroundHover: toolButton.hoverColor
+        colRipple: toolButton.rippleColor
         contentItem: MaterialSymbol {
             anchors.centerIn: parent
             text: toolButton.symbol
             iconSize: 20
-            color: Appearance.colors.colOnLayer1
+            color: toolButton.iconColor
         }
         StyledToolTip { text: toolButton.tip }
+    }
+
+    component MediaToggleButton: RippleButton {
+        id: mediaButton
+        property string symbol: ""
+        property string tip: ""
+        property bool activeState: false
+        property var palette: null
+        implicitWidth: 32
+        implicitHeight: 32
+        buttonRadius: Appearance.rounding.full
+        colBackground: activeState
+            ? (palette?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer)
+            : "transparent"
+        colBackgroundHover: palette?.colLayer1Hover ?? Appearance.colors.colLayer1Hover
+        colRipple: palette?.colLayer1Active ?? Appearance.colors.colLayer1Active
+        contentItem: MaterialSymbol {
+            anchors.centerIn: parent
+            text: mediaButton.symbol
+            iconSize: 18
+            color: mediaButton.activeState
+                ? (mediaButton.palette?.colPrimary ?? Appearance.colors.colPrimary)
+                : (mediaButton.palette?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+        }
+        StyledToolTip { text: mediaButton.tip }
+    }
+
+    component FolderRow: Rectangle {
+        id: folderRow
+        required property var folder
+        signal activated()
+        signal contextRequested()
+
+        implicitHeight: 52
+        radius: Appearance.rounding.small
+        color: folderMouse.containsMouse ? Appearance.colors.colLayer2Hover : "transparent"
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            spacing: 10
+
+            Rectangle {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colSecondaryContainer
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "folder"
+                    iconSize: 21
+                    color: Appearance.colors.colOnSecondaryContainer
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+                StyledText {
+                    Layout.fillWidth: true
+                    text: String(folderRow.folder?.name ?? "")
+                    color: Appearance.colors.colOnLayer1
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.Medium
+                    elide: Text.ElideRight
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("%1 songs").arg(folderRow.folder?.count ?? 0)
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    elide: Text.ElideRight
+                }
+            }
+
+            MaterialSymbol {
+                text: "chevron_right"
+                iconSize: 20
+                color: Appearance.colors.colSubtext
+            }
+        }
+
+        MouseArea {
+            id: folderMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: Qt.PointingHandCursor
+            onClicked: event => {
+                if (event.button === Qt.RightButton)
+                    folderRow.contextRequested()
+                else
+                    folderRow.activated()
+            }
+        }
     }
 
     component TrackRow: Rectangle {
@@ -71,14 +395,20 @@ Item {
         required property var track
         required property int trackIndex
         property bool active: String(track?.path ?? "") === LocalMusic.currentPath
+        property bool selected: false
         property bool removable: false
         signal activated()
         signal removeRequested()
+        signal selectionRequested(int modifiers)
+        signal contextRequested()
 
         implicitHeight: 50
         radius: Appearance.rounding.small
-        color: active ? Appearance.colors.colSecondaryContainer
-            : (rowMouse.containsMouse ? Appearance.colors.colLayer2Hover : "transparent")
+        color: selected
+            ? Appearance.colors.colPrimaryContainer
+            : active
+                ? Appearance.colors.colSecondaryContainer
+                : (rowMouse.containsMouse ? Appearance.colors.colLayer2Hover : "transparent")
 
         RowLayout {
             anchors.fill: parent
@@ -90,7 +420,9 @@ Item {
                 Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
                 radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer2
+                color: trackRow.selected
+                    ? Appearance.colors.colSecondaryContainer
+                    : Appearance.colors.colLayer2
                 clip: true
                 Image {
                     id: coverImage
@@ -108,7 +440,9 @@ Item {
                     visible: coverImage.status !== Image.Ready
                     text: trackRow.active && LocalMusic.playing ? "graphic_eq" : "music_note"
                     iconSize: 20
-                    color: trackRow.active ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                    color: trackRow.selected
+                        ? Appearance.colors.colOnSecondaryContainer
+                        : (trackRow.active ? Appearance.colors.colPrimary : Appearance.colors.colSubtext)
                 }
             }
             ColumnLayout {
@@ -117,9 +451,11 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     text: String(trackRow.track?.title ?? "")
-                    color: Appearance.colors.colOnLayer1
+                    color: trackRow.selected
+                        ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colOnLayer1
                     font.pixelSize: Appearance.font.pixelSize.normal
-                    font.weight: trackRow.active ? Font.Medium : Font.Normal
+                    font.weight: trackRow.active || trackRow.selected ? Font.Medium : Font.Normal
                     elide: Text.ElideRight
                 }
                 StyledText {
@@ -130,14 +466,18 @@ Item {
                         return artist && album ? artist + " • " + album : (artist || album)
                     }
                     visible: text.length > 0
-                    color: Appearance.colors.colSubtext
+                    color: trackRow.selected
+                        ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     elide: Text.ElideRight
                 }
             }
             StyledText {
                 text: trackRow.track?.duration > 0 ? root.formatTime(trackRow.track.duration) : ""
-                color: Appearance.colors.colSubtext
+                color: trackRow.selected
+                    ? Appearance.colors.colOnPrimaryContainer
+                    : Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 font.family: Appearance.font.family.numbers
             }
@@ -155,16 +495,22 @@ Item {
             z: 0
             anchors.fill: parent
             hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: Qt.PointingHandCursor
-            // Desktop-player semantics: a single click only focuses the row;
-            // a double click performs its action. This prevents the first click
-            // of a double click from replacing the live MPD queue.
-            onClicked: trackRow.forceActiveFocus()
+            onClicked: event => {
+                if (event.button === Qt.RightButton) {
+                    trackRow.contextRequested()
+                    return
+                }
+                trackRow.forceActiveFocus()
+                trackRow.selectionRequested(event.modifiers)
+            }
             onDoubleClicked: trackRow.activated()
         }
     }
 
     ColumnLayout {
+        anchors.fill: parent    ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 8
@@ -204,15 +550,96 @@ Item {
                 onClicked: LocalMusic.updateDatabase()
             }
             ToolIconButton {
-                symbol: "refresh"; tip: Translation.tr("Refresh")
+                symbol: "refresh"
+                tip: Translation.tr("Refresh")
                 enabled: !LocalMusic.scanning
                 onClicked: LocalMusic.rescan()
+            }
+        }
+
+        // Now-playing belongs to the Music surface itself, before navigation.
+        Item {
+            id: nowPlayingPanel
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? Appearance.sizes.mediaControlsHeight + 36 : 0
+            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
+
+            PlayerControl {
+                id: localPlayerControl
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: Appearance.sizes.mediaControlsHeight
+                player: LocalMusic.mprisPlayer
+                visualizerPoints: localMusicCava.points
+                visualizerMaxValue: Math.max(1, localMusicCava.normalizationCeiling)
+                radius: Appearance.rounding.normal
+            }
+
+            Rectangle {
+                anchors.top: localPlayerControl.bottom
+                anchors.topMargin: -Math.max(2, Appearance.sizes.elevationMargin * 0.5)
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: Appearance.sizes.elevationMargin * 0.5
+                anchors.rightMargin: Appearance.sizes.elevationMargin * 0.5
+                height: 40
+                z: 2
+                radius: Appearance.rounding.normal
+                topLeftRadius: 0
+                topRightRadius: 0
+                color: localPlayerControl.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: 5
+
+                    MediaToggleButton {
+                        symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"
+                        tip: Translation.tr("Shuffle")
+                        activeState: LocalMusic.shuffleMode
+                        palette: localPlayerControl.blendedColors
+                        onClicked: LocalMusic.toggleShuffle()
+                    }
+                    MediaToggleButton {
+                        symbol: LocalMusic.repeatMode === 1 ? "repeat_one_on"
+                            : (LocalMusic.repeatMode === 2 ? "repeat_on" : "repeat")
+                        tip: Translation.tr("Repeat")
+                        activeState: LocalMusic.repeatMode !== 0
+                        palette: localPlayerControl.blendedColors
+                        onClicked: LocalMusic.cycleRepeatMode()
+                    }
+                    Item { Layout.fillWidth: true }
+                    MaterialSymbol {
+                        text: LocalMusic.volume <= 0 ? "volume_off"
+                            : (LocalMusic.volume < 0.5 ? "volume_down" : "volume_up")
+                        iconSize: 18
+                        color: localPlayerControl.blendedColors?.colOnLayer0
+                            ?? Appearance.colors.colOnLayer0
+                    }
+                    StyledSlider {
+                        Layout.preferredWidth: 110
+                        from: 0
+                        to: 1
+                        value: LocalMusic.volume
+                        highlightColor: localPlayerControl.blendedColors?.colPrimary
+                            ?? Appearance.colors.colPrimary
+                        trackColor: localPlayerControl.blendedColors?.colSecondaryContainer
+                            ?? Appearance.colors.colSecondaryContainer
+                        handleColor: localPlayerControl.blendedColors?.colPrimary
+                            ?? Appearance.colors.colPrimary
+                        onMoved: LocalMusic.setVolume(value)
+                    }
+                }
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
+            Item { Layout.fillWidth: true }
             Repeater {
                 model: [
                     { id: "songs", label: Translation.tr("Songs"), icon: "music_note" },
@@ -223,41 +650,104 @@ Item {
                 delegate: RippleButton {
                     id: sectionButton
                     required property var modelData
-                    Layout.fillWidth: true
+                    readonly property bool selected: root.section === modelData.id
+                    implicitWidth: selected
+                        ? Math.max(76, sectionContent.implicitWidth + 24)
+                        : 38
                     implicitHeight: 38
                     buttonRadius: Appearance.rounding.full
-                    colBackground: root.section === modelData.id
-                        ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer2
+                    colBackground: selected
+                        ? Appearance.colors.colSecondaryContainer
+                        : "transparent"
+                    colBackgroundHover: Appearance.colors.colLayer2Hover
                     onClicked: root.section = modelData.id
+
+                    Behavior on implicitWidth {
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation {
+                            duration: Appearance.animation.elementResize.duration
+                            easing.type: Appearance.animation.elementResize.type
+                            easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
+                        }
+                    }
+
                     contentItem: RowLayout {
+                        id: sectionContent
+                        anchors.centerIn: parent
                         spacing: 5
-                        Item { Layout.fillWidth: true }
-                        MaterialSymbol { text: sectionButton.modelData.icon; iconSize: 17; color: Appearance.colors.colOnLayer2 }
+                        MaterialSymbol {
+                            text: sectionButton.modelData.icon
+                            iconSize: 18
+                            color: sectionButton.selected
+                                ? Appearance.colors.colOnSecondaryContainer
+                                : Appearance.colors.colOnLayer2
+                        }
                         StyledText {
+                            visible: sectionButton.selected
                             text: sectionButton.modelData.label
-                            color: Appearance.colors.colOnLayer2
+                            color: Appearance.colors.colOnSecondaryContainer
                             font.pixelSize: Appearance.font.pixelSize.smaller
                         }
-                        Item { Layout.fillWidth: true }
                     }
+                }
+            }
+            Item { Layout.fillWidth: true }
+        }
+
+        Rectangle {
+            id: searchShell
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 42 : 0
+            visible: root.section === "songs"
+            radius: Appearance.rounding.full
+            color: searchField.activeFocus
+                ? Appearance.colors.colSecondaryContainer
+                : Appearance.colors.colLayer2
+            border.width: 1
+            border.color: searchField.activeFocus
+                ? Appearance.colors.colPrimary
+                : Appearance.colors.colOutlineVariant
+
+            Behavior on color {
+                enabled: Appearance.animationsEnabled
+                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
+            }
+            Behavior on border.color {
+                enabled: Appearance.animationsEnabled
+                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 8
+                spacing: 7
+
+                MaterialSymbol {
+                    text: "search"
+                    iconSize: 19
+                    color: searchField.activeFocus
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colSubtext
+                }
+
+                ToolbarTextField {
+                    id: searchField
+                    Layout.fillWidth: true
+                    Layout.fillHeight: false
+                    Layout.preferredHeight: 38
+                    colBackground: "transparent"
+                    leftPadding: 0
+                    rightPadding: 4
+                    placeholderText: Translation.tr("Search music")
                 }
             }
         }
 
-        ToolbarTextField {
-            id: searchField
-            Layout.fillWidth: true
-            // ToolbarTextField normally fills toolbar height. In this vertical
-            // view that consumed the entire song viewport.
-            Layout.fillHeight: false
-            Layout.minimumHeight: 38
-            Layout.preferredHeight: 38
-            Layout.maximumHeight: 38
-            placeholderText: Translation.tr("Search")
-            visible: root.section === "songs"
-        }
-
         Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            StackLayout {        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             StackLayout {
@@ -265,32 +755,115 @@ Item {
                 currentIndex: root.sectionIndex()
 
                 Item {
-                    ListView {
+                    ColumnLayout {
                         anchors.fill: parent
-                        clip: true
-                        spacing: 2
-                        boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                        model: root.filteredTracks
-                        delegate: TrackRow {
-                            required property var modelData
-                            required property int index
-                            width: ListView.view.width
-                            track: modelData
-                            trackIndex: index
-                            // Double-click appends the selected song to the
-                            // existing MPD queue and immediately plays that
-                            // appended entry. It must not clear the current queue.
-                            onActivated: LocalMusic.enqueueTrack(modelData, true)
+                        spacing: 4
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 32
+                            spacing: 4
+
+                            ToolIconButton {
+                                visible: root.query.length === 0 && root.browserFolder.length > 0
+                                Layout.preferredWidth: visible ? 30 : 0
+                                Layout.preferredHeight: 30
+                                symbol: "arrow_back"
+                                tip: Translation.tr("Back")
+                                onClicked: root.navigateFolder(root.parentFolder(root.browserFolder))
+                            }
+
+                            MaterialSymbol {
+                                text: root.query.length > 0 ? "search" : "folder_open"
+                                iconSize: 17
+                                color: Appearance.colors.colSubtext
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: root.query.length > 0
+                                    ? Translation.tr("Search results")
+                                    : (root.browserFolder.length > 0
+                                        ? root.browserFolder.split("/").join(" / ")
+                                        : Translation.tr("Songs"))
+                                color: Appearance.colors.colSubtext
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                elide: Text.ElideMiddle
+                            }
+
+                            StyledText {
+                                visible: root.selectedTrackKeys.length > 0
+                                text: Translation.tr("%1 selected").arg(root.selectedTrackKeys.length)
+                                color: Appearance.colors.colPrimary
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                font.weight: Font.Medium
+                            }
+
+                            ToolIconButton {
+                                visible: root.selectedTrackKeys.length > 0
+                                Layout.preferredWidth: visible ? 30 : 0
+                                Layout.preferredHeight: 30
+                                symbol: "deselect"
+                                tip: Translation.tr("Clear selection")
+                                onClicked: root.clearSelection()
+                            }
+                        }
+
+                        ListView {
+                            id: songsList
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            spacing: 2
+                            boundsBehavior: Flickable.StopAtBounds
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            model: root.songEntries
+
+                            delegate: DelegateChooser {
+                                role: "entryType"
+
+                                DelegateChoice {
+                                    roleValue: "folder"
+                                    FolderRow {
+                                        id: folderDelegate
+                                        required property var modelData
+                                        width: ListView.view.width
+                                        folder: modelData
+                                        onActivated: root.navigateFolder(modelData.path)
+                                        onContextRequested: root.openFolderContext(modelData, folderDelegate)
+                                    }
+                                }
+
+                                DelegateChoice {
+                                    roleValue: "track"
+                                    TrackRow {
+                                        id: songRow
+                                        required property var modelData
+                                        required property int index
+                                        width: ListView.view.width
+                                        track: modelData
+                                        trackIndex: index
+                                        selected: root.isTrackSelected(modelData)
+                                        onSelectionRequested: modifiers =>
+                                            root.selectTrack(modelData, index, modifiers)
+                                        onContextRequested:
+                                            root.openTrackContext(modelData, index, songRow)
+                                        onActivated: LocalMusic.enqueueTrack(modelData, true)
+                                    }
+                                }
+                            }
                         }
                     }
+
                     ColumnLayout {
                         anchors.centerIn: parent
-                        visible: !LocalMusic.scanning && root.filteredTracks.length === 0
+                        visible: !LocalMusic.scanning && root.songEntries.length === 0
                         spacing: 8
                         MaterialSymbol {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "music_off"; iconSize: 42; color: Appearance.colors.colSubtext
+                            text: root.query.length > 0 ? "search_off" : "music_off"
+                            iconSize: 42
+                            color: Appearance.colors.colSubtext
                         }
                         StyledText {
                             Layout.alignment: Qt.AlignHCenter
@@ -299,7 +872,9 @@ Item {
                         }
                         RippleButton {
                             Layout.alignment: Qt.AlignHCenter
-                            implicitWidth: 120; implicitHeight: 38
+                            implicitWidth: 120
+                            implicitHeight: 38
+                            visible: root.query.length === 0
                             enabled: LocalMusic.available
                             onClicked: LocalMusic.updateDatabase()
                             contentItem: StyledText {
@@ -318,7 +893,7 @@ Item {
                         spacing: 4
                         boundsBehavior: Flickable.StopAtBounds
                         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                        model: LocalMusic.collections
+                        model: LocalMusic.playlists
                         delegate: Rectangle {
                             id: playlistRow
                             required property var modelData
@@ -337,7 +912,7 @@ Item {
                                     color: Appearance.colors.colSecondaryContainer
                                     MaterialSymbol {
                                         anchors.centerIn: parent
-                                        text: playlistRow.modelData?.kind === "playlist" ? "queue_music" : "folder"
+                                        text: "queue_music"
                                         iconSize: 22
                                         color: Appearance.colors.colOnSecondaryContainer
                                     }
@@ -371,8 +946,8 @@ Item {
                     }
                     StyledText {
                         anchors.centerIn: parent
-                        visible: LocalMusic.collections.length === 0
-                        text: Translation.tr("No results")
+                        visible: LocalMusic.playlists.length === 0
+                        text: Translation.tr("No playlists")
                         color: Appearance.colors.colSubtext
                     }
                 }
@@ -551,54 +1126,10 @@ Item {
             MaterialLoadingIndicator { anchors.centerIn: parent; visible: LocalMusic.scanning }
         }
 
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: visible ? Appearance.sizes.mediaControlsHeight : 0
-            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
-
-            // Same player card used by modules/mediaControls/BarMediaPopup.qml.
-            PlayerControl {
-                anchors.fill: parent
-                player: LocalMusic.mprisPlayer
-                visualizerPoints: localMusicCava.points
-                visualizerMaxValue: Math.max(1, localMusicCava.normalizationCeiling)
-                radius: Appearance.rounding.normal
-            }
-        }
-
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? 34 : 0
-            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
-            spacing: 6
-            ToolIconButton {
-                symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"
-                tip: Translation.tr("Shuffle")
-                onClicked: LocalMusic.toggleShuffle()
-            }
-            ToolIconButton {
-                symbol: LocalMusic.repeatMode === 1 ? "repeat_one_on"
-                    : (LocalMusic.repeatMode === 2 ? "repeat_on" : "repeat")
-                tip: Translation.tr("Repeat")
-                onClicked: LocalMusic.cycleRepeatMode()
-            }
-            Item { Layout.fillWidth: true }
-            MaterialSymbol {
-                text: LocalMusic.volume <= 0 ? "volume_off"
-                    : (LocalMusic.volume < 0.5 ? "volume_down" : "volume_up")
-                iconSize: 18
-                color: Appearance.colors.colSubtext
-            }
-            StyledSlider {
-                Layout.preferredWidth: 120
-                from: 0
-                to: 1
-                value: LocalMusic.volume
-                onMoved: LocalMusic.setVolume(value)
-            }
-        }
-
-        Rectangle {
+            visible: !LocalMusic.available || !LocalMusic.mprisAvailable        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? 34 : 0
             visible: !LocalMusic.available || !LocalMusic.mprisAvailable
@@ -611,6 +1142,113 @@ Item {
                     : Translation.tr("Waiting for mpd-mpris")
                 color: Appearance.colors.colOnErrorContainer
                 font.pixelSize: Appearance.font.pixelSize.smaller
+            }
+        }
+    }
+
+    ContextMenu {
+        id: musicContextMenu
+        anchorItem: root.contextAnchor ?? root
+        model: root.contextMenuModel
+        closeOnHoverLost: false
+        closeOnFocusLost: true
+        popupAbove: false
+    }
+
+    Rectangle {
+        id: playlistDialogOverlay
+        anchors.fill: parent
+        visible: root.playlistDialogVisible
+        z: 100
+        color: ColorUtils.applyAlpha(Appearance.colors.colShadow, 0.48)
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.closePlaylistDialog()
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 32, 320)
+            height: 162
+            z: 1
+            radius: Appearance.rounding.normal
+            color: Appearance.colors.colLayer0
+            border.width: 1
+            border.color: Appearance.colors.colOutlineVariant
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 16
+                spacing: 10
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Create playlist")
+                    font.family: Appearance.font.family.title
+                    font.pixelSize: Appearance.font.pixelSize.large
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer0
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("%1 songs").arg(root.pendingPlaylistTracks.length)
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                }
+
+                ToolbarTextField {
+                    id: playlistNameField
+                    Layout.fillWidth: true
+                    Layout.fillHeight: false
+                    Layout.preferredHeight: 38
+                    placeholderText: Translation.tr("Playlist name")
+                    onAccepted: root.commitPlaylistDialog()
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            root.closePlaylistDialog()
+                            event.accepted = true
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Item { Layout.fillWidth: true }
+
+                    RippleButton {
+                        implicitWidth: 82
+                        implicitHeight: 34
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: Appearance.colors.colLayer2
+                        onClicked: root.closePlaylistDialog()
+                        contentItem: StyledText {
+                            anchors.centerIn: parent
+                            text: Translation.tr("Cancel")
+                            color: Appearance.colors.colOnLayer2
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                        }
+                    }
+
+                    RippleButton {
+                        implicitWidth: 82
+                        implicitHeight: 34
+                        enabled: playlistNameField.text.trim().length > 0
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: Appearance.colors.colPrimary
+                        colBackgroundHover: Appearance.colors.colPrimaryHover
+                        onClicked: root.commitPlaylistDialog()
+                        contentItem: StyledText {
+                            anchors.centerIn: parent
+                            text: Translation.tr("Create")
+                            color: Appearance.colors.colOnPrimary
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            font.weight: Font.Medium
+                        }
+                    }
+                }
             }
         }
     }

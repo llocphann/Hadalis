@@ -482,6 +482,48 @@ def enqueue_track(client: MpdClient, uri: str, play_now: bool) -> None:
             client.command("play", max(0, queue_length - 1))
 
 
+def enqueue_many(client: MpdClient, uris: list[str]) -> None:
+    for uri in uris:
+        value = str(uri).strip()
+        if value:
+            client.command("add", value)
+
+
+def _playlist_names(client: MpdClient) -> list[str]:
+    names: list[str] = []
+    for line in client.command("listplaylists"):
+        if ": " not in line:
+            continue
+        key, value = line.split(": ", 1)
+        if key.lower() == "playlist" and value.strip():
+            names.append(value.strip())
+    return names
+
+
+def mutate_playlist(
+    client: MpdClient,
+    name: str,
+    uris: list[str],
+    create_only: bool,
+) -> None:
+    playlist_name = str(name).strip()
+    if not playlist_name or "\n" in playlist_name or "\r" in playlist_name:
+        raise MpdError("invalid_playlist_name")
+
+    valid_uris = list(dict.fromkeys(str(uri).strip() for uri in uris if str(uri).strip()))
+    if not valid_uris:
+        raise MpdError("empty_playlist_selection")
+
+    if create_only:
+        folded = playlist_name.casefold()
+        if any(existing.casefold() == folded for existing in _playlist_names(client)):
+            raise MpdError("playlist_exists")
+
+    # MPD creates the stored playlist on the first playlistadd when needed.
+    for uri in valid_uris:
+        client.command("playlistadd", playlist_name, uri)
+
+
 ALLOWED_COMMANDS = {
     "next",
     "previous",
@@ -540,6 +582,30 @@ def main() -> int:
                 payload = _status_payload(client, music_root)
                 payload["musicRoot"] = music_root
                 print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+                return 0
+            if mode == "enqueue-many" and len(sys.argv) > 5:
+                override_root = sys.argv[4]
+                uris = json.loads(sys.argv[5])
+                if not isinstance(uris, list):
+                    return 2
+                enqueue_many(client, [str(uri) for uri in uris])
+                music_root = _music_root(client, override_root)
+                payload = _status_payload(client, music_root)
+                payload["musicRoot"] = music_root
+                print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+                return 0
+            if mode in ("playlist-create", "playlist-add") and len(sys.argv) > 5:
+                name = sys.argv[4]
+                uris = json.loads(sys.argv[5])
+                if not isinstance(uris, list):
+                    return 2
+                mutate_playlist(
+                    client,
+                    name,
+                    [str(uri) for uri in uris],
+                    create_only=mode == "playlist-create",
+                )
+                print('{"ok":true}')
                 return 0
             if mode == "command" and len(sys.argv) > 5:
                 name = sys.argv[4]

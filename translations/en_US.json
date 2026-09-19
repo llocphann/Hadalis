@@ -5370,5 +5370,15 @@
   "Reset clears the iNiR TLP overrides.": "Reset clears the iNiR TLP overrides.",
   "Overrides: %1": "Overrides: %1",
   "Battery care": "Battery care",
-  "Media width (px)": "Media width (px)"
+  "Media width (px)": "Media width (px)",
+  "Search music": "Search music",
+  "Search results": "Search results",
+  "%1 selected": "%1 selected",
+  "Clear selection": "Clear selection",
+  "Play selection": "Play selection",
+  "Play folder": "Play folder",
+  "Create playlist…": "Create playlist…",
+  "Add to %1": "Add to %1",
+  "Create playlist": "Create playlist",
+  "No playlists": "No playlists"
 }

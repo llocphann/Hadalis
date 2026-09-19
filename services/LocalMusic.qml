@@ -46,7 +46,9 @@ Singleton {
     property var libraryTracks: []
     property var playlists: []
     property var folderCollections: []
-    readonly property var collections: [...playlists, ...folderCollections]
+    // "Playlists" is semantically reserved for MPD saved playlists. Folder
+    // navigation is handled independently by the Songs browser.
+    readonly property var collections: playlists
 
     property var activeQueue: []
     property string activeQueueName: ""
@@ -63,6 +65,8 @@ Singleton {
     property bool shuffleMode: false
     property int repeatMode: 0
     property var _enqueueRequests: []
+    property var _bulkEnqueueRequests: []
+    property var _playlistRequests: []
 
     // Local-only lyric state. MPD/MPRIS still own playback; this only reads
     // sidecar .lrc/.txt files next to the resolved local track path.
@@ -314,6 +318,74 @@ Singleton {
         _enqueueProc.running = true
     }
 
+    function _trackUris(tracks): var {
+        if (!Array.isArray(tracks)) return []
+        const seen = new Set()
+        const uris = []
+        for (const track of tracks) {
+            const uri = String(track?.uri ?? track?.path ?? "").trim()
+            if (!uri || seen.has(uri)) continue
+            seen.add(uri)
+            uris.push(uri)
+        }
+        return uris
+    }
+
+    function enqueueTracks(tracks): void {
+        if (!available) return
+        const uris = _trackUris(tracks)
+        if (uris.length === 0) return
+        _bulkEnqueueRequests = [..._bulkEnqueueRequests, uris]
+        _drainBulkEnqueueRequests()
+    }
+
+    function _drainBulkEnqueueRequests(): void {
+        if (_bulkEnqueueProc.running || _bulkEnqueueRequests.length === 0) return
+        const uris = _bulkEnqueueRequests[0]
+        _bulkEnqueueRequests = _bulkEnqueueRequests.slice(1)
+        _bulkEnqueueProc.output = ""
+        _bulkEnqueueProc.command = [
+            "python3", _mpdScript, "enqueue-many",
+            mpdHost, String(mpdPort), configuredLibraryFolder,
+            JSON.stringify(uris)
+        ]
+        _bulkEnqueueProc.running = true
+    }
+
+    function createPlaylist(name: string, tracks): void {
+        _queuePlaylistRequest("playlist-create", name, tracks)
+    }
+
+    function addTracksToPlaylist(name: string, tracks): void {
+        _queuePlaylistRequest("playlist-add", name, tracks)
+    }
+
+    function _queuePlaylistRequest(mode: string, name: string, tracks): void {
+        if (!available) return
+        const playlistName = String(name ?? "").trim()
+        const uris = _trackUris(tracks)
+        if (!playlistName || uris.length === 0) return
+        _playlistRequests = [..._playlistRequests, {
+            mode: mode,
+            name: playlistName,
+            uris: uris
+        }]
+        _drainPlaylistRequests()
+    }
+
+    function _drainPlaylistRequests(): void {
+        if (_playlistProc.running || _playlistRequests.length === 0) return
+        const request = _playlistRequests[0]
+        _playlistRequests = _playlistRequests.slice(1)
+        _playlistProc.output = ""
+        _playlistProc.command = [
+            "python3", _mpdScript, request.mode,
+            mpdHost, String(mpdPort), request.name,
+            JSON.stringify(request.uris)
+        ]
+        _playlistProc.running = true
+    }
+
     function playQueue(queue, index = 0, name = ""): void {
         if (!available || !Array.isArray(queue) || queue.length === 0) return
         const valid = queue.filter(track =>
@@ -494,6 +566,19 @@ Singleton {
         onTriggered: root.rescan()
     }
 
+    Timer {
+        id: playlistRescanTimer
+        interval: 220
+        repeat: false
+        onTriggered: {
+            if (_scanProc.running) {
+                restart()
+                return
+            }
+            root.rescan()
+        }
+    }
+
     Process {
         id: _lyricsProc
         property string requestedPath: ""
@@ -609,6 +694,52 @@ Singleton {
             }
             if (root._enqueueRequests.length > 0)
                 Qt.callLater(root._drainEnqueueRequests)
+        }
+    }
+
+    Process {
+        id: _bulkEnqueueProc
+        property string output: ""
+        stdout: StdioCollector {
+            onStreamFinished: _bulkEnqueueProc.output = text ?? ""
+        }
+        onStarted: _bulkEnqueueProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) {
+                root.error = "mpd_bulk_enqueue_failed"
+            } else {
+                try {
+                    root._applyPayload(JSON.parse(_bulkEnqueueProc.output || "{}"), false)
+                } catch (e) {
+                    root.error = "mpd_bulk_enqueue_parse_failed"
+                }
+            }
+            if (root._bulkEnqueueRequests.length > 0)
+                Qt.callLater(root._drainBulkEnqueueRequests)
+        }
+    }
+
+    Process {
+        id: _playlistProc
+        property string output: ""
+        stdout: StdioCollector {
+            onStreamFinished: _playlistProc.output = text ?? ""
+        }
+        onStarted: _playlistProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) {
+                try {
+                    const payload = JSON.parse(_playlistProc.output || "{}")
+                    root.error = String(payload.error ?? "mpd_playlist_failed")
+                } catch (e) {
+                    root.error = "mpd_playlist_failed"
+                }
+            } else {
+                root.error = ""
+                playlistRescanTimer.restart()
+            }
+            if (root._playlistRequests.length > 0)
+                Qt.callLater(root._drainPlaylistRequests)
         }
     }
 }

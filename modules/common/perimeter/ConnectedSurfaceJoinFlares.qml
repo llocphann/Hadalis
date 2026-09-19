@@ -1,13 +1,16 @@
 import QtQuick
 
-// Flattened circular-smooth-union shoulders for direct Bar/Screen Edge joins.
+// CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (maintainer clarified 2026-09-19):
+// Contact corners MUST flare outward from the popup/sidebar/dashboard body into
+// Screen Edge/Bar. They must never be implemented by rounding the attached body
+// corner inward. The joined body edge stays square; these inverse elliptical
+// shoulders occupy only the OUTSIDE endpoint space.
 //
-// Caelestia's blob shader uses a circular smin with smoothing=20 and then
-// compresses the SDF on the axis facing the border (boost=3). Because Hadalis
-// currently composes Bar and popup in separate layer-shell surfaces, reproduce
-// that visible result with a 20px tangent shoulder and a shallower cross-axis
-// ellipse. The contact therefore reads broad/flat at the edge instead of like a
-// detached rounded card with two circular ears.
+// Caelestia's BlobGroup smooth-union reads broad/flat at the border. Hadalis
+// keeps that spatial language with a radius-wide tangent and compressed
+// cross-axis depth. PerimeterTokens.joinFlareRadius follows the same user
+// Border Radius as Screen Edge/Bar, while joinFlareCrossScale controls only the
+// flattening depth. Do not modify ScreenEdges.qml or Bar corner ownership here.
 Item {
     id: root
 

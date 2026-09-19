@@ -125,10 +125,10 @@ Singleton {
             if (darkModeProc.startObserved)
                 return
 
-            root._finishGenerator("dark mode", -1, false, true)
+            root._finishGenerator("dark mode", -1, true, true)
         }
         onStarted: darkModeProc.startObserved = true
-        onExited: (code, status) => root._finishGenerator("dark mode", code, false, false)
+        onExited: (code, status) => root._finishGenerator("dark mode", code, true, false)
     }
 
     function _log(...args): void {

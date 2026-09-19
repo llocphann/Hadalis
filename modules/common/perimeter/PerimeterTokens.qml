@@ -19,15 +19,13 @@ QtObject {
     // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK:
     // Joined popup/sidebar/dashboard body corners stay SQUARE. Contact rounding
     // is drawn only by the outward concave shoulder outside the body, never by
-    // rounding the body inward. Caelestia's BlobGroup uses a circular smooth-min
-    // (default smoothing 20) independently of border rounding (default 25).
-    // Hadalis has no cross-window SDF field, so the local reconstructed contact
-    // uses the shared user-controlled frame radius as k instead of introducing a
-    // second visual tuning knob. Changing Border Radius therefore changes both
-    // physical endpoint curvature and the connected-surface contact silhouette.
+    // rounding the body inward. The flare tangent radius follows the same user
+    // setting as Screen Edge/Bar; cross-axis compression preserves the broad,
+    // flattened Caelestia-like transition.
     readonly property real smoothUnionRadius: 20
     readonly property real popupRadius: 28
     readonly property real joinFlareRadius: frameRadius
+    readonly property real joinFlareCrossScale: 0.55
 
     readonly property real revealSlideDistance: 18
     readonly property real connectorWidth: 40

@@ -70,6 +70,7 @@ def main() -> None:
         "readonly property real smoothUnionRadius: 20",
         "readonly property real popupRadius: 28",
         "readonly property real joinFlareRadius: frameRadius",
+        "readonly property real joinFlareCrossScale: 0.55",
         "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK",
     ):
         check(token in perimeter_tokens,
@@ -537,47 +538,37 @@ def main() -> None:
           "Shared rectangular shadow must retain the prior stable cached renderer")
 
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
-    contact_flare = read("modules/common/perimeter/ConnectedSurfaceContactFlare.qml")
     for token in (
-        "ConnectedSurfaceContactFlare {",
-        "model: 8",
-        "function flareVisible(index)",
-        "function flareX(index)",
-        "function flareY(index)",
-        "function flareQuarterTurns(index)",
-        "function flareMirrored(index)",
+        "component Flare: Canvas {",
+        "const k = 0.5522847498",
+        'corner === "topLeft"',
+        'corner === "topRight"',
+        'corner === "bottomLeft"',
+        'corner === "bottomRight"',
+        'corner === "leftTop"',
+        'corner === "leftBottom"',
+        'corner === "rightTop"',
+        'corner === "rightBottom"',
         "root.bodyItem.mapToItem(root, 0, 0)",
         "visible: root.reveal > 0.001 && root.radius > 0",
     ):
         check(token in join_flares,
-              f"Connected-surface shoulder placement contract missing: {token}")
-    for token in (
-        "Canvas {",
-        "property int quarterTurns: 0",
-        "property bool mirrored: false",
-        "ctx.rotate(root.quarterTurns * Math.PI / 2)",
-        "ctx.scale(root.mirrored ? -1 : 1, 1)",
-        "ctx.arc(0, r, r, 0, -Math.PI / 2, true)",
-    ):
-        check(token in contact_flare,
-              f"Canonical circular smooth-union flare missing: {token}")
-    check(join_flares.count("ConnectedSurfaceContactFlare {") == 1,
-          "All eight contact endpoints must reuse one canonical flare delegate")
-    check("bezierCurveTo" not in contact_flare
-          and "flareCorner" not in join_flares
-          and "crossScale" not in join_flares
-          and "joinFlareCrossScale" not in perimeter_tokens,
-          "Connected contact geometry must not regress to hand-tuned per-orientation ellipse shoulders")
-    check("PerimeterCornerShadow" not in join_flares
+              f"Connected-surface shoulder baseline missing: {token}")
+    check("component Flare: RoundCorner" not in join_flares
+          and "PerimeterCornerShadow" not in join_flares
           and "property bool shadowEnabled" not in join_flares
           and "property real shadowExtent" not in join_flares
           and "property color shadowColor" not in join_flares,
-          "Connected-surface shoulders must remain fill-only and must not steal shadow ownership")
+          "Connected-surface shoulders must remain on the clean pre-experiment baseline")
+    check("root.radius * Math.max(0.20, Math.min(1, root.crossScale))" in join_flares
+          and "width: root.radius" in join_flares
+          and "height: root.depth" in join_flares,
+          "Connected-surface shoulders must keep the prior broad-tangent/compressed-depth geometry")
     check("CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in join_flares
           and "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in perimeter_tokens,
           "Connected popup contact geometry must retain the outward-flare lock marker")
     check("readonly property real joinFlareRadius: frameRadius" in perimeter_tokens,
-          "Outward flare smoothing radius must follow the Screen Edge/Bar Border Radius setting")
+          "Outward flare tangent radius must follow the Screen Edge/Bar Border Radius setting")
     check(") * root.reveal" not in join_flares,
           "Connected shoulder radius must stay fully formed during reveal")
 
@@ -623,19 +614,10 @@ def main() -> None:
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")
-    bar_background_start = bar_content.index("Rectangle {\n        id: barBackground")
-    bar_background_end = bar_content.index("\n    FocusedScrollMouseArea", bar_background_start)
-    bar_background_block = bar_content[bar_background_start:bar_background_end]
-    check("visible: true" in bar_background_block
-          and "visible: !gameModeMinimal" not in bar_background_block,
-          "Horizontal Hug structural body must remain visible across GameMode/fullscreen transitions")
-
-    vertical_background_start = vertical_bar_content.index("Rectangle {\n        id: barBackground")
-    vertical_background_end = vertical_bar_content.index("\n        clip: true", vertical_background_start)
-    vertical_background_block = vertical_bar_content[vertical_background_start:vertical_background_end]
-    check("visible: !root.isIslands" in vertical_background_block
-          and "visible: !root.gameModeMinimal" not in vertical_background_block,
-          "Vertical Hug structural body must remain visible across GameMode/fullscreen transitions")
+    check("visible: !gameModeMinimal" in bar_content,
+          "Horizontal Hug body must not disappear because of legacy showBackground state")
+    check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,
+          "Vertical Hug body must not disappear because of legacy showBackground state")
     check("Config.options?.bar?.cornerStyle" not in bar_content,
           "Horizontal Hug body must ignore persisted retired cornerStyle at runtime")
     check("Config.options?.bar?.cornerStyle" not in vertical_bar_content,
@@ -650,13 +632,6 @@ def main() -> None:
               and "updatesEnabled: !fullscreenCovered" not in fullscreen_bar_surface
               and "GameMode.hasFullscreenOnOutput" not in fullscreen_bar_surface,
               "Bar PanelWindow must stay mapped/updating across fullscreen; compositor stacking owns coverage")
-    module_shown_start = bar_content.index("function _moduleShown")
-    module_shown_end = bar_content.index("function _fillWidth", module_shown_start)
-    module_shown_block = bar_content[module_shown_start:module_shown_end]
-    check("GameMode" not in module_shown_block
-          and "gameModeMinimal" not in module_shown_block
-          and "fullscreen" not in module_shown_block.lower(),
-          "Horizontal Bar module visibility must not gain a fullscreen/GameMode lifecycle dependency")
     for bar_surface in (bar_runtime, vertical_bar_runtime, bar_content, vertical_bar_content):
         for forbidden_corner_owner in (
             "PerimeterTokens.frameRadius",

@@ -120,8 +120,8 @@ Item { // Bar content region
             margins: 0
         }
         // Hug background is structural connected chrome. Fullscreen/GameMode
-        // may disable effects, but mapping belongs to VerticalBar.qml and must
-        // not leave the body hidden after fullscreen exits.
+        // may disable effects, but the native Bar surface stays mapped. Niri
+        // covers the Top-layer surface during fullscreen and reveals it on exit.
         visible: !root.isIslands
         color: Appearance.colors.colLayer0
         radius: 0

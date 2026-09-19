@@ -45,5 +45,23 @@ require 'if (root._pendingEnable)' \
     'state-probe completion must still drain pending enable requests'
 require 'root.stateKnown = true' \
     'state-probe completion must mark state as known'
+require 'property bool _pendingDisable: false' \
+    'night-light service must track pending authoritative disable requests'
+require 'property bool _toggleAfterProbe: false' \
+    'unknown-state toggles must defer inversion until the first state probe'
+require 'property real manualOverrideUntilMs: 0' \
+    'manual automatic-mode overrides must track their next schedule boundary'
+require 'function _nextScheduleBoundaryMs()' \
+    'manual override expiry must be derived from the next configured schedule boundary'
+require 'Date.now() >= root.manualOverrideUntilMs' \
+    'manual override must expire at the boundary rather than on the next minute tick'
+require 'id: backendStopProc' \
+    'night-light service must have an authoritative backend stop process'
+require '["/usr/bin/pkill", "-TERM", "-x", "wlsunset"]' \
+    'Niri OFF requests must disable a legacy/detached wlsunset backend'
+require '["/usr/bin/hyprctl", "hyprsunset", "temperature", "6500"]' \
+    'Hyprland OFF requests must neutralize an externally running hyprsunset backend'
+require 'root._applyManualDesiredState(!root.active)' \
+    'unknown-state toggle must invert the probed backend state exactly once'
 
 printf 'night-light service lifecycle guards: ok\n'

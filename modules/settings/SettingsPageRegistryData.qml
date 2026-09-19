@@ -548,6 +548,13 @@ Singleton {
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Screen Edge"),
+            label: Translation.tr("Screen edge shadow"),
+            description: Translation.tr("Configure only the physical Screen Edge shadow"),
+            keywords: ["screen", "edge", "shadow", "physical", "size", "opacity", "blur", "perimeter", "caelestia"]
+        },
+        {
+            pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Appearance & Layout"),
             label: Translation.tr("Blur background"),
             description: Translation.tr("Enable glass blur behind the bar"),

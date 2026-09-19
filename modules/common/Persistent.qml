@@ -257,6 +257,8 @@ Singleton {
                 property string codeWorkflowOutputName: ""
                 property string codeWorkflowSubflowTargetId: "bar"
                 property string codeWorkflowNodeId: "bar.component"
+                property string codeWorkflowSemanticAnchor: ""
+                property string codeWorkflowSemanticAnchorNodeId: ""
                 property real codeWorkflowPanX: 32
                 property real codeWorkflowPanY: 28
                 property real codeWorkflowZoom: 1

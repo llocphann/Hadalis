@@ -12,6 +12,8 @@ Singleton {
     property string outputName: ""
     property string subflowTargetId: "bar"
     property string selectedNodeId: "bar.component"
+    property string semanticAnchor: ""
+    property string semanticAnchorNodeId: ""
     property real panX: 32
     property real panY: 28
     property real zoom: 1
@@ -43,6 +45,14 @@ Singleton {
         if (!CodeWorkflowIr.nodeFor(root.subflowTargetId, root.selectedNodeId))
             root.selectedNodeId = CodeWorkflowIr.graphFor(
                 root.subflowTargetId).rootNodeId ?? ""
+        root.semanticAnchor = String(
+            state.codeWorkflowSemanticAnchor ?? "")
+        root.semanticAnchorNodeId = String(
+            state.codeWorkflowSemanticAnchorNodeId ?? "")
+        if (root.semanticAnchorNodeId !== root.selectedNodeId) {
+            root.semanticAnchor = ""
+            root.semanticAnchorNodeId = ""
+        }
         root.panX = Number(state.codeWorkflowPanX ?? 32)
         root.panY = Number(state.codeWorkflowPanY ?? 28)
         root.zoom = Math.max(0.35, Math.min(2.5, Number(state.codeWorkflowZoom ?? 1)))
@@ -63,10 +73,31 @@ Singleton {
         state.codeWorkflowOutputName = root.outputName
         state.codeWorkflowSubflowTargetId = root.subflowTargetId
         state.codeWorkflowNodeId = root.selectedNodeId
+        state.codeWorkflowSemanticAnchor = root.semanticAnchor
+        state.codeWorkflowSemanticAnchorNodeId = root.semanticAnchorNodeId
         state.codeWorkflowPanX = root.panX
         state.codeWorkflowPanY = root.panY
         state.codeWorkflowZoom = root.zoom
         state.codeWorkflowSourcePreview = root.sourcePreviewVisible
+    }
+
+    function clearSemanticAnchor(): void {
+        root.semanticAnchor = ""
+        root.semanticAnchorNodeId = ""
+        root.persist()
+    }
+
+    function bindSemanticAnchor(nodeId: string, anchor: string): bool {
+        const nextNodeId = String(nodeId ?? "")
+        const nextAnchor = String(anchor ?? "")
+        if (nextNodeId.length === 0
+                || nextAnchor.length === 0
+                || nextNodeId !== root.selectedNodeId)
+            return false
+        root.semanticAnchor = nextAnchor
+        root.semanticAnchorNodeId = nextNodeId
+        root.persist()
+        return true
     }
 
     function selectTarget(targetId: string, instanceId: string): void {
@@ -83,6 +114,7 @@ Singleton {
             const graph = CodeWorkflowIr.graphFor(targetId)
             root.selectedNodeId = graph.rootNodeId
                 ?? graph.nodes?.[0]?.id ?? ""
+            root.clearSemanticAnchor()
             root.resetViewport()
         }
         root.persist()
@@ -91,8 +123,12 @@ Singleton {
     function selectNode(nodeId: string): void {
         if (!CodeWorkflowIr.nodeFor(root.subflowTargetId, nodeId))
             return
+        const changed = root.selectedNodeId !== nodeId
         root.selectedNodeId = nodeId
-        root.persist()
+        if (changed)
+            root.clearSemanticAnchor()
+        else
+            root.persist()
     }
 
     function openSubflow(targetId: string): bool {
@@ -103,6 +139,7 @@ Singleton {
         const graph = CodeWorkflowIr.graphFor(targetId)
         root.selectedNodeId = graph.rootNodeId
             ?? graph.nodes?.[0]?.id ?? ""
+        root.clearSemanticAnchor()
 
         if (CodeWorkflowRuntime.descriptor(targetId)) {
             root.selectedTargetId = targetId
@@ -139,6 +176,8 @@ Singleton {
     onOutputNameChanged: root.persist()
     onSubflowTargetIdChanged: root.persist()
     onSelectedNodeIdChanged: root.persist()
+    onSemanticAnchorChanged: root.persist()
+    onSemanticAnchorNodeIdChanged: root.persist()
     onSourcePreviewVisibleChanged: root.persist()
     Component.onCompleted: root.restore()
 

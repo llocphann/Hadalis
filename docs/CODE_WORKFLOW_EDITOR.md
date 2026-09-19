@@ -8,7 +8,9 @@ now form the production read-only foundation. Selected reviewed anchors gain
 transient CST byte-range evidence when native parser capability is present;
 missing/ambiguous anchors fail closed and no ranges are persisted into the IR
 manifest. Generic semantic extraction, stable Arch parser promotion and every
-source-writing transform remain unfinished. The on-demand
+source-writing transform remain unfinished. Unique parser semantic anchors can
+now rebind read-only inspector identity across source movement, but they are not
+yet authorization for rewriting source. The on-demand
 parser boundary still degrades to reviewed IR when native capability is absent.
 Curve sustained-memory acceptance remains HOLD.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),

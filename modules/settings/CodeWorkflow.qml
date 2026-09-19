@@ -38,6 +38,11 @@ Item {
             ?? ""
     readonly property string sourceNeedle:
         root.selectedIrNode?.sourceNeedle ?? ""
+    readonly property string storedSemanticAnchor:
+        CodeWorkflowSession.semanticAnchorNodeId
+            === CodeWorkflowSession.selectedNodeId
+        ? CodeWorkflowSession.semanticAnchor
+        : ""
     readonly property bool live:
         root.snapshot.records?.some(item => item.state === "resident") ?? false
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
@@ -46,6 +51,7 @@ Item {
     readonly property bool analyzerMatchesAnchor:
         root.analyzerMatchesSource
         && CodeWorkflowAnalyzer.sourceNeedle === root.sourceNeedle
+        && CodeWorkflowAnalyzer.semanticAnchor === root.storedSemanticAnchor
     readonly property var sourceAnchorEvidence:
         root.analyzerMatchesAnchor
             ? CodeWorkflowAnalyzer.reviewedAnchor
@@ -75,6 +81,34 @@ Item {
         if (evidence?.status === "analyzing")
             return "ANALYZING"
         return "—"
+    }
+    readonly property var semanticRebindEvidence:
+        root.analyzerMatchesAnchor
+            ? CodeWorkflowAnalyzer.semanticRebind
+            : ({ status: "idle" })
+    readonly property string semanticRebindText: {
+        const evidence = root.semanticRebindEvidence
+        if (evidence?.status === "resolved")
+            return "RESOLVED · "
+                + String(evidence.kind ?? "node")
+                + (String(evidence.name ?? "").length > 0
+                    ? " · " + evidence.name
+                    : "")
+        if (evidence?.status === "ambiguous")
+            return "AMBIGUOUS · "
+                + Number(evidence.occurrences ?? 0)
+                + " matches"
+        if (evidence?.status === "missing")
+            return "MISSING"
+        if (evidence?.status === "unavailable")
+            return "UNAVAILABLE"
+        if (evidence?.status === "error")
+            return "ERROR"
+        if (evidence?.status === "analyzing")
+            return "ANALYZING"
+        return root.storedSemanticAnchor.length > 0
+            ? "PENDING"
+            : "—"
     }
     readonly property string analyzerStatusText: {
         if (!root.analyzerMatchesAnchor)
@@ -156,7 +190,24 @@ Item {
         CodeWorkflowAnalyzer.request(
             root.sourcePath,
             root.sourceNeedle,
+            root.storedSemanticAnchor,
             force)
+    }
+
+    function captureSemanticAnchor(): void {
+        if (!root.analyzerMatchesAnchor
+                || CodeWorkflowAnalyzer.status !== "ready")
+            return
+        const evidence = CodeWorkflowAnalyzer.reviewedAnchor
+        if (evidence?.status !== "resolved"
+                || evidence?.semanticAnchorUnique !== true)
+            return
+        const anchor = String(evidence.semanticAnchor ?? "")
+        if (anchor.length === 0)
+            return
+        CodeWorkflowSession.bindSemanticAnchor(
+            CodeWorkflowSession.selectedNodeId,
+            anchor)
     }
 
     function focusSourceAnchor(): void {
@@ -181,6 +232,16 @@ Item {
     onSourceNeedleChanged: {
         Qt.callLater(root.focusSourceAnchor)
         Qt.callLater(() => root.requestAnalysis(false))
+    }
+    onStoredSemanticAnchorChanged:
+        Qt.callLater(() => root.requestAnalysis(false))
+
+    Connections {
+        target: CodeWorkflowAnalyzer
+        function onStatusChanged(): void {
+            if (CodeWorkflowAnalyzer.status === "ready")
+                Qt.callLater(root.captureSemanticAnchor)
+        }
     }
 
     Component.onCompleted: {
@@ -499,6 +560,29 @@ Item {
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText { text: "Semantic ID"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.storedSemanticAnchor.length > 0
+                            ? root.storedSemanticAnchor
+                            : "Not bound"
+                        color: root.storedSemanticAnchor.length > 0
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colSubtext
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText { text: "Semantic rebind"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.semanticRebindText
+                        color: root.semanticRebindEvidence?.status === "resolved"
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
                     }
                     StyledText { text: "Parser"; color: Appearance.colors.colSubtext }
                     StyledText {

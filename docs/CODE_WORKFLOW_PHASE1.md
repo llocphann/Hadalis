@@ -134,12 +134,32 @@ qualified by Phase 0 and does not introduce source writes.
 - Nix CI builds the parser-capable variant in addition to the default package.
 - No Node/npm/tree-sitter-cli or runtime grammar generation is introduced.
 
+## Milestone 8 implemented
+
+- Analyzer semantic anchors can now be re-resolved independently of transient
+  byte offsets. Only extractor entries marked anchor_unique are eligible.
+- Rebind reports resolved/missing/ambiguous and returns the current source range,
+  kind, name, scope and opaque-context flag without granting editability.
+- CodeWorkflowSession persists the semantic anchor only as a primitive string
+  paired with selectedNodeId; navigation clears the pair so identity cannot leak
+  to another reviewed graph node.
+- The first parser pass may bind a unique semantic anchor from the selected
+  reviewed source needle. A second/cache-aware request then proves the anchor can
+  rebind against the current parse.
+- Inspector surfaces the semantic ID and rebind state separately from transient
+  CST byte-range evidence.
+- Missing/colliding/non-unique anchors fail closed. Structural-ordinal anchors
+  remain best-effort identities and are not yet authorization for source writes.
+- scripts/test-code-workflow-semantic-anchor-contract.py guards resolver,
+  persistence, cache identity and no-write boundaries without native parser
+  availability.
+
 ## Still deliberately unfinished
 
 - production picker live-compositor acceptance on the shipped shell;
 - stable-source promotion of the Arch parser optdepend;
 - generic semantic extraction beyond the reviewed ii Bar projection;
-- persistent/stable semantic anchors for future source-writing transforms;
+- stronger semantic extraction/type resolution for constructs still opaque;
 - source patches, Apply, transactions, conflicts or undo/redo;
 - Sidebar, Dashboard, Dock, Waffle and shell-wide coverage;
 - Curve renderer promotion; memory acceptance remains HOLD.
@@ -149,7 +169,8 @@ qualified by Phase 0 and does not introduce source writes.
 Run the production picker through the same Niri/Sway acceptance ideas proven in
 Phase 0, without weakening its contracts. In parallel, expand semantic extraction
 only where QML constructs can be represented honestly; unsupported constructs
-remain opaque. Nix-native parser packaging can follow the same optional-capability
-boundary.
+remain opaque. Once read-only semantic identity remains stable under realistic
+source movement, Phase 2 can begin with patch-preview/conflict infrastructure
+before any actual write path is enabled.
 
 No manual or live smoke result is implied here.

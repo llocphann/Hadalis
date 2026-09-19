@@ -139,10 +139,43 @@ def resolve_reviewed_anchor(
         result["cstEndPoint"] = list(cst_node.end_point)
     if semantic_entry is not None:
         result["semanticAnchor"] = semantic_entry.get("anchor", "")
+        result["semanticAnchorUnique"] = bool(
+            semantic_entry.get("anchor_unique", False))
         result["semanticKind"] = semantic_entry.get("kind", "")
         result["semanticName"] = semantic_entry.get("name", "")
         result["semanticRange"] = semantic_entry.get("range")
     return result
+
+
+def resolve_semantic_anchor(entries: list[dict], anchor: str) -> dict:
+    if not anchor:
+        return {"status": "not-requested"}
+
+    matches = [
+        entry for entry in entries
+        if entry.get("anchor") == anchor
+    ]
+    if len(matches) == 0:
+        return {"status": "missing", "anchor": anchor}
+    if len(matches) != 1 or not matches[0].get("anchor_unique", False):
+        return {
+            "status": "ambiguous",
+            "anchor": anchor,
+            "occurrences": len(matches),
+        }
+
+    entry = matches[0]
+    return {
+        "status": "resolved",
+        "anchor": anchor,
+        "kind": entry.get("kind", ""),
+        "name": entry.get("name", ""),
+        "range": entry.get("range"),
+        "parentRange": entry.get("parent_range"),
+        "scope": entry.get("scope", []),
+        "opaqueContext": bool(entry.get("opaque_context", False)),
+        "editable": False,
+    }
 
 
 def resolve_source(root: Path, relative: str) -> Path:
@@ -171,6 +204,11 @@ def main() -> int:
         "--needle",
         default="",
         help="reviewed source needle to resolve to transient CST evidence",
+    )
+    parser.add_argument(
+        "--semantic-anchor",
+        default="",
+        help="stable semantic anchor to re-resolve after source movement",
     )
     args = parser.parse_args()
 
@@ -211,6 +249,10 @@ def main() -> int:
                 semantic["entries"],
                 args.needle,
             )
+            semantic_rebind = resolve_semantic_anchor(
+                semantic["entries"],
+                args.semantic_anchor,
+            )
     except OSError as exc:
         return unavailable("tree-sitter-library-missing", str(exc))
     except (RuntimeError, AssertionError, UnicodeError) as exc:
@@ -236,6 +278,7 @@ def main() -> int:
         "counts": semantic["counts"],
         "anchorCollisions": semantic["anchor_collisions"],
         "reviewedAnchor": reviewed_anchor,
+        "semanticRebind": semantic_rebind,
         "parser": {
             "grammar": str(grammar),
             "qmljsVersion": QMLJS_VERSION,

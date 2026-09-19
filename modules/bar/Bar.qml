@@ -79,15 +79,13 @@ Scope {
                 id: barRoot
                 screen: barLoader.modelData
                 readonly property string outputName: String(barLoader.modelData?.name ?? "")
-                readonly property bool fullscreenCovered: outputName.length > 0
-                    && GameMode.hasFullscreenOnOutput(outputName)
 
-                // Keep the Bar lifecycle aligned with the physical Screen Edge:
-                // unmap while a fullscreen client covers this output, then remap
-                // on exit. This forces a clean compositor repaint instead of
-                // leaving stale/blank Bar contents until the shell is reloaded.
-                visible: !fullscreenCovered
-                updatesEnabled: !fullscreenCovered
+                // FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19):
+                // Do NOT unmap or suspend this PanelWindow on fullscreen.
+                // Niri/compositor stacking already covers Top-layer Bar surfaces.
+                // Toggling PanelWindow visible/updatesEnabled during fullscreen
+                // can leave its QML contents blank after the fullscreen client
+                // exits until Quickshell is reloaded.
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right

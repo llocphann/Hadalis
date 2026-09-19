@@ -316,7 +316,7 @@ Item {
                 flickDeceleration: 1500
                 maximumFlickVelocity: 3000
                 boundsBehavior: Flickable.StopAtBounds
-                cacheBuffer: root.skewExpandedWidth * 2
+                cacheBuffer: root.skewExpandedWidth
                 highlightFollowsCurrentItem: true
                 highlightMoveDuration: 350
                 highlight: Item {}
@@ -434,7 +434,7 @@ Item {
                         anchors.fill: parent
                         layer.enabled: true
                         layer.smooth: true
-                        layer.samples: 4
+                        layer.samples: Looks.effectsEnabled ? 4 : 1
                         layer.effect: MultiEffect {
                             maskEnabled: true
                             maskSource: ShaderEffectSource {
@@ -443,7 +443,7 @@ Item {
                                     height: maskedBody.height
                                     layer.enabled: true
                                     layer.smooth: true
-                                    layer.samples: 8
+                                    layer.samples: Looks.effectsEnabled ? 4 : 1
 
                                     Shape {
                                         anchors.fill: parent

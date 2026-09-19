@@ -249,7 +249,7 @@ Item {
                         }
 
                         SequentialAnimation on x {
-                            running: shimmerBg.visible && Looks.transition.enabled
+                            running: GlobalStates.waffleTaskViewOpen && shimmerBg.visible && Looks.transition.enabled
                             loops: Animation.Infinite
                             NumberAnimation {
                                 from: -shimmer.width
@@ -286,7 +286,9 @@ Item {
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     smooth: true
-                    mipmap: true
+                    mipmap: false
+                    sourceSize.width: Math.max(1, Math.ceil(root.thumbnailWidth * 1.5))
+                    sourceSize.height: Math.max(1, Math.ceil(root.thumbnailHeight * 1.5))
                     anchors.fill: parent
                     anchors.margins: 2
                     opacity: status === Image.Ready ? 1 : 0

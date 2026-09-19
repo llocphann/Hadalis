@@ -102,7 +102,7 @@ Scope {
                 // Normal Bar mode owns only the Bar body. Extra inward host
                 // room exists solely for the auto-hide Screen Edge fallback.
                 readonly property real inwardDecoratorAllowance:
-                    Math.max(autoHideEnabled ? frameRadius : 0, edgeShadowExtent)
+                    autoHideEnabled ? Math.max(frameRadius, edgeShadowExtent) : 0
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
@@ -134,10 +134,6 @@ Scope {
                 property bool superShow: false
                 property bool mustShow: hoverRegion.containsMouse || superShow
                     || ShellEditSession.active
-                readonly property bool surfacePresented:
-                    !GlobalStates.coverflowSelectorOpen
-                    && GlobalStates.shellEntryReady
-                    && (!(Config.options?.bar?.autoHide?.enable ?? false) || mustShow)
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :

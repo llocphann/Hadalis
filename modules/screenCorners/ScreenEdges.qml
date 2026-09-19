@@ -109,18 +109,6 @@ Scope {
         return iiOwned || waffleOwned
     }
 
-    function adjacentShadowInset(outputName, edge, iiVisualSpan) {
-        // The Material ii Bar has explicit contact strips and RoundCorner
-        // shoulders, so its visual span is the authoritative owner here.
-        // Preserve Waffle's existing intersection behavior; it has a separate
-        // taskbar surface contract and does not use the ii inverse-corner host.
-        const iiOwned = !root.waffleFamily
-            && root.iiBarPanelEnabled
-            && edge === root.iiBarEdge
-            && root.iiBarTargetsOutput(outputName)
-        return iiOwned ? Math.max(0, iiVisualSpan) : 0
-    }
-
     component EdgeWindow: PanelWindow {
         required property ShellScreen modelData
         required property string edge
@@ -130,25 +118,21 @@ Scope {
         readonly property string leadingAdjacentEdge: horizontal ? "left" : "top"
         readonly property string trailingAdjacentEdge: horizontal ? "right" : "bottom"
 
-        // The Bar owns its body plus the inverse-corner box on the two
-        // perpendicular Screen Edge intersections. Do not let this EdgeWindow's
-        // straight inward shadow continue underneath that transparent corner
-        // box: it becomes visible through RoundCorner's workspace-side cutout
-        // as a grey/black wedge. Caelestia avoids this class of overlap by
-        // composing bar + border in one surface; Hadalis keeps separate layer
-        // surfaces, so ownership must be made explicit at the intersection.
-        readonly property real adjacentIiBarVisualSpan: root.barVertical
-            ? Appearance.sizes.verticalBarWidth + root.innerRadius
-            : Appearance.sizes.barHeight + root.innerRadius
+        // Normal ii Bar mode now owns only its rectangular body. The Screen
+        // Edge is the sole persistent perimeter owner, so its straight shadow
+        // stops only for the actual Bar body instead of reserving a second
+        // synthetic corner span. Waffle keeps its existing independent taskbar
+        // overlap behavior until its surface contract is intentionally changed.
+        readonly property real adjacentIiBarBodySpan: root.barVertical
+            ? Appearance.sizes.verticalBarWidth
+            : Appearance.sizes.barHeight
         readonly property real leadingShadowInset:
             root.barOwnsEdge(outputName, leadingAdjacentEdge)
-                ? root.adjacentShadowInset(outputName, leadingAdjacentEdge,
-                    adjacentIiBarVisualSpan)
+                ? (root.waffleBarPanelEnabled ? 0 : adjacentIiBarBodySpan)
                 : root.thickness + root.innerRadius
         readonly property real trailingShadowInset:
             root.barOwnsEdge(outputName, trailingAdjacentEdge)
-                ? root.adjacentShadowInset(outputName, trailingAdjacentEdge,
-                    adjacentIiBarVisualSpan)
+                ? (root.waffleBarPanelEnabled ? 0 : adjacentIiBarBodySpan)
                 : root.thickness + root.innerRadius
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)

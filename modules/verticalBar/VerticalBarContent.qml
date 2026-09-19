@@ -119,9 +119,10 @@ Item { // Bar content region
             fill: parent
             margins: 0
         }
-        // Hug background is structural connected chrome; stale transparent
-        // config must not remove the body below the shared edge shadow.
-        visible: !root.gameModeMinimal && !root.isIslands
+        // Hug background is structural connected chrome. Fullscreen/GameMode
+        // may disable effects, but mapping belongs to VerticalBar.qml and must
+        // not leave the body hidden after fullscreen exits.
+        visible: !root.isIslands
         color: Appearance.colors.colLayer0
         radius: 0
         // No Behavior on the base radius — the per-corner radii below own the

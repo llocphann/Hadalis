@@ -193,6 +193,14 @@ def main() -> None:
           "Screen Edge shadow must not depend on compositor-sensitive layer-effect padding")
     check("root.thickness + root.innerRadius + root.shadowExtent" in screen_edge,
           "Horizontal Screen Edge host must reserve room for curve plus inward shadow")
+    check("function adjacentShadowInset(outputName, edge, iiVisualSpan)" in screen_edge
+          and "Appearance.sizes.verticalBarWidth + root.innerRadius" in screen_edge
+          and "Appearance.sizes.barHeight + root.innerRadius" in screen_edge
+          and "root.adjacentShadowInset(outputName, leadingAdjacentEdge" in screen_edge
+          and "root.adjacentShadowInset(outputName, trailingAdjacentEdge" in screen_edge,
+          "Screen Edge straight shadow must stop before ii Bar-owned inverse-corner boxes")
+    check("const iiOwned = !root.waffleFamily" in screen_edge,
+          "Screen Edge ii-Bar ownership must not leak into the Waffle panel family")
     check("PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19)" in screen_edge,
           "Approved lower Screen Edge corner lock marker must remain present")
     for token in (

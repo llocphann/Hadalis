@@ -118,8 +118,12 @@ shell. Processes it starts are stopped in a finally block; logs/report remain.
 No real credentials/config are copied. Audio/system bus are deliberately absent.
 
 Actual BarContent, Media and ClockWidget register themselves through narrow
-temporary hooks. Resources remains statically known and unloaded. There is no
-recursive item discovery, no read of LazyLoader.item, and no arbitrary property
+temporary hooks. Resources remains statically known and unloaded. The committed
+ProbeShell is a staging template and deliberately does not import
+`qs.workflowprobe`; `prepare-runtime.py` injects that import only after creating
+the temporary exported `workflowprobe/qmldir`, so whole-repository QML module
+verification never sees a dangling generated-only import. There is no recursive
+item discovery, no read of LazyLoader.item, and no arbitrary property
 serialization. Only geometry, enabled and visible enter runtime snapshots.
 The Media probe carries a private sentinel that must not enter the report.
 

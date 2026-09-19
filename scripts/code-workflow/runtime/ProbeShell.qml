@@ -5,7 +5,8 @@ import qs
 import qs.modules.bar
 import qs.modules.common
 import qs.modules.settings
-import qs.workflowprobe
+// WORKFLOW_PROBE_IMPORT: prepare-runtime.py replaces this marker only in the
+// isolated exported runtime after creating config/workflowprobe/qmldir.
 
 ShellRoot {
     id: shell

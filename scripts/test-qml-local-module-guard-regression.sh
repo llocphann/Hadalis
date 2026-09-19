@@ -113,5 +113,16 @@ QML
 bash "$guard" "$case_root" >/dev/null \
     || fail 'guard rejected restored MascotImage consumer with owner-module import'
 
+# Incident class 5: the Code Workflow runtime shell is a staging template.
+# qs.workflowprobe exists only after prepare-runtime creates the isolated export,
+# so the committed template must not import that generated-only module directly.
+probe_shell="$repo_root/scripts/code-workflow/runtime/ProbeShell.qml"
+prepare_runtime="$repo_root/scripts/code-workflow/prepare-runtime.py"
+if grep -Fq -- 'import qs.workflowprobe' "$probe_shell"; then
+    fail 'ProbeShell directly imports generated-only qs.workflowprobe and will break whole-tree verification'
+fi
+grep -Fq -- 'WORKFLOW_PROBE_IMPORT' "$probe_shell"     || fail 'ProbeShell is missing the staged workflowprobe import marker'
+grep -Fq -- "'import qs.workflowprobe\\n'" "$prepare_runtime"     || fail 'prepare-runtime no longer injects qs.workflowprobe into the isolated shell'
+
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - local QML resolution guard catches missing modules, retired types, and missing owner imports for restored critical types'
+printf '%s\n' 'ok 1 - local QML resolution guard catches missing modules, retired types, missing owner imports, and generated-only probe imports'

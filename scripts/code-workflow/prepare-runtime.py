@@ -55,7 +55,14 @@ def prepare(destination, revision):
     text = replace_once(text, 'import QtQuick\n', 'import QtQuick\nimport qs.workflowprobe\n')
     path.write_text(text)
     modifications.append(str(path.relative_to(tree)))
-    shutil.copyfile(HERE / 'runtime/ProbeShell.qml', tree / 'shell.qml')
+    shell_template = (HERE / 'runtime/ProbeShell.qml').read_text()
+    shell_text = replace_once(
+        shell_template,
+        '// WORKFLOW_PROBE_IMPORT: prepare-runtime.py replaces this marker only in the\n'
+        '// isolated exported runtime after creating config/workflowprobe/qmldir.\n',
+        'import qs.workflowprobe\n'
+    )
+    (tree / 'shell.qml').write_text(shell_text)
     modifications.append('shell.qml')
     for name in ('xdg-config', 'xdg-state', 'xdg-cache', 'xdg-data'):
         (destination / name).mkdir()

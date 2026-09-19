@@ -66,10 +66,29 @@ qualified by Phase 0 and does not introduce source writes.
 - scripts/test-code-workflow-ir-contract.py validates manifest schema, source
   anchors, edge endpoints, read-only status, kind coverage and graph integration.
 
+## Milestone 4 implemented
+
+- scripts/code-workflow/analyze.py defines parser protocol v1 for one tracked
+  QML source at a time. Requests are confined to the active shell/runtime root.
+- The analyzer uses only Python stdlib plus the Tree-sitter public C API adapter;
+  it performs no download, package install, compiler invocation or source write.
+- Missing grammar/libtree-sitter is an explicit `unavailable` result, not a
+  regex fallback. Reviewed semantic IR remains usable while parser capability is
+  absent.
+- CodeWorkflowAnalyzer runs only when the Code Workflow page requests analysis,
+  queues source changes, parses JSON output, and exposes diagnostics/status.
+- The Inspector reports parser readiness and diagnostics for the selected source.
+- Installed runtime payload now keeps only analyze.py/native.py/semantics.py from
+  scripts/code-workflow; Phase 0 renderer/compositor/profiler harnesses are
+  excluded.
+- scripts/test-code-workflow-parser-boundary.py guards confinement, no-network/
+  no-build behavior, unavailable semantics, runtime payload policy and QML wiring.
+
 ## Still deliberately unfinished
 
 - production picker live-compositor acceptance on the shipped shell;
-- parser helper packaging and CST-backed byte ranges/stable anchors;
+- architecture-specific native grammar packaging for package-managed installs;
+- CST-backed byte-range mapping from parser entries into the reviewed IR;
 - generic semantic extraction beyond the reviewed ii Bar projection;
 - source patches, Apply, transactions, conflicts or undo/redo;
 - Sidebar, Dashboard, Dock, Waffle and shell-wide coverage;
@@ -78,8 +97,9 @@ qualified by Phase 0 and does not introduce source writes.
 ## Next milestone
 
 Run the production picker through the same Niri/Sway acceptance ideas proven in
-Phase 0, without weakening its contracts. In parallel, package the parser boundary
-so the reviewed sourceNeedle anchors can become CST-backed byte ranges and stable
-semantic anchors without changing the graph-domain schema.
+Phase 0, without weakening its contracts. Next, package the native qmljs grammar
+as an architecture-specific capability without turning the architecture-neutral
+shell payload into an x86_64 binary package; then map analyzer CST ranges into the
+existing graph-domain schema.
 
 No manual or live smoke result is implied here.

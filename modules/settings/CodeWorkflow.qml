@@ -41,6 +41,23 @@ Item {
     readonly property bool live:
         root.snapshot.records?.some(item => item.state === "resident") ?? false
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
+    readonly property bool analyzerMatchesSource:
+        CodeWorkflowAnalyzer.sourcePath === root.sourcePath
+    readonly property string analyzerStatusText: {
+        if (!root.analyzerMatchesSource)
+            return "IDLE"
+        if (CodeWorkflowAnalyzer.status === "analyzing")
+            return "ANALYZING"
+        if (CodeWorkflowAnalyzer.status === "ready")
+            return CodeWorkflowAnalyzer.diagnostics.length > 0
+                ? "READY · " + CodeWorkflowAnalyzer.diagnostics.length + " diagnostics"
+                : "READY · " + CodeWorkflowAnalyzer.entryCount + " semantic entries"
+        if (CodeWorkflowAnalyzer.status === "unavailable")
+            return "UNAVAILABLE"
+        if (CodeWorkflowAnalyzer.status === "error")
+            return "ERROR"
+        return "IDLE"
+    }
 
     function recordFor(targetId: string): var {
         const records = root.snapshot.records ?? []
@@ -110,7 +127,11 @@ Item {
         sourcePreviewText.cursorPosition = start
     }
 
-    onSourcePathChanged: Qt.callLater(root.reloadSource)
+    onSourcePathChanged: {
+        Qt.callLater(root.reloadSource)
+        Qt.callLater(() =>
+            CodeWorkflowAnalyzer.request(root.sourcePath, false))
+    }
     onSourceNeedleChanged: Qt.callLater(root.focusSourceAnchor)
 
     Component.onCompleted: {
@@ -118,6 +139,8 @@ Item {
         if (CodeWorkflowSession.outputName.length === 0 && outputs.length > 0)
             CodeWorkflowSession.setOutputName(outputs[0])
         Qt.callLater(root.reloadSource)
+        Qt.callLater(() =>
+            CodeWorkflowAnalyzer.request(root.sourcePath, false))
     }
 
     FileView {
@@ -129,7 +152,10 @@ Item {
             root.sourceText = String(sourceReader.text() ?? "")
             Qt.callLater(root.focusSourceAnchor)
         }
-        onFileChanged: sourceReader.reload()
+        onFileChanged: {
+            sourceReader.reload()
+            CodeWorkflowAnalyzer.request(root.sourcePath, true)
+        }
         onLoadFailed: root.sourceText = ""
     }
 
@@ -425,6 +451,27 @@ Item {
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText { text: "Parser"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.analyzerStatusText
+                        color: CodeWorkflowAnalyzer.status === "ready"
+                            ? Appearance.colors.colPrimary
+                            : CodeWorkflowAnalyzer.status === "error"
+                                ? Appearance.colors.colError
+                                : Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.analyzerMatchesSource
+                            && CodeWorkflowAnalyzer.error.length > 0
+                        text: CodeWorkflowAnalyzer.error
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
                     }
                     StyledText {
                         Layout.fillWidth: true

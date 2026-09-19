@@ -1,7 +1,8 @@
-"""Development-only adapter to Tree-sitter's public C API (no Python packages).
+"""Tree-sitter public-C-API adapter shared by the read-only analyzer and probes.
 
-The grammar is compiled by build-parser.sh. This is a corpus probe, not the
-runtime helper or a promise of a supported installation/FFI boundary.
+This module never downloads, builds, installs or mutates source. The caller
+supplies a grammar shared object; Tree-sitter itself is resolved from an
+explicit library path or the system dynamic-library search path.
 """
 
 from bisect import bisect_right

@@ -1,4 +1,8 @@
-"""Conservative source-backed extraction proof; NOT a type resolver or editor."""
+"""Conservative read-only QML semantic extraction; NOT a type resolver/editor.
+
+The production analyzer and Phase 0 corpus probes share this deliberately
+partial projection. Unsupported constructs remain opaque and editable=False.
+"""
 
 from collections import Counter, defaultdict
 from hashlib import sha256

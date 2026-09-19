@@ -47,6 +47,7 @@
 | Service | What it does |
 |---------|-------------|
 | **CodeWorkflowRuntime** | Narrow semantic runtime registry for live Code Workflow targets and safe allowlisted values. |
+| **CodeWorkflowAnalyzer** | On-demand read-only QML parser process boundary. Reports parser availability, diagnostics and semantic entries without regex fallback or source writes. |
 | **CodeWorkflowIr** | Loads the versioned read-only semantic projection manifest used by the workflow graph; source-range parsing remains a separate boundary. |
 | **CodeWorkflowPicker** | In-process per-output component picker lifecycle for overlay Settings; no standalone cross-process bridge. |
 | **CodeWorkflowSession** | Persists primitive Workflow target, subflow, selected-node and viewport state across lazy page/reload lifetimes. |

@@ -1,8 +1,26 @@
-# Code Workflow feasibility probes
+# Code Workflow parser core and feasibility probes
 
-Development-only, opt-in tools for Phase 0 of
-[the editor design](../../docs/CODE_WORKFLOW_EDITOR.md). No Settings page,
-production service, source-writing transform, or runtime dependency is added.
+This directory now contains two deliberately separate layers.
+
+Production read-only parser boundary:
+
+- `analyze.py` — path-confined JSON protocol used on demand by Code Workflow;
+- `native.py` — Tree-sitter public C API adapter;
+- `semantics.py` — conservative read-only semantic extraction.
+
+Everything else in this directory is Phase 0 development/profiling infrastructure
+and is excluded from the installed runtime payload. The production analyzer never
+downloads or builds dependencies, never writes QML, and fails closed when the
+native grammar or Tree-sitter library is unavailable. The reviewed IR remains the
+fallback in that case.
+
+For a source checkout, the existing Phase 0 builder can opt a developer into the
+native analyzer without changing the runtime tree:
+
+```sh
+bash scripts/code-workflow/build-parser.sh /tmp/hadalis-workflow-parser
+export HADALIS_WORKFLOW_GRAMMAR=/tmp/hadalis-workflow-parser/qmljs.so
+```
 
 ## Spike A
 

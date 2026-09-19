@@ -5,8 +5,10 @@ scope. Phase 1 production work is now in progress: Reference -> Code Workflow,
 primitive session persistence, horizontal ii Bar runtime registration, production
 picker, Geometry canvas, Source Preview and a source-backed semantic projection IR
 now form the production read-only foundation. Parser/CST-backed byte ranges,
-generic semantic extraction and every source-writing transform remain unfinished.
-Curve sustained-memory acceptance remains HOLD.
+generic semantic extraction, native grammar packaging and every source-writing
+transform remain unfinished. The on-demand parser JSON boundary is now in
+production and fails closed when native parser capability is absent. Curve
+sustained-memory acceptance remains HOLD.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
 [Phase 1 status](CODE_WORKFLOW_PHASE1.md) and
 [Phase 0 continuation constraints](CODE_WORKFLOW_HANDOFF.md).

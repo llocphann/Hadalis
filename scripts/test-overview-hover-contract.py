@@ -41,6 +41,16 @@ def main() -> None:
             "shared popup geometry must expose output-centered tangent placement")
     require(popup, "centerOnOutput: true",
             "workspace Overview must remain centered on the target output")
+    require(popup, "active: root.active",
+            "workspace Overview Loader must remain resident through reverse slide")
+    require(popup, "presentationActive: root.active",
+            "workspace Overview content must remain live through reverse slide")
+    forbid(popup, "active: root.previewOpen",
+           "workspace Overview must not destroy content at semantic close")
+    forbid(popup, "presentationActive: root.previewOpen",
+           "workspace Overview must not clear previews before retract completes")
+    require(styled_popup, "opacity: 1",
+            "shared connected popup content must remain fully opaque during slide")
     require(niri, "property bool embeddedSurface: false",
             "Niri Overview must support embedded popup rendering")
     require(niri, "property bool presentationActive: GlobalStates.overviewOpen",

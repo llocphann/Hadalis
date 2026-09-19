@@ -17,7 +17,7 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     readme = read("README.md")
-    check("### 2.1 Locked ownership contract — one perimeter owner" in readme
+    check("### 2.1 Locked ownership contract — single Caelestia-style inverted frame" in readme
           and "Normal Bar mode owns only the Bar body" in readme
           and "`scripts/test-shell-surface-contracts.py` is the regression gate" in readme,
           "README must retain the maintainer-approved single-owner perimeter contract")
@@ -205,6 +205,11 @@ def main() -> None:
           and "implicitHeight: horizontal ? root.thickness : 1" in screen_edge
           and "implicitWidth: horizontal ? 1 : root.thickness" in screen_edge,
           "One full-screen frame must own paint while transparent thin windows reserve work-area space")
+    check("exclusiveZone: 0" not in screen_edge
+          and screen_edge.count("exclusionMode: ExclusionMode.Ignore") == 1,
+          "Full-screen Screen Edge frame must ignore reservations without resetting itself to normal exclusion mode")
+    check("exclusiveZone: mapped ? root.thickness : 0" in screen_edge,
+          "Transparent Screen Edge reservation windows must reserve the configured physical edge thickness")
     check("const iiOwned = !root.waffleFamily" in screen_edge
           and "!(Config.options?.bar?.autoHide?.enable ?? false)" in screen_edge,
           "Auto-hide ii Bar must hand physical edge ownership to ScreenEdges.qml")

@@ -75,10 +75,29 @@ Implemented:
 - scripts/test-code-workflow-preapply-gate.py guards the diagnostic criteria and
   the no-write invariant.
 
+## Milestone 2D — reload-stable transaction handoff
+
+Implemented:
+
+- CodeWorkflowTransaction now has a stable reloadableId and owns a
+  PersistentProperties handoff object.
+- Semantic preview history is serialized as a JSON string plus primitive index
+  so Undo/Redo context can survive a normal Quickshell config reload.
+- Restore parses history defensively, clamps historyIndex and reconstructs the
+  active preview presentation from the semantic command rather than a QObject.
+- stageApplyHandoff() is available only when preApplyReady is true. It records
+  only primitive command identity: source path, base/candidate SHA, semantic
+  anchor, replacement and history index.
+- No transient parser byte range, runtime QObject or QJSValue is stored in the
+  reload handoff.
+- pendingApplyPhase is only "idle" or "prepared" in this milestone. There is no
+  write-issued/waiting-reload state yet because source writes remain disabled.
+- scripts/test-code-workflow-reload-handoff.py guards reload persistence,
+  primitive-only pending identity and the no-write boundary.
+
 ## Not implemented yet
 
 - source writes or Apply;
-- undo/redo command history;
 - direct binding transforms;
 - connect/disconnect data dependencies;
 - signal/action transforms;
@@ -88,10 +107,10 @@ Implemented:
 
 ## Next gate
 
-The next implementation gate is an atomic one-file Apply controller with a
-second/final hash+semantic-anchor check immediately before writing, an exact
-rollback snapshot, normal Quickshell watcher reload,
-reloadCompleted/reloadFailed observation and semantic target rebind. Apply must
-remain disabled until that controller can prove the complete lifecycle; the
-write path must consume the same semantic command and never reuse stale byte
-ranges from history.
+The next implementation gate is an atomic one-file Apply controller. It must
+upgrade the prepared handoff to write-issued/waiting-reload states, perform a
+second/final source-identity check immediately before writing, retain an exact
+rollback snapshot, rely on the normal Quickshell watcher, observe
+reloadCompleted/reloadFailed, and rebind the semantic target after reload.
+Apply remains disabled until that complete lifecycle is implemented and
+contracted; no stale byte range from history may authorize a write.

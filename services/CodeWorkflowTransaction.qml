@@ -6,6 +6,10 @@ import Quickshell.Io
 Singleton {
     id: root
 
+    reloadableId: "code-workflow-transaction"
+
+    property bool _restoringReloadState: false
+    property bool _reloadStateReady: false
     property string status: "clean"
     property string sourcePath: ""
     property string baseSha256: ""
@@ -44,6 +48,69 @@ Singleton {
         root.history.length > 0
             ? (root.historyIndex + 1) + "/" + root.history.length
             : "0/0"
+    readonly property string pendingApplyPhase:
+        reloadState.pendingApplyPhase
+    readonly property bool pendingApplyPrepared:
+        reloadState.pendingApplyPhase === "prepared"
+
+    function _syncReloadState(): void {
+        if (!root._reloadStateReady || root._restoringReloadState)
+            return
+        reloadState.historyJson = JSON.stringify(root.history ?? [])
+        reloadState.historyIndex = root.historyIndex
+    }
+
+    function _restoreReloadState(): void {
+        root._restoringReloadState = true
+        let parsed = []
+        try {
+            const decoded = JSON.parse(
+                String(reloadState.historyJson ?? "[]"))
+            parsed = Array.isArray(decoded) ? decoded : []
+        } catch (e) {
+            parsed = []
+        }
+
+        root.history = parsed
+        root.historyIndex = Math.max(
+            -1,
+            Math.min(
+                Number(reloadState.historyIndex ?? -1),
+                parsed.length - 1))
+        root._restoringReloadState = false
+        root._reloadStateReady = true
+        root._showCommand(root.activeCommand)
+    }
+
+    function stageApplyHandoff(): bool {
+        const command = root.activeCommand
+        if (!root.preApplyReady || !command)
+            return false
+
+        reloadState.pendingApplyPhase = "prepared"
+        reloadState.pendingApplySourcePath = String(
+            command.sourcePath ?? "")
+        reloadState.pendingApplyBaseSha256 = String(
+            command.baseSha256 ?? "")
+        reloadState.pendingApplyCandidateSha256 = String(
+            command.candidateSha256 ?? "")
+        reloadState.pendingApplySemanticAnchor = String(
+            command.semanticAnchor ?? "")
+        reloadState.pendingApplyReplacement = String(
+            command.replacement ?? "")
+        reloadState.pendingApplyHistoryIndex = root.historyIndex
+        return true
+    }
+
+    function clearApplyHandoff(): void {
+        reloadState.pendingApplyPhase = "idle"
+        reloadState.pendingApplySourcePath = ""
+        reloadState.pendingApplyBaseSha256 = ""
+        reloadState.pendingApplyCandidateSha256 = ""
+        reloadState.pendingApplySemanticAnchor = ""
+        reloadState.pendingApplyReplacement = ""
+        reloadState.pendingApplyHistoryIndex = -1
+    }
 
     function _clearPresentation(): void {
         root.status = "clean"
@@ -354,6 +421,29 @@ Singleton {
             ?? payload?.reason
             ?? stderrText
             ?? ("transaction preview exited " + exitCode))
+    }
+
+    onHistoryChanged: root._syncReloadState()
+    onHistoryIndexChanged: root._syncReloadState()
+
+    PersistentProperties {
+        id: reloadState
+        reloadableId: "code-workflow-transaction-state"
+
+        // Keep reload handoff primitive/JSON-only. Runtime QObject identities
+        // and transient parser byte ranges are never persisted here.
+        property string historyJson: "[]"
+        property int historyIndex: -1
+        property string pendingApplyPhase: "idle"
+        property string pendingApplySourcePath: ""
+        property string pendingApplyBaseSha256: ""
+        property string pendingApplyCandidateSha256: ""
+        property string pendingApplySemanticAnchor: ""
+        property string pendingApplyReplacement: ""
+        property int pendingApplyHistoryIndex: -1
+
+        onLoaded: root._restoreReloadState()
+        onReloaded: root._restoreReloadState()
     }
 
     Process {

@@ -29,7 +29,15 @@ def run(*args: str):
 
 
 source = ANALYZER.read_text(encoding="utf-8")
-for forbidden in ("curl ", "wget ", "npm ", "node ", "subprocess."):
+for forbidden in (
+    "import subprocess",
+    "subprocess.",
+    "os.system(",
+    "os.popen(",
+    "import socket",
+    "urllib.request",
+    "requests.",
+):
     if forbidden in source:
         fail("production analyzer must not download/build/spawn tooling: " + forbidden)
 if "write_text(" in source or "write_bytes(" in source:

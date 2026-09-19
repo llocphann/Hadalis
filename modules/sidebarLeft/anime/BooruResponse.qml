@@ -123,7 +123,7 @@ Rectangle {
             contentWidth: tagRowLayout.implicitWidth
 
             clip: true
-            layer.enabled: true
+            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: tagsFlickable.width

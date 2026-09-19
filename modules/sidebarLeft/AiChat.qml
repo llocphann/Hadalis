@@ -313,7 +313,9 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             // Messages
             Layout.fillWidth: true
             Layout.fillHeight: true
-            layer.enabled: true
+            // Conversation history remains resident for fast reopen. Keep
+            // its full-surface mask asleep when the sidebar itself is closed.
+            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: root.width

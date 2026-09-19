@@ -51,6 +51,13 @@ recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
 weather="$repo_root/services/Weather.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
+sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
+sidebar_wallhaven="$repo_root/modules/sidebarLeft/WallhavenView.qml"
+sidebar_ai="$repo_root/modules/sidebarLeft/AiChat.qml"
+sidebar_quick_wallpaper="$repo_root/modules/sidebarLeft/widgets/QuickWallpaper.qml"
+booru_image="$repo_root/modules/sidebarLeft/anime/BooruImage.qml"
+booru_response="$repo_root/modules/sidebarLeft/anime/BooruResponse.qml"
+ai_think_block="$repo_root/modules/sidebarLeft/aiChat/MessageThinkBlock.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -115,5 +122,12 @@ require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 3
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
 require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
+require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'
+require "$sidebar_wallhaven" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Wallhaven list mask must sleep with the sidebar'
+require "$sidebar_ai" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI history mask must sleep with the sidebar'
+require "$sidebar_quick_wallpaper" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Quick Wallpaper masks must sleep with the sidebar'
+require "$booru_image" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru image masks must sleep with the sidebar'
+require "$booru_response" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru tag masks must sleep with the sidebar'
+require "$ai_think_block" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI think-block masks must sleep with the sidebar'
 
 printf 'performance lifecycle guards: ok\n'

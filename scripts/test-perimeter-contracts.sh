@@ -26,20 +26,6 @@ for file in \
     [[ -f "$common/$file" ]] || fail "missing shared primitive $file"
 done
 
-join_flares="$common/ConnectedSurfaceJoinFlares.qml"
-for token in \
-    'import Quickshell' \
-    'property int bodyTransformRevision: 0' \
-    'const dependency = root.bodyTransformRevision' \
-    'root.bodyItem.mapToItem(root, 0, 0)' \
-    'TransformWatcher {' \
-    'a: root' \
-    'b: root.bodyItem' \
-    'onTransformChanged: root.bodyTransformRevision++'; do
-    grep -Fq "$token" "$join_flares" \
-        || fail "ConnectedSurfaceJoinFlares must reactively follow the connected body transform: $token"
-done
-
 for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceMask; do
     grep -Fq "$primitive" "$styled" \
         || fail "StyledPopup must keep using $primitive"

@@ -39,11 +39,30 @@ StyledPopup {
         }
     }
 
-    onActiveChanged: {
-        if (!popup.active)
+    property bool _resourceUsageHeld: false
+
+    function syncResourceUsageLifecycle(): void {
+        if (popup.active === popup._resourceUsageHeld)
             return
-        ResourceUsage.ensureRunning()
-        ThinkFanService.refresh()
+        if (popup.active)
+            ResourceUsage.keepAlive()
+        else
+            ResourceUsage.releaseKeepAlive()
+        popup._resourceUsageHeld = popup.active
+    }
+
+    Component.onCompleted: popup.syncResourceUsageLifecycle()
+    Component.onDestruction: {
+        if (popup._resourceUsageHeld) {
+            popup._resourceUsageHeld = false
+            ResourceUsage.releaseKeepAlive()
+        }
+    }
+
+    onActiveChanged: {
+        popup.syncResourceUsageLifecycle()
+        if (popup.active)
+            ThinkFanService.refresh()
     }
 
     component ResourceItem: RowLayout {

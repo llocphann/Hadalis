@@ -1,22 +1,28 @@
 pragma Singleton
 import QtQuick
+import qs.modules.common
+
 QtObject {
+    // One radius owner for the physical Screen Edge and every connected-surface
+    // contact corner. The default matches Caelestia border.rounding=25.
+    readonly property real frameRadius: {
+        const revision = Config.revision
+        return Math.max(0, Math.min(96,
+            Number(Config.options?.appearance?.screenEdge?.radius ?? 25)))
+    }
+
     readonly property real outerRadius: 22
     readonly property real neckRadius: 14
 
-    // Caelestia's current blob defaults (borderconfig.hpp + tokens.hpp):
-    // frame rounding 25, circular smooth-union radius 20, panel radius 28.
-    // Keep them separate: using one generic radius for all three is what made
-    // Hadalis' joins look swollen compared with the reference implementation.
-    readonly property real frameRadius: 25
+    // Caelestia's blob defaults keep panel rounding and smooth-union strength
+    // separate from border rounding. Hadalis cannot share one SDF group across
+    // independent layer-shell windows, so direct Screen Edge contacts reuse the
+    // exact physical frame radius/quarter-circle instead of approximating the
+    // SDF union with an ellipse.
     readonly property real smoothUnionRadius: 20
     readonly property real popupRadius: 28
-    readonly property real joinFlareRadius: smoothUnionRadius
-    // Caelestia compresses the SDF on the axis facing the border (boost=3).
-    // In separate QML surfaces we approximate that border-proximity compression
-    // with a shallower cross-axis shoulder while preserving the 20px tangent
-    // smoothing width.
-    readonly property real joinFlareCrossScale: 0.55
+    readonly property real joinFlareRadius: frameRadius
+
     // Shared popup reveal is a short directional slide from the owning edge.
     readonly property real revealSlideDistance: 18
     readonly property real connectorWidth: 40

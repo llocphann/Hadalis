@@ -3,27 +3,26 @@ import QtQuick
 import qs.modules.common
 
 QtObject {
-    // One radius owner for the physical Screen Edge and every connected-surface
-    // contact corner. The default matches Caelestia border.rounding=25.
+    readonly property real outerRadius: 22
+    readonly property real neckRadius: 14
+
+    // Physical Screen Edge / Bar perimeter radius. The default remains
+    // Caelestia border.rounding=25 and Settings may change only this shared
+    // perimeter value.
     readonly property real frameRadius: {
         const revision = Config.revision
         return Math.max(0, Math.min(96,
             Number(Config.options?.appearance?.screenEdge?.radius ?? 25)))
     }
 
-    readonly property real outerRadius: 22
-    readonly property real neckRadius: 14
-
-    // Caelestia's blob defaults keep panel rounding and smooth-union strength
-    // separate from border rounding. Hadalis cannot share one SDF group across
-    // independent layer-shell windows, so direct Screen Edge contacts reuse the
-    // exact physical frame radius/quarter-circle instead of approximating the
-    // SDF union with an ellipse.
+    // Connected popup/sidebar/dashboard shoulders are intentionally back on
+    // their pre-experiment contract for now. Do not couple these to frameRadius
+    // until the connected-surface geometry is revisited explicitly.
     readonly property real smoothUnionRadius: 20
     readonly property real popupRadius: 28
-    readonly property real joinFlareRadius: frameRadius
+    readonly property real joinFlareRadius: smoothUnionRadius
+    readonly property real joinFlareCrossScale: 0.55
 
-    // Shared popup reveal is a short directional slide from the owning edge.
     readonly property real revealSlideDistance: 18
     readonly property real connectorWidth: 40
     readonly property real connectorLength: 8

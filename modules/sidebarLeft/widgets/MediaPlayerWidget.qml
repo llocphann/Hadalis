@@ -39,7 +39,7 @@ Item {
     // Cava visualizer - using shared CavaProcess component
     CavaProcess {
         id: cavaProcess
-        active: root.visible && root.hasPlayer && GlobalStates.sidebarLeftOpen && Appearance.effectsEnabled
+        active: root.visible && root.hasPlayer && root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen && Appearance.effectsEnabled
     }
 
     property list<real> visualizerPoints: cavaProcess.points

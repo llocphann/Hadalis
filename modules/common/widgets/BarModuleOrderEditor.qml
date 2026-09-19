@@ -25,24 +25,41 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 12
 
+    property bool verticalPreset: false
     readonly property int rowH: 36
     readonly property int rowGap: 4
     readonly property real pitch: rowH + rowGap
     readonly property string availableZone: "__available__"
+    readonly property string layoutPath: root.verticalPreset
+        ? "bar.verticalLayout" : "bar.layout"
+    readonly property var layoutObject: root.verticalPreset
+        ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout
 
     // ─── Defaults / metadata ────────────────────────────────────────────
-    readonly property var _defaultLayout: ({
+    readonly property var _horizontalDefaultLayout: ({
         left: ["leftSidebarButton", "activeWindow"],
         centerLeft: ["resources", "media"],
         center: ["workspaces"],
         centerRight: ["clock", "utilButtons", "battery"],
         right: ["rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"],
     })
-    readonly property var _knownIds: [
-        "leftSidebarButton", "activeWindow", "taskbar", "resources", "media", "workspaces",
-        "clock", "utilButtons", "battery", "rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"
-    ]
-    readonly property var _zones: ["left", "centerLeft", "center", "centerRight", "right"]
+    readonly property var _verticalDefaultLayout: ({
+        top: ["leftSidebarButton", "activeWindow", "spacer"],
+        centerTop: ["resources", "media"],
+        center: ["workspaces"],
+        centerBottom: ["clock", "utilButtons", "battery"],
+        bottom: ["weather", "tray", "timer", "shellUpdate", "spacer", "rightSidebarButton"],
+    })
+    readonly property var _defaultLayout: root.verticalPreset
+        ? root._verticalDefaultLayout : root._horizontalDefaultLayout
+    readonly property var _knownIds: root.verticalPreset
+        ? ["leftSidebarButton", "activeWindow", "taskbar", "resources", "media", "workspaces",
+           "clock", "utilButtons", "battery", "rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"]
+        : ["leftSidebarButton", "activeWindow", "resources", "media", "workspaces",
+           "clock", "utilButtons", "battery", "rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"]
+    readonly property var _zones: root.verticalPreset
+        ? ["top", "centerTop", "center", "centerBottom", "bottom"]
+        : ["left", "centerLeft", "center", "centerRight", "right"]
     readonly property var _visKeys: ({
         leftSidebarButton: "leftSidebarButton", activeWindow: "activeWindow",
         taskbar: "taskbar",
@@ -69,20 +86,34 @@ ColumnLayout {
             weather: Translation.tr("Weather") })[id] || id
     }
     function _zoneLabel(z) {
+        if (root.verticalPreset) {
+            return ({ top: Translation.tr("Top edge"), centerTop: Translation.tr("Center top"),
+                center: Translation.tr("Center (pivot)"), centerBottom: Translation.tr("Center bottom"),
+                bottom: Translation.tr("Bottom edge") })[z] || z
+        }
         return ({ left: Translation.tr("Left edge"), centerLeft: Translation.tr("Center left"),
             center: Translation.tr("Center (pivot)"), centerRight: Translation.tr("Center right"),
             right: Translation.tr("Right edge") })[z] || z
     }
     function _zoneIcon(z) {
+        if (root.verticalPreset) {
+            return ({ top: "first_page", centerTop: "align_vertical_top",
+                center: "align_vertical_center", centerBottom: "align_vertical_bottom",
+                bottom: "last_page" })[z] || "widgets"
+        }
         return ({ left: "first_page", centerLeft: "align_horizontal_left", center: "align_horizontal_center",
             centerRight: "align_horizontal_right", right: "last_page" })[z] || "widgets"
     }
 
     // ─── Reactive layout view ───────────────────────────────────────────
-    readonly property bool migrated: Config.options?.bar?.layout?.migrated === true
+    readonly property bool migrated: root.verticalPreset
+        || Config.options?.bar?.layout?.migrated === true
+    function _configPath(zone) {
+        return root.layoutPath + "." + zone
+    }
     function _getZone(name) {
         if (!root.migrated) return root._defaultLayout[name] ?? []
-        const a = Config.options?.bar?.layout?.[name]
+        const a = root.layoutObject?.[name]
         return (a && a.length >= 0) ? a : (root._defaultLayout[name] ?? [])
     }
     function _placed() {
@@ -100,17 +131,22 @@ ColumnLayout {
 
     // ─── Mutators (per-leaf only) ───────────────────────────────────────
     function _ensureMigrated() {
-        if (root.migrated) return
-        const d = root._defaultLayout
+        if (root.verticalPreset || root.migrated) return
+        const d = root._horizontalDefaultLayout
         Config.setNestedValues({
             "bar.layout.left": d.left, "bar.layout.centerLeft": d.centerLeft, "bar.layout.center": d.center,
             "bar.layout.centerRight": d.centerRight, "bar.layout.right": d.right, "bar.layout.migrated": true })
     }
     function _resetToDefaults() {
         const d = root._defaultLayout
-        Config.setNestedValues({
-            "bar.layout.left": d.left, "bar.layout.centerLeft": d.centerLeft, "bar.layout.center": d.center,
-            "bar.layout.centerRight": d.centerRight, "bar.layout.right": d.right, "bar.layout.migrated": true })
+        const updates = {}
+        for (let i = 0; i < root._zones.length; ++i) {
+            const zone = root._zones[i]
+            updates[root._configPath(zone)] = d[zone]
+        }
+        if (!root.verticalPreset)
+            updates["bar.layout.migrated"] = true
+        Config.setNestedValues(updates)
     }
     function _addToZone(id, toZone, atIndex) {
         root._ensureMigrated()
@@ -118,13 +154,13 @@ ColumnLayout {
         if (id !== "spacer" && dst.indexOf(id) !== -1) return
         const idx = (atIndex === undefined || atIndex < 0) ? dst.length : Math.max(0, Math.min(atIndex, dst.length))
         dst.splice(idx, 0, id)
-        Config.setNestedValue("bar.layout." + toZone, dst)
+        Config.setNestedValue(root._configPath(toZone), dst)
     }
     function _remove(zone, idx) {
         root._ensureMigrated()
         const arr = root._getZone(zone).slice()
         arr.splice(idx, 1)
-        Config.setNestedValue("bar.layout." + zone, arr)
+        Config.setNestedValue(root._configPath(zone), arr)
     }
     // Move from (srcZone, srcIdx) to dstZone at dstIdx. Handles same- and
     // cross-zone with a single atomic write per affected zone. Source zone
@@ -142,15 +178,15 @@ ColumnLayout {
             const arr = root._getZone(srcZone).slice()
             const [m] = arr.splice(srcIdx, 1)
             arr.splice(Math.max(0, Math.min(dstIdx, arr.length)), 0, m)
-            Config.setNestedValue("bar.layout." + srcZone, arr)
+            Config.setNestedValue(root._configPath(srcZone), arr)
         } else {
             const src = root._getZone(srcZone).slice()
             const dst = root._getZone(dstZone).slice()
             const [m] = src.splice(srcIdx, 1)
             dst.splice(Math.max(0, Math.min(dstIdx, dst.length)), 0, m)
             let u = {}
-            u["bar.layout." + srcZone] = src
-            u["bar.layout." + dstZone] = dst
+            u[root._configPath(srcZone)] = src
+            u[root._configPath(dstZone)] = dst
             Config.setNestedValues(u)
         }
     }

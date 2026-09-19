@@ -1698,6 +1698,15 @@ Singleton {
                     property string spacerMode: "auto"
                     property bool migrated: false
                 }
+                property JsonObject verticalLayout: JsonObject {
+                    property list<string> top: ["leftSidebarButton", "activeWindow", "spacer"]
+                    property list<string> centerTop: ["resources", "media"]
+                    property list<string> center: ["workspaces"]
+                    property list<string> centerBottom: ["clock", "utilButtons", "battery"]
+                    property list<string> bottom: ["weather", "tray", "timer", "shellUpdate", "spacer", "rightSidebarButton"]
+                    property int spacerHeight: 0
+                    property string spacerMode: "auto"
+                }
                 property JsonObject resources: JsonObject {
                     property bool showMemoryIndicator: true
                     property bool showSwapIndicator: true

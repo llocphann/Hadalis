@@ -91,9 +91,9 @@
             "glass": true,
             "glassBlur": 0.72,
             "glassTintTransparency": 0.52,
-            "glassSurfaceOpacity": 0.60,
+            "glassSurfaceOpacity": 0.6,
             "glassSaturation": 0.12,
-            "radiusScale": 1.0
+            "radiusScale": 1
         },
         "aurora": {
             "transparency": {
@@ -114,7 +114,7 @@
                 "ghost": true,
                 "grid": true,
                 "ticks": true,
-                "burstSize": 1.0
+                "burstSize": 1
             }
         },
         "extraBackgroundTint": true,
@@ -240,7 +240,7 @@
             "enableSteam": false,
             "enablePearDesktop": true,
             "enableNeovim": false,
-            "colorStrength": 1.0,
+            "colorStrength": 1,
             "useBackdropForColors": false,
             "colorsOnlyMode": false,
             "previewSourcePath": "",
@@ -291,7 +291,7 @@
             "mainFont": "Roboto Flex",
             "titleFont": "Gabarito",
             "monospaceFont": "JetBrainsMono Nerd Font",
-            "sizeScale": 1.0,
+            "sizeScale": 1,
             "syncWithSystem": true,
             "variableAxes": {
                 "wght": 300,
@@ -299,7 +299,7 @@
                 "grad": 150
             }
         },
-        "shellScale": 1.0,
+        "shellScale": 1,
         "iconTheme": "WhiteSur-dark",
         "dockIconTheme": "",
         "desaturation": {
@@ -314,10 +314,10 @@
             "popups": true
         },
         "animationSpeed": {
-            "movement": 1.0,
-            "enterExit": 1.0,
-            "clickBounce": 1.0,
-            "scroll": 1.0
+            "movement": 1,
+            "enterExit": 1,
+            "clickBounce": 1,
+            "scroll": 1
         },
         "animationCurve": {
             "movement": "default",
@@ -383,8 +383,8 @@
                 "session": true,
                 "hotcorners": true,
                 "rippleDuration": 3000,
-                "sparkleIntensity": 1.0,
-                "glowIntensity": 1.0,
+                "sparkleIntensity": 1,
+                "glowIntensity": 1,
                 "ringWidth": 0.15
             },
             "thumbnailBlurStrength": 50,
@@ -397,22 +397,22 @@
             "autoVertical": false,
             "enableSidebar": true,
             "enableWorkspace": true,
-            "workspaceShift": 1.0,
+            "workspaceShift": 1,
             "vertical": true,
-            "zoom": 1.0,
+            "zoom": 1,
             "panelShift": 0.15,
             "widgetDepth": 1.2,
             "pauseDuringTransitions": true,
             "transitionSettleMs": 220,
             "widgetsFactor": 1.2,
-            "workspaceZoom": 1.0
+            "workspaceZoom": 1
         },
         "thumbnailPath": "",
         "wallpaperPath": "",
         "pan": {
-            "x": 0.0,
-            "y": 0.0,
-            "zoom": 1.0
+            "x": 0,
+            "y": 0,
+            "zoom": 1
         },
         "autoWallpaper": {
             "enable": false,
@@ -435,7 +435,7 @@
             "duration": 800,
             "bezier": [
                 0.54,
-                0.0,
+                0,
                 0.34,
                 0.99
             ]
@@ -839,7 +839,7 @@
             "weather": true,
             "workspaces": true
         },
-        "opacity": 1.0,
+        "opacity": 1,
         "layout": {
             "left": [
                 "leftSidebarButton",
@@ -945,6 +945,35 @@
             "showNumberDelay": 300,
             "shown": 5,
             "useNerdFont": false
+        },
+        "verticalLayout": {
+            "top": [
+                "leftSidebarButton",
+                "activeWindow",
+                "spacer"
+            ],
+            "centerTop": [
+                "resources",
+                "media"
+            ],
+            "center": [
+                "workspaces"
+            ],
+            "centerBottom": [
+                "clock",
+                "utilButtons",
+                "battery"
+            ],
+            "bottom": [
+                "weather",
+                "tray",
+                "timer",
+                "shellUpdate",
+                "spacer",
+                "rightSidebarButton"
+            ],
+            "spacerHeight": 0,
+            "spacerMode": "auto"
         }
     },
     "battery": {
@@ -1022,7 +1051,7 @@
         "showPowerButtons": true,
         "appearance": {
             "density": "comfortable",
-            "cardOpacity": 1.0,
+            "cardOpacity": 1,
             "showCardTitles": true
         },
         "subtitle": "",
@@ -1056,7 +1085,7 @@
         "chromeLayout": "",
         "overlayAppearance": {
             "scrimDim": 35,
-            "backgroundOpacity": 1.0,
+            "backgroundOpacity": 1,
             "backdropBlur": 0
         }
     },
@@ -1427,8 +1456,8 @@
                 "quickActions"
             ],
             "sectionWeights": {
-                "notifications": 1.0,
-                "widgets": 1.0
+                "notifications": 1,
+                "widgets": 1
             }
         },
         "screenTime": {
@@ -1823,8 +1852,8 @@
             "monochromeIcons": false,
             "enableAnimation": true,
             "animationDurationMs": 300,
-            "backgroundOpacity": 1.0,
-            "blurAmount": 0.0,
+            "backgroundOpacity": 1,
+            "blurAmount": 0,
             "scrimDim": 0,
             "compactStyle": false,
             "panelAlignment": "center",
@@ -1874,14 +1903,14 @@
                 "axis": "horizontal",
                 "enableWorkspace": false,
                 "enableSidebar": false,
-                "workspaceShift": 1.0,
-                "workspaceZoom": 1.0,
-                "zoom": 1.0,
+                "workspaceShift": 1,
+                "workspaceZoom": 1,
+                "zoom": 1,
                 "autoVertical": true,
                 "vertical": false,
                 "panelShift": 0.12,
-                "widgetsFactor": 1.0,
-                "widgetDepth": 1.0,
+                "widgetsFactor": 1,
+                "widgetDepth": 1,
                 "pauseDuringTransitions": true,
                 "transitionSettleMs": 220
             },
@@ -1958,7 +1987,7 @@
             "useMaterialColors": true,
             "font": {
                 "family": "Noto Sans",
-                "scale": 1.0
+                "scale": 1
             }
         },
         "behavior": {
@@ -1966,7 +1995,7 @@
         },
         "startMenu": {
             "sizePreset": "normal",
-            "scale": 1.0
+            "scale": 1
         },
         "widgetsPanel": {
             "showDateTime": true,

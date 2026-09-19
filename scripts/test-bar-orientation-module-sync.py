@@ -23,6 +23,9 @@ def forbid(source: str, token: str, message: str) -> None:
 def main() -> None:
     vertical = read("modules/verticalBar/VerticalBarContent.qml")
     settings = read("modules/settings/BarConfig.qml")
+    editor = read("modules/common/widgets/BarModuleOrderEditor.qml")
+    config = read("modules/common/Config.qml")
+    defaults = read("defaults/config.json")
     util = read("modules/bar/UtilButtons.qml")
     critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
 
@@ -43,6 +46,33 @@ def main() -> None:
             "Vertical Settings must explain the fixed-order visibility contract.")
     require(settings, "BarModuleOrderEditor {}",
             "Top/Bottom Bar must retain its existing drag layout editor.")
+
+    for token in (
+        "property JsonObject verticalLayout: JsonObject {",
+        'property list<string> top: ["leftSidebarButton", "activeWindow", "spacer"]',
+        'property list<string> centerTop: ["resources", "media"]',
+        'property list<string> center: ["workspaces"]',
+        'property list<string> centerBottom: ["clock", "utilButtons", "battery"]',
+        'property list<string> bottom: ["weather", "tray", "timer", "shellUpdate", "spacer", "rightSidebarButton"]',
+        "property int spacerHeight: 0",
+    ):
+        require(config, token, f"Vertical layout schema missing: {token}")
+
+    require(defaults, '"verticalLayout": {',
+            "Fresh-install config must include the independent Left/Right preset.")
+
+    for token in (
+        "property bool verticalPreset: false",
+        'root.verticalPreset ? "bar.verticalLayout" : "bar.layout"',
+        '["top", "centerTop", "center", "centerBottom", "bottom"]',
+        'Translation.tr("Top edge")',
+        'Translation.tr("Center top")',
+        'Translation.tr("Center bottom")',
+        'Translation.tr("Bottom edge")',
+    ):
+        require(editor, token, f"Bar layout editor is not orientation-aware: {token}")
+    forbid(editor, 'Config.setNestedValue("bar.layout." + toZone',
+           "Editor mutations must target the selected orientation preset.")
 
     required_vertical = {
         'leftSidebarButtonEnabled': 'root.moduleEnabled("leftSidebarButton", true)',

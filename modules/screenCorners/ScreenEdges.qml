@@ -11,6 +11,13 @@ import Quickshell.Wayland
 
 // Physical Screen Edge renderer.
 //
+// SCREEN-EDGE-GEOMETRY-LOCK (maintainer approved 2026-09-19):
+// The current four-corner silhouette is the canonical Hadalis physical frame.
+// Future refactors must preserve this exact geometry and placement contract.
+// If a later change distorts any corner, restore this single inverted-frame
+// model rather than compensating with overlays, wedges, per-corner paths or
+// Bar-owned paint. Change this lock only with explicit maintainer approval.
+//
 // Caelestia does not build its border from four strips plus corner patches.
 // Its idle border is one inverted rounded rectangle: the window bounds are the
 // outer rect and the workspace is one rounded inner hole. Hadalis mirrors that
@@ -126,9 +133,10 @@ Scope {
         }
         mask: Region { item: emptyFrameInput }
 
-        // Exactly one painted geometry. Odd-even fill subtracts the rounded
-        // workspace rect from the padded outer rect, matching the isolated
-        // Caelestia BlobInvertedRect border silhouette without corner overlays.
+        // LOCKED CORNER GEOMETRY: exactly one painted geometry. Odd-even fill
+        // subtracts the rounded workspace rect from the padded outer rect,
+        // matching the isolated Caelestia BlobInvertedRect border silhouette.
+        // Do not split this into edge/corner renderers or add painted helpers.
         Shape {
             id: frameShape
             anchors.fill: parent

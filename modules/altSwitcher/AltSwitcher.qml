@@ -692,7 +692,7 @@ Scope {
                 flickDeceleration: 1500
                 maximumFlickVelocity: 3000
                 boundsBehavior: Flickable.StopAtBounds
-                cacheBuffer: root.skewExpandedWidth * 2
+                cacheBuffer: root.skewExpandedWidth
                 visible: root.skewStyle && root.skewCardVisible
 
                 highlightFollowsCurrentItem: true
@@ -807,9 +807,9 @@ Scope {
                         visible: skewSlice.isCurrent
                         anchors.fill: parent
                         anchors.margins: -24
-                        layer.enabled: visible
+                        layer.enabled: visible && Appearance.effectsEnabled
                         layer.smooth: true
-                        opacity: 0.45
+                        opacity: Appearance.effectsEnabled ? 0.45 : 0.25
 
                         Shape {
                             x: 24 + 3
@@ -841,7 +841,7 @@ Scope {
                         anchors.fill: parent
                         layer.enabled: true
                         layer.smooth: true
-                        layer.samples: 4
+                        layer.samples: Appearance.effectsEnabled ? 4 : 1
                         layer.effect: MultiEffect {
                                 maskEnabled: true
                                 maskSource: ShaderEffectSource {
@@ -850,7 +850,7 @@ Scope {
                                         height: skewImageContainer.height
                                         layer.enabled: true
                                         layer.smooth: true
-                                        layer.samples: 4
+                                        layer.samples: Appearance.effectsEnabled ? 4 : 1
 
                                         Shape {
                                             anchors.fill: parent

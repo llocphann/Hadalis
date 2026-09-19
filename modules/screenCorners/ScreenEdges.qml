@@ -9,19 +9,26 @@ import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 
-// Persistent Caelestia-style screen frame. ScreenEdges.qml is the sole owner of
-// the physical perimeter: four straight bands plus four identical rounded inner
-// corners. No shadow or Bar-local fallback participates in this geometry.
+// Physical Screen Edge renderer.
+//
+// Caelestia does not build its border from four strips plus corner patches.
+// Its idle border is one inverted rounded rectangle: the window bounds are the
+// outer rect and the workspace is one rounded inner hole. Hadalis mirrors that
+// geometry here with one ShapePath / OddEvenFill per output. The four thin
+// ReservationWindow surfaces below are transparent and exist only to reserve
+// compositor work-area space; they do not paint any Screen Edge pixels.
 Scope {
     id: root
 
+    // Caelestia BorderConfig defaults: thickness=10, rounding=25.
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property int rounding: 25
 
-    // Caelestia BorderConfig defaults: thickness=10, rounding=25. Keep the
-    // reconstruction radius fixed until the geometry is live-validated.
-    readonly property int cornerRadius: 25
-    readonly property int cornerExtent: thickness + cornerRadius
+    // Caelestia's BlobInvertedRect extends 50px beyond the ContentWindow so the
+    // visible outer screen boundary is clipped by the window rather than by an
+    // antialiased shape edge. Keep the same construction.
+    readonly property int outerPadding: 50
 
     readonly property bool waffleFamily:
         (Config.options?.panelFamily ?? "ii") === "waffle"
@@ -37,13 +44,6 @@ Scope {
         (Config.options?.waffles?.bar?.bottom ?? false) ? "bottom" : "top"
     readonly property bool waffleBarPanelEnabled: root.waffleFamily
         && (Config.options?.enabledPanels ?? []).includes("wBar")
-
-    readonly property bool barPanelEnabled:
-        root.iiBarPanelEnabled || root.waffleBarPanelEnabled
-    readonly property string barPanelId:
-        root.waffleBarPanelEnabled ? "wBar" : root.iiBarPanelId
-    readonly property string barEdge:
-        root.waffleBarPanelEnabled ? root.waffleBarEdge : root.iiBarEdge
 
     readonly property color edgeColor: root.waffleBarPanelEnabled
         ? WaffleLooks.Looks.colors.bg0
@@ -74,19 +74,12 @@ Scope {
             Config.options?.waffles?.bar?.screenList ?? [])
     }
 
-    function barTargetsOutput(outputName) {
-        return root.waffleBarPanelEnabled
-            ? root.waffleBarTargetsOutput(outputName)
-            : root.iiBarTargetsOutput(outputName)
-    }
-
     function barOwnsEdge(outputName, edge) {
         if (!GlobalStates.barOpen || GlobalStates.widgetEditMode)
             return false
 
-        // Auto-hide is the geometry-work baseline: the persistent Screen Edge
-        // owns all four physical edges while the ii Bar translates away/reveals
-        // above it. Do not substitute a Bar-local fallback surface.
+        // Auto-hide deliberately hands the physical edge back to ScreenEdges so
+        // the exact frame renderer can be inspected with the Bar fully hidden.
         const iiOwned = !root.waffleFamily
             && root.iiBarPanelEnabled
             && !(Config.options?.bar?.autoHide?.enable ?? false)
@@ -98,7 +91,143 @@ Scope {
         return iiOwned || waffleOwned
     }
 
-    component EdgeWindow: PanelWindow {
+    component FrameWindow: PanelWindow {
+        required property ShellScreen modelData
+
+        readonly property string outputName: String(modelData?.name ?? "")
+        readonly property bool fullscreenCovered: outputName.length > 0
+            && GameMode.hasFullscreenOnOutput(outputName)
+        readonly property bool mapped: Config.ready
+            && !GlobalStates.screenLocked
+            && !fullscreenCovered
+
+        screen: modelData
+        visible: mapped
+        updatesEnabled: mapped
+        color: "transparent"
+        exclusiveZone: 0
+        exclusionMode: ExclusionMode.Ignore
+
+        WlrLayershell.namespace: "hadalis:screen-edge-frame"
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+        anchors.top: true
+        anchors.bottom: true
+        anchors.left: true
+        anchors.right: true
+
+        Item {
+            id: emptyFrameInput
+            width: 0
+            height: 0
+            visible: false
+        }
+        mask: Region { item: emptyFrameInput }
+
+        // Exactly one painted geometry. Odd-even fill subtracts the rounded
+        // workspace rect from the padded outer rect, matching the isolated
+        // Caelestia BlobInvertedRect border silhouette without corner overlays.
+        Shape {
+            id: frameShape
+            anchors.fill: parent
+            antialiasing: true
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                fillColor: root.edgeColor
+                fillRule: ShapePath.OddEvenFill
+                strokeColor: "transparent"
+                strokeWidth: -1
+
+                readonly property real t: root.thickness
+                readonly property real r: Math.max(0, Math.min(root.rounding,
+                    (frameShape.width - 2 * t) / 2,
+                    (frameShape.height - 2 * t) / 2))
+                readonly property real left: t
+                readonly property real top: t
+                readonly property real right: frameShape.width - t
+                readonly property real bottom: frameShape.height - t
+
+                // Outer rectangle. Deliberately extends past the window just as
+                // Caelestia's BlobInvertedRect uses anchors.margins: -50.
+                startX: -root.outerPadding
+                startY: -root.outerPadding
+                PathLine {
+                    x: frameShape.width + root.outerPadding
+                    y: -root.outerPadding
+                }
+                PathLine {
+                    x: frameShape.width + root.outerPadding
+                    y: frameShape.height + root.outerPadding
+                }
+                PathLine {
+                    x: -root.outerPadding
+                    y: frameShape.height + root.outerPadding
+                }
+                PathLine {
+                    x: -root.outerPadding
+                    y: -root.outerPadding
+                }
+
+                // Single rounded inner workspace hole. This is the same
+                // geometric boundary as Caelestia's sdRoundedBox(inner, 25)
+                // when no drawer/blob is intersecting the border.
+                PathMove {
+                    x: parent.left + parent.r
+                    y: parent.top
+                }
+                PathLine {
+                    x: parent.right - parent.r
+                    y: parent.top
+                }
+                PathArc {
+                    x: parent.right
+                    y: parent.top + parent.r
+                    radiusX: parent.r
+                    radiusY: parent.r
+                    direction: PathArc.Clockwise
+                }
+                PathLine {
+                    x: parent.right
+                    y: parent.bottom - parent.r
+                }
+                PathArc {
+                    x: parent.right - parent.r
+                    y: parent.bottom
+                    radiusX: parent.r
+                    radiusY: parent.r
+                    direction: PathArc.Clockwise
+                }
+                PathLine {
+                    x: parent.left + parent.r
+                    y: parent.bottom
+                }
+                PathArc {
+                    x: parent.left
+                    y: parent.bottom - parent.r
+                    radiusX: parent.r
+                    radiusY: parent.r
+                    direction: PathArc.Clockwise
+                }
+                PathLine {
+                    x: parent.left
+                    y: parent.top + parent.r
+                }
+                PathArc {
+                    x: parent.left + parent.r
+                    y: parent.top
+                    radiusX: parent.r
+                    radiusY: parent.r
+                    direction: PathArc.Clockwise
+                }
+            }
+        }
+    }
+
+    // Transparent compositor reservation only. ScreenEdge pixels are never
+    // painted here, so these windows cannot alter the frame/corner silhouette.
+    component ReservationWindow: PanelWindow {
         required property ShellScreen modelData
         required property string edge
 
@@ -121,7 +250,7 @@ Scope {
         implicitWidth: horizontal ? 1 : root.thickness
         implicitHeight: horizontal ? root.thickness : 1
 
-        WlrLayershell.namespace: "hadalis:screen-edge-" + edge
+        WlrLayershell.namespace: "hadalis:screen-edge-reservation-" + edge
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
@@ -133,141 +262,33 @@ Scope {
         }
 
         Item {
-            id: emptyInput
+            id: emptyReservationInput
             width: 0
             height: 0
             visible: false
         }
-        mask: Region { item: emptyInput }
-
-        Rectangle {
-            anchors.fill: parent
-            color: root.edgeColor
-        }
-    }
-
-    // One canonical top-left corner path is mirrored for the other three
-    // corners. This guarantees identical geometry regardless of Bar position.
-    // The filled region is the outer L-shaped frame; the quarter-circle is the
-    // rounded inner boundary of the workspace, matching Caelestia's 25px
-    // BorderConfig rounding.
-    component CornerWindow: PanelWindow {
-        id: cornerWindow
-
-        required property ShellScreen modelData
-        required property string corner
-
-        readonly property string outputName: String(modelData?.name ?? "")
-        readonly property bool atRight: corner.endsWith("right")
-        readonly property bool atBottom: corner.startsWith("bottom")
-        readonly property string horizontalEdge: atBottom ? "bottom" : "top"
-        readonly property string verticalEdge: atRight ? "right" : "left"
-        readonly property bool fullscreenCovered: outputName.length > 0
-            && GameMode.hasFullscreenOnOutput(outputName)
-        readonly property bool mapped: Config.ready
-            && !GlobalStates.screenLocked
-            && !fullscreenCovered
-            && !root.barOwnsEdge(outputName, horizontalEdge)
-            && !root.barOwnsEdge(outputName, verticalEdge)
-
-        screen: modelData
-        visible: mapped
-        updatesEnabled: mapped
-        color: "transparent"
-        exclusiveZone: 0
-        exclusionMode: ExclusionMode.Ignore
-
-        implicitWidth: root.cornerExtent
-        implicitHeight: root.cornerExtent
-
-        WlrLayershell.namespace: "hadalis:screen-edge-corner-" + corner
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-        anchors {
-            top: !atBottom
-            bottom: atBottom
-            left: !atRight
-            right: atRight
-        }
-
-        Item {
-            id: emptyCornerInput
-            width: 0
-            height: 0
-            visible: false
-        }
-        mask: Region { item: emptyCornerInput }
-
-        Shape {
-            id: cornerShape
-            anchors.fill: parent
-            antialiasing: true
-            preferredRendererType: Shape.CurveRenderer
-
-            transform: Scale {
-                origin.x: cornerShape.width / 2
-                origin.y: cornerShape.height / 2
-                xScale: cornerWindow.atRight ? -1 : 1
-                yScale: cornerWindow.atBottom ? -1 : 1
-            }
-
-            ShapePath {
-                fillColor: root.edgeColor
-                strokeColor: "transparent"
-                strokeWidth: 0
-
-                // Canonical top-left frame corner:
-                // outer square -> top band -> exact quarter-circle inner arc
-                // -> left band -> outer square.
-                startX: 0
-                startY: 0
-                PathLine { x: root.cornerExtent; y: 0 }
-                PathLine { x: root.cornerExtent; y: root.thickness }
-                PathArc {
-                    x: root.thickness
-                    y: root.cornerExtent
-                    radiusX: root.cornerRadius
-                    radiusY: root.cornerRadius
-                    direction: PathArc.Counterclockwise
-                }
-                PathLine { x: 0; y: root.cornerExtent }
-                PathLine { x: 0; y: 0 }
-            }
-        }
+        mask: Region { item: emptyReservationInput }
     }
 
     Variants {
         model: Quickshell.screens
-        EdgeWindow { edge: "top" }
-    }
-    Variants {
-        model: Quickshell.screens
-        EdgeWindow { edge: "bottom" }
-    }
-    Variants {
-        model: Quickshell.screens
-        EdgeWindow { edge: "left" }
-    }
-    Variants {
-        model: Quickshell.screens
-        EdgeWindow { edge: "right" }
+        FrameWindow {}
     }
 
     Variants {
         model: Quickshell.screens
-        CornerWindow { corner: "top-left" }
+        ReservationWindow { edge: "top" }
     }
     Variants {
         model: Quickshell.screens
-        CornerWindow { corner: "top-right" }
+        ReservationWindow { edge: "bottom" }
     }
     Variants {
         model: Quickshell.screens
-        CornerWindow { corner: "bottom-left" }
+        ReservationWindow { edge: "left" }
     }
     Variants {
         model: Quickshell.screens
-        CornerWindow { corner: "bottom-right" }
+        ReservationWindow { edge: "right" }
     }
 }

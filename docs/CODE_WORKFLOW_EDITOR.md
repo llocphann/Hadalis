@@ -2123,6 +2123,444 @@ An implementation should fail review if any of these occur:
 - node placement implies QML execution order;
 - unsupported syntax is rewritten merely because a parser accepted it.
 
+## Implementation-readiness rules (research pass 3)
+
+This pass focuses on the remaining implementation questions: graph rendering/input, parser-backend boundaries, live-surface stability during picking, keyboard/accessibility, and the exact Phase 0 proof plan.
+
+The design is now sufficiently specified to enter implementation feasibility work. The remaining unknowns are empirical performance/parser/runtime questions that must be answered by prototypes rather than by more architecture speculation.
+
+### Repository corpus confirms that the semantic analyzer must cover real QML, not a toy subset
+
+The current Hadalis tree contains broad use of:
+
+- pragma ComponentBehavior: Bound;
+- inline component declarations;
+- Loader and LazyLoader;
+- Connections and Binding;
+- explicit Qt.binding rebinding;
+- property aliases and required properties;
+- Behavior, State and Transition;
+- Variants;
+- IpcHandler;
+- Process and FileView.
+
+Bar/Media is representative rather than artificially simple: it combines Config bindings, Mpris service state, Timers, Connections, local functions, MouseArea event paths, popups, property transforms and imperative effects.
+
+Therefore the parser spike must run against a representative Hadalis corpus rather than a few synthetic examples. A parser that accepts a trivial Item with properties is not sufficient evidence.
+
+The initial corpus should include at minimum:
+
+- modules/bar/BarContent.qml
+- modules/bar/Media.qml
+- modules/dashboard/DashboardContent.qml
+- modules/overview/OverviewNiriWidget.qml
+- modules/settings/SettingsPageHost.qml
+- services/NiriService.qml
+- services/ShellEditSession.qml
+- one Waffle composition file
+- one file with explicit Qt.binding
+- one file with Binding
+- one file with nested inline components
+- one file with State/Transition
+- one file with Variants/LazyLoader
+
+### Parser backend decision: separate syntax engine, semantic analyzer and validator
+
+No one parser/tool should be asked to do all jobs.
+
+Use three layers:
+
+~~~text
+CST / source ranges
+    |
+    v
+Hadalis QML semantic analyzer
+    |
+    v
+Workflow IR
+
+plus independently:
+
+qmlformat/qmllint/qmlls
+    -> validation and optional diagnostics
+~~~
+
+#### Tree-sitter-qmljs is the leading CST candidate, not yet a committed dependency
+
+Tree-sitter is a good fit for source-range-preserving incremental parsing. The current tree-sitter-qmljs grammar is derived from Qt's QML/JS grammar and provides Rust bindings.
+
+However, the grammar documents an important ambiguity: grouped property-binding syntax can parse as an object definition. This means the workflow semantic analyzer must disambiguate using QML context/type knowledge or mark the construct opaque.
+
+Phase 0 must test the current grammar against the Hadalis corpus and record:
+
+- files parsed without error;
+- unsupported constructs;
+- ambiguous constructs;
+- comment/range preservation;
+- byte-for-byte no-op round trip;
+- stability of semantic anchors after unrelated line insertions.
+
+Do not add the parser as a permanent runtime dependency until packaging is proven across supported Hadalis install paths.
+
+#### Do not add Node.js as a new runtime requirement just for parsing
+
+Hadalis does not currently depend on Node.js as a core shell runtime dependency.
+
+Although tree-sitter-qmljs has an npm package, that is not sufficient reason to make the workflow editor depend on a Node process.
+
+Candidate parser-helper implementations should be evaluated in this order:
+
+1. a small native/Rust helper using the tree-sitter-qmljs crate;
+2. a Python helper only if a maintainable QML grammar binding can be packaged cleanly through the existing Hadalis Python environment;
+3. another standalone implementation if it materially reduces deployment risk.
+
+The transport contract is more important than the helper language.
+
+#### The parser helper should be persistent and request/response driven
+
+Quickshell Process supports long-running processes and streaming stdout parsers. If the source analyzer lives outside QML, prefer one persistent helper while Code Workflow is active instead of spawning a process for every graph operation.
+
+Conceptual JSON-lines protocol:
+
+~~~text
+request:
+  parse sourcePath revision
+  analyze sourcePath revision
+  previewTransform command baseRevision
+  validatePatch patch
+  applyTransform command baseRevision
+
+response:
+  requestId
+  ok
+  revision
+  diagnostics
+  semanticGraph or patch
+~~~
+
+The QML service owns process lifecycle, restart/backoff and request IDs.
+
+The helper does not get arbitrary filesystem write authority by default. Source writes remain under one explicit transaction owner.
+
+### qmlformat, qmllint and qmlls have separate roles
+
+The repository already treats qmlformat 6.8 or newer as a syntax parser/validation gate when available.
+
+Keep that role.
+
+If qmllint is available and can resolve the relevant imports/types, it may add semantic diagnostics before Apply.
+
+qmlls can provide optional definitions/references/usages where reliable.
+
+Neither qmlformat nor qmlls becomes the graph model.
+
+The private Qt QML DOM/parser implementation must not become a hard runtime ABI dependency. The workflow editor should rely on public command-line/tooling contracts or its own packaged CST backend.
+
+### Wire rendering: use retained Qt Quick shapes before considering custom scene-graph code
+
+Qt Quick Shape is a better first implementation than Canvas for a dynamic workflow graph.
+
+Qt documents that Shape renders vector paths through the scene graph rather than software-rasterizing them into an image texture. It also warns that geometry-based Shape rendering retriangulates changed paths, and recommends avoiding many separate Shape items.
+
+Initial renderer contract:
+
+~~~text
+WorkflowEdgeLayer
+  one/few Shape items
+    many ShapePath paths
+      cubic or quadratic routed wires
+~~~
+
+Prefer batching many wires into a small number of Shape items grouped by visual semantics/state.
+
+Request Shape.CurveRenderer only when the installed Qt supports it and benchmark the actual renderer selected at runtime. The curve renderer avoids retessellation cost when zooming, but the editor must still work with the normal geometry renderer.
+
+Shape asynchronous preprocessing can be tested for large graph refreshes, but asynchronous rendering must not create stale hit targets or selection feedback.
+
+#### Canvas is not the default edge renderer
+
+Canvas remains useful for experiments and tiny overlays, but a large, frequently changing graph should not depend on repainting a raster-backed Canvas for all edges.
+
+Do not choose Canvas merely because drawing cubic lines is easy.
+
+#### Edge hit-testing is separate from edge painting
+
+Open stroked wires are not naturally represented by Shape fill containment.
+
+Use an editor-side hit-test structure:
+
+1. coarse edge bounding box / spatial bucket;
+2. distance-to-segment or distance-to-Bezier approximation;
+3. closest compatible edge wins within a small screen-space tolerance.
+
+Hit tolerance should remain approximately constant in screen space as the canvas zoom changes.
+
+Do not create a large invisible painted stroke for every edge solely for mouse picking if it harms scene-graph cost.
+
+### Graph input should use Pointer Handlers, not a nest of competing MouseAreas
+
+Qt Pointer Handlers are designed to arbitrate pointer grabs between gestures and can operate with target set to null.
+
+Recommended interaction architecture:
+
+~~~text
+canvas viewport
+  DragHandler       -> pan
+  WheelHandler      -> pointer-centered zoom
+  PinchHandler      -> touch/touchpad zoom + pan
+
+node
+  TapHandler        -> selection/open
+  DragHandler       -> move node metadata only
+
+port
+  TapHandler        -> select/connect by keyboard/pointer
+  DragHandler       -> create/reconnect wire
+
+empty canvas
+  TapHandler        -> clear selection / contextual Quick Add
+~~~
+
+Use grabPermissions deliberately where node-drag, wire-drag and canvas-pan overlap.
+
+TapHandler's default DragThreshold policy is useful because it can observe taps passively without immediately stealing the pointer from drag gestures.
+
+Avoid duplicating one gesture through both MouseArea and PointerHandler unless a measured compatibility problem requires it.
+
+### View transform is editor state, not Item geometry mutation
+
+Maintain one logical graph coordinate system:
+
+~~~text
+graph-space node positions
+        |
+canvas transform
+        |
+screen-space rendering
+~~~
+
+Pan/zoom transforms the graph view. It must not rewrite every node's semantic position, source range or source representation.
+
+Node drag changes only graph-layout metadata.
+
+A pointer-centered zoom function must preserve the graph point under the cursor while the scale changes.
+
+### ScriptModel is useful for stable delegate churn
+
+Quickshell ScriptModel can generate incremental model operations from changing JavaScript lists so Repeater/ListView consumers do not recreate all delegates on every list update.
+
+Use it where node/target lists are naturally represented as unique-value lists and where its uniqueness requirement can be guaranteed by stable IDs.
+
+Do not force ScriptModel onto the edge renderer if a more compact custom model/path batch is cheaper.
+
+### Niri integration is already largely solved by NiriService
+
+Current Hadalis NiriService already:
+
+- connects to NIRI_SOCKET through DankSocket;
+- starts Niri EventStream;
+- parses JSON incrementally;
+- owns outputs/workspaces/windows/focus state;
+- exposes compositor actions separately.
+
+Code Workflow should consume that service rather than introduce another Niri event socket.
+
+Only add data to NiriService if it is generally compositor state that belongs there. Code Workflow-specific semantic target state remains in CodeWorkflowRuntime/Registry.
+
+### Picking must preserve visible surfaces without loading hidden ones
+
+A new repo-specific interaction hazard was found.
+
+The ii Bar can auto-hide based on hover state. When a full-output picker overlay starts intercepting the pointer, the underlying Bar no longer receives hover and can retract while the user is trying to select it.
+
+The picker therefore needs a narrowly scoped presentation hold.
+
+Rules:
+
+- Pick mode may keep an already-resident inspectable surface visible while selection is in progress.
+- Pick mode must not instantiate a dormant LazyLoader or open a closed Dashboard/Sidebar merely so it becomes pickable.
+- Bar/Dock/other auto-hide surfaces may include a Code Workflow pick-hold condition analogous to the existing ShellEditSession hold behavior.
+- The hold ends immediately when selection/cancel finishes.
+- Closed/unloaded targets remain available from the static Targets tree.
+- Ephemeral popups are excluded from the first picker milestone unless their lifecycle can be frozen without changing product behavior.
+
+This creates a clean distinction:
+
+~~~text
+presentation hold
+  keep an already-existing surface from retracting
+
+load/open
+  create or reveal a feature that was not present
+~~~
+
+Pick mode may do the first, not the second.
+
+### Settings surface handoff must avoid self-selection
+
+When the in-shell Settings overlay/focus surface launches Pick mode:
+
+1. save Code Workflow navigation, selected target and viewport;
+2. enter PREPARING;
+3. hide/suspend Settings input/visual surface;
+4. activate picker overlays;
+5. select/cancel;
+6. destroy picker input surfaces;
+7. restore Settings directly to Code Workflow;
+8. restore workflow viewport;
+9. apply the newly selected target only after restoration is ready.
+
+The Settings surface itself and picker windows remain non-inspectable by default.
+
+Standalone Settings triggers the main-shell picker through the runtime bridge and does not attempt to create a picker in its own process.
+
+### Accessibility and keyboard interaction are part of the editor contract
+
+A visual workflow editor cannot be pointer-only.
+
+Qt Quick exposes Accessible metadata/actions and KeyNavigation/focus-scope primitives. Code Workflow nodes, ports and toolbar actions must expose meaningful accessibility names/descriptions/roles.
+
+Minimum keyboard model:
+
+- Tab/Shift+Tab moves between major editor regions and actionable controls.
+- Arrow keys navigate spatially between nodes or ports in the active graph scope.
+- Enter opens/edits the selected node or drills into a component subflow.
+- Escape exits contextual mode/subflow operation before leaving the page.
+- Delete removes a selected editable semantic node/connection only after the normal safety rules.
+- Ctrl+Z / Ctrl+Shift+Z perform semantic undo/redo.
+- Ctrl+0 fits/resets the graph view; plus/minus zoom.
+- A keyboard command opens contextual Quick Add.
+- A keyboard command can move focus to Targets and Inspector without requiring pointer use.
+
+Graph focus should use a FocusScope so internal node focus does not unpredictably steal focus from Settings chrome.
+
+Accessibility text must describe semantics, for example:
+
+~~~text
+Media.player
+Input property
+Bound to MprisController.activePlayer
+Runtime value: mpd
+~~~
+
+Do not encode critical meaning through wire color alone; edge kind also needs shape/icon/label/accessible description.
+
+### Graph size and performance are benchmark gates, not guessed constants
+
+Do not bake an arbitrary maximum node count into product semantics before measurement.
+
+Phase 0 must benchmark at least:
+
+- small graph;
+- representative Bar/Media subflow;
+- intentionally dense stress graph;
+- node drag while connected wires update;
+- continuous pan;
+- continuous wheel/pinch zoom;
+- multi-select;
+- runtime value updates;
+- event trace bursts.
+
+Measurements should capture:
+
+- UI-frame smoothness;
+- main-thread stalls;
+- delegate/object count;
+- edge-update cost;
+- memory growth;
+- behavior under fractional scaling.
+
+The product can later impose a visible-node budget based on measured limits, using subflow collapse and dependency-hop expansion rather than silently dropping semantic nodes.
+
+### Phase 0 prototype order
+
+Implement feasibility in this order so each spike answers one independent risk.
+
+#### Spike A: parser corpus
+
+No UI.
+
+Output:
+
+- corpus parse report;
+- ambiguity/unsupported report;
+- semantic-extraction proof for bindings, handlers, Connections, Loaders and component boundaries;
+- no-op source preservation proof.
+
+#### Spike B: graph renderer/input sandbox
+
+No live shell integration.
+
+Output:
+
+- pan/zoom canvas;
+- 20-100 representative nodes and routed wires;
+- node drag;
+- wire hit-test;
+- selection/lasso;
+- subflow navigation;
+- keyboard focus proof;
+- performance notes for Shape renderer variants.
+
+#### Spike C: semantic runtime registry on ii Bar
+
+Read-only.
+
+Output:
+
+- register Bar semantic modules;
+- stable target/instance IDs;
+- safe runtime-property snapshots;
+- unloaded/resident states;
+- no LazyLoader forced active.
+
+#### Spike D: picker lifecycle
+
+Read-only.
+
+Output:
+
+- per-output Overlay picker;
+- QML-owned geometry tracking;
+- presentation hold for existing auto-hide Bar;
+- no click leakage;
+- Settings hide/restore;
+- output removal handling;
+- cancel/lock-screen handling;
+- no Exclusive keyboard focus.
+
+#### Spike E: reload/rebind
+
+Read-only source mutation can be simulated externally for this spike.
+
+Output:
+
+- selected semantic target survives ordinary Quickshell reload;
+- runtimeRef is replaced safely;
+- target becoming unloaded becomes static mode;
+- stale target produces an explicit state rather than null-reference errors.
+
+Only after A-E succeed should the first source-writing transform be implemented.
+
+### Definition of research-ready
+
+Architecture research is considered complete enough for implementation when the following are true:
+
+- product model is fixed as workflow-first/projectional;
+- QML semantic edge types are defined;
+- source-of-truth/round-trip rules are defined;
+- parser candidates and rejection criteria are defined;
+- renderer/input strategy is defined;
+- picker lifecycle and Niri/Quickshell ownership are defined;
+- lazy/resident behavior is defined;
+- Settings overlay/standalone boundary is defined;
+- security/sensitive-data policy is defined;
+- accessibility/keyboard baseline is defined;
+- validation and Phase 0 proof sequence are defined.
+
+At that point, unresolved questions must be answered by code/profiling/live-runtime spikes rather than additional document-only research.
+
+
 ## Roadmap
 
 ### Phase 0 - feasibility spikes

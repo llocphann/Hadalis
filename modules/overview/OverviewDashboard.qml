@@ -177,11 +177,30 @@ Item {
         dashContainer.x, dashContainer.y, dashContainer.width, dashContainer.height)
     readonly property color connectedSurfaceColor: dashContainer.color
 
+    property bool _resourceUsageHeld: false
+
+    function syncResourceUsageLifecycle(): void {
+        if (root.panelVisible === root._resourceUsageHeld)
+            return
+        if (root.panelVisible)
+            ResourceUsage.keepAlive()
+        else
+            ResourceUsage.releaseKeepAlive()
+        root._resourceUsageHeld = root.panelVisible
+    }
+
     Component.onCompleted: {
-        ResourceUsage.ensureRunning()
+        root.syncResourceUsageLifecycle()
         root.revealProgress = 0
         Qt.callLater(root.syncReveal)
     }
+    Component.onDestruction: {
+        if (root._resourceUsageHeld) {
+            root._resourceUsageHeld = false
+            ResourceUsage.releaseKeepAlive()
+        }
+    }
+    onPanelVisibleChanged: root.syncResourceUsageLifecycle()
 
     Timer {
         running: root.panelVisible && root.effectiveIsPlaying

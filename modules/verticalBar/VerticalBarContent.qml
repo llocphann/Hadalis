@@ -304,7 +304,6 @@ Item { // Bar content region
             Repeater {
                 model: zoneRoot.ids
                 delegate: VerticalModuleCell {
-                    required property string modelData
                     zoneName: zoneRoot.zoneName
                 }
             }

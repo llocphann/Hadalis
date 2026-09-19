@@ -78,7 +78,16 @@ Scope {
             component: PanelWindow { // Bar window
                 id: barRoot
                 screen: barLoader.modelData
-                visible: true
+                readonly property string outputName: String(barLoader.modelData?.name ?? "")
+                readonly property bool fullscreenCovered: outputName.length > 0
+                    && GameMode.hasFullscreenOnOutput(outputName)
+
+                // Keep the Bar lifecycle aligned with the physical Screen Edge:
+                // unmap while a fullscreen client covers this output, then remap
+                // on exit. This forces a clean compositor repaint instead of
+                // leaving stale/blank Bar contents until the shell is reloaded.
+                visible: !fullscreenCovered
+                updatesEnabled: !fullscreenCovered
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right

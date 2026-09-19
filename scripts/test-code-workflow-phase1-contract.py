@@ -15,6 +15,7 @@ arrangement = read("modules/settings/SettingsArrangement.qml")
 persistent = read("modules/common/Persistent.qml")
 qmldir = read("services/qmldir")
 page = read("modules/settings/CodeWorkflow.qml")
+canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
 session = read("services/CodeWorkflowSession.qml")
@@ -41,11 +42,16 @@ require(target, "horizontal ii Bar", "runtime geometry scope must remain explici
 require(target, "Explicit allowlist", "runtime values must stay allowlisted")
 require(session, "import Quickshell", "Singleton session must import Quickshell for staged-runtime startup")
 require(session, "Persistent.states", "session must survive Settings page eviction")
-require(page, "preferredRendererType: Shape.GeometryRenderer", "page must use qualified Geometry renderer")
+require(page, "CodeWorkflowIrCanvas {", "page must host the semantic IR canvas")
+require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")
 require(page, "readOnly: true", "Source Preview must be read-only")
 require(page, "FileView {", "Source Preview must read selected source")
-if "setText(" in page:
-    raise SystemExit("FAIL: read-only Phase 1 page must not write source")
+require(page, "contentHeight: Math.max(height, sourcePreviewText.implicitHeight)",
+        "Source Preview scroll extent must follow its TextEdit")
+if page.count("function stateLabel(item): string {") != 1:
+    raise SystemExit("FAIL: Code Workflow page has duplicate stateLabel declarations")
+if "setText(" in page or "setText(" in canvas:
+    raise SystemExit("FAIL: read-only Phase 1 UI must not write source")
 
 hooks = {
     "modules/bar/BarContent.qml": 'targetId: "bar"',

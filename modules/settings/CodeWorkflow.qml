@@ -78,7 +78,7 @@ Item {
             outputs[(current + 1 + outputs.length) % outputs.length])
     }
 
-    function stateLabel(item): string {    function stateLabel(item): string {
+    function stateLabel(item): string {
         return item?.state === "resident" ? "LIVE" : "STATIC"
     }
 
@@ -154,7 +154,6 @@ Item {
     }
 
     ColumnLayout {
-        anchors.fill: parent    ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 8
@@ -346,7 +345,6 @@ Item {
             }
 
             Rectangle {
-                Layout.preferredWidth: 250            Rectangle {
                 Layout.preferredWidth: 250
                 Layout.fillHeight: true
                 radius: Appearance.rounding.normal
@@ -491,7 +489,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 7
                         contentWidth: Math.max(width, sourcePreviewText.implicitWidth)
-                        contentHeight: Math.max(height, sourceText.implicitHeight)
+                        contentHeight: Math.max(height, sourcePreviewText.implicitHeight)
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
 

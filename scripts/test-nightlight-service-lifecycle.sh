@@ -59,8 +59,8 @@ require 'id: backendStopProc' \
     'night-light service must have an authoritative backend stop process'
 require '["/usr/bin/pkill", "-TERM", "-x", "wlsunset"]' \
     'Niri OFF requests must disable a legacy/detached wlsunset backend'
-require '["/usr/bin/hyprctl", "hyprsunset", "temperature", "6500"]' \
-    'Hyprland OFF requests must neutralize an externally running hyprsunset backend'
+require '["/usr/bin/pkill", "-TERM", "-x", "hyprsunset"]' \
+    'Hyprland OFF requests must stop a legacy/detached hyprsunset backend'
 require 'root._applyManualDesiredState(!root.active)' \
     'unknown-state toggle must invert the probed backend state exactly once'
 

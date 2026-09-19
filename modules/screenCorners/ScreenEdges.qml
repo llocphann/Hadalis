@@ -5,17 +5,24 @@ import qs.modules.common
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 
-// Persistent square screen-edge surface. This is presentation-only:
-// it never captures input. Geometry is intentionally minimal while the
-// physical perimeter is rebuilt: one rectangular band per output edge.
+// Persistent Caelestia-style screen frame. ScreenEdges.qml is the sole owner of
+// the physical perimeter: four straight bands plus four identical rounded inner
+// corners. No shadow or Bar-local fallback participates in this geometry.
 Scope {
     id: root
 
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+
+    // Caelestia BorderConfig defaults: thickness=10, rounding=25. Keep the
+    // reconstruction radius fixed until the geometry is live-validated.
+    readonly property int cornerRadius: 25
+    readonly property int cornerExtent: thickness + cornerRadius
+
     readonly property bool waffleFamily:
         (Config.options?.panelFamily ?? "ii") === "waffle"
     readonly property bool barVertical: Config.options?.bar?.vertical ?? false
@@ -139,6 +146,95 @@ Scope {
         }
     }
 
+    // One canonical top-left corner path is mirrored for the other three
+    // corners. This guarantees identical geometry regardless of Bar position.
+    // The filled region is the outer L-shaped frame; the quarter-circle is the
+    // rounded inner boundary of the workspace, matching Caelestia's 25px
+    // BorderConfig rounding.
+    component CornerWindow: PanelWindow {
+        required property ShellScreen modelData
+        required property string corner
+
+        readonly property string outputName: String(modelData?.name ?? "")
+        readonly property bool atRight: corner.endsWith("right")
+        readonly property bool atBottom: corner.startsWith("bottom")
+        readonly property string horizontalEdge: atBottom ? "bottom" : "top"
+        readonly property string verticalEdge: atRight ? "right" : "left"
+        readonly property bool fullscreenCovered: outputName.length > 0
+            && GameMode.hasFullscreenOnOutput(outputName)
+        readonly property bool mapped: Config.ready
+            && !GlobalStates.screenLocked
+            && !fullscreenCovered
+            && !root.barOwnsEdge(outputName, horizontalEdge)
+            && !root.barOwnsEdge(outputName, verticalEdge)
+
+        screen: modelData
+        visible: mapped
+        updatesEnabled: mapped
+        color: "transparent"
+        exclusiveZone: 0
+        exclusionMode: ExclusionMode.Ignore
+
+        implicitWidth: root.cornerExtent
+        implicitHeight: root.cornerExtent
+
+        WlrLayershell.namespace: "hadalis:screen-edge-corner-" + corner
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+        anchors {
+            top: !atBottom
+            bottom: atBottom
+            left: !atRight
+            right: atRight
+        }
+
+        Item {
+            id: emptyCornerInput
+            width: 0
+            height: 0
+            visible: false
+        }
+        mask: Region { item: emptyCornerInput }
+
+        Shape {
+            id: cornerShape
+            anchors.fill: parent
+            antialiasing: true
+            preferredRendererType: Shape.CurveRenderer
+
+            transform: Scale {
+                origin.x: cornerShape.width / 2
+                origin.y: cornerShape.height / 2
+                xScale: cornerWindow.atRight ? -1 : 1
+                yScale: cornerWindow.atBottom ? -1 : 1
+            }
+
+            ShapePath {
+                fillColor: root.edgeColor
+                strokeColor: "transparent"
+                strokeWidth: 0
+
+                // Canonical top-left frame corner:
+                // outer square -> top band -> exact quarter-circle inner arc
+                // -> left band -> outer square.
+                startX: 0
+                startY: 0
+                PathLine { x: root.cornerExtent; y: 0 }
+                PathLine { x: root.cornerExtent; y: root.thickness }
+                PathArc {
+                    x: root.thickness
+                    y: root.cornerExtent
+                    radiusX: root.cornerRadius
+                    radiusY: root.cornerRadius
+                    direction: PathArc.Counterclockwise
+                }
+                PathLine { x: 0; y: root.cornerExtent }
+                PathLine { x: 0; y: 0 }
+            }
+        }
+    }
+
     Variants {
         model: Quickshell.screens
         EdgeWindow { edge: "top" }
@@ -154,5 +250,22 @@ Scope {
     Variants {
         model: Quickshell.screens
         EdgeWindow { edge: "right" }
+    }
+
+    Variants {
+        model: Quickshell.screens
+        CornerWindow { corner: "top-left" }
+    }
+    Variants {
+        model: Quickshell.screens
+        CornerWindow { corner: "top-right" }
+    }
+    Variants {
+        model: Quickshell.screens
+        CornerWindow { corner: "bottom-left" }
+    }
+    Variants {
+        model: Quickshell.screens
+        CornerWindow { corner: "bottom-right" }
     }
 }

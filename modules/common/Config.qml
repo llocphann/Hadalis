@@ -489,6 +489,7 @@ Singleton {
                 property string globalStyle: "material"
                 property JsonObject screenEdge: JsonObject {
                     property int width: 10
+                    property int radius: 25
 
                     // Connected-surface body shadow contract. Kept separate from
                     // the physical Screen Edge frame so popup/sidebar tuning can

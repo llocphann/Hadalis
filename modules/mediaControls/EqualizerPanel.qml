@@ -501,6 +501,16 @@ Item {
                                     scale: bandSlider.pressed ? 1.15
                                         : (bandSlider.hovered ? 1.06 : 1.0)
 
+                                    // Signal that the EQ dot is draggable while
+                                    // leaving the Slider in charge of the drag.
+                                    HoverHandler {
+                                        cursorShape: bandSlider.enabled
+                                            ? (bandSlider.pressed
+                                                ? Qt.ClosedHandCursor
+                                                : Qt.SizeVerCursor)
+                                            : Qt.ArrowCursor
+                                    }
+
                                     Behavior on scale {
                                         enabled: Appearance.animationsEnabled
                                         NumberAnimation {

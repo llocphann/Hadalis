@@ -61,7 +61,10 @@ for token in \
     'id: bandRepeater' \
     'function lightningPoint()' \
     'handleItem.mapToItem(' \
-    'bandRepeater.itemAt(i)'; do
+    'bandRepeater.itemAt(i)' \
+    'cursorShape: bandSlider.enabled' \
+    'Qt.SizeVerCursor' \
+    'Qt.ClosedHandCursor'; do
     grep -Fq "$token" "$equalizer_panel" \
         || fail "persistent DSP electricity contract missing $token"
 done

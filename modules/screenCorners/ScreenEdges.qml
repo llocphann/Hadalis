@@ -6,6 +6,7 @@ import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -31,6 +32,16 @@ Scope {
     readonly property int thickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property int rounding: 25
+
+    // Physical Screen Edge shadow has its own config owner. Do not reuse
+    // appearance.screenEdge.shadow: that key belongs to connected popup/sidebar
+    // body shadows and must never change the physical perimeter effect.
+    readonly property bool physicalShadowEnabled:
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+    readonly property int physicalShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+    readonly property real physicalShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
 
     // Caelestia's BlobInvertedRect extends 50px beyond the ContentWindow so the
     // visible outer screen boundary is clipped by the window rather than by an
@@ -142,6 +153,21 @@ Scope {
             anchors.fill: parent
             antialiasing: true
             preferredRendererType: Shape.CurveRenderer
+
+            // One geometry, one effect. This is attached directly to the locked
+            // frame Shape, so there is no second painted item, overlay, wedge,
+            // corner patch or shadow rectangle. At the defaults this matches
+            // Caelestia ContentWindow: blurMax=15 and m3shadow alpha=0.70.
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: root.physicalShadowEnabled
+                    && root.physicalShadowSize > 0
+                    && root.physicalShadowOpacity > 0
+                blurMax: Math.max(1, root.physicalShadowSize)
+                shadowColor: Qt.alpha(
+                    Appearance.m3colors.m3shadow,
+                    root.physicalShadowOpacity)
+            }
 
             ShapePath {
                 id: framePath

@@ -6,7 +6,7 @@
     "E"
   ],
   "manifest": {
-    "source_revision": "b8ab566d5138d5dbcc18217b956f45f560a45817",
+    "source_revision": "2171f6d69fe05e4106f79f8a95495c81c39b21f7",
     "instrumented_files": [
       "modules/bar/BarContent.qml",
       "modules/bar/Media.qml",
@@ -17,13 +17,13 @@
     ],
     "probe_sha256": {
       "PickerProbe.qml": "712063507c88a9f27fee622857b24a57e8abb89f67b02dbe567b6f7798c8c520",
-      "ProbeShell.qml": "785d69288c857c2abacc5c2e1ffdd0cd3f557ea9c0dedf62033aa2fedc214f61",
-      "RuntimeRegistry.qml": "9c634c2168bf15a0b0b0de4b1686ea7a84fed98bc8ec000f9ed1b757077f12eb",
+      "ProbeShell.qml": "bbc42e5c807376f02ca965c31886cbe0fb0429cc850d5e358ef3f49104f3889a",
+      "RuntimeRegistry.qml": "cf8bfeb1358a5f1e0bec73ec7d4e057cacf82bbf9302da8cc9a59133921b8b0e",
       "RuntimeTarget.qml": "5f75433867454e2fa0c6ea451efec6fbaf5a750209b3838f72410193e58d2a87"
     },
     "driver_sha256": {
-      "prepare-runtime.py": "0fe93d2cb41e1c7d6b8e3aea22ebf3d551071f3ba20cfcfdc1aa1144e7253dc7",
-      "run-runtime.py": "dd4df80bc8b50344c4b95e7b70cd11d78c2e21e46898744da0ceb1c2cac4e3ed",
+      "prepare-runtime.py": "b6f835724a97b92ec53a9785cda4fb94a3f63c967e4ca2a4193ccbf528f09e6d",
+      "run-runtime.py": "88c18cbb98a3d3fa3b4c68363e5c835ea43c6a718019be301a64dfe197f53f5e",
       "virtual-pointer.c": "4b4da7bdc52953821da02eae526ba75d788db1cc1545b5cb81bd9d44f433fea5"
     },
     "policy": "Temporary copy only; actual Bar/Media/Clock implementations; no production registration."
@@ -187,7 +187,10 @@
     {
       "name": "E reload 1 emits actual old QObject destruction",
       "passed": true,
-      "evidence": "Media_QMLTYPE_1049(0x7f0374f68c40)"
+      "evidence": {
+        "birthId": "1789841328520-064itbdhn91k8y12bmgu33j",
+        "object": "Media_QMLTYPE_996(0x7fe148550480)"
+      }
     },
     {
       "name": "E reload 2 preserves semantic selection and viewport",
@@ -202,7 +205,10 @@
     {
       "name": "E reload 2 emits actual old QObject destruction",
       "passed": true,
-      "evidence": "Media_QMLTYPE_1049(0x7f03778ab840)"
+      "evidence": {
+        "birthId": "1789841329874-twt160hom650cq4ppo2oc",
+        "object": "Media_QMLTYPE_996(0x7fe14c3af340)"
+      }
     },
     {
       "name": "E unloading selected target enters static mode",
@@ -239,7 +245,7 @@
   ],
   "pointer_binary_sha256": "70627ee893e46a858fb6da2ef2e81c756d1e9e1500e834f1da36031a2a55dd74",
   "C_initial": {
-    "epoch": "1789840371466-9appzljkjrs",
+    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
     "outputs": [
       "winit"
     ],
@@ -251,12 +257,13 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:3",
-        "objectIdentity": "BarContent_QMLTYPE_863(0x7f0393e18160)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c70ab60)",
+        "objectBirthId": null,
         "rect": {
           "x": 0,
           "y": -40,
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "revision": 5,
           "dpr": 1,
@@ -265,7 +272,7 @@
           "eligible": true
         },
         "values": {
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "visible": true,
           "enabled": true
@@ -278,10 +285,11 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:2",
-        "objectIdentity": "Media_QMLTYPE_1049(0x7f0378f65a40)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c4a5cc0)",
+        "objectBirthId": "1789841320189-l14vkfi5k4hyjlxm23kr9",
         "rect": {
-          "x": 745,
+          "x": 727,
           "y": -40,
           "width": 105,
           "height": 40,
@@ -305,10 +313,11 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0374eb01e0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484bf460)",
+        "objectBirthId": null,
         "rect": {
-          "x": 869,
+          "x": 851,
           "y": -40,
           "width": 134,
           "height": 40,
@@ -334,6 +343,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -342,17 +352,17 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       }
     ],
     "selectedInstanceId": "",
@@ -392,7 +402,7 @@
     }
   },
   "C_unloaded": {
-    "epoch": "1789840371466-9appzljkjrs",
+    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
     "outputs": [
       "winit"
     ],
@@ -404,12 +414,13 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:3",
-        "objectIdentity": "BarContent_QMLTYPE_863(0x7f0393e18160)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c70ab60)",
+        "objectBirthId": null,
         "rect": {
           "x": 0,
           "y": -40,
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "revision": 5,
           "dpr": 1,
@@ -418,7 +429,7 @@
           "eligible": true
         },
         "values": {
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "visible": true,
           "enabled": true
@@ -433,6 +444,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       },
@@ -443,10 +455,11 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0374eb01e0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484bf460)",
+        "objectBirthId": null,
         "rect": {
-          "x": 869,
+          "x": 851,
           "y": -40,
           "width": 134,
           "height": 40,
@@ -472,6 +485,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -480,22 +494,22 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -535,7 +549,7 @@
     }
   },
   "C_rebound": {
-    "epoch": "1789840371466-9appzljkjrs",
+    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
     "outputs": [
       "winit"
     ],
@@ -547,12 +561,13 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:3",
-        "objectIdentity": "BarContent_QMLTYPE_863(0x7f0393e18160)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c70ab60)",
+        "objectBirthId": null,
         "rect": {
           "x": 0,
           "y": -40,
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "revision": 5,
           "dpr": 1,
@@ -561,7 +576,7 @@
           "eligible": true
         },
         "values": {
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "visible": true,
           "enabled": true
@@ -574,10 +589,11 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:4",
-        "objectIdentity": "Media_QMLTYPE_1049(0x7f0378f678e0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe167305aa0)",
+        "objectBirthId": "1789841321184-i6vso69njis7oo7j656ei2",
         "rect": {
-          "x": 856,
+          "x": 838,
           "y": -20,
           "width": 105,
           "height": 40,
@@ -601,10 +617,11 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0374eb01e0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484bf460)",
+        "objectBirthId": null,
         "rect": {
-          "x": 869,
+          "x": 851,
           "y": -40,
           "width": 134,
           "height": 40,
@@ -630,6 +647,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -638,27 +656,27 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -712,7 +730,7 @@
     }
   ],
   "D_picking": {
-    "epoch": "1789840371466-9appzljkjrs",
+    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
     "outputs": [
       "winit"
     ],
@@ -724,21 +742,22 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:7",
-        "objectIdentity": "BarContent_QMLTYPE_863(0x7f03751adce0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1485532e0)",
+        "objectBirthId": null,
         "rect": {
           "x": 0,
           "y": 0,
-          "width": 1872,
+          "width": 1836,
           "height": 40,
-          "revision": 36,
+          "revision": 35,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": false,
           "eligible": true
         },
         "values": {
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "visible": true,
           "enabled": true
@@ -751,14 +770,15 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:6",
-        "objectIdentity": "Media_QMLTYPE_1049(0x7f03779776e0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14afe0d80)",
+        "objectBirthId": "1789841321371-zkbe1ipejybktzyztqbmx",
         "rect": {
-          "x": 745,
+          "x": 727,
           "y": 0,
           "width": 105,
           "height": 40,
-          "revision": 44,
+          "revision": 43,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": false,
@@ -778,14 +798,15 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:5",
-        "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0374ff3060)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1485a7200)",
+        "objectBirthId": null,
         "rect": {
-          "x": 869,
+          "x": 851,
           "y": 0,
           "width": 134,
           "height": 40,
-          "revision": 38,
+          "revision": 37,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": false,
@@ -807,6 +828,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -815,67 +837,67 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:5"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:6"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:7"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
     "selectedTargetId": "bar/media",
     "selectionState": "resident",
     "viewport": {
-      "x": 31,
-      "y": -17,
-      "zoom": 1.25,
-      "subflow": "bar"
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
     },
     "pickHold": true,
     "heldOutputs": [
@@ -894,8 +916,8 @@
     "mediaPopupsOpen": false,
     "settingsOpen": false,
     "settingsLoaded": false,
-    "settingsPage": 0,
-    "settingsPublishedPage": -1,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
     "picker": {
       "phase": "picking",
       "overlays": 1,
@@ -904,12 +926,12 @@
       "keyboardFocus": "None",
       "saved": {
         "open": true,
-        "page": 0,
+        "page": 2,
         "viewport": {
-          "x": 31,
-          "y": -17,
-          "zoom": 1.25,
-          "subflow": "bar"
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
         },
         "selected": "bar/media@winit"
       },
@@ -917,14 +939,14 @@
     }
   },
   "last_pointer_command": {
-    "x": 797.5,
-    "y": 1116.0,
-    "width": 1872,
-    "height": 1136,
+    "x": 779.5,
+    "y": 1132.0,
+    "width": 1836,
+    "height": 1152,
     "button": "left"
   },
   "D_selected": {
-    "epoch": "1789840371466-9appzljkjrs",
+    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
     "outputs": [
       "winit"
     ],
@@ -936,21 +958,22 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:7",
-        "objectIdentity": "BarContent_QMLTYPE_863(0x7f03751adce0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1485532e0)",
+        "objectBirthId": null,
         "rect": {
           "x": 0,
           "y": 0,
-          "width": 1872,
+          "width": 1836,
           "height": 40,
-          "revision": 36,
+          "revision": 35,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": false,
           "eligible": true
         },
         "values": {
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "visible": true,
           "enabled": true
@@ -963,14 +986,15 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:6",
-        "objectIdentity": "Media_QMLTYPE_1049(0x7f03779776e0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14afe0d80)",
+        "objectBirthId": "1789841321371-zkbe1ipejybktzyztqbmx",
         "rect": {
-          "x": 745,
+          "x": 727,
           "y": 0,
           "width": 105,
           "height": 40,
-          "revision": 44,
+          "revision": 43,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": false,
@@ -990,14 +1014,15 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:5",
-        "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0374ff3060)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1485a7200)",
+        "objectBirthId": null,
         "rect": {
-          "x": 869,
+          "x": 851,
           "y": 0,
           "width": 134,
           "height": 40,
-          "revision": 38,
+          "revision": 37,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": false,
@@ -1019,6 +1044,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -1027,67 +1053,67 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:5"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:6"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:7"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
     "selectedTargetId": "bar/media",
     "selectionState": "resident",
     "viewport": {
-      "x": 31,
-      "y": -17,
-      "zoom": 1.25,
-      "subflow": "bar"
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
     },
     "pickHold": false,
     "heldOutputs": [],
@@ -1104,8 +1130,8 @@
     "mediaPopupsOpen": false,
     "settingsOpen": true,
     "settingsLoaded": true,
-    "settingsPage": 0,
-    "settingsPublishedPage": -1,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
     "picker": {
       "phase": "idle",
       "overlays": 0,
@@ -1114,17 +1140,17 @@
       "keyboardFocus": "None",
       "saved": {
         "open": true,
-        "page": 0,
+        "page": 2,
         "viewport": {
-          "x": 31,
-          "y": -17,
-          "zoom": 1.25,
-          "subflow": "bar"
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
         },
         "selected": "bar/media@winit"
       },
       "lastClick": {
-        "x": 798,
+        "x": 780,
         "y": 20,
         "output": "winit",
         "hit": "bar/media@winit"
@@ -1132,7 +1158,7 @@
     }
   },
   "D_held": {
-    "epoch": "1789840371466-9appzljkjrs",
+    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
     "outputs": [
       "winit"
     ],
@@ -1144,21 +1170,22 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:7",
-        "objectIdentity": "BarContent_QMLTYPE_863(0x7f03751adce0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1485532e0)",
+        "objectBirthId": null,
         "rect": {
           "x": 0,
           "y": 0,
-          "width": 1872,
+          "width": 1836,
           "height": 40,
-          "revision": 36,
+          "revision": 35,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": true,
           "eligible": true
         },
         "values": {
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "visible": true,
           "enabled": true
@@ -1171,14 +1198,15 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:6",
-        "objectIdentity": "Media_QMLTYPE_1049(0x7f03779776e0)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14afe0d80)",
+        "objectBirthId": "1789841321371-zkbe1ipejybktzyztqbmx",
         "rect": {
-          "x": 745,
+          "x": 727,
           "y": 0,
           "width": 105,
           "height": 40,
-          "revision": 44,
+          "revision": 43,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": true,
@@ -1198,14 +1226,15 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840371466-9appzljkjrs:5",
-        "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0374ff3060)",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1485a7200)",
+        "objectBirthId": null,
         "rect": {
-          "x": 869,
+          "x": 851,
           "y": 0,
           "width": 134,
           "height": 40,
-          "revision": 38,
+          "revision": 37,
           "dpr": 1,
           "barMustShow": true,
           "barAutoHide": true,
@@ -1227,6 +1256,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -1235,67 +1265,67 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:5"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:6"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:7"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
     "selectedTargetId": "bar/media",
     "selectionState": "resident",
     "viewport": {
-      "x": 31,
-      "y": -17,
-      "zoom": 1.25,
-      "subflow": "bar"
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
     },
     "pickHold": true,
     "heldOutputs": [
@@ -1314,8 +1344,8 @@
     "mediaPopupsOpen": false,
     "settingsOpen": false,
     "settingsLoaded": false,
-    "settingsPage": 0,
-    "settingsPublishedPage": -1,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
     "picker": {
       "phase": "picking",
       "overlays": 1,
@@ -1324,17 +1354,17 @@
       "keyboardFocus": "None",
       "saved": {
         "open": false,
-        "page": 0,
+        "page": 2,
         "viewport": {
-          "x": 31,
-          "y": -17,
-          "zoom": 1.25,
-          "subflow": "bar"
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
         },
         "selected": "bar/media@winit"
       },
       "lastClick": {
-        "x": 798,
+        "x": 780,
         "y": 20,
         "output": "winit",
         "hit": "bar/media@winit"
@@ -1342,7 +1372,7 @@
     }
   },
   "D_locked": {
-    "epoch": "1789840371466-9appzljkjrs",
+    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
     "outputs": [
       "winit"
     ],
@@ -1356,6 +1386,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       },
@@ -1368,6 +1399,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       },
@@ -1380,6 +1412,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       },
@@ -1392,6 +1425,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -1400,82 +1434,82 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:2"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:4"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:1"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:3"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:5"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:6"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:7"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789840371466-9appzljkjrs:5"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789840371466-9appzljkjrs:6"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789840371466-9appzljkjrs:7"
+        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
     "selectedTargetId": "bar/media",
     "selectionState": "unloaded",
     "viewport": {
-      "x": 31,
-      "y": -17,
-      "zoom": 1.25,
-      "subflow": "bar"
+      "x": 137,
+      "y": -63,
+      "zoom": 0.8,
+      "subflow": "bar/media"
     },
     "pickHold": false,
     "heldOutputs": [],
@@ -1492,8 +1526,8 @@
     "mediaPopupsOpen": false,
     "settingsOpen": false,
     "settingsLoaded": false,
-    "settingsPage": 0,
-    "settingsPublishedPage": -1,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
     "picker": {
       "phase": "idle",
       "overlays": 0,
@@ -1502,26 +1536,144 @@
       "keyboardFocus": "None",
       "saved": {
         "open": false,
-        "page": 0,
+        "page": 2,
         "viewport": {
-          "x": 31,
-          "y": -17,
-          "zoom": 1.25,
-          "subflow": "bar"
+          "x": 137,
+          "y": -63,
+          "zoom": 0.8,
+          "subflow": "bar/media"
         },
         "selected": "bar/media@winit"
       },
       "lastClick": {
-        "x": 798,
-        "y": 1116,
+        "x": 780,
+        "y": 1132,
         "output": "winit",
         "hit": "bar/media@winit"
       }
     }
   },
+  "E_object_lifetimes": [
+    {
+      "before": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:12",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe148550480)",
+        "objectBirthId": "1789841328520-064itbdhn91k8y12bmgu33j",
+        "rect": {
+          "x": 727,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 14,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      "after": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:2",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c3af340)",
+        "objectBirthId": "1789841329874-twt160hom650cq4ppo2oc",
+        "rect": {
+          "x": 727,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 13,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      }
+    },
+    {
+      "before": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:2",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c3af340)",
+        "objectBirthId": "1789841329874-twt160hom650cq4ppo2oc",
+        "rect": {
+          "x": 727,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 13,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      },
+      "after": {
+        "targetId": "bar/media",
+        "instanceId": "bar/media@winit",
+        "output": "winit",
+        "sourcePath": "modules/bar/Media.qml",
+        "depth": 1,
+        "state": "resident",
+        "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:2",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c70f940)",
+        "objectBirthId": "1789841331178-ly5yibktd2j6dhcmtqtyv",
+        "rect": {
+          "x": 727,
+          "y": 0,
+          "width": 105,
+          "height": 40,
+          "revision": 13,
+          "dpr": 1,
+          "barMustShow": false,
+          "barAutoHide": false,
+          "eligible": true
+        },
+        "values": {
+          "width": 105,
+          "height": 40,
+          "visible": true,
+          "enabled": true
+        }
+      }
+    }
+  ],
   "E_reloads": [
     {
-      "epoch": "1789840380088-fmugfj8xwz9ia27ffnim3",
+      "epoch": "1789841329748-swtkj7j5vwxh97547qgzu",
       "outputs": [
         "winit"
       ],
@@ -1533,12 +1685,13 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789840380088-fmugfj8xwz9ia27ffnim3:3",
-          "objectIdentity": "BarContent_QMLTYPE_863(0x7f039887f280)",
+          "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:3",
+          "objectIdentity": "BarContent_QMLTYPE_749(0x7fe16be7cb20)",
+          "objectBirthId": null,
           "rect": {
             "x": 0,
             "y": 0,
-            "width": 1872,
+            "width": 1836,
             "height": 40,
             "revision": 5,
             "dpr": 1,
@@ -1547,7 +1700,7 @@
             "eligible": true
           },
           "values": {
-            "width": 1872,
+            "width": 1836,
             "height": 40,
             "visible": true,
             "enabled": true
@@ -1560,10 +1713,11 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789840380088-fmugfj8xwz9ia27ffnim3:2",
-          "objectIdentity": "Media_QMLTYPE_1049(0x7f03778ab840)",
+          "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:2",
+          "objectIdentity": "Media_QMLTYPE_996(0x7fe14c3af340)",
+          "objectBirthId": "1789841329874-twt160hom650cq4ppo2oc",
           "rect": {
-            "x": 745,
+            "x": 727,
             "y": 0,
             "width": 105,
             "height": 40,
@@ -1587,10 +1741,11 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789840380088-fmugfj8xwz9ia27ffnim3:1",
-          "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0375020c40)",
+          "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484c3d00)",
+          "objectBirthId": null,
           "rect": {
-            "x": 869,
+            "x": 851,
             "y": 0,
             "width": 134,
             "height": 40,
@@ -1616,6 +1771,7 @@
           "state": "unloaded",
           "runtimeToken": null,
           "objectIdentity": null,
+          "objectBirthId": null,
           "rect": null,
           "values": null
         }
@@ -1624,27 +1780,27 @@
         {
           "kind": "resident",
           "instanceId": "bar/clock@winit",
-          "token": "1789840380088-fmugfj8xwz9ia27ffnim3:1"
+          "token": "1789841329748-swtkj7j5vwxh97547qgzu:1"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@winit",
-          "token": "1789840380088-fmugfj8xwz9ia27ffnim3:2"
+          "token": "1789841329748-swtkj7j5vwxh97547qgzu:2"
         },
         {
           "kind": "resident",
           "instanceId": "bar@winit",
-          "token": "1789840380088-fmugfj8xwz9ia27ffnim3:3"
+          "token": "1789841329748-swtkj7j5vwxh97547qgzu:3"
         }
       ],
       "selectedInstanceId": "bar/media@winit",
       "selectedTargetId": "bar/media",
       "selectionState": "resident",
       "viewport": {
-        "x": 31,
-        "y": -17,
-        "zoom": 1.25,
-        "subflow": "bar"
+        "x": 217,
+        "y": -109,
+        "zoom": 1.7,
+        "subflow": "bar/media"
       },
       "pickHold": false,
       "heldOutputs": [],
@@ -1661,8 +1817,8 @@
       "mediaPopupsOpen": false,
       "settingsOpen": false,
       "settingsLoaded": false,
-      "settingsPage": 0,
-      "settingsPublishedPage": -1,
+      "settingsPage": 2,
+      "settingsPublishedPage": 2,
       "picker": {
         "phase": "idle",
         "overlays": 0,
@@ -1674,7 +1830,7 @@
       }
     },
     {
-      "epoch": "1789840381430-cgevq68wsnufleaxg6psk",
+      "epoch": "1789841331068-a80yhoojl8b4n43rwt2csor",
       "outputs": [
         "winit"
       ],
@@ -1686,12 +1842,13 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789840381430-cgevq68wsnufleaxg6psk:3",
-          "objectIdentity": "BarContent_QMLTYPE_863(0x7f03778aebe0)",
+          "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:3",
+          "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1672fc080)",
+          "objectBirthId": null,
           "rect": {
             "x": 0,
             "y": 0,
-            "width": 1872,
+            "width": 1836,
             "height": 40,
             "revision": 5,
             "dpr": 1,
@@ -1700,7 +1857,7 @@
             "eligible": true
           },
           "values": {
-            "width": 1872,
+            "width": 1836,
             "height": 40,
             "visible": true,
             "enabled": true
@@ -1713,10 +1870,11 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789840381430-cgevq68wsnufleaxg6psk:2",
-          "objectIdentity": "Media_QMLTYPE_1049(0x7f0378f64460)",
+          "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:2",
+          "objectIdentity": "Media_QMLTYPE_996(0x7fe14c70f940)",
+          "objectBirthId": "1789841331178-ly5yibktd2j6dhcmtqtyv",
           "rect": {
-            "x": 745,
+            "x": 727,
             "y": 0,
             "width": 105,
             "height": 40,
@@ -1740,10 +1898,11 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789840381430-cgevq68wsnufleaxg6psk:1",
-          "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0374eb1ec0)",
+          "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe148415460)",
+          "objectBirthId": null,
           "rect": {
-            "x": 869,
+            "x": 851,
             "y": 0,
             "width": 134,
             "height": 40,
@@ -1769,6 +1928,7 @@
           "state": "unloaded",
           "runtimeToken": null,
           "objectIdentity": null,
+          "objectBirthId": null,
           "rect": null,
           "values": null
         }
@@ -1777,27 +1937,27 @@
         {
           "kind": "resident",
           "instanceId": "bar/clock@winit",
-          "token": "1789840381430-cgevq68wsnufleaxg6psk:1"
+          "token": "1789841331068-a80yhoojl8b4n43rwt2csor:1"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@winit",
-          "token": "1789840381430-cgevq68wsnufleaxg6psk:2"
+          "token": "1789841331068-a80yhoojl8b4n43rwt2csor:2"
         },
         {
           "kind": "resident",
           "instanceId": "bar@winit",
-          "token": "1789840381430-cgevq68wsnufleaxg6psk:3"
+          "token": "1789841331068-a80yhoojl8b4n43rwt2csor:3"
         }
       ],
       "selectedInstanceId": "bar/media@winit",
       "selectedTargetId": "bar/media",
       "selectionState": "resident",
       "viewport": {
-        "x": 31,
-        "y": -17,
-        "zoom": 1.25,
-        "subflow": "bar"
+        "x": 217,
+        "y": -109,
+        "zoom": 1.7,
+        "subflow": "bar/media"
       },
       "pickHold": false,
       "heldOutputs": [],
@@ -1814,8 +1974,8 @@
       "mediaPopupsOpen": false,
       "settingsOpen": false,
       "settingsLoaded": false,
-      "settingsPage": 0,
-      "settingsPublishedPage": -1,
+      "settingsPage": 2,
+      "settingsPublishedPage": 2,
       "picker": {
         "phase": "idle",
         "overlays": 0,
@@ -1828,7 +1988,7 @@
     }
   ],
   "E_static_after_reload": {
-    "epoch": "1789840382733-x3fbofx1ss558efwzkr44",
+    "epoch": "1789841332462-tnseoebq6rwfblrwy65uy",
     "outputs": [
       "winit"
     ],
@@ -1842,6 +2002,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       },
@@ -1854,6 +2015,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       },
@@ -1866,6 +2028,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       },
@@ -1878,6 +2041,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -1887,10 +2051,10 @@
     "selectedTargetId": "bar/media",
     "selectionState": "unloaded",
     "viewport": {
-      "x": 31,
-      "y": -17,
-      "zoom": 1.25,
-      "subflow": "bar"
+      "x": 217,
+      "y": -109,
+      "zoom": 1.7,
+      "subflow": "bar/media"
     },
     "pickHold": false,
     "heldOutputs": [],
@@ -1907,8 +2071,8 @@
     "mediaPopupsOpen": false,
     "settingsOpen": false,
     "settingsLoaded": false,
-    "settingsPage": 0,
-    "settingsPublishedPage": -1,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
     "picker": {
       "phase": "idle",
       "overlays": 0,
@@ -1920,7 +2084,7 @@
     }
   },
   "E_rebound": {
-    "epoch": "1789840382733-x3fbofx1ss558efwzkr44",
+    "epoch": "1789841332462-tnseoebq6rwfblrwy65uy",
     "outputs": [
       "winit"
     ],
@@ -1932,12 +2096,13 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789840382733-x3fbofx1ss558efwzkr44:2",
-        "objectIdentity": "BarContent_QMLTYPE_863(0x7f0374f69ce0)",
+        "runtimeToken": "1789841332462-tnseoebq6rwfblrwy65uy:2",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c710200)",
+        "objectBirthId": null,
         "rect": {
           "x": 0,
           "y": 0,
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "revision": 5,
           "dpr": 1,
@@ -1946,7 +2111,7 @@
           "eligible": true
         },
         "values": {
-          "width": 1872,
+          "width": 1836,
           "height": 40,
           "visible": true,
           "enabled": true
@@ -1959,14 +2124,15 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840382733-x3fbofx1ss558efwzkr44:3",
-        "objectIdentity": "Media_QMLTYPE_1049(0x7f0375089360)",
+        "runtimeToken": "1789841332462-tnseoebq6rwfblrwy65uy:3",
+        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c70e520)",
+        "objectBirthId": "1789841332666-ljxgoiy7iklx7rbl54y6c",
         "rect": {
-          "x": 745,
+          "x": 727,
           "y": 0,
           "width": 105,
           "height": 40,
-          "revision": 26,
+          "revision": 19,
           "dpr": 1,
           "barMustShow": false,
           "barAutoHide": false,
@@ -1986,10 +2152,11 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789840382733-x3fbofx1ss558efwzkr44:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1101(0x7f0378f66140)",
+        "runtimeToken": "1789841332462-tnseoebq6rwfblrwy65uy:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe14c70f5c0)",
+        "objectBirthId": null,
         "rect": {
-          "x": 869,
+          "x": 851,
           "y": 0,
           "width": 134,
           "height": 40,
@@ -2015,6 +2182,7 @@
         "state": "unloaded",
         "runtimeToken": null,
         "objectIdentity": null,
+        "objectBirthId": null,
         "rect": null,
         "values": null
       }
@@ -2023,27 +2191,27 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789840382733-x3fbofx1ss558efwzkr44:1"
+        "token": "1789841332462-tnseoebq6rwfblrwy65uy:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789840382733-x3fbofx1ss558efwzkr44:2"
+        "token": "1789841332462-tnseoebq6rwfblrwy65uy:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789840382733-x3fbofx1ss558efwzkr44:3"
+        "token": "1789841332462-tnseoebq6rwfblrwy65uy:3"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
     "selectedTargetId": "bar/media",
     "selectionState": "resident",
     "viewport": {
-      "x": 31,
-      "y": -17,
-      "zoom": 1.25,
-      "subflow": "bar"
+      "x": 217,
+      "y": -109,
+      "zoom": 1.7,
+      "subflow": "bar/media"
     },
     "pickHold": false,
     "heldOutputs": [],
@@ -2060,8 +2228,8 @@
     "mediaPopupsOpen": false,
     "settingsOpen": false,
     "settingsLoaded": false,
-    "settingsPage": 0,
-    "settingsPublishedPage": -1,
+    "settingsPage": 2,
+    "settingsPublishedPage": 2,
     "picker": {
       "phase": "idle",
       "overlays": 0,
@@ -2091,58 +2259,58 @@
       "destroyed": true
     },
     {
-      "id": "56",
-      "layer": 3,
-      "namespace": "quickshell:code-workflow-picker",
-      "keyboard": [
-        0
-      ],
-      "zones": [
-        -1,
-        -1
-      ],
-      "anchors": [
-        15,
-        15
-      ],
-      "destroyed": true
-    },
-    {
-      "id": "65",
-      "layer": 3,
-      "namespace": "quickshell:code-workflow-picker",
-      "keyboard": [
-        0
-      ],
-      "zones": [
-        -1,
-        -1
-      ],
-      "anchors": [
-        15,
-        15
-      ],
-      "destroyed": true
-    },
-    {
-      "id": "63",
-      "layer": 3,
-      "namespace": "quickshell:code-workflow-picker",
-      "keyboard": [
-        0
-      ],
-      "zones": [
-        -1,
-        -1
-      ],
-      "anchors": [
-        15,
-        15
-      ],
-      "destroyed": true
-    },
-    {
       "id": "64",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "53",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "37",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "42",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [

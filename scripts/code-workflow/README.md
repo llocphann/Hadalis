@@ -178,6 +178,9 @@ E changes only a revision literal in the temporary shell.qml, allowing Quickshel
 file watching to perform ordinary reload. It checks new QObject identities and
 actual old-object destruction, stable selection/viewport, and reload while the
 selected Media module is unloaded. Persistent state contains primitives only.
+The restoration case uses Settings page 2 and non-default viewport metadata.
+Actual-object birth markers and destruction signals identify each QObject
+lifetime; memory addresses are recorded only as diagnostics and may be reused.
 Fixture configuration uses Config.setNestedValue on the private XDG file so the
 normal JSON mirror cannot silently overwrite direct JsonAdapter assignments.
 

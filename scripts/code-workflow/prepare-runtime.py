@@ -44,9 +44,10 @@ def prepare(destination, revision):
         injected = f'    id: root\n    RuntimeTarget {{ runtimeObject: root; targetId: "{target}" }}\n'
         if name == 'Media':
             injected += '    property string probeSensitiveSentinel: "DO_NOT_EXPORT_PRIVATE_VALUE"\n'
+            injected += '    readonly property string probeBirthId: Date.now().toString() + "-" + Math.random().toString(36).slice(2)\n'
             if 'Component.onDestruction:' in original:
                 raise ValueError('Media now has a destruction handler; review instrumentation')
-            injected += '    Component.onDestruction: console.info("WORKFLOW_MEDIA_DESTROYED", String(root))\n'
+            injected += '    Component.onDestruction: console.info("WORKFLOW_MEDIA_DESTROYED", probeBirthId, String(root))\n'
         text = replace_once(original, '    id: root\n', injected)
         if name == 'Media':
             text = replace_once(text, '    function toggleExpanded(): void {\n',

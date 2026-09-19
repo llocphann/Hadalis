@@ -87,6 +87,7 @@ ShellRoot {
             return JSON.stringify(report)
         }
         function select(instanceId: string): bool { return RuntimeRegistry.select(instanceId) }
+        function viewport(encoded: string): void { RuntimeRegistry.viewport = JSON.parse(encoded) }
         function media(enabled: bool): void {
             shell.mediaEnabled = enabled
             state.mediaEnabled = enabled

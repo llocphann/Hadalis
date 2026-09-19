@@ -26,6 +26,8 @@ QML/driver/binary hashes, assertions, snapshots and protocol lifetimes. The firs
 C milestone is `dddae31695f1a6d73e4a8025821da68839148c48`. Its generated-import
 regression was independently fixed in `b8ab566d5138d5dbcc18217b956f45f560a45817`;
 that fix and its guard tests are retained.
+The D/E implementation checkpoint is
+`2171f6d69fe05e4106f79f8a95495c81c39b21f7`.
 
 A already passed the parser corpus at `2289105d686f38a7a682cef0b781f3bc0ee781c6`:
 1,006 QML files, no-op byte preservation, incremental CST equality and prefix
@@ -50,6 +52,9 @@ do not close B's remaining gate or make the whole repository green.
    because Wayland object IDs can later be reused by Settings or popup surfaces.
 6. Fixture config changes use Config.setNestedValue so the JSON mirror agrees.
    Virtual pointer device lifetime must span the hover experiment on headless seats.
+7. Never treat a QObject address as a lifetime ID: allocators reuse addresses.
+   The qualified probe uses an object-owned birth marker plus destruction signal.
+   Restore tests use non-default Settings page 2 and custom viewport values.
 
 ## Reproduce
 

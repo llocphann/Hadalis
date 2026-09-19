@@ -227,6 +227,13 @@ Media destruction is observed. A third reload keeps selected-but-unloaded Media
 in static mode, without forcing the dormant LazyLoader. Returning Media then
 rebinds the selection. No QObject is persisted across engines.
 
+The final qualified harness restores non-default Settings page 2 and a modified
+viewport; E changes pan/zoom/subflow again before reload. Returning constructor
+defaults cannot satisfy these checks. QObject memory addresses are diagnostic
+only: an allocator reused an address during qualification. A birth marker owned
+by the actual Media object, its destruction signal, and the new registry
+generation jointly prove replacement even when the address is reused.
+
 The experiment found and corrected three harness/architecture assumptions:
 
 - PersistentProperties cannot safely carry a JS object from the old QQmlEngine;

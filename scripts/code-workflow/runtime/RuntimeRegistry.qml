@@ -64,6 +64,7 @@ Singleton {
                     state: p && p.runtimeObject ? "resident" : "unloaded",
                     runtimeToken: p?.token ?? null,
                     objectIdentity: p?.runtimeObject ? String(p.runtimeObject) : null,
+                    objectBirthId: p?.runtimeObject?.probeBirthId ?? null,
                     rect: p ? p.rectSnapshot() : null,
                     values: p ? p.safeValues() : null})
             }

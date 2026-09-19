@@ -182,7 +182,7 @@ class Probe:
         self.ipc('media',True)
         rebound = self.wait_target('bar/media','resident')
         new_media = self.target(rebound,'bar/media')
-        self.record('C stable selection rebinds to a new runtime generation',rebound['selectedInstanceId']==media['instanceId'] and new_media['runtimeToken']!=media['runtimeToken'])
+        self.record('C stable selection rebinds to a new runtime generation',rebound['selectedInstanceId']==media['instanceId'] and new_media['runtimeToken']!=media['runtimeToken'] and new_media['objectBirthId']!=media['objectBirthId'])
         self.record('C registry has no duplicate instance IDs',len({r['instanceId'] for r in rebound['records']})==len(rebound['records']))
         self.report['C_unloaded']=unloaded
         self.report['C_rebound']=rebound
@@ -196,8 +196,9 @@ class Probe:
         self.ipc('bar',True)
         self.ipc('autoHide',False)
         shown=self.wait_snapshot(lambda s:(r:=self.target(s,'bar/media'))['state']=='resident' and r['rect']['eligible'] and r['rect']['y']>=0,'Bar shown')
-        self.ipc('settingsOpen',0)
-        settings=self.wait_snapshot(lambda s:s['settingsOpen'] and s['settingsLoaded'] and s['settingsPage']==0,'actual Settings page ready')
+        self.ipc('viewport',json.dumps({'x':137,'y':-63,'zoom':.8,'subflow':'bar/media'}))
+        self.ipc('settingsOpen',2)
+        settings=self.wait_snapshot(lambda s:s['settingsOpen'] and s['settingsLoaded'] and s['settingsPage']==2,'actual non-default Settings page ready')
         self.record('D actual Settings overlay loaded',settings['settingsLoaded'])
         self.record('D begin picker succeeds',self.ipc('pick')=='true')
         picking=self.wait_snapshot(lambda s:s['picker']['phase']=='picking' and s['picker']['overlays']==len(s['outputs']),'picker surfaces live')
@@ -299,6 +300,8 @@ class Probe:
         current=self.wait_target('bar/media','resident')
         media=self.target(current,'bar/media')
         self.ipc('select',media['instanceId'])
+        expected_viewport={'x':217,'y':-109,'zoom':1.7,'subflow':'bar/media'}
+        self.ipc('viewport',json.dumps(expected_viewport))
         current=self.snapshot()
         shell_file=self.directory/'config/shell.qml'
         snapshots=[]
@@ -309,10 +312,15 @@ class Probe:
             shell_file.write_text(text)
             reloaded=self.wait_snapshot(lambda s:s['sourceRevision']==revision and s['epoch']!=current['epoch'] and s['selectionState']=='resident','ordinary source-triggered Quickshell reload')
             new=self.target(reloaded,'bar/media')
-            self.record(f'E reload {revision-1} preserves semantic selection and viewport',reloaded['selectedInstanceId']==current['selectedInstanceId'] and reloaded['selectedTargetId']==current['selectedTargetId'] and reloaded['viewport']==current['viewport'])
-            self.record(f'E reload {revision-1} replaces actual QObject and runtime generation',new['runtimeToken']!=old['runtimeToken'] and new['objectIdentity']!=old['objectIdentity'])
-            wait_for(lambda: 'WORKFLOW_MEDIA_DESTROYED '+old['objectIdentity'] in (self.directory/'quickshell.log').read_text(),'old Media QObject destruction')
-            self.record(f'E reload {revision-1} emits actual old QObject destruction',True,old['objectIdentity'])
+            self.report.setdefault('E_object_lifetimes',[]).append({'before':old,'after':new})
+            self.record(f'E reload {revision-1} preserves semantic selection and viewport',reloaded['selectedInstanceId']==current['selectedInstanceId'] and reloaded['selectedTargetId']==current['selectedTargetId'] and reloaded['viewport']==current['viewport']==expected_viewport)
+            # Allocators can reuse a destroyed QObject's address. A birth marker
+            # owned by the actual Media instance plus its destruction signal is
+            # stronger than comparing String(QObject) addresses across engines.
+            self.record(f'E reload {revision-1} replaces actual QObject and runtime generation',new['runtimeToken']!=old['runtimeToken'] and bool(old['objectBirthId']) and bool(new['objectBirthId']) and new['objectBirthId']!=old['objectBirthId'])
+            destruction='WORKFLOW_MEDIA_DESTROYED '+old['objectBirthId']+' '+old['objectIdentity']
+            wait_for(lambda: destruction in (self.directory/'quickshell.log').read_text(),'old Media QObject destruction')
+            self.record(f'E reload {revision-1} emits actual old QObject destruction',True,{'birthId':old['objectBirthId'],'object':old['objectIdentity']})
             snapshots.append(reloaded)
             current=reloaded
         self.ipc('media',False)

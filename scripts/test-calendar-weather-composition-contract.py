@@ -106,6 +106,9 @@ def main() -> None:
         "id: orbitalTimeline",
         "(Weather.data?.hourly ?? []).slice(0, 8)",
         "id: detailPanel",
+        "id: detailSummary",
+        "id: primaryMetrics",
+        "id: sunTimeline",
     ):
         require(weather, token, "WeatherPopupContent.qml")
     for token in ("id: calendarPanel", "function calendarDay(index)", "columns: root.compact ? 1 : 2", "columns: root.compact ? 1 : 3"):

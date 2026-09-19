@@ -41,14 +41,22 @@ def main() -> None:
         "event.angleDelta.y > 0",
         "(Weather.data?.hourly ?? []).slice(0, 8)",
         "function hourFromLabel(label): int",
-        "function orbitAngleForHour(label): real",
-        "const shiftedHour = (hour - 6 + 24) % 24",
-        "+ (shiftedHour / 24) * Math.PI * 2",
+        "function arcAngle(startAngle, endAngle, fraction): real",
+        "const quadrant = Math.floor(shiftedHour / 6)",
+        "const fraction = (shiftedHour - quadrant * 6) / 6",
+        "return orbitalTimeline.arcAngle(start, end, fraction)",
         "orbitalTimeline.orbitAngleForHour(modelData?.label)",
         "width: 52",
         "height: 64",
         'text: Qt.formatDate(root.now, "dddd, MMM d")',
-        'text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)',
+        "id: detailSummary",
+        "id: primaryMetrics",
+        "component PrimaryMetric: Rectangle",
+        "component SecondaryMetric: RowLayout",
+        "id: secondaryStrip",
+        "id: sunTimeline",
+        "root.sunProgress",
+        'Translation.tr("Last refresh: %1")',
     )
     for token in required:
         if token not in source:
@@ -70,6 +78,7 @@ def main() -> None:
         "anchors.fill: parent\n        radius: Appearance.rounding.large",
         "function orbitAngle(index, count): real",
         "orbitalTimeline.orbitAngle(index, count)",
+        "+ (shiftedHour / 24) * Math.PI * 2",
         "DateTime.timeDisplay",
         "implicitHeight: 300",
         "width: 58",
@@ -78,12 +87,13 @@ def main() -> None:
         if forbidden in source:
             raise AssertionError(f"Weather popup still contains retired/non-fade token: {forbidden!r}")
 
-    for token in (
-        "implicitWidth: columnLayout.implicitWidth + 10 * 2",
-        "implicitHeight: columnLayout.implicitHeight + 10 * 2",
+    for retired in (
+        "WeatherCard {",
+        'title: Translation.tr("Sunrise")',
+        'title: Translation.tr("Sunset")',
     ):
-        if token not in card:
-            raise AssertionError(f"Weather metric card lost compact sizing token: {token!r}")
+        if retired in source:
+            raise AssertionError(f"Detailed Weather regressed to the flat metric grid: {retired!r}")
 
     print("Weather popup right-rail slide composition contract: OK")
 

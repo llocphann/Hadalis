@@ -16,12 +16,38 @@ Item {
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
     property date now: new Date()
+    readonly property real sunProgress: {
+        const sunrise = root.timeToMinutes(Weather.data?.sunrise)
+        const sunset = root.timeToMinutes(Weather.data?.sunset)
+        const current = root.now.getHours() * 60 + root.now.getMinutes()
+        if (sunrise < 0 || sunset <= sunrise)
+            return 0.5
+        return Math.max(0, Math.min(1, (current - sunrise) / (sunset - sunrise)))
+    }
 
     implicitWidth: root.panelWidth
     implicitHeight: root.panelHeight
 
     function selectTab(index): void {
         root.currentTab = Math.max(0, Math.min(root.tabCount - 1, index))
+    }
+
+    function timeToMinutes(value): int {
+        const match = String(value ?? "").trim()
+            .match(/^(\d{1,2}):(\d{2})(?:\s*([AP]M))?/i)
+        if (!match)
+            return -1
+
+        let hour = parseInt(match[1], 10)
+        const minute = parseInt(match[2], 10)
+        const suffix = String(match[3] ?? "").toUpperCase()
+        if (suffix === "AM")
+            hour = hour === 12 ? 0 : hour
+        else if (suffix === "PM")
+            hour = hour === 12 ? 12 : hour + 12
+        if (isNaN(hour) || isNaN(minute))
+            return -1
+        return hour * 60 + minute
     }
 
     Timer {
@@ -76,26 +102,68 @@ Item {
             readonly property real orbitRadiusX: Math.max(1, radiusX - 2)
             readonly property real orbitRadiusY: Math.max(1, radiusY - 2)
 
-            // Use the forecast's actual clock label rather than its array
-            // index. This is a 24-hour day dial anchored so 06:00 is at the
-            // top, 12:00 at the right, 18:00 at the bottom and 00:00 at the
-            // left. Three-hour forecast slots therefore advance naturally
-            // around the orbit without overlapping.
-            function hourFromLabel(label): int {
-                const match = String(label ?? "").match(/^(\d{1,2}):/)
+            // Preserve the real clock anchors while equalizing visual
+            // spacing on the ellipse. 06/12/18/00 stay at the four cardinal
+            // points. Intermediate times are placed by arc length within each
+            // six-hour quadrant, not by raw 45° parameter angles.
+            function hourFromLabel(label): real {
+                const match = String(label ?? "").match(/^(\d{1,2})(?::(\d{2}))?/)
                 if (!match)
                     return 0
-                const parsed = parseInt(match[1], 10)
-                if (isNaN(parsed))
+                const hour = parseInt(match[1], 10)
+                const minute = parseInt(match[2] ?? "0", 10)
+                if (isNaN(hour) || isNaN(minute))
                     return 0
-                return ((parsed % 24) + 24) % 24
+                return (((hour % 24) + 24) % 24) + minute / 60
+            }
+
+            function arcAngle(startAngle, endAngle, fraction): real {
+                if (fraction <= 0)
+                    return startAngle
+                if (fraction >= 1)
+                    return endAngle
+
+                const samples = 72
+                const rx = orbitalTimeline.orbitRadiusX
+                const ry = orbitalTimeline.orbitRadiusY
+                const lengths = [0]
+                let total = 0
+                let prevX = Math.cos(startAngle) * rx
+                let prevY = Math.sin(startAngle) * ry
+
+                for (let sample = 1; sample <= samples; ++sample) {
+                    const t = sample / samples
+                    const angle = startAngle + (endAngle - startAngle) * t
+                    const x = Math.cos(angle) * rx
+                    const y = Math.sin(angle) * ry
+                    const dx = x - prevX
+                    const dy = y - prevY
+                    total += Math.sqrt(dx * dx + dy * dy)
+                    lengths.push(total)
+                    prevX = x
+                    prevY = y
+                }
+
+                const target = total * fraction
+                let sample = 1
+                while (sample < lengths.length && lengths[sample] < target)
+                    ++sample
+
+                const before = lengths[Math.max(0, sample - 1)]
+                const span = Math.max(0.0001, lengths[sample] - before)
+                const local = (target - before) / span
+                const t = (sample - 1 + local) / samples
+                return startAngle + (endAngle - startAngle) * t
             }
 
             function orbitAngleForHour(label): real {
                 const hour = orbitalTimeline.hourFromLabel(label)
                 const shiftedHour = (hour - 6 + 24) % 24
-                return -Math.PI / 2
-                    + (shiftedHour / 24) * Math.PI * 2
+                const quadrant = Math.floor(shiftedHour / 6)
+                const fraction = (shiftedHour - quadrant * 6) / 6
+                const start = -Math.PI / 2 + quadrant * Math.PI / 2
+                const end = start + Math.PI / 2
+                return orbitalTimeline.arcAngle(start, end, fraction)
             }
 
             Canvas {
@@ -270,7 +338,7 @@ Item {
         width: tabViewport.width
         height: tabViewport.height
         radius: Appearance.rounding.small
-        color: Appearance.colors.colSurfaceContainerHigh
+        color: "transparent"
         y: (1 - root.currentTab) * tabViewport.height
         enabled: root.currentTab === 1
 
@@ -286,110 +354,326 @@ Item {
         ColumnLayout {
             id: detailColumn
             anchors {
-                left: parent.left
-                right: parent.right
-                top: parent.top
-                margins: 14
+                fill: parent
+                leftMargin: 14
+                rightMargin: 24
+                topMargin: 12
+                bottomMargin: 12
             }
             spacing: 8
 
-            ColumnLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 2
+            RowLayout {
+                id: detailSummary
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                spacing: 10
 
-                RowLayout {
-                    visible: Weather.showVisibleCity
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 6
+                MaterialSymbol {
+                    text: Icons.getWeatherIcon(
+                        Weather.data?.wCode,
+                        Weather.isNightNow()) ?? "cloud"
+                    iconSize: 30
+                    color: Appearance.colors.colPrimary
+                    Layout.alignment: Qt.AlignVCenter
+                }
 
-                    MaterialSymbol {
-                        fill: 0
-                        font.weight: Font.Medium
-                        text: "place"
-                        iconSize: Appearance.font.pixelSize.large
-                        color: Appearance.colors.colOnSurfaceVariant
+                ColumnLayout {
+                    spacing: -1
+
+                    StyledText {
+                        text: Weather.data?.temp ?? "--°"
+                        color: Appearance.colors.colOnSurface
+                        font {
+                            pixelSize: 25
+                            weight: Font.Medium
+                        }
                     }
 
                     StyledText {
-                        text: Weather.visibleCity
-                        font {
-                            weight: Font.Medium
-                            pixelSize: Appearance.font.pixelSize.normal
-                        }
+                        text: Translation.tr("Feels like %1")
+                            .arg(Weather.data?.tempFeelsLike ?? "--°")
                         color: Appearance.colors.colOnSurfaceVariant
+                        font.pixelSize: Appearance.font.pixelSize.smaller
                     }
                 }
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colOnSurfaceVariant
-                    text: Weather.data.temp + " • "
-                        + Translation.tr("Feels like %1").arg(Weather.data.tempFeelsLike)
+                Item { Layout.fillWidth: true }
+
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                    spacing: 1
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignRight
+                        text: Weather.data?.description ?? ""
+                        color: Appearance.colors.colOnSurface
+                        font {
+                            pixelSize: Appearance.font.pixelSize.normal
+                            weight: Font.DemiBold
+                        }
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: 150
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignRight
+                        text: Weather.showVisibleCity
+                            ? Weather.visibleCity
+                            : Translation.tr("Last refresh: %1")
+                                .arg(Weather.data?.lastRefresh ?? "--:--")
+                        color: Appearance.colors.colOnSurfaceVariant
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: 150
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignRight
+                        visible: Weather.showVisibleCity
+                        text: Translation.tr("Last refresh: %1")
+                            .arg(Weather.data?.lastRefresh ?? "--:--")
+                        color: Appearance.colors.colOnSurfaceVariant
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                    }
                 }
             }
 
             GridLayout {
-                columns: 2
-                rowSpacing: 4
-                columnSpacing: 4
-                uniformCellWidths: true
+                id: primaryMetrics
                 Layout.fillWidth: true
+                columns: 4
+                columnSpacing: 6
+                rowSpacing: 0
+                uniformCellWidths: true
 
-                WeatherCard {
-                    title: Translation.tr("UV Index")
-                    symbol: "wb_sunny"
-                    value: Weather.data.uv
-                }
-                WeatherCard {
-                    title: Translation.tr("Wind")
-                    symbol: "air"
-                    value: `(${Weather.data.windDir}) ${Weather.data.wind}`
-                }
-                WeatherCard {
-                    title: Translation.tr("Precipitation")
-                    symbol: "rainy_light"
-                    value: Weather.data.precip
-                }
-                WeatherCard {
+                PrimaryMetric {
                     title: Translation.tr("Humidity")
                     symbol: "humidity_low"
-                    value: Weather.data.humidity
+                    value: Weather.data?.humidity ?? "--"
                 }
-                WeatherCard {
-                    title: Translation.tr("Visibility")
-                    symbol: "visibility"
-                    value: Weather.data.visib
+                PrimaryMetric {
+                    title: Translation.tr("Wind")
+                    symbol: "air"
+                    value: ((Weather.data?.windDir ?? "") + " "
+                        + (Weather.data?.wind ?? "--")).trim()
                 }
-                WeatherCard {
-                    title: Translation.tr("Pressure")
-                    symbol: "readiness_score"
-                    value: Weather.data.press
+                PrimaryMetric {
+                    title: Translation.tr("Precipitation")
+                    symbol: "rainy_light"
+                    value: Weather.data?.precip ?? "--"
                 }
-                WeatherCard {
-                    title: Translation.tr("Sunrise")
-                    symbol: "wb_twilight"
-                    value: Weather.data.sunrise
+                PrimaryMetric {
+                    title: Translation.tr("UV Index")
+                    symbol: "wb_sunny"
+                    value: Weather.data?.uv ?? "--"
                 }
-                WeatherCard {
-                    title: Translation.tr("Sunset")
-                    symbol: "bedtime"
-                    value: Weather.data.sunset
+            }
+
+            Rectangle {
+                id: secondaryStrip
+                Layout.fillWidth: true
+                implicitHeight: 36
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colSurfaceContainerHigh
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    spacing: 8
+
+                    SecondaryMetric {
+                        Layout.fillWidth: true
+                        title: Translation.tr("Visibility")
+                        symbol: "visibility"
+                        value: Weather.data?.visib ?? "--"
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 18
+                        color: Appearance.colors.colOutlineVariant
+                    }
+
+                    SecondaryMetric {
+                        Layout.fillWidth: true
+                        title: Translation.tr("Pressure")
+                        symbol: "readiness_score"
+                        value: Weather.data?.press ?? "--"
+                    }
+                }
+            }
+
+            Rectangle {
+                id: sunTimeline
+                Layout.fillWidth: true
+                implicitHeight: 62
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colSurfaceContainerHigh
+
+                MaterialSymbol {
+                    id: sunriseIcon
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.top: parent.top
+                    anchors.topMargin: 9
+                    text: "wb_twilight"
+                    iconSize: 16
+                    color: Appearance.colors.colPrimary
+                }
+
+                MaterialSymbol {
+                    id: sunsetIcon
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.top: parent.top
+                    anchors.topMargin: 9
+                    text: "bedtime"
+                    iconSize: 16
+                    color: Appearance.colors.colPrimary
+                }
+
+                Rectangle {
+                    id: sunTrack
+                    anchors.left: sunriseIcon.right
+                    anchors.right: sunsetIcon.left
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: sunriseIcon.verticalCenter
+                    height: 2
+                    radius: 1
+                    color: Appearance.colors.colOutlineVariant
+
+                    Rectangle {
+                        width: 8
+                        height: 8
+                        radius: 4
+                        x: Math.max(0, Math.min(parent.width - width,
+                            root.sunProgress * parent.width - width / 2))
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: Appearance.colors.colPrimary
+                        border.width: 1
+                        border.color: Appearance.colors.colSurface
+                    }
+                }
+
+                StyledText {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 8
+                    text: Weather.data?.sunrise ?? "--:--"
+                    color: Appearance.colors.colOnSurface
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                }
+
+                StyledText {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 8
+                    text: Translation.tr("Sun")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font {
+                        pixelSize: Appearance.font.pixelSize.smallest
+                        weight: Font.DemiBold
+                    }
+                }
+
+                StyledText {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 8
+                    text: Weather.data?.sunset ?? "--:--"
+                    color: Appearance.colors.colOnSurface
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                }
+            }
+        }
+    }
+    }
+
+    component PrimaryMetric: Rectangle {
+        id: primaryMetric
+        required property string title
+        required property string symbol
+        required property string value
+
+        Layout.fillWidth: true
+        implicitHeight: 58
+        radius: Appearance.rounding.small
+        color: Appearance.colors.colSurfaceContainerHigh
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 1
+
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 4
+
+                MaterialSymbol {
+                    text: primaryMetric.symbol
+                    iconSize: 15
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
+
+                StyledText {
+                    text: primaryMetric.title.toUpperCase()
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font {
+                        pixelSize: Appearance.font.pixelSize.smallest
+                        weight: Font.DemiBold
+                        letterSpacing: 0.5
+                    }
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: 70
                 }
             }
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 2
-                text: Translation.tr("Last refresh: %1").arg(Weather.data.lastRefresh)
+                text: primaryMetric.value
+                color: Appearance.colors.colOnSurface
                 font {
-                    weight: Font.Medium
-                    pixelSize: Appearance.font.pixelSize.smaller
+                    pixelSize: Appearance.font.pixelSize.small
+                    weight: Font.DemiBold
                 }
-                color: Appearance.colors.colOnSurfaceVariant
+                elide: Text.ElideRight
+                Layout.maximumWidth: 82
             }
         }
     }
+
+    component SecondaryMetric: RowLayout {
+        id: secondaryMetric
+        required property string title
+        required property string symbol
+        required property string value
+        spacing: 5
+
+        MaterialSymbol {
+            text: secondaryMetric.symbol
+            iconSize: 15
+            color: Appearance.colors.colOnSurfaceVariant
+        }
+
+        StyledText {
+            text: secondaryMetric.title
+            color: Appearance.colors.colOnSurfaceVariant
+            font.pixelSize: Appearance.font.pixelSize.smallest
+        }
+
+        Item { Layout.fillWidth: true }
+
+        StyledText {
+            text: secondaryMetric.value
+            color: Appearance.colors.colOnSurface
+            font {
+                pixelSize: Appearance.font.pixelSize.smaller
+                weight: Font.DemiBold
+            }
+        }
     }
 
     Item {

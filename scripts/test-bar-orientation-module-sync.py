@@ -40,10 +40,6 @@ def main() -> None:
         require(settings, f'bar.modules.{key}',
                 f"Bar Settings lost canonical module key: {key}")
 
-    require(settings, 'visible: !root.isVertical',
-            "Horizontal drag layout must not be presented as active for Left/Right Bar.")
-    require(settings, 'Module visibility above stays synchronized with the active Bar',
-            "Vertical Settings must explain the fixed-order visibility contract.")
     require(settings, "BarModuleOrderEditor {}",
             "Top/Bottom Bar must retain its existing drag layout editor.")
 
@@ -74,50 +70,28 @@ def main() -> None:
     forbid(editor, 'Config.setNestedValue("bar.layout." + toZone',
            "Editor mutations must target the selected orientation preset.")
 
-    required_vertical = {
-        'leftSidebarButtonEnabled': 'root.moduleEnabled("leftSidebarButton", true)',
-        'activeWindowEnabled': 'root.moduleEnabled("activeWindow", true)',
-        'taskbarEnabled': 'root.moduleEnabled("taskbar", false)',
-        'resourcesEnabled': 'root.moduleEnabled("resources", false)',
-        'mediaEnabled': 'root.moduleEnabled("media", true)',
-        'workspacesEnabled': 'root.moduleEnabled("workspaces", true)',
-        'clockEnabled': 'root.moduleEnabled("clock", true)',
-        'utilButtonsEnabled': 'root.moduleEnabled("utilButtons", false)',
-        'batteryEnabled': 'root.moduleEnabled("battery", true)',
-        'weatherEnabled': 'root.moduleEnabled("weather", true)',
-        'sysTrayEnabled': 'root.moduleEnabled("sysTray", true)',
-        'rightSidebarButtonEnabled': 'root.moduleEnabled("rightSidebarButton", true)',
-    }
-    for name, token in required_vertical.items():
-        require(vertical, token,
-                f"Vertical Bar no longer consumes canonical module state for {name}.")
-
     for token in (
-        "visible: root.leftSidebarButtonEnabled",
-        "visible: root.activeWindowEnabled",
-        "visible: root.resourcesEnabled || root.mediaEnabled",
-        "visible: root.workspacesEnabled",
-        "visible: root.taskbarEnabled",
-        "visible: root.utilButtonsEnabled",
-        "visible: root.weatherEnabled",
-        "visible: root.sysTrayEnabled",
-        "visible: root.rightSidebarButtonEnabled",
+        'Config.options?.bar?.verticalLayout?.[name]',
+        'readonly property var _topIds:',
+        'readonly property var _centerTopIds:',
+        'readonly property var _centerIds:',
+        'readonly property var _centerBottomIds:',
+        'readonly property var _bottomIds:',
+        'verticalCenter: parent.verticalCenter',
+        'zoneName: "top"',
+        'zoneName: "centerTop"',
+        'zoneName: "center"',
+        'zoneName: "centerBottom"',
+        'zoneName: "bottom"',
+        'Bar.TimerIndicator { vertical: true }',
+        'Bar.ShellUpdateIndicator { vertical: true }',
     ):
-        require(vertical, token,
-                f"Vertical Bar module presentation is not bound to Settings: {token}")
+        require(vertical, token, f"Vertical Bar lost data-driven preset behavior: {token}")
 
-    require(vertical, "visible: root.resourcesEnabled",
-            "Vertical Resources must have an independent visibility binding.")
-    require(vertical, "visible: root.mediaEnabled",
-            "Vertical Media must have an independent visibility binding.")
-    require(vertical, "visible: root.clockEnabled",
-            "Vertical Clock must have an independent visibility binding.")
-    require(vertical, "visible: root.batteryEnabled && Battery.available",
-            "Vertical Battery must have an independent visibility binding.")
-    forbid(vertical, 'visible: !(Config.options?.bar?.modules?.taskbar ?? false)',
-           "Taskbar must not silently force Resources/Media off in Left/Right Bar.")
-    forbid(vertical, 'visible: Config.options?.bar?.modules?.taskbar ?? false',
-           "Vertical module visibility must go through the canonical module contract.")
+    require(editor, 'if (toZone === "center" && id !== "workspaces") return',
+            "Layout editor must protect the centered Workspaces pivot.")
+    require(editor, 'enabled: zoneCard.zoneName !== "center"',
+            "Pivot zone must reject drag/drop of ordinary modules.")
 
     require(util, "property bool vertical: false",
             "Utility buttons must expose an orientation-safe presentation switch.")
@@ -132,14 +106,14 @@ def main() -> None:
     forbid(util, "StyledPopup {",
            "Utility expansion must remain inline and must not create a popup.")
 
-    require(vertical, "Flickable { // Middle section",
-            "Left/Right Bar must bound its middle module stack.")
-    require(vertical, "middleAvailableHeight",
-            "Left/Right Bar must reserve edge content before sizing its middle stack.")
+    require(vertical, "readonly property real topPressure:",
+            "Left/Right Bar must measure upper-half pressure.")
+    require(vertical, "readonly property real bottomPressure:",
+            "Left/Right Bar must measure lower-half pressure.")
     require(vertical, "compactRequested: root.verticalUtilitiesCompact",
             "Left/Right Utilities must compact only from real main-axis pressure.")
     require(vertical, "interactive: contentHeight > height + 0.5",
-            "Overflowing middle modules must remain reachable rather than overlap.")
+            "Overflowing vertical zones must remain reachable rather than overlap.")
 
     require(critical, "extraCondition: !root.barVertical",
             "Horizontal Bar loader must remain selected only for Top/Bottom.")

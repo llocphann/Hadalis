@@ -150,6 +150,7 @@ ColumnLayout {
     }
     function _addToZone(id, toZone, atIndex) {
         root._ensureMigrated()
+        if (toZone === "center" && id !== "workspaces") return
         const dst = root._getZone(toZone).slice()
         if (id !== "spacer" && dst.indexOf(id) !== -1) return
         const idx = (atIndex === undefined || atIndex < 0) ? dst.length : Math.max(0, Math.min(atIndex, dst.length))
@@ -167,6 +168,7 @@ ColumnLayout {
     // `availableZone` means "add new from the tray, no source removal".
     function _dropMove(srcZone, srcIdx, srcId, dstZone, dstIdx) {
         root._ensureMigrated()
+        if (dstZone === "center" && srcId !== "workspaces") return
         if (srcZone === root.availableZone) {
             root._addToZone(srcId, dstZone, dstIdx)
             return
@@ -420,6 +422,7 @@ ColumnLayout {
 
                 DropArea {
                     id: zoneDrop
+                    enabled: zoneCard.zoneName !== "center"
                     Layout.fillWidth: true
                     implicitHeight: Math.max(rowCol.implicitHeight, root.rowH)
                     readonly property string zoneName: zoneCard.zoneName
@@ -635,7 +638,7 @@ ColumnLayout {
                         Menu {
                             id: addMenu
                             Repeater {
-                                model: root._zones
+                                model: root._zones.filter(zone => zone !== "center")
                                 delegate: MenuItem {
                                     required property string modelData
                                     text: Translation.tr("Add to ") + root._zoneLabel(modelData)

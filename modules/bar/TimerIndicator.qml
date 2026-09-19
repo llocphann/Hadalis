@@ -12,6 +12,7 @@ import qs.services
  */
 MouseArea {
     id: root
+    property bool vertical: false
 
     readonly property bool pinnedToBar: Persistent.states?.timer?.pinnedToBar ?? false
 
@@ -85,8 +86,9 @@ MouseArea {
     }
 
     visible: implicitWidth > 0
-    implicitWidth: (anyActive || showPinnedIdle) ? pill.width + 4 : 0
-    implicitHeight: Appearance.sizes.barHeight
+    implicitWidth: (anyActive || showPinnedIdle)
+        ? (root.vertical ? 34 : pill.width + 4) : 0
+    implicitHeight: root.vertical ? 34 : Appearance.sizes.barHeight
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -166,8 +168,8 @@ MouseArea {
     Rectangle {
         id: pill
         anchors.centerIn: parent
-        width: contentRow.implicitWidth + 12
-        height: contentRow.implicitHeight + 8
+        width: root.vertical ? 30 : contentRow.implicitWidth + 12
+        height: root.vertical ? 30 : contentRow.implicitHeight + 8
         radius: height / 2
         scale: root.pressed ? 0.95 : 1.0
         color: {
@@ -220,6 +222,7 @@ MouseArea {
         }
 
         StyledText {
+            visible: !root.vertical
             text: root.showPinnedIdle ? Translation.tr("Timer") : root.timeText
             font.pixelSize: Appearance.font.pixelSize.small
             color: root.paused
@@ -230,9 +233,9 @@ MouseArea {
 
         Item {
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: root.paused ? pauseIcon.implicitWidth : 0
+            implicitWidth: root.paused && !root.vertical ? pauseIcon.implicitWidth : 0
             implicitHeight: pauseIcon.implicitHeight
-            opacity: root.paused ? 1 : 0
+            opacity: root.paused && !root.vertical ? 1 : 0
             visible: opacity > 0
             clip: true
 

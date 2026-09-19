@@ -11,10 +11,12 @@ import qs.modules.common.functions
  */
 MouseArea {
     id: root
+    property bool vertical: false
 
     visible: implicitWidth > 0
-    implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? pill.width : 0
-    implicitHeight: Appearance.sizes.barHeight
+    implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating)
+        ? (root.vertical ? 34 : pill.width) : 0
+    implicitHeight: root.vertical ? 34 : Appearance.sizes.barHeight
 
     Behavior on implicitWidth {
         enabled: Appearance.animationsEnabled
@@ -62,8 +64,8 @@ MouseArea {
     Rectangle {
         id: pill
         anchors.centerIn: parent
-        width: contentRow.implicitWidth + 16
-        height: contentRow.implicitHeight + 8
+        width: root.vertical ? 30 : contentRow.implicitWidth + 16
+        height: root.vertical ? 30 : contentRow.implicitHeight + 8
         radius: height / 2
         scale: (!ShellUpdates.isUpdating && root.pressed) ? 0.93 : ((!ShellUpdates.isUpdating && root.containsMouse) ? 1.03 : 1.0)
         color: {
@@ -124,6 +126,7 @@ MouseArea {
         }
 
         StyledText {
+            visible: !root.vertical && text !== ""
             text: {
                 if (ShellUpdates.isUpdating) {
                     if (ShellUpdates.updateStep > 0 && ShellUpdates.updateTotalSteps > 0) {
@@ -135,7 +138,6 @@ MouseArea {
                     ? ShellUpdates.commitsBehind.toString()
                     : "!"
             }
-            visible: text !== ""
             font.pixelSize: Appearance.font.pixelSize.smaller
             font.weight: Font.DemiBold
             color: root.accentColor

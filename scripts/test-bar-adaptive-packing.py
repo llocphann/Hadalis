@@ -73,13 +73,23 @@ def main() -> None:
            "Utilities must not allocate a second native surface.")
 
     for token in (
-        "readonly property real middleAvailableHeight:",
-        "readonly property bool verticalUtilitiesCompact:",
-        "Flickable { // Middle section",
+        "readonly property real edgeInset:",
+        "readonly property real moduleGap:",
+        "readonly property real zoneGapNominal:",
+        "readonly property real pivotGapNominal:",
+        "readonly property real topPressure:",
+        "readonly property real bottomPressure:",
+        "property bool verticalUtilitiesCompact: false",
         "compactRequested: root.verticalUtilitiesCompact",
+        "verticalCenter: parent.verticalCenter",
+        "id: upperHalf",
+        "id: lowerHalf",
         "interactive: contentHeight > height + 0.5",
     ):
         require(vertical, token, f"adaptive vertical Bar contract missing: {token}")
+
+    forbid(vertical, "Flickable { // Middle section",
+           "Vertical Workspaces must not drift inside one centered middle stack.")
 
     print("Bar adaptive packing contract: OK")
 

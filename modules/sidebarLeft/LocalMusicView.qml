@@ -510,7 +510,6 @@ Item {
     }
 
     ColumnLayout {
-        anchors.fill: parent    ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 8
@@ -745,9 +744,6 @@ Item {
         }
 
         Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            StackLayout {        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             StackLayout {
@@ -1127,9 +1123,6 @@ Item {
         }
 
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: visible ? 34 : 0
-            visible: !LocalMusic.available || !LocalMusic.mprisAvailable        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? 34 : 0
             visible: !LocalMusic.available || !LocalMusic.mprisAvailable

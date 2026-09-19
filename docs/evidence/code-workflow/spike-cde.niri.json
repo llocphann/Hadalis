@@ -6,7 +6,7 @@
     "E"
   ],
   "manifest": {
-    "source_revision": "2171f6d69fe05e4106f79f8a95495c81c39b21f7",
+    "source_revision": "997caa0f8453bcbc9b4b6fe37f21676185d03845",
     "instrumented_files": [
       "modules/bar/BarContent.qml",
       "modules/bar/Media.qml",
@@ -188,8 +188,8 @@
       "name": "E reload 1 emits actual old QObject destruction",
       "passed": true,
       "evidence": {
-        "birthId": "1789841328520-064itbdhn91k8y12bmgu33j",
-        "object": "Media_QMLTYPE_996(0x7fe148550480)"
+        "birthId": "1789841582835-2idkqb30l1s2gr7inhmc2f",
+        "object": "Media_QMLTYPE_769(0x7f14bf0a5680)"
       }
     },
     {
@@ -206,8 +206,8 @@
       "name": "E reload 2 emits actual old QObject destruction",
       "passed": true,
       "evidence": {
-        "birthId": "1789841329874-twt160hom650cq4ppo2oc",
-        "object": "Media_QMLTYPE_996(0x7fe14c3af340)"
+        "birthId": "1789841584256-5swybuv6tjvu011977gxob",
+        "object": "Media_QMLTYPE_769(0x7f14c2da4d00)"
       }
     },
     {
@@ -245,7 +245,7 @@
   ],
   "pointer_binary_sha256": "70627ee893e46a858fb6da2ef2e81c756d1e9e1500e834f1da36031a2a55dd74",
   "C_initial": {
-    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
+    "epoch": "1789841573855-7wo8z7djfyt3f55aal5p5",
     "outputs": [
       "winit"
     ],
@@ -257,8 +257,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3",
-        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c70ab60)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:3",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7f14c311c9a0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -285,9 +285,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c4a5cc0)",
-        "objectBirthId": "1789841320189-l14vkfi5k4hyjlxm23kr9",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:2",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14c2fadd40)",
+        "objectBirthId": "1789841573995-9u5c1bzdgn53sx5y0h11ow",
         "rect": {
           "x": 727,
           "y": -40,
@@ -313,8 +313,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484bf460)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf0674e0)",
         "objectBirthId": null,
         "rect": {
           "x": 851,
@@ -352,17 +352,17 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       }
     ],
     "selectedInstanceId": "",
@@ -402,7 +402,7 @@
     }
   },
   "C_unloaded": {
-    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
+    "epoch": "1789841573855-7wo8z7djfyt3f55aal5p5",
     "outputs": [
       "winit"
     ],
@@ -414,8 +414,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3",
-        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c70ab60)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:3",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7f14c311c9a0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -455,8 +455,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484bf460)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf0674e0)",
         "objectBirthId": null,
         "rect": {
           "x": 851,
@@ -494,22 +494,22 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -549,7 +549,7 @@
     }
   },
   "C_rebound": {
-    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
+    "epoch": "1789841573855-7wo8z7djfyt3f55aal5p5",
     "outputs": [
       "winit"
     ],
@@ -561,8 +561,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3",
-        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c70ab60)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:3",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7f14c311c9a0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -589,9 +589,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe167305aa0)",
-        "objectBirthId": "1789841321184-i6vso69njis7oo7j656ei2",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:4",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14b9dd4ea0)",
+        "objectBirthId": "1789841575095-dgcckuzpctbn8mwjhcse2",
         "rect": {
           "x": 838,
           "y": -20,
@@ -617,8 +617,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484bf460)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf0674e0)",
         "objectBirthId": null,
         "rect": {
           "x": 851,
@@ -656,27 +656,27 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -730,7 +730,7 @@
     }
   ],
   "D_picking": {
-    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
+    "epoch": "1789841573855-7wo8z7djfyt3f55aal5p5",
     "outputs": [
       "winit"
     ],
@@ -742,8 +742,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7",
-        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1485532e0)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:7",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7f14bf25b0a0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -770,9 +770,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14afe0d80)",
-        "objectBirthId": "1789841321371-zkbe1ipejybktzyztqbmx",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:6",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14c1884120)",
+        "objectBirthId": "1789841575286-xnej50doo7jhps9o2r6yl",
         "rect": {
           "x": 727,
           "y": 0,
@@ -798,8 +798,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5",
-        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1485a7200)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf1206e0)",
         "objectBirthId": null,
         "rect": {
           "x": 851,
@@ -837,57 +837,57 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -946,7 +946,7 @@
     "button": "left"
   },
   "D_selected": {
-    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
+    "epoch": "1789841573855-7wo8z7djfyt3f55aal5p5",
     "outputs": [
       "winit"
     ],
@@ -958,8 +958,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7",
-        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1485532e0)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:7",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7f14bf25b0a0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -986,9 +986,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14afe0d80)",
-        "objectBirthId": "1789841321371-zkbe1ipejybktzyztqbmx",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:6",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14c1884120)",
+        "objectBirthId": "1789841575286-xnej50doo7jhps9o2r6yl",
         "rect": {
           "x": 727,
           "y": 0,
@@ -1014,8 +1014,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5",
-        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1485a7200)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf1206e0)",
         "objectBirthId": null,
         "rect": {
           "x": 851,
@@ -1053,57 +1053,57 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -1158,7 +1158,7 @@
     }
   },
   "D_held": {
-    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
+    "epoch": "1789841573855-7wo8z7djfyt3f55aal5p5",
     "outputs": [
       "winit"
     ],
@@ -1170,8 +1170,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7",
-        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1485532e0)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:7",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7f14bf25b0a0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -1198,9 +1198,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14afe0d80)",
-        "objectBirthId": "1789841321371-zkbe1ipejybktzyztqbmx",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:6",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14c1884120)",
+        "objectBirthId": "1789841575286-xnej50doo7jhps9o2r6yl",
         "rect": {
           "x": 727,
           "y": 0,
@@ -1226,8 +1226,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5",
-        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1485a7200)",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:5",
+        "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf1206e0)",
         "objectBirthId": null,
         "rect": {
           "x": 851,
@@ -1265,57 +1265,57 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -1372,7 +1372,7 @@
     }
   },
   "D_locked": {
-    "epoch": "1789841320047-1t8kodtzhl88qsdhwjuyjh",
+    "epoch": "1789841573855-7wo8z7djfyt3f55aal5p5",
     "outputs": [
       "winit"
     ],
@@ -1434,72 +1434,72 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:2"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:4"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:1"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:3"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:5"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:5"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:6"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@winit",
-        "token": "1789841320047-1t8kodtzhl88qsdhwjuyjh:7"
+        "token": "1789841573855-7wo8z7djfyt3f55aal5p5:7"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -1562,9 +1562,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841320047-1t8kodtzhl88qsdhwjuyjh:12",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe148550480)",
-        "objectBirthId": "1789841328520-064itbdhn91k8y12bmgu33j",
+        "runtimeToken": "1789841573855-7wo8z7djfyt3f55aal5p5:12",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14bf0a5680)",
+        "objectBirthId": "1789841582835-2idkqb30l1s2gr7inhmc2f",
         "rect": {
           "x": 727,
           "y": 0,
@@ -1590,9 +1590,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:2",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c3af340)",
-        "objectBirthId": "1789841329874-twt160hom650cq4ppo2oc",
+        "runtimeToken": "1789841584137-cabqrq1wxj21wgphgyhrkq:2",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14c2da4d00)",
+        "objectBirthId": "1789841584256-5swybuv6tjvu011977gxob",
         "rect": {
           "x": 727,
           "y": 0,
@@ -1620,9 +1620,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:2",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c3af340)",
-        "objectBirthId": "1789841329874-twt160hom650cq4ppo2oc",
+        "runtimeToken": "1789841584137-cabqrq1wxj21wgphgyhrkq:2",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14c2da4d00)",
+        "objectBirthId": "1789841584256-5swybuv6tjvu011977gxob",
         "rect": {
           "x": 727,
           "y": 0,
@@ -1648,9 +1648,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:2",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c70f940)",
-        "objectBirthId": "1789841331178-ly5yibktd2j6dhcmtqtyv",
+        "runtimeToken": "1789841585478-ioeqf2tbsuq:2",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14c2d50be0)",
+        "objectBirthId": "1789841585585-zwy8x9axd5non5bmqpoqi",
         "rect": {
           "x": 727,
           "y": 0,
@@ -1673,7 +1673,7 @@
   ],
   "E_reloads": [
     {
-      "epoch": "1789841329748-swtkj7j5vwxh97547qgzu",
+      "epoch": "1789841584137-cabqrq1wxj21wgphgyhrkq",
       "outputs": [
         "winit"
       ],
@@ -1685,8 +1685,8 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:3",
-          "objectIdentity": "BarContent_QMLTYPE_749(0x7fe16be7cb20)",
+          "runtimeToken": "1789841584137-cabqrq1wxj21wgphgyhrkq:3",
+          "objectIdentity": "BarContent_QMLTYPE_749(0x7f14e327cc00)",
           "objectBirthId": null,
           "rect": {
             "x": 0,
@@ -1713,9 +1713,9 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:2",
-          "objectIdentity": "Media_QMLTYPE_996(0x7fe14c3af340)",
-          "objectBirthId": "1789841329874-twt160hom650cq4ppo2oc",
+          "runtimeToken": "1789841584137-cabqrq1wxj21wgphgyhrkq:2",
+          "objectIdentity": "Media_QMLTYPE_769(0x7f14c2da4d00)",
+          "objectBirthId": "1789841584256-5swybuv6tjvu011977gxob",
           "rect": {
             "x": 727,
             "y": 0,
@@ -1741,8 +1741,8 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841329748-swtkj7j5vwxh97547qgzu:1",
-          "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe1484c3d00)",
+          "runtimeToken": "1789841584137-cabqrq1wxj21wgphgyhrkq:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf121be0)",
           "objectBirthId": null,
           "rect": {
             "x": 851,
@@ -1780,17 +1780,17 @@
         {
           "kind": "resident",
           "instanceId": "bar/clock@winit",
-          "token": "1789841329748-swtkj7j5vwxh97547qgzu:1"
+          "token": "1789841584137-cabqrq1wxj21wgphgyhrkq:1"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@winit",
-          "token": "1789841329748-swtkj7j5vwxh97547qgzu:2"
+          "token": "1789841584137-cabqrq1wxj21wgphgyhrkq:2"
         },
         {
           "kind": "resident",
           "instanceId": "bar@winit",
-          "token": "1789841329748-swtkj7j5vwxh97547qgzu:3"
+          "token": "1789841584137-cabqrq1wxj21wgphgyhrkq:3"
         }
       ],
       "selectedInstanceId": "bar/media@winit",
@@ -1830,7 +1830,7 @@
       }
     },
     {
-      "epoch": "1789841331068-a80yhoojl8b4n43rwt2csor",
+      "epoch": "1789841585478-ioeqf2tbsuq",
       "outputs": [
         "winit"
       ],
@@ -1842,8 +1842,8 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:3",
-          "objectIdentity": "BarContent_QMLTYPE_749(0x7fe1672fc080)",
+          "runtimeToken": "1789841585478-ioeqf2tbsuq:3",
+          "objectIdentity": "BarContent_QMLTYPE_749(0x7f14dcc07500)",
           "objectBirthId": null,
           "rect": {
             "x": 0,
@@ -1870,9 +1870,9 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:2",
-          "objectIdentity": "Media_QMLTYPE_996(0x7fe14c70f940)",
-          "objectBirthId": "1789841331178-ly5yibktd2j6dhcmtqtyv",
+          "runtimeToken": "1789841585478-ioeqf2tbsuq:2",
+          "objectIdentity": "Media_QMLTYPE_769(0x7f14c2d50be0)",
+          "objectBirthId": "1789841585585-zwy8x9axd5non5bmqpoqi",
           "rect": {
             "x": 727,
             "y": 0,
@@ -1898,8 +1898,8 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841331068-a80yhoojl8b4n43rwt2csor:1",
-          "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe148415460)",
+          "runtimeToken": "1789841585478-ioeqf2tbsuq:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14bf00e6e0)",
           "objectBirthId": null,
           "rect": {
             "x": 851,
@@ -1937,17 +1937,17 @@
         {
           "kind": "resident",
           "instanceId": "bar/clock@winit",
-          "token": "1789841331068-a80yhoojl8b4n43rwt2csor:1"
+          "token": "1789841585478-ioeqf2tbsuq:1"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@winit",
-          "token": "1789841331068-a80yhoojl8b4n43rwt2csor:2"
+          "token": "1789841585478-ioeqf2tbsuq:2"
         },
         {
           "kind": "resident",
           "instanceId": "bar@winit",
-          "token": "1789841331068-a80yhoojl8b4n43rwt2csor:3"
+          "token": "1789841585478-ioeqf2tbsuq:3"
         }
       ],
       "selectedInstanceId": "bar/media@winit",
@@ -1988,7 +1988,7 @@
     }
   ],
   "E_static_after_reload": {
-    "epoch": "1789841332462-tnseoebq6rwfblrwy65uy",
+    "epoch": "1789841586831-00gqithdqxmnz4esagppuqy",
     "outputs": [
       "winit"
     ],
@@ -2084,7 +2084,7 @@
     }
   },
   "E_rebound": {
-    "epoch": "1789841332462-tnseoebq6rwfblrwy65uy",
+    "epoch": "1789841586831-00gqithdqxmnz4esagppuqy",
     "outputs": [
       "winit"
     ],
@@ -2096,8 +2096,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841332462-tnseoebq6rwfblrwy65uy:2",
-        "objectIdentity": "BarContent_QMLTYPE_749(0x7fe14c710200)",
+        "runtimeToken": "1789841586831-00gqithdqxmnz4esagppuqy:2",
+        "objectIdentity": "BarContent_QMLTYPE_749(0x7f14bcbd7da0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -2124,15 +2124,15 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841332462-tnseoebq6rwfblrwy65uy:3",
-        "objectIdentity": "Media_QMLTYPE_996(0x7fe14c70e520)",
-        "objectBirthId": "1789841332666-ljxgoiy7iklx7rbl54y6c",
+        "runtimeToken": "1789841586831-00gqithdqxmnz4esagppuqy:3",
+        "objectIdentity": "Media_QMLTYPE_769(0x7f14bf290340)",
+        "objectBirthId": "1789841586988-1fincyjxk7yoptgszbkgac",
         "rect": {
           "x": 727,
           "y": 0,
           "width": 105,
           "height": 40,
-          "revision": 19,
+          "revision": 26,
           "dpr": 1,
           "barMustShow": false,
           "barAutoHide": false,
@@ -2152,8 +2152,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841332462-tnseoebq6rwfblrwy65uy:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1062(0x7fe14c70f5c0)",
+        "runtimeToken": "1789841586831-00gqithdqxmnz4esagppuqy:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_853(0x7f14c18e5ec0)",
         "objectBirthId": null,
         "rect": {
           "x": 851,
@@ -2191,17 +2191,17 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@winit",
-        "token": "1789841332462-tnseoebq6rwfblrwy65uy:1"
+        "token": "1789841586831-00gqithdqxmnz4esagppuqy:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar@winit",
-        "token": "1789841332462-tnseoebq6rwfblrwy65uy:2"
+        "token": "1789841586831-00gqithdqxmnz4esagppuqy:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@winit",
-        "token": "1789841332462-tnseoebq6rwfblrwy65uy:3"
+        "token": "1789841586831-00gqithdqxmnz4esagppuqy:3"
       }
     ],
     "selectedInstanceId": "bar/media@winit",
@@ -2242,7 +2242,7 @@
   },
   "D_protocol_lifetimes": [
     {
-      "id": "64",
+      "id": "62",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -2259,7 +2259,7 @@
       "destroyed": true
     },
     {
-      "id": "64",
+      "id": "56",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -2276,7 +2276,7 @@
       "destroyed": true
     },
     {
-      "id": "53",
+      "id": "58",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -2293,7 +2293,7 @@
       "destroyed": true
     },
     {
-      "id": "37",
+      "id": "58",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -2310,7 +2310,7 @@
       "destroyed": true
     },
     {
-      "id": "42",
+      "id": "54",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [

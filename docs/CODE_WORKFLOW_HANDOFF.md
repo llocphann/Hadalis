@@ -28,6 +28,15 @@ regression was independently fixed in `b8ab566d5138d5dbcc18217b956f45f560a45817`
 that fix and its guard tests are retained.
 The D/E implementation checkpoint is
 `2171f6d69fe05e4106f79f8a95495c81c39b21f7`.
+The strengthened state/lifetime checkpoint and final tested implementation is
+`997caa0f8453bcbc9b4b6fe37f21676185d03845`. Both current runtime JSON reports
+were run from that exact committed revision: C 10 + D 21 + E 9 checks on Niri,
+and C 10 + D 25 + E 9 on Sway. The protocol assertions cover 5 and 14 transient
+picker surface lifetimes respectively.
+
+The final evidence-only publication preserves concurrent `dev` work through
+`6248def18705e28a3049b0f36991365637566fcc` (Weather/VerticalBar).
+Validation below applies to `997caa0f`, not later concurrent changes.
 
 A already passed the parser corpus at `2289105d686f38a7a682cef0b781f3bc0ee781c6`:
 1,006 QML files, no-op byte preservation, incremental CST equality and prefix
@@ -84,7 +93,26 @@ design the first source transaction against real diagnostics, not CST success
 alone. No runtime dependency/packaging choice or source-writing authorization
 follows from these prototypes.
 
-Canonical validation must always name its exact SHA. The earlier `2289105d` run
-had 80 pass, 21 fail and one deferred Nix check. Final CDE validation is recorded
-separately when its public code commit is tested; focused live checks are never a
-whole-repository PASS. Do not weaken contracts to improve the status label.
+## Final validation and committed files
+
+Canonical validation at `997caa0f8453bcbc9b4b6fe37f21676185d03845` reports
+**80 passed, 21 failed, one deferred Nix check**. Baseline
+`b8ab566d5138d5dbcc18217b956f45f560a45817` has the same totals and all 21 failure
+labels. The only normalized failure-body changes remove a probe Config warning;
+fatal counts do not increase. These are local results, not CI or a whole-repo PASS.
+
+- [Exact implementation validation log](evidence/code-workflow/validation.997caa0f.txt)
+- [Baseline validation log](evidence/code-workflow/validation.b8ab566d.txt)
+- [Machine-readable comparison and full failure labels](evidence/code-workflow/validation-comparison.json)
+
+The implementation lives in `scripts/code-workflow/prepare-runtime.py`,
+`run-runtime.py`, `runtime/*.qml`, `virtual-pointer.c` and `build-pointer.sh`.
+The probe README documents reproduction. Design/feasibility/this handoff live in
+`docs/CODE_WORKFLOW_*.md`; tracked JSON reports and canonical logs are under
+`docs/evidence/code-workflow/`. No production editor UI or production runtime
+registration was added; instrumentation only changes temporary exported copies.
+
+For online continuation, start with this file on freshly fetched `dev`, then
+read the full feasibility report and probe README. All required implementation,
+results and baseline logs are in the repository; no desktop chat attachment is
+needed. Preserve existing evidence and do not weaken contracts to improve status.

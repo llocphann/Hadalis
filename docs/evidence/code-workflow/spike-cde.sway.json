@@ -6,7 +6,7 @@
     "E"
   ],
   "manifest": {
-    "source_revision": "2171f6d69fe05e4106f79f8a95495c81c39b21f7",
+    "source_revision": "997caa0f8453bcbc9b4b6fe37f21676185d03845",
     "instrumented_files": [
       "modules/bar/BarContent.qml",
       "modules/bar/Media.qml",
@@ -208,8 +208,8 @@
       "name": "E reload 1 emits actual old QObject destruction",
       "passed": true,
       "evidence": {
-        "birthId": "1789841331284-j7s859ooco5",
-        "object": "Media_QMLTYPE_929(0x7f214df08f20)"
+        "birthId": "1789841582383-0hsubevktjp6",
+        "object": "Media_QMLTYPE_1061(0x7fc44d71f0e0)"
       }
     },
     {
@@ -226,8 +226,8 @@
       "name": "E reload 2 emits actual old QObject destruction",
       "passed": true,
       "evidence": {
-        "birthId": "1789841333803-dxe4touuacavstes35d841",
-        "object": "Media_QMLTYPE_929(0x7f215e9ed320)"
+        "birthId": "1789841584993-ul39zv028ydldt4krj8ox",
+        "object": "Media_QMLTYPE_1061(0x7fc4777cfd60)"
       }
     },
     {
@@ -266,7 +266,7 @@
   "sway": "/tmp/hadalis-wayland-tools/usr/bin/sway",
   "pointer_binary_sha256": "70627ee893e46a858fb6da2ef2e81c756d1e9e1500e834f1da36031a2a55dd74",
   "C_initial": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-2",
       "HEADLESS-1"
@@ -279,8 +279,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f217710f320)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:3",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc477abf520)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -307,9 +307,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215e4f9d00)",
-        "objectBirthId": "1789841321364-0br4qjrklg4cdrjfyx5z8h0",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:2",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc45e9328a0)",
+        "objectBirthId": "1789841572021-2e70zcrebil7uooivma0nj",
         "rect": {
           "x": -188,
           "y": -40,
@@ -335,8 +335,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215cfa0120)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45d3b4cc0)",
         "objectBirthId": null,
         "rect": {
           "x": -67,
@@ -376,8 +376,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214d0019a0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:6",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc45acfe9e0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -404,9 +404,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214dcf1d20)",
-        "objectBirthId": "1789841321511-alml367vg6l",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:5",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44e0878c0)",
+        "objectBirthId": "1789841572156-o658s5gzlon5q75thv0yb",
         "rect": {
           "x": -188,
           "y": -40,
@@ -432,8 +432,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214de34ee0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:4",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44d718a80)",
         "objectBirthId": null,
         "rect": {
           "x": -67,
@@ -471,32 +471,32 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       }
     ],
     "selectedInstanceId": "",
@@ -536,7 +536,7 @@
     }
   },
   "C_unloaded": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-2",
       "HEADLESS-1"
@@ -549,8 +549,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f217710f320)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:3",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc477abf520)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -590,8 +590,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215cfa0120)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45d3b4cc0)",
         "objectBirthId": null,
         "rect": {
           "x": 701,
@@ -631,8 +631,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214d0019a0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:6",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc45acfe9e0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -672,8 +672,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214de34ee0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:4",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44d718a80)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -711,42 +711,42 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -786,7 +786,7 @@
     }
   },
   "C_rebound": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-2",
       "HEADLESS-1"
@@ -799,8 +799,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f217710f320)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:3",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc477abf520)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -827,9 +827,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214de18660)",
-        "objectBirthId": "1789841322728-8gkoa0p09yenvhmg2osa9",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:7",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44df05200)",
+        "objectBirthId": "1789841573373-n916vouy9k1hxc1er86wr",
         "rect": {
           "x": 688,
           "y": -20,
@@ -855,8 +855,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215cfa0120)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45d3b4cc0)",
         "objectBirthId": null,
         "rect": {
           "x": 701,
@@ -896,8 +896,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214d0019a0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:6",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc45acfe9e0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -924,9 +924,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215cf630c0)",
-        "objectBirthId": "1789841322735-h41skuvhh1htfcnna8cgtl",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:8",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc45d373da0)",
+        "objectBirthId": "1789841573382-xd6v9h2edoo",
         "rect": {
           "x": 880,
           "y": -20,
@@ -952,8 +952,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214de34ee0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:4",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44d718a80)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -991,52 +991,52 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -1100,7 +1100,7 @@
     "layer_evidence": "Wayland protocol trace"
   },
   "D_picking": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-2",
       "HEADLESS-1"
@@ -1113,8 +1113,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dc70cc0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:11",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc476006540)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -1141,9 +1141,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215cd06d40)",
-        "objectBirthId": "1789841322888-y3sg3nxydfw0etikpe9ke",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:10",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc45e6dc8e0)",
+        "objectBirthId": "1789841573532-0p6bwygf3i49l0opa5osxr",
         "rect": {
           "x": 577,
           "y": 0,
@@ -1169,8 +1169,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215a706ce0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:9",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45aa07ec0)",
         "objectBirthId": null,
         "rect": {
           "x": 701,
@@ -1210,8 +1210,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dbbeae0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:14",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc44df01760)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -1238,9 +1238,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214de39cc0)",
-        "objectBirthId": "1789841322925-6etx862la1l8c2yzy5i3lk",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:13",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d77d880)",
+        "objectBirthId": "1789841573571-8szs3eh0qz6vj97xd1bl7y",
         "rect": {
           "x": 769,
           "y": 0,
@@ -1266,8 +1266,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214dbd3a80)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:12",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44df2d760)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -1305,112 +1305,112 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -1470,7 +1470,7 @@
     "button": "left"
   },
   "D_removed": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-1"
     ],
@@ -1482,8 +1482,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:26",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dcf7900)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:26",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc44e08d820)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -1510,9 +1510,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:25",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214df08f20)",
-        "objectBirthId": "1789841331284-j7s859ooco5",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:25",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d71f0e0)",
+        "objectBirthId": "1789841582383-0hsubevktjp6",
         "rect": {
           "x": 769,
           "y": 0,
@@ -1538,8 +1538,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:24",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214ccc7ce0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:24",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44d8d57a0)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -1577,247 +1577,247 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:15"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:15"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:16"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:16"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:17"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:17"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:18"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:18"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:19"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:19"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:20"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:20"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:15"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:15"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:16"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:16"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:17"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:17"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:18"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:18"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:19"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:19"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:20"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:20"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:21"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:21"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:22"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:22"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:23"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:23"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:24"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:24"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:25"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:25"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:26"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:26"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:21"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:21"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:22"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:22"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:23"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:23"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -1872,7 +1872,7 @@
     }
   },
   "D_reconnected": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-1",
       "HEADLESS-2"
@@ -1885,8 +1885,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:26",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dcf7900)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:26",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc44e08d820)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -1913,9 +1913,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:25",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214df08f20)",
-        "objectBirthId": "1789841331284-j7s859ooco5",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:25",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d71f0e0)",
+        "objectBirthId": "1789841582383-0hsubevktjp6",
         "rect": {
           "x": 769,
           "y": 0,
@@ -1941,8 +1941,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:24",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214ccc7ce0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:24",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44d8d57a0)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -1982,8 +1982,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:29",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f21775e7d40)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:29",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc4760083e0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -2010,9 +2010,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:28",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215cd039a0)",
-        "objectBirthId": "1789841332344-ek16jeaz6xg40zrl1zz6t",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:28",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc45e74b440)",
+        "objectBirthId": "1789841583459-rtl05qp7dcpxtstkh1kk2o",
         "rect": {
           "x": 577,
           "y": 0,
@@ -2038,8 +2038,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:27",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215a616900)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:27",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45aab0c40)",
         "objectBirthId": null,
         "rect": {
           "x": 701,
@@ -2077,262 +2077,262 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:15"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:15"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:16"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:16"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:17"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:17"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:18"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:18"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:19"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:19"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:20"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:20"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:15"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:15"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:16"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:16"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:17"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:17"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:18"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:18"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:19"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:19"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:20"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:20"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:21"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:21"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:22"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:22"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:23"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:23"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:24"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:24"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:25"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:25"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:26"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:26"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:21"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:21"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:22"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:22"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:23"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:23"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:27"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:27"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:28"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:28"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:29"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:29"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -2387,7 +2387,7 @@
     }
   },
   "D_selected": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-2",
       "HEADLESS-1"
@@ -2400,8 +2400,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dc70cc0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:11",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc476006540)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -2428,9 +2428,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215cd06d40)",
-        "objectBirthId": "1789841322888-y3sg3nxydfw0etikpe9ke",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:10",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc45e6dc8e0)",
+        "objectBirthId": "1789841573532-0p6bwygf3i49l0opa5osxr",
         "rect": {
           "x": 577,
           "y": 0,
@@ -2456,8 +2456,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215a706ce0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:9",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45aa07ec0)",
         "objectBirthId": null,
         "rect": {
           "x": 701,
@@ -2497,8 +2497,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dbbeae0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:14",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc44df01760)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -2525,9 +2525,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214de39cc0)",
-        "objectBirthId": "1789841322925-6etx862la1l8c2yzy5i3lk",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:13",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d77d880)",
+        "objectBirthId": "1789841573571-8szs3eh0qz6vj97xd1bl7y",
         "rect": {
           "x": 769,
           "y": 0,
@@ -2553,8 +2553,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214dbd3a80)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:12",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44df2d760)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -2592,112 +2592,112 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -2752,7 +2752,7 @@
     }
   },
   "D_held": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-2",
       "HEADLESS-1"
@@ -2765,8 +2765,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dc70cc0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:11",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc476006540)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -2793,9 +2793,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215cd06d40)",
-        "objectBirthId": "1789841322888-y3sg3nxydfw0etikpe9ke",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:10",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc45e6dc8e0)",
+        "objectBirthId": "1789841573532-0p6bwygf3i49l0opa5osxr",
         "rect": {
           "x": 577,
           "y": 0,
@@ -2821,8 +2821,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215a706ce0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:9",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45aa07ec0)",
         "objectBirthId": null,
         "rect": {
           "x": 701,
@@ -2862,8 +2862,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f214dbbeae0)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:14",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc44df01760)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -2890,9 +2890,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214de39cc0)",
-        "objectBirthId": "1789841322925-6etx862la1l8c2yzy5i3lk",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:13",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d77d880)",
+        "objectBirthId": "1789841573571-8szs3eh0qz6vj97xd1bl7y",
         "rect": {
           "x": 769,
           "y": -40,
@@ -2918,8 +2918,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214dbd3a80)",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:12",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44df2d760)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -2957,112 +2957,112 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -3119,7 +3119,7 @@
     }
   },
   "D_locked": {
-    "epoch": "1789841321226-1f3upl2j5f7vbt5sd2vca9",
+    "epoch": "1789841571891-mnrtmetbto7f5sgci48cl",
     "outputs": [
       "HEADLESS-2",
       "HEADLESS-1"
@@ -3234,142 +3234,142 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:2"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:2"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:5"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:7"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:7"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:1"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:1"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:3"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:3"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:8"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:8"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:4"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:4"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:6"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:6"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:9"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:9"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:10"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:10"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:11"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:11"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:12"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:12"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:13"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:13"
       },
       {
         "kind": "stale/unloading",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841321226-1f3upl2j5f7vbt5sd2vca9:14"
+        "token": "1789841571891-mnrtmetbto7f5sgci48cl:14"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-2",
@@ -3432,9 +3432,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841321226-1f3upl2j5f7vbt5sd2vca9:25",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214df08f20)",
-        "objectBirthId": "1789841331284-j7s859ooco5",
+        "runtimeToken": "1789841571891-mnrtmetbto7f5sgci48cl:25",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d71f0e0)",
+        "objectBirthId": "1789841582383-0hsubevktjp6",
         "rect": {
           "x": 769,
           "y": 0,
@@ -3460,9 +3460,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:2",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215e9ed320)",
-        "objectBirthId": "1789841333803-dxe4touuacavstes35d841",
+        "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:2",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc4777cfd60)",
+        "objectBirthId": "1789841584993-ul39zv028ydldt4krj8ox",
         "rect": {
           "x": 769,
           "y": 0,
@@ -3490,9 +3490,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:2",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f215e9ed320)",
-        "objectBirthId": "1789841333803-dxe4touuacavstes35d841",
+        "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:2",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc4777cfd60)",
+        "objectBirthId": "1789841584993-ul39zv028ydldt4krj8ox",
         "rect": {
           "x": 769,
           "y": 0,
@@ -3518,9 +3518,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841334984-w60uiktj8vz171u6fxomk:2",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f217710fbe0)",
-        "objectBirthId": "1789841335097-9a3v7ntwilj",
+        "runtimeToken": "1789841586256-s2bz24an9of15w6myevzp:2",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc45e600d20)",
+        "objectBirthId": "1789841586382-u6alpn3sexosnk24a53po",
         "rect": {
           "x": 769,
           "y": 0,
@@ -3543,7 +3543,7 @@
   ],
   "E_reloads": [
     {
-      "epoch": "1789841333676-j80g645spi918aamdjqaj1",
+      "epoch": "1789841584864-vy8y55l18nsd8nnq338p0",
       "outputs": [
         "HEADLESS-1",
         "HEADLESS-2"
@@ -3556,8 +3556,8 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:3",
-          "objectIdentity": "BarContent_QMLTYPE_744(0x7f21610062a0)",
+          "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:3",
+          "objectIdentity": "BarContent_QMLTYPE_863(0x7fc461406700)",
           "objectBirthId": null,
           "rect": {
             "x": 0,
@@ -3584,9 +3584,9 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:2",
-          "objectIdentity": "Media_QMLTYPE_929(0x7f215e9ed320)",
-          "objectBirthId": "1789841333803-dxe4touuacavstes35d841",
+          "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:2",
+          "objectIdentity": "Media_QMLTYPE_1061(0x7fc4777cfd60)",
+          "objectBirthId": "1789841584993-ul39zv028ydldt4krj8ox",
           "rect": {
             "x": 769,
             "y": 0,
@@ -3612,8 +3612,8 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:1",
-          "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215cd05840)",
+          "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45d1ce1a0)",
           "objectBirthId": null,
           "rect": {
             "x": 893,
@@ -3653,8 +3653,8 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:6",
-          "objectIdentity": "BarContent_QMLTYPE_744(0x7f215a873ca0)",
+          "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:6",
+          "objectIdentity": "BarContent_QMLTYPE_863(0x7fc45ac6a160)",
           "objectBirthId": null,
           "rect": {
             "x": 0,
@@ -3681,9 +3681,9 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:5",
-          "objectIdentity": "Media_QMLTYPE_929(0x7f215a9c7780)",
-          "objectBirthId": "1789841333869-fjuk8y72v5t3lgnds192g",
+          "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:5",
+          "objectIdentity": "Media_QMLTYPE_1061(0x7fc44e01a500)",
+          "objectBirthId": "1789841585064-fb5ri49r1ng859rngpwcm1",
           "rect": {
             "x": 577,
             "y": 0,
@@ -3709,8 +3709,8 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841333676-j80g645spi918aamdjqaj1:4",
-          "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214de355e0)",
+          "runtimeToken": "1789841584864-vy8y55l18nsd8nnq338p0:4",
+          "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44e5aba40)",
           "objectBirthId": null,
           "rect": {
             "x": 701,
@@ -3748,32 +3748,32 @@
         {
           "kind": "resident",
           "instanceId": "bar/clock@HEADLESS-1",
-          "token": "1789841333676-j80g645spi918aamdjqaj1:1"
+          "token": "1789841584864-vy8y55l18nsd8nnq338p0:1"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@HEADLESS-1",
-          "token": "1789841333676-j80g645spi918aamdjqaj1:2"
+          "token": "1789841584864-vy8y55l18nsd8nnq338p0:2"
         },
         {
           "kind": "resident",
           "instanceId": "bar@HEADLESS-1",
-          "token": "1789841333676-j80g645spi918aamdjqaj1:3"
+          "token": "1789841584864-vy8y55l18nsd8nnq338p0:3"
         },
         {
           "kind": "resident",
           "instanceId": "bar/clock@HEADLESS-2",
-          "token": "1789841333676-j80g645spi918aamdjqaj1:4"
+          "token": "1789841584864-vy8y55l18nsd8nnq338p0:4"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@HEADLESS-2",
-          "token": "1789841333676-j80g645spi918aamdjqaj1:5"
+          "token": "1789841584864-vy8y55l18nsd8nnq338p0:5"
         },
         {
           "kind": "resident",
           "instanceId": "bar@HEADLESS-2",
-          "token": "1789841333676-j80g645spi918aamdjqaj1:6"
+          "token": "1789841584864-vy8y55l18nsd8nnq338p0:6"
         }
       ],
       "selectedInstanceId": "bar/media@HEADLESS-1",
@@ -3813,7 +3813,7 @@
       }
     },
     {
-      "epoch": "1789841334984-w60uiktj8vz171u6fxomk",
+      "epoch": "1789841586256-s2bz24an9of15w6myevzp",
       "outputs": [
         "HEADLESS-1",
         "HEADLESS-2"
@@ -3826,8 +3826,8 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789841334984-w60uiktj8vz171u6fxomk:3",
-          "objectIdentity": "BarContent_QMLTYPE_744(0x7f2161006a80)",
+          "runtimeToken": "1789841586256-s2bz24an9of15w6myevzp:3",
+          "objectIdentity": "BarContent_QMLTYPE_863(0x7fc4610075e0)",
           "objectBirthId": null,
           "rect": {
             "x": 0,
@@ -3854,9 +3854,9 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841334984-w60uiktj8vz171u6fxomk:2",
-          "objectIdentity": "Media_QMLTYPE_929(0x7f217710fbe0)",
-          "objectBirthId": "1789841335097-9a3v7ntwilj",
+          "runtimeToken": "1789841586256-s2bz24an9of15w6myevzp:2",
+          "objectIdentity": "Media_QMLTYPE_1061(0x7fc45e600d20)",
+          "objectBirthId": "1789841586382-u6alpn3sexosnk24a53po",
           "rect": {
             "x": 769,
             "y": 0,
@@ -3882,8 +3882,8 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841334984-w60uiktj8vz171u6fxomk:1",
-          "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215e4f6f80)",
+          "runtimeToken": "1789841586256-s2bz24an9of15w6myevzp:1",
+          "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45e9334e0)",
           "objectBirthId": null,
           "rect": {
             "x": 893,
@@ -3923,8 +3923,8 @@
           "sourcePath": "modules/bar/BarContent.qml",
           "depth": 0,
           "state": "resident",
-          "runtimeToken": "1789841334984-w60uiktj8vz171u6fxomk:6",
-          "objectIdentity": "BarContent_QMLTYPE_744(0x7f215a7a1900)",
+          "runtimeToken": "1789841586256-s2bz24an9of15w6myevzp:6",
+          "objectIdentity": "BarContent_QMLTYPE_863(0x7fc45ac65540)",
           "objectBirthId": null,
           "rect": {
             "x": 0,
@@ -3951,9 +3951,9 @@
           "sourcePath": "modules/bar/Media.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841334984-w60uiktj8vz171u6fxomk:5",
-          "objectIdentity": "Media_QMLTYPE_929(0x7f215ab9f2a0)",
-          "objectBirthId": "1789841335164-b9o6cz8tm8cg339ogwyuy",
+          "runtimeToken": "1789841586256-s2bz24an9of15w6myevzp:5",
+          "objectIdentity": "Media_QMLTYPE_1061(0x7fc45afdbe20)",
+          "objectBirthId": "1789841586454-f30fvx5i6my9oifs74cmp",
           "rect": {
             "x": 577,
             "y": 0,
@@ -3979,8 +3979,8 @@
           "sourcePath": "modules/bar/ClockWidget.qml",
           "depth": 1,
           "state": "resident",
-          "runtimeToken": "1789841334984-w60uiktj8vz171u6fxomk:4",
-          "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f214dc6c180)",
+          "runtimeToken": "1789841586256-s2bz24an9of15w6myevzp:4",
+          "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc44e06d140)",
           "objectBirthId": null,
           "rect": {
             "x": 701,
@@ -4018,32 +4018,32 @@
         {
           "kind": "resident",
           "instanceId": "bar/clock@HEADLESS-1",
-          "token": "1789841334984-w60uiktj8vz171u6fxomk:1"
+          "token": "1789841586256-s2bz24an9of15w6myevzp:1"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@HEADLESS-1",
-          "token": "1789841334984-w60uiktj8vz171u6fxomk:2"
+          "token": "1789841586256-s2bz24an9of15w6myevzp:2"
         },
         {
           "kind": "resident",
           "instanceId": "bar@HEADLESS-1",
-          "token": "1789841334984-w60uiktj8vz171u6fxomk:3"
+          "token": "1789841586256-s2bz24an9of15w6myevzp:3"
         },
         {
           "kind": "resident",
           "instanceId": "bar/clock@HEADLESS-2",
-          "token": "1789841334984-w60uiktj8vz171u6fxomk:4"
+          "token": "1789841586256-s2bz24an9of15w6myevzp:4"
         },
         {
           "kind": "resident",
           "instanceId": "bar/media@HEADLESS-2",
-          "token": "1789841334984-w60uiktj8vz171u6fxomk:5"
+          "token": "1789841586256-s2bz24an9of15w6myevzp:5"
         },
         {
           "kind": "resident",
           "instanceId": "bar@HEADLESS-2",
-          "token": "1789841334984-w60uiktj8vz171u6fxomk:6"
+          "token": "1789841586256-s2bz24an9of15w6myevzp:6"
         }
       ],
       "selectedInstanceId": "bar/media@HEADLESS-1",
@@ -4084,7 +4084,7 @@
     }
   ],
   "E_static_after_reload": {
-    "epoch": "1789841336326-ggp4wacrpjfrqx2ycy9or",
+    "epoch": "1789841587742-6ublsylxprzag0579dmgpq",
     "outputs": [
       "HEADLESS-1",
       "HEADLESS-2"
@@ -4233,7 +4233,7 @@
     }
   },
   "E_rebound": {
-    "epoch": "1789841336326-ggp4wacrpjfrqx2ycy9or",
+    "epoch": "1789841587742-6ublsylxprzag0579dmgpq",
     "outputs": [
       "HEADLESS-1",
       "HEADLESS-2"
@@ -4246,8 +4246,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841336326-ggp4wacrpjfrqx2ycy9or:2",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f21610062a0)",
+        "runtimeToken": "1789841587742-6ublsylxprzag0579dmgpq:2",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc47c07bb60)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -4274,9 +4274,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841336326-ggp4wacrpjfrqx2ycy9or:5",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214de36bc0)",
-        "objectBirthId": "1789841336521-71cq5jmrdqfm8y16dh515",
+        "runtimeToken": "1789841587742-6ublsylxprzag0579dmgpq:5",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d698ea0)",
+        "objectBirthId": "1789841587950-jnqggdjxaok8fpuvmowghk",
         "rect": {
           "x": 769,
           "y": 0,
@@ -4302,8 +4302,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841336326-ggp4wacrpjfrqx2ycy9or:1",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215e4f5460)",
+        "runtimeToken": "1789841587742-6ublsylxprzag0579dmgpq:1",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45e92e000)",
         "objectBirthId": null,
         "rect": {
           "x": 893,
@@ -4343,8 +4343,8 @@
         "sourcePath": "modules/bar/BarContent.qml",
         "depth": 0,
         "state": "resident",
-        "runtimeToken": "1789841336326-ggp4wacrpjfrqx2ycy9or:4",
-        "objectIdentity": "BarContent_QMLTYPE_744(0x7f215a73c340)",
+        "runtimeToken": "1789841587742-6ublsylxprzag0579dmgpq:4",
+        "objectIdentity": "BarContent_QMLTYPE_863(0x7fc45ab40ce0)",
         "objectBirthId": null,
         "rect": {
           "x": 0,
@@ -4371,9 +4371,9 @@
         "sourcePath": "modules/bar/Media.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841336326-ggp4wacrpjfrqx2ycy9or:6",
-        "objectIdentity": "Media_QMLTYPE_929(0x7f214ccab640)",
-        "objectBirthId": "1789841336531-3jdrzw4d9zpvhkpc6fk2h2",
+        "runtimeToken": "1789841587742-6ublsylxprzag0579dmgpq:6",
+        "objectIdentity": "Media_QMLTYPE_1061(0x7fc44d852760)",
+        "objectBirthId": "1789841587960-t8bmu7r60zfk7z09dk3th",
         "rect": {
           "x": 577,
           "y": 0,
@@ -4399,8 +4399,8 @@
         "sourcePath": "modules/bar/ClockWidget.qml",
         "depth": 1,
         "state": "resident",
-        "runtimeToken": "1789841336326-ggp4wacrpjfrqx2ycy9or:3",
-        "objectIdentity": "ClockWidget_QMLTYPE_1012(0x7f215a9c89e0)",
+        "runtimeToken": "1789841587742-6ublsylxprzag0579dmgpq:3",
+        "objectIdentity": "ClockWidget_QMLTYPE_864(0x7fc45afaf660)",
         "objectBirthId": null,
         "rect": {
           "x": 701,
@@ -4438,32 +4438,32 @@
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-1",
-        "token": "1789841336326-ggp4wacrpjfrqx2ycy9or:1"
+        "token": "1789841587742-6ublsylxprzag0579dmgpq:1"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-1",
-        "token": "1789841336326-ggp4wacrpjfrqx2ycy9or:2"
+        "token": "1789841587742-6ublsylxprzag0579dmgpq:2"
       },
       {
         "kind": "resident",
         "instanceId": "bar/clock@HEADLESS-2",
-        "token": "1789841336326-ggp4wacrpjfrqx2ycy9or:3"
+        "token": "1789841587742-6ublsylxprzag0579dmgpq:3"
       },
       {
         "kind": "resident",
         "instanceId": "bar@HEADLESS-2",
-        "token": "1789841336326-ggp4wacrpjfrqx2ycy9or:4"
+        "token": "1789841587742-6ublsylxprzag0579dmgpq:4"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-1",
-        "token": "1789841336326-ggp4wacrpjfrqx2ycy9or:5"
+        "token": "1789841587742-6ublsylxprzag0579dmgpq:5"
       },
       {
         "kind": "resident",
         "instanceId": "bar/media@HEADLESS-2",
-        "token": "1789841336326-ggp4wacrpjfrqx2ycy9or:6"
+        "token": "1789841587742-6ublsylxprzag0579dmgpq:6"
       }
     ],
     "selectedInstanceId": "bar/media@HEADLESS-1",
@@ -4538,7 +4538,7 @@
       "destroyed": true
     },
     {
-      "id": "53",
+      "id": "58",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -4572,7 +4572,7 @@
       "destroyed": true
     },
     {
-      "id": "67",
+      "id": "53",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -4589,7 +4589,7 @@
       "destroyed": true
     },
     {
-      "id": "53",
+      "id": "58",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -4623,41 +4623,7 @@
       "destroyed": true
     },
     {
-      "id": "75",
-      "layer": 3,
-      "namespace": "quickshell:code-workflow-picker",
-      "keyboard": [
-        0
-      ],
-      "zones": [
-        -1,
-        -1
-      ],
-      "anchors": [
-        15,
-        15
-      ],
-      "destroyed": true
-    },
-    {
-      "id": "67",
-      "layer": 3,
-      "namespace": "quickshell:code-workflow-picker",
-      "keyboard": [
-        0
-      ],
-      "zones": [
-        -1,
-        -1
-      ],
-      "anchors": [
-        15,
-        15
-      ],
-      "destroyed": true
-    },
-    {
-      "id": "36",
+      "id": "66",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -4691,7 +4657,7 @@
       "destroyed": true
     },
     {
-      "id": "77",
+      "id": "34",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -4708,7 +4674,7 @@
       "destroyed": true
     },
     {
-      "id": "75",
+      "id": "58",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [
@@ -4725,7 +4691,41 @@
       "destroyed": true
     },
     {
-      "id": "54",
+      "id": "46",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "66",
+      "layer": 3,
+      "namespace": "quickshell:code-workflow-picker",
+      "keyboard": [
+        0
+      ],
+      "zones": [
+        -1,
+        -1
+      ],
+      "anchors": [
+        15,
+        15
+      ],
+      "destroyed": true
+    },
+    {
+      "id": "68",
       "layer": 3,
       "namespace": "quickshell:code-workflow-picker",
       "keyboard": [

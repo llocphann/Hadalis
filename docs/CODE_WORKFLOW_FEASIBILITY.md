@@ -173,8 +173,21 @@ Tree-sitter accepts it. This tool disagreement remains a baseline investigation,
 not a claim that parser acceptance proves runtime validity. The feasibility
 work does not rewrite production behavior or relax these unrelated tests.
 
-The final commit's validator result and complete logs must be reported separately
-with its exact SHA. A green parser/input probe never substitutes for that gate.
+Final C–E implementation validation at
+`997caa0f8453bcbc9b4b6fe37f21676185d03845` reports **80 passed, 21 failed,
+1 deferred Nix check**. The comparison baseline
+`b8ab566d5138d5dbcc18217b956f45f560a45817` has identical totals and all 21 failure
+labels. After normalizing temporary directories, two failure bodies differ only
+by removal of the same ProbeShell Config warning; fatal counts do not increase.
+
+The [final log](evidence/code-workflow/validation.997caa0f.txt),
+[baseline log](evidence/code-workflow/validation.b8ab566d.txt) and
+[comparison](evidence/code-workflow/validation-comparison.json) retain exact SHA,
+commands, environment and full diagnostics. The current Niri/Sway CDE JSON reports
+also pin `997caa0f`. These are local evidence, not CI or a whole-repository PASS.
+Later concurrent `dev` changes and the documentation-only evidence publication
+are not covered by the tested SHA. A green parser/input/live probe never
+substitutes for the repository gate.
 
 ## Spike C — actual ii Bar registry: pass for the prototype scope
 

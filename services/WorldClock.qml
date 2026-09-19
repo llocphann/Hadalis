@@ -123,20 +123,40 @@ Singleton {
         });
     }
 
+    function _scheduleMinuteTick(): void {
+        root.now = new Date()
+        if (!root.enabled) {
+            minuteTick.stop()
+            return
+        }
+
+        // The rendered world-clock strings have minute precision. Wake once at
+        // the next minute boundary instead of keeping the shell on a 1 Hz timer.
+        const nowMs = root.now.getTime()
+        minuteTick.interval = Math.max(250, 60000 - (nowMs % 60000) + 25)
+        minuteTick.restart()
+    }
+
     onTimezonesChanged: root.refreshOffsets()
     onEnabledChanged: {
         if (root.enabled) {
-            root.now = new Date();
-            root.refreshOffsets();
+            root._scheduleMinuteTick()
+            root.refreshOffsets()
+        } else {
+            minuteTick.stop()
         }
     }
-    Component.onCompleted: root.refreshOffsets()
+    Component.onCompleted: {
+        root.refreshOffsets()
+        if (root.enabled)
+            root._scheduleMinuteTick()
+    }
 
     Timer {
-        interval: 1000
-        running: root.enabled
-        repeat: true
-        onTriggered: root.now = new Date()
+        id: minuteTick
+        interval: 60000
+        repeat: false
+        onTriggered: root._scheduleMinuteTick()
     }
 
     Timer {

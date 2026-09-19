@@ -41,6 +41,9 @@ thinkfan="$repo_root/services/ThinkFanService.qml"
 tlp_caps="$repo_root/services/TlpRuntimeCapabilities.qml"
 tlp_settings="$repo_root/services/TlpSettingsService.qml"
 power_profiles="$repo_root/services/PowerProfilePersistence.qml"
+world_clock="$repo_root/services/WorldClock.qml"
+game_mode="$repo_root/services/GameMode.qml"
+overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -63,10 +66,12 @@ require "$screen_edges" 'fillRule: ShapePath.OddEvenFill' 'Screen Edge geometry 
 require "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth' 'ii skew AltSwitcher cache must stay bounded'
 reject "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth * 2' 'ii skew AltSwitcher must not restore the doubled preview cache'
 require "$alt_switcher" 'layer.samples: Appearance.effectsEnabled ? 4 : 1' 'ii skew mask sampling must scale down with effects'
+require "$alt_switcher" 'layer.enabled: root.skewCardVisible' 'ii skew mask FBO must sleep while the switcher is closed'
 require "$waffle_alt" 'id: focusRetryTimer' 'Waffle AltSwitcher focus must use bounded retries'
 reject "$waffle_alt" 'id: focusTimer' 'Waffle AltSwitcher must not restore 33 Hz focus polling'
 require "$waffle_alt_content" 'cacheBuffer: root.skewExpandedWidth' 'Waffle skew AltSwitcher cache must stay bounded'
 require "$waffle_alt_content" 'layer.samples: Looks.effectsEnabled ? 4 : 1' 'Waffle skew mask sampling must scale down with effects'
+require "$waffle_alt_content" 'layer.enabled: root.cardVisible' 'Waffle skew mask FBO must sleep while the switcher is closed'
 
 require "$workspace_thumb" 'readonly property bool wallpaperPresented:' 'TaskView must gate hidden workspace wallpaper presentation'
 require "$workspace_thumb" 'sourceSize.width: Math.max(1, Math.ceil(root.thumbnailWidth * 1.5))' 'TaskView workspace wallpapers must use bounded decode size'
@@ -83,5 +88,10 @@ require "$thinkfan" 'interval: 30000' 'ThinkFan background polling must remain r
 require "$tlp_caps" 'interval: 300000' 'TLP runtime capability probes must remain low cadence'
 require "$tlp_settings" 'interval: 300000' 'TLP settings background refresh must remain low cadence'
 require "$power_profiles" 'interval: 300000' 'tlp-pd ownership probes must remain low cadence'
+
+require "$world_clock" 'id: minuteTick' 'WorldClock must tick at minute precision without a permanent 1 Hz timer'
+reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'
+require "$game_mode" 'Math.max(10000, Math.round(configured))' 'GameMode fallback polling must remain low cadence'
+require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
 
 printf 'performance lifecycle guards: ok\n'

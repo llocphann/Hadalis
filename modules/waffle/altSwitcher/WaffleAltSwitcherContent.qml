@@ -391,6 +391,7 @@ Item {
                     Canvas {
                         id: shadowCanvas
                         z: -1
+                        visible: root.cardVisible
                         anchors.fill: parent
                         anchors.margins: -10
                         property real shadowOffsetX: ListView.isCurrentItem ? 4 : 2
@@ -432,7 +433,7 @@ Item {
                     Item {
                         id: maskedBody
                         anchors.fill: parent
-                        layer.enabled: true
+                        layer.enabled: root.cardVisible
                         layer.smooth: true
                         layer.samples: Looks.effectsEnabled ? 4 : 1
                         layer.effect: MultiEffect {
@@ -441,7 +442,7 @@ Item {
                                 sourceItem: Item {
                                     width: maskedBody.width
                                     height: maskedBody.height
-                                    layer.enabled: true
+                                    layer.enabled: maskedBody.layer.enabled
                                     layer.smooth: true
                                     layer.samples: Looks.effectsEnabled ? 4 : 1
 

@@ -807,7 +807,7 @@ Scope {
                         visible: skewSlice.isCurrent
                         anchors.fill: parent
                         anchors.margins: -24
-                        layer.enabled: visible && Appearance.effectsEnabled
+                        layer.enabled: visible && root.skewCardVisible && Appearance.effectsEnabled
                         layer.smooth: true
                         opacity: Appearance.effectsEnabled ? 0.45 : 0.25
 
@@ -839,7 +839,7 @@ Scope {
                     Item {
                         id: skewImageContainer
                         anchors.fill: parent
-                        layer.enabled: true
+                        layer.enabled: root.skewCardVisible
                         layer.smooth: true
                         layer.samples: Appearance.effectsEnabled ? 4 : 1
                         layer.effect: MultiEffect {
@@ -848,7 +848,7 @@ Scope {
                                     sourceItem: Item {
                                         width: skewImageContainer.width
                                         height: skewImageContainer.height
-                                        layer.enabled: true
+                                        layer.enabled: skewImageContainer.layer.enabled
                                         layer.smooth: true
                                         layer.samples: Appearance.effectsEnabled ? 4 : 1
 

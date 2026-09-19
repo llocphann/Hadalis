@@ -64,7 +64,9 @@ Item { // Window
     property real bottomLeftRadius
     property real bottomRightRadius
 
-    layer.enabled: true
+    // Overview is retained after first use; release each per-window mask FBO
+    // while the surface is closed instead of pinning textures for every window.
+    layer.enabled: GlobalStates.overviewOpen
     layer.effect: OpacityMask {
         maskSource: Rectangle {
             width: root.width

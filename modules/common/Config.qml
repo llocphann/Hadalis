@@ -894,7 +894,7 @@ Singleton {
                 property bool minimalMode: true
                 property int niriWindowListUpdateIntervalMs: 100
                 property int niriWindowListUpdateIntervalMsGameMode: 500
-                property int checkInterval: 5000
+                property int checkInterval: 10000
             }
 
             property JsonObject reloadToasts: JsonObject {

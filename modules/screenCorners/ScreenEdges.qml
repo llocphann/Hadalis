@@ -152,6 +152,8 @@ Scope {
     // rounded inner boundary of the workspace, matching Caelestia's 25px
     // BorderConfig rounding.
     component CornerWindow: PanelWindow {
+        id: cornerWindow
+
         required property ShellScreen modelData
         required property string corner
 

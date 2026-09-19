@@ -63,5 +63,15 @@ require '["/usr/bin/pkill", "-TERM", "-x", "hyprsunset"]' \
     'Hyprland OFF requests must stop a legacy/detached hyprsunset backend'
 require 'root._applyManualDesiredState(!root.active)' \
     'unknown-state toggle must invert the probed backend state exactly once'
+require 'function load() {' \
+    'deferred shell initialization must explicitly initialize night-light state'
+require 'root.reEvaluate()' \
+    'night-light load path must evaluate the configured schedule'
+if grep -Fq -- 'running: !CompositorService.isNiri' "$service"; then
+    fail 'Hyprland state probe must be one-shot, not permanently bound running'
+fi
+if grep -Fq -- 'running: CompositorService.isNiri' "$service"; then
+    fail 'Niri state probe must be one-shot, not permanently bound running'
+fi
 
 printf 'night-light service lifecycle guards: ok\n'

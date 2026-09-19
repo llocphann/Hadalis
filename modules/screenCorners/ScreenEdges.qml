@@ -95,17 +95,24 @@ Scope {
             Config.options?.waffles?.bar?.screenList ?? [])
     }
 
-    function barOwnsEdge(outputName, edge) {
+    function iiBarOwnsEdge(outputName, edge) {
         if (!GlobalStates.barOpen || GlobalStates.widgetEditMode)
             return false
 
         // Auto-hide deliberately hands the physical edge back to ScreenEdges so
-        // the exact frame renderer can be inspected with the Bar fully hidden.
-        const iiOwned = !root.waffleFamily
+        // the persistent frame remains the visible baseline while the Bar moves.
+        return !root.waffleFamily
             && root.iiBarPanelEnabled
             && !(Config.options?.bar?.autoHide?.enable ?? false)
             && edge === root.iiBarEdge
             && root.iiBarTargetsOutput(outputName)
+    }
+
+    function barOwnsEdge(outputName, edge) {
+        if (!GlobalStates.barOpen || GlobalStates.widgetEditMode)
+            return false
+
+        const iiOwned = root.iiBarOwnsEdge(outputName, edge)
         const waffleOwned = root.waffleBarPanelEnabled
             && edge === root.waffleBarEdge
             && root.waffleBarTargetsOutput(outputName)
@@ -121,6 +128,24 @@ Scope {
         readonly property bool mapped: Config.ready
             && !GlobalStates.screenLocked
             && !fullscreenCovered
+
+        // Caelestia treats the Bar as a thicker side of the same inverted
+        // border. Mirror that ownership here: when a normal ii Bar owns an edge,
+        // the single physical frame simply moves that side of the rounded
+        // workspace hole inward to the Bar's real body thickness. No Bar-local
+        // corner patches or second corner renderer are introduced.
+        readonly property real frameLeftInset:
+            root.iiBarOwnsEdge(outputName, "left")
+                ? Appearance.sizes.verticalBarWidth : root.thickness
+        readonly property real frameRightInset:
+            root.iiBarOwnsEdge(outputName, "right")
+                ? Appearance.sizes.verticalBarWidth : root.thickness
+        readonly property real frameTopInset:
+            root.iiBarOwnsEdge(outputName, "top")
+                ? Appearance.sizes.barHeight : root.thickness
+        readonly property real frameBottomInset:
+            root.iiBarOwnsEdge(outputName, "bottom")
+                ? Appearance.sizes.barHeight : root.thickness
 
         screen: modelData
         visible: mapped
@@ -180,14 +205,15 @@ Scope {
                 strokeColor: "transparent"
                 strokeWidth: -1
 
-                readonly property real t: root.thickness
+                readonly property real innerLeft: frameWindow.frameLeftInset
+                readonly property real innerTop: frameWindow.frameTopInset
+                readonly property real innerRight:
+                    frameShape.width - frameWindow.frameRightInset
+                readonly property real innerBottom:
+                    frameShape.height - frameWindow.frameBottomInset
                 readonly property real r: Math.max(0, Math.min(root.rounding,
-                    (frameShape.width - 2 * t) / 2,
-                    (frameShape.height - 2 * t) / 2))
-                readonly property real innerLeft: t
-                readonly property real innerTop: t
-                readonly property real innerRight: frameShape.width - t
-                readonly property real innerBottom: frameShape.height - t
+                    Math.max(0, innerRight - innerLeft) / 2,
+                    Math.max(0, innerBottom - innerTop) / 2))
 
                 // Outer rectangle. Deliberately extends past the window just as
                 // Caelestia's BlobInvertedRect uses anchors.margins: -50.
@@ -210,9 +236,11 @@ Scope {
                     y: -root.outerPadding
                 }
 
-                // Single rounded inner workspace hole. This is the same
-                // geometric boundary as Caelestia's sdRoundedBox(inner, 25)
-                // when no drawer/blob is intersecting the border.
+                // Single rounded inner workspace hole. With no normal Bar,
+                // every side inset is the Screen Edge thickness. When the ii Bar
+                // owns top/bottom/left/right, only that side inset becomes the
+                // Bar body thickness — the same ContentWindow/BlobInvertedRect
+                // principle Caelestia uses for its Bar edge.
                 PathMove {
                     x: framePath.innerLeft + framePath.r
                     y: framePath.innerTop

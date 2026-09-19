@@ -23,6 +23,8 @@ from semantics import extract
 PROTOCOL = 1
 DEFAULT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_GRAMMAR = Path("assets/code-workflow/qmljs.so")
+SYSTEM_GRAMMAR = Path("/usr/lib/inir/code-workflow/qmljs.so")
+QMLJS_VERSION = "0.3.1"
 
 
 def emit(payload: dict, exit_code: int) -> int:
@@ -39,6 +41,22 @@ def unavailable(reason: str, detail: str = "") -> int:
     if detail:
         payload["detail"] = detail
     return emit(payload, 3)
+
+
+def resolve_grammar(root: Path, explicit: str) -> Path | None:
+    if explicit:
+        candidate = Path(explicit).expanduser().resolve()
+        return candidate if candidate.is_file() else None
+
+    env_value = os.environ.get("HADALIS_WORKFLOW_GRAMMAR", "")
+    if env_value:
+        candidate = Path(env_value).expanduser().resolve()
+        return candidate if candidate.is_file() else None
+
+    for candidate in ((root / DEFAULT_GRAMMAR).resolve(), SYSTEM_GRAMMAR):
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def resolve_source(root: Path, relative: str) -> Path:
@@ -74,16 +92,8 @@ def main() -> int:
     except ValueError as exc:
         return invalid(str(exc))
 
-    grammar_value = (
-        args.grammar
-        or os.environ.get("HADALIS_WORKFLOW_GRAMMAR", "")
-    )
-    grammar = (
-        Path(grammar_value).expanduser().resolve()
-        if grammar_value
-        else (root / DEFAULT_GRAMMAR).resolve()
-    )
-    if not grammar.is_file():
+    grammar = resolve_grammar(root, args.grammar)
+    if grammar is None:
         return unavailable("grammar-missing")
 
     library = (
@@ -128,6 +138,11 @@ def main() -> int:
         "diagnostics": semantic["diagnostics"],
         "counts": semantic["counts"],
         "anchorCollisions": semantic["anchor_collisions"],
+        "parser": {
+            "grammar": str(grammar),
+            "qmljsVersion": QMLJS_VERSION,
+            "treeSitterLibrary": library or "system",
+        },
         "editable": False,
     }, 0)
 

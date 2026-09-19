@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=6
+pkgrel=7
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -168,6 +168,7 @@ optdepends=(
   'songrec: song recognition'
   'translate-shell: translation widget'
   'hyprpicker: color picker'
+  'inir-workflow-parser: native QML parser capability for Code Workflow'
   'python-evdev: input device access'
   'python-pillow: image processing in scripts'
   'darkly-bin: Material You Qt style'

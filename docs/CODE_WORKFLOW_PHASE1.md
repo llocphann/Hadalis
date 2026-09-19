@@ -84,10 +84,26 @@ qualified by Phase 0 and does not introduce source writes.
 - scripts/test-code-workflow-parser-boundary.py guards confinement, no-network/
   no-build behavior, unavailable semantics, runtime payload policy and QML wiring.
 
+## Milestone 5 implemented
+
+- distro/arch/inir-workflow-parser packages the pinned qmljs 0.3.1 generated
+  parser/scanner as an architecture-specific optional capability.
+- The package installs only qmljs.so plus the upstream MIT license and depends on
+  the system tree-sitter library; Node/npm/tree-sitter-cli are not runtime
+  dependencies.
+- Analyzer discovery is explicit/env grammar first, then runtime-local grammar,
+  then /usr/lib/inir/code-workflow/qmljs.so.
+- inir-shell-git advertises the parser through optdepends; the source-install
+  dependency tracker records it as optional.
+- Stable inir-shell intentionally does not advertise the parser yet because its
+  pinned source snapshot predates CodeWorkflowAnalyzer; the contract enforces
+  that source/capability identity boundary.
+- The shell payload remains architecture-neutral and works without the parser.
+
 ## Still deliberately unfinished
 
 - production picker live-compositor acceptance on the shipped shell;
-- architecture-specific native grammar packaging for package-managed installs;
+- Nix-native grammar packaging and stable-source promotion of the Arch optdepend;
 - CST-backed byte-range mapping from parser entries into the reviewed IR;
 - generic semantic extraction beyond the reviewed ii Bar projection;
 - source patches, Apply, transactions, conflicts or undo/redo;
@@ -97,9 +113,8 @@ qualified by Phase 0 and does not introduce source writes.
 ## Next milestone
 
 Run the production picker through the same Niri/Sway acceptance ideas proven in
-Phase 0, without weakening its contracts. Next, package the native qmljs grammar
-as an architecture-specific capability without turning the architecture-neutral
-shell payload into an x86_64 binary package; then map analyzer CST ranges into the
-existing graph-domain schema.
+Phase 0, without weakening its contracts. Next, map analyzer CST ranges into the
+existing reviewed graph-domain schema while keeping unsupported constructs opaque;
+Nix-native parser packaging can follow the same optional-capability boundary.
 
 No manual or live smoke result is implied here.

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -29,6 +30,10 @@ for forbidden in ("curl ", "wget ", "npm ", "node ", "subprocess."):
         fail("production analyzer must not download/build/spawn tooling: " + forbidden)
 if "write_text(" in source or "write_bytes(" in source:
     fail("production analyzer must not write source")
+if 'SYSTEM_GRAMMAR = Path("/usr/lib/inir/code-workflow/qmljs.so")' not in source:
+    fail("analyzer must discover the optional system grammar package")
+if 'QMLJS_VERSION = "0.3.1"' not in source:
+    fail("analyzer grammar version metadata drifted")
 
 missing = run(
     "--root", str(ROOT),
@@ -127,4 +132,74 @@ for excluded in (
     if excluded in runtime_paths:
         fail("Phase 0 harness leaked into runtime payload: " + excluded)
 
-print("ok - Code Workflow parser process boundary and runtime payload contract")
+parser_pkg_path = ROOT / "distro/arch/inir-workflow-parser/PKGBUILD"
+parser_srcinfo_path = ROOT / "distro/arch/inir-workflow-parser/.SRCINFO"
+if not parser_pkg_path.is_file() or not parser_srcinfo_path.is_file():
+    fail("optional Arch parser package recipe/.SRCINFO is missing")
+
+parser_pkg = parser_pkg_path.read_text(encoding="utf-8")
+parser_srcinfo = parser_srcinfo_path.read_text(encoding="utf-8")
+for token in (
+    "pkgname=inir-workflow-parser",
+    "pkgver=0.3.1",
+    "arch=(x86_64)",
+    "depends=(glibc tree-sitter)",
+    "e6ed3a7040df54fed1183801ad482139622bf9b9ec1c5f7ee36c5ece25806c58",
+    "src/parser.c src/scanner.c",
+    "${pkgdir}/usr/lib/inir/code-workflow/qmljs.so",
+):
+    if token not in parser_pkg:
+        fail("parser PKGBUILD missing " + token)
+
+for token in (
+    "pkgbase = inir-workflow-parser",
+    "\tpkgver = 0.3.1",
+    "\tarch = x86_64",
+    "\tdepends = glibc",
+    "\tdepends = tree-sitter",
+    "\tsha256sums = e6ed3a7040df54fed1183801ad482139622bf9b9ec1c5f7ee36c5ece25806c58",
+):
+    if token not in parser_srcinfo:
+        fail("parser .SRCINFO missing " + token)
+
+syntax = subprocess.run(
+    ["bash", "-n", str(parser_pkg_path)],
+    cwd=ROOT,
+    text=True,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    check=False,
+)
+if syntax.returncode != 0:
+    fail("parser PKGBUILD is not valid Bash: " + syntax.stderr.strip())
+
+git_pkg = (ROOT / "distro/arch/inir-shell-git/PKGBUILD").read_text(encoding="utf-8")
+git_srcinfo = (ROOT / "distro/arch/inir-shell-git/.SRCINFO").read_text(encoding="utf-8")
+capability = "inir-workflow-parser: native QML parser capability for Code Workflow"
+if capability not in git_pkg or ("\toptdepends = " + capability) not in git_srcinfo:
+    fail("inir-shell-git must advertise the optional parser capability")
+if re.search(r"^[ \t]+inir-workflow-parser$", git_pkg, re.MULTILINE):
+    fail("inir-shell-git must not hard-depend on the optional parser capability")
+
+deps_pkg = (ROOT / "sdata/dist-arch/inir-deps/PKGBUILD").read_text(encoding="utf-8")
+if capability not in deps_pkg:
+    fail("source-install dependency tracker must know the optional parser capability")
+
+stable_pkg = (ROOT / "distro/arch/inir-shell/PKGBUILD").read_text(encoding="utf-8")
+stable_srcinfo = (ROOT / "distro/arch/inir-shell/.SRCINFO").read_text(encoding="utf-8")
+match = re.search(r'_source_ref="\$\{INIR_SOURCE_REF:-([^}]+)\}"', stable_pkg)
+if not match:
+    fail("cannot resolve stable inir-shell source snapshot")
+stable_ref = match.group(1)
+snapshot_has_analyzer = subprocess.run(
+    ["git", "cat-file", "-e", f"{stable_ref}:scripts/code-workflow/analyze.py"],
+    cwd=ROOT,
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    check=False,
+).returncode == 0
+stable_advertises = capability in stable_pkg and ("\toptdepends = " + capability) in stable_srcinfo
+if snapshot_has_analyzer != stable_advertises:
+    fail("stable parser optdepend must match whether its pinned source snapshot contains the analyzer")
+
+print("ok - Code Workflow parser process boundary, native capability package, and runtime payload contract")

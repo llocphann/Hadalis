@@ -14,6 +14,12 @@ downloads or builds dependencies, never writes QML, and fails closed when the
 native grammar or Tree-sitter library is unavailable. The reviewed IR remains the
 fallback in that case.
 
+Grammar discovery is explicit/env override first, then a runtime-local
+`assets/code-workflow/qmljs.so`, then the optional Arch package path
+`/usr/lib/inir/code-workflow/qmljs.so`. The packaged capability lives in
+`distro/arch/inir-workflow-parser`; the architecture-neutral shell itself does
+not embed a native grammar.
+
 For a source checkout, the existing Phase 0 builder can opt a developer into the
 native analyzer without changing the runtime tree:
 

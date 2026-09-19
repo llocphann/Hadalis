@@ -1,6 +1,6 @@
 pkgname=inir-shell-git
 pkgver=2.29.3.r0.g0000000
-pkgrel=7
+pkgrel=8
 pkgdesc='Hadalis shell payload, launcher, and user service (git)'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -65,6 +65,7 @@ optdepends=(
   'gowall-bin: wallpaper theme conversion and effects editor'
   'gum: setup TUI helpers'
   'hyprpicker: color picker support'
+  'inir-workflow-parser: native QML parser capability for Code Workflow'
   'kde-cli-tools: Dolphin Open With dialog (QT_QPA_PLATFORMTHEME=kde)'
   'imagemagick: image conversion helpers'
   'kconfig: KDE configuration integration'

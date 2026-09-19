@@ -1,3 +1,4 @@
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
@@ -23,7 +24,7 @@ Item {
         contentHeight: columnLayout.height
 
         clip: true
-        layer.enabled: true
+        layer.enabled: root.visible && GlobalStates.sidebarRightOpen
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: flickable.width

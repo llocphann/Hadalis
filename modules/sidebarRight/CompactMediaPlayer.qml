@@ -173,7 +173,7 @@ Item {
         }
         clip: true
 
-        layer.enabled: !root.zzzStyle
+        layer.enabled: GlobalStates.sidebarRightOpen && root.visible && !root.zzzStyle
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle {
                 width: playerCard.width; height: playerCard.height; radius: playerCard.radius
@@ -197,7 +197,7 @@ Item {
                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
 
-            layer.enabled: Appearance.effectsEnabled && visible
+            layer.enabled: GlobalStates.sidebarRightOpen && root.visible && Appearance.effectsEnabled && visible
             layer.effect: MultiEffect {
                 blurEnabled: true
                 blur: root.zzzStyle ? 0.15 : (root.auroraStyle ? 0.32 : 0.24)

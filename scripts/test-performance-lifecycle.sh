@@ -58,6 +58,12 @@ sidebar_quick_wallpaper="$repo_root/modules/sidebarLeft/widgets/QuickWallpaper.q
 booru_image="$repo_root/modules/sidebarLeft/anime/BooruImage.qml"
 booru_response="$repo_root/modules/sidebarLeft/anime/BooruResponse.qml"
 ai_think_block="$repo_root/modules/sidebarLeft/aiChat/MessageThinkBlock.qml"
+sidebar_right_tasks="$repo_root/modules/sidebarRight/todo/TaskList.qml"
+sidebar_right_notifications="$repo_root/modules/sidebarRight/notifications/NotificationList.qml"
+sidebar_right_media="$repo_root/modules/sidebarRight/CompactMediaPlayer.qml"
+control_panel_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
+dash_media="$repo_root/modules/dashboard/DashMedia.qml"
+dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -129,5 +135,14 @@ require "$sidebar_quick_wallpaper" 'layer.enabled: root.visible && GlobalStates.
 require "$booru_image" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru image masks must sleep with the sidebar'
 require "$booru_response" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru tag masks must sleep with the sidebar'
 require "$ai_think_block" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI think-block masks must sleep with the sidebar'
+require "$sidebar_right_tasks" 'layer.enabled: root.visible && GlobalStates.sidebarRightOpen' 'To-do list mask must sleep with the right sidebar'
+require "$sidebar_right_notifications" 'layer.enabled: root.visible && GlobalStates.sidebarRightOpen' 'notification list mask must sleep with the right sidebar'
+require "$sidebar_right_media" 'GlobalStates.sidebarRightOpen && root.visible && !root.zzzStyle' 'right-sidebar media mask must sleep while closed'
+require "$sidebar_right_media" 'GlobalStates.sidebarRightOpen && root.visible && Appearance.effectsEnabled && visible' 'right-sidebar media blur must sleep while closed'
+require "$control_panel_wallpaper" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel wallpaper mask must sleep while closed'
+require "$control_panel_wallpaper" 'mipmap: false' 'Control Panel wallpaper preview must not generate unused mipmaps'
+require "$dash_media" 'GlobalStates.dashboardOpen && root.visible && status === Image.Ready' 'Dashboard media mask must sleep while closed'
+require "$dash_welcome" 'GlobalStates.dashboardOpen && root.visible && status === Image.Ready' 'Dashboard avatar mask must sleep while closed'
+require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'
 
 printf 'performance lifecycle guards: ok\n'

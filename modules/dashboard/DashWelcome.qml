@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects as GE
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -48,7 +49,7 @@ DashCard {
                 asynchronous: true
                 cache: true
                 smooth: true
-                mipmap: true
+                mipmap: false
                 sourceSize.width: 144
                 sourceSize.height: 144
                 opacity: status === Image.Ready ? 1 : 0
@@ -57,7 +58,7 @@ DashCard {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
-                layer.enabled: status === Image.Ready
+                layer.enabled: GlobalStates.dashboardOpen && root.visible && status === Image.Ready
                 layer.effect: GE.OpacityMask { maskSource: avatarMask }
             }
 

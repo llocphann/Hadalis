@@ -1,3 +1,4 @@
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
@@ -28,7 +29,7 @@ Item {
         anchors.bottomMargin: 5
 
         clip: true
-        layer.enabled: true
+        layer.enabled: root.visible && GlobalStates.sidebarRightOpen
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: listview.width

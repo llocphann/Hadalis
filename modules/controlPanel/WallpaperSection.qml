@@ -108,10 +108,10 @@ PanelSurface {
                 asynchronous: true
                 cache: true
                 smooth: true
-                mipmap: true
+                mipmap: false
                 sourceSize.width: previewContainer.width * 2
                 sourceSize.height: previewContainer.height * 2
-                layer.enabled: true
+                layer.enabled: root.visible && GlobalStates.controlPanelOpen
                 layer.effect: GE.OpacityMask {
                     maskSource: previewMask
                 }

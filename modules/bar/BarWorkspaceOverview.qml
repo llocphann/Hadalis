@@ -17,14 +17,15 @@ StyledPopup {
 
     required property bool dockHovered
     property string barPosition: "top"
-    readonly property bool transposeOverviewGrid:
-        root.barPosition === "left" || root.barPosition === "right"
+    property real attachmentThickness: -1
     property Item anchorItem
     property bool previewOpen: false
     property var workspaceId: null
 
     hoverTarget: root.anchorItem
     centerOnOutput: true
+    attachmentEdgeOverride: root.barPosition
+    attachmentThicknessOverride: root.attachmentThickness
     hoverActivates: false
     alternativeVisibleCondition: root.previewOpen
     popupBackgroundMargin: 0
@@ -78,7 +79,6 @@ StyledPopup {
                 // not semantic hover state, so close is a pure reverse slide.
                 presentationActive: root.active
                 embeddedSurface: true
-                transposeGrid: root.transposeOverviewGrid
                 focusIndicatorAnimationReady:
                     root.requestedVisible && root.revealProgress >= 0.999
                 preferredWorkspaceId: root.workspaceId
@@ -95,7 +95,6 @@ StyledPopup {
                 // retract reaches the Bar and StyledPopup finally unmaps.
                 presentationActive: root.active
                 embeddedSurface: true
-                transposeGrid: root.transposeOverviewGrid
                 focusIndicatorAnimationReady:
                     root.requestedVisible && root.revealProgress >= 0.999
                 preferredWorkspaceId: root.workspaceId

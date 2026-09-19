@@ -19,6 +19,8 @@ LazyLoader {
     // This changes only placement; the real hoverTarget still owns screen,
     // edge, hover-transfer and cross-axis attachment.
     property bool centerOnOutput: false
+    property string attachmentEdgeOverride: ""
+    property real attachmentThicknessOverride: -1
     property bool hoverActivates: true
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
@@ -39,15 +41,25 @@ LazyLoader {
 
     readonly property bool _barVertical: Config.options?.bar?.vertical ?? false
     readonly property bool _trailingEdge: Config.options?.bar?.bottom ?? false
-    readonly property string _attachmentEdge: root._barVertical
+    readonly property string _defaultAttachmentEdge: root._barVertical
         ? (root._trailingEdge ? "right" : "left")
         : (root._trailingEdge ? "bottom" : "top")
-    // Source controls own tangent placement; the Bar owns the cross-axis edge.
-    // This follows the Caelestia composition principle where differently sized
-    // controls point at one panel boundary instead of creating uneven stems.
-    readonly property real _barSurfaceThickness: root._barVertical
-        ? Appearance.sizes.verticalBarWidth
-        : Appearance.sizes.barHeight
+    readonly property string _attachmentEdge:
+        ["top", "bottom", "left", "right"].includes(root.attachmentEdgeOverride)
+            ? root.attachmentEdgeOverride : root._defaultAttachmentEdge
+    readonly property bool _attachmentVertical:
+        root._attachmentEdge === "left" || root._attachmentEdge === "right"
+    readonly property bool _attachmentTrailing:
+        root._attachmentEdge === "right" || root._attachmentEdge === "bottom"
+    // Source controls own tangent placement; the attached surface owns the
+    // cross-axis edge. Existing Bar callers keep canonical Bar thickness while
+    // Screen Edge callers may provide the physical frame thickness.
+    readonly property real _barSurfaceThickness:
+        root.attachmentThicknessOverride > 0
+            ? root.attachmentThicknessOverride
+            : (root._attachmentVertical
+                ? Appearance.sizes.verticalBarWidth
+                : Appearance.sizes.barHeight)
     readonly property real _contentPadding: 14
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
@@ -228,8 +240,8 @@ LazyLoader {
         // into the output midpoint without replacing the real Bar ownership
         // anchor — important for workspace Overview, which should be visually
         // centered even when the hovered workspace button sits near an edge.
-        if (root._barVertical) {
-            const barX = root._trailingEdge
+        if (root._attachmentVertical) {
+            const barX = root._attachmentTrailing
                 ? Math.max(0, outputWidth - thickness) : 0
             const tangentY = root.centerOnOutput
                 ? Math.max(0, (outputHeight - localHeight) / 2)
@@ -237,7 +249,7 @@ LazyLoader {
             return Qt.rect(barX, tangentY, thickness, localHeight)
         }
 
-        const barY = root._trailingEdge
+        const barY = root._attachmentTrailing
             ? Math.max(0, outputHeight - thickness) : 0
         const tangentX = root.centerOnOutput
             ? Math.max(0, (outputWidth - localWidth) / 2)

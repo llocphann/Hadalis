@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
 import qs.modules.common.perimeter
+import qs.modules.bar as Bar
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
@@ -316,6 +317,15 @@ Scope {
         readonly property bool horizontal: edge === "top" || edge === "bottom"
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
+        readonly property bool workspaceOverviewEdgeTriggerEnabled:
+            edge === "top"
+            && root.barVertical
+            && !root.waffleFamily
+            && root.iiBarPanelEnabled
+            && GlobalStates.barOpen
+            && !GlobalStates.widgetEditMode
+            && root.iiBarTargetsOutput(outputName)
+            && (Config.options?.overview?.workspaceHover?.enable ?? true)
         readonly property bool mapped: Config.ready
             && !GlobalStates.screenLocked
             && !fullscreenCovered
@@ -350,7 +360,49 @@ Scope {
             height: 0
             visible: false
         }
-        mask: Region { item: emptyReservationInput }
+
+        MouseArea {
+            id: workspaceOverviewHitArea
+            anchors.fill: parent
+            enabled: reservationWindow.workspaceOverviewEdgeTriggerEnabled
+            hoverEnabled: enabled
+            acceptedButtons: Qt.NoButton
+            onContainsMouseChanged: {
+                if (containsMouse && enabled)
+                    workspaceOverviewHoverDelay.restart()
+                else
+                    workspaceOverviewHoverDelay.stop()
+            }
+        }
+
+        Timer {
+            id: workspaceOverviewHoverDelay
+            interval: Config.options?.overview?.workspaceHover?.delayMs ?? 280
+            repeat: false
+            onTriggered: {
+                if (reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                        && workspaceOverviewHitArea.containsMouse)
+                    workspaceEdgeOverview.showWorkspace(null, workspaceOverviewHitArea)
+            }
+        }
+
+        Bar.BarWorkspaceOverview {
+            id: workspaceEdgeOverview
+            dockHovered: reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                && workspaceOverviewHitArea.containsMouse
+            barPosition: "top"
+            attachmentThickness: root.thickness
+        }
+
+        onWorkspaceOverviewEdgeTriggerEnabledChanged: {
+            if (!workspaceOverviewEdgeTriggerEnabled)
+                workspaceEdgeOverview.close()
+        }
+
+        mask: Region {
+            item: reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                ? workspaceOverviewHitArea : emptyReservationInput
+        }
     }
 
     Variants {

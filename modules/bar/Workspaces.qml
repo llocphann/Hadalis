@@ -20,8 +20,10 @@ Item {
         : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
     property Item lastHoveredWorkspaceButton: null
     property bool workspaceButtonHovered: false
+    readonly property bool workspaceHoverPopupEnabled: !root.vertical
     readonly property bool workspaceOverviewHoverEnabled:
-        Config.options?.overview?.workspaceHover?.enable ?? true
+        root.workspaceHoverPopupEnabled
+        && (Config.options?.overview?.workspaceHover?.enable ?? true)
     property bool borderless: Config.options?.bar?.borderless ?? false
     readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(root.QsWindow.window?.screen) : null
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
@@ -545,7 +547,7 @@ Item {
                 }
 
                 onHoveredChanged: {
-                    if (hovered) {
+                    if (hovered && root.workspaceHoverPopupEnabled) {
                         root.lastHoveredWorkspaceButton = button
                         root.workspaceButtonHovered = true
                         workspaceHoverDelay.restart()
@@ -565,7 +567,7 @@ Item {
                         : (Config.options?.dock?.hoverPreviewDelay ?? 400)
                     repeat: false
                     onTriggered: {
-                        if (!button.hovered)
+                        if (!button.hovered || !root.workspaceHoverPopupEnabled)
                             return
                         if (root.workspaceOverviewHoverEnabled) {
                             root.showWorkspaceOverview(button.workspaceValue, button)

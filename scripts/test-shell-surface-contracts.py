@@ -16,6 +16,12 @@ def check(condition: bool, message: str) -> None:
 
 
 def main() -> None:
+    readme = read("README.md")
+    check("### 2.1 Locked visual contract — four perimeter corners" in readme
+          and "Do not add `screenEdgeThickness` to those corner anchors" in readme
+          and "`scripts/test-shell-surface-contracts.py` is the regression gate" in readme,
+          "README must retain the maintainer-approved four-corner perimeter lock")
+
     styled_popup = read("modules/bar/StyledPopup.qml")
     for token in (
         "qs.modules.common.perimeter",

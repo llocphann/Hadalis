@@ -97,10 +97,10 @@ def main() -> None:
            "Overview Settings must keep advanced motion tuning out of the primary UI")
     require(dashboard_settings, "overview.dashboard.enable",
             "Dashboard Settings must own compact launcher Dashboard integration")
-    require(arrangement, "readonly property int layoutSchemaVersion: 5",
-            "Settings arrangement must migrate the Overview page into Shell")
+    require(arrangement, "readonly property int layoutSchemaVersion: 6",
+            "Settings arrangement must preserve the Overview migration while adding Code Workflow")
     require(arrangement, "root.overviewPageIndex",
-            "Overview Shell placement migration must be explicit")
+            "Overview Shell placement migration must remain explicit")
     require(registry, 'key: "overview"',
             "Settings registry must expose the dedicated Overview page")
     require(config, "property JsonObject workspaceHover: JsonObject",

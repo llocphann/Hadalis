@@ -39,6 +39,7 @@ for token in ('targetId: "bar"', 'targetId: "bar/media"',
 
 require(target, "horizontal ii Bar", "runtime geometry scope must remain explicit")
 require(target, "Explicit allowlist", "runtime values must stay allowlisted")
+require(session, "import Quickshell", "Singleton session must import Quickshell for staged-runtime startup")
 require(session, "Persistent.states", "session must survive Settings page eviction")
 require(page, "preferredRendererType: Shape.GeometryRenderer", "page must use qualified Geometry renderer")
 require(page, "readOnly: true", "Source Preview must be read-only")

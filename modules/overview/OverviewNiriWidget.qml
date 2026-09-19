@@ -15,7 +15,6 @@ Item {
     required property var panelWindow
     property bool taskViewMode: false
     property bool embeddedSurface: false
-    property bool transposeGrid: false
     property bool presentationActive: GlobalStates.overviewOpen
     // Embedded Bar presentation disables focus-indicator motion until the
     // parent connected popup has finished its own reveal. This prevents the
@@ -32,12 +31,8 @@ Item {
     }
 
     readonly property var overviewOptions: Config.options?.overview ?? {}
-    readonly property int configuredOverviewRows: overviewOptions.rows ?? 3
-    readonly property int configuredOverviewColumns: overviewOptions.columns ?? 1
-    readonly property int overviewRows: taskViewMode ? 1
-        : (root.transposeGrid ? root.configuredOverviewColumns : root.configuredOverviewRows)
-    readonly property int overviewColumns: taskViewMode ? 3
-        : (root.transposeGrid ? root.configuredOverviewRows : root.configuredOverviewColumns)
+    readonly property int overviewRows: taskViewMode ? 1 : (overviewOptions.rows ?? 3)
+    readonly property int overviewColumns: taskViewMode ? 3 : (overviewOptions.columns ?? 1)
     readonly property real overviewScale: taskViewMode ? 0.27 : (overviewOptions.scale ?? 0.17)
     readonly property real overviewMaxPanelWidthRatio: taskViewMode ? 0.92 : (overviewOptions.maxPanelWidthRatio ?? 1.0)
     readonly property int overviewWorkspaceSpacing: taskViewMode ? 18 : (overviewOptions.workspaceSpacing ?? 5)

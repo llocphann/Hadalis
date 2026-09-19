@@ -243,6 +243,17 @@ Item {
             String(nextValue ?? ""))
     }
 
+    function regenerateTransaction(): void {
+        if (!root.transactionMatchesSelection
+                || CodeWorkflowAnalyzer.status !== "ready")
+            return
+        const currentSha = String(
+            CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+        if (currentSha.length === 0)
+            return
+        CodeWorkflowTransaction.regenerate(currentSha)
+    }
+
     function focusSourceAnchor(): void {
         if (root.sourceNeedle.length === 0 || root.sourceText.length === 0)
             return
@@ -358,9 +369,9 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Phase 1 · "
+                        text: "Phase 2 · "
                             + (root.graph?.title ?? "Workflow")
-                            + " · graph is the editor"
+                            + " · dry-run transactions"
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         color: Appearance.colors.colSubtext
                     }
@@ -748,6 +759,30 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                     }
+                    Pill {
+                        label: CodeWorkflowTransaction.historyLabel
+                        accent: Appearance.colors.colSubtext
+                    }
+                    RippleButtonWithIcon {
+                        materialIcon: "undo"
+                        mainText: "Undo"
+                        enabled: CodeWorkflowTransaction.canUndo
+                        onClicked: CodeWorkflowTransaction.undoPreview()
+                    }
+                    RippleButtonWithIcon {
+                        materialIcon: "redo"
+                        mainText: "Redo"
+                        enabled: CodeWorkflowTransaction.canRedo
+                        onClicked: CodeWorkflowTransaction.redoPreview()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.status === "conflict"
+                        materialIcon: "refresh"
+                        mainText: "Regenerate"
+                        enabled: root.transactionMatchesSelection
+                            && CodeWorkflowAnalyzer.status === "ready"
+                        onClicked: root.regenerateTransaction()
+                    }
                     RippleButtonWithIcon {
                         materialIcon: "close"
                         mainText: "Clear"
@@ -761,6 +796,10 @@ Item {
                     Layout.fillHeight: true
                     text: CodeWorkflowTransaction.previewText.length > 0
                         ? CodeWorkflowTransaction.previewText
+                            + (CodeWorkflowTransaction.status === "conflict"
+                                ? "\n\nSTALE: "
+                                    + CodeWorkflowTransaction.error
+                                : "")
                         : CodeWorkflowTransaction.error
                     color: Appearance.colors.colOnLayer1
                     font.family: Appearance.font.family.monospace

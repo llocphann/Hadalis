@@ -31,6 +31,29 @@ Implemented:
   SHA conflicts, unsupported binding/expression rejection, no-write behavior and
   runtime packaging.
 
+## Milestone 2B — semantic preview history and regenerate
+
+Implemented:
+
+- CodeWorkflowTransaction now stores preview commands by semantic identity:
+  sourcePath + baseSha256 + semanticAnchor + replacement. Byte ranges remain
+  result evidence and are not used as command identity.
+- Successful previews append to history and truncate the redo branch after a new
+  proposal, matching normal undo/redo semantics.
+- Undo can return to the clean/no-preview state; Redo restores a prior semantic
+  preview. No history action writes source.
+- External source changes mark every matching historical command stale. Showing
+  a stale command yields conflict rather than presenting it as current.
+- Regenerate re-runs the active semantic command against the analyzer's latest
+  source SHA. transaction.py must re-resolve the stable anchor and parse the
+  candidate again before the command becomes a fresh preview.
+- A successful regeneration replaces the stale history entry instead of adding
+  a second logical command.
+- The patch drawer exposes Undo, Redo, Regenerate and Clear. It still exposes no
+  Apply action and CodeWorkflowTransaction.applyEnabled remains false.
+- scripts/test-code-workflow-transaction-history.py guards history/regenerate
+  semantics and the no-write boundary.
+
 ## Not implemented yet
 
 - source writes or Apply;
@@ -44,8 +67,9 @@ Implemented:
 
 ## Next gate
 
-Before enabling any source write, add transaction command history and a
-diagnostics/patch model that can rebase or explicitly reject a preview after
-external source changes. Then add an atomic one-file Apply path with pre-write
-hash verification, parser validation, normal Quickshell watcher reload,
-reloadCompleted/reloadFailed observation and semantic target rebind.
+Before enabling any source write, add an explicit pre-Apply diagnostics gate
+for package-managed/read-only source and candidate validation state. Then add an
+atomic one-file Apply path with a final pre-write hash check, normal Quickshell
+watcher reload, reloadCompleted/reloadFailed observation and semantic target
+rebind. The write path must consume the same semantic command; it must never
+reuse stale byte ranges from history.

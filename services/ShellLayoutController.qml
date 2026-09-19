@@ -5,7 +5,6 @@ import QtQuick
 import Quickshell
 import qs
 import qs.modules.common
-import qs.modules.common.perimeter
 
 Singleton {
     id: root
@@ -245,9 +244,6 @@ Singleton {
                 && (GlobalStates.barOpen ?? true)) {
             const barState = root.currentState("iiBar", outputName)
             const appearanceStyle = Config.options?.bar?.appearanceStyle ?? "classic"
-            const frameRadius = Math.max(0, Math.min(96,
-                Number(Config.options?.appearance?.screenEdge?.radius
-                    ?? PerimeterTokens.frameRadius)))
             let thickness = 0
             if (appearanceStyle === "pill" && !barVertical) {
                 const screen = Quickshell.screens.find(item => (item?.name ?? "") === outputName)
@@ -262,15 +258,10 @@ Singleton {
                 const appGap = Config.options?.bar?.pill?.appGap ?? 1
                 thickness = Math.max(0, restHeight + topGap - 12 * (1 - appGap) * scale)
             } else if (barVertical) {
-                thickness = Appearance.sizes.verticalBarWidth + frameRadius
-            } else if (appearanceStyle === "m3") {
-                // M3Bar's layer surface includes the rounded screen decorator;
-                // reserve its visual extent, not only the exclusive-zone core.
-                thickness = Appearance.sizes.barHeight + frameRadius
+                thickness = Appearance.sizes.verticalBarWidth
             } else {
-                // Classic Bar has one supported geometry: Hug. Reserve the
-                // structural body plus its inverse-corner shoulder extent.
-                thickness = Appearance.sizes.barHeight + frameRadius
+                // Square Screen Edge baseline: normal Bar owns only its body.
+                thickness = Appearance.sizes.barHeight
             }
             result.barEdge = barState.ok ? barState.slot : ""
             root._applyInset(result, result.barEdge, thickness)

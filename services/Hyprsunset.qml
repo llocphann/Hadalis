@@ -161,7 +161,12 @@ Singleton {
         }
     }
 
-    function load() { } // Dummy to force init
+    function load() {
+        // shell.qml calls this once during deferred initialization. Resolve the
+        // configured schedule and real backend state explicitly; state probes
+        // themselves stay one-shot instead of being bound permanently running.
+        root.reEvaluate()
+    }
 
     function _ownedProcessRunning(): bool {
         return CompositorService.isNiri ? wlsunsetProc.running : hyprsunsetProc.running
@@ -300,6 +305,7 @@ Singleton {
         }
 
         if (root.active) {
+            root._pendingDisable = true
             root._stopDetectedBackend()
             return
         }
@@ -373,7 +379,7 @@ Singleton {
         id: fetchProc
         property bool startObserved: false
         property bool timedOut: false
-        running: !CompositorService.isNiri
+        running: false
         command: ["/usr/bin/bash", "-c", "hyprctl hyprsunset temperature"]
         stdout: StdioCollector {
             id: stateCollector
@@ -456,7 +462,7 @@ Singleton {
         id: niriFetchProc
         property bool startObserved: false
         property bool timedOut: false
-        running: CompositorService.isNiri
+        running: false
         command: ["/usr/bin/pidof", "wlsunset"]
         onRunningChanged: {
             if (niriFetchProc.running) {

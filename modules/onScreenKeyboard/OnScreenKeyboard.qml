@@ -252,10 +252,12 @@ Scope { // Scope
 
                 color: Appearance.colors.colLayer0
                 radius: Appearance.rounding.windowRounding
-                topLeftRadius: oskRoot.snappedEdge === "top" ? 0 : radius
-                topRightRadius: oskRoot.snappedEdge === "top" ? 0 : radius
-                bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius
-                bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius
+                readonly property real attachedRadius: Math.max(0, Math.min(
+                    PerimeterTokens.attachedCornerRadius, width / 2, height / 2))
+                topLeftRadius: oskRoot.snappedEdge === "top" ? attachedRadius : radius
+                topRightRadius: oskRoot.snappedEdge === "top" ? attachedRadius : radius
+                bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? attachedRadius : radius
+                bottomRightRadius: oskRoot.snappedEdge === "bottom" ? attachedRadius : radius
                 border.width: 0
                 border.color: "transparent"
                 enabled: GlobalStates.oskOpen

@@ -16,7 +16,9 @@ MouseArea {
     visible: implicitWidth > 0
     implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating)
         ? (root.vertical ? 34 : pill.width) : 0
-    implicitHeight: root.vertical ? 34 : Appearance.sizes.barHeight
+    implicitHeight: root.vertical
+        ? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 : 0)
+        : Appearance.sizes.barHeight
 
     Behavior on implicitWidth {
         enabled: Appearance.animationsEnabled

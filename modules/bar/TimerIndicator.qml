@@ -88,7 +88,9 @@ MouseArea {
     visible: implicitWidth > 0
     implicitWidth: (anyActive || showPinnedIdle)
         ? (root.vertical ? 34 : pill.width + 4) : 0
-    implicitHeight: root.vertical ? 34 : Appearance.sizes.barHeight
+    implicitHeight: root.vertical
+        ? ((anyActive || showPinnedIdle) ? 34 : 0)
+        : Appearance.sizes.barHeight
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor

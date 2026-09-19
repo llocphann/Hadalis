@@ -27,6 +27,8 @@ def main() -> None:
     config = read("modules/common/Config.qml")
     defaults = read("defaults/config.json")
     util = read("modules/bar/UtilButtons.qml")
+    timer_indicator = read("modules/bar/TimerIndicator.qml")
+    shell_update_indicator = read("modules/bar/ShellUpdateIndicator.qml")
     critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
 
     require(settings,
@@ -98,6 +100,28 @@ def main() -> None:
             "Layout editor must protect the centered Workspaces pivot.")
     require(editor, 'enabled: zoneCard.zoneName !== "center"',
             "Pivot zone must reject drag/drop of ordinary modules.")
+
+    require(vertical, "required property string modelData",
+            "VerticalModuleCell must keep a modelData contract for its Repeater.")
+    forbid(vertical,
+           'delegate: VerticalModuleCell {\n                    required property string modelData',
+           "Vertical delegate must not redeclare required modelData.")
+    forbid(vertical, "moduleLoader.item.visible",
+           "Vertical cell visibility must not depend on effective child visibility.")
+    forbid(vertical, "readonly property bool sourceVisible",
+           "Vertical renderer must not feed loaded-item visibility back into its parent.")
+    forbid(vertical, "visible: implicitHeight > 0",
+           "Vertical zones must stay instantiated while their natural size bootstraps.")
+    forbid(vertical, "id: moduleLoader\n            anchors.fill: parent",
+           "Vertical module Loader must not fill the main axis it is measuring.")
+    require(vertical, "anchors.horizontalCenter: parent.horizontalCenter",
+            "Vertical module Loader must preserve natural main-axis height.")
+    require(timer_indicator,
+            "? ((anyActive || showPinnedIdle) ? 34 : 0)",
+            "Inactive vertical Timer must collapse to zero main-axis height.")
+    require(shell_update_indicator,
+            "? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 : 0)",
+            "Inactive vertical update indicator must collapse to zero main-axis height.")
 
     require(util, "property bool vertical: false",
             "Utility buttons must expose an orientation-safe presentation switch.")

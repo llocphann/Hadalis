@@ -266,17 +266,23 @@ Item { // Bar content region
         id: moduleCell
         required property string modelData
         property string zoneName: ""
+        readonly property bool moduleEnabled:
+            root._moduleShown(moduleCell.modelData, moduleCell.zoneName)
+
         Layout.fillWidth: true
-        Layout.fillHeight: moduleCell.visible && root._fillHeight(moduleCell.modelData, moduleCell.zoneName)
+        Layout.fillHeight: moduleCell.visible
+            && root._fillHeight(moduleCell.modelData, moduleCell.zoneName)
         implicitWidth: Appearance.sizes.baseVerticalBarWidth
-        implicitHeight: moduleCell.visible ? moduleLoader.implicitHeight : 0
-        readonly property bool sourceVisible: moduleLoader.status !== Loader.Ready
-            || !moduleLoader.item || moduleLoader.item.visible
-        visible: root._moduleShown(moduleCell.modelData, moduleCell.zoneName) && moduleCell.sourceVisible
+        implicitHeight: moduleCell.moduleEnabled ? moduleLoader.implicitHeight : 0
+        visible: moduleCell.moduleEnabled
+            && (root._fillHeight(moduleCell.modelData, moduleCell.zoneName)
+                || moduleCell.implicitHeight > 0)
+
         Loader {
             id: moduleLoader
-            anchors.fill: parent
-            active: root._moduleShown(moduleCell.modelData, moduleCell.zoneName)
+            width: parent.width
+            anchors.horizontalCenter: parent.horizontalCenter
+            active: moduleCell.moduleEnabled
             sourceComponent: root._allComponents[moduleCell.modelData] ?? null
         }
     }
@@ -289,7 +295,6 @@ Item { // Bar content region
         readonly property real edgePadding: edgeZone ? root.edgeInset : 0
         implicitWidth: Appearance.sizes.verticalBarWidth
         implicitHeight: zoneGroup.empty ? 0 : zoneGroup.implicitHeight + edgePadding
-        visible: implicitHeight > 0
         Bar.BarGroup {
             id: zoneGroup
             anchors {
@@ -304,7 +309,6 @@ Item { // Bar content region
             Repeater {
                 model: zoneRoot.ids
                 delegate: VerticalModuleCell {
-                    required property string modelData
                     zoneName: zoneRoot.zoneName
                 }
             }

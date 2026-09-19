@@ -90,6 +90,14 @@ def main() -> None:
 
     forbid(vertical, "Flickable { // Middle section",
            "Vertical Workspaces must not drift inside one centered middle stack.")
+    forbid(vertical, "moduleLoader.item.visible",
+           "Adaptive vertical packing must not depend on effective child visibility.")
+    forbid(vertical, "visible: implicitHeight > 0",
+           "Vertical zones must bootstrap through natural size, not parent visibility.")
+    require(vertical, "width: parent.width",
+            "Vertical module Loader must constrain only the cross axis.")
+    require(vertical, "anchors.horizontalCenter: parent.horizontalCenter",
+            "Vertical module Loader must leave main-axis height natural.")
 
     print("Bar adaptive packing contract: OK")
 

@@ -454,16 +454,18 @@ def main() -> None:
     ):
         settings_surface = read(settings_path)
         for token in (
-            "import qs.modules.common.perimeter",
             "PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay",
             "y: settingsPanel.height - height",
-            "ConnectedSurfaceJoinFlares {",
+            "StyledRectangularShadow {",
             "joinBottom: true",
             "bottomLeftRadius: 0",
             "bottomRightRadius: 0",
         ):
             check(token in settings_surface,
-                  f"{settings_path} must be a bottom-connected popup below Polkit: {token}")
+                  f"{settings_path} must remain a square bottom-connected popup below Polkit: {token}")
+        check("ConnectedSurfaceJoinFlares {" not in settings_surface
+              and "PerimeterTokens.joinFlareRadius" not in settings_surface,
+              f"{settings_path} must not paint full-overlay endpoint flares that float beside the centered Settings card")
 
     settings_overlay = read("modules/settings/SettingsOverlay.qml")
     settings_focus = read("modules/settings/SettingsFocus.qml")
@@ -483,13 +485,8 @@ def main() -> None:
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface,
               "Connected Settings overlays must share the Screen Edge shadow contract")
-        flare_start = settings_surface.index("ConnectedSurfaceJoinFlares {")
-        flare_end = settings_surface.index("Rectangle {", flare_start)
-        settings_flare = settings_surface[flare_start:flare_end]
-        check("shadowEnabled:" not in settings_flare
-              and "shadowExtent:" not in settings_flare
-              and "shadowColor:" not in settings_flare,
-              "Connected Settings Caelestia shoulders must stay fill-only")
+        check("ConnectedSurfaceJoinFlares {" not in settings_surface,
+              "Settings must not reintroduce floating endpoint shoulder geometry inside the full-screen overlay")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
     check("Rectangle {\n        id: dashContainer" in dashboard

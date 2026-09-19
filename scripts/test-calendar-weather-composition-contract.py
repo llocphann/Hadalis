@@ -52,7 +52,10 @@ def main() -> None:
     for token in (
         "id: calendarHeader",
         "Layout.preferredWidth: calendarGrid.implicitWidth",
-        "Layout.alignment: Qt.AlignHCenter",
+        "id: mondayMeasure",
+        "x: Math.max(0, (root.cellSize - mondayMeasure.implicitWidth) / 2)",
+        "property bool responsive: false",
+        "property real responsiveMaxCellSize: 42",
         'root.locale.toString(root.viewingDate, "MMM")',
         'root.locale.toString(root.viewingDate, "yyyy")',
         'Translation.tr("Today").toUpperCase()',
@@ -65,6 +68,9 @@ def main() -> None:
     for token in (
         "ObsidianMonthCalendar {",
         "calendarCells: root.monthCells",
+        "Layout.fillWidth: true",
+        "responsive: true",
+        "responsiveMaxCellSize: 42",
         "interactiveDays: true",
         "showEventDots: true",
         "CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, 1)",

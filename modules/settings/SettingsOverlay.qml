@@ -11,7 +11,6 @@ import qs.services
 import qs.modules.settings
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.perimeter
 import qs.modules.common.functions as CF
 
 /**
@@ -590,16 +589,6 @@ Scope {
                             Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
                     : "transparent"
                 joinBottom: true
-            }
-
-            ConnectedSurfaceJoinFlares {
-                anchors.fill: parent
-                bodyItem: settingsCard
-                fillColor: settingsCard.color
-                flareRadius: PerimeterTokens.joinFlareRadius
-                progress: root._surfaceReveal
-                joinBottom: true
-                z: 2
             }
 
             Rectangle {

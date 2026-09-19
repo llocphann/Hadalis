@@ -201,11 +201,15 @@ Item {
 
                 ObsidianMonthCalendar {
                     id: sharedMonthCalendar
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 8
+                    Layout.rightMargin: 8
                     viewingDate: root.viewingDate
                     today: DateTime.clock.date
                     locale: root.locale
                     calendarCells: root.monthCells
+                    responsive: true
+                    responsiveMaxCellSize: 42
                     interactiveDays: true
                     showEventDots: true
 

@@ -765,7 +765,7 @@ Singleton {
                     property string background: ""
                     property int sensitivity: 100
                     property int bars: 0
-                    property int framerate: 60
+                    property int framerate: 30
                     property int barWidth: 2
                     property int barSpacing: 1
                     property bool stereo: true

@@ -626,8 +626,10 @@ Scope {
                 width: maxCardWidth
                 height: maxCardHeight
                 radius: Appearance.rounding.windowRounding
-                bottomLeftRadius: 0
-                bottomRightRadius: 0
+                readonly property real attachedRadius: Math.max(0, Math.min(
+                    PerimeterTokens.attachedCornerRadius, width / 2, height / 2))
+                bottomLeftRadius: attachedRadius
+                bottomRightRadius: attachedRadius
                 Behavior on radius {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot }

@@ -35,12 +35,34 @@ Scope {
 
     // Caelestia ContentWindow shadow baseline. The effect is applied to the
     // single locked inverted frame itself, never to a second painted geometry.
-    readonly property bool shadowEnabled:
-        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
-    readonly property int shadowSize: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-    readonly property real shadowOpacity: Math.max(0, Math.min(1.0,
-        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+    //
+    // Config.revision is intentionally referenced in each binding. Settings can
+    // run in a separate Quickshell process; the shell-side Config FileView bumps
+    // revision after reloading the written JSON. This makes the visual shadow
+    // re-evaluate live even if a nested JsonObject notify signal is coalesced.
+    readonly property bool shadowEnabled: {
+        const revision = Config.revision
+        return Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    }
+    readonly property int shadowSize: {
+        const revision = Config.revision
+        return Math.max(0, Math.min(32,
+            Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+    }
+    readonly property real shadowOpacity: {
+        const revision = Config.revision
+        return Math.max(0, Math.min(1.0,
+            Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+    }
+
+    // MultiEffect uses blurMax as shader/kernel capacity and shadowBlur as the
+    // normalized live blur amount. Preserve Caelestia exactly at the default
+    // (blurMax=15, shadowBlur=1), while keeping non-default sizes visibly live.
+    // For custom values we use one 32px-capacity shader and vary shadowBlur.
+    readonly property int shadowBlurMax: shadowSize === 15 ? 15 : 32
+    readonly property real shadowBlur: shadowBlurMax > 0
+        ? Math.max(0, Math.min(1.0, shadowSize / shadowBlurMax))
+        : 0
 
     // Caelestia's BlobInvertedRect extends 50px beyond the ContentWindow so the
     // visible outer screen boundary is clipped by the window rather than by an
@@ -150,15 +172,21 @@ Scope {
         Item {
             id: frameVisual
             anchors.fill: parent
-            layer.enabled: root.shadowEnabled
-                && root.shadowSize > 0
-                && root.shadowOpacity > 0
+
+            // Keep the layer path stable like Caelestia ContentWindow. Toggling
+            // or tuning the shadow changes only MultiEffect parameters, never
+            // the locked frame geometry or its rendering ownership.
+            layer.enabled: true
             layer.effect: MultiEffect {
-                shadowEnabled: true
-                blurMax: root.shadowSize
-                shadowColor: Qt.alpha(
-                    Appearance.m3colors.m3shadow,
-                    Math.max(0, root.shadowOpacity))
+                shadowEnabled: root.shadowEnabled
+                    && root.shadowSize > 0
+                    && root.shadowOpacity > 0
+                blurMax: root.shadowBlurMax
+                shadowBlur: root.shadowBlur
+                shadowColor: Appearance.m3colors.m3shadow
+                shadowOpacity: root.shadowOpacity
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 0
             }
 
             // LOCKED CORNER GEOMETRY: exactly one painted geometry. Odd-even fill

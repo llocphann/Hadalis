@@ -87,9 +87,8 @@ Scope {
                 readonly property real frameRadius: Math.max(0, Math.min(96,
                     Number(Config.options?.appearance?.screenEdge?.radius
                         ?? PerimeterTokens.frameRadius)))
-                readonly property bool hugCorners: bar.showBarBackground
-                readonly property real roundDecoratorAllowance: hugCorners
-                    ? frameRadius : 0
+                readonly property bool autoHideEnabled:
+                    Config.options?.bar?.autoHide?.enable ?? false
                 readonly property bool edgeShadowEnabled: bar.showBarBackground
                     && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
                 readonly property int edgeShadowExtent: edgeShadowEnabled
@@ -100,8 +99,10 @@ Scope {
                     Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
                 readonly property color edgeShadowColor:
                     ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
+                // Normal Bar mode owns only the Bar body. Extra inward host
+                // room exists solely for the auto-hide Screen Edge fallback.
                 readonly property real inwardDecoratorAllowance:
-                    Math.max(roundDecoratorAllowance, edgeShadowExtent)
+                    Math.max(autoHideEnabled ? frameRadius : 0, edgeShadowExtent)
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
@@ -197,7 +198,7 @@ Scope {
                         id: autoHideScreenEdge
                         z: -10
                         anchors.fill: parent
-                        visible: Config.options?.bar?.autoHide?.enable ?? false
+                        visible: barRoot.autoHideEnabled
                         opacity: {
                             const displacement = (Config.options?.bar?.bottom ?? false)
                                 ? Math.abs(barContent.anchors.bottomMargin)
@@ -220,13 +221,13 @@ Scope {
                             visible: barRoot.edgeShadowEnabled
                                 && barRoot.edgeShadowExtent > 0
                                 && barRoot.edgeShadowOpacity > 0
-                            x: barRoot.screenEdgeThickness + barRoot.roundDecoratorAllowance
+                            x: barRoot.screenEdgeThickness + barRoot.frameRadius
                             y: (Config.options?.bar?.bottom ?? false)
                                 ? autoHideEdgeBand.y - barRoot.edgeShadowExtent
                                 : autoHideEdgeBand.y + autoHideEdgeBand.height
                             width: Math.max(0, parent.width
                                 - 2 * (barRoot.screenEdgeThickness
-                                    + barRoot.roundDecoratorAllowance))
+                                    + barRoot.frameRadius))
                             height: barRoot.edgeShadowExtent
                             color: "transparent"
                             gradient: Gradient {
@@ -245,7 +246,7 @@ Scope {
                         }
 
                         RoundCorner {
-                            implicitSize: barRoot.roundDecoratorAllowance
+                            implicitSize: barRoot.frameRadius
                             color: Appearance.colors.colLayer0
                             shadowEnabled: barRoot.edgeShadowEnabled
                             shadowExtent: barRoot.edgeShadowExtent
@@ -263,7 +264,7 @@ Scope {
                             }
                         }
                         RoundCorner {
-                            implicitSize: barRoot.roundDecoratorAllowance
+                            implicitSize: barRoot.frameRadius
                             color: Appearance.colors.colLayer0
                             shadowEnabled: barRoot.edgeShadowEnabled
                             shadowExtent: barRoot.edgeShadowExtent
@@ -284,7 +285,7 @@ Scope {
 
                     BarContent {
                         id: barContent
-                        nativeBlurAllowed: !barRoot.hugCorners
+                        nativeBlurAllowed: false
 
                         implicitHeight: barRoot.panelSurfaceHeight
                         anchors {
@@ -326,38 +327,6 @@ Scope {
                     }
 
                     // Shared with Screen Edge shadow settings so the shell chrome
-                    // reads as one continuous Caelestia-style perimeter.
-                    Rectangle {
-                        id: barEdgeShadow
-                        visible: barRoot.edgeShadowEnabled
-                            && barRoot.edgeShadowExtent > 0
-                            && barRoot.edgeShadowOpacity > 0
-                            && barRoot.surfacePresented
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            leftMargin: barRoot.frameRadius
-                            rightMargin: barRoot.frameRadius
-                            top: !(Config.options?.bar?.bottom ?? false) ? barContent.bottom : undefined
-                            bottom: (Config.options?.bar?.bottom ?? false) ? barContent.top : undefined
-                        }
-                        height: barRoot.edgeShadowExtent
-                        color: "transparent"
-                        gradient: Gradient {
-                            orientation: Gradient.Vertical
-                            GradientStop {
-                                position: 0
-                                color: (Config.options?.bar?.bottom ?? false)
-                                    ? "transparent" : barRoot.edgeShadowColor
-                            }
-                            GradientStop {
-                                position: 1
-                                color: (Config.options?.bar?.bottom ?? false)
-                                    ? barRoot.edgeShadowColor : "transparent"
-                            }
-                        }
-                    }
-
                     ShellEditSurfaceFrame {
                         anchors.fill: barContent
                         surfaceId: "iiBar"
@@ -384,129 +353,6 @@ Scope {
                         onActivated: surface => ShellEditSession.selectSurface(surface)
                     }
 
-                    // Round decorators
-                    Loader {
-                        id: roundDecorators
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            top: barContent.bottom
-                            bottom: undefined
-                        }
-                        height: barRoot.frameRadius
-                        active: barRoot.hugCorners
-
-                        states: State {
-                            name: "bottom"
-                            when: (Config.options?.bar?.bottom ?? false)
-                            AnchorChanges {
-                                target: roundDecorators
-                                anchors {
-                                    right: parent.right
-                                    left: parent.left
-                                    top: undefined
-                                    bottom: barContent.top
-                                }
-                            }
-                        }
-
-                        sourceComponent: Item {
-                            id: hugDecorators
-                            implicitHeight: barRoot.frameRadius
-                            
-                            readonly property bool isBottom: Config.options?.bar?.bottom ?? false
-                            readonly property color solidColor: showBarBackground
-                                ? Appearance.colors.colLayer0
-                                : "transparent"
-
-                            // PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19):
-                            // These two Bar↔Screen-Edge corners are the approved
-                            // top-left/top-right members of the four-corner frame
-                            // contract. Their inverse arcs MUST start at the Bar
-                            // window's outer x origin (leftMargin/rightMargin = 0).
-                            // Do not add screenEdgeThickness here: that recreates
-                            // the double-inset regression and makes the top pair
-                            // differ from the lower Screen Edge pair. Radius may
-                            // change only through appearance.screenEdge.radius.
-                            //
-                            // Paint the two physical Screen Edge contact strips
-                            // inside the Bar's own layer surface. Previously these
-                            // 10px columns were left transparent and depended on
-                            // compositor ordering with separate left/right edge
-                            // windows, so the contacts could disappear entirely.
-                            Rectangle {
-                                id: leftScreenEdgeContact
-                                anchors.left: parent.left
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                width: barRoot.screenEdgeThickness
-                                color: hugDecorators.solidColor
-                            }
-
-                            Rectangle {
-                                id: rightScreenEdgeContact
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                width: barRoot.screenEdgeThickness
-                                color: hugDecorators.solidColor
-                            }
-                            
-                                    // Left corner - solid Material Hug surface.
-                            RoundCorner {
-                                id: leftCorner
-                                anchors {
-                                    top: parent.top
-                                    bottom: parent.bottom
-                                    left: parent.left
-                                    leftMargin: 0
-                                }
-
-                                implicitSize: barRoot.frameRadius
-                                color: hugDecorators.solidColor
-                                shadowEnabled: barRoot.edgeShadowEnabled
-                                    && barRoot.surfacePresented
-                                shadowExtent: barRoot.edgeShadowExtent
-                                shadowColor: barRoot.edgeShadowColor
-
-                                corner: RoundCorner.CornerEnum.TopLeft
-                                states: State {
-                                    name: "bottom"
-                                    when: hugDecorators.isBottom
-                                    PropertyChanges {
-                                        leftCorner.corner: RoundCorner.CornerEnum.BottomLeft
-                                    }
-                                }
-                            }
-                            
-                            // Right corner - solid for Material/Inir
-                            RoundCorner {
-                                id: rightCorner
-                                anchors {
-                                    right: parent.right
-                                    rightMargin: 0
-                                    top: !hugDecorators.isBottom ? parent.top : undefined
-                                    bottom: hugDecorators.isBottom ? parent.bottom : undefined
-                                }
-                                implicitSize: barRoot.frameRadius
-                                color: hugDecorators.solidColor
-                                shadowEnabled: barRoot.edgeShadowEnabled
-                                    && barRoot.surfacePresented
-                                shadowExtent: barRoot.edgeShadowExtent
-                                shadowColor: barRoot.edgeShadowColor
-
-                                corner: RoundCorner.CornerEnum.TopRight
-                                states: State {
-                                    name: "bottom"
-                                    when: hugDecorators.isBottom
-                                    PropertyChanges {
-                                        rightCorner.corner: RoundCorner.CornerEnum.BottomRight
-                                    }
-                                }
-                            }
-                            
-                        }
-                    }
                 }
             }
         }

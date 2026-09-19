@@ -41,12 +41,14 @@ require_token 'modules/bar/BarContent.qml' 'BarContextMenu {'     'Bar backgroun
 require_token 'modules/bar/Media.qml' 'StyledPopup {'     'horizontal Media popup must remain connected'
 require_token 'modules/bar/BatteryPopup.qml' 'StyledPopup {'     'Battery popup must remain connected'
 require_token 'modules/bar/ResourcesPopup.qml' 'StyledPopup {'     'Resources popup must remain connected'
+require_token 'modules/bar/ClockCalendarPopup.qml' 'StyledPopup {'     'Clock calendar popup must remain connected'
 require_token 'modules/bar/weather/WeatherPopup.qml' 'StyledPopup {'     'Weather popup must remain connected'
 require_token 'modules/bar/TimerIndicatorTooltip.qml' 'StyledPopup {'     'Timer interactive popout must remain connected'
 require_token 'modules/bar/BarTaskbarPreview.qml' 'StyledPopup {'     'taskbar/workspace window preview must remain connected'
 
 # Vertical ii Bar coverage.
 require_token 'modules/verticalBar/VerticalBarContent.qml' 'Bar.BarContextMenu {'     'Vertical Bar background menu must remain connected'
+require_token 'modules/verticalBar/VerticalBarContent.qml' 'Bar.ClockCalendarPopup {'     'Vertical Clock calendar popup must remain connected'
 require_token 'modules/verticalBar/VerticalMedia.qml' 'Bar.StyledPopup {'     'Vertical Media popouts must remain connected'
 
 # Waffle remains a separate panel family/API, but its BarPopup must consume

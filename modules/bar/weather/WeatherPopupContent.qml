@@ -4,33 +4,18 @@ import qs.modules.common.widgets
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 
 ColumnLayout {
     id: root
 
     property bool compact: false
-    readonly property real compactBreakpoint: 1180
+    readonly property real compactBreakpoint: 900
     readonly property real panelHeight: 270
     property date now: new Date()
 
     spacing: 0
     implicitWidth: composition.implicitWidth
     implicitHeight: composition.implicitHeight
-
-    function firstDayOffset(): int {
-        const first = new Date(root.now.getFullYear(), root.now.getMonth(), 1)
-        return (first.getDay() + 6) % 7
-    }
-
-    function daysInMonth(): int {
-        return new Date(root.now.getFullYear(), root.now.getMonth() + 1, 0).getDate()
-    }
-
-    function calendarDay(index): int {
-        const day = index - root.firstDayOffset() + 1
-        return day >= 1 && day <= root.daysInMonth() ? day : 0
-    }
 
     Timer {
         interval: 30000
@@ -41,86 +26,10 @@ ColumnLayout {
 
     GridLayout {
         id: composition
-        columns: root.compact ? 1 : 3
+        columns: root.compact ? 1 : 2
         columnSpacing: 10
         rowSpacing: 10
         Layout.alignment: Qt.AlignHCenter
-
-        Rectangle {
-            id: calendarPanel
-            radius: Appearance.rounding.small
-            color: Appearance.colors.colSurfaceContainerHigh
-            implicitWidth: 250
-            implicitHeight: root.panelHeight
-            Layout.fillWidth: root.compact
-            Layout.preferredWidth: root.compact ? 360 : implicitWidth
-            Layout.alignment: Qt.AlignTop
-
-            ColumnLayout {
-                id: calendarColumn
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    top: parent.top
-                    margins: 10
-                }
-                spacing: 6
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Qt.formatDate(root.now, "MMMM yyyy")
-                    font {
-                        weight: Font.DemiBold
-                        pixelSize: Appearance.font.pixelSize.normal
-                    }
-                    color: Appearance.colors.colOnSurface
-                }
-
-                GridLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    columns: 7
-                    rowSpacing: 3
-                    columnSpacing: 3
-
-                    Repeater {
-                        model: 7
-
-                        delegate: StyledText {
-                            required property int index
-                            Layout.preferredWidth: 28
-                            horizontalAlignment: Text.AlignHCenter
-                            text: Qt.formatDate(new Date(2024, 0, 1 + index), "ddd")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colOnSurfaceVariant
-                        }
-                    }
-
-                    Repeater {
-                        model: 42
-
-                        delegate: Rectangle {
-                            id: dayCell
-                            required property int index
-                            readonly property int dayNumber: root.calendarDay(index)
-                            readonly property bool isToday: dayNumber === root.now.getDate()
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
-                            radius: 14
-                            color: isToday ? Appearance.colors.colPrimary : "transparent"
-
-                            StyledText {
-                                anchors.centerIn: parent
-                                text: dayCell.dayNumber > 0 ? String(dayCell.dayNumber) : ""
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: dayCell.isToday
-                                    ? Appearance.colors.colOnPrimary
-                                    : Appearance.colors.colOnSurface
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         Rectangle {
             id: timeWeatherPanel

@@ -12,6 +12,8 @@ BarVignette 1.0 BarVignette.qml
 BatteryIndicator 1.0 BatteryIndicator.qml
 BatteryPopup 1.0 BatteryPopup.qml
 CircleUtilButton 1.0 CircleUtilButton.qml
+ClockCalendarContent 1.0 ClockCalendarContent.qml
+ClockCalendarPopup 1.0 ClockCalendarPopup.qml
 ClockWidget 1.0 ClockWidget.qml
 HyprlandXkbIndicator 1.0 HyprlandXkbIndicator.qml
 LeftSidebarButton 1.0 LeftSidebarButton.qml

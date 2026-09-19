@@ -99,6 +99,47 @@ Item { // Bar content region
         color: root.separatorColor
     }
 
+    component VerticalClockModule: Item {
+        id: clockModule
+        implicitWidth: Appearance.sizes.verticalBarWidth
+        implicitHeight: clockStack.implicitHeight
+
+        ColumnLayout {
+            id: clockStack
+            width: parent.width
+            spacing: 12
+
+            VerticalClockWidget {
+                Layout.fillWidth: true
+                Layout.fillHeight: false
+            }
+
+            Rectangle {
+                Layout.leftMargin: Appearance.sizes.baseBarHeight / 3
+                Layout.rightMargin: Appearance.sizes.baseBarHeight / 3
+                Layout.fillWidth: true
+                implicitHeight: 1
+                color: Appearance.colors.colOutlineVariant
+            }
+
+            VerticalDateWidget {
+                Layout.fillWidth: true
+                Layout.fillHeight: false
+            }
+        }
+
+        MouseArea {
+            id: clockHoverArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+        }
+
+        Bar.ClockCalendarPopup {
+            hoverTarget: clockHoverArea
+        }
+    }
+
     // Detached Float/Card shadow is retired; VerticalBar.qml owns the one
     // inward Hug shadow shared with Screen Edge and horizontal Bar.
     Loader {
@@ -237,17 +278,7 @@ Item { // Bar content region
             visible: root.taskbarEnabled
                 && (root.clockEnabled || (root.batteryEnabled && Battery.available))
 
-            VerticalClockWidget {
-                visible: root.clockEnabled
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-            }
-
-            HorizontalBarSeparator {
-                visible: root.clockEnabled
-            }
-
-            VerticalDateWidget {
+            VerticalClockModule {
                 visible: root.clockEnabled
                 Layout.fillWidth: true
                 Layout.fillHeight: false
@@ -360,17 +391,7 @@ Item { // Bar content region
             visible: !root.taskbarEnabled
                 && (root.clockEnabled || (root.batteryEnabled && Battery.available))
 
-            VerticalClockWidget {
-                visible: root.clockEnabled
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-            }
-
-            HorizontalBarSeparator {
-                visible: root.clockEnabled
-            }
-
-            VerticalDateWidget {
+            VerticalClockModule {
                 visible: root.clockEnabled
                 Layout.fillWidth: true
                 Layout.fillHeight: false

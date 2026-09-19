@@ -51,4 +51,15 @@ Item {
         }
     }
 
+    MouseArea {
+        id: clockHoverArea
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
+    }
+
+    ClockCalendarPopup {
+        hoverTarget: clockHoverArea
+    }
+
 }

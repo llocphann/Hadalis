@@ -959,7 +959,7 @@ WSettingsPage {
             from: 30
             to: 165
             stepSize: 5
-            value: Config.options?.appearance?.cava?.framerate ?? 60
+            value: Config.options?.appearance?.cava?.framerate ?? 30
             onValueChanged: root.setCavaValue(
                 "appearance.cava.framerate", value, true)
         }

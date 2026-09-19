@@ -33,6 +33,8 @@ def main() -> None:
         "Translation.tr(\"Switch media source\")",
         "WheelHandler {",
         "orientation: Qt.Vertical",
+        "root.selectTab(root.currentTab + 1)",
+        "root.selectTab(root.currentTab - 1)",
         "EqualizerPanel {",
     )
     for token in required:
@@ -45,6 +47,8 @@ def main() -> None:
         "width: 3\n                    radius: 2",
         "visible: !isActive && root._visiblePlayers.length > 1",
         "implicitHeight: root.widgetHeight + (isActive",
+        "root.selectTab((root.currentTab + 1) % root.tabCount)",
+        "root.selectTab((root.currentTab - 1 + root.tabCount)",
     )
     for token in forbidden:
         if token in source:

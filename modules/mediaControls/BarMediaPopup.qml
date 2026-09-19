@@ -296,11 +296,14 @@ Item {
                 enabled: root.tabCount > 1
 
                 onWheel: event => {
+                    // Match Weather Popup semantics: selectTab() clamps at the
+                    // first/last source. Touchpads emit several wheel packets for
+                    // one gesture, so modulo wrapping here could advance to the
+                    // next source and immediately wrap back to the previous one.
                     if (event.angleDelta.y < 0)
-                        root.selectTab((root.currentTab + 1) % root.tabCount)
+                        root.selectTab(root.currentTab + 1)
                     else if (event.angleDelta.y > 0)
-                        root.selectTab((root.currentTab - 1 + root.tabCount)
-                            % root.tabCount)
+                        root.selectTab(root.currentTab - 1)
                     event.accepted = true
                 }
             }

@@ -14,11 +14,15 @@ import Quickshell.Wayland
 // Physical Screen Edge renderer.
 //
 // SCREEN-EDGE-GEOMETRY-LOCK (maintainer approved 2026-09-19):
-// The current four-corner silhouette is the canonical Hadalis physical frame.
-// Future refactors must preserve this exact geometry and placement contract.
-// If a later change distorts any corner, restore this single inverted-frame
-// model rather than compensating with overlays, wedges, per-corner paths or
-// Bar-owned paint. Change this lock only with explicit maintainer approval.
+// BAR-SCREEN-EDGE-CORNER-LOCK (maintainer approved 2026-09-19):
+// The current Screen Edge + normal ii Bar silhouette is the canonical Hadalis
+// physical perimeter. Screen Edge and Bar endpoint corners are one geometry:
+// the single inverted rounded workspace hole below. Future refactors must keep
+// this exact ownership/placement/path model. The only approved visual degree of
+// freedom is PerimeterTokens.frameRadius (user setting). If any later change
+// distorts top/bottom/left/right corners, restore this model rather than adding
+// Bar-local radii, RoundCorner wedges, edge patches or a second renderer.
+// Change either lock only with explicit maintainer approval.
 //
 // Caelestia does not build its border from four strips plus corner patches.
 // Its idle border is one inverted rounded rectangle: the window bounds are the
@@ -131,11 +135,12 @@ Scope {
             && !GlobalStates.screenLocked
             && !fullscreenCovered
 
+        // LOCKED BAR/SCREEN-EDGE INSETS:
         // Caelestia treats the Bar as a thicker side of the same inverted
-        // border. Mirror that ownership here: when a normal ii Bar owns an edge,
-        // the single physical frame simply moves that side of the rounded
-        // workspace hole inward to the Bar's real body thickness. No Bar-local
-        // corner patches or second corner renderer are introduced.
+        // border. When a normal ii Bar owns an edge, only that one inset changes
+        // from Screen Edge thickness to the real Bar body thickness. These four
+        // formulas are part of BAR-SCREEN-EDGE-CORNER-LOCK and must remain
+        // orientation-symmetric. No Bar-local corner paint may replace them.
         readonly property real frameLeftInset:
             root.iiBarOwnsEdge(outputName, "left")
                 ? Appearance.sizes.verticalBarWidth : root.thickness

@@ -8,6 +8,7 @@ BarTaskbarButton 1.0 BarTaskbarButton.qml
 BarTaskbarPreview 1.0 BarTaskbarPreview.qml
 BarTaskbar 1.0 BarTaskbar.qml
 BarTaskbarWindowPreview 1.0 BarTaskbarWindowPreview.qml
+BarWorkspaceOverview 1.0 BarWorkspaceOverview.qml
 BarVignette 1.0 BarVignette.qml
 BatteryIndicator 1.0 BatteryIndicator.qml
 BatteryPopup 1.0 BatteryPopup.qml

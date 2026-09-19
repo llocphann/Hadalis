@@ -490,9 +490,9 @@ Scope {
                     anchors.horizontalCenter: parent.horizontalCenter
                     readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
                     readonly property bool allAppsGridEnabled: Config.options?.overview?.allAppsGrid ?? false
-                    active: root.shouldShow
-                        && (root.taskViewMode || (!dashboardMode && !allAppsGridEnabled))
-                        && (root.taskViewMode || (Config.options?.overview?.enable ?? true))
+                    // Workspace Overview now belongs to Bar workspace hover.
+                    // This full-screen loader remains only for explicit Task View.
+                    active: root.shouldShow && root.taskViewMode
                     visible: active && (root.searchingText == "")
                     sourceComponent: CompositorService.isNiri ? niriComponent : hyprComponent
                 }

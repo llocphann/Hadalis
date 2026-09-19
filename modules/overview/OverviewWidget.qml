@@ -14,10 +14,28 @@ import Quickshell.Hyprland
 Item {
     id: root
     required property var panelWindow
+    property bool embeddedSurface: false
+    property bool presentationActive: GlobalStates.overviewOpen
+    property var preferredWorkspaceId: null
+    signal presentationCloseRequested()
+
+    function requestPresentationClose(): void {
+        if (root.embeddedSurface)
+            root.presentationCloseRequested()
+        else
+            GlobalStates.overviewOpen = false
+    }
+
     readonly property HyprlandMonitor monitor: Hyprland.monitorFor(panelWindow.screen)
     readonly property var toplevels: ToplevelManager.toplevels
     readonly property int workspacesShown: (Config.options?.overview?.rows ?? 2) * (Config.options?.overview?.columns ?? 5)
-    readonly property int workspaceGroup: Math.floor((monitor.activeWorkspace?.id - 1) / workspacesShown)
+    readonly property int presentationWorkspaceId: {
+        const preferred = Number(root.preferredWorkspaceId)
+        if (isFinite(preferred) && preferred > 0)
+            return Math.round(preferred)
+        return root.monitor?.activeWorkspace?.id ?? 1
+    }
+    readonly property int workspaceGroup: Math.floor((root.presentationWorkspaceId - 1) / workspacesShown)
     property bool monitorIsFocused: (Hyprland.focusedMonitor?.name == monitor.name)
     property var windows: HyprlandData.windowList
     property var windowByAddress: HyprlandData.windowByAddress
@@ -73,8 +91,10 @@ Item {
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
 
-    implicitWidth: overviewBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: overviewBackground.implicitHeight + Appearance.sizes.elevationMargin * 2
+    readonly property real presentationMargin:
+        root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
+    implicitWidth: overviewBackground.implicitWidth + root.presentationMargin * 2
+    implicitHeight: overviewBackground.implicitHeight + root.presentationMargin * 2
 
     // Scroll del mouse para subir/bajar de workspace en Hyprland
     WheelHandler {
@@ -106,18 +126,20 @@ Item {
 
     StyledRectangularShadow {
         target: overviewBackground
+        visible: !root.embeddedSurface
     }
     Rectangle { // Background
         id: overviewBackground
         property real padding: 10
         anchors.fill: parent
-        anchors.margins: Appearance.sizes.elevationMargin
+        anchors.margins: root.presentationMargin
 
         implicitWidth: workspaceColumnLayout.implicitWidth + padding * 2
         implicitHeight: workspaceColumnLayout.implicitHeight + padding * 2
-        radius: root.largeWorkspaceRadius + padding
-        color: Appearance.colors.colBackgroundSurfaceContainer
-        border.width: 1
+        radius: root.embeddedSurface ? 0 : (root.largeWorkspaceRadius + padding)
+        color: root.embeddedSurface ? "transparent"
+            : Appearance.colors.colBackgroundSurfaceContainer
+        border.width: root.embeddedSurface ? 0 : 1
         border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
 
         Column { // Workspaces
@@ -186,7 +208,7 @@ Item {
                                 acceptedButtons: Qt.LeftButton
                                 onPressed: {
                                     if (root.draggingTargetWorkspace === -1) {
-                                        GlobalStates.overviewOpen = false
+                                        root.requestPresentationClose()
                                         if (CompositorService.isHyprland)
                                             Hyprland.dispatch(`workspace ${workspace.workspaceValue}`)
                                     }
@@ -333,7 +355,7 @@ Item {
                         if (!windowData || !CompositorService.isHyprland) return;
 
                         if (event.button === Qt.LeftButton) {
-                            GlobalStates.overviewOpen = false
+                            root.requestPresentationClose()
                             Hyprland.dispatch(`focuswindow address:${windowData.address}`)
                             event.accepted = true
                         } else if (event.button === Qt.MiddleButton) {

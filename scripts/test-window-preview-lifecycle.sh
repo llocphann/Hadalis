@@ -5,6 +5,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/WindowPreviewService.qml"
 capture_script="$repo_root/scripts/capture-windows.sh"
 bar_preview="$repo_root/modules/bar/BarTaskbarPreview.qml"
+workspace_overview="$repo_root/modules/bar/BarWorkspaceOverview.qml"
 workspaces="$repo_root/modules/bar/Workspaces.qml"
 waffle_preview="$repo_root/modules/waffle/bar/tasks/TaskPreview.qml"
 waffle_tasks="$repo_root/modules/waffle/bar/tasks/Tasks.qml"
@@ -37,6 +38,12 @@ require_workspaces() {
     local needle="$1"
     local message="$2"
     grep -Fq -- "$needle" "$workspaces" || fail "$message"
+}
+
+require_workspace_overview() {
+    local needle="$1"
+    local message="$2"
+    grep -Fq -- "$needle" "$workspace_overview" || fail "$message"
 }
 
 require_waffle_preview() {
@@ -89,8 +96,20 @@ require_workspaces 'workspacePreviewPopup.showWorkspace(workspaceId, button)' \
     'workspace strip must route hover through the shared Bar preview'
 require_workspaces 'interval: Config.options?.dock?.hoverPreviewDelay ?? 400' \
     'workspace preview must reuse the existing hover-preview delay'
+require_workspaces 'BarWorkspaceOverview {' \
+    'workspace strip must use the connected workspace Overview popup by default'
+require_workspaces 'Config.options?.overview?.workspaceHover?.delayMs ?? 280' \
+    'workspace Overview hover must use its dedicated configurable delay'
+require_workspace_overview 'StyledPopup {' \
+    'workspace Overview must reuse the shared Bar-connected popup surface'
+require_workspace_overview 'OverviewNiriWidget {' \
+    'workspace Overview must reuse the Niri Overview renderer'
+require_workspace_overview 'OverviewWidget {' \
+    'workspace Overview must retain Hyprland Overview support'
+require_workspace_overview 'WindowPreviewService.captureForTaskView()' \
+    'workspace Overview must preserve the shared preview capture lifecycle'
 require_workspaces 'BarTaskbarPreview {' \
-    'workspace strip must reuse BarTaskbarPreview rather than creating a second preview framework'
+    'workspace strip must retain the compact preview fallback when Overview hover is disabled'
 
 require_waffle_preview 'BarPopup {' \
     'Waffle task preview must reuse the shared Waffle connected BarPopup'

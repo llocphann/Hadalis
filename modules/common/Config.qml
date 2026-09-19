@@ -2064,6 +2064,11 @@ Singleton {
                 property bool activeScreenOnly: true
                 property bool allAppsGrid: false
                 property string allAppsGridMode: "minimal"
+                property JsonObject workspaceHover: JsonObject {
+                    property bool enable: true
+                    property int delayMs: 280
+                    property int closeDelayMs: 220
+                }
                 property JsonObject dashboard: JsonObject {
                     property bool enable: false
                     property bool showToggles: true

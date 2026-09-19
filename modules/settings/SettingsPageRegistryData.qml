@@ -254,13 +254,21 @@ Singleton {
             desc: "",
             essential: false,
             component: "modules/settings/GeneralConfig.qml"
+        },
+        {
+            key: "overview",
+            name: Translation.tr("Overview"),
+            icon: "overview_key",
+            desc: Translation.tr("Workspace hover, launcher and overview layout"),
+            essential: false,
+            component: "modules/settings/OverviewConfig.qml"
         }
     ]
 
     readonly property var defaultCategories: [
         { label: Translation.tr("Essentials"), pages: [0] },
         { label: Translation.tr("Appearance"), pages: [4, 25, 3, 14] },
-        { label: Translation.tr("Shell"), pages: [2, 26, 5, 22, 23, 16, 10, 11, 20] },
+        { label: Translation.tr("Shell"), pages: [2, 26, 5, 29, 22, 23, 16, 10, 11, 20] },
         { label: Translation.tr("System"), pages: [1, 24, 7, 6, 12, 15, 8, 17] },
         { label: Translation.tr("Reference"), pages: [9, 13] }
     ]
@@ -1079,21 +1087,28 @@ Singleton {
             keywords: ["osd", "media", "music", "player", "shortcuts", "track", "fullscreen", "game", "automatic", "skip"]
         },
         {
-            pageIndex: 5, pageName: root.pages[5].name,
+            pageIndex: 29, pageName: root.pages[29].name,
+            section: Translation.tr("Overview"),
+            label: Translation.tr("Workspace hover"),
+            description: Translation.tr("Open the connected workspace Overview from Bar hover"),
+            keywords: ["overview", "workspace", "hover", "bar", "popup", "delay", "preview"]
+        },
+        {
+            pageIndex: 29, pageName: root.pages[29].name,
             section: Translation.tr("Overview"),
             label: Translation.tr("Overview"),
             description: Translation.tr("Overview scale, rows and columns"),
             keywords: ["overview", "grid", "rows", "columns", "scale"]
         },
         {
-            pageIndex: 5, pageName: root.pages[5].name,
+            pageIndex: 29, pageName: root.pages[29].name,
             section: Translation.tr("Overview"),
             label: Translation.tr("Overview scale"),
             description: Translation.tr("Size of workspace thumbnails in overview"),
             keywords: ["overview", "scale", "size", "workspace", "thumbnail"]
         },
         {
-            pageIndex: 5, pageName: root.pages[5].name,
+            pageIndex: 29, pageName: root.pages[29].name,
             section: Translation.tr("Overview"),
             label: Translation.tr("Window previews in overview"),
             description: Translation.tr("Show window thumbnails in overview"),

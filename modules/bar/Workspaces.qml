@@ -20,6 +20,9 @@ Item {
         : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
     property Item lastHoveredWorkspaceButton: null
     property bool workspaceButtonHovered: false
+    readonly property bool workspaceOverviewHoverEnabled:
+        (Config.options?.overview?.enable ?? true)
+        && (Config.options?.overview?.workspaceHover?.enable ?? true)
     property bool borderless: Config.options?.bar?.borderless ?? false
     readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(root.QsWindow.window?.screen) : null
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
@@ -176,6 +179,15 @@ Item {
             return
         }
         workspacePreviewPopup.showWorkspace(workspaceId, button)
+    }
+
+    function showWorkspaceOverview(slotNumber, button) {
+        const workspaceId = root.workspacePreviewId(slotNumber)
+        if (workspaceId === null || workspaceId === undefined) {
+            workspaceOverviewPopup.close()
+            return
+        }
+        workspaceOverviewPopup.showWorkspace(workspaceId, button)
     }
 
     // Scroll behavior: "workspace" = switch workspaces, "column" = cycle windows left/right in same workspace
@@ -525,6 +537,7 @@ Item {
                 onPressed: {
                     workspaceHoverDelay.stop()
                     workspacePreviewPopup.close()
+                    workspaceOverviewPopup.close()
                     if (CompositorService.isNiri) {
                         root.switchToSlot(workspaceValue)
                     } else if (CompositorService.isHyprland) {
@@ -536,13 +549,9 @@ Item {
                     if (hovered) {
                         root.lastHoveredWorkspaceButton = button
                         root.workspaceButtonHovered = true
-                        if (root.workspaceOccupied[index]
-                                && Config.options?.dock?.hoverPreview !== false) {
-                            workspaceHoverDelay.restart()
-                        } else {
-                            workspaceHoverDelay.stop()
+                        workspaceHoverDelay.restart()
+                        if (root.workspaceOverviewHoverEnabled)
                             workspacePreviewPopup.close()
-                        }
                     } else {
                         workspaceHoverDelay.stop()
                         if (root.lastHoveredWorkspaceButton === button)
@@ -552,10 +561,18 @@ Item {
 
                 Timer {
                     id: workspaceHoverDelay
-                    interval: Config.options?.dock?.hoverPreviewDelay ?? 400
+                    interval: root.workspaceOverviewHoverEnabled
+                        ? (Config.options?.overview?.workspaceHover?.delayMs ?? 280)
+                        : (Config.options?.dock?.hoverPreviewDelay ?? 400)
                     repeat: false
                     onTriggered: {
-                        if (button.hovered && root.workspaceOccupied[index])
+                        if (!button.hovered)
+                            return
+                        if (root.workspaceOverviewHoverEnabled) {
+                            root.showWorkspaceOverview(button.workspaceValue, button)
+                            return
+                        }
+                        if (root.workspaceOccupied[index])
                             root.showWorkspacePreview(button.workspaceValue, button)
                     }
                 }
@@ -730,6 +747,13 @@ Item {
 
     }
 
+    BarWorkspaceOverview {
+        id: workspaceOverviewPopup
+        dockHovered: root.workspaceButtonHovered
+        barPosition: root.barPosition
+    }
+
+    // Compatibility fallback when workspace Overview hover is disabled.
     BarTaskbarPreview {
         id: workspacePreviewPopup
         dockHovered: root.workspaceButtonHovered
@@ -737,8 +761,10 @@ Item {
     }
 
     onColumnModeChanged: {
-        if (root.columnMode)
+        if (root.columnMode) {
+            workspaceOverviewPopup.close()
             workspacePreviewPopup.close()
+        }
     }
 
     // Column mode - background (same style as workspace mode)

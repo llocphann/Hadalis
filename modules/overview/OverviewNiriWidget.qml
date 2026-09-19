@@ -14,6 +14,17 @@ Item {
     id: root
     required property var panelWindow
     property bool taskViewMode: false
+    property bool embeddedSurface: false
+    property bool presentationActive: GlobalStates.overviewOpen
+    property var preferredWorkspaceId: null
+    signal presentationCloseRequested()
+
+    function requestPresentationClose(): void {
+        if (root.embeddedSurface)
+            root.presentationCloseRequested()
+        else
+            GlobalStates.overviewOpen = false
+    }
 
     readonly property var overviewOptions: Config.options?.overview ?? {}
     readonly property int overviewRows: taskViewMode ? 1 : (overviewOptions.rows ?? 3)
@@ -48,12 +59,22 @@ Item {
         const idx = outputWorkspaceNumbers.indexOf(currentWorkspaceNumber);
         return idx >= 0 ? idx : 0;
     }
+    readonly property int presentationWorkspaceSlot: {
+        if (root.preferredWorkspaceId !== null
+                && root.preferredWorkspaceId !== undefined) {
+            const preferred = root.workspacesForOutput.findIndex(workspace =>
+                String(workspace?.id ?? "") === String(root.preferredWorkspaceId))
+            if (preferred >= 0)
+                return preferred
+        }
+        return root.currentWorkspaceSlot
+    }
     readonly property int totalWorkspacesForOutput: workspacesForOutput ? workspacesForOutput.length : 0
     readonly property int firstVisibleWorkspaceSlot: {
         const total = totalWorkspacesForOutput;
         if (total <= 0)
             return 0;
-        const cur = currentWorkspaceSlot;
+        const cur = presentationWorkspaceSlot;
         const slots = workspacesShown <= 0 ? 1 : workspacesShown;
         const half = Math.floor(slots / 2);
         var start = cur - half;
@@ -131,8 +152,10 @@ Item {
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
 
-    implicitWidth: overviewBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: overviewBackground.implicitHeight + Appearance.sizes.elevationMargin * 2
+    readonly property real presentationMargin:
+        root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
+    implicitWidth: overviewBackground.implicitWidth + root.presentationMargin * 2
+    implicitHeight: overviewBackground.implicitHeight + root.presentationMargin * 2
 
     Timer {
         id: dragCleanupTimer
@@ -158,11 +181,10 @@ Item {
     }
 
     Connections {
-        target: GlobalStates
-        function onOverviewOpenChanged() {
-            if (!GlobalStates.overviewOpen) {
+        target: root
+        function onPresentationActiveChanged() {
+            if (!root.presentationActive)
                 root.closeWindowContext()
-            }
         }
     }
 
@@ -210,20 +232,22 @@ Item {
 
     StyledRectangularShadow {
         target: overviewBackground
+        visible: !root.embeddedSurface
     }
 
     Rectangle {
         id: overviewBackground
         property real padding: root.taskViewMode ? 16 : 10
         anchors.fill: parent
-        anchors.margins: Appearance.sizes.elevationMargin
+        anchors.margins: root.presentationMargin
 
         implicitWidth: workspaceColumnLayout.implicitWidth + padding * 2
         implicitHeight: workspaceColumnLayout.implicitHeight + padding * 2
-        radius: Appearance.rounding.large + padding
+        radius: root.embeddedSurface ? 0 : (Appearance.rounding.large + padding)
         clip: false
-        color: Appearance.colors.colBackgroundSurfaceContainer
-        border.width: 1
+        color: root.embeddedSurface ? "transparent"
+            : Appearance.colors.colBackgroundSurfaceContainer
+        border.width: root.embeddedSurface ? 0 : 1
         border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
 
         Column {
@@ -411,7 +435,7 @@ Item {
                                 acceptedButtons: Qt.LeftButton
                                 onPressed: {
                                     if (root.draggingTargetWorkspace === -1 && workspace.workspaceObj) {
-                                        GlobalStates.overviewOpen = false
+                                        root.requestPresentationClose()
                                         NiriService.switchToWorkspaceById(workspace.workspaceObj.id)
                                     }
                                 }
@@ -446,7 +470,7 @@ Item {
             property var windowItems: []
             
             function rebuildWindowItems() {
-                if (!GlobalStates.overviewOpen) {
+                if (!root.presentationActive) {
                     windowItems = []
                     return
                 }
@@ -524,7 +548,7 @@ Item {
             
             Connections {
                 target: NiriService
-                enabled: GlobalStates.overviewOpen
+                enabled: root.presentationActive
                 function onWindowsChanged() {
                     windowSpace.rebuildWindowItems()
                 }
@@ -541,18 +565,20 @@ Item {
             }
             
             Connections {
-                target: GlobalStates
-                function onOverviewOpenChanged() {
-                    if (GlobalStates.overviewOpen) {
+                target: root
+                function onPresentationActiveChanged() {
+                    if (root.presentationActive) {
                         windowSpace.rebuildWindowItems()
                         WindowPreviewService.captureForTaskView()
+                    } else {
+                        windowSpace.windowItems = []
                     }
                 }
             }
             
             Component.onCompleted: {
                 rebuildWindowItems()
-                if (GlobalStates.overviewOpen)
+                if (root.presentationActive)
                     WindowPreviewService.captureForTaskView()
             }
 
@@ -814,9 +840,8 @@ Item {
                                     // Comportamiento de click (sin drag real)
                                     if (isClick && event.button === Qt.LeftButton) {
                                         NiriService.focusWindow(windowData.id)
-                                        if (!root.keepOverviewOpenOnWindowClick) {
-                                            GlobalStates.overviewOpen = false
-                                        }
+                                        if (!root.keepOverviewOpenOnWindowClick)
+                                            root.requestPresentationClose()
                                     } else if (isClick && event.button === Qt.MiddleButton) {
                                         NiriService.closeWindow(windowData.id)
                                     }
@@ -862,7 +887,8 @@ Item {
                         onClicked: {
                             if (!root.contextWindowData) return
                             NiriService.focusWindow(root.contextWindowData.id)
-                            if (!root.keepOverviewOpenOnWindowClick) GlobalStates.overviewOpen = false
+                            if (!root.keepOverviewOpenOnWindowClick)
+                                root.requestPresentationClose()
                             root.closeWindowContext()
                         }
                     }

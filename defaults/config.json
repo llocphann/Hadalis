@@ -1215,6 +1215,11 @@
         "activeScreenOnly": true,
         "allAppsGrid": false,
         "allAppsGridMode": "minimal",
+        "workspaceHover": {
+            "enable": true,
+            "delayMs": 280,
+            "closeDelayMs": 220
+        },
         "backgroundBlurEnable": true,
         "backgroundBlurRadius": 50,
         "backgroundDim": 40,

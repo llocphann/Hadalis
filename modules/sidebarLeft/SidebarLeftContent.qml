@@ -296,12 +296,10 @@ Item {
         radius: cardStyle
             ? Appearance.rounding.normal
             : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
-        readonly property real attachedRadius: Math.max(0, Math.min(
-            PerimeterTokens.attachedCornerRadius, width / 2, height / 2))
-        topLeftRadius: root.attachedEdge === "left" ? attachedRadius : radius
-        bottomLeftRadius: root.attachedEdge === "left" ? attachedRadius : radius
-        topRightRadius: root.attachedEdge === "right" ? attachedRadius : radius
-        bottomRightRadius: root.attachedEdge === "right" ? attachedRadius : radius
+        topLeftRadius: root.attachedEdge === "left" ? 0 : radius
+        bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
+        topRightRadius: root.attachedEdge === "right" ? 0 : radius
+        bottomRightRadius: root.attachedEdge === "right" ? 0 : radius
 
         Behavior on radius {
             enabled: Appearance.animationsEnabled

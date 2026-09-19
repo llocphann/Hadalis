@@ -296,9 +296,10 @@ Singleton {
     }
 
     function _pollSensors(): void {
-        if (root._persistentConsumers === 0)
-            autoStopTimer.restart();
-
+        // Polling is not a consumer request. Renewing autoStopTimer here keeps a
+        // transient ensureRunning() lease alive forever because this function runs
+        // more often than the idle timeout. Only ensureRunning()/releaseKeepAlive()
+        // may start that timeout.
         // Determine whether GPU polling should be skipped this cycle.
         // On hybrid (iGPU+dGPU) systems, querying GPU data via nvidia-smi or hwmon
         // prevents the discrete GPU from entering runtime suspend, wasting ~9-10W at idle.

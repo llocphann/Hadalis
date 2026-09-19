@@ -619,6 +619,16 @@ def main() -> None:
           "Classic Bar schema default must be Hug")
     check('"cornerStyle": 0' in defaults_json,
           "Classic Bar persisted default must be Hug")
+    check("property JsonObject screenEdge: JsonObject {" in config_qml
+          and "property bool enabled: true" in config_qml
+          and "property int size: 15" in config_qml
+          and "property real opacity: 0.70" in config_qml,
+          "Screen Edge schema must retain Caelestia shadow defaults: enabled, 15px, 70%")
+    check('"screenEdge": {' in defaults_json
+          and '"enabled": true' in defaults_json
+          and '"size": 15' in defaults_json
+          and '"opacity": 0.7' in defaults_json,
+          "Persisted Screen Edge shadow defaults must match Caelestia: enabled, 15px, 70%")
     check("property int material: 0" in config_qml
           and '"material": 0' in defaults_json,
           "Material global-style compatibility corner must resolve to Hug")

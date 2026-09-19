@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -11,8 +12,33 @@ Item {
     id: root
     implicitHeight: 64
 
-    Component.onCompleted: ResourceUsage.ensureRunning()
-    onVisibleChanged: if (visible) ResourceUsage.ensureRunning()
+    property bool _resourceUsageHeld: false
+
+    function syncResourceUsageLifecycle(): void {
+        const shouldHold = GlobalStates.sidebarLeftOpen
+        if (shouldHold === root._resourceUsageHeld)
+            return
+        if (shouldHold)
+            ResourceUsage.keepAlive()
+        else
+            ResourceUsage.releaseKeepAlive()
+        root._resourceUsageHeld = shouldHold
+    }
+
+    Component.onCompleted: root.syncResourceUsageLifecycle()
+    Component.onDestruction: {
+        if (root._resourceUsageHeld) {
+            root._resourceUsageHeld = false
+            ResourceUsage.releaseKeepAlive()
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSidebarLeftOpenChanged(): void {
+            root.syncResourceUsageLifecycle()
+        }
+    }
 
     RowLayout {
         anchors.fill: parent

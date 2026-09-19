@@ -24,7 +24,7 @@ font.family: Appearance.font.main
 
 ### Layout
 
-- **Bar**: top or bottom of screen (horizontal), or left/right edge (vertical). The horizontal bar is modular: left edge, two center-side zones, centered workspace pivot, right edge.
+- **Bar**: top or bottom of screen (horizontal), or left/right edge (vertical). Both orientations are modular and keep independent presets. Top/Bottom uses left edge, two center-side zones, a centered workspace pivot and right edge; Left/Right uses top edge, center-top, the same centered workspace pivot, center-bottom and bottom edge.
 - **Sidebars**: left sidebar (AI chat, YT Music, widgets), right sidebar (toggles, calendar, tools)
 - **Dock**: application dock (any of 4 edges)
 - **Overview**: workspace overview with app launcher and search (`Super+Space`)
@@ -60,17 +60,29 @@ ii loads about 25 panels through `ShellIiPanels.qml`. Some notable ones:
 
 ### Bar zones
 
-The ii horizontal bar uses five zones:
+The ii Bar stores separate five-zone presets for horizontal and vertical placement.
+
+Top/Bottom uses `bar.layout`:
 
 | Zone | Role |
 |------|------|
 | `left` | Left edge controls, usually sidebar button + active window/taskbar |
 | `centerLeft` | Left center pill, usually resources/media |
-| `center` | Pivot, normally workspaces |
+| `center` | Fixed Workspaces pivot |
 | `centerRight` | Right center pill, usually clock/util/battery |
 | `right` | Right edge controls, usually sidebar button/tray/timer/update/weather |
 
-Change it from Settings -> Bar -> Bar module layout. Do not hand-edit unless you enjoy typo archaeology.
+Left/Right uses `bar.verticalLayout`:
+
+| Zone | Role |
+|------|------|
+| `top` | Physical top-edge controls |
+| `centerTop` | Modules immediately above Workspaces |
+| `center` | Fixed Workspaces pivot at screen center |
+| `centerBottom` | Modules immediately below Workspaces |
+| `bottom` | Physical bottom-edge controls |
+
+Settings -> Bar -> Bar module layout edits the preset for the active orientation. Visibility still comes from the shared `bar.modules.*` switches.
 
 ## Waffle
 

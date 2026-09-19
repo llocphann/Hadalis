@@ -5382,5 +5382,15 @@
   "Create playlist": "Create playlist",
   "No playlists": "No playlists",
   "Collapse utility buttons": "Collapse utility buttons",
-  "Expand utility buttons": "Expand utility buttons"
+  "Expand utility buttons": "Expand utility buttons",
+  "Top edge": "Top edge",
+  "Center top": "Center top",
+  "Center bottom": "Center bottom",
+  "Bottom edge": "Bottom edge",
+  "Flexible spacer height": "Flexible spacer height",
+  "Fixed height": "Fixed height",
+  "Left/Right module layout": "Left/Right module layout",
+  "Top/Bottom module layout": "Top/Bottom module layout",
+  "Top/Bottom and Left/Right keep separate module layouts; module visibility remains shared.": "Top/Bottom and Left/Right keep separate module layouts; module visibility remains shared.",
+  "Reorder modules with separate Top/Bottom and Left/Right presets": "Reorder modules with separate Top/Bottom and Left/Right presets"
 }

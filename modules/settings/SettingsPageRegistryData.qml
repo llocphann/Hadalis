@@ -656,8 +656,8 @@ Singleton {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Bar module layout"),
             label: Translation.tr("Bar module layout"),
-            description: Translation.tr("Reorder and toggle bar modules"),
-            keywords: ["bar", "module", "layout", "order", "reorder", "resources", "media", "clock"]
+            description: Translation.tr("Reorder modules with separate Top/Bottom and Left/Right presets"),
+            keywords: ["bar", "module", "layout", "order", "reorder", "resources", "media", "clock", "vertical", "left", "right", "top", "bottom", "preset"]
         },
         {
             pageIndex: 3, pageName: root.pages[3].name,

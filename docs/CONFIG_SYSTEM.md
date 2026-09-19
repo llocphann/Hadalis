@@ -152,16 +152,16 @@ matching icon, name, launcher, and taskbar grouping are used.
 
 ### Bar layout
 
-`bar.layout` controls the modular ii bar:
+The modular ii Bar stores two independent placement presets:
 
-- `left`
-- `centerLeft`
-- `center`
-- `centerRight`
-- `right`
-- `migrated`
+- `bar.layout` for Top/Bottom: `left`, `centerLeft`, `center`, `centerRight`, `right`
+- `bar.verticalLayout` for Left/Right: `top`, `centerTop`, `center`, `centerBottom`, `bottom`
 
-Each zone is an array of module ids. Use Settings -> Bar -> Bar module layout unless you are debugging. The editor writes through `Config.setNestedValue`, so changes persist. The old `bar.modulesLayout`, `bar.edgeModulesLayout`, and `bar.modulesPlacement` keys are legacy compatibility only.
+In both presets, `center` is reserved for Workspaces and remains the physical pivot. Horizontal flexible spacers use `bar.layout.spacerWidth`; vertical flexible spacers use `bar.verticalLayout.spacerHeight`. Each preset has its own `spacerMode`.
+
+Module visibility is intentionally shared through `bar.modules.*`, so switching orientation changes placement without creating a second enable/disable state. Use Settings -> Bar -> Bar module layout unless you are debugging. The editor writes through `Config.setNestedValue`, so changes persist. `bar.verticalLayout` is an additive schema key with defaults, so existing configs do not need a migration.
+
+The old `bar.modulesLayout`, `bar.edgeModulesLayout`, and `bar.modulesPlacement` keys are legacy compatibility only.
 
 `bar.height` and `bar.opacity` control the bar size and background fill. They do not resize every widget independently; components still use the normal `Appearance` sizing tokens.
 

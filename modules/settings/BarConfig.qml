@@ -615,36 +615,53 @@ ContentPage {
             }
 
             SettingsNote {
-                visible: root.isVertical
-                icon: "view_column"
-                text: Translation.tr("Left/Right Bar uses a compact fixed vertical order. Module visibility above stays synchronized with the active Bar; the Top/Bottom drag layout is preserved when you switch back.")
+                icon: root.isVertical ? "view_column" : "view_stream"
+                text: Translation.tr("Top/Bottom and Left/Right keep separate module layouts; module visibility remains shared.")
             }
 
             ContentSubsection {
-                title: Translation.tr("Bar module layout")
-                visible: !root.isVertical
+                title: root.isVertical
+                    ? Translation.tr("Left/Right module layout")
+                    : Translation.tr("Top/Bottom module layout")
 
                 ConfigSpinBox {
-                    icon: "space_bar"
-                    text: Translation.tr("Flexible spacer width")
-                    value: Config.options?.bar?.layout?.spacerWidth ?? 0
+                    icon: root.isVertical ? "height" : "space_bar"
+                    text: root.isVertical
+                        ? Translation.tr("Flexible spacer height")
+                        : Translation.tr("Flexible spacer width")
+                    value: root.isVertical
+                        ? (Config.options?.bar?.verticalLayout?.spacerHeight ?? 0)
+                        : (Config.options?.bar?.layout?.spacerWidth ?? 0)
                     from: 0
                     to: 480
                     stepSize: 8
-                    onValueChanged: Config.setNestedValue("bar.layout.spacerWidth", value)
+                    onValueChanged: Config.setNestedValue(
+                        root.isVertical
+                            ? "bar.verticalLayout.spacerHeight"
+                            : "bar.layout.spacerWidth",
+                        value)
                 }
 
                 ConfigSelectionArray {
-                    currentValue: Config.options?.bar?.layout?.spacerMode ?? "auto"
-                    onSelected: newValue => Config.setNestedValue("bar.layout.spacerMode", newValue)
+                    currentValue: root.isVertical
+                        ? (Config.options?.bar?.verticalLayout?.spacerMode ?? "auto")
+                        : (Config.options?.bar?.layout?.spacerMode ?? "auto")
+                    onSelected: newValue => Config.setNestedValue(
+                        root.isVertical
+                            ? "bar.verticalLayout.spacerMode"
+                            : "bar.layout.spacerMode",
+                        newValue)
                     options: [
                         { displayName: Translation.tr("Smart"), icon: "auto_awesome", value: "auto" },
-                        { displayName: Translation.tr("Always elastic"), icon: "width_full", value: "fill" },
-                        { displayName: Translation.tr("Fixed width"), icon: "width_normal", value: "fixed" }
+                        { displayName: Translation.tr("Always elastic"), icon: root.isVertical ? "height" : "width_full", value: "fill" },
+                        { displayName: root.isVertical ? Translation.tr("Fixed height") : Translation.tr("Fixed width"),
+                          icon: root.isVertical ? "height" : "width_normal", value: "fixed" }
                     ]
                 }
 
-                BarModuleOrderEditor {}
+                BarModuleOrderEditor {
+                    verticalPreset: root.isVertical
+                }
             }
 
             ContentSubsection {

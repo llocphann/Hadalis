@@ -40,8 +40,14 @@ def main() -> None:
         require(settings, f'bar.modules.{key}',
                 f"Bar Settings lost canonical module key: {key}")
 
-    require(settings, "BarModuleOrderEditor {}",
-            "Top/Bottom Bar must retain its existing drag layout editor.")
+    require(settings, "verticalPreset: root.isVertical",
+            "Bar Settings must edit the preset matching the active orientation.")
+    require(settings, '"bar.verticalLayout.spacerHeight"',
+            "Left/Right Bar Settings must persist an independent spacer height.")
+    require(settings, '"bar.verticalLayout.spacerMode"',
+            "Left/Right Bar Settings must persist an independent spacer mode.")
+    forbid(settings, "compact fixed vertical order",
+           "Left/Right Bar must no longer advertise a fixed module order.")
 
     for token in (
         "property JsonObject verticalLayout: JsonObject {",

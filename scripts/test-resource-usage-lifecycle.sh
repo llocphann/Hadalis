@@ -63,6 +63,10 @@ assert_not_contains 'autoStopTimer.restart();' "$poll_block" 'sensor polling mus
 assert_contains 'readonly property int _effectiveUpdateIntervalMs:' "$(cat "$service")" 'resource polling must expose a power-aware effective cadence'
 assert_contains '? Math.max(6000, root._configuredUpdateIntervalMs)' "$(cat "$service")" 'Low Power resource polling must not run faster than 6 seconds'
 assert_contains 'interval: root._effectiveUpdateIntervalMs' "$(cat "$service")" 'sensor timer must use the power-aware cadence'
+assert_contains 'readonly property int _expensiveGpuUpdateIntervalMs:' "$(cat "$service")" 'process-backed GPU polling must have an independent cadence'
+assert_contains '? Math.max(15000, root._effectiveUpdateIntervalMs)' "$(cat "$service")" 'Low Power process-backed GPU sampling must slow to at least 15 seconds'
+assert_contains 'function _expensiveGpuPollDue(nowMs: real): bool {' "$(cat "$service")" 'expensive GPU polling must be cadence-gated'
+assert_contains 'root._lastExpensiveGpuPollMs = nowMs' "$poll_block" 'process-backed GPU polling must record its last launch time'
 
 assert_contains 'root._gpuUsageSource = "none"' "$gpu_block" 'GPU startup failure must fail closed to no usage source'
 assert_contains 'root._gpuUsagePath = ""' "$gpu_block" 'GPU startup failure must clear stale sysfs path'

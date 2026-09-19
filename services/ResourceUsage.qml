@@ -29,6 +29,14 @@ Singleton {
         (Config.options?.performance?.lowPower ?? false)
             ? Math.max(6000, root._configuredUpdateIntervalMs)
             : root._configuredUpdateIntervalMs
+    // nvidia-smi and intel_gpu_top spawn helper processes and are much more
+    // expensive than the sysfs path. Keep CPU/RAM responsive while sampling
+    // process-backed GPU usage at a lower cadence.
+    readonly property int _expensiveGpuUpdateIntervalMs:
+        (Config.options?.performance?.lowPower ?? false)
+            ? Math.max(15000, root._effectiveUpdateIntervalMs)
+            : Math.max(6000, root._effectiveUpdateIntervalMs)
+    property real _lastExpensiveGpuPollMs: 0
     // 0 + zero-guard avoids fake "100%" before first poll.
     property real memoryTotal: 0
     property real memoryFree: 0
@@ -242,6 +250,11 @@ Singleton {
         return Math.max(0, Math.min(1, value));
     }
 
+    function _expensiveGpuPollDue(nowMs: real): bool {
+        return root._lastExpensiveGpuPollMs <= 0
+            || (nowMs - root._lastExpensiveGpuPollMs) >= root._expensiveGpuUpdateIntervalMs
+    }
+
     function _releaseInitRequest(stage: string): void {
         root._initRequested = false
         console.warn("[ResourceUsage] Failed to start " + stage + " probe; initialization can retry on the next consumer request")
@@ -378,9 +391,17 @@ Singleton {
                 gpuUsage = root.clampPercentToUnit(gpuBusyPercent / 100);
             }
         } else if (root._gpuUsageSource === "nvidia-smi" && !nvidiaGpuProc.running) {
-            nvidiaGpuProc.running = true;
+            const nowMs = Date.now()
+            if (root._expensiveGpuPollDue(nowMs)) {
+                root._lastExpensiveGpuPollMs = nowMs
+                nvidiaGpuProc.running = true
+            }
         } else if (root._gpuUsageSource === "intel" && !intelGpuProc.running) {
-            intelGpuProc.running = true;
+            const nowMs = Date.now()
+            if (root._expensiveGpuPollDue(nowMs)) {
+                root._lastExpensiveGpuPollMs = nowMs
+                intelGpuProc.running = true
+            }
         } else if (root._gpuUsageSource === "none") {
             gpuUsage = 0;
         }

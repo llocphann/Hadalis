@@ -116,7 +116,7 @@ Item {
     // Drives the random bar heights (InnerTune retargets every ~50ms; 150ms is gentler
     // on the GPU for a sidebar list). Raw timer — gating on animationsEnabled would freeze it.
     Timer {
-        running: root.isActive && root.isPlaying && root.visible
+        running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen
         interval: 150
         repeat: true
         onTriggered: {

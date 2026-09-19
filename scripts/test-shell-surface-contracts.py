@@ -504,6 +504,12 @@ def main() -> None:
     check("Appearance.colors.colShadow" in dashboard
           and "Appearance.m3colors.m3shadow" not in dashboard,
           "Dashboard connected shadow must use the same themed shadow ink as Screen Edge and Bar")
+    check("StyledRectangularShadow {\n        parent: dashboardSurfaceLayer\n" in dashboard
+          and "z: 0\n        target: dashContainer" in dashboard
+          and "Rectangle {\n        id: dashContainer\n        parent: dashboardSurfaceLayer\n" in dashboard
+          and "z: 1\n        anchors {" in dashboard
+          and "ConnectedSurfaceJoinFlares {\n        parent: dashboardSurfaceLayer\n        z: 5" in dashboard,
+          "Dashboard depth stack must keep connected shadow below body below endpoint flares")
     check("import qs.modules.mediaControls" in dashboard
           and "EqualizerPanel {" in dashboard
           and "id: dashboardEqualizer" in dashboard,

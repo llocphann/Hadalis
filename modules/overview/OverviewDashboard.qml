@@ -210,6 +210,10 @@ Item {
 
     StyledRectangularShadow {
         parent: dashboardSurfaceLayer
+        // RectangularShadow paints through the target's interior as well as its
+        // exterior blur. Keep it explicitly below the connected body so its
+        // configured black alpha can never composite over Dashboard content.
+        z: 0
         target: dashContainer
         visible: root.panelVisible
             && root.screenEdgeShadowEnabled
@@ -286,6 +290,9 @@ Item {
     Rectangle {
         id: dashContainer
         parent: dashboardSurfaceLayer
+        // Match ConnectedSurfaceFrame's depth contract: body above shadow,
+        // endpoint flares above both.
+        z: 1
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: root.directBottomAttachment ? parent.bottom : undefined

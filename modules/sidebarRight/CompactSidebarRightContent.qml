@@ -1379,50 +1379,160 @@ Item {
                                 sourceComponent: ColumnLayout {
                                     spacing: controlsRoot.controlsInlineGap
                                     
-                                    // ControlsCard
-                                    Item {
-                                        Layout.fillWidth: true
-                                        implicitHeight: ccSurface.implicitHeight
-                                        
-                                        Rectangle {
-                                            id: ccSurface
-                                            anchors.fill: parent
-                                            implicitHeight: ccCard.implicitHeight + controlsRoot.controlsAreaPadding
-                                            radius: 0
-                                            color: "transparent"
-                                            border.width: 0
-                                            Behavior on border.width {
-                                                enabled: Appearance.animationsEnabled
-                                                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                            }
-                                            border.color: "transparent"
-                                            ControlsCard { id: ccCard; anchors.fill: parent; anchors.margins: controlsRoot.controlsInnerPadding }
-                                            AngelPartialBorder { targetRadius: ccSurface.radius; visible: false }
-                                        }
-                                    }
-                                    
-                                    // Classic/Android Quick Panel
+                                    // Classic compact controls: one intentional row only.
+                                    // Wi-Fi/Bluetooth already have full device rows below; Settings/Lock
+                                    // live in the rail/system actions. Use the scarce header slots for
+                                    // stateful controls that are otherwise harder to reach.
                                     Loader {
-                                        id: compactClassicQuickPanelLoader
                                         Layout.fillWidth: true
-                                        Layout.leftMargin: 0; Layout.rightMargin: 0
                                         active: (Config.options?.sidebar?.quickToggles?.style ?? "classic") === "classic"
-                                        sourceComponent: ClassicQuickPanel {
-                                            compactMode: true
-                                            compactItemSlotWidth: Math.max(44, Math.min(50, Math.round(controlsFlickable.width / 7)))
-                                            compactSpacing: controlsRoot.controlsInlineGap
-                                        }
-                                        Connections {
-                                            target: compactClassicQuickPanelLoader.item
-                                            ignoreUnknownSignals: true
-                                            function onOpenAudioOutputDialog() { root.showAudioOutputDialog = true }
-                                            function onOpenAudioInputDialog()  { root.showAudioInputDialog  = true }
-                                            function onOpenBluetoothDialog()   { root.showBluetoothDialog   = true }
-                                            function onOpenNightLightDialog()  { root.showNightLightDialog  = true }
-                                            function onOpenHotspotDialog()     { root.showHotspotDialog     = true }
-                                            function onOpenWifiDialog()        { root.showWifiDialog        = true }
+                                        visible: active
+                                        sourceComponent: RowLayout {
+                                            spacing: 0
+
+                                            // Ambient / focus / session controls.
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 0
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+                                                    visible: Config.options?.sidebar?.widgets?.controlsCard?.showDarkMode ?? true
+
+                                                    QuickToggleButton {
+                                                        anchors.centerIn: parent
+                                                        accessibleName: Translation.tr("Dark mode")
+                                                        buttonIcon: "dark_mode"
+                                                        toggled: Appearance.m3colors?.darkmode ?? false
+                                                        onClicked: {
+                                                            const current = Config.options?.appearance?.customTheme?.darkmode ?? true
+                                                            Config.setNestedValue("appearance.customTheme.darkmode", !current)
+                                                        }
+                                                        StyledToolTip { text: Translation.tr("Dark mode") }
+                                                    }
+                                                }
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+                                                    visible: Config.options?.sidebar?.widgets?.controlsCard?.showDnd ?? true
+
+                                                    QuickToggleButton {
+                                                        anchors.centerIn: parent
+                                                        accessibleName: Translation.tr("Do not disturb")
+                                                        buttonIcon: "do_not_disturb_on"
+                                                        toggled: Notifications.silent ?? false
+                                                        onClicked: Notifications.toggleSilent()
+                                                        StyledToolTip { text: Translation.tr("Do not disturb") }
+                                                    }
+                                                }
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+                                                    visible: Config.options?.sidebar?.widgets?.controlsCard?.showNightLight ?? true
+
+                                                    NightLight {
+                                                        anchors.centerIn: parent
+                                                        altAction: () => { root.showNightLightDialog = true }
+                                                    }
+                                                }
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+
+                                                    IdleInhibitor {
+                                                        anchors.centerIn: parent
+                                                    }
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                Layout.preferredWidth: 1
+                                                Layout.preferredHeight: 24
+                                                Layout.alignment: Qt.AlignVCenter
+                                                Layout.leftMargin: 3
+                                                Layout.rightMargin: 3
+                                                radius: 0.5
+                                                color: Appearance.colors.colOutlineVariant
+                                                opacity: 0.5
+                                            }
+
+                                            // Performance / audio / connectivity utilities.
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 0
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+                                                    visible: Config.options?.sidebar?.widgets?.controlsCard?.showGameMode ?? true
+
+                                                    GameMode {
+                                                        anchors.centerIn: parent
+                                                    }
+                                                }
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+
+                                                    EasyEffectsToggle {
+                                                        anchors.centerIn: parent
+                                                    }
+                                                }
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+
+                                                    HotspotToggle {
+                                                        anchors.centerIn: parent
+                                                        altAction: () => { root.showHotspotDialog = true }
+                                                    }
+                                                }
+
+                                                Item {
+                                                    Layout.fillWidth: true
+                                                    implicitHeight: 40
+
+                                                    CloudflareWarp {
+                                                        anchors.centerIn: parent
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
+
+                                    // Android style keeps its editable panel and the legacy ControlsCard.
+                                    Loader {
+                                        id: compactAndroidControlsCardLoader
+                                        Layout.fillWidth: true
+                                        active: (Config.options?.sidebar?.quickToggles?.style ?? "classic") === "android"
+                                        visible: active
+                                        sourceComponent: Item {
+                                            implicitHeight: androidCcSurface.implicitHeight
+
+                                            Rectangle {
+                                                id: androidCcSurface
+                                                anchors.fill: parent
+                                                implicitHeight: androidCcCard.implicitHeight + controlsRoot.controlsAreaPadding
+                                                radius: 0
+                                                color: "transparent"
+                                                border.width: 0
+                                                border.color: "transparent"
+
+                                                ControlsCard {
+                                                    id: androidCcCard
+                                                    anchors.fill: parent
+                                                    anchors.margins: controlsRoot.controlsInnerPadding
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     Loader {
                                         id: compactAndroidQuickPanelLoader
                                         Layout.fillWidth: true

@@ -69,10 +69,11 @@ def main() -> None:
         "Math.max(0, Math.min(96",
         "readonly property real smoothUnionRadius: 20",
         "readonly property real popupRadius: 28",
-        "readonly property real joinFlareRadius: frameRadius",
+        "readonly property real joinFlareRadius: smoothUnionRadius",
+        "readonly property real joinFlareCrossScale: 0.55",
     ):
         check(token in perimeter_tokens,
-              f"Shared Screen Edge/contact-corner geometry token missing: {token}")
+              f"Perimeter geometry token missing: {token}")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
     for edge in ("top", "bottom", "left", "right"):
@@ -219,9 +220,19 @@ def main() -> None:
           "Full-screen Screen Edge frame must ignore reservations without resetting itself to normal exclusion mode")
     check("exclusiveZone: mapped ? root.thickness : 0" in screen_edge,
           "Transparent Screen Edge reservation windows must reserve the configured physical edge thickness")
-    check("const iiOwned = !root.waffleFamily" in screen_edge
+    check("function iiBarOwnsEdge(outputName, edge)" in screen_edge
           and "!(Config.options?.bar?.autoHide?.enable ?? false)" in screen_edge,
           "Auto-hide ii Bar must hand physical edge ownership to ScreenEdges.qml")
+    for bar_frame_token in (
+        'root.iiBarOwnsEdge(outputName, "left")',
+        'root.iiBarOwnsEdge(outputName, "right")',
+        'root.iiBarOwnsEdge(outputName, "top")',
+        'root.iiBarOwnsEdge(outputName, "bottom")',
+        "Appearance.sizes.verticalBarWidth : root.thickness",
+        "Appearance.sizes.barHeight : root.thickness",
+    ):
+        check(bar_frame_token in screen_edge,
+              f"ii Bar must become the thicker side of the single Screen Edge frame: {bar_frame_token}")
     for retired_geometry in (
         "PERIMETER-CORNER-LOCK",
         "id: leadingCorner",
@@ -247,10 +258,10 @@ def main() -> None:
     for locked_geometry in (
         "readonly property real rounding: PerimeterTokens.frameRadius",
         "readonly property int outerPadding: 50",
-        "readonly property real innerLeft: t",
-        "readonly property real innerTop: t",
-        "readonly property real innerRight: frameShape.width - t",
-        "readonly property real innerBottom: frameShape.height - t",
+        "readonly property real innerLeft: frameWindow.frameLeftInset",
+        "readonly property real innerTop: frameWindow.frameTopInset",
+        "frameShape.width - frameWindow.frameRightInset",
+        "frameShape.height - frameWindow.frameBottomInset",
         "startX: -root.outerPadding",
         "startY: -root.outerPadding",
         "x: frameShape.width + root.outerPadding",
@@ -487,37 +498,33 @@ def main() -> None:
 
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     for token in (
-        "import QtQuick.Shapes",
-        "component Flare: Item {",
-        'flareCorner === "topLeft" || flareCorner === "rightBottom"',
-        'flareCorner === "topRight" || flareCorner === "leftBottom"',
-        'flareCorner === "bottomLeft" || flareCorner === "rightTop"',
-        '"bottomLeft"',
+        "component Flare: Canvas {",
+        "const k = 0.5522847498",
+        'corner === "topLeft"',
+        'corner === "topRight"',
+        'corner === "bottomLeft"',
+        'corner === "bottomRight"',
+        'corner === "leftTop"',
+        'corner === "leftBottom"',
+        'corner === "rightTop"',
+        'corner === "rightBottom"',
         "root.bodyItem.mapToItem(root, 0, 0)",
-        "preferredRendererType: Shape.CurveRenderer",
-        "direction: PathArc.Clockwise",
-        "radiusX: cornerShape.width",
-        "radiusY: cornerShape.height",
-        "xScale: flare.mirrorX ? -1 : 1",
-        "yScale: flare.mirrorY ? -1 : 1",
         "visible: root.reveal > 0.001 && root.radius > 0",
     ):
         check(token in join_flares,
-              f"Exact Screen Edge contact-corner contract missing: {token}")
-    check("Canvas {" not in join_flares
-          and "PathCubic" not in join_flares
-          and "joinFlareCrossScale" not in join_flares
-          and "root.depth" not in join_flares
+              f"Connected-surface shoulder baseline missing: {token}")
+    check("component Flare: RoundCorner" not in join_flares
           and "PerimeterCornerShadow" not in join_flares
           and "property bool shadowEnabled" not in join_flares
           and "property real shadowExtent" not in join_flares
           and "property color shadowColor" not in join_flares,
-          "Connected contact corners must be exact fill-only PathArc clones, not ellipse/Canvas/shadow approximations")
-    check(join_flares.count("width: root.radius") == 8
-          and join_flares.count("height: root.radius") == 8,
-          "All eight attachment endpoints must use the same square Screen Edge radius")
+          "Connected-surface shoulders must remain on the clean pre-experiment baseline")
+    check("root.radius * Math.max(0.20, Math.min(1, root.crossScale))" in join_flares
+          and "width: root.radius" in join_flares
+          and "height: root.depth" in join_flares,
+          "Connected-surface shoulders must keep the prior broad-tangent/compressed-depth geometry")
     check(") * root.reveal" not in join_flares,
-          "Screen Edge contact-corner radius must stay fully formed during reveal")
+          "Connected shoulder radius must stay fully formed during reveal")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
@@ -675,7 +682,7 @@ def main() -> None:
           and 'Translation.tr("Corner radius (px)")' in bar_settings
           and 'from: 0' in bar_settings
           and 'to: 96' in bar_settings,
-          "Bar settings must expose the shared Screen Edge/contact-corner radius with a 25px default")
+          "Bar settings must expose the shared Screen Edge/Bar radius with a 25px default")
     check('appearance.screenEdge.shadow' not in bar_settings
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled", checked)' in bar_settings
@@ -726,8 +733,8 @@ def main() -> None:
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
     check('label: Translation.tr("Corner radius (px)")' in settings_registry_data
-          and 'description: Translation.tr("Set Screen Edge and connected-surface corner radius")' in settings_registry_data,
-          "Settings search must expose the shared Screen Edge/contact-corner radius")
+          and 'description: Translation.tr("Set Screen Edge and Bar corner radius")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/Bar corner radius")
     check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
           and 'description: Translation.tr("Configure only the physical Screen Edge shadow")' in settings_registry_data,
           "Settings search must expose the dedicated physical Screen Edge shadow controls")
@@ -755,18 +762,6 @@ def main() -> None:
         independent_connected_shadow_source = read(independent_connected_shadow_path)
         check("physicalShadow" not in independent_connected_shadow_source,
               f"{independent_connected_shadow_path} must remain independent from the physical Screen Edge shadow owner")
-
-    for exact_contact_surface_path in (
-        "modules/sidebar/SidebarHost.qml",
-        "modules/overview/OverviewDashboard.qml",
-        "modules/settings/SettingsOverlay.qml",
-        "modules/settings/SettingsFocus.qml",
-        "modules/onScreenKeyboard/OnScreenKeyboard.qml",
-    ):
-        exact_contact_surface_source = read(exact_contact_surface_path)
-        check("ConnectedSurfaceJoinFlares {" in exact_contact_surface_source
-              and "flareRadius: PerimeterTokens.joinFlareRadius" in exact_contact_surface_source,
-              f"{exact_contact_surface_path} must reuse the shared Screen Edge inverse-corner radius")
 
     osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     check("visible: root._oskResident" in osk_shadow

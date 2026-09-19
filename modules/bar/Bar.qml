@@ -12,7 +12,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.common.perimeter
 
 Scope {
     id: bar
@@ -84,9 +83,6 @@ Scope {
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-                readonly property real frameRadius: Math.max(0, Math.min(96,
-                    Number(Config.options?.appearance?.screenEdge?.radius
-                        ?? PerimeterTokens.frameRadius)))
                 readonly property bool autoHideEnabled:
                     Config.options?.bar?.autoHide?.enable ?? false
                 readonly property bool edgeShadowEnabled: bar.showBarBackground
@@ -102,7 +98,7 @@ Scope {
                 // Normal Bar mode owns only the Bar body. Extra inward host
                 // room exists solely for the auto-hide Screen Edge fallback.
                 readonly property real inwardDecoratorAllowance:
-                    autoHideEnabled ? Math.max(frameRadius, edgeShadowExtent) : 0
+                    autoHideEnabled ? edgeShadowExtent : 0
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
@@ -217,13 +213,12 @@ Scope {
                             visible: barRoot.edgeShadowEnabled
                                 && barRoot.edgeShadowExtent > 0
                                 && barRoot.edgeShadowOpacity > 0
-                            x: barRoot.screenEdgeThickness + barRoot.frameRadius
+                            x: barRoot.screenEdgeThickness
                             y: (Config.options?.bar?.bottom ?? false)
                                 ? autoHideEdgeBand.y - barRoot.edgeShadowExtent
                                 : autoHideEdgeBand.y + autoHideEdgeBand.height
                             width: Math.max(0, parent.width
-                                - 2 * (barRoot.screenEdgeThickness
-                                    + barRoot.frameRadius))
+                                - 2 * barRoot.screenEdgeThickness)
                             height: barRoot.edgeShadowExtent
                             color: "transparent"
                             gradient: Gradient {
@@ -241,42 +236,6 @@ Scope {
                             }
                         }
 
-                        RoundCorner {
-                            implicitSize: barRoot.frameRadius
-                            color: Appearance.colors.colLayer0
-                            shadowEnabled: barRoot.edgeShadowEnabled
-                            shadowExtent: barRoot.edgeShadowExtent
-                            shadowColor: barRoot.edgeShadowColor
-                            corner: (Config.options?.bar?.bottom ?? false)
-                                ? RoundCorner.CornerEnum.BottomLeft
-                                : RoundCorner.CornerEnum.TopLeft
-                            anchors {
-                                left: parent.left
-                                leftMargin: barRoot.screenEdgeThickness
-                                top: !(Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.bottom : undefined
-                                bottom: (Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.top : undefined
-                            }
-                        }
-                        RoundCorner {
-                            implicitSize: barRoot.frameRadius
-                            color: Appearance.colors.colLayer0
-                            shadowEnabled: barRoot.edgeShadowEnabled
-                            shadowExtent: barRoot.edgeShadowExtent
-                            shadowColor: barRoot.edgeShadowColor
-                            corner: (Config.options?.bar?.bottom ?? false)
-                                ? RoundCorner.CornerEnum.BottomRight
-                                : RoundCorner.CornerEnum.TopRight
-                            anchors {
-                                right: parent.right
-                                rightMargin: barRoot.screenEdgeThickness
-                                top: !(Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.bottom : undefined
-                                bottom: (Config.options?.bar?.bottom ?? false)
-                                    ? autoHideEdgeBand.top : undefined
-                            }
-                        }
                     }
 
                     BarContent {

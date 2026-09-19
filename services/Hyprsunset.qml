@@ -271,7 +271,7 @@ Singleton {
         // authoritative, so a legacy detached backend must also be disabled.
         backendStopProc.command = CompositorService.isNiri
             ? ["/usr/bin/pkill", "-TERM", "-x", "wlsunset"]
-            : ["/usr/bin/hyprctl", "hyprsunset", "temperature", "6500"]
+            : ["/usr/bin/pkill", "-TERM", "-x", "hyprsunset"]
         backendStopProc.running = true
     }
 
@@ -520,8 +520,8 @@ Singleton {
         root._applyManualDesiredState(desired)
     }
 
-    // React to temperature changes while active. Restart only the process that
-    // this singleton owns; an external night-light process is left untouched.
+    // React to temperature changes while active. Owned backends restart in
+    // place; legacy/detached backends are migrated to an owned process.
     Connections {
         target: Config.options?.light?.night ?? null
         enabled: !!(Config.options?.light?.night)

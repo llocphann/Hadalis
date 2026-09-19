@@ -635,6 +635,8 @@ def main() -> None:
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
+    check('label: Translation.tr("Screen edge shadow")' not in settings_registry_data,
+          "Settings search source must not expose retired physical Screen Edge shadow controls")
 
     for connected_shadow_path in (
         "modules/sidebarLeft/SidebarLeftContent.qml",

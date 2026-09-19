@@ -81,24 +81,6 @@ Scope {
                 screen: barLoader.modelData
                 visible: true
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
-                readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
-                    Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-                readonly property bool autoHideEnabled:
-                    Config.options?.bar?.autoHide?.enable ?? false
-                readonly property bool edgeShadowEnabled: bar.showBarBackground
-                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                readonly property int edgeShadowExtent: edgeShadowEnabled
-                    ? Math.max(0, Math.min(32,
-                        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-                    : 0
-                readonly property real edgeShadowOpacity: Math.max(0, Math.min(1.0,
-                    Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
-                readonly property color edgeShadowColor:
-                    ColorUtils.applyAlpha(Appearance.colors.colShadow, edgeShadowOpacity)
-                // Normal Bar mode owns only the Bar body. Extra inward host
-                // room exists solely for the auto-hide Screen Edge fallback.
-                readonly property real inwardDecoratorAllowance:
-                    autoHideEnabled ? edgeShadowExtent : 0
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
@@ -135,7 +117,7 @@ Scope {
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
                     barRoot.panelSurfaceHeight
                 WlrLayershell.namespace: "quickshell:bar"
-                implicitHeight: barRoot.panelSurfaceHeight + barRoot.inwardDecoratorAllowance
+                implicitHeight: barRoot.panelSurfaceHeight
                 // Explicit zero-size item prevents ambiguous null input region during
                 // surface map/unmap transitions. Region { item: null } can be interpreted
                 // as "full surface accepts input" by the compositor, causing an invisible
@@ -184,58 +166,6 @@ Scope {
                             topMargin: -(Config.options?.bar?.autoHide?.hoverRegionWidth ?? 2)
                             bottomMargin: -(Config.options?.bar?.autoHide?.hoverRegionWidth ?? 2)
                         }
-                    }
-
-                    Item {
-                        id: autoHideScreenEdge
-                        z: -10
-                        anchors.fill: parent
-                        visible: barRoot.autoHideEnabled
-                        opacity: {
-                            const displacement = (Config.options?.bar?.bottom ?? false)
-                                ? Math.abs(barContent.anchors.bottomMargin)
-                                : Math.abs(barContent.anchors.topMargin)
-                            return Math.max(0, Math.min(1,
-                                displacement / Math.max(1, barRoot.panelSurfaceHeight)))
-                        }
-
-                        Rectangle {
-                            id: autoHideEdgeBand
-                            x: 0
-                            y: (Config.options?.bar?.bottom ?? false)
-                                ? parent.height - barRoot.screenEdgeThickness : 0
-                            width: parent.width
-                            height: barRoot.screenEdgeThickness
-                            color: Appearance.colors.colLayer0
-                        }
-
-                        Rectangle {
-                            visible: barRoot.edgeShadowEnabled
-                                && barRoot.edgeShadowExtent > 0
-                                && barRoot.edgeShadowOpacity > 0
-                            x: barRoot.screenEdgeThickness
-                            y: (Config.options?.bar?.bottom ?? false)
-                                ? autoHideEdgeBand.y - barRoot.edgeShadowExtent
-                                : autoHideEdgeBand.y + autoHideEdgeBand.height
-                            width: Math.max(0, parent.width
-                                - 2 * barRoot.screenEdgeThickness)
-                            height: barRoot.edgeShadowExtent
-                            color: "transparent"
-                            gradient: Gradient {
-                                orientation: Gradient.Vertical
-                                GradientStop {
-                                    position: 0
-                                    color: (Config.options?.bar?.bottom ?? false)
-                                        ? "transparent" : barRoot.edgeShadowColor
-                                }
-                                GradientStop {
-                                    position: 1
-                                    color: (Config.options?.bar?.bottom ?? false)
-                                        ? barRoot.edgeShadowColor : "transparent"
-                                }
-                            }
-                        }
-
                     }
 
                     BarContent {

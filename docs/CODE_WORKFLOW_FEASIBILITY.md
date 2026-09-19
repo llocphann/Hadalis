@@ -6,7 +6,7 @@ This records experiments, not production readiness. The editor design is in
 
 ## Spike A — corpus/range feasibility: pass for continued prototyping
 
-Latest corpus revision: `c257f222c406f33f590f2a419032fa06cda4526e` on `dev`.
+Initial locked corpus revision: `c257f222c406f33f590f2a419032fa06cda4526e` on `dev`.
 Manifest SHA-256: `7f647d1e02c2ab4b93cd896d449e739cbf1512869416ff9b573c6f110529f774`.
 The runner reads committed Git objects so subsequent dev/working-tree changes
 do not change the evidence. Re-run for any later source revision.
@@ -92,6 +92,11 @@ Runtime helper language/JSON-lines protocol, packaging across supported install
 paths, semantic resolution and source transaction safety are **not proven**.
 This is sufficient to continue to independent renderer/input experiments; it
 does not select a permanent runtime dependency or authorize production editing.
+
+The final A/B publication `2289105d686f38a7a682cef0b781f3bc0ee781c6` was also
+checked: 1,006/1,006 QML files (including the sandbox), 12,033,891 source bytes,
+2,495,924 CST nodes, and all preservation/incremental/anchor checks passed.
+That corpus manifest is `e810b79fc9d7f3b8a4788e5f0d5b84d066cab4e2a80e93f820895b43bcd2719d`.
 
 ## Spike B — working sandbox; performance/platform acceptance remains open
 
@@ -192,18 +197,70 @@ Audio/system services are intentionally unavailable there; existing Media popup
 QQmlListReference and isolation-related warnings are distinct from probe errors.
 Picker click delivery and reload persistence are tested in the following spikes.
 
+## Spikes D/E — isolated live runtime feasibility passes
+
+The combined matrix has **40 passing checks on nested Niri 26.04** and
+**44 on headless Sway 1.12**, both using actual Quickshell 0.3.1 and actual Hadalis
+Bar/Media/Clock/SettingsOverlay components. Source revision and every probe/driver
+hash are pinned in the [Niri report](evidence/code-workflow/spike-cde.niri.json)
+and [Sway report](evidence/code-workflow/spike-cde.sway.json). These are local
+runtime results, not GitHub CI or a whole-shell acceptance claim.
+
+D proves Settings teardown before picking, deepest eligible target selection,
+no leaked selection click, a working underlying Media click after picker removal,
+Settings page/viewport restoration, hold/release of an existing auto-hide Bar,
+right-click cancellation, top/bottom geometry tracking, shell-lock signal
+cancellation, and refusal to load a closed Bar. A second simultaneous session is
+rejected. Two-output Sway additionally proves selection at real compositor scale
+1.25, output removal cancellation, explicit stale selected-output state, and
+reconnection to a replacement instance.
+
+The pointer is injected through the compositor's actual virtual-pointer protocol.
+Five picker layer-surface lifetimes on Niri and fourteen on Sway were checked in
+the Wayland trace: Overlay, full-output anchors, keyboard interactivity None,
+no exclusive reservation, and actual destruction before cleanup. Niri's own IPC
+also reports the picker on Overlay with keyboard interactivity None.
+
+E performs three actual source-watcher reloads. Two resident reloads preserve
+semantic selection and serialized viewport while replacing the QObject; the old
+Media destruction is observed. A third reload keeps selected-but-unloaded Media
+in static mode, without forcing the dormant LazyLoader. Returning Media then
+rebinds the selection. No QObject is persisted across engines.
+
+The experiment found and corrected three harness/architecture assumptions:
+
+- PersistentProperties cannot safely carry a JS object from the old QQmlEngine;
+  serialize metadata to primitive strings and restore after its loaded signal.
+- Fixture changes must use the normal mirror-aware Config API. Direct adapter
+  assignments can be overwritten by pending writes and produce false positives.
+- A headless input device must remain alive during a hover/hold experiment;
+  destroying the last virtual pointer generates leave independently of picking.
+
+Limits: the lock case injects the real shell lock-state signal; it does not test
+PAM authentication or compositor session-lock security. Physical hotplug and
+Niri multi-output are not claimed. Geometry currently covers the horizontal ii
+Bar and its modules only. Ephemeral popups are excluded; the real-click positive
+control's popup is reset before the independent hold case. Initial Settings page
+0 may leave its published page field at -1, so the adapter reads the actual
+SettingsOverlay page. Existing Settings ColorUtils/Translation and Media
+QQmlListReference warnings remain baseline issues, separate from the probe.
+
+The concurrent `b8ab566d` fix for generated-only imports is preserved, including
+its regression coverage. ProbeShell's module import is injected only into the
+staged runtime. No production shell file imports the registry or picker.
+
 ## Remaining spikes and readiness
 
 | Spike | Evidence status | Next gate |
 | --- | --- | --- |
 | B — renderer/input | Prototype checks pass; acceptance incomplete | Profile edge invalidation, memory soak, real input/platform matrix |
 | C — ii Bar registry | 10 live probe checks pass | Broader module/output matrix remains product integration work |
-| D — picker | Not started | Multi-output lifecycle, presentation hold, Settings restore, click isolation and lock cancellation |
-| E — reload/rebind | Not started | Actual QObject destruction/replacement, static fallback and selection survival |
+| D — picker | Live Niri + two-output Sway checks pass | Physical/Niri multi-output and broader surfaces are later integration coverage |
+| E — reload/rebind | Three ordinary reloads pass per backend | Broader production semantic reconciliation remains later work |
 
 No production Code Workflow UI or source-writing operation is ready. Phase 0
 must complete A–E before implementing the first source-writing transform.
-The maintainer authorized continuing C–E despite B's remaining platform and
-performance gaps. C now has isolated live ii Bar evidence. D/E and B's open
-acceptance work remain; the existing shell validation baseline is still a
-separate gate. See [the continuation note](CODE_WORKFLOW_HANDOFF.md).
+The maintainer authorized and C–E now complete their isolated live prototype
+scope. B's performance/platform acceptance work remains, and the existing shell
+validation baseline is still a separate gate. Do not start a production editor
+or source-writing transform yet. See [the continuation note](CODE_WORKFLOW_HANDOFF.md).

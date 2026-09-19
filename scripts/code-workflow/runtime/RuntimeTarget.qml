@@ -35,6 +35,8 @@ Scope {
         const r = geometry
         return {x:r.x, y:r.y, width:r.width, height:r.height,
             revision:geometryRevision, dpr:window?.devicePixelRatio ?? 1,
+            barMustShow:window?.mustShow ?? false,
+            barAutoHide:Config.options?.bar?.autoHide?.enable ?? false,
             eligible:!!runtimeObject && runtimeObject.visible && runtimeObject.enabled
                 && !!window?.visible && r.width > 0 && r.height > 0}
     }

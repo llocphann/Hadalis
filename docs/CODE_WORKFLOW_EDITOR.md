@@ -1,7 +1,9 @@
 # Workflow-first QML Code Editor
 
-Status: Phase 0 in progress. Parser corpus and standalone renderer/input probes
-exist; production editor is not implemented. See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md).
+Status: Phase 0 in progress. A and isolated live C–E probes pass; B still has
+performance/platform acceptance work. Production editor is not implemented.
+See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md) and
+[continuation instructions](CODE_WORKFLOW_HANDOFF.md).
 
 This document records the design direction for a Hadalis code editor that exposes the running Quickshell/QML shell as an editable workflow/dataflow graph.
 
@@ -1615,6 +1617,14 @@ sourceId   = source construct anchor
 ~~~
 
 Quickshell Reloadable IDs and PersistentProperties may improve reload continuity for Code Workflow-owned UI, but they do not replace targetId/sourceId.
+
+Phase 0 runtime correction: persist only primitive values (serialize viewport
+metadata as a JSON string). A `property var` JS object in PersistentProperties
+lost its usable value across actual QQmlEngine replacement in the probe. Never
+persist QObject references or engine-owned QJSValue objects. Restore semantic IDs
+and deserialize metadata after the persistence loaded signal, before attaching
+new runtime instances. This is covered by three source-triggered ordinary reloads
+in Spike E, including a selected module that remains unloaded.
 
 References:
 

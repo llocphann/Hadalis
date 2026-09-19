@@ -133,3 +133,55 @@ Geometry is currently an explicit ii horizontal Bar adapter using QML-owned
 anchors/window/output data; it is not a generic cross-window mapToGlobal promise.
 See the committed evidence and current continuation status in
 [CODE_WORKFLOW_HANDOFF.md](../../docs/CODE_WORKFLOW_HANDOFF.md).
+
+## Spikes D/E — compositor input, picker and ordinary reload
+
+```sh
+bash scripts/code-workflow/build-pointer.sh /tmp/hadalis-workflow-pointer
+python3 scripts/code-workflow/run-runtime.py --work-dir /tmp/hadalis-cde-niri-new \
+  --spikes CDE --pointer /tmp/hadalis-workflow-pointer/pointer
+
+# Optional independent two-output compositor matrix; requires sway + swaymsg.
+python3 scripts/code-workflow/run-runtime.py --work-dir /tmp/hadalis-cde-sway-new \
+  --spikes CDE --pointer /tmp/hadalis-workflow-pointer/pointer --sway /usr/bin/sway
+```
+
+The pointer helper requires a C compiler, wayland-client development files,
+pkg-config and wayland-scanner. Its upstream protocol is pinned by revision and
+SHA-256. The driver passes an explicit socket under its own private runtime
+directory; it never falls back to the desktop socket. It keeps the virtual input
+device alive throughout the sequence, because removing the last headless device
+generates pointer-leave and invalidates an auto-hide experiment.
+
+Niri runs nested in a window. Sway runs headless with two real wl_output objects,
+scales 1.0/1.25, and actual disable/enable operations. This tests compositor-native
+fractional coordinates and Qt screen destruction/recreation, not hardware hotplug
+or Niri multi-monitor acceptance. A locally extracted Sway package can be passed
+by path; the driver uses its adjacent `usr/lib` directory without system installs.
+
+The picker uses actual layer-shell windows and the existing SettingsOverlay.
+It waits for Settings teardown before creating picker input surfaces, consumes
+the complete selection click, restores the page and viewport, and supports a
+right-click cancel with keyboard interactivity None. Wire-protocol traces assert
+Overlay layer, full anchors, no keyboard grab, no exclusive reservation, and
+destruction of every picker surface before cleanup. Niri IPC independently
+confirms the mapped layer/keyboard mode.
+
+The driver tests actual Media click as a positive control, then explicitly resets
+that fixture popup before the independent auto-hide test. Ephemeral popup focus
+grabs are outside this milestone. Lock testing drives the real shell
+GlobalStates.screenLocked signal; it does not authenticate or exercise PAM or a
+physical session lock. Settings restoration uses its actual overlayCurrentPage,
+since the published page field can remain -1 for the initial page 0.
+
+E changes only a revision literal in the temporary shell.qml, allowing Quickshell
+file watching to perform ordinary reload. It checks new QObject identities and
+actual old-object destruction, stable selection/viewport, and reload while the
+selected Media module is unloaded. Persistent state contains primitives only.
+Fixture configuration uses Config.setNestedValue on the private XDG file so the
+normal JSON mirror cannot silently overwrite direct JsonAdapter assignments.
+
+Reports pin the source revision, QML/driver hashes and pointer binary hash.
+The complete CDE matrix currently has 40 passing checks on Niri and 44 on Sway.
+These probes are opt-in; do not add them to unattended static CI or run them
+against the installed shell. The standard local module guard remains unchanged.

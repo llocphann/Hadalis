@@ -35,7 +35,7 @@ def prepare(destination, revision):
     probe.mkdir()
     for path in sorted((HERE / 'runtime').glob('*.qml')):
         shutil.copyfile(path, probe / path.name)
-    (probe / 'qmldir').write_text('module qs.workflowprobe\nsingleton RuntimeRegistry 1.0 RuntimeRegistry.qml\nRuntimeTarget 1.0 RuntimeTarget.qml\n')
+    (probe / 'qmldir').write_text('module qs.workflowprobe\nsingleton RuntimeRegistry 1.0 RuntimeRegistry.qml\nRuntimeTarget 1.0 RuntimeTarget.qml\nPickerProbe 1.0 PickerProbe.qml\n')
     modifications = []
     modules = [('BarContent', 'bar'), ('Media', 'bar/media'), ('ClockWidget', 'bar/clock'), ('Resources', 'bar/resources')]
     for name, target in modules:
@@ -44,7 +44,13 @@ def prepare(destination, revision):
         injected = f'    id: root\n    RuntimeTarget {{ runtimeObject: root; targetId: "{target}" }}\n'
         if name == 'Media':
             injected += '    property string probeSensitiveSentinel: "DO_NOT_EXPORT_PRIVATE_VALUE"\n'
+            if 'Component.onDestruction:' in original:
+                raise ValueError('Media now has a destruction handler; review instrumentation')
+            injected += '    Component.onDestruction: console.info("WORKFLOW_MEDIA_DESTROYED", String(root))\n'
         text = replace_once(original, '    id: root\n', injected)
+        if name == 'Media':
+            text = replace_once(text, '    function toggleExpanded(): void {\n',
+                                '    function toggleExpanded(): void {\n        RuntimeRegistry.mediaActions++\n')
         path.write_text('import qs.workflowprobe\n' + text)
         modifications.append(str(path.relative_to(tree)))
     path = tree / 'modules/bar/Bar.qml'
@@ -79,6 +85,7 @@ def prepare(destination, revision):
     }))
     manifest = {'source_revision':revision,'instrumented_files':modifications,
                 'probe_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((HERE/'runtime').glob('*.qml'))},
+                'driver_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in (HERE/'prepare-runtime.py',HERE/'run-runtime.py',HERE/'virtual-pointer.c')},
                 'policy':'Temporary copy only; actual Bar/Media/Clock implementations; no production registration.'}
     (destination / 'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     return manifest

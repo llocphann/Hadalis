@@ -16,6 +16,7 @@ Singleton {
     property var events: []
     property int serial: 0
     property int revision: 0
+    property int mediaActions: 0
     property bool pickHold: false
     property var heldOutputs: []
     property string selectedInstanceId: ""

@@ -171,20 +171,39 @@ work does not rewrite production behavior or relax these unrelated tests.
 The final commit's validator result and complete logs must be reported separately
 with its exact SHA. A green parser/input probe never substitutes for that gate.
 
+## Spike C — actual ii Bar registry: pass for the prototype scope
+
+Ten checks passed with Quickshell 0.3.1 on nested Niri 26.04, using committed
+Hadalis source `82774929` and the real BarContent/Media/ClockWidget implementations.
+The runner instruments a temporary Git export; no production module imports the
+probe. [Machine-readable evidence](evidence/code-workflow/spike-c.niri.json)
+pins source revision and probe hashes.
+
+Semantic IDs and output-qualified instance IDs survive actual Media destruction
+and recreation. The QObject reference clears on unload and selection becomes
+static; recreation gets a different runtime token. Resources remains unloaded.
+Twenty repeated snapshots do not activate or read the dormant LazyLoader item.
+An explicit property allowlist excludes a private sentinel. Registry targets
+are intentional; Settings/picker internals are not recursively discovered.
+
+This runs real Quickshell/layer-shell objects in a private session, not mocked
+QObjects, but does not claim the user's installed shell was instrumented.
+Audio/system services are intentionally unavailable there; existing Media popup
+QQmlListReference and isolation-related warnings are distinct from probe errors.
+Picker click delivery and reload persistence are tested in the following spikes.
+
 ## Remaining spikes and readiness
 
 | Spike | Evidence status | Next gate |
 | --- | --- | --- |
 | B — renderer/input | Prototype checks pass; acceptance incomplete | Profile edge invalidation, memory soak, real input/platform matrix |
-| C — ii Bar registry | Not started | Real resident/unloaded targets, stable identity, allowlisted snapshots, no forced loading |
+| C — ii Bar registry | 10 live probe checks pass | Broader module/output matrix remains product integration work |
 | D — picker | Not started | Multi-output lifecycle, presentation hold, Settings restore, click isolation and lock cancellation |
 | E — reload/rebind | Not started | Actual QObject destruction/replacement, static fallback and selection survival |
 
 No production Code Workflow UI or source-writing operation is ready. Phase 0
 must complete A–E before implementing the first source-writing transform.
-This pass stops before live ii Bar instrumentation: B still has the measured
-performance/platform gaps above, the existing shell validation baseline is red,
-and this host has only one output for the later picker matrix. The next work is
-to close B's acceptance gaps and triage that baseline, then run the read-only
-registry, picker and real reload/rebind experiments. No synthetic registry or
-reload simulation is reported as a pass for C, D or E.
+The maintainer authorized continuing C–E despite B's remaining platform and
+performance gaps. C now has isolated live ii Bar evidence. D/E and B's open
+acceptance work remain; the existing shell validation baseline is still a
+separate gate. See [the continuation note](CODE_WORKFLOW_HANDOFF.md).

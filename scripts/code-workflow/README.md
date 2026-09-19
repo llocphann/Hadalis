@@ -103,3 +103,29 @@ These are short experiments on one machine. QTest cadence and Python callbacks
 affect timing. Synthetic pinch is not hardware touchpad acceptance; a per-process
 scale is not compositor hotplug. No node budget, memory-leak verdict, permanent
 renderer choice, live registry, picker or reload/rebind claim follows from them.
+
+## Spike C — actual ii Bar runtime
+
+```sh
+python3 scripts/code-workflow/run-runtime.py --work-dir /tmp/hadalis-workflow-runtime-new
+```
+
+Requires Quickshell 0.3.1, Niri, a Wayland desktop and dbus-run-session. The
+destination must not exist. The runner exports a committed Git tree, adds probe
+hooks only to that temporary copy, then starts nested Niri and Quickshell with
+isolated XDG paths and a private session bus. It never calls IPC on the installed
+shell. Processes it starts are stopped in a finally block; logs/report remain.
+No real credentials/config are copied. Audio/system bus are deliberately absent.
+
+Actual BarContent, Media and ClockWidget register themselves through narrow
+temporary hooks. Resources remains statically known and unloaded. There is no
+recursive item discovery, no read of LazyLoader.item, and no arbitrary property
+serialization. Only geometry, enabled and visible enter runtime snapshots.
+The Media probe carries a private sentinel that must not enter the report.
+
+Ten live checks cover stable semantic/instance identity, safe snapshots, dormant
+LazyLoader behavior, module destruction/recreation and static selection fallback.
+Geometry is currently an explicit ii horizontal Bar adapter using QML-owned
+anchors/window/output data; it is not a generic cross-window mapToGlobal promise.
+See the committed evidence and current continuation status in
+[CODE_WORKFLOW_HANDOFF.md](../../docs/CODE_WORKFLOW_HANDOFF.md).

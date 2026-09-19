@@ -69,12 +69,14 @@ def main() -> None:
         "Math.max(0, Math.min(96",
         "readonly property real smoothUnionRadius: 20",
         "readonly property real popupRadius: 28",
-        "readonly property real attachedCornerRadius: frameRadius",
-        "readonly property real joinFlareRadius: smoothUnionRadius",
+        "readonly property real joinFlareRadius: frameRadius",
         "readonly property real joinFlareCrossScale: 0.55",
+        "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK",
     ):
         check(token in perimeter_tokens,
               f"Perimeter geometry token missing: {token}")
+    check("attachedCornerRadius" not in perimeter_tokens,
+          "Connected surfaces must not reintroduce inward attached-body corner rounding")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
     for edge in ("top", "bottom", "left", "right"):
@@ -348,12 +350,12 @@ def main() -> None:
               f"OSK physical Screen Edge attachment contract missing: {token}")
     check("screenAttachInset" not in osk,
           "OSK must not stop at the inner Screen Edge boundary")
-    check("PerimeterTokens.attachedCornerRadius" in osk
-          and 'topLeftRadius: oskRoot.snappedEdge === "top" ? attachedRadius : radius' in osk
-          and 'topRightRadius: oskRoot.snappedEdge === "top" ? attachedRadius : radius' in osk
-          and 'bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? attachedRadius : radius' in osk
-          and 'bottomRightRadius: oskRoot.snappedEdge === "bottom" ? attachedRadius : radius' in osk,
-          "OSK corners touching Screen Edge must inherit the shared physical frame radius")
+    check('topLeftRadius: oskRoot.snappedEdge === "top" ? 0 : radius' in osk
+          and 'topRightRadius: oskRoot.snappedEdge === "top" ? 0 : radius' in osk
+          and 'bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius' in osk
+          and 'bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius' in osk
+          and "PerimeterTokens.attachedCornerRadius" not in osk,
+          "OSK attached body edge must stay square; outward flare owns Screen Edge contact rounding")
     check("Appearance.animation.elementMove.duration" in osk
           and "Appearance.animation.elementMove.bezierCurve" in osk,
           "OSK attached-edge slide must use the default-spatial motion token")
@@ -414,10 +416,11 @@ def main() -> None:
         "modules/sidebarRight/CompactSidebarRightContent.qml",
     ):
         rounded_sidebar = read(rounded_sidebar_path)
-        check("PerimeterTokens.attachedCornerRadius" in rounded_sidebar
-              and 'root.attachedEdge === "left" ? attachedRadius : radius' in rounded_sidebar
-              and 'root.attachedEdge === "right" ? attachedRadius : radius' in rounded_sidebar,
-              f"{rounded_sidebar_path} attached corners must inherit Screen Edge/Bar radius")
+        check("PerimeterTokens.attachedCornerRadius" not in rounded_sidebar,
+              f"{rounded_sidebar_path} must not round attached body corners inward")
+        check('root.attachedEdge === "left" ? 0 : radius' in rounded_sidebar
+              or 'root.attachedEdge === "right" ? 0 : radius' in rounded_sidebar,
+              f"{rounded_sidebar_path} attached body edge must stay square for outward flare ownership")
 
     compact_sidebar = read("modules/sidebarRight/CompactSidebarRightContent.qml")
     check("import qs.modules.mediaControls" in compact_sidebar
@@ -443,9 +446,8 @@ def main() -> None:
             "y: settingsPanel.height - height",
             "ConnectedSurfaceJoinFlares {",
             "joinBottom: true",
-            "PerimeterTokens.attachedCornerRadius",
-            "bottomLeftRadius: attachedRadius",
-            "bottomRightRadius: attachedRadius",
+            "bottomLeftRadius: 0",
+            "bottomRightRadius: 0",
         ):
             check(token in settings_surface,
                   f"{settings_path} must be a bottom-connected popup below Polkit: {token}")
@@ -482,10 +484,10 @@ def main() -> None:
           and "GlassBackground {\n        id: dashContainer" not in dashboard
           and "readonly property bool useWallpaperBackdrop: false" in dashboard,
           "Dashboard connected body must be a plain solid Material surface without glass tint")
-    check("PerimeterTokens.attachedCornerRadius" in dashboard
-          and "bottomLeftRadius: root.directBottomAttachment ? attachedRadius : radius" in dashboard
-          and "bottomRightRadius: root.directBottomAttachment ? attachedRadius : radius" in dashboard,
-          "Dashboard corners touching Screen Edge/Bar must inherit the shared physical frame radius")
+    check("PerimeterTokens.attachedCornerRadius" not in dashboard
+          and "bottomLeftRadius: root.directBottomAttachment ? 0 : radius" in dashboard
+          and "bottomRightRadius: root.directBottomAttachment ? 0 : radius" in dashboard,
+          "Dashboard attached body edge must stay square; outward flare owns the Bar/Screen Edge shoulder")
     check("Appearance.animation.elementMove.duration" in dashboard
           and "Appearance.animation.elementMove.bezierCurve" in dashboard,
           "Dashboard connected slide must use the default-spatial motion token")
@@ -519,12 +521,12 @@ def main() -> None:
           "ConnectedSurfaceFrame must preserve the circular direct-edge shoulder contract")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
-    check("property real attachedCornerRadius: PerimeterTokens.attachedCornerRadius" in frame
-          and "readonly property real attachedRadius:" in frame
-          and "? attachedRadius : surfaceRadius" in frame
-          and "(root.joinTop || root.joinLeft) ? 0" not in frame
-          and "(root.joinBottom || root.joinRight) ? 0" not in frame,
-          "Shared connected popup body must round attached corners with the Screen Edge/Bar radius")
+    check("attachedCornerRadius" not in frame
+          and "topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius" in frame
+          and "topRightRadius: (root.joinTop || root.joinRight) ? 0 : surfaceRadius" in frame
+          and "bottomLeftRadius: (root.joinBottom || root.joinLeft) ? 0 : surfaceRadius" in frame
+          and "bottomRightRadius: (root.joinBottom || root.joinRight) ? 0 : surfaceRadius" in frame,
+          "Shared connected popup body must stay square on attached edges; outward flare owns contact curvature")
     check("property bool hoverEnabled: false" in frame
           and "readonly property bool bodyHovered: bodyHover.hovered" in frame
           and "HoverHandler {" in frame,
@@ -562,6 +564,11 @@ def main() -> None:
           and "width: root.radius" in join_flares
           and "height: root.depth" in join_flares,
           "Connected-surface shoulders must keep the prior broad-tangent/compressed-depth geometry")
+    check("CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in join_flares
+          and "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in perimeter_tokens,
+          "Connected popup contact geometry must retain the outward-flare lock marker")
+    check("readonly property real joinFlareRadius: frameRadius" in perimeter_tokens,
+          "Outward flare tangent radius must follow the Screen Edge/Bar Border Radius setting")
     check(") * root.reveal" not in join_flares,
           "Connected shoulder radius must stay fully formed during reveal")
 
@@ -617,6 +624,14 @@ def main() -> None:
           "Vertical Hug body must ignore persisted retired cornerStyle at runtime")
     check("(Config.options?.bar?.cornerStyle ?? 0) === 0" not in vertical_bar_runtime,
           "Vertical Hug shoulders must not depend on legacy cornerStyle state")
+    for fullscreen_bar_surface in (bar_runtime, vertical_bar_runtime):
+        check("FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19)" in fullscreen_bar_surface,
+              "Bar fullscreen lifecycle lock marker must remain present")
+        check("fullscreenCovered" not in fullscreen_bar_surface
+              and "visible: !fullscreenCovered" not in fullscreen_bar_surface
+              and "updatesEnabled: !fullscreenCovered" not in fullscreen_bar_surface
+              and "GameMode.hasFullscreenOnOutput" not in fullscreen_bar_surface,
+              "Bar PanelWindow must stay mapped/updating across fullscreen; compositor stacking owns coverage")
     for bar_surface in (bar_runtime, vertical_bar_runtime, bar_content, vertical_bar_content):
         for forbidden_corner_owner in (
             "PerimeterTokens.frameRadius",

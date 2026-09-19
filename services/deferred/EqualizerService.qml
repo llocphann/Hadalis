@@ -85,10 +85,15 @@ Singleton {
 
     function registerConsumer() {
         root._consumerCount++
-        if (!root.enabled)
+        if (!root.enabled) {
             root.enabled = true
-        else
+        } else {
+            if (!root._transportChecked
+                    && (root.error === "transport-unavailable"
+                        || root.error === "transport-probe-failed"))
+                root.error = ""
             root.refresh()
+        }
     }
 
     function unregisterConsumer() {
@@ -110,13 +115,32 @@ Singleton {
         return true
     }
 
+    function _startTransportProbe() {
+        if (!root.enabled || transportProbe.running)
+            return
+        transportProbe.generation = root._lifecycleGeneration
+        transportProbe.running = true
+    }
+
+    function _retryStaleTransportProbe(generation) {
+        if (!root.enabled
+                || generation === root._lifecycleGeneration
+                || root._transportChecked)
+            return
+        // Process.running may still be true while onExited is unwinding. Queue
+        // the replacement probe after the stale process has fully settled.
+        Qt.callLater(() => {
+            if (root.enabled && !root._transportChecked)
+                root._startTransportProbe()
+        })
+    }
+
     function refresh() {
         if (!root.enabled)
             return
         EasyEffects.fetchAvailability()
         if (!root._transportChecked) {
-            transportProbe.generation = root._lifecycleGeneration
-            transportProbe.running = true
+            root._startTransportProbe()
             return
         }
         root._refreshBackendState()
@@ -125,6 +149,14 @@ Singleton {
     function _refreshBackendState() {
         if (!root.enabled)
             return
+        // "false" is the default transport value before any valid probe has
+        // completed. Do not publish an unavailable error for that unknown state.
+        // This path also restarts a probe invalidated by an EasyEffects lifecycle
+        // generation change during shell boot/reload.
+        if (!root._transportChecked) {
+            root._startTransportProbe()
+            return
+        }
         if (!root._transportAvailable) {
             root.error = "transport-unavailable"
             root._stateReady = false
@@ -325,8 +357,12 @@ Singleton {
             "command -v python3 >/dev/null 2>&1"]
 
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled || generation !== root._lifecycleGeneration)
+            if (!root.enabled)
                 return
+            if (generation !== root._lifecycleGeneration) {
+                root._retryStaleTransportProbe(generation)
+                return
+            }
             root._transportChecked = true
             root._transportAvailable = exitCode === 0
             if (!root._transportAvailable) {

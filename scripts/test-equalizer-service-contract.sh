@@ -35,6 +35,11 @@ for token in (
     "target: root.enabled ? EasyEffects : null",
     "EasyEffects.fetchAvailability()",
     "function startBackend()",
+    "function _startTransportProbe()",
+    "function _retryStaleTransportProbe(generation)",
+    "if (!root._transportChecked) {",
+    "root._startTransportProbe()",
+    "root._retryStaleTransportProbe(generation)",
 ):
     require(service, token, "EqualizerService")
 
@@ -51,6 +56,29 @@ for token in (
     '"command -v python3 >/dev/null 2>&1"',
 ):
     require(service, token, "EqualizerService")
+
+# Startup/reload recovery: a transport result from an older EasyEffects
+# lifecycle generation must retry instead of being treated as unavailable.
+probe_start = service.index("id: transportProbe")
+probe_end = service.index("id: stateReadProc", probe_start)
+probe_block = service[probe_start:probe_end]
+for token in (
+    "if (!root.enabled)",
+    "if (generation !== root._lifecycleGeneration) {",
+    "root._retryStaleTransportProbe(generation)",
+    "root._transportChecked = true",
+):
+    require(probe_block, token, "EqualizerService transportProbe")
+
+refresh_start = service.index("function _refreshBackendState()")
+refresh_end = service.index("function _readState()", refresh_start)
+refresh_block = service[refresh_start:refresh_end]
+unchecked = refresh_block.index("if (!root._transportChecked)")
+unavailable = refresh_block.index("if (!root._transportAvailable)")
+if unchecked > unavailable:
+    raise SystemExit(
+        "FAIL: Equalizer reports transport unavailable before a current-generation probe completes"
+    )
 
 # Runtime compatibility fix: Hadalis must no longer depend on channel-scoped
 # EasyEffects local-server properties, which are version-dependent.

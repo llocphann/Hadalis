@@ -201,12 +201,22 @@ def main() -> None:
           and "Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true" in screen_edge
           and "Config.options?.appearance?.screenEdge?.shadow?.size ?? 15" in screen_edge
           and "Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70" in screen_edge
-          and "layer.enabled: root.shadowEnabled" in screen_edge
+          and screen_edge.count("const revision = Config.revision") == 3
+          and "readonly property int shadowBlurMax: shadowSize === 15 ? 15 : 32" in screen_edge
+          and "shadowSize / shadowBlurMax" in screen_edge
+          and "layer.enabled: true" in screen_edge
           and "layer.effect: MultiEffect {" in screen_edge
-          and "shadowEnabled: true" in screen_edge
-          and "blurMax: root.shadowSize" in screen_edge
-          and "Appearance.m3colors.m3shadow" in screen_edge,
-          "Physical Screen Edge shadow must use Caelestia's single-frame MultiEffect baseline")
+          and "shadowEnabled: root.shadowEnabled" in screen_edge
+          and "blurMax: root.shadowBlurMax" in screen_edge
+          and "shadowBlur: root.shadowBlur" in screen_edge
+          and "shadowColor: Appearance.m3colors.m3shadow" in screen_edge
+          and "shadowOpacity: root.shadowOpacity" in screen_edge
+          and "shadowHorizontalOffset: 0" in screen_edge
+          and "shadowVerticalOffset: 0" in screen_edge,
+          "Physical Screen Edge shadow must use live Caelestia MultiEffect semantics")
+    check("readonly property int shadowBlurMax: shadowSize === 15 ? 15 : 32" in screen_edge
+          and "shadowSize === 15 ? 15 : 32" in screen_edge,
+          "Default 15px Screen Edge shadow must preserve Caelestia blurMax=15 exactly")
     check("component FrameWindow: PanelWindow" in screen_edge
           and "component ReservationWindow: PanelWindow" in screen_edge
           and "implicitHeight: horizontal ? root.thickness : 1" in screen_edge

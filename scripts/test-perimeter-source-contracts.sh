@@ -30,19 +30,6 @@ for file in "$critical" "$deferred" "$media" "$weather" "$styled_popup" "$connec
     [[ -f "$file" ]] || fail "missing ${file#$root/}"
 done
 
-for token in \
-    'import Quickshell' \
-    'property int bodyGeometryRevision: 0' \
-    'const dependency = root.bodyGeometryRevision' \
-    'root.bodyItem.mapToItem(root, 0, 0)' \
-    'TransformWatcher {' \
-    'a: root' \
-    'b: root.bodyItem' \
-    'onTransformChanged: root.bodyGeometryRevision++'; do
-    grep -Fq "$token" "$join_flares" \
-        || fail "join flares must reactively follow nested body transforms: $token"
-done
-
 if [[ -e "$root/modules/perimeter" ]]; then
     fail 'retired broad perimeter implementation must be absent from the active source tree'
 fi

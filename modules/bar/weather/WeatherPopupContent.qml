@@ -13,7 +13,7 @@ Item {
     readonly property real panelHeight: 270
     readonly property real panelWidth: root.compact ? 360 : 430
     readonly property int tabCount: 2
-    readonly property int fadeDuration: Appearance.animation.elementMoveFast.duration
+    readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
     property date now: new Date()
 
@@ -34,22 +34,22 @@ Item {
     Item {
         id: tabViewport
         anchors.fill: parent
+        clip: true
 
     Rectangle {
         id: timeWeatherPanel
         anchors.fill: parent
         radius: Appearance.rounding.large
         color: "transparent"
-        opacity: root.currentTab === 0 ? 1 : 0
-        visible: opacity > 0.001
+        y: (0 - root.currentTab) * tabViewport.height
         enabled: root.currentTab === 0
-        z: root.currentTab === 0 ? 2 : 1
 
-        Behavior on opacity {
+        Behavior on y {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
-                duration: root.fadeDuration
-                easing.type: Easing.OutCubic
+                duration: root.slideDuration
+                easing.type: Appearance.animation.elementMove.type
+                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
             }
         }
 
@@ -289,16 +289,15 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.small
         color: Appearance.colors.colSurfaceContainerHigh
-        opacity: root.currentTab === 1 ? 1 : 0
-        visible: opacity > 0.001
+        y: (1 - root.currentTab) * tabViewport.height
         enabled: root.currentTab === 1
-        z: root.currentTab === 1 ? 2 : 1
 
-        Behavior on opacity {
+        Behavior on y {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
-                duration: root.fadeDuration
-                easing.type: Easing.OutCubic
+                duration: root.slideDuration
+                easing.type: Appearance.animation.elementMove.type
+                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
             }
         }
 
@@ -415,8 +414,8 @@ Item {
         id: tabIndicator
         width: 14
         height: indicatorDots.implicitHeight
-        anchors.left: parent.left
-        anchors.leftMargin: 4
+        anchors.right: parent.right
+        anchors.rightMargin: 4
         anchors.verticalCenter: parent.verticalCenter
         z: 20
 

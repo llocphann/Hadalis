@@ -57,6 +57,8 @@ def main() -> None:
         "readonly property int tabCount: 2",
         "property int currentTab: 0",
         "id: tabIndicator",
+        "anchors.right: parent.right",
+        "Behavior on y",
         "WheelHandler {",
         "id: timeWeatherPanel",
         "id: orbitalTimeline",

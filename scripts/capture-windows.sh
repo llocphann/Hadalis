@@ -154,7 +154,10 @@ if [[ -n "$first_entry" ]]; then
   fi
 fi
 
-max_concurrent=4
+max_concurrent="${INIR_WINDOW_PREVIEW_CAPTURE_CONCURRENCY:-2}"
+if [[ ! "$max_concurrent" =~ ^[1-4]$ ]]; then
+  max_concurrent=2
+fi
 pids=()
 count=0
 

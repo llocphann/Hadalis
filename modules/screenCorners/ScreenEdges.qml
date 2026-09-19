@@ -135,6 +135,8 @@ Scope {
             preferredRendererType: Shape.CurveRenderer
 
             ShapePath {
+                id: framePath
+
                 fillColor: root.edgeColor
                 fillRule: ShapePath.OddEvenFill
                 strokeColor: "transparent"
@@ -144,10 +146,10 @@ Scope {
                 readonly property real r: Math.max(0, Math.min(root.rounding,
                     (frameShape.width - 2 * t) / 2,
                     (frameShape.height - 2 * t) / 2))
-                readonly property real left: t
-                readonly property real top: t
-                readonly property real right: frameShape.width - t
-                readonly property real bottom: frameShape.height - t
+                readonly property real innerLeft: t
+                readonly property real innerTop: t
+                readonly property real innerRight: frameShape.width - t
+                readonly property real innerBottom: frameShape.height - t
 
                 // Outer rectangle. Deliberately extends past the window just as
                 // Caelestia's BlobInvertedRect uses anchors.margins: -50.
@@ -174,51 +176,51 @@ Scope {
                 // geometric boundary as Caelestia's sdRoundedBox(inner, 25)
                 // when no drawer/blob is intersecting the border.
                 PathMove {
-                    x: parent.left + parent.r
-                    y: parent.top
+                    x: framePath.innerLeft + framePath.r
+                    y: framePath.innerTop
                 }
                 PathLine {
-                    x: parent.right - parent.r
-                    y: parent.top
+                    x: framePath.innerRight - framePath.r
+                    y: framePath.innerTop
                 }
                 PathArc {
-                    x: parent.right
-                    y: parent.top + parent.r
-                    radiusX: parent.r
-                    radiusY: parent.r
+                    x: framePath.innerRight
+                    y: framePath.innerTop + framePath.r
+                    radiusX: framePath.r
+                    radiusY: framePath.r
                     direction: PathArc.Clockwise
                 }
                 PathLine {
-                    x: parent.right
-                    y: parent.bottom - parent.r
+                    x: framePath.innerRight
+                    y: framePath.innerBottom - framePath.r
                 }
                 PathArc {
-                    x: parent.right - parent.r
-                    y: parent.bottom
-                    radiusX: parent.r
-                    radiusY: parent.r
+                    x: framePath.innerRight - framePath.r
+                    y: framePath.innerBottom
+                    radiusX: framePath.r
+                    radiusY: framePath.r
                     direction: PathArc.Clockwise
                 }
                 PathLine {
-                    x: parent.left + parent.r
-                    y: parent.bottom
+                    x: framePath.innerLeft + framePath.r
+                    y: framePath.innerBottom
                 }
                 PathArc {
-                    x: parent.left
-                    y: parent.bottom - parent.r
-                    radiusX: parent.r
-                    radiusY: parent.r
+                    x: framePath.innerLeft
+                    y: framePath.innerBottom - framePath.r
+                    radiusX: framePath.r
+                    radiusY: framePath.r
                     direction: PathArc.Clockwise
                 }
                 PathLine {
-                    x: parent.left
-                    y: parent.top + parent.r
+                    x: framePath.innerLeft
+                    y: framePath.innerTop + framePath.r
                 }
                 PathArc {
-                    x: parent.left + parent.r
-                    y: parent.top
-                    radiusX: parent.r
-                    radiusY: parent.r
+                    x: framePath.innerLeft + framePath.r
+                    y: framePath.innerTop
+                    radiusX: framePath.r
+                    radiusY: framePath.r
                     direction: PathArc.Clockwise
                 }
             }

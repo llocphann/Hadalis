@@ -17,10 +17,10 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     readme = read("README.md")
-    check("### 2.1 Locked visual contract — four perimeter corners" in readme
-          and "Do not add `screenEdgeThickness` to those corner anchors" in readme
+    check("### 2.1 Locked ownership contract — one perimeter owner" in readme
+          and "Normal Bar mode owns only the Bar body" in readme
           and "`scripts/test-shell-surface-contracts.py` is the regression gate" in readme,
-          "README must retain the maintainer-approved four-corner perimeter lock")
+          "README must retain the maintainer-approved single-owner perimeter contract")
 
     styled_popup = read("modules/bar/StyledPopup.qml")
     for token in (
@@ -193,12 +193,10 @@ def main() -> None:
           "Screen Edge shadow must not depend on compositor-sensitive layer-effect padding")
     check("root.thickness + root.innerRadius + root.shadowExtent" in screen_edge,
           "Horizontal Screen Edge host must reserve room for curve plus inward shadow")
-    check("function adjacentShadowInset(outputName, edge, iiVisualSpan)" in screen_edge
-          and "Appearance.sizes.verticalBarWidth + root.innerRadius" in screen_edge
-          and "Appearance.sizes.barHeight + root.innerRadius" in screen_edge
-          and "root.adjacentShadowInset(outputName, leadingAdjacentEdge" in screen_edge
-          and "root.adjacentShadowInset(outputName, trailingAdjacentEdge" in screen_edge,
-          "Screen Edge straight shadow must stop before ii Bar-owned inverse-corner boxes")
+    check("adjacentIiBarBodySpan" in screen_edge
+          and "Appearance.sizes.verticalBarWidth" in screen_edge
+          and "Appearance.sizes.barHeight" in screen_edge,
+          "Screen Edge must trim only the actual ii Bar body span before corner redesign")
     check("const iiOwned = !root.waffleFamily" in screen_edge,
           "Screen Edge ii-Bar ownership must not leak into the Waffle panel family")
     check("PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19)" in screen_edge,
@@ -471,46 +469,30 @@ def main() -> None:
               "Rejected curved Bar shadow stitching must stay reverted")
     check("screenEdge?.radius" in bar_runtime
           and "PerimeterTokens.frameRadius" in bar_runtime,
-          "Horizontal Bar endpoint fillets must follow the configurable Screen Edge radius")
+          "Horizontal Bar auto-hide fallback must follow the configurable Screen Edge radius")
     check("screenEdge?.radius" in vertical_bar_runtime
           and "PerimeterTokens.frameRadius" in vertical_bar_runtime,
-          "Vertical Bar endpoint fillets must follow the configurable Screen Edge radius")
-    check("id: leftScreenEdgeContact" in bar_runtime
-          and "id: rightScreenEdgeContact" in bar_runtime,
-          "Horizontal Bar must own both physical Screen Edge contact strips")
-    check("leftMargin: 0" in bar_runtime
-          and "rightMargin: 0" in bar_runtime
-          and "leftMargin: barRoot.frameRadius" in bar_runtime
-          and "rightMargin: barRoot.frameRadius" in bar_runtime,
-          "Horizontal Bar contact arcs must not double-inset by Screen Edge thickness")
-    check("PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19)" in bar_runtime,
-          "Approved upper Bar/Screen Edge corner lock marker must remain present")
-    for token in (
-        "id: leftCorner",
-        "id: rightCorner",
-        "leftMargin: 0",
-        "rightMargin: 0",
-        "implicitSize: barRoot.frameRadius",
-        "leftCorner.corner: RoundCorner.CornerEnum.BottomLeft",
-        "rightCorner.corner: RoundCorner.CornerEnum.BottomRight",
-    ):
-        check(token in bar_runtime,
-              f"Locked upper Bar/Screen Edge corner geometry changed: {token}")
-    check("id: topScreenEdgeContact" in vertical_bar_runtime
-          and "id: bottomScreenEdgeContact" in vertical_bar_runtime,
-          "Vertical Bar must own both physical Screen Edge contact strips")
+          "Vertical Bar auto-hide fallback must follow the configurable Screen Edge radius")
     for runtime in (bar_runtime, vertical_bar_runtime):
+        for retired_geometry in (
+            "id: roundDecorators",
+            "ScreenEdgeContact",
+            "id: barEdgeShadow",
+            "surfacePresented",
+        ):
+            check(retired_geometry not in runtime,
+                  f"Normal Bar must not retain duplicate perimeter extension geometry: {retired_geometry}")
         check("readonly property bool showBarBackground: true" in runtime,
               "Supported Hug Bar chrome must remain structurally present")
+        check("readonly property bool autoHideEnabled:" in runtime
+              and "autoHideEnabled ? Math.max(frameRadius, edgeShadowExtent) : 0" in runtime,
+              "Normal Bar host must collapse to body size unless auto-hide fallback needs extra room")
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")
         check("id: autoHideScreenEdge" in runtime
-              and "visible: Config.options?.bar?.autoHide?.enable ?? false" in runtime,
-              "Auto-hidden Bar must reveal a resident physical Screen Edge fallback")
-        check("id: barEdgeShadow" in runtime
-              and "&& barRoot.surfacePresented" in runtime,
-              "Bar shadow must use the prior straight presentation-gated renderer")
+              and "visible: barRoot.autoHideEnabled" in runtime,
+              "Auto-hidden Bar must retain its conditional Screen Edge fallback")
     check("visible: !gameModeMinimal" in bar_content,
           "Horizontal Hug body must not disappear because of legacy showBackground state")
     check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,

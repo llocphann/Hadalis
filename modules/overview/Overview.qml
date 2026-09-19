@@ -311,8 +311,13 @@ Scope {
             Column {
                 id: columnLayout
 
-                // Shell desaturation effect
-                layer.enabled: Appearance.shouldDesaturate("overlays") && columnLayout.visible
+                // Full-screen Overview search/task-view content may opt into the
+                // overlay desaturation effect. Dashboard mode is a connected popup,
+                // so keep its canonical colLayer0 pixels aligned with Sidebar and
+                // StyledPopup instead of applying an extra post-render dim pass.
+                layer.enabled: !root.dashboardPresentationMode
+                    && Appearance.shouldDesaturate("overlays")
+                    && columnLayout.visible
                 layer.effect: ShellDesaturationEffect {}
 
                 // One 0..1 driver so the surface unfolds as a single coherent morph.

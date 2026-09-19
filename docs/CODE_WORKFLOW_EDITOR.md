@@ -1,6 +1,7 @@
 # Workflow-first QML Code Editor
 
-Status: research and architecture note; not implemented yet.
+Status: Phase 0 in progress. Parser corpus and standalone renderer/input probes
+exist; production editor is not implemented. See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md).
 
 This document records the design direction for a Hadalis code editor that exposes the running Quickshell/QML shell as an editable workflow/dataflow graph.
 

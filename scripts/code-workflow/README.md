@@ -60,3 +60,46 @@ tests as evidence, run with the environment variable above.
 Primary references: [QML grammar and ambiguity](https://github.com/yuja/tree-sitter-qmljs),
 [Tree-sitter byte ranges](https://tree-sitter.github.io/tree-sitter/using-parsers/2-basic-parsing.html),
 [incremental edits](https://tree-sitter.github.io/tree-sitter/using-parsers/3-advanced-parsing.html).
+
+## Spike B
+
+`GraphSandbox.qml` is a synthetic graph with Bar/Media-style categories, not
+production UI or a resolved Workflow IR. `run-sandbox.py` requires optional
+PySide6 (tested at Qt 6.11.2) and is intentionally outside the default regression
+runner: desktop access and graphics drivers must be available explicitly.
+
+```sh
+# Interactive, independent window; never starts/reloads the shell.
+python3 scripts/code-workflow/run-sandbox.py
+
+# Repeatable input tests, software fallback; not a GPU performance comparison.
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+  python3 scripts/code-workflow/run-sandbox.py --test --nodes 60
+
+# Real Wayland Shape backend, synthetic combined workload, window closes itself.
+QT_QPA_PLATFORM=wayland QT_QUICK_BACKEND=rhi QSG_RHI_BACKEND=opengl \
+  python3 scripts/code-workflow/run-sandbox.py --benchmark 4 --nodes 100 --renderer curve --output /tmp/curve-100.json
+
+# Per-process fractional rendering/input; does not change compositor settings.
+QT_QPA_PLATFORM=wayland QT_QUICK_BACKEND=rhi QSG_RHI_BACKEND=opengl QT_SCALE_FACTOR=1.25 \
+  python3 scripts/code-workflow/run-sandbox.py --test --benchmark 5 --nodes 60 --renderer curve --output /tmp/curve-125.json
+```
+
+Compare `geometry` and `curve` with 20, 60, 100 and 250 nodes. Reports record
+the *actual* backend, logical window size, DPR, source hashes, visible nodes,
+QObject/visual-delegate count, frame and GUI-timer intervals, model update time,
+RSS and QML warnings. The window adapts to the size granted by the compositor;
+benchmarks fit the entire graph before applying the combined workload. Hit
+testing uses curve bounding boxes plus sampled segment distances, independent
+of Shape containment, with a screen-space tolerance.
+
+The 18 input checks include wheel/pixel scroll, node drag, middle-button pan,
+Ctrl selection, Shift lasso, subflow restoration, arrow/Tab focus and synthetic
+two-point pinch. QtTest wheel positions need the measured device-pixel adapter
+on this Qt 6.11 host; production QML coordinates remain logical. The unchanged
+pivot assertion will catch a different QtTest behavior on another version.
+
+These are short experiments on one machine. QTest cadence and Python callbacks
+affect timing. Synthetic pinch is not hardware touchpad acceptance; a per-process
+scale is not compositor hotplug. No node budget, memory-leak verdict, permanent
+renderer choice, live registry, picker or reload/rebind claim follows from them.

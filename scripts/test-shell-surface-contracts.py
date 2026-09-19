@@ -69,6 +69,7 @@ def main() -> None:
         "Math.max(0, Math.min(96",
         "readonly property real smoothUnionRadius: 20",
         "readonly property real popupRadius: 28",
+        "readonly property real attachedCornerRadius: frameRadius",
         "readonly property real joinFlareRadius: smoothUnionRadius",
         "readonly property real joinFlareCrossScale: 0.55",
     ):
@@ -347,6 +348,12 @@ def main() -> None:
               f"OSK physical Screen Edge attachment contract missing: {token}")
     check("screenAttachInset" not in osk,
           "OSK must not stop at the inner Screen Edge boundary")
+    check("PerimeterTokens.attachedCornerRadius" in osk
+          and 'topLeftRadius: oskRoot.snappedEdge === "top" ? attachedRadius : radius' in osk
+          and 'topRightRadius: oskRoot.snappedEdge === "top" ? attachedRadius : radius' in osk
+          and 'bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? attachedRadius : radius' in osk
+          and 'bottomRightRadius: oskRoot.snappedEdge === "bottom" ? attachedRadius : radius' in osk,
+          "OSK corners touching Screen Edge must inherit the shared physical frame radius")
     check("Appearance.animation.elementMove.duration" in osk
           and "Appearance.animation.elementMove.bezierCurve" in osk,
           "OSK attached-edge slide must use the default-spatial motion token")
@@ -401,6 +408,17 @@ def main() -> None:
           and "Make sure your player has MPRIS support" not in media_popup,
           "Bar media popup must not append an inactive-player text card below Equalizer")
 
+    for rounded_sidebar_path in (
+        "modules/sidebarLeft/SidebarLeftContent.qml",
+        "modules/sidebarRight/SidebarRightContent.qml",
+        "modules/sidebarRight/CompactSidebarRightContent.qml",
+    ):
+        rounded_sidebar = read(rounded_sidebar_path)
+        check("PerimeterTokens.attachedCornerRadius" in rounded_sidebar
+              and 'root.attachedEdge === "left" ? attachedRadius : radius' in rounded_sidebar
+              and 'root.attachedEdge === "right" ? attachedRadius : radius' in rounded_sidebar,
+              f"{rounded_sidebar_path} attached corners must inherit Screen Edge/Bar radius")
+
     compact_sidebar = read("modules/sidebarRight/CompactSidebarRightContent.qml")
     check("import qs.modules.mediaControls" in compact_sidebar
           and "EqualizerPanel {" in compact_sidebar
@@ -425,8 +443,9 @@ def main() -> None:
             "y: settingsPanel.height - height",
             "ConnectedSurfaceJoinFlares {",
             "joinBottom: true",
-            "bottomLeftRadius: 0",
-            "bottomRightRadius: 0",
+            "PerimeterTokens.attachedCornerRadius",
+            "bottomLeftRadius: attachedRadius",
+            "bottomRightRadius: attachedRadius",
         ):
             check(token in settings_surface,
                   f"{settings_path} must be a bottom-connected popup below Polkit: {token}")
@@ -463,6 +482,10 @@ def main() -> None:
           and "GlassBackground {\n        id: dashContainer" not in dashboard
           and "readonly property bool useWallpaperBackdrop: false" in dashboard,
           "Dashboard connected body must be a plain solid Material surface without glass tint")
+    check("PerimeterTokens.attachedCornerRadius" in dashboard
+          and "bottomLeftRadius: root.directBottomAttachment ? attachedRadius : radius" in dashboard
+          and "bottomRightRadius: root.directBottomAttachment ? attachedRadius : radius" in dashboard,
+          "Dashboard corners touching Screen Edge/Bar must inherit the shared physical frame radius")
     check("Appearance.animation.elementMove.duration" in dashboard
           and "Appearance.animation.elementMove.bezierCurve" in dashboard,
           "Dashboard connected slide must use the default-spatial motion token")
@@ -496,6 +519,12 @@ def main() -> None:
           "ConnectedSurfaceFrame must preserve the circular direct-edge shoulder contract")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
+    check("property real attachedCornerRadius: PerimeterTokens.attachedCornerRadius" in frame
+          and "readonly property real attachedRadius:" in frame
+          and "? attachedRadius : surfaceRadius" in frame
+          and "(root.joinTop || root.joinLeft) ? 0" not in frame
+          and "(root.joinBottom || root.joinRight) ? 0" not in frame,
+          "Shared connected popup body must round attached corners with the Screen Edge/Bar radius")
     check("property bool hoverEnabled: false" in frame
           and "readonly property bool bodyHovered: bodyHover.hovered" in frame
           and "HoverHandler {" in frame,
@@ -753,8 +782,8 @@ def main() -> None:
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
     check('label: Translation.tr("Corner radius (px)")' in settings_registry_data
-          and 'description: Translation.tr("Set Screen Edge and Bar corner radius")' in settings_registry_data,
-          "Settings search must expose the shared Screen Edge/Bar corner radius")
+          and 'description: Translation.tr("Set Screen Edge, Bar and attached popup corner radius")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/Bar/attached-popup corner radius")
     check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
           and 'description: Translation.tr("Configure only the physical Screen Edge shadow")' in settings_registry_data,
           "Settings search must expose the dedicated physical Screen Edge shadow controls")

@@ -120,6 +120,8 @@ Scope {
     }
 
     component FrameWindow: PanelWindow {
+        id: frameWindow
+
         required property ShellScreen modelData
 
         readonly property string outputName: String(modelData?.name ?? "")

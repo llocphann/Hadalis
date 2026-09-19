@@ -178,15 +178,16 @@ def main() -> None:
     check("screenEdge?.radius" not in screen_edge
           and "PerimeterTokens.frameRadius" not in screen_edge
           and "RoundCorner {" not in screen_edge
-          and "readonly property int cornerRadius: 25" in screen_edge
-          and "readonly property int cornerExtent: thickness + cornerRadius" in screen_edge,
-          "Screen Edge must use one fixed Caelestia-style 25px inner-corner radius")
+          and "readonly property int rounding: 25" in screen_edge
+          and "readonly property int outerPadding: 50" in screen_edge,
+          "Screen Edge must use Caelestia's 25px inner rounding and 50px outer frame padding")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
     check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
           "Screen Edge must stay mapped normally and hide only for lock/fullscreen coverage")
-    check("mask: Region { item: emptyInput }" in screen_edge,
-          "Screen Edge must remain completely click-through")
+    check("mask: Region { item: emptyFrameInput }" in screen_edge
+          and "mask: Region { item: emptyReservationInput }" in screen_edge,
+          "Screen Edge frame and reservation surfaces must remain completely click-through")
     for retired_shadow in (
         "id: edgeShadow",
         "shadowEnabled",
@@ -199,9 +200,11 @@ def main() -> None:
     ):
         check(retired_shadow not in screen_edge,
               f"Physical Screen Edge must remain shadow-free: {retired_shadow}")
-    check("implicitHeight: horizontal ? root.thickness : 1" in screen_edge
+    check("component FrameWindow: PanelWindow" in screen_edge
+          and "component ReservationWindow: PanelWindow" in screen_edge
+          and "implicitHeight: horizontal ? root.thickness : 1" in screen_edge
           and "implicitWidth: horizontal ? 1 : root.thickness" in screen_edge,
-          "Physical Screen Edge host must be exactly one rectangular band thick")
+          "One full-screen frame must own paint while transparent thin windows reserve work-area space")
     check("const iiOwned = !root.waffleFamily" in screen_edge
           and "!(Config.options?.bar?.autoHide?.enable ?? false)" in screen_edge,
           "Auto-hide ii Bar must hand physical edge ownership to ScreenEdges.qml")
@@ -216,19 +219,25 @@ def main() -> None:
         check(retired_geometry not in screen_edge,
               f"Screen Edge must not restore retired corner implementations: {retired_geometry}")
     check("import QtQuick.Shapes" in screen_edge
-          and "component CornerWindow: PanelWindow" in screen_edge
-          and "preferredRendererType: Shape.CurveRenderer" in screen_edge
-          and "direction: PathArc.Counterclockwise" in screen_edge,
-          "Screen Edge rounded corners must use the shared antialiased Shape/PathArc primitive")
-    check("xScale: cornerWindow.atRight ? -1 : 1" in screen_edge
-          and "yScale: cornerWindow.atBottom ? -1 : 1" in screen_edge,
-          "All four Screen Edge corners must mirror one canonical top-left path")
+          and "component FrameWindow: PanelWindow" in screen_edge
+          and "fillRule: ShapePath.OddEvenFill" in screen_edge
+          and "preferredRendererType: Shape.CurveRenderer" in screen_edge,
+          "Physical Screen Edge must be one antialiased odd-even frame geometry")
+    check("PathMove {" in screen_edge
+          and screen_edge.count("direction: PathArc.Clockwise") == 4
+          and "x: parent.left + parent.r" in screen_edge
+          and "y: parent.top" in screen_edge,
+          "Screen Edge inner workspace hole must be one closed 25px rounded rectangle")
+    check("component CornerWindow: PanelWindow" not in screen_edge
+          and "CornerWindow {" not in screen_edge
+          and "component EdgeWindow: PanelWindow" not in screen_edge
+          and "Rectangle {" not in screen_edge,
+          "Screen Edge must not reconstruct the frame from painted edge/corner overlays")
+    check('FrameWindow {}' in screen_edge,
+          "Each output must have exactly one painted Screen Edge frame")
     for edge in ("top", "bottom", "left", "right"):
-        check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
-              f"Screen Edge must render the persistent {edge} output edge")
-    for corner in ("top-left", "top-right", "bottom-left", "bottom-right"):
-        check(f'CornerWindow {{ corner: "{corner}" }}' in screen_edge,
-              f"Screen Edge must render the rounded {corner} inner corner")
+        check(f'ReservationWindow {{ edge: "{edge}" }}' in screen_edge,
+              f"Screen Edge must retain transparent {edge} work-area reservation")
 
     sidebar_host = read("modules/sidebar/SidebarHost.qml")
     for token in (

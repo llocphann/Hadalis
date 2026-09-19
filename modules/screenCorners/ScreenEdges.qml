@@ -105,7 +105,8 @@ Scope {
         visible: mapped
         updatesEnabled: mapped
         color: "transparent"
-        exclusiveZone: 0
+        // Visual host must ignore all exclusive zones and remain pinned to the
+        // physical output bounds, matching Caelestia ContentWindow.
         exclusionMode: ExclusionMode.Ignore
 
         WlrLayershell.namespace: "hadalis:screen-edge-frame"
@@ -246,8 +247,10 @@ Scope {
         visible: mapped
         updatesEnabled: mapped
         color: "transparent"
+        // Reservation surfaces intentionally participate in normal layer-shell
+        // exclusion. Do not set Ignore here: their only job is to reserve the
+        // configured Screen Edge thickness for client windows.
         exclusiveZone: mapped ? root.thickness : 0
-        exclusionMode: ExclusionMode.Ignore
 
         implicitWidth: horizontal ? 1 : root.thickness
         implicitHeight: horizontal ? root.thickness : 1

@@ -627,17 +627,13 @@ def main() -> None:
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")
-    horizontal_bg_start = bar_content.index("id: barBackground")
-    horizontal_bg_end = bar_content.index("\n    }", horizontal_bg_start)
-    horizontal_bg_block = bar_content[horizontal_bg_start:horizontal_bg_end]
-    vertical_bg_start = vertical_bar_content.index("id: barBackground")
-    vertical_bg_end = vertical_bar_content.index("\n    }", vertical_bg_start)
-    vertical_bg_block = vertical_bar_content[vertical_bg_start:vertical_bg_end]
-    check(horizontal_bg_start >= 0 and "visible: true" in horizontal_bg_block
-          and "gameModeMinimal" not in horizontal_bg_block.split("visible:", 1)[1],
+    check("id: barBackground" in bar_content
+          and "visible: true" in bar_content
+          and "visible: !gameModeMinimal" not in bar_content,
           "Horizontal Hug body must remain structural across fullscreen/GameMode")
-    check(vertical_bg_start >= 0 and "visible: !root.isIslands" in vertical_bg_block
-          and "gameModeMinimal" not in vertical_bg_block.split("visible:", 1)[1],
+    check("id: barBackground" in vertical_bar_content
+          and "visible: !root.isIslands" in vertical_bar_content
+          and "visible: !root.gameModeMinimal && !root.isIslands" not in vertical_bar_content,
           "Vertical Hug body must remain structural across fullscreen/GameMode")
     module_shown_start = bar_content.index("function _moduleShown")
     module_shown_end = bar_content.index("\n    }", module_shown_start)

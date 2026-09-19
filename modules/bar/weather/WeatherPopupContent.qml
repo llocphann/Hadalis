@@ -38,7 +38,9 @@ Item {
 
     Rectangle {
         id: timeWeatherPanel
-        anchors.fill: parent
+        x: 0
+        width: tabViewport.width
+        height: tabViewport.height
         radius: Appearance.rounding.large
         color: "transparent"
         y: (0 - root.currentTab) * tabViewport.height
@@ -286,7 +288,9 @@ Item {
 
     Rectangle {
         id: detailPanel
-        anchors.fill: parent
+        x: 0
+        width: tabViewport.width
+        height: tabViewport.height
         radius: Appearance.rounding.small
         color: Appearance.colors.colSurfaceContainerHigh
         y: (1 - root.currentTab) * tabViewport.height

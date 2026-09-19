@@ -178,8 +178,9 @@ def main() -> None:
     check("screenEdge?.radius" not in screen_edge
           and "PerimeterTokens.frameRadius" not in screen_edge
           and "RoundCorner {" not in screen_edge
-          and "innerRadius" not in screen_edge,
-          "Screen Edge baseline must stay square and free of curved corner geometry")
+          and "readonly property int cornerRadius: 25" in screen_edge
+          and "readonly property int cornerExtent: thickness + cornerRadius" in screen_edge,
+          "Screen Edge must use one fixed Caelestia-style 25px inner-corner radius")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
     check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
@@ -213,10 +214,21 @@ def main() -> None:
         "RadialGradient",
     ):
         check(retired_geometry not in screen_edge,
-              f"Square Screen Edge must not restore retired corner geometry: {retired_geometry}")
+              f"Screen Edge must not restore retired corner implementations: {retired_geometry}")
+    check("import QtQuick.Shapes" in screen_edge
+          and "component CornerWindow: PanelWindow" in screen_edge
+          and "preferredRendererType: Shape.CurveRenderer" in screen_edge
+          and "direction: PathArc.Counterclockwise" in screen_edge,
+          "Screen Edge rounded corners must use the shared antialiased Shape/PathArc primitive")
+    check("xScale: cornerWindow.atRight ? -1 : 1" in screen_edge
+          and "yScale: cornerWindow.atBottom ? -1 : 1" in screen_edge,
+          "All four Screen Edge corners must mirror one canonical top-left path")
     for edge in ("top", "bottom", "left", "right"):
         check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must render the persistent {edge} output edge")
+    for corner in ("top-left", "top-right", "bottom-left", "bottom-right"):
+        check(f'CornerWindow {{ corner: "{corner}" }}' in screen_edge,
+              f"Screen Edge must render the rounded {corner} inner corner")
 
     sidebar_host = read("modules/sidebar/SidebarHost.qml")
     for token in (

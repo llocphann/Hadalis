@@ -122,10 +122,35 @@ Implemented:
   private permissions, source immutability, runtime packaging and no-write UI
   boundaries.
 
+## Milestone 2F — isolated atomic commit engine
+
+Implemented:
+
+- scripts/code-workflow/commit.py consumes only a prepared manifest and keeps
+  source commit mechanics separate from parser/semantic preparation.
+- commit verifies snapshot/candidate artifact paths and hashes, confines the
+  manifest sourcePath to the active runtime root, checks writability and requires
+  the live source SHA to equal the prepared base SHA.
+- A same-directory temporary file is fully written/fsynced, inherits the source
+  mode, and the source SHA is checked again immediately before os.replace().
+- The parent directory is fsynced after replacement and the resulting source SHA
+  must equal the prepared candidate SHA.
+- rollback uses the exact snapshot artifact and is allowed only when the live
+  source still equals the candidate SHA. Any external edit after Apply therefore
+  blocks rollback instead of being overwritten.
+- verify distinguishes candidate-present, base-present and diverged without
+  modifying the source.
+- The engine is not wired to CodeWorkflowTransaction or Settings yet;
+  applyEnabled remains false. Contract tests exercise commit/verify/rollback only
+  against temporary fixture files.
+- scripts/test-code-workflow-atomic-commit-engine.py guards source mode
+  preservation, commit/rollback hash checks, external-edit conflict behavior,
+  runtime packaging and the production no-Apply boundary.
+
 ## Not implemented yet
 
-- source writes or Apply;
-- atomic commit of a prepared artifact transaction;
+- production source writes or Apply UI;
+- QML lifecycle wiring for the isolated commit engine;
 - direct binding transforms;
 - connect/disconnect data dependencies;
 - signal/action transforms;
@@ -135,10 +160,10 @@ Implemented:
 
 ## Next gate
 
-The next implementation gate is the atomic commit half of the one-file Apply
-controller. It must consume only an artifacts-prepared transaction, perform a
-second/final source-identity check immediately before replacement, upgrade the
-handoff to write-issued/waiting-reload, rely on the normal Quickshell watcher,
-observe reloadCompleted/reloadFailed, and use snapshot.qml for conflict-checked
-rollback. Apply remains disabled until that lifecycle is implemented and
-contracted; no stale byte range from history may authorize a write.
+The next implementation gate is production lifecycle wiring for the isolated
+commit engine. CodeWorkflowTransaction must consume only an artifacts-prepared
+handoff, set write-issued before spawning commit.py, never issue a second manual
+reload, survive the watcher-driven reload through PersistentProperties, observe
+reloadCompleted/reloadFailed, verify candidate-present after success, rebind the
+semantic anchor, and invoke conflict-checked rollback on reload failure. Only
+after that complete lifecycle passes contracts may Apply become enabled.

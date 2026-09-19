@@ -43,7 +43,15 @@ Scope {
             component: PanelWindow { // Bar window
                 id: barRoot
                 screen: barLoader.modelData
-                visible: true
+                readonly property string outputName: String(barLoader.modelData?.name ?? "")
+                readonly property bool fullscreenCovered: outputName.length > 0
+                    && GameMode.hasFullscreenOnOutput(outputName)
+
+                // Match horizontal Bar and Screen Edge lifecycle. Explicitly
+                // unmapping/remapping on fullscreen transitions avoids stale
+                // blank contents after the fullscreen client releases the output.
+                visible: !fullscreenCovered
+                updatesEnabled: !fullscreenCovered
 
                 property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
                 

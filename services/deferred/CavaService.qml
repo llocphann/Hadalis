@@ -47,7 +47,11 @@ Singleton {
     readonly property string scriptPath: FileUtils.trimFileProtocol(Directories.scriptPath) + "/cava/generate_config.sh"
 
     // Mirror CavaProcess's previous config schema reading
-    readonly property int cfgFramerate: Config.options?.appearance?.cava?.framerate ?? 60
+    readonly property int requestedFramerate: Math.max(15, Math.min(165,
+        Number(Config.options?.appearance?.cava?.framerate ?? 30)))
+    readonly property int cfgFramerate: (Config.options?.performance?.lowPower ?? false)
+        ? Math.min(24, root.requestedFramerate)
+        : root.requestedFramerate
     readonly property int cfgSensitivity: Config.options?.appearance?.cava?.sensitivity ?? 100
     readonly property int cfgBars: Config.options?.appearance?.cava?.bars ?? 0
     readonly property bool cfgStereo: Config.options?.appearance?.cava?.stereo ?? true

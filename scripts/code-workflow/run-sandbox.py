@@ -34,7 +34,7 @@ def main():
     if not 20 <= args.nodes <= 500 or min(args.benchmark, args.warmup, args.rebuild_every) < 0 or args.sample_every <= 0:
         ap.error("Use 20..500 nodes and a nonnegative benchmark duration")
     from PySide6.QtCore import QEvent, QPoint, QPointF, Qt, QTimer, QUrl, qVersion
-    from PySide6.QtGui import QGuiApplication, QMouseEvent
+    from PySide6.QtGui import QGuiApplication, QMouseEvent, QWheelEvent, QPointingDevice, QInputDevice
     from PySide6.QtQuick import QQuickItem, QQuickView
     from PySide6.QtTest import QTest
 
@@ -103,6 +103,20 @@ def main():
             raise AssertionError(label + ": " + root.snapshot())
         checks.append(label)
 
+    touchpad = QPointingDevice("Workflow test touchpad", 731, QInputDevice.DeviceType.TouchPad,
+        QPointingDevice.PointerType.Finger, QInputDevice.Capability.Position |
+        QInputDevice.Capability.Scroll | QInputDevice.Capability.PixelScroll, 2, 0)
+
+    def wheel(point, angle, pixels=QPoint(), device=None):
+        # QWheelEvent has a public window-local logical-coordinate contract.
+        # QTest's window-system adapter differs between QT_SCALE_FACTOR and
+        # compositor-native fractional scaling; multiplying by DPR is invalid.
+        app.sendEvent(view, QWheelEvent(point, view.mapToGlobal(point), pixels, angle,
+            Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase,
+            False, Qt.MouseEventSource.MouseEventSynthesizedByApplication,
+            device or QPointingDevice.primaryPointingDevice()))
+        QTest.qWait(25)
+
     checks, failure = [], None
     try:
         if args.test:
@@ -144,21 +158,15 @@ def main():
             after = state()
             expect(abs(after["panX"]-before["panX"]-80)<2 and after["nodes"] == before["nodes"], "middle drag pans without moving graph metadata")
             point = QPointF(view.width()*0.7,view.height()*0.75)
-            # QtTest 6.11 forwards wheel positions through the window-system
-            # interface in device pixels on this host. QML stays in logical
-            # coordinates; the pivot assertion detects any future API change.
-            wheel_point = point*view.devicePixelRatio()
             before = state()
             graph_point = ((point.x()-before["panX"])/before["zoom"], (point.y()-68-before["panY"])/before["zoom"])
-            QTest.wheelEvent(view,wheel_point,QPoint(0,120))
-            QTest.qWait(25)
+            wheel(point,QPoint(0,120))
             after = state()
             mapped = (after["panX"]+graph_point[0]*after["zoom"], 68+after["panY"]+graph_point[1]*after["zoom"])
             expect(after["zoom"] > before["zoom"] and math.dist(mapped, (point.x(),point.y())) < 0.1
                    and after["nodes"] == before["nodes"], "wheel zoom preserves cursor pivot and layout")
             before = state()
-            QTest.wheelEvent(view,wheel_point,QPoint(),QPoint(0,24))
-            QTest.qWait(25)
+            wheel(point,QPoint(),QPoint(0,24),touchpad)
             expect(state()["zoom"] > before["zoom"] and state()["nodes"] == before["nodes"], "pixel-only touchpad scroll changes zoom")
             root.resetGraph(20)
             before, start = state(), pos("nodeScreen", 0)
@@ -282,6 +290,7 @@ def main():
               "qml_sha256":sha256(args.qml_source.read_bytes()).hexdigest(),
               "harness_sha256":sha256(Path(__file__).read_bytes()).hexdigest(),
               "qpa":app.platformName(), "device_pixel_ratio":view.devicePixelRatio(),
+              "wheel_test_adapter":"QWheelEvent, logical window coordinates; Mouse and synthetic TouchPad",
               "window_logical_size":[view.width(),view.height()],
               "graphics_api":str(view.rendererInterface().graphicsApi()),
               "render_loop":os.environ.get("QSG_RENDER_LOOP", "Qt default"),

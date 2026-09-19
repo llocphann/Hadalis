@@ -65,6 +65,7 @@ def main():
         env['WAYLAND_DISPLAY'] = outer_display
         config = directory/'niri.kdl'
         config.write_text('spawn-at-startup "python3" "-c" '+json.dumps(capture)+'\nprefer-no-csd\n'
+                          'window-rule { open-maximized true; }\n'
                           f'output "winit" {{ scale {args.scale}; }}\n')
         command = ['niri','-c',str(config)]
         output = 'winit'
@@ -77,7 +78,7 @@ def main():
                 raise RuntimeError('Compositor startup failed; see compositor.log')
             time.sleep(.1)
         env.update(json.loads(display_file.read_text()))
-        env.update(QT_QPA_PLATFORM='wayland', QT_QUICK_BACKEND='rhi', QSG_RHI_BACKEND='opengl')
+        env.update(QT_QPA_PLATFORM='wayland', QT_QUICK_BACKEND='rhi', QSG_RHI_BACKEND='opengl', QSG_INFO='1')
         if args.sway:
             query = [str(args.sway.resolve().with_name('swaymsg')),'-s',env['SWAYSOCK'],'-t','get_outputs','-r']
         else:
@@ -101,6 +102,8 @@ def main():
                 raise RuntimeError(name+': compositor scale not applied')
             if '--benchmark' in flags and data['visible_nodes_at_end'] != expected_nodes:
                 raise RuntimeError(name+': benchmark did not retain all visible nodes')
+            if '--benchmark' in flags and data['timing_sample_totals']['frames'] < data['benchmark_seconds']*10:
+                raise RuntimeError(name+': fewer than 10 frame callbacks/second; visibility or severe stall requires investigation')
             print(json.dumps({'completed':name,'checks':len(data['input_checks'])}),flush=True)
 
         for renderer in ('geometry','curve'):

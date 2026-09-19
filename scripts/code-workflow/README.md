@@ -95,9 +95,11 @@ of Shape containment, with a screen-space tolerance.
 
 The 20 input checks include wheel/pixel scroll, node drag, middle-button pan,
 Ctrl selection, Shift lasso, subflow restoration, arrow/Tab focus and synthetic
-two-point pinch. QtTest wheel positions need the measured device-pixel adapter
-on this Qt 6.11 host; production QML coordinates remain logical. The unchanged
-pivot assertion will catch a different QtTest behavior on another version.
+two-point pinch. Wheel tests dispatch public QWheelEvent objects with logical
+window coordinates and explicit Mouse/TouchPad devices. Multiplying QtTest wheel
+positions by window DPR worked for process scaling but double-scaled native
+fractional output coordinates; that adapter was removed. The strict pivot
+assertion is unchanged; production QML coordinates remain logical.
 
 Routes use a per-node adjacency index. Both endpoints update once after a complete
 node move; pan/zoom changes only the view transform. The dense routing test checks
@@ -115,6 +117,13 @@ python3 scripts/code-workflow/run-graph-matrix.py --work-dir /tmp/graph-scale-ne
 
 The matrix creates private XDG paths and stops only its own compositor. It checks
 the actual screen DPR and Shape renderer and retains every paired result. The
+Niri fixture maximizes its own windows so its default half-width tiling cannot
+silently crop the dense graph. Missing visible nodes or fewer than ten frame
+callbacks per second fail qualification. A nested compositor may be throttled
+when its outer desktop window is obscured; retain that failure and use headless
+Sway for controlled timing/soak rather than treating the throttled run as valid.
+Scene graph logs record the actual OpenGL device for interpreting software drivers.
+The
 soak samples RSS, object/path counts and trace retention every ten seconds while
 rebuilding every fifteen seconds. Timing buffers retain at most 16,384 samples;
 their totals/window are explicit so harness storage cannot grow without bound.

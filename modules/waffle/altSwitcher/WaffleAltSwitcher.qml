@@ -236,15 +236,40 @@ Scope {
         onTriggered: root.cardVisible = GlobalStates.waffleAltSwitcherOpen && root.getPreset() === "skew"
     }
 
-    Timer {
-        id: focusTimer
-        interval: 30
-        running: GlobalStates.waffleAltSwitcherOpen
-        repeat: true
-        onTriggered: {
-            if (GlobalStates.waffleAltSwitcherOpen)
-                keyHandler.forceActiveFocus()
+    property int _focusRetryCount: 0
+
+    function _ensureSwitcherFocus(): void {
+        if (!GlobalStates.waffleAltSwitcherOpen) {
+            focusRetryTimer.stop()
+            root._focusRetryCount = 0
+            return
         }
+
+        keyHandler.forceActiveFocus()
+        if (!keyHandler.activeFocus && root._focusRetryCount < 4) {
+            root._focusRetryCount++
+            focusRetryTimer.restart()
+        } else {
+            focusRetryTimer.stop()
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onWaffleAltSwitcherOpenChanged(): void {
+            root._focusRetryCount = 0
+            if (GlobalStates.waffleAltSwitcherOpen)
+                Qt.callLater(root._ensureSwitcherFocus)
+            else
+                focusRetryTimer.stop()
+        }
+    }
+
+    Timer {
+        id: focusRetryTimer
+        interval: 50
+        repeat: false
+        onTriggered: root._ensureSwitcherFocus()
     }
 
     function nextItem() {

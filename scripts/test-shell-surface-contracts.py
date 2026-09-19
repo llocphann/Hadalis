@@ -187,8 +187,20 @@ def main() -> None:
           "Screen Edge must consume the shared configurable radius while preserving the locked inverted-frame geometry")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
-    check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
-          "Screen Edge must stay mapped normally and hide only for lock/fullscreen coverage")
+    frame_window_start = screen_edge.index("component FrameWindow: PanelWindow")
+    reservation_window_start = screen_edge.index("component ReservationWindow: PanelWindow")
+    check(frame_window_start >= 0 and reservation_window_start > frame_window_start,
+          "Screen Edge must retain separate painted FrameWindow and transparent ReservationWindow roles")
+    frame_window_block = screen_edge[frame_window_start:reservation_window_start]
+    reservation_window_block = screen_edge[reservation_window_start:]
+    check("FULLSCREEN-SCREEN-EDGE-LIFECYCLE-LOCK (maintainer approved 2026-09-19)" in frame_window_block
+          and "!GlobalStates.screenLocked" in frame_window_block
+          and "fullscreenCovered" not in frame_window_block
+          and "GameMode.hasFullscreenOnOutput" not in frame_window_block,
+          "Painted Screen Edge FrameWindow must stay mapped across fullscreen so remapping cannot cover BarContent")
+    check("GameMode.hasFullscreenOnOutput(outputName)" in reservation_window_block
+          and "!fullscreenCovered" in reservation_window_block,
+          "Transparent Screen Edge reservation windows may release work-area reservations during fullscreen")
     check("mask: Region { item: emptyFrameInput }" in screen_edge
           and "mask: Region { item: emptyReservationInput }" in screen_edge,
           "Screen Edge frame and reservation surfaces must remain completely click-through")
@@ -615,10 +627,26 @@ def main() -> None:
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")
-    check("visible: !gameModeMinimal" in bar_content,
-          "Horizontal Hug body must not disappear because of legacy showBackground state")
-    check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,
-          "Vertical Hug body must not disappear because of legacy showBackground state")
+    horizontal_bg_start = bar_content.index("id: barBackground")
+    horizontal_bg_end = bar_content.index("\n    }", horizontal_bg_start)
+    horizontal_bg_block = bar_content[horizontal_bg_start:horizontal_bg_end]
+    vertical_bg_start = vertical_bar_content.index("id: barBackground")
+    vertical_bg_end = vertical_bar_content.index("\n    }", vertical_bg_start)
+    vertical_bg_block = vertical_bar_content[vertical_bg_start:vertical_bg_end]
+    check(horizontal_bg_start >= 0 and "visible: true" in horizontal_bg_block
+          and "gameModeMinimal" not in horizontal_bg_block.split("visible:", 1)[1],
+          "Horizontal Hug body must remain structural across fullscreen/GameMode")
+    check(vertical_bg_start >= 0 and "visible: !root.isIslands" in vertical_bg_block
+          and "gameModeMinimal" not in vertical_bg_block.split("visible:", 1)[1],
+          "Vertical Hug body must remain structural across fullscreen/GameMode")
+    module_shown_start = bar_content.index("function _moduleShown")
+    module_shown_end = bar_content.index("\n    }", module_shown_start)
+    module_shown_block = bar_content[module_shown_start:module_shown_end]
+    check(module_shown_start >= 0
+          and "GameMode" not in module_shown_block
+          and "gameModeMinimal" not in module_shown_block
+          and "fullscreen" not in module_shown_block.lower(),
+          "Horizontal Bar module visibility must not be gated by fullscreen/GameMode")
     check("Config.options?.bar?.cornerStyle" not in bar_content,
           "Horizontal Hug body must ignore persisted retired cornerStyle at runtime")
     check("Config.options?.bar?.cornerStyle" not in vertical_bar_content,

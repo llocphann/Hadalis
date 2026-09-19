@@ -129,11 +129,15 @@ Scope {
         required property ShellScreen modelData
 
         readonly property string outputName: String(modelData?.name ?? "")
-        readonly property bool fullscreenCovered: outputName.length > 0
-            && GameMode.hasFullscreenOnOutput(outputName)
+        // FULLSCREEN-SCREEN-EDGE-LIFECYCLE-LOCK (maintainer approved 2026-09-19):
+        // This painted FrameWindow must stay mapped across fullscreen just like
+        // the ii Bar. Quickshell destroys layer-shell windows when visible=false;
+        // recreating this Top-layer frame after fullscreen changes same-layer
+        // stacking and can place the Bar-thick physical frame above BarContent.
+        // Niri already renders a focused fullscreen client above Top layer.
+        // Transparent ReservationWindows below may still release their work area.
         readonly property bool mapped: Config.ready
             && !GlobalStates.screenLocked
-            && !fullscreenCovered
 
         // LOCKED BAR/SCREEN-EDGE INSETS:
         // Caelestia treats the Bar as a thicker side of the same inverted

@@ -1343,6 +1343,786 @@ Success means a maintainer can:
 7. inspect the generated patch;
 8. apply and survive reload while preserving the workflow context.
 
+## Platform-derived design rules (research pass 2)
+
+This section tightens the design after a second pass over the current Hadalis tree and primary documentation for Quickshell, Niri, Qt/QML, workflow editors, projectional editors, Tree-sitter, and LSP tooling.
+
+These are implementation rules, not optional inspiration.
+
+### The UX is projectional, while QML text remains canonical
+
+The requested editor is closer to a projectional/structured editor than to a conventional text editor.
+
+Projectional editors such as JetBrains MPS manipulate a structured program model and render a chosen projection of that model. That is the right interaction analogy for Code Workflow: the user edits semantic concepts through graph nodes, ports, subflows, inspectors and contextual actions.
+
+Hadalis cannot copy MPS literally because existing QML files remain the canonical persisted representation and must stay normal Git-reviewable source.
+
+Use this hybrid contract:
+
+~~~text
+canonical QML text
+      |
+      v
+lossless CST + source map
+      |
+      v
+semantic workflow IR
+      |
+      v
+workflow projection
+      |
+ user command
+      |
+      v
+semantic transformation
+      |
+      v
+minimal source patch
+      |
+      v
+canonical QML text again
+~~~
+
+Rules:
+
+- The workflow graph is the primary editing projection.
+- The semantic workflow IR is the primary in-memory edit model.
+- QML text remains the persistent source of truth.
+- The CST/source map preserves exact ranges, comments and untouched formatting.
+- Never create a second persisted AST that can silently diverge from QML.
+- Reparse after every successful Apply and reconcile the workflow model from resulting source.
+- Unsupported syntax becomes an opaque Script/Expression construct instead of being rewritten optimistically.
+
+This is intentionally neither a text-editor clone nor a fully AST-persisted language workbench.
+
+References:
+
+- https://www.jetbrains.com/help/mps/mps-faq.html
+- https://www.jetbrains.com/help/mps/editor.html
+- https://www.jetbrains.com/help/mps/basic-notions.html
+
+### Hard constraints and soft diagnostics
+
+Structured editing should distinguish operations that are structurally impossible from temporarily invalid drafts.
+
+Hard constraints reject the operation before it mutates the workflow model. Examples:
+
+- connecting an event output to an incompatible data input;
+- placing a construct where the QML grammar/source anchor cannot legally contain it;
+- recursive subflow creation;
+- writing to a read-only runtime output;
+- modifying package-managed source in write mode;
+- exposing a sensitive target/property.
+
+Soft diagnostics keep the draft visible but block Apply until resolved. Examples:
+
+- unresolved identifier;
+- missing required property;
+- stale source anchor after an external edit;
+- temporarily disconnected required input;
+- an unsupported expression that must become an opaque node.
+
+Do not destroy user work merely because the draft is not currently applicable.
+
+### Contextual creation is part of the workflow language
+
+The global Add palette is useful but must not be the only authoring path.
+
+Required contextual actions:
+
+- drag from an output port -> show compatible destinations/transforms/actions;
+- drag from an input port -> show compatible sources/transforms;
+- Quick Add on empty canvas -> show constructs legal in the current subflow;
+- Quick Add on a wire -> show transforms/conditions/adapters that can be inserted into that connection;
+- Add inside a component group -> show child constructs legal at that source anchor.
+
+This follows the useful parts of Node-RED Quick Add and Blueprint pin-driven node creation.
+
+References:
+
+- https://nodered.org/docs/user-guide/editor/workspace/nodes
+- https://dev.epicgames.com/documentation/unreal-engine/nodes-in-unreal-engine
+
+### QML bindings are reactive dependencies, not execution arrows
+
+Qt defines property bindings as relationships that are reevaluated when dependencies change.
+
+Therefore:
+
+- data/binding edges mean reactive dependency;
+- event edges mean signal occurrence;
+- effect/action edges mean imperative consequence;
+- lifecycle edges mean instantiation/residency;
+- ordinary binding wires must never be described as execution order;
+- graph layout must never invent left-to-right execution between independent bindings.
+
+For example:
+
+~~~qml
+visible: root.enabled && service.ready
+~~~
+
+may expand to:
+
+~~~text
+root.enabled ----+
+                 +--> AND transform --> visible
+service.ready ---+
+~~~
+
+or remain one collapsed expression node when expansion adds noise.
+
+Reference:
+
+- https://doc.qt.io/qt-6.8/qtqml-syntax-propertybinding.html
+
+### Assignment and binding are different edit commands
+
+Quickshell's QML guide highlights an important rule: assigning a plain value to a property that currently has a binding removes that binding, while an explicit binding stays reactive.
+
+The workflow UI must therefore distinguish:
+
+~~~text
+Bind to...
+Set literal and replace binding
+Disconnect binding
+Restore previous binding
+~~~
+
+Dragging a data wire to a property means create/replace a reactive binding, not copy the source's current runtime value once.
+
+When a literal replaces an existing binding, Patch Preview must say so explicitly.
+
+Reference:
+
+- https://quickshell.org/docs/guide/qml-language/
+
+### Scope and ComponentBehavior must be part of semantic resolution
+
+Identifier resolution depends on QML component/object scope. Qt documents ComponentBehavior: Bound as a guarantee that nested components stay in their original context; the default behavior is Unbound.
+
+The analyzer must retain:
+
+- file/component scopes;
+- nested and inline component boundaries;
+- ids and import aliases;
+- ComponentBehavior pragma;
+- object/property scope;
+- JavaScript lexical scope inside handlers/functions.
+
+Matching identifier text is not enough evidence to create an editable semantic wire.
+
+Reference:
+
+- https://doc.qt.io/qt-6.8/qtqml-documents-structure.html
+
+### Use four primary edge grammars
+
+Blueprint's distinction between data and execution pins is useful, but QML needs a four-way mapping:
+
+~~~text
+DATA / BINDING
+  reactive dependency
+
+EVENT
+  signal occurrence
+
+EFFECT / ACTION
+  imperative call or mutation
+
+LIFECYCLE
+  loader/instance residency
+~~~
+
+Only event/effect paths may use execution-like visual treatment. Normal property bindings do not get execution pins.
+
+Reference:
+
+- https://dev.epicgames.com/documentation/unreal-engine/nodes-in-unreal-engine
+
+### Subflows are foundational, not cosmetic
+
+Node-RED and Blueprint both use collapsed subgraphs to control complexity.
+
+Code Workflow rules:
+
+- semantic QML components can appear as collapsed subflows;
+- meaningful public properties/signals become boundary ports;
+- internals stay hidden until drill-down;
+- Enter/double-click opens the subflow;
+- breadcrumb returns to parent;
+- expansion is scoped to the current graph rather than the entire shell;
+- recursion is rejected;
+- reusable semantic components and editor-only visual groups remain distinct.
+
+References:
+
+- https://nodered.org/docs/user-guide/editor/workspace/subflows
+- https://dev.epicgames.com/documentation/unreal-engine/nodes-in-unreal-engine
+
+### Reroutes, groups and alignment are editor metadata
+
+Reroute nodes, visual groups, comments, alignment, distribution and grid placement improve readability but do not change QML semantics unless the user explicitly invokes a source-level transformation.
+
+Therefore they do not mark source dirty.
+
+References:
+
+- https://nodered.org/docs/user-guide/editor/workspace/arrange
+- https://nodered.org/docs/developing-flows/documenting-flows
+
+## Quickshell 0.3.x rules
+
+Hadalis contains explicit Quickshell 0.3 compatibility behavior. Code Workflow must target the installed runtime contract and feature-detect optional/newer APIs.
+
+### Never force LazyLoader completion just to inspect
+
+Quickshell 0.3.1 distinguishes asynchronous loading from forced synchronous completion. Its documentation also warns that reading a loader item while loading can force completion and block.
+
+The inspector must not materialize a dormant Hadalis feature merely because Code Workflow is open.
+
+The target registry needs lifecycle state even when runtimeObject is absent:
+
+~~~text
+static-known
+unloaded
+loading
+resident
+stale/unloading
+error
+~~~
+
+For an unloaded target, show static workflow/source information and lifecycle conditions. Runtime values attach only when the object already exists or the user explicitly requests loading.
+
+Do not read LazyLoader.item for discovery.
+
+Reference:
+
+- https://quickshell.org/docs/v0.3.1/types/Quickshell/LazyLoader/
+
+### Stable semantic identity must not depend on QObject identity
+
+QML objects are ephemeral across reload.
+
+Use separate identities:
+
+~~~text
+targetId   = stable semantic feature
+instanceId = target plus output/instance
+runtimeRef = current nullable QObject reference
+sourceId   = source construct anchor
+~~~
+
+Quickshell Reloadable IDs and PersistentProperties may improve reload continuity for Code Workflow-owned UI, but they do not replace targetId/sourceId.
+
+References:
+
+- https://quickshell.org/docs/v0.2.1/types/Quickshell/Reloadable/
+- https://master.quickshell.org/docs/types/Quickshell/PersistentProperties
+
+### Picker geometry is owned by QML/Quickshell
+
+QsWindow item mapping helpers are not reactive by themselves. Quickshell exposes windowTransform to invalidate mappings when window transforms change, and TransformWatcher can invalidate relationships when geometry along an item path changes.
+
+A target geometry adapter should therefore depend on:
+
+- target x/y/width/height/visible;
+- QsWindow.windowTransform when mapping to window/global space;
+- TransformWatcher when parent-chain transforms can move the target;
+- output/screen identity;
+- devicePixelRatio when crossing logical/physical coordinate boundaries.
+
+Do not poll mapToGlobal for every target every frame.
+
+Do not use Niri as the authority for inner-QML geometry.
+
+References:
+
+- https://quickshell.org/docs/v0.3.1/types/Quickshell/QsWindow/
+- https://quickshell.org/docs/v0.2.1/types/Quickshell/TransformWatcher/
+
+### Picker input exists only while Pick mode is active
+
+Quickshell Region/QsWindow masks support click-through window areas.
+
+Normal Code Workflow operation must not leave a screen-wide input surface resident.
+
+During Pick mode the selection click must be consumed so clicking Media/Clock/etc. does not also trigger the underlying control.
+
+Recommended transient surface:
+
+~~~text
+one PanelWindow per connected output
+full-output geometry
+exclusiveZone 0 / no reservation
+overlay layer
+stable namespace quickshell:code-workflow-picker
+transparent visuals
+pointer interception only while PICKING
+destroy/hide immediately after select or cancel
+~~~
+
+References:
+
+- https://quickshell.org/docs/v0.3.1/types/Quickshell/Region/
+- https://quickshell.org/docs/v0.3.1/types/Quickshell/QsWindow/
+
+### Never use Exclusive keyboard focus for the picker
+
+Quickshell defines None, OnDemand and Exclusive keyboard-focus modes. Exclusive locks other windows out; OnDemand has documented focus-retention caveats on some systems.
+
+Code Workflow must never use Exclusive.
+
+Prototype two acceptable paths:
+
+1. Pointer-first picker with keyboardFocus None and explicit pointer/cancel affordance.
+2. Transient Escape-capable picker with OnDemand only while picking, destroyed immediately afterward and live-tested for correct Niri focus restoration.
+
+Reference:
+
+- https://quickshell.org/docs/v0.3.0/types/Quickshell.Wayland/WlrKeyboardFocus/
+
+### Niri requires Overlay for picker visibility over fullscreen
+
+Niri documents that focused fullscreen windows can cover top-layer surfaces. Overlay-layer surfaces remain above fullscreen windows, and top/overlay surfaces remain above Niri Overview.
+
+The transient picker should therefore use the overlay layer.
+
+This rule applies to the picker only; it is not a reason to move normal Hadalis surfaces to Overlay.
+
+References:
+
+- https://github.com/niri-wm/niri/wiki/Layer%E2%80%90Shell-Components
+- https://github.com/niri-wm/niri/wiki/Fullscreen-and-Maximize
+
+### Give the picker a stable namespace
+
+WlrLayershell.namespace identifies a layer-shell surface to external tools and cannot be changed after connection.
+
+Use a stable namespace such as:
+
+~~~text
+quickshell:code-workflow-picker
+~~~
+
+This helps Niri diagnostics, layer rules and self-inspection filtering.
+
+Reference:
+
+- https://quickshell.org/docs/v0.3.0/types/Quickshell.Wayland/WlrLayershell/
+
+### IpcHandler is a scalar control plane
+
+Quickshell IpcHandler registers explicitly typed scalar arguments/returns such as string, int, bool, real and color. It is not a direct arbitrary JS-object transport.
+
+If standalone Settings uses IpcHandler, rich payloads must be encoded as strings, for example JSON text:
+
+~~~text
+listTargets(): string
+snapshot(targetId): string
+graphRuntime(targetId): string
+beginPick(): void
+cancelPick(): void
+event(payload: string)
+~~~
+
+Do not send raw QObject references or claim arbitrary arrays/objects are native return types.
+
+High-rate runtime tracing should use a dedicated local stream/socket if it becomes necessary rather than repeated subprocess-style IPC snapshot calls.
+
+Reference:
+
+- https://git.outfoxxed.me/quickshell/quickshell/src/branch/master/src/io/ipchandler.hpp
+
+### Atomic file writes still need a transaction protocol
+
+Quickshell FileView atomicWrites uses a replacement file and rename for a successful single-file write.
+
+Code Workflow still needs:
+
+1. source revision/hash conflict check;
+2. semantic transform;
+3. parse/validation;
+4. atomic write;
+5. reload observation;
+6. post-write parse;
+7. target rebind;
+8. failure/rollback handling.
+
+Atomic per-file writes do not make a multi-file transformation atomic. Defer multi-file graph edits until a transaction strategy exists.
+
+Reference:
+
+- https://quickshell.org/docs/v0.3.1/types/Quickshell.Io/FileView/
+
+### One owner controls reload
+
+Quickshell watches config files by default and exposes reloadCompleted/reloadFailed. A soft reload attempts window reuse; hard reload recreates.
+
+For the first writable one-file path:
+
+~~~text
+atomic source write
+      |
+      v
+normal Quickshell file watcher
+      |
+      v
+wait for reloadCompleted or reloadFailed
+      |
+      v
+rebind semantic target
+~~~
+
+Do not write the file and immediately issue a second explicit reload that races the watcher.
+
+If future multi-file transaction support temporarily disables watching, the transaction controller may issue one explicit soft reload after all files commit. Hard reload is fallback, not the normal Apply action.
+
+Reference:
+
+- https://quickshell.org/docs/types/Quickshell/Quickshell/
+
+### Workflow presentation state is not product Config
+
+Node positions, viewport, zoom, collapsed scopes, pane sizes, recent targets and editor-only comments are editor state.
+
+Prefer existing Hadalis persistence where appropriate or the Quickshell per-shell state directory. Do not add product Config keys solely for canvas layout.
+
+Reference:
+
+- https://quickshell.org/docs/types/Quickshell/Quickshell/
+
+## Niri-derived rules
+
+### Niri provides compositor context, not semantic QML discovery
+
+Niri IPC is useful for outputs, workspaces, focused window/output and layer-shell diagnostics.
+
+It cannot identify an inner QML Media, Clock or Sidebar component under the pointer.
+
+Keep the ownership split:
+
+~~~text
+QML/Quickshell semantic registry
+    -> target identity and target geometry
+
+Niri
+    -> compositor context and layer-surface diagnostics
+~~~
+
+### Use event streams instead of polling
+
+Niri's event stream sends complete current state first and then updates. Niri recommends direct UNIX-socket access for more complex integrations.
+
+If Code Workflow needs extra compositor context beyond the existing NiriService, extend/reuse the event-driven service rather than adding an editor polling loop.
+
+Consumers must tolerate related updates that are not always atomic.
+
+Reference:
+
+- https://github.com/niri-wm/niri/wiki/IPC
+
+### Treat Niri JSON as an extensible protocol
+
+Use machine-readable JSON, not human-formatted niri msg output.
+
+Parsers should tolerate additive fields/variants and avoid exact full-object comparisons.
+
+Reference:
+
+- https://github.com/niri-wm/niri/wiki/IPC
+
+### niri msg layers is diagnostic identity, not component geometry
+
+Layer namespaces are useful to verify that the picker exists on the expected output/layer with the expected identity.
+
+Inner QML component rectangles remain QML/Quickshell-owned.
+
+Reference:
+
+- https://github.com/niri-wm/niri/wiki/Configuration%3A-Layer-Rules
+
+### Pick interaction should be immediate
+
+Niri's design principles favor immediate, predictable actions.
+
+Therefore:
+
+- Pick enters immediately;
+- hovered semantic target highlights immediately;
+- click selects immediately;
+- cancel exits immediately;
+- there is no second confirmation for target picking.
+
+Source mutation still uses explicit Apply because it changes code.
+
+Reference:
+
+- https://github.com/niri-wm/niri/wiki/Design-Principles
+
+## Source-analysis and diagnostics rules
+
+### Tree-sitter may be the CST layer, not the semantic graph
+
+Tree-sitter is designed for incremental concrete-syntax parsing and range-aware reparsing. Those are useful properties for preserving source positions and editing efficiently.
+
+A QML grammar does not automatically provide QML/Hadalis semantics such as:
+
+- import/type resolution;
+- ComponentBehavior context rules;
+- property compatibility;
+- singleton semantics;
+- Loader targets;
+- semantic target IDs;
+- safe rewrite transformations.
+
+If tree-sitter-qmljs passes a Hadalis corpus spike, use it as the CST/range layer under a separate semantic analyzer.
+
+Never expose raw CST nodes directly as the product workflow model.
+
+References:
+
+- https://tree-sitter.github.io/tree-sitter/
+- https://tree-sitter.github.io/tree-sitter/using-parsers/3-advanced-parsing.html
+
+### Every source-backed transform is revisioned
+
+A source-backed semantic node needs at least:
+
+~~~text
+sourcePath
+base revision/content hash
+construct kind
+source start/end range
+semantic anchor
+~~~
+
+Before Apply, re-read current source and re-resolve the semantic anchor. Never trust stale byte ranges after an external edit.
+
+### qmlls/LSP is optional enrichment
+
+LSP is useful for diagnostics, definitions, references and type information.
+
+Quickshell's own setup documentation recommends qmlls but documents limitations around malformed structure, Quickshell Singleton handling, Quickshell type documentation and root imports.
+
+Therefore:
+
+~~~text
+CST + Hadalis/QML semantic analyzer
+    = authoritative graph + rewrite model
+
+qmlls/LSP
+    = optional diagnostics/navigation enrichment
+~~~
+
+Code Workflow must still work when qmlls is absent.
+
+References:
+
+- https://microsoft.github.io/language-server-protocol/
+- https://quickshell.org/docs/guide/install-setup/
+
+## Revised workspace rules
+
+### Canvas stays dominant
+
+Node-RED treats the central workspace as the place where flows are built and sidebars as supporting tools. Code Workflow should follow that hierarchy.
+
+Normal desktop proportions:
+
+~~~text
+context bar                                44-52 px
+Targets/Add pane                          200-240 px
+workflow canvas                           dominant remaining area
+semantic inspector                       280-340 px
+Source/Patch/Diagnostics drawer           closed by default
+~~~
+
+Source Preview does not receive a default half-screen split.
+
+References:
+
+- https://nodered.org/docs/user-guide/editor/
+- https://nodered.org/docs/user-guide/editor/workspace/
+
+### Minimap is conditional
+
+A navigator/minimap is useful only when graph extent exceeds the viewport.
+
+It should be toggleable, non-semantic, hidden for small graphs and hidden/collapsed before reducing the main canvas on narrow layouts.
+
+### Standardize node state badges
+
+Use compact status badges:
+
+~~~text
+DIRTY   semantic source transformation pending
+ERROR   diagnostic blocks or warns Apply
+LIVE    runtime instance resident
+LOAD    runtime target loading
+OFF     static/unloaded target
+LOCK    read-only/package-managed source
+STALE   runtime object lost during reload/rebind
+~~~
+
+Dirty never means the user merely moved a node.
+
+### Selection supports graph reasoning
+
+Required selection/navigation tools:
+
+- lasso/marquee;
+- additive multi-select;
+- select upstream dependencies;
+- select downstream dependents/effects;
+- focus connected path;
+- fit selection.
+
+These matter more here than text-editor multi-cursor behavior.
+
+### Wire insertion is first-class
+
+Quick Add on a wire can insert a compatible transform/condition/adapter.
+
+~~~text
+A --------> B
+
+A --> Transform --> B
+~~~
+
+The semantic backend chooses the legal QML representation. Node position never determines source execution or insertion semantics.
+
+### Runtime tracing is diagnostic
+
+Runtime behavior may be shown through restrained tracing:
+
+- brief event/effect wire animation;
+- small pulse when a watched data value changes;
+- rate/count badge for high-frequency activity;
+- no execution animation on ordinary binding edges;
+- tracing throttled/disabled when Code Workflow is not visible.
+
+## Picker state machine
+
+Use an explicit state machine:
+
+~~~text
+IDLE
+  |
+  v
+PREPARING
+  - save editor target/viewport
+  - suspend conflicting edit modes
+  - hide/suspend Settings surface if needed
+  |
+  v
+PICKING
+  - per-output overlays
+  - semantic hover resolution
+  - click consumed
+  |
+  +-- cancel ------+
+  |                |
+  +-- select --> LOCKED
+                    |
+                    v
+                 RESTORING
+                    |
+                    v
+                   IDLE
+~~~
+
+Rules:
+
+- one picker session at a time;
+- screen lock/security surfaces cancel Pick;
+- widget edit and Shell Layout edit cannot compete with Pick;
+- output removal reconciles overlays;
+- failed selection keeps the previous target;
+- restore the editor only after the Code Workflow page is ready.
+
+## Apply state machine
+
+Source mutation also uses explicit states:
+
+~~~text
+CLEAN
+  |
+semantic edit
+  v
+DIRTY
+  |
+Apply
+  v
+VALIDATING
+  |
+  +-- error --> DIRTY + diagnostics
+  |
+  v
+WRITING
+  |
+  v
+WAITING_FOR_RELOAD
+  |
+  +-- reload failed --> APPLY_FAILED
+  |
+  v
+REBINDING
+  |
+  +-- target no longer resident --> APPLIED_STATIC
+  |
+  v
+CLEAN
+~~~
+
+A valid change can intentionally make a target unload. Source-applied and runtime-resident are separate states.
+
+## Revised MVP gate
+
+Do not start writable graph transforms until the read-only Bar prototype proves all of these:
+
+1. semantic registration;
+2. reactive geometry tracking;
+3. per-output picker lifecycle;
+4. picker clicks never leak to underlying controls;
+5. dormant LazyLoaders remain dormant;
+6. source-to-workflow parsing;
+7. correct binding versus event/effect semantics;
+8. subflow drill-down;
+9. safe runtime-property overlay;
+10. reload/rebind continuity.
+
+The first writable transformations should remain narrow:
+
+- literal-to-literal replacement;
+- simple direct binding replacement from a compatible source;
+- direct binding disconnect with an explicit fallback value;
+- unambiguous existing signal -> existing compatible action connection.
+
+New arbitrary JavaScript, component creation, complex conditions and multi-file edits remain later phases.
+
+## Research-pass-2 review failures
+
+An implementation should fail review if any of these occur:
+
+- opening Code Workflow instantiates dormant LazyLoaders;
+- an ordinary QML binding is presented as execution order;
+- replacing a binding with a literal is silent;
+- target geometry depends on niri msg layers;
+- picker uses Exclusive keyboard focus;
+- an invisible picker overlay intercepts input outside Pick mode;
+- standalone Settings expects raw QObject transfer;
+- IpcHandler is treated as an arbitrary object transport;
+- a source write races file-watch reload with a second immediate reload;
+- canvas metadata changes QML source;
+- qmlls is treated as the canonical parser/rewriter;
+- raw CST nodes become product graph nodes;
+- ComponentBehavior/scope is ignored during resolution;
+- package-managed source triggers automatic privilege escalation;
+- Source Preview dominates the workspace by default;
+- node placement implies QML execution order;
+- unsupported syntax is rewritten merely because a parser accepted it.
+
 ## Roadmap
 
 ### Phase 0 - feasibility spikes

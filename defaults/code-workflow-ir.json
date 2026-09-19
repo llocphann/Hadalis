@@ -1,0 +1,518 @@
+{
+  "schema": 1,
+  "mode": "reviewed-source-projection",
+  "editable": false,
+  "sourceAnchorMode": "reviewed-source-needle",
+  "scope": "ii-horizontal-bar-phase1",
+  "graphs": {
+    "bar": {
+      "title": "Bar / semantic modules",
+      "rootNodeId": "bar.component",
+      "sourcePath": "modules/bar/BarContent.qml",
+      "nodes": [
+        {
+          "id": "bar.component",
+          "kind": "component",
+          "title": "Bar",
+          "description": "Root semantic Bar workflow target.",
+          "sourcePath": "modules/bar/BarContent.qml",
+          "sourceNeedle": "readonly property bool taskbarEnabled:",
+          "runtimeTargetId": "bar",
+          "subflowTargetId": "bar",
+          "x": 40,
+          "y": 210,
+          "editable": false
+        },
+        {
+          "id": "bar.loader",
+          "kind": "lifecycle",
+          "title": "Module Loader",
+          "description": "Instantiates only the configured semantic Bar module.",
+          "sourcePath": "modules/bar/BarContent.qml",
+          "sourceNeedle": "sourceComponent: root._allComponents[modelData] ?? null",
+          "x": 320,
+          "y": 210,
+          "editable": false
+        },
+        {
+          "id": "bar.media",
+          "kind": "component",
+          "title": "Media",
+          "description": "MPRIS/media transport and popup workflow.",
+          "sourcePath": "modules/bar/BarContent.qml",
+          "sourceNeedle": "id: mediaModuleComponent",
+          "runtimeTargetId": "bar/media",
+          "subflowTargetId": "bar/media",
+          "x": 650,
+          "y": 60,
+          "editable": false
+        },
+        {
+          "id": "bar.clock",
+          "kind": "component",
+          "title": "Clock",
+          "description": "Date/time presentation and calendar popup workflow.",
+          "sourcePath": "modules/bar/BarContent.qml",
+          "sourceNeedle": "id: clockModuleComponent",
+          "runtimeTargetId": "bar/clock",
+          "subflowTargetId": "bar/clock",
+          "x": 650,
+          "y": 210,
+          "editable": false
+        },
+        {
+          "id": "bar.resources",
+          "kind": "component",
+          "title": "Resources",
+          "description": "Resource sampling presentation/lifecycle workflow.",
+          "sourcePath": "modules/bar/BarContent.qml",
+          "sourceNeedle": "id: resourcesModuleComponent",
+          "runtimeTargetId": "bar/resources",
+          "subflowTargetId": "bar/resources",
+          "x": 650,
+          "y": 360,
+          "editable": false
+        }
+      ],
+      "edges": [
+        {
+          "id": "bar.structure.loader",
+          "from": "bar.component",
+          "to": "bar.loader",
+          "kind": "structure",
+          "label": "module map",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.media",
+          "from": "bar.loader",
+          "to": "bar.media",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.clock",
+          "from": "bar.loader",
+          "to": "bar.clock",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.resources",
+          "from": "bar.loader",
+          "to": "bar.resources",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        }
+      ]
+    },
+    "bar/media": {
+      "title": "Bar / Media",
+      "rootNodeId": "media.component",
+      "sourcePath": "modules/bar/Media.qml",
+      "nodes": [
+        {
+          "id": "media.mpris",
+          "kind": "service",
+          "title": "MprisController",
+          "description": "Active player and transport service.",
+          "sourcePath": "modules/bar/Media.qml",
+          "sourceNeedle": "MprisController.activePlayer",
+          "x": 40,
+          "y": 55,
+          "editable": false
+        },
+        {
+          "id": "media.activePlayer",
+          "kind": "binding",
+          "title": "activePlayer",
+          "description": "Binds the Media component to the active MPRIS player.",
+          "sourcePath": "modules/bar/Media.qml",
+          "sourceNeedle": "readonly property MprisPlayer activePlayer: MprisController.activePlayer",
+          "x": 310,
+          "y": 55,
+          "editable": false
+        },
+        {
+          "id": "media.timer",
+          "kind": "lifecycle",
+          "title": "Position Timer",
+          "description": "Polls position only while the active player is playing.",
+          "sourcePath": "modules/bar/Media.qml",
+          "sourceNeedle": "running: activePlayer?.playbackState == MprisPlaybackState.Playing",
+          "x": 310,
+          "y": 205,
+          "editable": false
+        },
+        {
+          "id": "media.component",
+          "kind": "component",
+          "title": "Media",
+          "description": "Semantic Bar Media component and runtime target.",
+          "sourcePath": "modules/bar/Media.qml",
+          "sourceNeedle": "property bool borderless: Config.options?.bar?.borderless ?? false",
+          "runtimeTargetId": "bar/media",
+          "subflowTargetId": "bar/media",
+          "x": 620,
+          "y": 205,
+          "editable": false
+        },
+        {
+          "id": "media.input",
+          "kind": "event",
+          "title": "Pointer / key input",
+          "description": "MouseArea dispatches transport and expansion gestures.",
+          "sourcePath": "modules/bar/Media.qml",
+          "sourceNeedle": "id: mediaInput",
+          "x": 40,
+          "y": 385,
+          "editable": false
+        },
+        {
+          "id": "media.toggle",
+          "kind": "action",
+          "title": "toggleExpanded()",
+          "description": "Routes expansion to Bar popup or global media controls.",
+          "sourcePath": "modules/bar/Media.qml",
+          "sourceNeedle": "function toggleExpanded(): void",
+          "x": 310,
+          "y": 385,
+          "editable": false
+        },
+        {
+          "id": "media.globalState",
+          "kind": "service",
+          "title": "GlobalStates.mediaControlsOpen",
+          "description": "Global expanded-media route when popupMode is not Bar.",
+          "sourcePath": "modules/bar/Media.qml",
+          "sourceNeedle": "GlobalStates.mediaControlsOpen",
+          "x": 620,
+          "y": 420,
+          "editable": false
+        }
+      ],
+      "edges": [
+        {
+          "id": "media.data.player",
+          "from": "media.mpris",
+          "to": "media.activePlayer",
+          "kind": "data",
+          "label": "active player",
+          "editable": false
+        },
+        {
+          "id": "media.data.component",
+          "from": "media.activePlayer",
+          "to": "media.component",
+          "kind": "data",
+          "label": "metadata/playback",
+          "editable": false
+        },
+        {
+          "id": "media.lifecycle.timer",
+          "from": "media.component",
+          "to": "media.timer",
+          "kind": "lifecycle",
+          "label": "playing",
+          "editable": false
+        },
+        {
+          "id": "media.action.timer",
+          "from": "media.timer",
+          "to": "media.mpris",
+          "kind": "action",
+          "label": "positionChanged",
+          "editable": false
+        },
+        {
+          "id": "media.event.input",
+          "from": "media.input",
+          "to": "media.toggle",
+          "kind": "event",
+          "label": "left/keyboard",
+          "editable": false
+        },
+        {
+          "id": "media.action.expand",
+          "from": "media.toggle",
+          "to": "media.globalState",
+          "kind": "action",
+          "label": "open/close",
+          "editable": false
+        }
+      ]
+    },
+    "bar/clock": {
+      "title": "Bar / Clock",
+      "rootNodeId": "clock.component",
+      "sourcePath": "modules/bar/ClockWidget.qml",
+      "nodes": [
+        {
+          "id": "clock.datetime",
+          "kind": "service",
+          "title": "DateTime",
+          "description": "Shared date/time service.",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "sourceNeedle": "DateTime.timeDisplay",
+          "x": 40,
+          "y": 100,
+          "editable": false
+        },
+        {
+          "id": "clock.time",
+          "kind": "binding",
+          "title": "Time text",
+          "description": "Clock text binding.",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "sourceNeedle": "text: DateTime.timeDisplay",
+          "x": 310,
+          "y": 50,
+          "editable": false
+        },
+        {
+          "id": "clock.date",
+          "kind": "binding",
+          "title": "Date text",
+          "description": "Verbose date binding.",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "sourceNeedle": "text: DateTime.date",
+          "x": 310,
+          "y": 190,
+          "editable": false
+        },
+        {
+          "id": "clock.component",
+          "kind": "component",
+          "title": "Clock",
+          "description": "Semantic Bar Clock runtime target.",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "sourceNeedle": "property bool borderless: Config.options?.bar?.borderless ?? false",
+          "runtimeTargetId": "bar/clock",
+          "subflowTargetId": "bar/clock",
+          "x": 620,
+          "y": 120,
+          "editable": false
+        },
+        {
+          "id": "clock.hover",
+          "kind": "event",
+          "title": "Hover input",
+          "description": "Non-clicking hover target for calendar presentation.",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "sourceNeedle": "id: clockHoverArea",
+          "x": 310,
+          "y": 365,
+          "editable": false
+        },
+        {
+          "id": "clock.popup",
+          "kind": "lifecycle",
+          "title": "Calendar Popup",
+          "description": "Popup lifecycle is attached to the Clock hover target.",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "sourceNeedle": "ClockCalendarPopup {",
+          "x": 620,
+          "y": 365,
+          "editable": false
+        }
+      ],
+      "edges": [
+        {
+          "id": "clock.data.time",
+          "from": "clock.datetime",
+          "to": "clock.time",
+          "kind": "data",
+          "label": "time",
+          "editable": false
+        },
+        {
+          "id": "clock.data.date",
+          "from": "clock.datetime",
+          "to": "clock.date",
+          "kind": "data",
+          "label": "date",
+          "editable": false
+        },
+        {
+          "id": "clock.data.timeComponent",
+          "from": "clock.time",
+          "to": "clock.component",
+          "kind": "data",
+          "label": "text",
+          "editable": false
+        },
+        {
+          "id": "clock.data.dateComponent",
+          "from": "clock.date",
+          "to": "clock.component",
+          "kind": "data",
+          "label": "text",
+          "editable": false
+        },
+        {
+          "id": "clock.event.hover",
+          "from": "clock.hover",
+          "to": "clock.popup",
+          "kind": "event",
+          "label": "hover",
+          "editable": false
+        },
+        {
+          "id": "clock.lifecycle.popup",
+          "from": "clock.component",
+          "to": "clock.popup",
+          "kind": "lifecycle",
+          "label": "presentation",
+          "editable": false
+        }
+      ]
+    },
+    "bar/resources": {
+      "title": "Bar / Resources",
+      "rootNodeId": "resources.component",
+      "sourcePath": "modules/bar/Resources.qml",
+      "nodes": [
+        {
+          "id": "resources.usage",
+          "kind": "service",
+          "title": "ResourceUsage",
+          "description": "CPU/RAM/GPU resource sampling service.",
+          "sourcePath": "modules/bar/Resources.qml",
+          "sourceNeedle": "ResourceUsage.keepAlive()",
+          "x": 40,
+          "y": 75,
+          "editable": false
+        },
+        {
+          "id": "resources.memory",
+          "kind": "binding",
+          "title": "Memory usage",
+          "description": "Memory indicator binding.",
+          "sourcePath": "modules/bar/Resources.qml",
+          "sourceNeedle": "percentage: ResourceUsage.memoryUsedPercentage",
+          "x": 310,
+          "y": 35,
+          "editable": false
+        },
+        {
+          "id": "resources.cpu",
+          "kind": "binding",
+          "title": "CPU usage",
+          "description": "CPU indicator binding.",
+          "sourcePath": "modules/bar/Resources.qml",
+          "sourceNeedle": "percentage: ResourceUsage.cpuUsage",
+          "x": 310,
+          "y": 155,
+          "editable": false
+        },
+        {
+          "id": "resources.component",
+          "kind": "component",
+          "title": "Resources",
+          "description": "Semantic Bar Resources runtime target.",
+          "sourcePath": "modules/bar/Resources.qml",
+          "sourceNeedle": "property bool alwaysShowAllResources: false",
+          "runtimeTargetId": "bar/resources",
+          "subflowTargetId": "bar/resources",
+          "x": 650,
+          "y": 105,
+          "editable": false
+        },
+        {
+          "id": "resources.gameMode",
+          "kind": "service",
+          "title": "GameMode",
+          "description": "Pauses resource sampling demand while Game Mode is active.",
+          "sourcePath": "modules/bar/Resources.qml",
+          "sourceNeedle": "readonly property bool _resourceUsageWanted: root.visible && !GameMode.active",
+          "x": 40,
+          "y": 350,
+          "editable": false
+        },
+        {
+          "id": "resources.wanted",
+          "kind": "binding",
+          "title": "Sampling wanted",
+          "description": "Combines component visibility and Game Mode.",
+          "sourcePath": "modules/bar/Resources.qml",
+          "sourceNeedle": "readonly property bool _resourceUsageWanted: root.visible && !GameMode.active",
+          "x": 310,
+          "y": 350,
+          "editable": false
+        },
+        {
+          "id": "resources.keepAlive",
+          "kind": "lifecycle",
+          "title": "keepAlive / release",
+          "description": "Acquires and releases ResourceUsage sampling ownership.",
+          "sourcePath": "modules/bar/Resources.qml",
+          "sourceNeedle": "ResourceUsage.releaseKeepAlive()",
+          "x": 650,
+          "y": 350,
+          "editable": false
+        }
+      ],
+      "edges": [
+        {
+          "id": "resources.data.memory",
+          "from": "resources.usage",
+          "to": "resources.memory",
+          "kind": "data",
+          "label": "memory",
+          "editable": false
+        },
+        {
+          "id": "resources.data.cpu",
+          "from": "resources.usage",
+          "to": "resources.cpu",
+          "kind": "data",
+          "label": "cpu",
+          "editable": false
+        },
+        {
+          "id": "resources.data.memoryComponent",
+          "from": "resources.memory",
+          "to": "resources.component",
+          "kind": "data",
+          "label": "indicator",
+          "editable": false
+        },
+        {
+          "id": "resources.data.cpuComponent",
+          "from": "resources.cpu",
+          "to": "resources.component",
+          "kind": "data",
+          "label": "indicator",
+          "editable": false
+        },
+        {
+          "id": "resources.data.gameMode",
+          "from": "resources.gameMode",
+          "to": "resources.wanted",
+          "kind": "data",
+          "label": "active",
+          "editable": false
+        },
+        {
+          "id": "resources.lifecycle.wanted",
+          "from": "resources.wanted",
+          "to": "resources.keepAlive",
+          "kind": "lifecycle",
+          "label": "acquire/release",
+          "editable": false
+        },
+        {
+          "id": "resources.action.keepAlive",
+          "from": "resources.keepAlive",
+          "to": "resources.usage",
+          "kind": "action",
+          "label": "consumer refcount",
+          "editable": false
+        }
+      ]
+    }
+  }
+}

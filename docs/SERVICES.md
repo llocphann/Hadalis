@@ -42,6 +42,15 @@
 | **ShellLayoutController** | Validates and persists bar, dock, taskbar and sidebar placement across panel families. IPC target: `shellLayout`. |
 | **Privacy** | Mic and screen sharing detection via PipeWire link analysis. |
 
+## Developer Inspection
+
+| Service | What it does |
+|---------|-------------|
+| **CodeWorkflowRuntime** | Narrow semantic runtime registry for live Code Workflow targets and safe allowlisted values. |
+| **CodeWorkflowIr** | Loads the versioned read-only semantic projection manifest used by the workflow graph; source-range parsing remains a separate boundary. |
+| **CodeWorkflowPicker** | In-process per-output component picker lifecycle for overlay Settings; no standalone cross-process bridge. |
+| **CodeWorkflowSession** | Persists primitive Workflow target, subflow, selected-node and viewport state across lazy page/reload lifetimes. |
+
 ## Theming and Appearance
 
 | Service | What it does |

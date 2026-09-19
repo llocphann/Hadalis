@@ -47,11 +47,30 @@ qualified by Phase 0 and does not introduce source writes.
 - scripts/test-code-workflow-picker-contract.py statically guards these lifecycle
   rules. Production live compositor acceptance remains to be run on a desktop.
 
+## Milestone 3 implemented
+
+- defaults/code-workflow-ir.json is a versioned, read-only semantic projection
+  manifest for Bar, Media, Clock and Resources.
+- The projection covers component, service, binding, event, action and lifecycle
+  node kinds plus structural/data/event/action/lifecycle edges.
+- Every projected node carries a sourcePath + reviewed sourceNeedle and
+  editable=false. The contract test rejects stale anchors and invalid endpoints.
+- CodeWorkflowIr loads the manifest as data; it does not regex-parse QML and does
+  not claim source ranges that only the parser/CST layer can provide.
+- CodeWorkflowSession now persists subflowTargetId + selectedNodeId. Picking or
+  choosing Media/Clock/Resources opens that semantic subflow directly.
+- CodeWorkflowIrCanvas renders nodes and wires from the IR with GeometryRenderer.
+  The previous fixed Bar -> Media/Clock/Resources graph is gone.
+- Inspector and Source Preview follow the selected semantic node; reviewed source
+  anchors are highlighted as evidence.
+- scripts/test-code-workflow-ir-contract.py validates manifest schema, source
+  anchors, edge endpoints, read-only status, kind coverage and graph integration.
+
 ## Still deliberately unfinished
 
 - production picker live-compositor acceptance on the shipped shell;
-- parser helper packaging and semantic Workflow IR;
-- dynamic binding/event/effect/lifecycle graph construction;
+- parser helper packaging and CST-backed byte ranges/stable anchors;
+- generic semantic extraction beyond the reviewed ii Bar projection;
 - source patches, Apply, transactions, conflicts or undo/redo;
 - Sidebar, Dashboard, Dock, Waffle and shell-wide coverage;
 - Curve renderer promotion; memory acceptance remains HOLD.
@@ -59,8 +78,8 @@ qualified by Phase 0 and does not introduce source writes.
 ## Next milestone
 
 Run the production picker through the same Niri/Sway acceptance ideas proven in
-Phase 0, without weakening its contracts. Then package the parser boundary and
-build the first real read-only Workflow IR for Bar/Media so graph nodes are
-derived from semantics instead of the current fixed read-only projection.
+Phase 0, without weakening its contracts. In parallel, package the parser boundary
+so the reviewed sourceNeedle anchors can become CST-backed byte ranges and stable
+semantic anchors without changing the graph-domain schema.
 
 No manual or live smoke result is implied here.

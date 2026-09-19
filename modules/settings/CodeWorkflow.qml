@@ -26,7 +26,18 @@ Item {
         CodeWorkflowRuntime.descriptor(CodeWorkflowSession.selectedTargetId)
             ?? CodeWorkflowRuntime.catalog[0]
     readonly property var record: root.recordFor(CodeWorkflowSession.selectedTargetId)
-    readonly property string sourcePath: root.descriptor?.sourcePath ?? ""
+    readonly property var graph:
+        CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)
+    readonly property var selectedIrNode:
+        CodeWorkflowIr.nodeFor(
+            CodeWorkflowSession.subflowTargetId,
+            CodeWorkflowSession.selectedNodeId)
+    readonly property string sourcePath:
+        root.selectedIrNode?.sourcePath
+            ?? root.descriptor?.sourcePath
+            ?? ""
+    readonly property string sourceNeedle:
+        root.selectedIrNode?.sourceNeedle ?? ""
     readonly property bool live:
         root.snapshot.records?.some(item => item.state === "resident") ?? false
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
@@ -67,16 +78,7 @@ Item {
             outputs[(current + 1 + outputs.length) % outputs.length])
     }
 
-    function zoomAt(x: real, y: real, nextZoom: real): void {
-        const oldZoom = CodeWorkflowSession.zoom
-        const zoom = Math.max(0.35, Math.min(2.5, nextZoom))
-        const graphX = (x - CodeWorkflowSession.panX) / oldZoom
-        const graphY = (y - CodeWorkflowSession.panY) / oldZoom
-        CodeWorkflowSession.setViewport(
-            x - graphX * zoom, y - graphY * zoom, zoom)
-    }
-
-    function stateLabel(item): string {
+    function stateLabel(item): string {    function stateLabel(item): string {
         return item?.state === "resident" ? "LIVE" : "STATIC"
     }
 
@@ -98,7 +100,18 @@ Item {
             sourceReader.reload()
     }
 
+    function focusSourceAnchor(): void {
+        if (root.sourceNeedle.length === 0 || root.sourceText.length === 0)
+            return
+        const start = root.sourceText.indexOf(root.sourceNeedle)
+        if (start < 0)
+            return
+        sourcePreviewText.select(start, start + root.sourceNeedle.length)
+        sourcePreviewText.cursorPosition = start
+    }
+
     onSourcePathChanged: Qt.callLater(root.reloadSource)
+    onSourceNeedleChanged: Qt.callLater(root.focusSourceAnchor)
 
     Component.onCompleted: {
         const outputs = root.snapshot.outputs ?? []
@@ -112,7 +125,10 @@ Item {
         path: root.sourcePath.length > 0 ? Quickshell.shellPath(root.sourcePath) : ""
         watchChanges: true
         printErrors: false
-        onLoaded: root.sourceText = String(sourceReader.text() ?? "")
+        onLoaded: {
+            root.sourceText = String(sourceReader.text() ?? "")
+            Qt.callLater(root.focusSourceAnchor)
+        }
         onFileChanged: sourceReader.reload()
         onLoadFailed: root.sourceText = ""
     }
@@ -137,108 +153,8 @@ Item {
         }
     }
 
-    component Node: Rectangle {
-        id: node
-        required property string targetId
-        required property string title
-        required property string icon
-        required property real nodeX
-        required property real nodeY
-
-        readonly property var runtimeRecord: root.recordFor(node.targetId)
-        readonly property bool selected:
-            CodeWorkflowSession.selectedTargetId === node.targetId
-
-        x: nodeX
-        y: nodeY
-        width: 188
-        height: 88
-        radius: Appearance.rounding.normal
-        color: selected ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer1
-        border.width: selected ? 2 : 1
-        border.color: selected ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
-        activeFocusOnTab: true
-
-        Accessible.role: Accessible.Button
-        Accessible.name: node.title + " workflow node"
-        Accessible.description: "Read-only workflow target"
-
-        TapHandler {
-            onTapped: {
-                root.selectTarget(node.targetId)
-                node.forceActiveFocus()
-            }
-        }
-        Keys.onPressed: event => {
-            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
-                    || event.key === Qt.Key_Space) {
-                root.selectTarget(node.targetId)
-                event.accepted = true
-            } else {
-                event.accepted = false
-            }
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 11
-            spacing: 3
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 7
-                MaterialSymbol {
-                    text: node.icon
-                    iconSize: Appearance.font.pixelSize.large
-                    color: node.selected ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
-                }
-                StyledText {
-                    Layout.fillWidth: true
-                    text: node.title
-                    color: Appearance.colors.colOnLayer1
-                    font.pixelSize: Appearance.font.pixelSize.normal
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
-                Pill {
-                    label: root.stateLabel(node.runtimeRecord)
-                    accent: node.runtimeRecord?.state === "resident"
-                        ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
-                }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                text: node.runtimeRecord?.output?.length > 0 ? node.runtimeRecord.output : "source only"
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                elide: Text.ElideRight
-            }
-            StyledText {
-                Layout.fillWidth: true
-                text: CodeWorkflowRuntime.descriptor(node.targetId)?.sourcePath ?? ""
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                font.family: Appearance.font.family.monospace
-                elide: Text.ElideMiddle
-            }
-        }
-
-        Rectangle {
-            x: -4
-            anchors.verticalCenter: parent.verticalCenter
-            width: 8; height: 8; radius: 4
-            color: Appearance.colors.colPrimary
-        }
-        Rectangle {
-            x: parent.width - 4
-            anchors.verticalCenter: parent.verticalCenter
-            width: 8; height: 8; radius: 4
-            color: Appearance.colors.colPrimary
-        }
-    }
-
     ColumnLayout {
+        anchors.fill: parent    ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 8
@@ -274,7 +190,9 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Phase 1 · horizontal ii Bar · graph is the editor"
+                        text: "Phase 1 · "
+                            + (root.graph?.title ?? "Workflow")
+                            + " · graph is the editor"
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         color: Appearance.colors.colSubtext
                     }
@@ -293,6 +211,13 @@ Item {
                     enabled: (root.snapshot.outputs?.length ?? 0) > 0
                     onClicked: root.cycleOutput()
                 }
+                RippleButtonWithIcon {
+                    visible: CodeWorkflowSession.subflowTargetId !== "bar"
+                    materialIcon: "arrow_back"
+                    mainText: "Bar"
+                    onClicked: CodeWorkflowSession.openSubflow("bar")
+                }
+
                 RippleButtonWithIcon {
                     materialIcon: "ads_click"
                     mainText: CodeWorkflowPicker.phase === "idle"
@@ -413,116 +338,15 @@ Item {
                 }
             }
 
-            Rectangle {
+            CodeWorkflowIrCanvas {
                 id: canvas
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumWidth: 360
-                radius: Appearance.rounding.normal
-                color: Appearance.colors.colLayer0
-                border.width: 1
-                border.color: Appearance.colors.colOutlineVariant
-                clip: true
-
-                DragHandler {
-                    id: pan
-                    target: null
-                    acceptedButtons: Qt.MiddleButton
-                    property real baseX: 0
-                    property real baseY: 0
-                    onActiveChanged: {
-                        if (active) {
-                            baseX = CodeWorkflowSession.panX
-                            baseY = CodeWorkflowSession.panY
-                        }
-                    }
-                    onActiveTranslationChanged: {
-                        if (active)
-                            CodeWorkflowSession.setViewport(
-                                baseX + activeTranslation.x,
-                                baseY + activeTranslation.y,
-                                CodeWorkflowSession.zoom)
-                    }
-                }
-
-                WheelHandler {
-                    target: null
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: event => {
-                        const delta = event.pixelDelta.y !== 0
-                            ? event.pixelDelta.y * 3 : event.angleDelta.y
-                        root.zoomAt(event.x, event.y,
-                            CodeWorkflowSession.zoom * Math.pow(1.0015, delta))
-                        event.accepted = true
-                    }
-                }
-
-                Item {
-                    id: world
-                    width: 820
-                    height: 500
-                    x: CodeWorkflowSession.panX
-                    y: CodeWorkflowSession.panY
-                    scale: CodeWorkflowSession.zoom
-                    transformOrigin: Item.TopLeft
-
-                    Shape {
-                        anchors.fill: parent
-                        preferredRendererType: Shape.GeometryRenderer
-                        asynchronous: false
-
-                        ShapePath {
-                            strokeColor: CodeWorkflowSession.selectedTargetId === "bar/media"
-                                ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
-                            strokeWidth: 2
-                            fillColor: "transparent"
-                            startX: 228; startY: 214
-                            PathCubic { x: 420; y: 94; control1X: 310; control1Y: 214; control2X: 338; control2Y: 94 }
-                        }
-                        ShapePath {
-                            strokeColor: CodeWorkflowSession.selectedTargetId === "bar/clock"
-                                ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
-                            strokeWidth: 2
-                            fillColor: "transparent"
-                            startX: 228; startY: 214
-                            PathCubic { x: 420; y: 214; control1X: 306; control1Y: 214; control2X: 342; control2Y: 214 }
-                        }
-                        ShapePath {
-                            strokeColor: CodeWorkflowSession.selectedTargetId === "bar/resources"
-                                ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
-                            strokeWidth: 2
-                            fillColor: "transparent"
-                            startX: 228; startY: 214
-                            PathCubic { x: 420; y: 334; control1X: 310; control1Y: 214; control2X: 338; control2Y: 334 }
-                        }
-                    }
-
-                    Node { targetId: "bar"; title: "Bar"; icon: "toolbar"; nodeX: 40; nodeY: 170 }
-                    Node { targetId: "bar/media"; title: "Media"; icon: "music_note"; nodeX: 420; nodeY: 50 }
-                    Node { targetId: "bar/clock"; title: "Clock"; icon: "schedule"; nodeX: 420; nodeY: 170 }
-                    Node { targetId: "bar/resources"; title: "Resources"; icon: "memory"; nodeX: 420; nodeY: 290 }
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.bottom: parent.bottom
-                    anchors.margins: 10
-                    implicitWidth: hint.implicitWidth + 14
-                    implicitHeight: hint.implicitHeight + 8
-                    radius: Appearance.rounding.small
-                    color: Appearance.colors.colLayer2
-                    StyledText {
-                        id: hint
-                        anchors.centerIn: parent
-                        text: "Middle drag to pan · Wheel to zoom · "
-                            + Math.round(CodeWorkflowSession.zoom * 100) + "%"
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                    }
-                }
             }
 
             Rectangle {
+                Layout.preferredWidth: 250            Rectangle {
                 Layout.preferredWidth: 250
                 Layout.fillHeight: true
                 radius: Appearance.rounding.normal
@@ -543,15 +367,32 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.descriptor?.label ?? "Target"
+                        text: root.selectedIrNode?.title
+                            ?? root.descriptor?.label
+                            ?? "Target"
                         color: Appearance.colors.colPrimary
                         font.pixelSize: Appearance.font.pixelSize.large
                         font.weight: Font.DemiBold
                     }
                     Pill {
-                        label: root.stateLabel(root.record)
-                        accent: root.record?.state === "resident"
-                            ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                        label: String(root.selectedIrNode?.kind ?? "component").toUpperCase()
+                        accent: Appearance.colors.colPrimary
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.selectedIrNode?.description ?? ""
+                        visible: text.length > 0
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
+                    }
+                    StyledText { text: "Runtime"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.stateLabel(root.record)
+                        color: root.record?.state === "resident"
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colSubtext
                     }
                     StyledText { text: "Output"; color: Appearance.colors.colSubtext }
                     StyledText {
@@ -574,6 +415,17 @@ Item {
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smaller
+                        wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText { text: "Source anchor"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.sourceNeedle.length > 0
+                            ? root.sourceNeedle
+                            : "Parser range not attached yet"
+                        color: Appearance.colors.colOnLayer1
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WrapAnywhere
                     }
                     StyledText {
@@ -638,13 +490,13 @@ Item {
                     Flickable {
                         anchors.fill: parent
                         anchors.margins: 7
-                        contentWidth: Math.max(width, sourceText.implicitWidth)
+                        contentWidth: Math.max(width, sourcePreviewText.implicitWidth)
                         contentHeight: Math.max(height, sourceText.implicitHeight)
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
 
                         TextEdit {
-                            id: sourceText
+                            id: sourcePreviewText
                             width: Math.max(parent.width, implicitWidth)
                             text: root.sourceText
                             readOnly: true

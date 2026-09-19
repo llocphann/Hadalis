@@ -57,6 +57,9 @@ done < sdata/runtime-root-files.txt
 # than the required non-Nix packaging contract.
 grep -Fq 'for doc in docs/*.md; do' "$package" \
   || fail 'Nix package no longer installs repository documentation'
+if grep -Fq '"$docs/${doc##*/}"' "$package"; then
+  fail 'Nix package docs loop contains an unescaped Bash parameter expansion inside an indented string'
+fi
 grep -Fq 'install -Dm644 LICENSE "$out/share/licenses/inir/LICENSE"' "$package" \
   || fail 'Nix package no longer installs the project license'
 grep -Fq 'Nix-managed installations keep inir.service declarative' "$package" \

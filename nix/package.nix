@@ -332,7 +332,7 @@ EOF
 
     install -Dm644 README.md "$docs/README.md"
     for doc in docs/*.md; do
-      install -Dm644 "$doc" "$docs/${doc##*/}"
+      install -Dm644 "$doc" "$docs/''${doc##*/}"
     done
     install -Dm644 LICENSE "$out/share/licenses/inir/LICENSE"
 

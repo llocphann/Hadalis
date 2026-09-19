@@ -64,14 +64,15 @@ def main() -> None:
 
     perimeter_tokens = read("modules/common/perimeter/PerimeterTokens.qml")
     for token in (
-        "readonly property real frameRadius: 25",
+        "const revision = Config.revision",
+        "Config.options?.appearance?.screenEdge?.radius ?? 25",
+        "Math.max(0, Math.min(96",
         "readonly property real smoothUnionRadius: 20",
         "readonly property real popupRadius: 28",
-        "readonly property real joinFlareRadius: smoothUnionRadius",
-        "readonly property real joinFlareCrossScale: 0.55",
+        "readonly property real joinFlareRadius: frameRadius",
     ):
         check(token in perimeter_tokens,
-              f"Caelestia geometry token missing: {token}")
+              f"Shared Screen Edge/contact-corner geometry token missing: {token}")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
     for edge in ("top", "bottom", "left", "right"):
@@ -175,12 +176,11 @@ def main() -> None:
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")
-    check("screenEdge?.radius" not in screen_edge
-          and "PerimeterTokens.frameRadius" not in screen_edge
+    check("Config.options?.appearance?.screenEdge?.radius" not in screen_edge
           and "RoundCorner {" not in screen_edge
-          and "readonly property int rounding: 25" in screen_edge
+          and "readonly property real rounding: PerimeterTokens.frameRadius" in screen_edge
           and "readonly property int outerPadding: 50" in screen_edge,
-          "Screen Edge must use Caelestia's 25px inner rounding and 50px outer frame padding")
+          "Screen Edge must consume the shared configurable radius while preserving the locked inverted-frame geometry")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
     check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
@@ -245,7 +245,7 @@ def main() -> None:
           and screen_edge.count("direction: PathArc.Clockwise") == 4,
           "Screen Edge must keep one and only one painted inverted-frame path")
     for locked_geometry in (
-        "readonly property int rounding: 25",
+        "readonly property real rounding: PerimeterTokens.frameRadius",
         "readonly property int outerPadding: 50",
         "readonly property real innerLeft: t",
         "readonly property real innerTop: t",
@@ -487,33 +487,37 @@ def main() -> None:
 
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     for token in (
-        "component Flare: Canvas {",
-        "const k = 0.5522847498",
-        'corner === "topLeft"',
-        'corner === "topRight"',
-        'corner === "bottomLeft"',
-        'corner === "bottomRight"',
-        'corner === "leftTop"',
-        'corner === "leftBottom"',
-        'corner === "rightTop"',
-        'corner === "rightBottom"',
+        "import QtQuick.Shapes",
+        "component Flare: Item {",
+        'flareCorner === "topLeft" || flareCorner === "rightBottom"',
+        'flareCorner === "topRight" || flareCorner === "leftBottom"',
+        'flareCorner === "bottomLeft" || flareCorner === "rightTop"',
+        '"bottomLeft"',
         "root.bodyItem.mapToItem(root, 0, 0)",
+        "preferredRendererType: Shape.CurveRenderer",
+        "direction: PathArc.Clockwise",
+        "radiusX: cornerShape.width",
+        "radiusY: cornerShape.height",
+        "xScale: flare.mirrorX ? -1 : 1",
+        "yScale: flare.mirrorY ? -1 : 1",
         "visible: root.reveal > 0.001 && root.radius > 0",
     ):
         check(token in join_flares,
-              f"Restored Caelestia Canvas shoulder contract missing: {token}")
-    check("component Flare: RoundCorner" not in join_flares
+              f"Exact Screen Edge contact-corner contract missing: {token}")
+    check("Canvas {" not in join_flares
+          and "PathCubic" not in join_flares
+          and "joinFlareCrossScale" not in join_flares
+          and "root.depth" not in join_flares
           and "PerimeterCornerShadow" not in join_flares
           and "property bool shadowEnabled" not in join_flares
           and "property real shadowExtent" not in join_flares
           and "property color shadowColor" not in join_flares,
-          "Rejected RoundCorner/corner-shadow flare rewrite must stay reverted")
-    check("root.radius * Math.max(0.20, Math.min(1, root.crossScale))" in join_flares
-          and "width: root.radius" in join_flares
-          and "height: root.depth" in join_flares,
-          "Bar popup shoulder must keep Caelestia's broad tangent / compressed cross-axis contact")
+          "Connected contact corners must be exact fill-only PathArc clones, not ellipse/Canvas/shadow approximations")
+    check(join_flares.count("width: root.radius") == 8
+          and join_flares.count("height: root.radius") == 8,
+          "All eight attachment endpoints must use the same square Screen Edge radius")
     check(") * root.reveal" not in join_flares,
-          "Caelestia shoulder radius must stay fully formed during reveal")
+          "Screen Edge contact-corner radius must stay fully formed during reveal")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
@@ -660,9 +664,12 @@ def main() -> None:
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
-    check('appearance.screenEdge.radius' not in bar_settings
-          and 'Translation.tr("Border radius (px)")' not in bar_settings,
-          "Bar settings must not expose retired Screen Edge radius while square baseline is active")
+    check('Config.options?.appearance?.screenEdge?.radius ?? 25' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.radius", value)' in bar_settings
+          and 'Translation.tr("Corner radius (px)")' in bar_settings
+          and 'from: 0' in bar_settings
+          and 'to: 96' in bar_settings,
+          "Bar settings must expose the shared Screen Edge/contact-corner radius with a 25px default")
     check('appearance.screenEdge.shadow' not in bar_settings
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled", checked)' in bar_settings

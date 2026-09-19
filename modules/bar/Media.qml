@@ -49,14 +49,7 @@ Item {
         onTriggered: activePlayer?.positionChanged()
     }
 
-    property bool volumePopupVisible: false
-    property real volumePopupValue: Math.max(0, Math.min(1, MprisController.getVolume()))
     property bool barMediaPopupVisible: false
-
-    onActivePlayerChanged: {
-        volumePopupVisible = false
-        volumePopupValue = Math.max(0, Math.min(1, MprisController.getVolume()))
-    }
 
     function toggleExpanded(): void {
         if (root.popupMode === "bar")
@@ -65,61 +58,24 @@ Item {
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
     }
 
-    Timer {
-        id: hideTimer
-        interval: 1000
-        onTriggered: root.volumePopupVisible = false
-    }
-
-    Connections {
-        target: MprisController
-        function onVolumeChanged() {
-            if (!root.volumePopupVisible)
-                root.volumePopupValue = MprisController.getVolume()
-        }
-    }
-
-    // The wheel-volume HUD is a real bar popout now, not a detached PopupWindow.
-    StyledPopup {
-        id: volumePopup
-        hoverTarget: root
-        hoverActivates: false
-        alternativeVisibleCondition: root.volumePopupVisible
-
-        Row {
-            spacing: 6
-
-            MaterialSymbol {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.volumePopupValue === 0 ? "volume_off" : "volume_up"
-                iconSize: Appearance.font.pixelSize.normal
-                color: Appearance.colors.colOnLayer0
-            }
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Math.round(root.volumePopupValue * 100) + "%"
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colOnLayer0
-            }
-        }
-    }
-
     // Expanded media controls use the same morphing surface as the small bar
     // popouts. Internal player cards stay intact, but the outer shell deforms
     // directly from the media module instead of opening a floating window/card.
     StyledPopup {
         id: barMediaPopup
-        hoverTarget: root
-        hoverActivates: false
+        hoverTarget: mediaInput
+        hoverActivates: true
         alternativeVisibleCondition: root.barMediaPopupVisible && root.popupMode === "bar"
-        closeOnOutsideClick: true
-        keyboardFocus: true
+        closeOnOutsideClick: root.barMediaPopupVisible
+        keyboardFocus: root.barMediaPopupVisible
         popupBackgroundMargin: Appearance.sizes.elevationMargin
         onRequestClose: root.barMediaPopupVisible = false
 
         function restoreInitialFocus(): void {
             Qt.callLater(() => {
-                if (barMediaPopup.requestedVisible && barMediaPopup.presentationWindow)
+                if (root.barMediaPopupVisible
+                        && barMediaPopup.requestedVisible
+                        && barMediaPopup.presentationWindow)
                     mediaPopupContent.focusInitialControl()
             })
         }
@@ -144,6 +100,7 @@ Item {
         id: mediaInput
         anchors.fill: parent
         acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
+        hoverEnabled: true
         activeFocusOnTab: true
 
         Accessible.role: Accessible.Button
@@ -172,17 +129,6 @@ Item {
             } else if (event.button === Qt.LeftButton) {
                 root.toggleExpanded()
             }
-        }
-        onWheel: (event) => {
-            if (!MprisController.canChangeVolume) return
-            const step = 0.05
-            const current = root.volumePopupVisible
-                ? root.volumePopupValue : MprisController.getVolume()
-            if (event.angleDelta.y > 0) root.volumePopupValue = Math.min(1, current + step)
-            else if (event.angleDelta.y < 0) root.volumePopupValue = Math.max(0, current - step)
-            MprisController.setVolume(root.volumePopupValue)
-            volumePopupVisible = true
-            hideTimer.restart()
         }
     }
 

@@ -18,7 +18,6 @@ MouseArea {
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
     readonly property string popupMode: Config.options?.media?.popupMode ?? "dock"
-    property bool volumePopupVisible: false
     property bool barMediaPopupVisible: false
 
     Layout.fillHeight: true
@@ -30,12 +29,6 @@ MouseArea {
         interval: Config.options?.resources?.updateInterval ?? 3000
         repeat: true
         onTriggered: activePlayer?.positionChanged()
-    }
-
-    Timer {
-        id: volumeHideTimer
-        interval: 1000
-        onTriggered: root.volumePopupVisible = false
     }
 
     acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
@@ -54,15 +47,6 @@ MouseArea {
                 GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
             }
         }
-    }
-    onWheel: (event) => {
-        if (!MprisController.canChangeVolume) return
-        const step = 0.05
-        const current = MprisController.getVolume()
-        if (event.angleDelta.y > 0) MprisController.setVolume(Math.min(1, current + step))
-        else if (event.angleDelta.y < 0) MprisController.setVolume(Math.max(0, current - step))
-        root.volumePopupVisible = true
-        volumeHideTimer.restart()
     }
 
     ClippedFilledCircularProgress {
@@ -90,49 +74,24 @@ MouseArea {
         }
     }
 
-    // Volume HUD uses the semantic visibility contract of the shared Bar popup;
-    // never override LazyLoader.active from the caller.
-    Bar.StyledPopup {
-        hoverTarget: root
-        hoverActivates: false
-        alternativeVisibleCondition:
-            root.volumePopupVisible
-            && !GlobalStates.mediaControlsOpen
-            && !root.barMediaPopupVisible
-
-        Row {
-            anchors.centerIn: parent
-            spacing: 4
-            MaterialSymbol {
-                text: (activePlayer?.volume ?? 0) === 0 ? "volume_off" : "volume_up"
-                iconSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurface
-            }
-            StyledText {
-                text: Math.round((activePlayer?.volume ?? 0) * 100) + "%"
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colOnSurface
-            }
-        }
-    }
-
     // Expanded media controls use the same connected surface as Horizontal Bar.
     // StyledPopup owns output routing, outside-click catcher and keyboard focus.
     Bar.StyledPopup {
         id: barMediaPopup
 
         hoverTarget: root
-        hoverActivates: false
+        hoverActivates: true
         alternativeVisibleCondition:
             root.barMediaPopupVisible && root.popupMode === "bar"
-        closeOnOutsideClick: true
-        keyboardFocus: true
+        closeOnOutsideClick: root.barMediaPopupVisible
+        keyboardFocus: root.barMediaPopupVisible
         popupBackgroundMargin: Appearance.sizes.elevationMargin
         onRequestClose: root.barMediaPopupVisible = false
 
         function restoreInitialFocus(): void {
             Qt.callLater(() => {
-                if (barMediaPopup.requestedVisible
+                if (root.barMediaPopupVisible
+                        && barMediaPopup.requestedVisible
                         && barMediaPopup.presentationWindow)
                     mediaPopupContent.focusInitialControl()
             })

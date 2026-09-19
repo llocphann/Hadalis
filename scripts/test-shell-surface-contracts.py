@@ -175,9 +175,11 @@ def main() -> None:
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")
-    check("Config.options?.appearance?.screenEdge?.radius" in screen_edge
-          and "PerimeterTokens.frameRadius" in screen_edge,
-          "Screen Edge radius must be user-configurable with Caelestia 25px fallback")
+    check("screenEdge?.radius" not in screen_edge
+          and "PerimeterTokens.frameRadius" not in screen_edge
+          and "RoundCorner {" not in screen_edge
+          and "innerRadius" not in screen_edge,
+          "Screen Edge baseline must stay square and free of curved corner geometry")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
     check("!GlobalStates.screenLocked" in screen_edge and "!fullscreenCovered" in screen_edge,
@@ -188,32 +190,28 @@ def main() -> None:
           and "gradient: Gradient {" in screen_edge
           and "shadowEnabled: root.shadowEnabled" in screen_edge
           and "shadowExtent: root.shadowExtent" in screen_edge,
-          "Screen Edge must combine deterministic straight and curved in-window shadows")
+          "Screen Edge must use deterministic straight in-window shadows")
     check("layer.effect: MultiEffect {" not in screen_edge,
           "Screen Edge shadow must not depend on compositor-sensitive layer-effect padding")
-    check("root.thickness + root.innerRadius + root.shadowExtent" in screen_edge,
-          "Horizontal Screen Edge host must reserve room for curve plus inward shadow")
+    check("implicitHeight: horizontal ? root.thickness + root.shadowExtent : 1" in screen_edge
+          and "implicitWidth: horizontal ? 1 : root.thickness + root.shadowExtent" in screen_edge,
+          "Square Screen Edge host must reserve only band plus straight inward shadow")
     check("adjacentIiBarBodySpan" in screen_edge
           and "Appearance.sizes.verticalBarWidth" in screen_edge
           and "Appearance.sizes.barHeight" in screen_edge,
           "Screen Edge must trim only the actual ii Bar body span before corner redesign")
     check("const iiOwned = !root.waffleFamily" in screen_edge,
           "Screen Edge ii-Bar ownership must not leak into the Waffle panel family")
-    check("PERIMETER-CORNER-LOCK (maintainer approved 2026-09-19)" in screen_edge,
-          "Approved lower Screen Edge corner lock marker must remain present")
-    for token in (
+    for retired_geometry in (
+        "PERIMETER-CORNER-LOCK",
         "id: leadingCorner",
         "id: trailingCorner",
-        "leftMargin: root.thickness",
-        "rightMargin: root.thickness",
-        "implicitSize: root.innerRadius",
-        "? RoundCorner.CornerEnum.TopLeft",
-        ": RoundCorner.CornerEnum.BottomLeft",
-        "? RoundCorner.CornerEnum.TopRight",
-        ": RoundCorner.CornerEnum.BottomRight",
+        "RoundCorner.CornerEnum",
+        "PathCubic",
+        "RadialGradient",
     ):
-        check(token in screen_edge,
-              f"Locked lower Screen Edge corner geometry changed: {token}")
+        check(retired_geometry not in screen_edge,
+              f"Square Screen Edge must not restore retired corner geometry: {retired_geometry}")
     for edge in ("top", "bottom", "left", "right"):
         check(f'EdgeWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must render the persistent {edge} output edge")
@@ -467,12 +465,11 @@ def main() -> None:
               and "shadowTangentInset" not in runtime
               and "shadowSeamOverlap" not in runtime,
               "Rejected curved Bar shadow stitching must stay reverted")
-    check("screenEdge?.radius" in bar_runtime
-          and "PerimeterTokens.frameRadius" in bar_runtime,
-          "Horizontal Bar auto-hide fallback must follow the configurable Screen Edge radius")
-    check("screenEdge?.radius" in vertical_bar_runtime
-          and "PerimeterTokens.frameRadius" in vertical_bar_runtime,
-          "Vertical Bar auto-hide fallback must follow the configurable Screen Edge radius")
+    for runtime in (bar_runtime, vertical_bar_runtime):
+        check("screenEdge?.radius" not in runtime
+              and "PerimeterTokens.frameRadius" not in runtime
+              and "RoundCorner {" not in runtime,
+              "Bar auto-hide Screen Edge fallback must remain square")
     for runtime in (bar_runtime, vertical_bar_runtime):
         for retired_geometry in (
             "id: roundDecorators",
@@ -485,8 +482,8 @@ def main() -> None:
         check("readonly property bool showBarBackground: true" in runtime,
               "Supported Hug Bar chrome must remain structurally present")
         check("readonly property bool autoHideEnabled:" in runtime
-              and "autoHideEnabled ? Math.max(frameRadius, edgeShadowExtent) : 0" in runtime,
-              "Normal Bar host must collapse to body size unless auto-hide fallback needs extra room")
+              and "autoHideEnabled ? edgeShadowExtent : 0" in runtime,
+              "Normal Bar host must collapse to body size unless square auto-hide shadow needs extra room")
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")

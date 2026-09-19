@@ -583,10 +583,9 @@ def main() -> None:
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
-    check('Config.options?.appearance?.screenEdge?.radius ?? 25' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.radius", value)' in bar_settings
-          and 'Translation.tr("Border radius (px)")' in bar_settings,
-          "Bar settings must expose Screen Edge / Bar border radius")
+    check('appearance.screenEdge.radius' not in bar_settings
+          and 'Translation.tr("Border radius (px)")' not in bar_settings,
+          "Bar settings must not expose retired Screen Edge radius while square baseline is active")
     check('screenEdge?.shadow?.size ?? 15' in bar_settings
           and 'screenEdge?.shadow?.opacity ?? 0.70' in bar_settings
           and 'to: 100' in bar_settings,

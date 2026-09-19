@@ -549,6 +549,13 @@ Singleton {
         {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Screen Edge"),
+            label: Translation.tr("Corner radius (px)"),
+            description: Translation.tr("Set Screen Edge and connected-surface corner radius"),
+            keywords: ["screen", "edge", "corner", "radius", "rounding", "popup", "sidebar", "dashboard", "caelestia"]
+        },
+        {
+            pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Screen Edge"),
             label: Translation.tr("Screen edge shadow"),
             description: Translation.tr("Configure only the physical Screen Edge shadow"),
             keywords: ["screen", "edge", "shadow", "physical", "size", "opacity", "blur", "perimeter", "caelestia"]

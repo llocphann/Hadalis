@@ -29,7 +29,7 @@
           "title": "Module Loader",
           "description": "Instantiates only the configured semantic Bar module.",
           "sourcePath": "modules/bar/BarContent.qml",
-          "sourceNeedle": "sourceComponent: root._allComponents[modelData] ?? null",
+          "sourceNeedle": "active: root._moduleShown(modelData, \"center\")\n                    visible: active\n                    sourceComponent: root._allComponents[modelData] ?? null",
           "x": 320,
           "y": 210,
           "editable": false
@@ -188,7 +188,7 @@
           "title": "GlobalStates.mediaControlsOpen",
           "description": "Global expanded-media route when popupMode is not Bar.",
           "sourcePath": "modules/bar/Media.qml",
-          "sourceNeedle": "GlobalStates.mediaControlsOpen",
+          "sourceNeedle": "GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen",
           "x": 620,
           "y": 420,
           "editable": false
@@ -449,7 +449,7 @@
           "title": "keepAlive / release",
           "description": "Acquires and releases ResourceUsage sampling ownership.",
           "sourcePath": "modules/bar/Resources.qml",
-          "sourceNeedle": "ResourceUsage.releaseKeepAlive()",
+          "sourceNeedle": "if (root._resourceUsageWanted)\n            ResourceUsage.keepAlive()\n        else\n            ResourceUsage.releaseKeepAlive()",
           "x": 650,
           "y": 350,
           "editable": false

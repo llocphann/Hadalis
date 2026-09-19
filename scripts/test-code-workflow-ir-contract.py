@@ -50,8 +50,15 @@ for graph_id, graph in graphs.items():
         source_path = ROOT / path
         if not source_path.is_file():
             fail(f"{graph_id}/{node.get('id')}: missing source path {path}")
-        if needle not in source_path.read_text(encoding="utf-8"):
+        source_text = source_path.read_text(encoding="utf-8")
+        occurrence_count = source_text.count(needle)
+        if occurrence_count == 0:
             fail(f"{graph_id}/{node.get('id')}: source anchor drift: {needle!r}")
+        if occurrence_count != 1:
+            fail(
+                f"{graph_id}/{node.get('id')}: source anchor must be unique, "
+                f"found {occurrence_count}: {needle!r}"
+            )
         if "sourceRange" in node or "range" in node:
             fail(f"{graph_id}/{node.get('id')}: reviewed projection must not claim CST ranges")
 

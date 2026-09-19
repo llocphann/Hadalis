@@ -49,6 +49,15 @@ for token in \
     'function endBandLightning(' \
     'root.previewBandLightning(' \
     'root.applyPresetWithLightning(modelData)' \
+    'property real eqPresetSweepProgress: -0.12' \
+    'function triggerPresetSweep()' \
+    'id: presetSweepAnim' \
+    'property: "eqPresetSweepProgress"' \
+    'from: -0.12' \
+    'to: 1.16' \
+    'duration: Appearance.animationsEnabled ? 860 : 1' \
+    'const sweepTail = 0.22' \
+    'const sweepLead = 0.035' \
     'id: bandRepeater' \
     'function lightningPoint()' \
     'handleItem.mapToItem(' \
@@ -63,7 +72,8 @@ for retired in \
     'lightningPulse' \
     'ctx.lineWidth = 14' \
     'ctx.lineWidth = 7' \
-    'ctx.lineWidth = 3.5'; do
+    'ctx.lineWidth = 3.5' \
+    'root.triggerEqLightning()\n        }\n    }\n\n    SequentialAnimation {\n        id: presetSweepAnim'; do
     if grep -Fq "$retired" "$equalizer_panel"; then
         fail "oversized/transient DSP lightning token returned: $retired"
     fi

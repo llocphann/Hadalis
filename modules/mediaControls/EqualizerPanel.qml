@@ -15,6 +15,7 @@ Item {
     // The DSP curve always carries a compact electric trace. Interaction only
     // raises luminance/contrast; stroke widths and jitter amplitude never grow.
     property real eqLightningHighlight: 0.0
+    property real eqPresetSweepProgress: -0.12
     property int _editingBand: -1
     property var _lightningGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     readonly property color eqAccentColor: Appearance.colors.colPrimary
@@ -42,6 +43,10 @@ Item {
         eqLightningAnim.restart()
     }
 
+    function triggerPresetSweep(): void {
+        presetSweepAnim.restart()
+    }
+
     function beginBandLightning(index, gain): void {
         eqLightningAnim.stop()
         root._editingBand = index
@@ -67,7 +72,29 @@ Item {
         if (EqualizerService.applyDspPreset(name)) {
             root._lightningGains = curve.slice()
             lightningCanvas.requestPaint()
-            root.triggerEqLightning()
+            root.triggerPresetSweep()
+        }
+    }
+
+    SequentialAnimation {
+        id: presetSweepAnim
+        running: false
+
+        ScriptAction {
+            script: root.eqPresetSweepProgress = -0.12
+        }
+
+        NumberAnimation {
+            target: root
+            property: "eqPresetSweepProgress"
+            from: -0.12
+            to: 1.16
+            duration: Appearance.animationsEnabled ? 860 : 1
+            easing.type: Easing.InOutCubic
+        }
+
+        ScriptAction {
+            script: root.eqPresetSweepProgress = -0.12
         }
     }
 
@@ -246,16 +273,13 @@ Item {
 
                     const highlight = Math.max(0,
                         Math.min(1, root.eqLightningHighlight))
+                    const sweep = root.eqPresetSweepProgress
                     const now = Date.now() / 1000
                     ctx.lineJoin = "round"
                     ctx.lineCap = "round"
 
-                    // Three compact strokes form one current. Highlighting only
-                    // changes brightness/color — never width or displacement.
-                    for (let stroke = 0; stroke < 3; ++stroke) {
-                        ctx.beginPath()
-                        ctx.moveTo(points[0].x, points[0].y)
-
+                    function sampledTrace(stroke) {
+                        const samples = [{ x: points[0].x, y: points[0].y }]
                         for (let i = 0; i < points.length - 1; ++i) {
                             const p1 = points[i]
                             const p2 = points[i + 1]
@@ -275,9 +299,26 @@ Item {
                                 const noiseY = Math.cos(now * (6.1 - stroke * 0.4) + i - j)
                                     * Math.sin(now * 4.8 + i - j)
                                     * amplitudeY * envelope
-                                ctx.lineTo(x + noiseX, y + noiseY)
+                                samples.push({ x: x + noiseX, y: y + noiseY })
                             }
                         }
+                        return samples
+                    }
+
+                    function strokeTrace(samples) {
+                        ctx.beginPath()
+                        ctx.moveTo(samples[0].x, samples[0].y)
+                        for (let i = 1; i < samples.length; ++i)
+                            ctx.lineTo(samples[i].x, samples[i].y)
+                        ctx.stroke()
+                    }
+
+                    // Three compact strokes form the always-on current. Direct
+                    // band edits raise global luminance only; geometry is fixed.
+                    const traces = []
+                    for (let stroke = 0; stroke < 3; ++stroke) {
+                        const samples = sampledTrace(stroke)
+                        traces.push(samples)
 
                         if (stroke === 0) {
                             ctx.lineWidth = 5.5
@@ -293,8 +334,57 @@ Item {
                             ctx.strokeStyle = "#ffffff"
                             ctx.globalAlpha = 0.55 + highlight * 0.45
                         }
-                        ctx.stroke()
+                        strokeTrace(samples)
                     }
+
+                    // Presets get a distinct charge sweep. The moving head has
+                    // a short luminous tail and redraws the exact same sampled
+                    // geometry at the exact same widths, so it never grows the
+                    // current — it only brightens successive sections left→right.
+                    if (sweep >= -0.12 && sweep <= 1.16) {
+                        const sweepTail = 0.22
+                        const sweepLead = 0.035
+
+                        for (let stroke = 0; stroke < traces.length; ++stroke) {
+                            const samples = traces[stroke]
+                            ctx.lineWidth = stroke === 0 ? 5.5
+                                : (stroke === 1 ? 2.4 : 1.0)
+                            ctx.strokeStyle = stroke === 2
+                                ? "#ffffff"
+                                : Qt.lighter(root.eqAccentColor,
+                                    stroke === 0 ? 1.28 : 1.55)
+
+                            for (let i = 1; i < samples.length; ++i) {
+                                const p1 = samples[i - 1]
+                                const p2 = samples[i]
+                                const segmentPosition = ((p1.x + p2.x) * 0.5)
+                                    / Math.max(1, width)
+                                const distance = sweep - segmentPosition
+                                let pulse = 0
+
+                                if (distance >= -sweepLead
+                                        && distance <= sweepTail) {
+                                    if (distance < 0)
+                                        pulse = 1 - (-distance / sweepLead)
+                                    else
+                                        pulse = Math.pow(
+                                            1 - distance / sweepTail, 1.6)
+                                }
+
+                                if (pulse <= 0)
+                                    continue
+
+                                ctx.beginPath()
+                                ctx.moveTo(p1.x, p1.y)
+                                ctx.lineTo(p2.x, p2.y)
+                                ctx.globalAlpha = pulse
+                                    * (stroke === 0 ? 0.38
+                                        : (stroke === 1 ? 0.78 : 0.95))
+                                ctx.stroke()
+                            }
+                        }
+                    }
+
                     ctx.globalAlpha = 1.0
                 }
             }

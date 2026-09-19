@@ -207,9 +207,10 @@ def main() -> None:
           and "Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true" in screen_edge
           and "Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15" in screen_edge
           and "Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70" in screen_edge
-          and "layer.enabled: true" in screen_edge
+          and "readonly property bool physicalShadowActive:" in screen_edge
+          and "layer.enabled: frameShape.physicalShadowActive" in screen_edge
           and "layer.effect: MultiEffect {" in screen_edge
-          and "shadowEnabled: root.physicalShadowEnabled" in screen_edge
+          and "shadowEnabled: frameShape.physicalShadowActive" in screen_edge
           and "blurMax: Math.max(1, root.physicalShadowSize)" in screen_edge
           and "Appearance.m3colors.m3shadow" in screen_edge,
           "Physical Screen Edge must own one dedicated Caelestia-style shadow effect")

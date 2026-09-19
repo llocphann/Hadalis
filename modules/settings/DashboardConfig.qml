@@ -60,6 +60,13 @@ ContentPage {
                 onCheckedChanged: Config.setNestedValue("dashboard.enable", checked)
             }
             ConfigSwitch {
+                text: Translation.tr("Show compact Dashboard in launcher")
+                description: Translation.tr("Use the compact control dashboard when opening the launcher without a search query")
+                checked: Config.options?.overview?.dashboard?.enable ?? false
+                onCheckedChanged: Config.setNestedValue(
+                    "overview.dashboard.enable", checked)
+            }
+            ConfigSwitch {
                 text: Translation.tr("Show header")
                 description: Translation.tr("Uptime chip and quick action buttons at the top")
                 checked: Config.options?.dashboard?.showHeader ?? true

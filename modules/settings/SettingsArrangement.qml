@@ -7,8 +7,9 @@ import qs.modules.common
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 4
+    readonly property int layoutSchemaVersion: 5
     readonly property int retiredTlpPageIndex: 28
+    readonly property int overviewPageIndex: 29
 
     function snapshot(): var {
         return ({
@@ -100,6 +101,45 @@ QtObject {
             })
         })
         const migratedHidden = hidden.filter(keepPage)
+
+        // v5 gives Overview a first-class Shell home. v4 could only discover
+        // the newly appended page as “More”, so remove that generated placement
+        // and insert it into whichever saved group best matches the default Shell
+        // peers. This also survives renamed/custom Shell group labels.
+        if (sourceVersion < 5
+                && !migratedHidden.includes(root.overviewPageIndex)) {
+            for (const group of migratedGroups) {
+                if (!group || !Array.isArray(group.pages))
+                    continue
+                group.pages = group.pages.filter(
+                    index => index !== root.overviewPageIndex)
+            }
+
+            const defaultShell = SettingsPageRegistry.defaultCategories.find(
+                category => category.pages.includes(root.overviewPageIndex))
+            const shellPeers = defaultShell?.pages?.filter(
+                index => index !== root.overviewPageIndex) ?? [2, 26, 5, 22, 23, 16]
+            let targetIndex = -1
+            let bestScore = -1
+            for (let i = 0; i < migratedGroups.length; i++) {
+                const pages = migratedGroups[i]?.pages ?? []
+                let score = 0
+                for (const peer of shellPeers)
+                    if (pages.includes(peer))
+                        score++
+                if (score > bestScore) {
+                    bestScore = score
+                    targetIndex = i
+                }
+            }
+
+            if (targetIndex >= 0) {
+                const pages = migratedGroups[targetIndex].pages
+                const panelsIndex = pages.indexOf(5)
+                pages.splice(panelsIndex >= 0 ? panelsIndex + 1 : pages.length,
+                    0, root.overviewPageIndex)
+            }
+        }
 
         root.save({ groups: migratedGroups, hidden: migratedHidden })
     }

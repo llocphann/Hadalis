@@ -259,7 +259,7 @@ Singleton {
             key: "overview",
             name: Translation.tr("Overview"),
             icon: "overview_key",
-            desc: Translation.tr("Workspace hover, launcher and overview layout"),
+            desc: Translation.tr("Workspace hover and workspace preview layout"),
             essential: false,
             component: "modules/settings/OverviewConfig.qml"
         }
@@ -1605,6 +1605,7 @@ Singleton {
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Popups"), label: Translation.tr("Notification popups and OSD indicators"), description: Translation.tr("Choose which monitors show notifications and OSD feedback"), keywords: ["monitor", "visibility", "notifications", "osd", "popups", "secondary", "workspace"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Desktop widgets"), label: Translation.tr("Desktop widgets"), description: Translation.tr("Choose widget visibility and layout per monitor"), keywords: ["monitor", "visibility", "desktop", "widgets", "layout", "secondary", "workspace"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Dashboard"), description: Translation.tr("Centered welcome hub panel with configurable widgets"), keywords: ["dashboard", "hub", "welcome", "panel", "home", "greeting"] },
+        { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Launcher Dashboard"), description: Translation.tr("Show the compact Dashboard when opening the launcher without a query"), keywords: ["dashboard", "launcher", "overview", "super", "space", "compact"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel width"), description: Translation.tr("Dashboard width as a percentage of the screen"), keywords: ["dashboard", "width", "size", "ratio", "screen"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("GitHub username"), description: Translation.tr("GitHub user for the contributions heatmap widget"), keywords: ["dashboard", "github", "contributions", "heatmap", "username", "activity"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Widgets"), label: Translation.tr("Dashboard widgets"), description: Translation.tr("Place, hide and reorder dashboard widgets per column"), keywords: ["dashboard", "widgets", "layout", "column", "reorder", "clock", "weather", "media", "todo", "calendar", "notifications", "system"] },

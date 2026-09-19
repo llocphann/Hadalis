@@ -22,6 +22,7 @@ StyledPopup {
     property var workspaceId: null
 
     hoverTarget: root.anchorItem
+    centerOnOutput: true
     hoverActivates: false
     alternativeVisibleCondition: root.previewOpen
     popupBackgroundMargin: 0

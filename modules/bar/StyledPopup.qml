@@ -14,6 +14,11 @@ LazyLoader {
     // the real visual/source control for output ownership; this rect only narrows
     // tangent placement (for example a right-click point inside a broad Bar zone).
     property var anchorRect: null
+    // Some large connected surfaces (notably workspace Overview) should keep
+    // their Bar ownership but use the output midpoint for tangent placement.
+    // This changes only placement; the real hoverTarget still owns screen,
+    // edge, hover-transfer and cross-axis attachment.
+    property bool centerOnOutput: false
     property bool hoverActivates: true
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
@@ -219,17 +224,25 @@ LazyLoader {
         const thickness = Math.max(1, Number(root._barSurfaceThickness ?? 1))
 
         // Preserve the source/sub-rect tangent center/extent, but normalize the
-        // cross-axis boundary to the real Bar surface. A click-point rect can
-        // therefore position a context menu without becoming the ownership anchor.
+        // cross-axis boundary to the real Bar surface. Large surfaces may opt
+        // into the output midpoint without replacing the real Bar ownership
+        // anchor — important for workspace Overview, which should be visually
+        // centered even when the hovered workspace button sits near an edge.
         if (root._barVertical) {
             const barX = root._trailingEdge
                 ? Math.max(0, outputWidth - thickness) : 0
-            return Qt.rect(barX, mapped.y, thickness, localHeight)
+            const tangentY = root.centerOnOutput
+                ? Math.max(0, (outputHeight - localHeight) / 2)
+                : mapped.y
+            return Qt.rect(barX, tangentY, thickness, localHeight)
         }
 
         const barY = root._trailingEdge
             ? Math.max(0, outputHeight - thickness) : 0
-        return Qt.rect(mapped.x, barY, localWidth, thickness)
+        const tangentX = root.centerOnOutput
+            ? Math.max(0, (outputWidth - localWidth) / 2)
+            : mapped.x
+        return Qt.rect(tangentX, barY, localWidth, thickness)
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside

@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/MaterialThemeLoader.qml"
 appearance="$repo_root/modules/common/Appearance.qml"
+tools_view="$repo_root/modules/sidebarLeft/ToolsView.qml"
 
 fail() {
     printf 'material theme lifecycle guard failed: %s\n' "$1" >&2
@@ -42,6 +43,11 @@ grep -Fq -- 'MaterialThemeLoader.setDarkMode(!root.m3colors.darkmode)' "$appeara
     || fail 'Appearance.toggleDarkMode must use the live MaterialThemeLoader pipeline'
 if grep -Fq -- 'ThemeService.regenerateAutoTheme()' "$appearance"; then
     fail 'Appearance.toggleDarkMode must not use the stale config-read regeneration path'
+fi
+grep -Fq -- 'onToggledByUser: checked => MaterialThemeLoader.setDarkMode(checked)' "$tools_view" \
+    || fail 'ToolsView dark-mode switch must use the live MaterialThemeLoader path'
+if grep -Fq -- 'Config.setNestedValue("appearance.customTheme.darkmode"' "$tools_view"; then
+    fail 'ToolsView must not bypass MaterialThemeLoader with a direct darkmode config write'
 fi
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"

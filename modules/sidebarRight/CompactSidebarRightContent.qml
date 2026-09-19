@@ -1442,8 +1442,9 @@ Item {
                                                 Item {
                                                     Layout.fillWidth: true
                                                     implicitHeight: 40
+                                                    visible: Config.options?.sidebar?.widgets?.controlsCard?.showGameMode ?? true
 
-                                                    IdleInhibitor {
+                                                    GameMode {
                                                         anchors.centerIn: parent
                                                     }
                                                 }
@@ -1468,9 +1469,8 @@ Item {
                                                 Item {
                                                     Layout.fillWidth: true
                                                     implicitHeight: 40
-                                                    visible: Config.options?.sidebar?.widgets?.controlsCard?.showGameMode ?? true
 
-                                                    GameMode {
+                                                    IdleInhibitor {
                                                         anchors.centerIn: parent
                                                     }
                                                 }
@@ -1478,6 +1478,7 @@ Item {
                                                 Item {
                                                     Layout.fillWidth: true
                                                     implicitHeight: 40
+                                                    visible: EasyEffects.available
 
                                                     EasyEffectsToggle {
                                                         anchors.centerIn: parent

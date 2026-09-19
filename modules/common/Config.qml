@@ -489,7 +489,19 @@ Singleton {
                 property string globalStyle: "material"
                 property JsonObject screenEdge: JsonObject {
                     property int width: 10
+
+                    // Connected-surface body shadow contract. Kept separate from
+                    // the physical Screen Edge frame so popup/sidebar tuning can
+                    // never change the perimeter shadow itself.
                     property JsonObject shadow: JsonObject {
+                        property bool enabled: true
+                        property int size: 15
+                        property real opacity: 0.70
+                    }
+
+                    // Physical Screen Edge shadow only. Defaults mirror
+                    // Caelestia ContentWindow: enabled, blurMax 15, alpha 0.70.
+                    property JsonObject physicalShadow: JsonObject {
                         property bool enabled: true
                         property int size: 15
                         property real opacity: 0.70

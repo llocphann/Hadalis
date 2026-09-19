@@ -24,7 +24,8 @@ Item {
         contentHeight: columnLayout.height
 
         clip: true
-        layer.enabled: root.visible && GlobalStates.sidebarRightOpen
+        layer.enabled: root.visible
+            && (GlobalStates.sidebarRightOpen || GlobalStates.dashboardOpen)
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: flickable.width

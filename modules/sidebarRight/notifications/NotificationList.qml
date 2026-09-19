@@ -2,7 +2,6 @@ import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
-import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -28,15 +27,9 @@ Item {
         anchors.bottom: statusRow.top
         anchors.bottomMargin: 5
 
+        // The old OpacityMask was rectangular (radius 0), so it was
+        // equivalent to this native clip while allocating an unnecessary FBO.
         clip: true
-        layer.enabled: root.visible && GlobalStates.sidebarRightOpen
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: listview.width
-                height: listview.height
-                radius: 0
-            }
-        }
 
         popup: false
     }

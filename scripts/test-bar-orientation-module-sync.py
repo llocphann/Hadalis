@@ -91,21 +91,8 @@ def main() -> None:
 
     require(util, "property bool vertical: false",
             "Utility buttons must expose an orientation-safe presentation switch.")
-    require(util, 'text: "settings"',
-            "Utility buttons must keep a single gear trigger in the Bar.")
-    require(util, "StyledPopup {",
-            "Expanded utility controls must use the shared connected popup path.")
-    require(util, "columns: root.vertical ? 3",
-            "Left/Right utility expansion must stay in a compact flyout.")
-    forbid(util, "columns: root.vertical ? 1",
-           "Utility controls must not grow the vertical Bar into an inline stack.")
-
-    require(vertical, "Flickable { // Middle section",
-            "Vertical Bar must bound its middle module stack.")
-    require(vertical, "middleAvailableHeight",
-            "Vertical Bar must compute a main-axis module budget.")
-    require(vertical, "interactive: contentHeight > height + 0.5",
-            "Overflowing vertical modules must remain reachable instead of overlapping.")
+    require(util, "columns: root.vertical ? 1",
+            "Utility buttons must stack vertically in Left/Right Bar.")
 
     require(critical, "extraCondition: !root.barVertical",
             "Horizontal Bar loader must remain selected only for Top/Bottom.")

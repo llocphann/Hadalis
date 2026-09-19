@@ -35,8 +35,8 @@ ColumnLayout {
         left: ["leftSidebarButton", "activeWindow"],
         centerLeft: ["resources", "media"],
         center: ["workspaces"],
-        centerRight: ["clock", "utilButtons"],
-        right: ["rightSidebarButton", "battery", "tray", "timer", "shellUpdate", "spacer", "weather"],
+        centerRight: ["clock", "utilButtons", "battery"],
+        right: ["rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"],
     })
     readonly property var _knownIds: [
         "leftSidebarButton", "activeWindow", "taskbar", "resources", "media", "workspaces",

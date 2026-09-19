@@ -1689,8 +1689,8 @@ Singleton {
                     property list<string> left: ["leftSidebarButton", "activeWindow"]
                     property list<string> centerLeft: ["resources", "media"]
                     property list<string> center: ["workspaces"]
-                    property list<string> centerRight: ["clock", "utilButtons"]
-                    property list<string> right: ["rightSidebarButton", "battery", "tray", "timer", "shellUpdate", "spacer", "weather"]
+                    property list<string> centerRight: ["clock", "utilButtons", "battery"]
+                    property list<string> right: ["rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"]
                     property int spacerWidth: 0
                     property string spacerMode: "auto"
                     property bool migrated: false

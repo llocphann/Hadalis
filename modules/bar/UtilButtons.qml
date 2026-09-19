@@ -16,66 +16,19 @@ Item {
     property bool vertical: false
     readonly property color neutralIconColor: Appearance.colors.colOnLayer2
     readonly property color dangerIconColor: Appearance.colors.colError
-    property bool pinnedOpen: false
-    readonly property bool hasUrgentState: RecorderStatus.isRecording
-        || Privacy.micActive
-        || (Audio?.micBeingAccessed ?? false)
-        || (Persistent.states?.screenCast?.active ?? false)
+    // Exact content width — self-inflating (+spacing*2) made every group that
+    // ends with these buttons read asymmetric: the group's own padding is the
+    // spacing authority, modules must not add their own.
+    implicitWidth: rowLayout.implicitWidth
+    implicitHeight: rowLayout.implicitHeight
 
-    // Utilities always occupy one deterministic Bar slot. The full button set
-    // lives in StyledPopup, so hover never changes Bar implicit geometry.
-    implicitWidth: utilityTrigger.implicitWidth
-    implicitHeight: utilityTrigger.implicitHeight
+    GridLayout {
+        id: rowLayout
 
-    CircleUtilButton {
-        id: utilityTrigger
+        columns: root.vertical ? 1 : Math.max(1, children.length)
+        columnSpacing: root.vertical ? 0 : 4
+        rowSpacing: root.vertical ? 4 : 0
         anchors.centerIn: parent
-        toggled: root.pinnedOpen
-        Accessible.name: Translation.tr("Utility buttons")
-        onClicked: root.pinnedOpen = !root.pinnedOpen
-
-        Item {
-            anchors.fill: parent
-
-            MaterialSymbol {
-                anchors.centerIn: parent
-                horizontalAlignment: Qt.AlignHCenter
-                fill: root.pinnedOpen ? 1 : 0
-                text: "settings"
-                iconSize: Appearance.font.pixelSize.large
-                color: root.hasUrgentState
-                    ? root.dangerIconColor : root.neutralIconColor
-            }
-
-            Rectangle {
-                visible: root.hasUrgentState
-                width: 5
-                height: 5
-                radius: 2.5
-                color: root.dangerIconColor
-                anchors {
-                    top: parent.top
-                    right: parent.right
-                }
-            }
-        }
-    }
-
-    StyledPopup {
-        id: utilityPopup
-        hoverTarget: utilityTrigger
-        alternativeVisibleCondition: root.pinnedOpen
-        closeOnOutsideClick: root.pinnedOpen
-        onRequestClose: root.pinnedOpen = false
-
-        GridLayout {
-            id: rowLayout
-
-            // Top/Bottom expands in one row. Left/Right uses a compact 3-column
-            // flyout instead of growing an inline vertical stack.
-            columns: root.vertical ? 3 : Math.max(1, children.length)
-            columnSpacing: 4
-            rowSpacing: 4
 
         Loader {
             active: Config.options?.bar?.utilButtons?.showScreenSnip ?? true
@@ -436,6 +389,5 @@ Item {
                 }
             }
         }
-    }
     }
 }

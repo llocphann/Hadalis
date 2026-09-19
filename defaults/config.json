@@ -851,11 +851,11 @@
             ],
             "centerRight": [
                 "clock",
-                "utilButtons"
+                "utilButtons",
+                "battery"
             ],
             "right": [
                 "rightSidebarButton",
-                "battery",
                 "tray",
                 "timer",
                 "shellUpdate",

@@ -75,12 +75,15 @@ Item {
         const wsHalf = middleCenterGroup.width / 2
         return Math.max(0, total / 2 - edge - wsHalf - 12)
     }
-    // Workspaces owns the absolute screen-centre pivot. Side pills therefore
-    // hug their own visible content; mirroring the opposite pill's width only
-    // creates dead air and makes Clock/Resources look detached from the pivot.
+    readonly property real centerPillMirrorSlack: 56 * Appearance.fontSizeScale
     function _pillWidth(cw) {
-        const own = Math.max(0, Number(cw) || 0)
-        return own <= 0 ? 0 : Math.min(own, root.centerSideMaxWidth)
+        const lw = leftCenterGroup.empty ? 0 : leftCenterGroup.contentWidth
+        const rw = rightCenterGroupPill.empty ? 0 : rightCenterGroupPill.contentWidth
+        const raw = Math.max(lw, rw)
+        if (raw <= 0) return 0
+        const own = Math.max(0, cw)
+        const mirrored = own > 0 ? Math.min(raw, own + root.centerPillMirrorSlack) : raw
+        return Math.min(mirrored, root.centerSideMaxWidth)
     }
 
     readonly property bool cardStyleEverywhere: false
@@ -281,9 +284,9 @@ Item {
         ["resources", "media"])
     readonly property var _centerIds: root._zone("center", ["workspaces"])
     readonly property var _centerRightIds: root._zone("centerRight",
-        ["clock", "utilButtons"])
+        ["clock", "utilButtons", "battery"])
     readonly property var _rightIds: root._zone("right",
-        ["rightSidebarButton", "battery", "tray", "timer", "shellUpdate", "spacer", "weather"])
+        ["rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"])
 
     function _moduleVisible(id) {
         return Config.options?.bar?.modules?.[id] ?? true

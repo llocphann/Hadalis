@@ -1,6 +1,7 @@
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs
 import qs.services
 import QtQuick
 import QtQuick.Controls
@@ -12,8 +13,33 @@ import "root:"
 Item {
     id: root
     property int margin: 10
+    property bool _resourceUsageHeld: false
 
-    Component.onCompleted: ResourceUsage.ensureRunning()
+    function syncResourceUsageLifecycle(): void {
+        const shouldHold = GlobalStates.sidebarRightOpen
+        if (shouldHold === root._resourceUsageHeld)
+            return
+        if (shouldHold)
+            ResourceUsage.keepAlive()
+        else
+            ResourceUsage.releaseKeepAlive()
+        root._resourceUsageHeld = shouldHold
+    }
+
+    Component.onCompleted: root.syncResourceUsageLifecycle()
+    Component.onDestruction: {
+        if (root._resourceUsageHeld) {
+            root._resourceUsageHeld = false
+            ResourceUsage.releaseKeepAlive()
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSidebarRightOpenChanged(): void {
+            root.syncResourceUsageLifecycle()
+        }
+    }
 
     // Style tokens
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText

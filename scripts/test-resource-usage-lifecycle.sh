@@ -3,6 +3,13 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/ResourceUsage.qml"
+resources_popup="$repo_root/modules/bar/ResourcesPopup.qml"
+status_rings="$repo_root/modules/sidebarLeft/widgets/StatusRings.qml"
+overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
+sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
+waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
+overview_dashboard="$repo_root/modules/overview/OverviewDashboard.qml"
+inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 
 fail() {
     printf 'resource usage lifecycle guard failed: %s\n' "$1" >&2
@@ -12,6 +19,13 @@ fail() {
 assert_contains() {
     local needle="$1" text="$2" message="$3"
     grep -Fq -- "$needle" <<<"$text" || fail "$message"
+}
+
+assert_not_contains() {
+    local needle="$1" text="$2" message="$3"
+    if grep -Fq -- "$needle" <<<"$text"; then
+        fail "$message"
+    fi
 }
 
 assert_guarded_probe() {
@@ -29,6 +43,7 @@ hybrid_block="$(sed -n '/id: detectHybridGpu/,/id: findCpuMaxFreqProc/p' "$servi
 cpu_block="$(sed -n '/id: findCpuMaxFreqProc/,/id: diskProc/p' "$service")"
 helper_block="$(sed -n '/function _releaseInitRequest/,/function ensureRunning/p' "$service")"
 ensure_block="$(sed -n '/function ensureRunning/,/property bool _primed/p' "$service")"
+poll_block="$(sed -n '/function _pollSensors/,/function _pollDisk/p' "$service")"
 
 assert_guarded_probe detectGpuUsageSource "$gpu_block"
 assert_guarded_probe detectTempSensors "$temp_block"
@@ -41,6 +56,8 @@ assert_contains 'detectTempSensors.running = true' "$ensure_block" 'temperature 
 assert_contains 'detectGpuUsageSource.running = true' "$ensure_block" 'GPU usage probe must participate in initialization'
 assert_contains 'detectHybridGpu.running = true' "$ensure_block" 'hybrid GPU probe must participate in initialization'
 assert_contains 'findCpuMaxFreqProc.running = true' "$ensure_block" 'CPU frequency probe must participate in initialization'
+assert_contains 'autoStopTimer.restart();' "$ensure_block" 'transient consumer request must arm the auto-stop lease'
+assert_not_contains 'autoStopTimer.restart();' "$poll_block" 'sensor polling must not renew the transient lease forever'
 
 assert_contains 'root._gpuUsageSource = "none"' "$gpu_block" 'GPU startup failure must fail closed to no usage source'
 assert_contains 'root._gpuUsagePath = ""' "$gpu_block" 'GPU startup failure must clear stale sysfs path'
@@ -51,4 +68,15 @@ assert_contains 'root._gpuTempPath = ""' "$temp_block" 'temperature startup fail
 assert_contains 'root._dGpuRuntimeStatusPath = ""' "$hybrid_block" 'hybrid GPU startup failure must clear stale runtime-status path'
 assert_contains 'root.maxAvailableCpuString = "--"' "$cpu_block" 'CPU frequency startup failure must restore unknown display state'
 
-printf 'resource usage initialization lifecycle guards: ok\n'
+for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$overview_dashboard"; do
+    lifecycle_text="$(cat "$lifecycle_file")"
+    assert_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must acquire resource polling only while presented"
+    assert_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must release resource polling when hidden or destroyed"
+done
+
+assert_contains 'running: root.panelVisible && root.effectiveIsPlaying' "$(cat "$overview_dashboard")" \
+    'hidden Overview dashboard must stop its media position timer'
+assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
+    'hidden InnerTune thumbnail must stop its decorative equalizer timer'
+
+printf 'resource usage and visual idle lifecycle guards: ok\n'

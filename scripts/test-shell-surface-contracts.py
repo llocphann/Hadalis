@@ -186,22 +186,24 @@ def main() -> None:
           "Screen Edge must stay mapped normally and hide only for lock/fullscreen coverage")
     check("mask: Region { item: emptyInput }" in screen_edge,
           "Screen Edge must remain completely click-through")
-    check("id: edgeShadow" in screen_edge
-          and "gradient: Gradient {" in screen_edge
-          and "shadowEnabled: root.shadowEnabled" in screen_edge
-          and "shadowExtent: root.shadowExtent" in screen_edge,
-          "Screen Edge must use deterministic straight in-window shadows")
-    check("layer.effect: MultiEffect {" not in screen_edge,
-          "Screen Edge shadow must not depend on compositor-sensitive layer-effect padding")
-    check("implicitHeight: horizontal ? root.thickness + root.shadowExtent : 1" in screen_edge
-          and "implicitWidth: horizontal ? 1 : root.thickness + root.shadowExtent" in screen_edge,
-          "Square Screen Edge host must reserve only band plus straight inward shadow")
-    check("adjacentIiBarBodySpan" in screen_edge
-          and "Appearance.sizes.verticalBarWidth" in screen_edge
-          and "Appearance.sizes.barHeight" in screen_edge,
-          "Screen Edge must trim only the actual ii Bar body span before corner redesign")
-    check("const iiOwned = !root.waffleFamily" in screen_edge,
-          "Screen Edge ii-Bar ownership must not leak into the Waffle panel family")
+    for retired_shadow in (
+        "id: edgeShadow",
+        "shadowEnabled",
+        "shadowExtent",
+        "shadowOpacity",
+        "shadowColor",
+        "screenEdge?.shadow",
+        "GradientStop",
+        "MultiEffect",
+    ):
+        check(retired_shadow not in screen_edge,
+              f"Physical Screen Edge must remain shadow-free: {retired_shadow}")
+    check("implicitHeight: horizontal ? root.thickness : 1" in screen_edge
+          and "implicitWidth: horizontal ? 1 : root.thickness" in screen_edge,
+          "Physical Screen Edge host must be exactly one rectangular band thick")
+    check("const iiOwned = !root.waffleFamily" in screen_edge
+          and "!(Config.options?.bar?.autoHide?.enable ?? false)" in screen_edge,
+          "Auto-hide ii Bar must hand physical edge ownership to ScreenEdges.qml")
     for retired_geometry in (
         "PERIMETER-CORNER-LOCK",
         "id: leadingCorner",
@@ -466,30 +468,31 @@ def main() -> None:
               and "shadowSeamOverlap" not in runtime,
               "Rejected curved Bar shadow stitching must stay reverted")
     for runtime in (bar_runtime, vertical_bar_runtime):
-        check("screenEdge?.radius" not in runtime
-              and "PerimeterTokens.frameRadius" not in runtime
-              and "RoundCorner {" not in runtime,
-              "Bar auto-hide Screen Edge fallback must remain square")
-    for runtime in (bar_runtime, vertical_bar_runtime):
         for retired_geometry in (
             "id: roundDecorators",
             "ScreenEdgeContact",
             "id: barEdgeShadow",
+            "id: autoHideScreenEdge",
+            "autoHideEdgeBand",
+            "edgeShadowEnabled",
+            "edgeShadowExtent",
+            "edgeShadowOpacity",
+            "edgeShadowColor",
+            "screenEdgeThickness",
+            "inwardDecoratorAllowance",
+            "screenEdge?.shadow",
+            "screenEdge?.radius",
+            "PerimeterTokens.frameRadius",
+            "RoundCorner {",
             "surfacePresented",
         ):
             check(retired_geometry not in runtime,
-                  f"Normal Bar must not retain duplicate perimeter extension geometry: {retired_geometry}")
+                  f"Bar runtime must not retain physical Screen Edge geometry/shadow: {retired_geometry}")
         check("readonly property bool showBarBackground: true" in runtime,
               "Supported Hug Bar chrome must remain structurally present")
-        check("readonly property bool autoHideEnabled:" in runtime
-              and "autoHideEnabled ? edgeShadowExtent : 0" in runtime,
-              "Normal Bar host must collapse to body size unless square auto-hide shadow needs extra room")
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")
-        check("id: autoHideScreenEdge" in runtime
-              and "visible: barRoot.autoHideEnabled" in runtime,
-              "Auto-hidden Bar must retain its conditional Screen Edge fallback")
     check("visible: !gameModeMinimal" in bar_content,
           "Horizontal Hug body must not disappear because of legacy showBackground state")
     check("visible: !root.gameModeMinimal && !root.isIslands" in vertical_bar_content,
@@ -586,10 +589,11 @@ def main() -> None:
     check('appearance.screenEdge.radius' not in bar_settings
           and 'Translation.tr("Border radius (px)")' not in bar_settings,
           "Bar settings must not expose retired Screen Edge radius while square baseline is active")
-    check('screenEdge?.shadow?.size ?? 15' in bar_settings
-          and 'screenEdge?.shadow?.opacity ?? 0.70' in bar_settings
-          and 'to: 100' in bar_settings,
-          "Bar settings must expose the Caelestia Screen Edge shadow baseline and full opacity range")
+    check('appearance.screenEdge.shadow' not in bar_settings
+          and 'Translation.tr("Screen edge shadow")' not in bar_settings
+          and 'Translation.tr("Shadow size (px)")' not in bar_settings
+          and 'Translation.tr("Shadow opacity (%)")' not in bar_settings,
+          "Public Bar settings must not expose retired physical Screen Edge shadow controls")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()

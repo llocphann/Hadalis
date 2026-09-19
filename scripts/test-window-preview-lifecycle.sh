@@ -70,6 +70,10 @@ require_capture 'capture_timeout_seconds="${INIR_WINDOW_PREVIEW_CAPTURE_TIMEOUT_
     'window preview capture must have a finite default lifetime'
 require_capture 'INIR_CAPTURE_WINDOWS_TIMEOUT_ACTIVE' \
     'window preview timeout wrapper must guard against recursive re-entry'
+require_capture 'max_concurrent="${INIR_WINDOW_PREVIEW_CAPTURE_CONCURRENCY:-2}"' \
+    'window preview capture must default to bounded two-way concurrency'
+require_capture '[[ ! "$max_concurrent" =~ ^[1-4]$ ]]' \
+    'window preview capture concurrency override must remain bounded'
 require_capture 'exec "$timeout_bin" --signal=TERM --kill-after=5s "${capture_timeout_seconds}s" "$0" "$@"' \
     'window preview capture must execute under the timeout supervisor'
 

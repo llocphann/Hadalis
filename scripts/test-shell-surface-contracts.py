@@ -225,8 +225,8 @@ def main() -> None:
           "Physical Screen Edge must be one antialiased odd-even frame geometry")
     check("PathMove {" in screen_edge
           and screen_edge.count("direction: PathArc.Clockwise") == 4
-          and "x: parent.left + parent.r" in screen_edge
-          and "y: parent.top" in screen_edge,
+          and "x: framePath.innerLeft + framePath.r" in screen_edge
+          and "y: framePath.innerTop" in screen_edge,
           "Screen Edge inner workspace hole must be one closed 25px rounded rectangle")
     check("component CornerWindow: PanelWindow" not in screen_edge
           and "CornerWindow {" not in screen_edge

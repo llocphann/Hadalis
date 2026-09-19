@@ -18,6 +18,8 @@ RowLayout {
     property alias description: descriptionText.text
     property alias iconName: iconWidget.icon
     property alias checked: switchWidget.checked
+    property bool autoToggle: true
+    signal toggledByUser(bool checked)
 
     spacing: 10
 
@@ -61,7 +63,12 @@ RowLayout {
         implicitHeight: switchRow.implicitHeight
         onPressed: switchWidget.down = true
         onReleased: switchWidget.down = false
-        onClicked: switchWidget.checked = !switchWidget.checked
+        onClicked: {
+            const nextChecked = !switchWidget.checked
+            root.toggledByUser(nextChecked)
+            if (root.autoToggle)
+                switchWidget.checked = nextChecked
+        }
 
         Row {
             id: switchRow

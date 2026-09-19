@@ -76,47 +76,26 @@ Item {
             readonly property real orbitRadiusX: Math.max(1, radiusX - 2)
             readonly property real orbitRadiusY: Math.max(1, radiusY - 2)
 
-            // Parameter-angle spacing is not visually even on a wide ellipse:
-            // equal 45° steps produce unequal distances along the orbit. Map
-            // each hour to equal arc length instead so all eight cells keep
-            // the same perimeter rhythm.
-            function orbitAngle(index, count): real {
-                if (count <= 1)
-                    return -Math.PI / 2
+            // Use the forecast's actual clock label rather than its array
+            // index. This is a 24-hour day dial anchored so 06:00 is at the
+            // top, 12:00 at the right, 18:00 at the bottom and 00:00 at the
+            // left. Three-hour forecast slots therefore advance naturally
+            // around the orbit without overlapping.
+            function hourFromLabel(label): int {
+                const match = String(label ?? "").match(/^(\d{1,2}):/)
+                if (!match)
+                    return 0
+                const parsed = parseInt(match[1], 10)
+                if (isNaN(parsed))
+                    return 0
+                return ((parsed % 24) + 24) % 24
+            }
 
-                const samples = 160
-                const start = -Math.PI / 2
-                const step = Math.PI * 2 / samples
-                const rx = orbitalTimeline.orbitRadiusX
-                const ry = orbitalTimeline.orbitRadiusY
-                const lengths = [0]
-                let total = 0
-                let prevX = Math.cos(start) * rx
-                let prevY = Math.sin(start) * ry
-
-                for (let sample = 1; sample <= samples; ++sample) {
-                    const angle = start + sample * step
-                    const x = Math.cos(angle) * rx
-                    const y = Math.sin(angle) * ry
-                    const dx = x - prevX
-                    const dy = y - prevY
-                    total += Math.sqrt(dx * dx + dy * dy)
-                    lengths.push(total)
-                    prevX = x
-                    prevY = y
-                }
-
-                const targetLength = total * (index / count)
-                let sample = 1
-                while (sample < lengths.length
-                        && lengths[sample] < targetLength)
-                    ++sample
-
-                const previousLength = lengths[Math.max(0, sample - 1)]
-                const segmentLength = Math.max(0.0001,
-                    lengths[sample] - previousLength)
-                const fraction = (targetLength - previousLength) / segmentLength
-                return start + (sample - 1 + fraction) * step
+            function orbitAngleForHour(label): real {
+                const hour = orbitalTimeline.hourFromLabel(label)
+                const shiftedHour = (hour - 6 + 24) % 24
+                return -Math.PI / 2
+                    + (shiftedHour / 24) * Math.PI * 2
             }
 
             Canvas {
@@ -208,9 +187,8 @@ Item {
                     required property int index
                     required property var modelData
 
-                    readonly property int count: Math.max(1, orbitHours.count)
                     readonly property real angle:
-                        orbitalTimeline.orbitAngle(index, count)
+                        orbitalTimeline.orbitAngleForHour(modelData?.label)
                     readonly property bool highlighted: index === 0
 
                     width: 52

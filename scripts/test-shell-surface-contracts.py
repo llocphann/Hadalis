@@ -230,9 +230,16 @@ def main() -> None:
         'root.iiBarOwnsEdge(outputName, "bottom")',
         "Appearance.sizes.verticalBarWidth : root.thickness",
         "Appearance.sizes.barHeight : root.thickness",
+        "readonly property real innerLeft: frameWindow.frameLeftInset",
+        "readonly property real innerTop: frameWindow.frameTopInset",
+        "frameShape.width - frameWindow.frameRightInset",
+        "frameShape.height - frameWindow.frameBottomInset",
     ):
         check(bar_frame_token in screen_edge,
-              f"ii Bar must become the thicker side of the single Screen Edge frame: {bar_frame_token}")
+              f"ii Bar must remain the thicker side of the single Screen Edge frame: {bar_frame_token}")
+    check(screen_edge.count("Appearance.sizes.verticalBarWidth : root.thickness") == 2
+          and screen_edge.count("Appearance.sizes.barHeight : root.thickness") == 2,
+          "Left/right and top/bottom Bar frame insets must remain orientation-symmetric")
     for retired_geometry in (
         "PERIMETER-CORNER-LOCK",
         "id: leadingCorner",
@@ -248,8 +255,11 @@ def main() -> None:
           and "fillRule: ShapePath.OddEvenFill" in screen_edge
           and "preferredRendererType: Shape.CurveRenderer" in screen_edge,
           "Physical Screen Edge must be one antialiased odd-even frame geometry")
-    check("SCREEN-EDGE-GEOMETRY-LOCK (maintainer approved 2026-09-19)" in screen_edge,
-          "Approved Screen Edge four-corner geometry lock marker must remain present")
+    check("SCREEN-EDGE-GEOMETRY-LOCK (maintainer approved 2026-09-19)" in screen_edge
+          and "BAR-SCREEN-EDGE-CORNER-LOCK (maintainer approved 2026-09-19)" in screen_edge,
+          "Approved Screen Edge + Bar corner geometry lock markers must remain present")
+    check("BAR-SCREEN-EDGE-CORNER-LOCK" in perimeter_tokens,
+          "Shared perimeter radius owner must retain the Bar/Screen Edge corner lock marker")
     check(screen_edge.count("Shape {") == 1
           and screen_edge.count("ShapePath {") == 1
           and screen_edge.count("PathMove {") == 1
@@ -578,6 +588,16 @@ def main() -> None:
           "Vertical Hug body must ignore persisted retired cornerStyle at runtime")
     check("(Config.options?.bar?.cornerStyle ?? 0) === 0" not in vertical_bar_runtime,
           "Vertical Hug shoulders must not depend on legacy cornerStyle state")
+    for bar_surface in (bar_runtime, vertical_bar_runtime, bar_content, vertical_bar_content):
+        for forbidden_corner_owner in (
+            "PerimeterTokens.frameRadius",
+            "screenEdge?.radius",
+            "BAR-SCREEN-EDGE-CORNER-LOCK",
+            "RoundCorner {",
+            "PathArc {",
+        ):
+            check(forbidden_corner_owner not in bar_surface,
+                  f"Bar surfaces must not create a second physical corner owner: {forbidden_corner_owner}")
 
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,

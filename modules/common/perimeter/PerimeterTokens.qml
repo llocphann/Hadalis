@@ -16,21 +16,15 @@ QtObject {
             Number(Config.options?.appearance?.screenEdge?.radius ?? 25)))
     }
 
-    // Connected popup/sidebar/dashboard shoulders are intentionally back on
-    // their pre-experiment contract for now. Do not couple these to frameRadius
-    // until the connected-surface geometry is revisited explicitly.
+    // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK:
+    // Joined popup/sidebar/dashboard body corners stay SQUARE. Contact rounding
+    // is drawn only by the outward concave shoulder outside the body, never by
+    // rounding the body inward. The flare tangent radius follows the same user
+    // setting as Screen Edge/Bar; cross-axis compression preserves the broad,
+    // flattened Caelestia-like transition.
     readonly property real smoothUnionRadius: 20
     readonly property real popupRadius: 28
-
-    // Connected bodies keep their existing free-corner radius, but every corner
-    // that physically meets Screen Edge/Bar inherits the exact physical frame
-    // radius. This mirrors Caelestia's model where a rounded PanelBg participates
-    // in the same border union instead of being squared at the contact edge.
-    readonly property real attachedCornerRadius: frameRadius
-
-    // Smooth-union shoulders remain a separate approximation of Caelestia's
-    // BlobGroup smoothing. Do not conflate smoothing width with corner radius.
-    readonly property real joinFlareRadius: smoothUnionRadius
+    readonly property real joinFlareRadius: frameRadius
     readonly property real joinFlareCrossScale: 0.55
 
     readonly property real revealSlideDistance: 18

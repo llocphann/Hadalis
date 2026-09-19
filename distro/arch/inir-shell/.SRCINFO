@@ -1,7 +1,7 @@
 pkgbase = inir-shell
 	pkgdesc = Hadalis shell payload, launcher, and user service
 	pkgver = 2.29.3
-	pkgrel = 11
+	pkgrel = 12
 	url = https://github.com/llocphann/Hadalis
 	install = inir-shell.install
 	arch = any
@@ -73,6 +73,8 @@ pkgbase = inir-shell
 	optdepends = mission-center: graphical system monitor (default task manager)
 	optdepends = mpv: media playback and YouTube Music support
 	optdepends = mpv-mpris: richer mpv media session integration
+	optdepends = mpd: local Music library and queue backend
+	optdepends = mpd-mpris: MPD/rmpc/Hadalis Music controls through MPRIS
 	optdepends = nautilus: default file manager integration
 	optdepends = nm-connection-editor: default network settings GUI
 	optdepends = pavucontrol: advanced audio mixer UI

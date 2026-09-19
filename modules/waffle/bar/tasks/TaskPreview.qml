@@ -1,50 +1,48 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
+import Quickshell
 import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.waffle.looks
-import Quickshell
+import qs.modules.waffle.bar
 
-PopupWindow {
+// Waffle task previews now consume the same connected BarPopup surface as
+// Waffle menus/tray popouts. WindowPreview tiles and capture lifecycle remain
+// unchanged; only the detached PopupWindow shell is retired.
+BarPopup {
     id: root
 
-    ///////////////////// Properties ////////////////////
     required property bool tasksHovered
     property var appEntry
-    property Item anchorItem
     property bool contentResident: false
 
-    //////////////////// Functions ////////////////////
-    function close() {
-        marginBehavior.enabled = false;
-        root.visible = false;
-        releaseTimer.restart()
-    }
+    closeOnFocusLost: false
+    closeOnHoverLost: false
+    padding: 0
 
-    function open() {
+    function open(): void {
         releaseTimer.stop()
         root.contentResident = true
-        marginBehavior.enabled = true;
-        root.visible = true;
-        // Capture previews for windows in this app entry
-        captureAppPreviews();
+        root.active = true
+        root.captureAppPreviews()
     }
 
-    function show(appEntry: var, button: Item) {
-        root.appEntry = appEntry;
-        root.anchorItem = button;
-        root.anchor.updateAnchor();
-        root.open();
+    function show(appEntry: var, button: Item): void {
+        root.appEntry = appEntry
+        root.anchorItem = button
+        root.updateAnchor()
+        root.open()
     }
 
-    // Capture previews for windows in the current app entry
     function captureAppPreviews(): void {
-        if (!CompositorService.isNiri) return
+        if (!CompositorService.isNiri)
+            return
 
-        const windowIds = [];
+        const windowIds = []
         for (const tl of root.appEntry?.toplevels ?? []) {
             const id = tl?.niriWindowId
                 ?? NiriService.findNiriWindow(tl)?.niriWindow?.id
@@ -52,39 +50,28 @@ PopupWindow {
             if (id > 0)
                 windowIds.push(id)
         }
-        
+
         if (windowIds.length > 0) {
-            WindowPreviewService.initialize();
-            // captureForTaskView will capture windows that need it
-            WindowPreviewService.captureForTaskView();
+            WindowPreviewService.initialize()
+            WindowPreviewService.captureForTaskView()
         }
     }
 
-    ///////////////////// Internals /////////////////////
-    readonly property bool bottom: Config.options?.waffles?.bar?.bottom ?? false
-    property real visualMargin: Looks.dp(12)
-    property real ambientShadowWidth: 1
-
-    visible: false
-    color: "transparent"
-    implicitWidth: contentItem.implicitWidth + (ambientShadowWidth * 2) + (visualMargin * 2)
-    implicitHeight: contentItem.implicitHeight + (ambientShadowWidth * 2) + (visualMargin * 2)
-    mask: Region {
-        item: contentItem
-    }
-    anchor {
-        adjustment: PopupAdjustment.Slide
-        item: root.anchorItem
-        gravity: bottom ? Edges.Top : Edges.Bottom
-        edges: bottom ? Edges.Top : Edges.Bottom
+    onActiveChanged: {
+        if (active) {
+            releaseTimer.stop()
+            root.contentResident = true
+        } else {
+            releaseTimer.restart()
+        }
     }
 
     Timer {
         interval: 250
-        running: root.visible && !hoverChecker.containsMouse && !root.tasksHovered
-        onTriggered: {
-            root.close();
-        }
+        running: root.active
+            && !root.popupContainsMouse
+            && !root.tasksHovered
+        onTriggered: root.close()
     }
 
     readonly property bool _anyPanelOpen: GlobalStates.searchOpen
@@ -94,7 +81,11 @@ PopupWindow {
         || GlobalStates.waffleAltSwitcherOpen
         || GlobalStates.waffleClipboardOpen
         || GlobalStates.waffleTaskViewOpen
-    on_AnyPanelOpenChanged: if (_anyPanelOpen && root.visible) root.close()
+
+    on_AnyPanelOpenChanged: {
+        if (root._anyPanelOpen && root.active)
+            root.close()
+    }
 
     Timer {
         id: releaseTimer
@@ -105,56 +96,19 @@ PopupWindow {
         }
     }
 
-    // Content
-    MouseArea {
-        id: hoverChecker
-        anchors.fill: parent
-        hoverEnabled: true
+    contentItem: Item {
+        id: previewContent
 
-        // Shadow
-        WAmbientShadow {
-            target: contentItem
-        }
+        clip: true
+        implicitHeight: Math.min(
+            Looks.dp(158), previewBranch.item?.implicitHeight ?? 0)
+        implicitWidth: previewBranch.item?.implicitWidth ?? 0
 
-        Rectangle {
-            id: contentItem
-            property real sourceEdgeMargin: root.visible ? (root.ambientShadowWidth + root.visualMargin) : -root.implicitHeight
-            Behavior on sourceEdgeMargin {
-                id: marginBehavior
-                animation: NumberAnimation { duration: Looks.transition.enabled ? Looks.transition.duration.panel : 0; easing.type: Easing.BezierSpline; easing.bezierCurve: Looks.transition.easing.bezierCurve.decelerate }
-            }
-            anchors {
-                left: parent.left
-                right: parent.right
-                top: root.bottom ? undefined : parent.top
-                bottom: root.bottom ? parent.bottom : undefined
-                margins: root.ambientShadowWidth + root.visualMargin
-                // Opening anim
-                bottomMargin: root.bottom ? sourceEdgeMargin : (root.ambientShadowWidth + root.visualMargin)
-                topMargin: root.bottom ? (root.ambientShadowWidth + root.visualMargin) : sourceEdgeMargin
-            }
-            color: Looks.colors.popupSurface
-            radius: Looks.radius.large
-
-            layer.enabled: root.contentResident && Looks.effectsEnabled
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: contentItem.width
-                    height: contentItem.height
-                    radius: contentItem.radius
-                }
-            }
-
-            implicitHeight: Math.min(Looks.dp(158), previewBranch.item?.implicitHeight ?? 0)
-            implicitWidth: previewBranch.item?.implicitWidth ?? 0
-
-            // Avoid resident screencopy captures while hidden.
-            Loader {
-                id: previewBranch
-                anchors.fill: parent
-                active: root.contentResident
-                sourceComponent: classicWindows
-            }
+        Loader {
+            id: previewBranch
+            anchors.fill: parent
+            active: root.contentResident
+            sourceComponent: classicWindows
         }
     }
 
@@ -166,6 +120,7 @@ PopupWindow {
                 model: ScriptModel {
                     values: root.appEntry?.toplevels ?? []
                 }
+
                 delegate: WindowPreview {
                     required property var modelData
                     toplevel: modelData
@@ -173,5 +128,4 @@ PopupWindow {
             }
         }
     }
-
 }

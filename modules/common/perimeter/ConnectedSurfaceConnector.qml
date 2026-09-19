@@ -7,6 +7,7 @@ Canvas {
     property color fillColor: "white"
     property color strokeColor: "transparent"
     property real strokeWidth: geometry.borderWidth ?? 0
+    property bool connectorEnabled: true
 
     readonly property bool horizontal: geometry.edge === "top" || geometry.edge === "bottom"
     readonly property real tangentExtent: horizontal ? width : height
@@ -18,7 +19,8 @@ Canvas {
     y: geometry.connectorRect.y
     width: geometry.connectorRect.width
     height: geometry.connectorRect.height
-    visible: geometry.valid && geometry.progress > 0 && width > 0 && height > 0
+    visible: root.connectorEnabled
+        && geometry.valid && geometry.progress > 0 && width > 0 && height > 0
 
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()

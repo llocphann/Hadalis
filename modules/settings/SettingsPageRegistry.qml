@@ -19,11 +19,15 @@ Singleton {
     readonly property int quickPageIndex: 0
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2
+    readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
     property bool _legacyBarCornerStyleMigrationDone: false
+    property bool _legacyBarBackgroundMigrationDone: false
+    property bool _legacySidebarSurfaceMigrationDone: false
+    property bool _legacyScreenEdgeShadowMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
@@ -47,6 +51,14 @@ Singleton {
                 // configs can still be parsed; the public page removes retired
                 // Float/Rectangle/Card controls and exposes Hug only.
                 component: "modules/settings/BarConfigHugOnly.qml"
+            })
+        }
+        if (index === root.themesPageIndex) {
+            return Object.assign({}, page, {
+                // Public v1.0 theme settings expose the supported Material
+                // color, typography, motion and advanced tooling only.
+                component: "modules/settings/ThemesConfigMaterial.qml",
+                desc: Translation.tr("Material colors, typography and motion")
             })
         }
         if (index !== root.retiredTlpPageIndex)
@@ -126,6 +138,49 @@ Singleton {
             Config.setNestedValue("bar.cornerStyle", 0)
     }
 
+    function _migrateLegacyBarBackground(): void {
+        if (root._legacyBarBackgroundMigrationDone || !Config.ready)
+            return
+
+        root._legacyBarBackgroundMigrationDone = true
+        // The supported Hug Bar is a structural connected surface. A legacy
+        // transparent-bar value removes both its endpoint shoulders and the
+        // shared inward shadow, leaving popups visually detached.
+        if (!(Config.options?.bar?.showBackground ?? true))
+            Config.setNestedValue("bar.showBackground", true)
+    }
+
+    function _migrateLegacySidebarSurface(): void {
+        if (root._legacySidebarSurfaceMigrationDone || !Config.ready)
+            return
+
+        root._legacySidebarSurfaceMigrationDone = true
+        // Panel is the sole public Sidebar surface for v1.0. Keep the old
+        // fields readable so persisted configs load, then normalize them away.
+        if ((Config.options?.sidebar?.style ?? "panel") !== "panel")
+            Config.setNestedValue("sidebar.style", "panel")
+        if (Config.options?.sidebar?.cardStyle ?? false)
+            Config.setNestedValue("sidebar.cardStyle", false)
+    }
+
+    function _migrateLegacyScreenEdgeShadow(): void {
+        if (root._legacyScreenEdgeShadowMigrationDone || !Config.ready)
+            return
+
+        root._legacyScreenEdgeShadowMigrationDone = true
+        const size = Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)
+        const opacity = Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)
+
+        // 12px / 24% was Hadalis' provisional shadow and is too weak to read on
+        // dark wallpapers. Migrate only that exact legacy pair; any user-tuned
+        // value is preserved. Caelestia's current ContentWindow uses blurMax=15
+        // with 0.7 shadow alpha.
+        if (size === 12 && Math.abs(opacity - 0.24) < 0.001) {
+            Config.setNestedValue("appearance.screenEdge.shadow.size", 15)
+            Config.setNestedValue("appearance.screenEdge.shadow.opacity", 0.70)
+        }
+    }
+
     function consumeLegacyTlpPowerRedirect(): bool {
         if (!root._legacyTlpPowerRedirectPending)
             return false
@@ -149,17 +204,13 @@ Singleton {
 
                 const redirected = Object.assign({}, entry)
                 const keywords = Array.isArray(entry.keywords) ? entry.keywords : []
-                const chargeCareEntry = keywords.includes("threshold")
-                    || keywords.includes("conservation")
 
                 redirected.pageIndex = root.systemPageIndex
                 redirected.pageName = root.pages[root.systemPageIndex].name
-                redirected.section = chargeCareEntry
-                    ? Translation.tr("Power") + " · " + Translation.tr("Battery Care")
-                    : Translation.tr("Power")
-                redirected.label = chargeCareEntry
-                    ? Translation.tr("Hardware-aware charge care")
-                    : Translation.tr("Battery and TLP power management")
+                // Battery care is integrated into the primary Power card;
+                // legacy charge-limit searches land on that same visible target.
+                redirected.section = Translation.tr("Power")
+                redirected.label = Translation.tr("Battery & TLP")
                 redirected.keywords = keywords.concat(["system", "settings", "power"])
                 return redirected
             })
@@ -170,6 +221,9 @@ Singleton {
         root._migrateLegacyDockStyle()
         root._migrateLegacyUiLocale()
         root._migrateLegacyBarCornerStyle()
+        root._migrateLegacyBarBackground()
+        root._migrateLegacySidebarSurface()
+        root._migrateLegacyScreenEdgeShadow()
     }
 
     Connections {
@@ -187,6 +241,9 @@ Singleton {
                 root._migrateLegacyDockStyle()
                 root._migrateLegacyUiLocale()
                 root._migrateLegacyBarCornerStyle()
+                root._migrateLegacyBarBackground()
+                root._migrateLegacySidebarSurface()
+                root._migrateLegacyScreenEdgeShadow()
             }
         }
     }

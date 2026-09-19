@@ -31,22 +31,37 @@ Scope {
     // instant settingsOpen flips false and the scrim cut to black.
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
+    property real _surfaceReveal: settingsOpen ? 1 : 0
+
+    Behavior on _surfaceReveal {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+        }
+    }
 
     onSettingsOpenChanged: {
         if (settingsOpen) {
             _closeAnimRunning = false
             closeAnimTimer.stop()
+            _surfaceReveal = 0
+            Qt.callLater(() => {
+                if (root.settingsOpen)
+                    root._surfaceReveal = 1
+            })
         } else {
+            _surfaceReveal = 0
             _closeAnimRunning = true
             closeAnimTimer.restart()
         }
     }
 
-    // Match the scrim fade-out (elementMoveFast) + a small margin so teardown
-    // lands right after the backdrop finishes fading.
+    // Keep the native host alive until the bottom-edge exit slide completes.
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMoveFast.duration + 40
+        interval: Appearance.animation.elementMove.duration + 40
         repeat: false
         onTriggered: _closeAnimRunning = false
     }
@@ -238,7 +253,7 @@ Scope {
             var labelLower = pendingSpotlightLabel.toLowerCase();
             var sectionLower = pendingSpotlightSection.toLowerCase();
             // Remove page name prefix from sectionGroup if present (supports both delimiters)
-            // e.g., "Themes · Global Style" or "Themes › Global Style" -> "Global Style"
+            // e.g., "Themes · Colors" or "Themes › Colors" -> "Colors"
             var sectionParts = sectionLower.split(/[·›]/).map(p => p.trim()).filter(p => p.length > 0);
             var sectionOnly = sectionParts.length > 1 ? sectionParts[sectionParts.length - 1] : sectionLower;
 
@@ -430,10 +445,12 @@ Scope {
             WlrLayershell.namespace: "quickshell:settingsOverlay"
             // Yield the layer-shell overlay while a native dialog is visible.
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
-                ? WlrLayer.Bottom : WlrLayer.Overlay
+                ? WlrLayer.Bottom
+                : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
             WlrLayershell.keyboardFocus: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
+                && !PolkitService.active
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"
@@ -549,68 +566,68 @@ Scope {
             MouseArea {
                 anchors.fill: parent
                 visible: GlobalStates.settingsOverlayOpen ?? false
-                enabled: !GlobalStates.settingsNativeDialogOpen
+                enabled: !GlobalStates.settingsNativeDialogOpen && !PolkitService.active
                 onClicked: GlobalStates.settingsOverlayOpen = false
             }
 
             // ── Floating settings card (no separate drop shadow — the card
             //    sits on the scrim backdrop; the panel border provides depth) ──
-// ── Floating settings card ──
+// ── Bottom-connected settings popup ──
+            StyledRectangularShadow {
+                target: settingsCard
+                visible: (root.settingsOpen || root._closeAnimRunning)
+                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
+                    && Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15) > 0
+                    && Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70) > 0
+                blur: Math.max(0, Math.min(32,
+                    Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+                spread: 0
+                offset: Qt.vector2d(0, 0)
+                color: (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
+                    ? ColorUtils.applyAlpha(Appearance.colors.colShadow,
+                        Math.max(0, Math.min(1.0,
+                            Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
+                    : "transparent"
+                joinBottom: true
+            }
+
             Rectangle {
                 id: settingsCard
 
-                readonly property real maxCardWidth: Math.min(1100, Math.max(820, settingsPanel.width * 0.7))
-                readonly property real maxCardHeight: Math.min(840, Math.max(600, settingsPanel.height * 0.82))
-                // Clamped, not read raw: the control used to bottom out at 20%,
-                // which left the solid styles showing a sharp wallpaper through
-                // the text and reduced aurora's tint to a raw 64 px blur. The
-                // panel is one surface — the cards on it carry the reading
-                // contrast — so the panel itself has to stay a real backdrop.
+                readonly property real maxCardWidth: Math.min(
+                    1600,
+                    Math.max(900, settingsPanel.width * 0.90),
+                    Math.max(0, settingsPanel.width - 48))
+                readonly property real maxCardHeight: Math.min(
+                    1080,
+                    Math.max(720, settingsPanel.height * 0.92),
+                    Math.max(0, settingsPanel.height - 24))
+                // Keep the Material panel opaque enough for readable content while
+                // allowing the supported overlay background-opacity control to tune it.
+                // This alpha belongs to the panel fill, never Item opacity, so child
+                // content remains unaffected.
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
 
-                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: settingsPanel.height - height
+                    + (1 - root._surfaceReveal) * height
                 width: maxCardWidth
                 height: maxCardHeight
-                radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
-                      : Appearance.regaliaEverywhere ? Appearance.regalia.panelRadius
-                      : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
-                      : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-                      : Appearance.rounding.windowRounding
+                radius: Appearance.rounding.windowRounding
+                bottomLeftRadius: 0
+                bottomRightRadius: 0
                 Behavior on radius {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot }
                 }
-                // overlayAppearance.backgroundOpacity reaches every style: glass
-                // modulates the blur's transparentize below, solid styles take it
-                // on this fill's alpha. It must never ride on Item opacity —
-                // that is inherited by children and would dim the whole UI
-                // instead of the panel background. At the default 1.0 both paths
-                // are identity, so no style changes appearance.
-                color: Appearance.auroraEverywhere || Appearance.regaliaEverywhere ? "transparent"
-                     : CF.ColorUtils.applyAlpha(
-                         Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                       : Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                       : Appearance.colors.colLayer0Base,
-                         settingsCard.panelBgOpacity)
+                color: CF.ColorUtils.applyAlpha(
+                    Appearance.colors.colLayer0Base,
+                    settingsCard.panelBgOpacity)
                 clip: true
 
-                border.width: Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
-                            : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-                            : Appearance.inirEverywhere ? 1 : 0
-                border.color: Appearance.angelEverywhere ? Appearance.angel.colPanelBorder
-                            : Appearance.zzzEverywhere ? Appearance.zzz.hairline
-                            : Appearance.inirEverywhere
-                                ? (Appearance.inir?.colBorder ?? Appearance.colors.colLayer0Border)
-                                : "transparent"
-                Behavior on border.width {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-                Behavior on border.color {
-                    enabled: Appearance.animationsEnabled
-                    ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
+                border.width: 0
+                border.color: "transparent"
                 Behavior on color {
                     enabled: Appearance.animationsEnabled
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -622,71 +639,11 @@ Scope {
                 // Instant show/hide — matches the window-mode settings UI.
                 // No scale/opacity fade (the fade felt heavy and the scrim
                 // backdrop already carries the transition).
-                opacity: (GlobalStates.settingsOverlayOpen ?? false) ? 1 : 0
-                visible: opacity > 0
+                opacity: 1
+                visible: root.settingsOpen || root._closeAnimRunning
 
-                RegaliaPlate {
-                    anchors.fill: parent
-                    z: -1
-                    visible: Appearance.regaliaEverywhere
-                    fillColor: CF.ColorUtils.applyAlpha(Appearance.regalia.bg0,
-                        settingsCard.panelBgOpacity)
-                    radius: settingsCard.radius
-                    inset: Appearance.regalia.panelInset
-                    elevated: true
-                    glassEnabled: true
-                }
-
-                // Glass background for aurora/angel wallpaper blur
-                GlassBackground {
-                    anchors.fill: parent
-                    z: -1
-                    visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
-                    screenX: settingsCard.x
-                    screenY: settingsCard.y
-                    screenWidth: settingsPanel.width
-                    screenHeight: settingsPanel.height
-                    // GameMode disables the wallpaper blur backend. Aurora's
-                    // card itself is transparent, so a transparent fallback
-                    // made the complete settings surface disappear over a
-                    // fullscreen window. Keep glass normally and use the
-                    // regular opaque surface only while effects are suspended.
-                    fallbackColor: Appearance.effectsEnabled
-                        ? "transparent" : Appearance.colors.colLayer0Base
-                    // Modulates the style's tuned baseline rather than replacing
-                    // it: 1.0 keeps glass exactly as the style designed it, lower
-                    // values push toward fully transparent. A plain
-                    // `1 - backgroundOpacity` would make the default MORE opaque
-                    // than the style intends and flatten aurora's glass.
-                    auroraTransparency: {
-                        const base = Appearance.angelEverywhere
-                            ? Appearance.angel.panelTransparentize
-                            : Appearance.aurora.overlayTransparentize
-                        return base + (1 - base) * (1 - settingsCard.panelBgOpacity)
-                    }
-                    radius: parent.radius
-                }
-
-                ZzzPanelBackdrop {
-                    anchors.fill: parent
-                    label: Translation.tr("User manual")
-                    index: "UI"
-                    ghostText: "CONFIG"
-                    accentColor: Appearance.zzz.accent
-                    showTicks: false
-                    showBurst: false
-                    // Drop the grid cuadriculado behind the cards: it muddied the
-                    // panel and hurt card/text legibility. The lit-console gradient
-                    // + ghost + frame carry the ZZZ identity, cleaner. Also fewer
-                    // delegates → lighter. Ghost pulled back so it reads as a
-                    // watermark, not noise.
-                    showGrid: false
-                    horizontalBias: 0.12
-                    verticalBias: 0.03
-                    ghostWidthFactor: 0.88
-                    ghostStrength: 0.5
-                    z: 1
-                }
+                // Material-only v1.0: retired shell-wide style backdrops are not
+                // instantiated in the active Settings surface.
 
                 // Prevent clicks from closing
                 MouseArea {
@@ -805,21 +762,10 @@ Scope {
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall : width / 2
-                                        color: Appearance.regaliaEverywhere ? "transparent"
-                                            : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                            : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                            : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                            : Appearance.colors.colLayer1
-                                        border.width: Appearance.regaliaEverywhere ? 0 : 1
+                                        radius: width / 2
+                                        color: Appearance.colors.colLayer1
+                                        border.width: 1
                                         border.color: Appearance.colors.colPrimary
-
-                                        RegaliaControlFace {
-                                            anchors.fill: parent
-                                            visible: Appearance.regaliaEverywhere
-                                            fillColor: Appearance.regalia.controlPlate
-                                            radius: parent.radius
-                                        }
                                     }
 
                                     Rectangle {
@@ -827,7 +773,7 @@ Scope {
                                         anchors.centerIn: parent
                                         width: 34
                                         height: 34
-                                        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundVerySmall : width / 2
+                                        radius: width / 2
                                         visible: false
                                     }
 
@@ -910,21 +856,12 @@ Scope {
                             anchors.bottomMargin: root.navEditMode ? 10 : 4
                             radius: Appearance.rounding.full
                             color: overlaySearchField.activeFocus
-                                ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                  : Appearance.colors.colLayer1)
-                                : (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                                  : Appearance.colors.colSurfaceContainerLow)
-                            border.width: overlaySearchField.activeFocus ? 2
-                                : (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1)
+                                ? Appearance.colors.colLayer1
+                                : Appearance.colors.colSurfaceContainerLow
+                            border.width: overlaySearchField.activeFocus ? 2 : 1
                             border.color: overlaySearchField.activeFocus
                                 ? Appearance.colors.colPrimary
-                                : (Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                                  : Appearance.inirEverywhere ? Appearance.inir.colBorderMuted
-                                  : Appearance.colors.colOutlineVariant)
+                                : Appearance.colors.colOutlineVariant
 
                             Behavior on color {
                                 enabled: Appearance.animationsEnabled
@@ -1220,9 +1157,7 @@ Scope {
                                             required property var modelData
                                             Layout.fillWidth: true
                                             spacing: 0
-                                            readonly property color headerAccentColor: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                                                : Appearance.inirEverywhere ? Appearance.inir.colAccent
-                                                : Appearance.colors.colPrimary
+                                            readonly property color headerAccentColor: Appearance.colors.colPrimary
 
                                             // ── Category header ──
                                             Item {
@@ -1267,47 +1202,21 @@ Scope {
                                                 id: navBtn
                                                 visible: navItem.modelData.type === "page"
                                                 width: parent.width
-                                                implicitHeight: visible
-                                                    ? (Appearance.regaliaEverywhere ? Appearance.regalia.controlHeight : 34) : 0
+                                                implicitHeight: visible ? 34 : 0
                                                 z: 1
 
                                                 readonly property int pageRealIndex: navItem.modelData.realIndex !== undefined ? navItem.modelData.realIndex : navItem.index
 
-                                                // Bgless doctrine (matches NavigationRailButton.qml): zzz
-                                                // selection reads through the sticker pill + icon/text
-                                                // colour, not a Material ripple bleeding out from the
-                                                // click point on a transparent nav item.
-                                                rippleEnabled: !Appearance.zzzEverywhere
-
-                                                buttonRadius: Appearance.regaliaEverywhere
-                                                    ? Appearance.regalia.roundSmall
-                                                    : Appearance.zzzEverywhere
-                                                    ? Appearance.zzz.controlRadius
-                                                    : Math.min(width, height) / 2
+                                                rippleEnabled: true
+                                                buttonRadius: Math.min(width, height) / 2
                                                 toggled: overlayCurrentPage === pageRealIndex
                                                 colBackground: "transparent"
-                                                colBackgroundToggled: Appearance.regaliaEverywhere
-                                                    ? Appearance.regalia.primaryPlate : "transparent"
-                                                // zzz: transparent, not paperAlt — this Control's own
-                                                // background renders above sharedNavIndicator (z:1 vs
-                                                // z:-1 below), so any opaque fill here fully hides the
-                                                // sticker pill on hover instead of layering with it.
-                                                colBackgroundToggledHover: Appearance.regaliaEverywhere
-                                                    ? Appearance.regalia.primaryPlateHover
-                                                    : Appearance.zzzEverywhere
-                                                    ? "transparent"
-                                                    : Appearance.angelEverywhere
-                                                    ? Appearance.angel.colGlassCardHover
-                                                    : Appearance.inirEverywhere
-                                                        ? Appearance.inir.colLayer1Hover
-                                                        : Appearance.auroraEverywhere
-                                                            ? Appearance.aurora.colElevatedSurface
-                                                            : CF.ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.5)
-                                                colBackgroundHover: Appearance.regaliaEverywhere
-                                                    ? Appearance.regalia.surfacePlateHover
-                                                    : Appearance.zzzEverywhere
-                                                    ? Appearance.zzz.paperAlt
-                                                    : Appearance.colors.colLayer1Hover
+                                                colBackgroundToggled: "transparent"
+                                                // Keep the travelling Material selection pill visible
+                                                // beneath the transparent toggled button surface.
+                                                colBackgroundToggledHover: CF.ColorUtils.transparentize(
+                                                    Appearance.colors.colLayer1Hover, 0.5)
+                                                colBackgroundHover: Appearance.colors.colLayer1Hover
 
                                                 onClicked: overlayCurrentPage = pageRealIndex
 
@@ -1316,24 +1225,15 @@ Scope {
 
                                                     RowLayout {
                                                         anchors.fill: parent
-                                                        anchors.leftMargin: Appearance.regaliaEverywhere
-                                                            ? Appearance.regalia.controlPaddingHorizontal : 10
-                                                        anchors.rightMargin: Appearance.regaliaEverywhere
-                                                            ? Appearance.regalia.controlPaddingHorizontal : 8
-                                                        spacing: Appearance.regaliaEverywhere
-                                                            ? Appearance.regalia.controlGap : 10
+                                                        anchors.leftMargin: 10
+                                                        anchors.rightMargin: 8
+                                                        spacing: 10
 
                                                         MaterialSymbol {
                                                             text: navItem.modelData.icon || ""
                                                             iconSize: 18
-                                                            color: navBtn.toggled || (Appearance.regaliaEverywhere && navBtn.buttonHovered)
-                                                                ? (Appearance.regaliaEverywhere
-                                                                    ? Appearance.regalia.hardwarePrimary
-                                                                    : Appearance.zzzEverywhere
-                                                                    ? Appearance.zzz.ink
-                                                                    : Appearance.inirEverywhere
-                                                                    ? Appearance.inir.colAccent
-                                                                    : Appearance.colors.colPrimary)
+                                                            color: navBtn.toggled
+                                                                ? Appearance.colors.colPrimary
                                                                 : Appearance.colors.colOnSurfaceVariant
                                                             rotation: navItem.modelData.iconRotation || 0
 
@@ -1351,9 +1251,8 @@ Scope {
                                                                 pixelSize: Appearance.font.pixelSize.small
                                                                 weight: navBtn.toggled ? Font.Medium : Font.Normal
                                                             }
-                                                            color: navBtn.toggled || (Appearance.regaliaEverywhere && navBtn.buttonHovered)
-                                                                ? (Appearance.regaliaEverywhere ? Appearance.regalia.primaryPlateInk
-                                                                    : Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.colors.colOnLayer1)
+                                                            color: navBtn.toggled
+                                                                ? Appearance.colors.colOnLayer1
                                                                 : Appearance.colors.colOnSurfaceVariant
                                                             elide: Text.ElideRight
 
@@ -1370,47 +1269,22 @@ Scope {
 
                                     // Active indicator: pill travelling behind the active item,
                                     // inside navCol so its y matches the items' coordinate space.
-                                    ZzzPlate {
+                                    Rectangle {
                                         id: sharedNavIndicator
                                         z: -1
                                         parent: navCol
                                         x: 0
                                         width: navCol.width
-                                        // ZzzPlate picks its renderer by `radius > 0` alone — setting both
-                                        // radius AND chamfer unconditionally left chamfer as dead code
-                                        // (always rendered rounded, never chamfered in square mode).
-                                        // Gate them like everywhere else that switches on Appearance.zzz.round.
-                                        radius: Appearance.zzzEverywhere
-                                            ? (Appearance.zzz.round ? Appearance.zzz.controlRadius : 0)
-                                            : Appearance.rounding.small
-                                        chamfer: Appearance.zzzEverywhere && !Appearance.zzz.round ? Appearance.zzz.cutCorner : 0
-                                        fillColor: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                             : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                                             : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                                             : Appearance.zzzEverywhere ? Appearance.zzz.sticker
-                                             : Appearance.colors.colPrimaryContainer
-                                        // No hairline in zzz: the plate carried a stroke on every
-                                        // edge which, next to the accent bar below, read as two
-                                        // stacked vertical lines. Fill + accent bar only (zzz doctrine:
-                                        // separate by fill, not outline).
-                                        strokeColor: "transparent"
-                                        strokeWidth: 0
-
-                                        // ZZZ: solid vertical accent edge — the sticker fill alone
-                                        // read as a hairline; the active item needs a real marker
-                                        Rectangle {
-                                            visible: Appearance.zzzEverywhere
-                                            anchors.left: parent.left
-                                            anchors.leftMargin: Appearance.zzz.borderThick
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            height: Math.max(0, parent.height * 0.62)
-                                            width: Appearance.zzz.borderThick * 3
-                                            color: Appearance.zzz.accent
-                                        }
+                                        radius: Appearance.rounding.small
+                                        color: Appearance.colors.colPrimaryContainer
 
                                         Behavior on radius {
                                             enabled: Appearance.animationsEnabled
-                                            NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot }
+                                            NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
+                                        }
+                                        Behavior on color {
+                                            enabled: Appearance.animationsEnabled
+                                            ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                         }
 
                                         property real targetY: 0
@@ -1457,14 +1331,8 @@ Scope {
                                             anchors.leftMargin: 4
                                             width: 3
                                             radius: 1.5
-                                            // ZZZ separates by fill, not outlines (maintainer doctrine) — the
-                                            // sticker plate above already carries the selection signal, so
-                                            // this accent line is redundant clutter there.
-                                            visible: !Appearance.zzzEverywhere
-                                            height: (parent.hasTarget && visible) ? parent.height * 0.5 : 0
-                                            color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                                                 : Appearance.inirEverywhere ? Appearance.inir.colAccent
-                                                 : Appearance.colors.colPrimary
+                                            height: parent.hasTarget ? parent.height * 0.5 : 0
+                                            color: Appearance.colors.colPrimary
                                             Behavior on height {
                                                 enabled: Appearance.animationsEnabled
                                                 animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -1592,13 +1460,8 @@ Scope {
                                     implicitHeight: 36
                                     buttonRadius: Appearance.rounding.small
                                     colBackground: "transparent"
-                                    colBackgroundHover: Appearance.angelEverywhere
-                                        ? Appearance.angel.colGlassCard
-                                        : Appearance.inirEverywhere
-                                            ? Appearance.inir.colLayer1Hover
-                                            : Appearance.auroraEverywhere
-                                                ? Appearance.aurora.colSubSurface
-                                                : CF.ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.5)
+                                    colBackgroundHover: CF.ColorUtils.transparentize(
+                                        Appearance.colors.colLayer1Hover, 0.5)
 
                                     onClicked: {
                                         Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "settings-window"])
@@ -1638,56 +1501,19 @@ Scope {
                             }
                         }
 
-                        // ZZZ no longer needs a separate nav/content rule: the content
-                        // plate and active pill provide enough separation without a hard line.
-                        Rectangle {
-                            visible: false
-                            Layout.fillHeight: true
-                            Layout.topMargin: 6
-                            Layout.bottomMargin: 6
-                            Layout.preferredWidth: Math.max(1, Appearance.zzz.borderThick)
-                            color: Appearance.zzz.hairlineStrong
-                        }
-
+                        // Content area
                         // Content area
                         Rectangle {
                             id: overlayContentContainer
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                                 : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                                 : Appearance.rounding.normal
-                            // ZZZ: lift the content field clearly off the chrome panel +
-                            // nav rail so the reading area reads as its own plate (bg2),
-                            // not the same black. Hairline seals the edge.
-                            color: Appearance.auroraEverywhere ? "transparent"
-                                 : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                                 : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                 : Appearance.colors.colSurfaceContainerLow
-                            border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                        : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-                                        : Appearance.inirEverywhere ? 1 : 0
-                            border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                                        : Appearance.zzzEverywhere ? Appearance.zzz.hairline
-                                        : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : "transparent"
+                            radius: Appearance.rounding.normal
+                            color: Appearance.colors.colSurfaceContainerLow
+                            border.width: 0
+                            border.color: "transparent"
                             clip: true
 
-                            // Glass background for aurora/angel wallpaper blur in content area
-                            GlassBackground {
-                                anchors.fill: parent
-                                z: -1
-                                visible: Appearance.auroraEverywhere && !Appearance.inirEverywhere
-                                screenX: settingsCard.x + overlayContentContainer.x + 16
-                                screenY: settingsCard.y + overlayContentContainer.y + 16
-                                screenWidth: settingsPanel.width
-                                screenHeight: settingsPanel.height
-                                fallbackColor: "transparent"
-                                auroraTransparency: Appearance.angelEverywhere
-                                    ? Appearance.angel.cardTransparentize
-                                    : Appearance.aurora.subSurfaceTransparentize
-                                radius: parent.radius
-                            }
-
+                            // ── Page header: icon + name + description ──
                             // ── Page header: icon + name + description ──
                             Item {
                                 id: overlayPageHeader
@@ -1742,7 +1568,7 @@ Scope {
                                 Rectangle {
                                     anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 16; rightMargin: 16 }
                                     height: 1
-                                    color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : Appearance.colors.colOutlineVariant
+                                    color: Appearance.colors.colOutlineVariant
                                     opacity: 0
                                 }
                             }
@@ -1801,15 +1627,9 @@ Scope {
                         width: noResultsRow.implicitWidth + 32
                         height: 44
                         radius: Math.min(width, height) / 2
-                        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                             : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                             : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                             : Appearance.colors.colSurfaceContainerHigh
-                        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                    : Appearance.inirEverywhere ? 1 : 0
-                        border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                                    : Appearance.inirEverywhere ? Appearance.inir.colBorderMuted
-                                    : "transparent"
+                        color: Appearance.colors.colSurfaceContainerHigh
+                        border.width: 0
+                        border.color: "transparent"
 
                         Behavior on _pillOpacity {
                             enabled: Appearance.animationsEnabled
@@ -1877,18 +1697,10 @@ Scope {
                         }
                         anchors.top: parent.top
                         anchors.topMargin: 56
-                        radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                             : Appearance.rounding.normal
-                        color: Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
-                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer1Base
-                            : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                            : Appearance.colors.colLayer1
-                        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                    : Appearance.inirEverywhere ? 1 : 1
-                        border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                            : Appearance.colors.colOutlineVariant
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colors.colLayer1
+                        border.width: 1
+                        border.color: Appearance.colors.colOutlineVariant
 
                         ListView {
                             id: overlayResultsList
@@ -1974,15 +1786,9 @@ Scope {
                                     buttonRadius: Appearance.rounding.small
 
                                     colBackground: resultDelegate.ListView.isCurrentItem
-                                        ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                          : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                          : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                                          : Appearance.colors.colLayer2)
+                                        ? Appearance.colors.colLayer2
                                         : "transparent"
-                                    colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                                      : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-                                                      : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                                      : Appearance.colors.colLayer2
+                                    colBackgroundHover: Appearance.colors.colLayer2
 
                                     Keys.forwardTo: [overlayResultsList]
                                     onClicked: root.openOverlaySearchResult(resultDelegate.modelData)

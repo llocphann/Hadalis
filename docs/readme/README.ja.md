@@ -111,7 +111,7 @@ Wayland → GPU
 ## 機能
 
 **2つのパネルファミリー**、`Super+Shift+W` でオンザフライ切り替え：
-- **Material ii** — フローティングバー、サイドバー、ドック、5つのビジュアルスタイル（material、cards、aurora、inir、angel）
+- **Material ii** — フローティングバー、サイドバー、ドック。グローバルビジュアルテーマは Material のみ
 - **Waffle** — Windows 11 スタイルのタスクバー、スタートメニュー、アクションセンター、通知センター
 
 **自動テーマ** — 壁紙を選ぶだけですべてが適応：
@@ -128,7 +128,7 @@ Wayland → GPU
 
 壁紙を選ぶとシステム全体が追従 — シェル、GTK/Qt アプリ、ターミナル、Firefox、Discord、SDDM ログイン画面。すべて自動。
 
-- **5つのビジュアルスタイル** — Material（ソリッド）、Cards、Aurora（ガラスブラー）、iNiR（TUI 風）、Angel（ネオブルータリズム）
+- **グローバルビジュアルテーマ** — Material のみ。カラーパレットとローカルなコンポーネント設定は独立しています
 - **壁紙からの動的カラー** — Material You でシステム全体に伝播
 - **10のターミナルツール自動テーマ化** — foot、kitty、alacritty、starship、fuzzel、pywalfox、btop、lazygit、yazi
 - **アプリテーマ化** — GTK3/4、Qt（plasma-integration + darkly）、Firefox（MaterialFox）、Discord/Vesktop（System24）

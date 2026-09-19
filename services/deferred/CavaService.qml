@@ -47,7 +47,11 @@ Singleton {
     readonly property string scriptPath: FileUtils.trimFileProtocol(Directories.scriptPath) + "/cava/generate_config.sh"
 
     // Mirror CavaProcess's previous config schema reading
-    readonly property int cfgFramerate: Config.options?.appearance?.cava?.framerate ?? 60
+    readonly property int requestedFramerate: Math.max(15, Math.min(165,
+        Number(Config.options?.appearance?.cava?.framerate ?? 30)))
+    readonly property int cfgFramerate: (Config.options?.performance?.lowPower ?? false)
+        ? Math.min(24, root.requestedFramerate)
+        : root.requestedFramerate
     readonly property int cfgSensitivity: Config.options?.appearance?.cava?.sensitivity ?? 100
     readonly property int cfgBars: Config.options?.appearance?.cava?.bars ?? 0
     readonly property bool cfgStereo: Config.options?.appearance?.cava?.stereo ?? true
@@ -151,6 +155,12 @@ Singleton {
         if (parsed.length !== root._processBars)
             return
 
+        // A healthy raw CAVA process emits complete frames continuously,
+        // including silence. Refresh the watchdog only after a complete frame;
+        // if the selected PipeWire/Pulse source stalls, regenerate the config
+        // and resolve the source again instead of leaving an invisible EQ.
+        dataWatchdog.restart()
+
         let peak = 0
         let sum = 0
         for (let i = 0; i < parsed.length; ++i) {
@@ -227,6 +237,19 @@ Singleton {
         onTriggered: root.audioSignalActive = false
     }
 
+    // Port Serpantinum's no-data recovery idea into the shared Hadalis service.
+    // Zero-amplitude frames still refresh this timer; it only fires when the
+    // process itself stops producing valid frames while a consumer is active.
+    Timer {
+        id: dataWatchdog
+        interval: 2400
+        repeat: false
+        onTriggered: {
+            if (root.active && cavaProc.running)
+                configRestart.restart()
+        }
+    }
+
     Timer {
         id: frameClear
         interval: 2600
@@ -300,7 +323,10 @@ Singleton {
         running: false
         command: ["cava", "-p", root.configPath]
         onRunningChanged: {
-            if (!running) {
+            if (running) {
+                dataWatchdog.restart()
+            } else {
+                dataWatchdog.stop()
                 if (root._pendingRestart && root.active) {
                     root._pendingRestart = false
                     root._generateConfig()

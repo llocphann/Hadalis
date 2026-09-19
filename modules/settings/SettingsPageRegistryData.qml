@@ -34,7 +34,7 @@ Singleton {
             key: "system",
             name: Translation.tr("System"),
             icon: "browse",
-            desc: Translation.tr("Audio, battery, language, lock"),
+            desc: Translation.tr("Audio, power, fan control, language, lock"),
             essential: true,
             component: "modules/settings/GeneralConfig.qml"
         },
@@ -436,6 +436,13 @@ Singleton {
         },
         {
             pageIndex: 1, pageName: root.pages[1].name,
+            section: Translation.tr("Fan Control"),
+            label: Translation.tr("Fan Control"),
+            description: Translation.tr("ThinkFan ownership, fan status and cooling controls"),
+            keywords: ["fan", "fan control", "thinkfan", "thermal", "cooling", "rpm", "temperature", "system"]
+        },
+        {
+            pageIndex: 1, pageName: root.pages[1].name,
             section: Translation.tr("Language"),
             label: Translation.tr("Language"),
             description: Translation.tr("Interface language and AI translations"),
@@ -520,13 +527,6 @@ Singleton {
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("Appearance & Layout"),
-            label: Translation.tr("Corner style"),
-            description: Translation.tr("Bar corner style: hug, float or rectangle"),
-            keywords: ["bar", "corner", "style", "hug", "float", "rectangle", "rounding"]
-        },
-        {
-            pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Audio spectrum"),
             label: Translation.tr("Bar audio spectrum"),
             description: Translation.tr("Bars, waves, frequency accents and dynamic curve fit"),
@@ -541,10 +541,24 @@ Singleton {
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
-            section: Translation.tr("Appearance & Layout"),
-            label: Translation.tr("Bar background"),
-            description: Translation.tr("Show or hide bar background"),
-            keywords: ["bar", "background", "transparent", "show", "hide"]
+            section: Translation.tr("Screen Edge"),
+            label: Translation.tr("Screen edge width (px)"),
+            description: Translation.tr("Set the persistent connected screen-edge thickness"),
+            keywords: ["screen", "edge", "width", "thickness", "perimeter", "connected", "bar", "gap"]
+        },
+        {
+            pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Screen Edge"),
+            label: Translation.tr("Corner radius (px)"),
+            description: Translation.tr("Set Screen Edge, Bar and outward popup contact radius"),
+            keywords: ["screen", "edge", "corner", "radius", "rounding", "popup", "sidebar", "dashboard", "caelestia"]
+        },
+        {
+            pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Screen Edge"),
+            label: Translation.tr("Screen edge shadow"),
+            description: Translation.tr("Configure only the physical Screen Edge shadow"),
+            keywords: ["screen", "edge", "shadow", "physical", "size", "opacity", "blur", "perimeter", "caelestia"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
@@ -706,48 +720,6 @@ Singleton {
             label: Translation.tr("Backdrop vignette"),
             description: Translation.tr("Vignette darkening effect on backdrop"),
             keywords: ["backdrop", "vignette", "darken", "edges", "effect"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Global Style"),
-            description: Translation.tr("Material, Cards, Aurora glass effect, Inir TUI style"),
-            keywords: ["global", "style", "aurora", "inir", "material", "cards", "glass", "tui", "transparency", "blur"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Aurora"),
-            description: Translation.tr("Glass effect with wallpaper blur behind panels"),
-            keywords: ["aurora", "glass", "blur", "transparency", "style", "translucent"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Regalia"),
-            description: Translation.tr("Luxury layered surfaces with optional wallpaper glass"),
-            keywords: ["regalia", "glass", "blur", "luxury", "layered", "surface", "rounding"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Inir"),
-            description: Translation.tr("TUI-inspired style with accent borders"),
-            keywords: ["inir", "tui", "terminal", "borders", "style", "minimal"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Material"),
-            description: Translation.tr("Material Design solid backgrounds"),
-            keywords: ["material", "solid", "style", "default", "google"]
-        },
-        {
-            pageIndex: 4, pageName: root.pages[4].name,
-            section: Translation.tr("Global Style"),
-            label: Translation.tr("Cards"),
-            description: Translation.tr("Card-style elevated containers"),
-            keywords: ["cards", "card", "style", "elevated", "shadow"]
         },
         {
             pageIndex: 4, pageName: root.pages[4].name,
@@ -1025,13 +997,6 @@ Singleton {
         {
             pageIndex: 23, pageName: root.pages[23].name,
             section: Translation.tr("Sidebars"),
-            label: Translation.tr("Sidebar style"),
-            description: Translation.tr("Panel or island (gradient card) sidebar surface"),
-            keywords: ["sidebar", "style", "island", "panel", "card", "gradient"]
-        },
-        {
-            pageIndex: 23, pageName: root.pages[23].name,
-            section: Translation.tr("Sidebars"),
             label: Translation.tr("Collapse notifications when empty"),
             description: Translation.tr("Shrink the right sidebar when there are no notifications"),
             keywords: ["sidebar", "notifications", "collapse", "empty", "compact", "shrink"]
@@ -1095,16 +1060,9 @@ Singleton {
         {
             pageIndex: 23, pageName: root.pages[23].name,
             section: Translation.tr("Sidebars"),
-            label: Translation.tr("YT Music Up Next notifications"),
-            description: Translation.tr("Enable or disable next-track notifications for YT Music auto-advance"),
-            keywords: ["ytmusic", "youtube", "music", "up next", "notification", "auto", "advance"]
-        },
-        {
-            pageIndex: 23, pageName: root.pages[23].name,
-            section: Translation.tr("Sidebars"),
-            label: Translation.tr("YT Music fullscreen suppression"),
-            description: Translation.tr("Mute YT Music Up Next notifications during fullscreen apps or GameMode"),
-            keywords: ["ytmusic", "fullscreen", "gamemode", "mute", "suppress", "notification", "gaming"]
+            label: Translation.tr("Music"),
+            description: Translation.tr("Media & content"),
+            keywords: ["music", "local", "mpd", "mpris", "library", "playlist", "queue", "sidebar"]
         },
         {
             pageIndex: 6, pageName: root.pages[6].name,

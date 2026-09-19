@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=5
+pkgrel=6
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -104,6 +104,8 @@ depends=(
   pavucontrol
   mpv
   mpv-mpris
+  mpd
+  mpd-mpris
   yt-dlp
   python-ytmusicapi
 

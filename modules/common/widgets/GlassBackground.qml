@@ -23,9 +23,6 @@ Rectangle {
     property real screenWidth: Quickshell.screens[0]?.width ?? 1920
     property real screenHeight: Quickshell.screens[0]?.height ?? 1080
     
-    readonly property bool angelEverywhere: Appearance.angelEverywhere
-    readonly property bool auroraEverywhere: Appearance.auroraEverywhere
-    readonly property bool inirEverywhere: Appearance.inirEverywhere
     // Bypasses the style gate, which is what its callers always documented it as
     // doing. It used to be AND-ed inside the backend check, so a surface asking
     // for a backdrop outside aurora — island glass, or a backdrop the user turned
@@ -41,9 +38,7 @@ Rectangle {
         : (Appearance.blurBackendFor("panels", Appearance.blurTopology.unsupported) === "wallpaper"
             && root.wallpaperBackdropEnabled)
     
-    color: root.useWallpaperBackdrop ? "transparent"
-        : root.inirEverywhere ? root.inirColor
-        : root.fallbackColor
+    color: root.useWallpaperBackdrop ? "transparent" : root.fallbackColor
     
     property bool hovered: false
 
@@ -60,10 +55,14 @@ Rectangle {
             width: root.width
             height: root.height
             radius: root.radius
+            topLeftRadius: root.topLeftRadius
+            topRightRadius: root.topRightRadius
+            bottomLeftRadius: root.bottomLeftRadius
+            bottomRightRadius: root.bottomRightRadius
         }
     }
     
-    // Blurred wallpaper backdrop for aurora/angel styles.
+    // Optional blurred wallpaper backdrop for supported surfaces.
     // OPTIMIZATION: layer.enabled is only active when the GlassBackground is
     // actually visible, reducing GPU memory when panels are hidden.
     Image {
@@ -89,39 +88,17 @@ Rectangle {
         layer.effect: MultiEffect {
             source: blurredWallpaper
             anchors.fill: source
-            saturation: root.angelEverywhere && !root.forceNeutralMaterial
-                ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
-                : (Appearance.effectsEnabled ? root.saturationStrength : 0)
+            saturation: Appearance.effectsEnabled ? root.saturationStrength : 0
             blurEnabled: Appearance.effectsEnabled
             blurMax: 64
-            blur: Appearance.effectsEnabled
-                ? (root.angelEverywhere ? Appearance.angel.blurIntensity : root.blurStrength)
-                : 0
+            blur: Appearance.effectsEnabled ? root.blurStrength : 0
         }
     }
 
     Rectangle {
         anchors.fill: parent
         visible: root.useWallpaperBackdrop
-        color: root.angelEverywhere && !root.forceNeutralMaterial
-            ? ColorUtils.transparentize(Appearance.colors.colLayer0Base, Appearance.angel.overlayOpacity)
-            : ColorUtils.transparentize(Appearance.colors.colLayer0Base, root.auroraTransparency)
-    }
-
-    // Inset glow — light-from-above on top edge, angel only
-    Rectangle {
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: Appearance.angel.insetGlowHeight
-        visible: root.angelEverywhere && !root.forceNeutralMaterial
-        color: Appearance.angel.colInsetGlow
-    }
-
-    // Partial border — elegant half-borders, angel only
-    AngelPartialBorder {
-        visible: root.angelEverywhere && !root.forceNeutralMaterial
-        targetRadius: root.radius
-        hovered: root.hovered
+        color: ColorUtils.transparentize(
+            Appearance.colors.colLayer0Base, root.auroraTransparency)
     }
 }

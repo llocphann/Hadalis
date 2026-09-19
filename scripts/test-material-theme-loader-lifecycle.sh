@@ -3,6 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/MaterialThemeLoader.qml"
+appearance="$repo_root/modules/common/Appearance.qml"
+tools_view="$repo_root/modules/sidebarLeft/ToolsView.qml"
 
 fail() {
     printf 'material theme lifecycle guard failed: %s\n' "$1" >&2
@@ -26,16 +28,27 @@ require 'delayedExternalApply.restart()' \
 
 require 'root._finishGenerator("scheme variant", -1, true, true)' \
     'scheme variant startup failure must enter shared recovery'
-require 'root._finishGenerator("dark mode", -1, false, true)' \
+require 'root._finishGenerator("dark mode", -1, true, true)' \
     'dark-mode startup failure must enter shared recovery'
 require 'root._finishGenerator("color invert", -1, false, true)' \
     'color-invert startup failure must enter shared recovery'
 require 'root._finishGenerator("scheme variant", code, true, false)' \
     'scheme variant normal exit must use shared recovery'
-require 'root._finishGenerator("dark mode", code, false, false)' \
-    'dark-mode normal exit must use shared recovery'
+require 'root._finishGenerator("dark mode", code, true, false)' \
+    'dark-mode normal exit must use shared recovery and reload immediately'
 require 'root._finishGenerator("color invert", code, false, false)' \
     'color-invert normal exit must use shared recovery'
+
+grep -Fq -- 'MaterialThemeLoader.setDarkMode(!root.m3colors.darkmode)' "$appearance" \
+    || fail 'Appearance.toggleDarkMode must use the live MaterialThemeLoader pipeline'
+if grep -Fq -- 'ThemeService.regenerateAutoTheme()' "$appearance"; then
+    fail 'Appearance.toggleDarkMode must not use the stale config-read regeneration path'
+fi
+grep -Fq -- 'onToggledByUser: checked => MaterialThemeLoader.setDarkMode(checked)' "$tools_view" \
+    || fail 'ToolsView dark-mode switch must use the live MaterialThemeLoader path'
+if grep -Fq -- 'Config.setNestedValue("appearance.customTheme.darkmode"' "$tools_view"; then
+    fail 'ToolsView must not bypass MaterialThemeLoader with a direct darkmode config write'
+fi
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
 if (( start_guard_count < 3 )); then

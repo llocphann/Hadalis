@@ -17,19 +17,11 @@ PanelSurface {
     implicitHeight: slidersRow.implicitHeight + 12
     readonly property bool compactMode: Config.options?.controlPanel?.compactMode ?? true
 
-    readonly property bool inirEverywhere: Appearance.inirEverywhere
-    readonly property bool auroraEverywhere: Appearance.auroraEverywhere
-
     property var screen: root.QsWindow.window?.screen ?? null
     property var brightnessMonitor: screen ? Brightness.getMonitorForScreen(screen) : null
 
     elevation: 1
-    radiusOverride: islandSkin ? -1
-        : inirEverywhere ? Appearance.inir.roundingNormal
-        : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
-        : Appearance.rounding.normal
-
-    AngelPartialBorder { targetRadius: root.radiusOverride; coverage: 0.45; visible: Appearance.angelEverywhere && !root.islandSkin }
+    radiusOverride: islandSkin ? -1 : Appearance.rounding.normal
 
     QuickSliders {
         id: slidersRow

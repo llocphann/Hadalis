@@ -35,6 +35,8 @@ Singleton {
     )
 
     property bool _micMuted: false
+    property bool micStateKnown: false
+    property int micStateRevision: 0
     // Tracked explicitly rather than bound to source.audio.volume: setSourceVolume()
     // assigns to this imperatively, which would destroy a declarative binding for
     // good — after the first mic adjustment the shell would stop seeing volume
@@ -47,6 +49,9 @@ Singleton {
         target: root.source?.audio ?? null
         function onVolumeChanged(): void {
             root._micVolume = root.source?.audio?.volume ?? 0
+        }
+        function onMutedChanged(): void {
+            root._refreshMicState()
         }
     }
 
@@ -127,8 +132,8 @@ Singleton {
         root._queueSourceVolume(clamped)
     }
 
-    function toggleMicMute() {
-        const shouldMute = !root._micMuted
+    function setMicMuted(muted: bool): void {
+        const shouldMute = Boolean(muted)
         root._micMuted = shouldMute
         const muteVal = shouldMute ? "1" : "0"
         // Mute every source device (hardware + virtual like EasyEffects)
@@ -139,6 +144,10 @@ Singleton {
                 Quickshell.execDetached(["wpctl", "set-mute", String(nodeId), muteVal])
         }
         wpctlSetMicMute.exec(["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", muteVal])
+    }
+
+    function toggleMicMute() {
+        root.setMicMuted(!root._micMuted)
     }
 
     function _hardwareSourceId(): int {
@@ -156,6 +165,8 @@ Singleton {
     }
 
     function _refreshMicState(): void {
+        if (_wpctlGetMicState.running)
+            return
         const hwId = root._hardwareSourceId()
         const target = hwId > 0 ? String(hwId) : "@DEFAULT_AUDIO_SOURCE@"
         _wpctlGetMicState.exec(["wpctl", "get-volume", target])
@@ -267,6 +278,8 @@ Singleton {
                 if (Number.isFinite(parsed))
                     root._micVolume = Math.max(0, Math.min(root.hardMaxValue, parsed))
             }
+            root.micStateKnown = true
+            root.micStateRevision += 1
         }
     }
 

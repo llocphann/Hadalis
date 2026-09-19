@@ -19,8 +19,13 @@ ColumnLayout {
     property string filterText: ""
 
     readonly property string profileGuidanceSource: "When overriding this group, set every shown profile together to avoid values spilling between TLP profiles."
+    // Charge care is integrated into the Battery/TLP card above the category
+    // browser. Keep the browser focused on the ten general TLP categories.
+    readonly property var navigationCategories:
+        TlpSettingsService._array(TlpSettingsService.navigationCategories)
+            .filter(category => String(category?.id ?? "") !== "battery-care")
     readonly property var selectedCategory: {
-        const categories = TlpSettingsService._array(TlpSettingsService.navigationCategories)
+        const categories = root.navigationCategories
         if (categories.length === 0)
             return null
         return categories[Math.max(0, Math.min(root.selectedCategoryIndex, categories.length - 1))]
@@ -29,7 +34,6 @@ ColumnLayout {
         root.selectedCategory, root.filterText)
     readonly property bool profileGuidanceVisible: root.visibleGroups.some(group =>
         String(group?.description ?? "").includes(root.profileGuidanceSource))
-    readonly property bool batteryCareSelected: String(root.selectedCategory?.id ?? "") === "battery-care"
 
     function conciseGroupDescription(group): string {
         const description = String(group?.description ?? "")
@@ -72,9 +76,109 @@ ColumnLayout {
         expanded: true
         collapsible: false
         icon: "battery_saver"
-        title: Translation.tr("Battery and TLP power management")
+        title: Translation.tr("Battery & TLP")
 
         SettingsGroup {
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "warning"
+                    text: Translation.tr("Low warning")
+                    value: Config.options?.battery?.low ?? 0
+                    from: 0
+                    to: 100
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.setNestedValue("battery.low", value)
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Show warning notification when battery drops below this level")
+                    }
+                }
+
+                ConfigSpinBox {
+                    icon: "dangerous"
+                    text: Translation.tr("Critical warning")
+                    value: Config.options?.battery?.critical ?? 0
+                    from: 0
+                    to: 100
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.setNestedValue("battery.critical", value)
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Show critical warning when battery drops below this level")
+                    }
+                }
+
+                ConfigSpinBox {
+                    icon: "charger"
+                    text: Translation.tr("Full warning")
+                    value: Config.options?.battery?.full ?? 0
+                    from: 0
+                    to: 101
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.setNestedValue("battery.full", value)
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Notify when battery reaches this level while charging (101 = disabled)")
+                    }
+                }
+            }
+
+            SettingsDivider {}
+
+            ConfigRow {
+                uniform: true
+
+                ConfigRow {
+                    Layout.fillWidth: true
+                    uniform: false
+
+                    SettingsSwitch {
+                        buttonIcon: "pause"
+                        text: Translation.tr("Automatic suspend")
+                        checked: Config.options?.battery?.automaticSuspend ?? false
+                        onCheckedChanged: {
+                            Config.setNestedValue("battery.automaticSuspend", checked)
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Automatically suspends the system when battery is low")
+                        }
+                    }
+
+                    ConfigSpinBox {
+                        enabled: Config.options?.battery?.automaticSuspend ?? false
+                        text: Translation.tr("at")
+                        value: Config.options?.battery?.suspend ?? 0
+                        from: 0
+                        to: 100
+                        stepSize: 5
+                        onValueChanged: {
+                            Config.setNestedValue("battery.suspend", value)
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Percentage of battery to trigger suspend")
+                        }
+                    }
+                }
+
+                BatteryChargeLimitSettings {
+                    Layout.fillWidth: true
+                    staged: true
+                    showStatus: false
+                }
+            }
+
+            SettingsDivider {}
+
             RowLayout {
                 Layout.fillWidth: true
                 spacing: SettingsMaterialPreset.groupPadding
@@ -99,16 +203,6 @@ ColumnLayout {
                         wrapMode: Text.WordWrap
                     }
 
-                    StyledText {
-                        visible: TlpSettingsService.configAvailable
-                            || TlpSettingsService.managedConfigPresent
-                        Layout.fillWidth: true
-                        text: Translation.tr("Managed settings: %1").arg(TlpSettingsService.configFile)
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        font.family: Appearance.font.family.monospace
-                        elide: Text.ElideMiddle
-                    }
                 }
 
                 DialogButton {
@@ -136,27 +230,14 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: SettingsMaterialPreset.groupSpacing
 
-                ColumnLayout {
+                StyledText {
                     Layout.fillWidth: true
-                    spacing: SettingsMaterialPreset.groupSpacing
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: TlpSettingsService.hasPendingChanges
-                            ? Translation.tr("%1 staged change(s)").arg(TlpSettingsService.pendingCount)
-                            : Translation.tr("Values shown below come from TLP's effective configuration")
-                        color: TlpSettingsService.hasPendingChanges
-                            ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
-                        font.weight: TlpSettingsService.hasPendingChanges ? Font.Medium : Font.Normal
-                    }
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: Translation.tr("Apply validates every change and authenticates only once. No shell reload is required.")
-                        color: Appearance.colors.colSubtext
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                    }
+                    text: TlpSettingsService.hasPendingChanges
+                        ? Translation.tr("%1 staged change(s)").arg(TlpSettingsService.pendingCount)
+                        : Translation.tr("Effective values")
+                    color: TlpSettingsService.hasPendingChanges
+                        ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                    font.weight: TlpSettingsService.hasPendingChanges ? Font.Medium : Font.Normal
                 }
 
                 DialogButton {
@@ -179,21 +260,6 @@ ColumnLayout {
                     colText: Appearance.colors.colOnPrimary
                     onClicked: TlpSettingsService.apply()
                 }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: SettingsMaterialPreset.groupSpacing
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: TlpSettingsService.statusReason === "managed-config-invalid"
-                        ? Translation.tr("Reset deletes the invalid iNiR-owned TLP override file so TLP can fall back to its remaining configuration.")
-                        : Translation.tr("Reset removes only the general iNiR TLP override file; battery charge care stays separate.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    wrapMode: Text.WordWrap
-                }
 
                 DialogButton {
                     buttonText: Translation.tr("Reset overrides")
@@ -201,6 +267,7 @@ ColumnLayout {
                     onClicked: TlpSettingsService.reset()
                 }
             }
+
         }
     }
 
@@ -213,12 +280,15 @@ ColumnLayout {
         SettingsGroup {
             GridLayout {
                 Layout.fillWidth: true
-                columns: root.width >= 760 ? 4 : (root.width >= 540 ? 3 : 2)
+                Layout.alignment: Qt.AlignLeft
+                columns: 5
+                rows: 2
+                flow: GridLayout.LeftToRight
                 columnSpacing: SettingsMaterialPreset.groupSpacing
                 rowSpacing: SettingsMaterialPreset.groupSpacing
 
                 Repeater {
-                    model: TlpSettingsService.navigationCategories
+                    model: root.navigationCategories
 
                     delegate: SelectionGroupButton {
                         required property var modelData
@@ -230,6 +300,7 @@ ColumnLayout {
                         rightmost: true
                         buttonIcon: String(modelData?.icon ?? "tune")
                         buttonText: Translation.tr(TlpSettingsService.categoryLabel(modelData))
+                        leftAlignContent: true
                         toggled: root.selectedCategoryIndex === index
                         enabled: !TlpSettingsService.busy
                         onClicked: root.selectCategory(index)
@@ -267,27 +338,6 @@ ColumnLayout {
         }
     }
 
-    SettingsCardSection {
-        visible: root.batteryCareSelected
-        expanded: true
-        collapsible: false
-        icon: "battery_saver"
-        title: Translation.tr("Hardware-aware charge care")
-
-        SettingsGroup {
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("TLP detects supported charge limits. Apply saves them with the other Battery changes.")
-                color: Appearance.colors.colSubtext
-                wrapMode: Text.WordWrap
-                font.pixelSize: Appearance.font.pixelSize.smaller
-            }
-
-            BatteryChargeLimitSettings {
-                staged: true
-            }
-        }
-    }
 
     Repeater {
         model: root.visibleGroups

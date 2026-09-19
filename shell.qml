@@ -33,6 +33,9 @@ ShellRoot {
     // Force singleton instantiation — startup-critical only
     property var _idleService: Idle
     property var _powerProfilePersistence: PowerProfilePersistence
+    property var _deviceStatePersistence: DeviceStatePersistence
+    // Keep fan-profile following alive even when Settings/System Monitor are closed.
+    property var _thinkFanService: ThinkFanService
     property var _devNavigationService: DevNavigation
     property var _shellEditSessionService: ShellEditSession
     // Acquire org.kde.StatusNotifierWatcher before graphical-session.target

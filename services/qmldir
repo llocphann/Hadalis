@@ -18,6 +18,7 @@ singleton ConflictKiller 1.0 ConflictKiller.qml
 singleton CustomWidgets 1.0 CustomWidgets.qml
 DankSocket 1.0 DankSocket.qml
 singleton DateTime 1.0 DateTime.qml
+singleton DeviceStatePersistence 1.0 DeviceStatePersistence.qml
 singleton DesktopItems 1.0 DesktopItems.qml
 singleton DesktopWidgetLayout 1.0 DesktopWidgetLayout.qml
 singleton DevNavigation 1.0 DevNavigation.qml
@@ -37,6 +38,7 @@ singleton MaterialThemeLoader 1.0 MaterialThemeLoader.qml
 singleton MemoryPressureService 1.0 MemoryPressureService.qml
 singleton MinimizedWindows 1.0 MinimizedWindows.qml
 singleton MprisController 1.0 MprisController.qml
+singleton LocalMusic 1.0 LocalMusic.qml
 singleton Network 1.0 Network.qml
 singleton NiriService 1.0 NiriService.qml
 singleton Notepad 1.0 Notepad.qml

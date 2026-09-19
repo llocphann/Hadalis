@@ -16,7 +16,7 @@ MouseArea {
     property bool keyboardMenuMode: false
 
     signal menuOpened(qsWindow: var)
-    signal menuClosed()
+    signal menuClosed(qsWindow: var)
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -111,23 +111,17 @@ MouseArea {
         sourceComponent: SysTrayMenu {
             Component.onCompleted: this.open();
             trayItemMenuHandle: root.item.menu
+            anchorItem: root
             anchorHovered: root.containsMouse
             keyboardMode: root.keyboardMenuMode
-            anchor {
-                item: root
-                edges: (Config.options?.bar?.vertical ?? false)
-                    ? ((Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right)
-                    : ((Config.options?.bar?.bottom ?? false) ? Edges.Top : Edges.Bottom)
-                gravity: (Config.options?.bar?.vertical ?? false)
-                    ? ((Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right)
-                    : ((Config.options?.bar?.bottom ?? false) ? Edges.Top : Edges.Bottom)
-                adjustment: (Config.options?.bar?.vertical ?? false)
-                    ? PopupAdjustment.SlideY : PopupAdjustment.SlideX
-            }
             onMenuOpened: (window) => root.menuOpened(window);
             onMenuClosed: {
                 root.keyboardMenuMode = false;
-                root.menuClosed();
+                // Preserve the closing window identity until after the parent has
+                // reconciled focus state. A delayed close from an older menu must
+                // never release the focus grab held by a newer menu.
+                const window = menu.item;
+                root.menuClosed(window);
                 menu.active = false;
             }
         }

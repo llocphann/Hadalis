@@ -4,6 +4,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.UPower
+import qs.modules.common
 
 Singleton {
     id: root
@@ -12,6 +14,8 @@ Singleton {
     property bool serviceInstalled: false
     property bool active: false
     property bool enabled: false
+    property bool directControlAvailable: false
+    property bool fanLevelControlSupported: false
     property bool stateKnown: false
     property bool busy: false
     property string profile: "firmware"
@@ -21,13 +25,62 @@ Singleton {
     property string statusReason: ""
     property bool lastApplySucceeded: false
     property string lastApplyError: ""
+    property string pendingOperation: ""
     property bool _refreshQueued: false
+    property bool _profileFollowArmed: false
+    property string _queuedFanLevel: ""
+    property bool _fanConfigApplyQueued: false
+
+    readonly property bool profileFanControlEnabled:
+        Config.getNestedValue("powerProfiles.fanControl.enabled", false) === true
+    readonly property string activePowerProfileKey:
+        root._powerProfileKey(PowerProfiles.profile)
+    readonly property int configuredActiveFanLevel:
+        root.configuredFanLevel(root.activePowerProfileKey)
+
+    function _powerProfileKey(profileValue): string {
+        switch (profileValue) {
+        case PowerProfile.PowerSaver: return "powerSaver"
+        case PowerProfile.Performance: return "performance"
+        case PowerProfile.Balanced:
+        default: return "balanced"
+        }
+    }
+
+    function configuredFanLevel(key: string): int {
+        const normalizedKey = String(key ?? "")
+        let path = "powerProfiles.fanControl.balanced"
+        if (normalizedKey === "powerSaver")
+            path = "powerProfiles.fanControl.powerSaver"
+        else if (normalizedKey === "performance")
+            path = "powerProfiles.fanControl.performance"
+        const value = Number(Config.getNestedValue(path, 0))
+        if (!isFinite(value))
+            return 0
+        return Math.max(0, Math.min(7, Math.round(value)))
+    }
+
+    function _normalizeFanLevel(requestedLevel): string {
+        if (String(requestedLevel ?? "").toLowerCase() === "auto")
+            return "auto"
+        const numeric = Number(requestedLevel)
+        if (!isFinite(numeric))
+            return ""
+        const level = Math.round(numeric)
+        if (level === 0)
+            return "auto"
+        if (level < 1 || level > 7)
+            return ""
+        return String(level)
+    }
 
     function _clearStatus(reason: string): void {
         root.available = false
         root.serviceInstalled = false
         root.active = false
         root.enabled = false
+        root.directControlAvailable = false
+        root.fanLevelControlSupported = false
         root.stateKnown = false
         root.profile = "firmware"
         root.fanRpm = -1
@@ -53,6 +106,10 @@ Singleton {
         root.serviceInstalled = data.serviceInstalled === true
         root.active = data.active === true
         root.enabled = data.enabled === true
+        root.fanLevelControlSupported = data.fanLevelControlSupported === true
+            || data.directControlAvailable !== undefined
+        root.directControlAvailable = root.fanLevelControlSupported
+            && data.directControlAvailable === true
         root.profile = String(data.profile ?? "firmware")
         root.fanRpm = typeof data.fanRpm === "number" && isFinite(data.fanRpm)
             ? Math.max(0, Math.round(data.fanRpm)) : -1
@@ -60,6 +117,7 @@ Singleton {
         root.configPath = String(data.configPath ?? "")
         root.statusReason = String(data.reason ?? "")
         root.stateKnown = true
+        root._scheduleConfiguredFanLevelApply()
         return true
     }
 
@@ -70,6 +128,66 @@ Singleton {
         }
         root._refreshQueued = false
         detector.running = true
+    }
+
+    function setConfiguredFanLevel(key: string, requestedLevel): bool {
+        const normalizedKey = String(key ?? "")
+        if (normalizedKey !== "powerSaver"
+                && normalizedKey !== "balanced"
+                && normalizedKey !== "performance") {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "unsupported-power-profile"
+            return false
+        }
+
+        const normalizedLevel = root._normalizeFanLevel(requestedLevel)
+        if (normalizedLevel.length === 0) {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "unsupported-fan-level"
+            return false
+        }
+
+        const numericLevel = normalizedLevel === "auto" ? 0 : Number(normalizedLevel)
+        if (root.configuredFanLevel(normalizedKey) !== numericLevel) {
+            Config.setNestedValue("powerProfiles.fanControl." + normalizedKey, numericLevel)
+            Config.flushWrites()
+        }
+
+        if (root.profileFanControlEnabled
+                && root.activePowerProfileKey === normalizedKey
+                && root.profile !== "managed") {
+            Qt.callLater(() => root.applyFanLevel(normalizedLevel))
+        }
+        return true
+    }
+
+    function setProfileFanControlEnabled(requestedEnabled: bool): bool {
+        const nextEnabled = requestedEnabled === true
+        if (root.profileFanControlEnabled !== nextEnabled) {
+            Config.setNestedValue("powerProfiles.fanControl.enabled", nextEnabled)
+            Config.flushWrites()
+        }
+
+        if (!nextEnabled) {
+            root._queuedFanLevel = ""
+            if (root.profile !== "managed")
+                Qt.callLater(() => root.applyFanLevel("auto"))
+            return true
+        }
+
+        if (root.profile !== "managed") {
+            const requestedLevel = root.configuredActiveFanLevel
+            Qt.callLater(() => root.applyFanLevel(requestedLevel))
+        }
+        return true
+    }
+
+    function _drainQueuedFanLevel(): void {
+        if (root.busy || root._queuedFanLevel.length === 0)
+            return
+        const queued = root._queuedFanLevel
+        root._queuedFanLevel = ""
+        root.applyFanLevel(queued)
     }
 
     function applyProfile(requestedProfile: string): bool {
@@ -95,7 +213,11 @@ Singleton {
             return false
         }
 
+        if (normalized === "managed")
+            root._queuedFanLevel = ""
+
         root.busy = true
+        root.pendingOperation = "profile:" + normalized
         root.lastApplySucceeded = false
         root.lastApplyError = ""
         applyProcess.command = [
@@ -106,7 +228,103 @@ Singleton {
         return true
     }
 
+    function applyFanLevel(requestedLevel): bool {
+        const normalized = root._normalizeFanLevel(requestedLevel)
+        if (normalized.length === 0) {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "unsupported-fan-level"
+            return false
+        }
+        if (root.busy) {
+            if (root.pendingOperation === "fan-level:" + normalized)
+                return true
+            root._queuedFanLevel = normalized
+            root.lastApplySucceeded = false
+            root.lastApplyError = ""
+            return true
+        }
+        if (!root.stateKnown || !root.fanLevelControlSupported
+                || !root.directControlAvailable) {
+            root.lastApplySucceeded = false
+            root.lastApplyError = root.fanLevelControlSupported
+                ? "direct-control-unavailable"
+                : "helper-update-required"
+            return false
+        }
+        if (root.profile === "managed") {
+            root.lastApplySucceeded = false
+            root.lastApplyError = "managed-control-active"
+            return false
+        }
+
+        root._queuedFanLevel = ""
+        root.busy = true
+        root.pendingOperation = "fan-level:" + normalized
+        root.lastApplySucceeded = false
+        root.lastApplyError = ""
+        applyProcess.command = [
+            "/usr/bin/pkexec", "/usr/libexec/inir-thinkfan",
+            "--set-level", normalized
+        ]
+        applyProcess.running = true
+        return true
+    }
+
+    function applyConfiguredPowerProfileFanLevel(): bool {
+        if (!root.profileFanControlEnabled)
+            return false
+        const normalized = root._normalizeFanLevel(root.configuredActiveFanLevel)
+        if (normalized.length === 0)
+            return false
+        if (root.stateKnown && root.profile !== "managed"
+                && String(root.fanLevel ?? "").trim().toLowerCase() === normalized)
+            return true
+        return root.applyFanLevel(normalized)
+    }
+
+    function _scheduleConfiguredFanLevelApply(): void {
+        if (!root._profileFollowArmed || !root.profileFanControlEnabled
+                || root.profile === "managed")
+            return
+        if (root._fanConfigApplyQueued)
+            return
+        root._fanConfigApplyQueued = true
+        Qt.callLater(() => {
+            root._fanConfigApplyQueued = false
+            if (root._profileFollowArmed && root.profileFanControlEnabled
+                    && root.profile !== "managed")
+                root.applyConfiguredPowerProfileFanLevel()
+        })
+    }
+
     Component.onCompleted: root.refresh()
+
+    Connections {
+        target: PowerProfiles
+        function onProfileChanged(): void {
+            root._scheduleConfiguredFanLevelApply()
+        }
+    }
+
+    Connections {
+        target: Config
+        function onConfigChanged(): void {
+            root._scheduleConfiguredFanLevelApply()
+        }
+    }
+
+    // Do not trigger a privileged fan write during shell startup/profile restore.
+    // After startup settles, later user/runtime power-profile changes can follow
+    // the configured fan level when the opt-in switch is enabled.
+    Timer {
+        interval: 5000
+        repeat: false
+        running: true
+        onTriggered: {
+            root._profileFollowArmed = true
+            root._scheduleConfiguredFanLevelApply()
+        }
+    }
 
     Process {
         id: detector
@@ -190,7 +408,8 @@ Singleton {
             root.busy = false
             root.lastApplySucceeded = false
             root.lastApplyError = "apply-start-failed"
-            console.warn("[ThinkFan] Failed to start privileged profile helper")
+            root.pendingOperation = ""
+            console.warn("[ThinkFan] Failed to start privileged fan-control helper")
             Qt.callLater(() => root.refresh())
         }
         onStarted: {
@@ -200,18 +419,27 @@ Singleton {
         }
         onExited: (exitCode, exitStatus) => {
             applyTimeout.stop()
+            const completedOperation = root.pendingOperation
             root.busy = false
             root.lastApplySucceeded = exitCode === 0 && !applyProcess.timedOut
             root.lastApplyError = applyProcess.timedOut
                 ? "apply-timeout" : (exitCode === 0 ? "" : "apply-failed")
             if (!root.lastApplySucceeded) {
                 if (applyProcess.timedOut)
-                    console.warn("[ThinkFan] Timed out while applying profile intent")
+                    console.warn("[ThinkFan] Timed out while applying fan-control intent")
                 else
-                    console.warn("[ThinkFan] Failed to apply profile intent (exit code " + exitCode + ")")
+                    console.warn("[ThinkFan] Failed to apply fan-control intent (exit code " + exitCode + ")")
             }
-            // Always re-read through the unprivileged path. The privileged helper
-            // also verifies service state before returning success.
+            root.pendingOperation = ""
+
+            if (root.lastApplySucceeded
+                    && completedOperation === "profile:firmware"
+                    && root.profileFanControlEnabled) {
+                root._queuedFanLevel = ""
+                Qt.callLater(() => root.applyConfiguredPowerProfileFanLevel())
+            } else if (root._queuedFanLevel.length > 0) {
+                Qt.callLater(() => root._drainQueuedFanLevel())
+            }
             Qt.callLater(() => root.refresh())
         }
     }
@@ -229,7 +457,7 @@ Singleton {
     }
 
     Timer {
-        interval: 15000
+        interval: 30000
         repeat: true
         running: true
         onTriggered: root.refresh()

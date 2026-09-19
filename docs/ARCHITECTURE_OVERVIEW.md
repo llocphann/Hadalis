@@ -34,7 +34,7 @@ Total cold start to panels visible: under 2 seconds on decent hardware.
 
 The shell has two completely separate visual identities that share the same services layer:
 
-**Material ii** uses Material Design language with the active material, cards, aurora, inir, angel, zzz, and cookie style options. Its Classic Bar supports top, bottom, left, and right placement. Sidebars open from the edges. Overview provides the launcher/task-navigation surface.
+**Material ii** uses Material Design language with **Material as the only shell-wide Global Theme** for Hadalis 1.0. Color presets, wallpaper-derived Material palettes, and supported per-feature presentation options remain separate from the Global Theme boundary. Its Classic Bar supports top, bottom, left, and right placement. Sidebars open from the edges. Overview provides the launcher/task-navigation surface.
 
 **Waffle** uses Windows 11 Fluent Design. Taskbar at the bottom. Start menu. Action center. Notification center.
 
@@ -50,7 +50,7 @@ More details: [Panel Families](PANEL_FAMILIES.md)
 - **System integration**: Audio (PipeWire), Network (NetworkManager), Bluetooth (BlueZ), Battery (UPower)
 - **Data management**: Notifications, clipboard history, events, weather, calendar sync
 - **Theming**: MaterialThemeLoader watches `colors.json`, ThemeService orchestrates the pipeline
-- **Content**: AI chat (Gemini/OpenAI/Ollama), YT Music player, anime tracking
+- **Content**: AI chat (Gemini/OpenAI/Ollama), MPD/MPRIS-backed local Music library/player, anime tracking
 
 Services are registered in `services/qmldir` and available everywhere as singletons.
 
@@ -108,7 +108,7 @@ A simplified map of what lives where:
 | `modules/bar/` | Classic Bar runtime (ii family; horizontal and vertical placements) | Normal |
 | `modules/waffle/` | Complete Windows 11 family | Normal |
 | `modules/sidebar/` | Physical sidebar hosts and live layout behavior | High |
-| `modules/sidebarLeft/` | Semantic feature content: AI chat, YT Music, widgets | Normal |
+| `modules/sidebarLeft/` | Semantic feature content: AI chat, local Music library/player, widgets | Normal |
 | `modules/sidebarRight/` | Semantic system content: toggles, calendar, tools | Normal |
 | `translations/` | i18n strings (15 languages) | Low |
 

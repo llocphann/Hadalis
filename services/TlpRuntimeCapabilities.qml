@@ -425,7 +425,7 @@ Singleton {
     Component.onCompleted: root.refresh()
 
     Timer {
-        interval: 30000
+        interval: 300000
         repeat: true
         running: true
         onTriggered: root.refresh()

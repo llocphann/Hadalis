@@ -161,7 +161,9 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            layer.enabled: true
+            // The sidebar keeps nearby tab loaders warm. Do not retain a
+            // full-size offscreen mask texture while this surface is hidden.
+            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: swipeView.width

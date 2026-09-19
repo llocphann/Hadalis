@@ -8,6 +8,8 @@ import Quickshell.Hyprland
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
+import qs.modules.common.perimeter
 import qs.services
 import qs.services.deferred
 
@@ -15,6 +17,62 @@ Scope { // Scope
     id: root
     property bool pinned: Config.options?.osk.pinnedOnStartup ?? false
     property bool keepOnTop: Config.options?.osk?.keepOnTop ?? false
+    // Keep the layer-shell surface resident for the exit slide. Mapping it
+    // directly to oskOpen used to tear the window down in the same frame.
+    property bool _oskResident: GlobalStates.oskOpen
+    property real _oskRevealProgress: GlobalStates.oskOpen ? 1 : 0
+
+    Behavior on _oskRevealProgress {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+        }
+    }
+
+    Timer {
+        id: oskUnloadTimer
+        interval: Appearance.animation.elementMove.duration + 40
+        repeat: false
+        onTriggered: {
+            if (!GlobalStates.oskOpen)
+                root._oskResident = false
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onOskOpenChanged(): void {
+            if (GlobalStates.oskOpen) {
+                oskUnloadTimer.stop()
+                root._oskResident = true
+                root._oskRevealProgress = 0
+                Qt.callLater(() => {
+                    if (GlobalStates.oskOpen)
+                        root._oskRevealProgress = 1
+                })
+            } else {
+                root._oskRevealProgress = 0
+                oskUnloadTimer.restart()
+                Ydotool.releaseAllKeys()
+            }
+        }
+    }
+    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    // The keyboard owns the Screen Edge segment beneath its body while open.
+    // Underlap the full top/bottom edge band instead of stopping at its inner
+    // boundary; this guarantees a continuous surface even when edge/body color
+    // rasterization differs at fractional scale.
+    readonly property bool screenEdgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+    readonly property color screenEdgeShadowColor:
+        ColorUtils.applyAlpha(Appearance.colors.colShadow, screenEdgeShadowOpacity)
 
     // Aggregated competing-overlay signal. Whenever any of these toggles, this
     // value changes and the inner PanelWindow re-stacks itself on top of its
@@ -48,12 +106,12 @@ Scope { // Scope
         baseHeight: 40
         clickedWidth: baseWidth
         clickedHeight: baseHeight + 10
-        buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.normal
+        buttonRadius: Appearance.rounding.normal
     }
 
     Loader {
         id: oskLoader
-        active: GlobalStates.oskOpen
+        active: root._oskResident
         onActiveChanged: {
             if (!oskLoader.active) {
                 Ydotool.releaseAllKeys();
@@ -65,7 +123,11 @@ Scope { // Scope
             // Brief unmap window used by restack() to recreate the wlr-layer-shell
             // surface, which puts it back on top of the Overlay layer.
             property bool _remapping: false
-            visible: oskLoader.active && !GlobalStates.screenLocked && !_remapping
+            property string snappedEdge: "bottom"
+            visible: root._oskResident && !GlobalStates.screenLocked && !_remapping
+            readonly property real revealOffsetY:
+                (snappedEdge === "top" ? -oskBackground.height : oskBackground.height)
+                    * (1 - root._oskRevealProgress)
 
             // Full-screen overlay — mask limits input to keyboard area only
             anchors {
@@ -80,7 +142,8 @@ Scope { // Scope
             }
 
             function snapToNearestEdge() {
-                const margin = Appearance.sizes.elevationMargin
+                const margin = Math.max(Appearance.sizes.elevationMargin,
+                    root.screenEdgeThickness + PerimeterTokens.screenMargin)
                 const kw = oskBackground.width
                 const kh = oskBackground.height
                 const pw = oskRoot.width
@@ -96,8 +159,13 @@ Scope { // Scope
 
                 // Vertical: snap to top or bottom
                 let targetY
-                if (cy < ph / 2) targetY = margin
-                else targetY = ph - kh - margin
+                if (cy < ph / 2) {
+                    oskRoot.snappedEdge = "top"
+                    targetY = 0
+                } else {
+                    oskRoot.snappedEdge = "bottom"
+                    targetY = ph - kh
+                }
 
                 oskBackground.animatePosition = true
                 oskBackground.x = targetX
@@ -136,10 +204,38 @@ Scope { // Scope
                 item: oskBackground
             }
 
-            // Background shadow follows keyboard
+            // Use the same configurable shadow contract as Screen Edge/Bar.
+            // The body itself underlaps the full edge band; no separate stem exists.
             StyledRectangularShadow {
                 target: oskBackground
+                // Screen Edge shadow is structural connected chrome, not an
+                // optional effects-layer flourish. Keep it mapped for the whole
+                // resident enter/exit slide just like Bar, popup and Settings.
+                visible: root._oskResident
+                    && !GlobalStates.screenLocked
+                    && root.screenEdgeShadowEnabled
+                    && root.screenEdgeShadowSize > 0
+                    && root.screenEdgeShadowOpacity > 0
+                transform: Translate { y: oskRoot.revealOffsetY }
+                blur: root.screenEdgeShadowSize
+                spread: 0
+                offset: Qt.vector2d(0, 0)
+                color: root.screenEdgeShadowEnabled
+                    ? root.screenEdgeShadowColor : "transparent"
+                joinTop: oskRoot.snappedEdge === "top"
+                joinBottom: oskRoot.snappedEdge === "bottom"
             }
+            ConnectedSurfaceJoinFlares {
+                anchors.fill: parent
+                bodyItem: oskBackground
+                fillColor: oskBackground.color
+                flareRadius: PerimeterTokens.joinFlareRadius
+                progress: root._oskRevealProgress
+                transform: Translate { y: oskRoot.revealOffsetY }
+                joinTop: oskRoot.snappedEdge === "top"
+                joinBottom: oskRoot.snappedEdge === "bottom"
+            }
+
             Rectangle {
                 id: oskBackground
                 property bool animatePosition: false
@@ -148,14 +244,22 @@ Scope { // Scope
                 width: oskRowLayout.implicitWidth + padding * 2
                 height: oskRowLayout.implicitHeight + padding * 2
 
-                // Initial position: bottom center (binding breaks on first drag)
+                // Initial position: bottom center. The body reaches the physical
+                // display edge and covers the persistent Screen Edge band beneath
+                // it, while the shared shoulders flare into that edge surface.
                 x: parent ? (parent.width - width) / 2 : 0
-                y: parent ? parent.height - height - Appearance.sizes.elevationMargin : 0
+                y: parent ? parent.height - height : 0
 
-                color: Appearance.zzzEverywhere ? Appearance.zzz.bg0 : Appearance.colors.colLayer0
+                color: Appearance.colors.colLayer0
                 radius: Appearance.rounding.windowRounding
-                border.width: Appearance.zzzEverywhere ? 1 : 0
-                border.color: Appearance.zzzEverywhere ? Appearance.zzz.borderColor : "transparent"
+                topLeftRadius: oskRoot.snappedEdge === "top" ? 0 : radius
+                topRightRadius: oskRoot.snappedEdge === "top" ? 0 : radius
+                bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius
+                bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius
+                border.width: 0
+                border.color: "transparent"
+                enabled: GlobalStates.oskOpen
+                transform: Translate { y: oskRoot.revealOffsetY }
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.width { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }

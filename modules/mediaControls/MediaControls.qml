@@ -67,6 +67,7 @@ Scope {
     }
 
     property list<real> visualizerPoints: cavaProcess.points
+    readonly property real visualizerMaxValue: Math.max(1, cavaProcess.normalizationCeiling)
 
     Loader {
         id: mediaControlsLoader
@@ -218,6 +219,7 @@ Scope {
 
                                 player: modelData
                                 visualizerPoints: root.visualizerPoints
+                                visualizerMaxValue: root.visualizerMaxValue
                                 implicitWidth: cardArea.responsiveContentWidth
                                 implicitHeight: root.widgetWidth > 0
                                     ? root.widgetHeight * (cardArea.responsiveContentWidth / root.widgetWidth)

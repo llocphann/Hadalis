@@ -35,11 +35,12 @@ Item {
     property string displayedArtFilePath: MediaArtwork.displaySource
     // Track-change slide direction (+1 next, -1 previous) drives the cross-slide
     property int slideDirection: 1
+    readonly property real _dpr: root.window ? root.window.devicePixelRatio : 1
 
     // Cava visualizer - using shared CavaProcess component
     CavaProcess {
         id: cavaProcess
-        active: root.visible && root.hasPlayer && GlobalStates.sidebarLeftOpen && Appearance.effectsEnabled
+        active: root.visible && root.hasPlayer && root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen && Appearance.effectsEnabled
     }
 
     property list<real> visualizerPoints: cavaProcess.points
@@ -104,7 +105,9 @@ Item {
 
         AngelPartialBorder { targetRadius: card.radius; coverage: 0.5 }
 
-        layer.enabled: true
+        // This card stays instantiated with the Widgets tab; drop its mask
+        // FBO completely while the sidebar is closed.
+        layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle { width: card.width; height: card.height; radius: card.radius }
         }
@@ -117,10 +120,12 @@ Item {
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             cache: false
+            sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))
+            sourceSize.height: Math.max(1, Math.ceil(card.height * root._dpr))
             opacity: Appearance.angelEverywhere ? 0.2 : (Appearance.inirEverywhere ? 0.15 : (Appearance.auroraEverywhere ? 0.25 : 0.5))
             visible: root.displayedArtFilePath !== ""
 
-            layer.enabled: Appearance.effectsEnabled
+            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen && Appearance.effectsEnabled
             layer.effect: MultiEffect {
                 blurEnabled: true
                 blur: Appearance.inirEverywhere ? 0.3 : 0.15

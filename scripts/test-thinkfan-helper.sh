@@ -4,13 +4,30 @@ set -euo pipefail
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
-helper="$repo_root/assets/helpers/inir-thinkfan"
+source_helper="$repo_root/assets/helpers/inir-thinkfan"
 
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT
 state_dir="$tmp/state"
 bin_dir="$tmp/bin"
+fan_path="$tmp/fan"
+fan_control_path="$tmp/fan_control"
+helper="$tmp/inir-thinkfan"
 mkdir -p "$state_dir" "$bin_dir"
+
+cp "$source_helper" "$helper"
+sed -i \
+  -e "s|^fan_path=.*|fan_path=$fan_path|" \
+  -e "s|^fan_control_path=.*|fan_control_path=$fan_control_path|" \
+  "$helper"
+chmod 0755 "$helper"
+
+cat > "$fan_path" <<'MOCK_FAN'
+status:         enabled
+speed:          3377
+level:          auto
+MOCK_FAN
+printf '%s\n' Y > "$fan_control_path"
 
 fail() {
   printf 'not ok - %s\n' "$1" >&2
@@ -118,7 +135,45 @@ set -e
 grep -Fq 'service remained enabled after disable' "$tmp/sticky.err" \
   || fail 'firmware mode must explain a still-enabled service failure'
 
-printf '%s\n' '1..3'
+printf '%s\n' inactive > "$state_dir/active"
+printf '%s\n' disabled > "$state_dir/enabled"
+level_output=$("$helper" --set-level 3)
+grep -Fxq 'level 3' "$fan_path" \
+  || fail 'direct fan control must write the requested level'
+grep -Fq '"directControlAvailable":true' <<< "$level_output" \
+  || fail 'status must expose direct fan-control capability'
+
+auto_output=$("$helper" --set-level auto)
+grep -Fxq 'level auto' "$fan_path" \
+  || fail 'direct fan control must restore automatic mode'
+grep -Fq '"directControlAvailable":true' <<< "$auto_output" \
+  || fail 'automatic restore must preserve capability reporting'
+
+printf '%s\n' active > "$state_dir/active"
+printf '%s\n' enabled > "$state_dir/enabled"
+set +e
+"$helper" --set-level 4 > "$tmp/managed-level.out" 2> "$tmp/managed-level.err"
+managed_level_status=$?
+set -e
+[[ "$managed_level_status" -eq 70 ]] \
+  || fail "direct level must reject active ThinkFan ownership (got $managed_level_status)"
+grep -Fq 'stop ThinkFan managed control' "$tmp/managed-level.err" \
+  || fail 'direct level rejection must explain the ownership conflict'
+
+printf '%s\n' inactive > "$state_dir/active"
+printf '%s\n' disabled > "$state_dir/enabled"
+set +e
+"$helper" --set-level 0 > "$tmp/invalid-level.out" 2> "$tmp/invalid-level.err"
+invalid_level_status=$?
+set -e
+[[ "$invalid_level_status" -eq 2 ]] \
+  || fail "fixed level 0 must be rejected in favor of explicit auto (got $invalid_level_status)"
+
+printf '%s\n' '1..7'
 printf '%s\n' 'ok 1 - managed mode starts and enables ThinkFan'
 printf '%s\n' 'ok 2 - firmware mode stops and disables ThinkFan'
 printf '%s\n' 'ok 3 - firmware mode rejects a service that remains enabled'
+printf '%s\n' 'ok 4 - supported direct level writes through the guarded helper'
+printf '%s\n' 'ok 5 - auto restores firmware fan control'
+printf '%s\n' 'ok 6 - fixed levels reject active ThinkFan ownership'
+printf '%s\n' 'ok 7 - fixed level zero is rejected; Auto is explicit'

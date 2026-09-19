@@ -23,24 +23,20 @@ Item {
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
 
-    Item {
-        id: barContextMenuAnchor
-        width: 1
-        height: 1
-    }
+    property Item barContextMenuSource: null
+    property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
 
     function openBarContextMenu(clickX, clickY, mouseArea) {
-        const mapped = mouseArea.mapToItem(root, clickX, clickY)
-        barContextMenuAnchor.x = mapped.x
-        barContextMenuAnchor.y = (Config.options?.bar?.bottom ?? false) ? 0 : root.height
+        root.barContextMenuSource = mouseArea
+        root.barContextMenuRect = Qt.rect(clickX, clickY, 1, 1)
         barContextMenu.requestOpen()
     }
 
-    ContextMenu {
+    BarContextMenu {
         id: barContextMenu
-        anchorItem: barContextMenuAnchor
-        popupAbove: Config.options?.bar?.bottom ?? false
-        closeOnFocusLost: true
+        anchorItem: root.barContextMenuSource ?? root
+        anchorRect: root.barContextMenuRect
+        anchorHovered: root.barContextMenuSource?.hovered ?? false
         closeOnHoverLost: true
 
         model: [
@@ -90,9 +86,7 @@ Item {
         return Math.min(mirrored, root.centerSideMaxWidth)
     }
 
-    readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false)
-        && (Config.options?.sidebar?.cardStyle ?? false)
-        && (Config.options?.bar?.cornerStyle === 3)
+    readonly property bool cardStyleEverywhere: false
     readonly property string surfaceDialect: Appearance.surfaceDialectFor("")
     readonly property bool zzzEverywhere: root.surfaceDialect === "zzz"
     readonly property color separatorColor: root.zzzEverywhere
@@ -132,23 +126,14 @@ Item {
     readonly property bool regaliaEverywhere: root.surfaceDialect === "regalia"
     readonly property bool auroraEverywhere: root.surfaceDialect === "aurora" || root.angelEverywhere
 
-    readonly property string nativeBlurTopology:
-        (Config.options?.bar?.cornerStyle ?? 0) !== 0
-            && (!root.zzzEverywhere || Appearance.zzz.round)
-        ? Appearance.blurTopology.roundedRectangle
-        : Appearance.blurTopology.unsupported
+    readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
     readonly property bool nativeBlurGeometryExact:
         Appearance.blurTopologyExact(root.nativeBlurTopology)
     readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
             "bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
-        && (Config.options?.bar?.showBackground ?? true)
         && !Appearance.gameModeMinimal
-    readonly property bool zzzDetachedRounded: root.zzzEverywhere
-        && Appearance.zzz.round
-        && (Config.options?.bar?.showBackground ?? true)
-        && (((Config.options?.bar?.cornerStyle ?? 0) === 1)
-            || ((Config.options?.bar?.cornerStyle ?? 0) === 3))
+    readonly property bool zzzDetachedRounded: false
 
     readonly property string leftAction: Config.options?.bar?.leftScrollAction ?? "brightness"
     readonly property string rightAction: Config.options?.bar?.rightScrollAction ?? "volume"
@@ -159,7 +144,6 @@ Item {
         || String(root.screen?.name ?? "") === String(GlobalStates.primaryScreen?.name ?? "")
     readonly property bool barSpectrumConfigured:
         (Config.options?.bar?.visualizer?.enable ?? false)
-        && (Config.options?.bar?.showBackground ?? true)
         && root.barSpectrumOutputEnabled
         && !Appearance.gameModeMinimal
         && root.visible
@@ -464,14 +448,9 @@ Item {
     }
 
     Loader {
-        active: !root.inirEverywhere
-            && (root.angelEverywhere || root.surfaceDialect !== "aurora")
-            && !Appearance.gameModeMinimal
-            && (Config.options?.bar?.showBackground ?? true)
-            && (root.angelEverywhere
-                || (((Config.options?.bar?.cornerStyle ?? 0) === 1
-                    || (Config.options?.bar?.cornerStyle ?? 0) === 3)
-                    && (Config.options?.bar?.floatStyleShadow ?? true)))
+        // Detached Float/Card shadow is retired. The supported Hug Bar uses the
+        // dedicated inward edge shadow owned by Bar.qml.
+        active: false
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined
@@ -484,26 +463,25 @@ Item {
         readonly property bool auroraEverywhere:
             root.surfaceDialect === "aurora" || root.angelEverywhere
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
-        readonly property int cornerStyle: Config.options?.bar?.cornerStyle ?? 0
+        readonly property int cornerStyle: 0
         readonly property bool zzzGlassActive: root.zzzEverywhere
             && Appearance.effectsEnabled
             && (Config.options?.appearance?.zzz?.glass ?? true)
-        readonly property bool floatingStyle: root.zzzDetachedRounded
-            || ((cornerStyle === 1 || cornerStyle === 3)
-                || (auroraEverywhere && cornerStyle !== 0 && cornerStyle !== 2))
+        readonly property bool floatingStyle: false
 
         anchors {
             fill: parent
-            margins: root.zzzDetachedRounded ? Appearance.sizes.elevationMargin
-                : floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+            margins: 0
         }
-        readonly property real barMargin: root.zzzDetachedRounded
-            ? Appearance.sizes.elevationMargin
-            : floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+        readonly property real barMargin: 0
         readonly property bool isBottom: Config.options?.bar?.bottom ?? false
         readonly property QtObject blendedColors: root.blendedColors
 
-        visible: (Config.options?.bar?.showBackground ?? true) && !gameModeMinimal
+        // Hug background is structural connected chrome. Fullscreen/GameMode
+        // may disable expensive effects, but it must never hide the Bar body.
+        // The PanelWindow remains mapped; compositor stacking covers it while a
+        // fullscreen client is active and reveals it again without remapping.
+        visible: true
         opacity: root.regaliaEverywhere ? 1
             : Math.max(0, Math.min(1, Config.options?.bar?.opacity ?? 1))
         Behavior on opacity {
@@ -1143,59 +1121,20 @@ Item {
             implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
             implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
 
-            buttonRadius: root.regaliaEverywhere ? Appearance.regalia.controlRadius
-                : root.zzzEverywhere ? Appearance.zzz.controlRadius
-                : Appearance.rounding.full
+            buttonRadius: Appearance.rounding.full
             colBackground: buttonHovered
-                ? (root.zzzEverywhere ? "transparent"
-                    : root.auroraEverywhere
-                        ? Appearance.aurora.colSubSurfaceHover
-                        : Appearance.colors.colLayer1Hover)
+                ? Appearance.colors.colLayer1Hover
                 : "transparent"
-            colBackgroundHover: root.zzzEverywhere ? "transparent"
-                : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                : Appearance.colors.colLayer1Hover
-            colRipple: root.zzzEverywhere
-                ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.20)
-                : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
-                : Appearance.colors.colLayer1Active
-            colBackgroundToggled: root.regaliaEverywhere ? Appearance.regalia.primaryPlate
-                : root.zzzEverywhere ? "transparent"
-                : root.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                : Appearance.colors.colSecondaryContainer
-            colBackgroundToggledHover: root.regaliaEverywhere
-                ? Appearance.regalia.primaryPlateHover
-                : root.zzzEverywhere ? "transparent"
-                : root.auroraEverywhere ? Appearance.aurora.colElevatedSurfaceHover
-                : Appearance.colors.colSecondaryContainerHover
-            colRippleToggled: root.zzzEverywhere
-                ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.20)
-                : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
-                : Appearance.colors.colSecondaryContainerActive
-
-            ZzzPlate {
-                anchors.fill: parent
-                visible: root.zzzEverywhere
-                chamfer: (rightSidebarButton.buttonHovered || rightSidebarButton.toggled)
-                    ? Appearance.zzz.cutCorner * 0.7
-                    : Appearance.zzz.cutCorner * 0.35
-                fillColor: rightSidebarButton.toggled ? Appearance.zzz.accentSoft
-                    : rightSidebarButton.buttonHovered ? Appearance.zzz.sticker
-                    : "transparent"
-                strokeColor: rightSidebarButton.toggled ? "transparent"
-                    : rightSidebarButton.buttonHovered ? Appearance.zzz.accentSoft
-                    : "transparent"
-                strokeWidth: 1
-                z: -1
-            }
+            colBackgroundHover: Appearance.colors.colLayer1Hover
+            colRipple: Appearance.colors.colLayer1Active
+            colBackgroundToggled: Appearance.colors.colSecondaryContainer
+            colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+            colRippleToggled: Appearance.colors.colSecondaryContainerActive
 
             toggled: ShellLayoutController.sidebarOpenAtSlot("right")
-            property color colText: root.regaliaEverywhere
-                ? (toggled ? Appearance.regalia.primaryPlateInk : Appearance.regalia.onColor)
-                : root.zzzEverywhere
-                    ? (toggled ? Appearance.zzz.onAccentSoft : Appearance.zzz.ink)
-                    : toggled ? Appearance.colors.colOnSecondaryContainer
-                    : Appearance.colors.colOnLayer0
+            property color colText: toggled
+                ? Appearance.colors.colOnSecondaryContainer
+                : Appearance.colors.colOnLayer0
 
             Behavior on colText {
                 enabled: Appearance.animationsEnabled

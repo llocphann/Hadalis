@@ -6,11 +6,12 @@ cd "$repo_root"
 
 doctor="sdata/lib/doctor.sh"
 arch_installer="sdata/dist-arch/install-deps.sh"
+generic_installer="sdata/dist-generic/install-deps.sh"
 arch_core="sdata/dist-arch/inir-core/PKGBUILD"
 arch_tracker="sdata/dist-arch/inir-deps/PKGBUILD"
 default_config="defaults/config.json"
 
-python3 - "$doctor" "$arch_installer" "$arch_core" "$arch_tracker" "$default_config" <<'PY'
+python3 - "$doctor" "$arch_installer" "$generic_installer" "$arch_core" "$arch_tracker" "$default_config" <<'PY'
 from pathlib import Path
 import json
 import re
@@ -18,11 +19,13 @@ import sys
 
 doctor_path = Path(sys.argv[1])
 installer_path = Path(sys.argv[2])
-core_path = Path(sys.argv[3])
-tracker_path = Path(sys.argv[4])
-default_config_path = Path(sys.argv[5])
+generic_installer_path = Path(sys.argv[3])
+core_path = Path(sys.argv[4])
+tracker_path = Path(sys.argv[5])
+default_config_path = Path(sys.argv[6])
 doctor = doctor_path.read_text(encoding="utf-8")
 installer = installer_path.read_text(encoding="utf-8")
+generic_installer = generic_installer_path.read_text(encoding="utf-8")
 core = core_path.read_text(encoding="utf-8")
 tracker = tracker_path.read_text(encoding="utf-8")
 default_config = json.loads(default_config_path.read_text(encoding="utf-8"))
@@ -45,6 +48,20 @@ if leaked_optional:
         "FAIL: doctor hard-requires optional Equalizer backend commands: "
         + ", ".join(leaked_optional)
     )
+
+# CAVA is the live Media visualizer process. Generic/manual source-install
+# guidance must expose the same required capability as doctor and the distro
+# installers, without making the entire shell pre-flight fail when omitted.
+if "cava" not in doctor_cmds:
+    raise SystemExit("FAIL: doctor no longer checks the CAVA runtime")
+for token in (
+    'check_cmd "cava" "CAVA audio visualizer"',
+    'pipewire, pipewire-pulse, wireplumber, playerctl, pavucontrol, cava',
+):
+    if token not in generic_installer:
+        raise SystemExit(
+            f"FAIL: generic source-install guidance is missing CAVA dependency token: {token}"
+        )
 
 mapping_block = re.search(r"declare -A cmd_to_pkg=\(\n(?P<body>.*?)\n\s*\)", installer, re.S)
 if not mapping_block:

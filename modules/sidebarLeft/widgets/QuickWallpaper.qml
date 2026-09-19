@@ -154,7 +154,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.itemHeight
 
-                layer.enabled: true
+                layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
                         width: carousel.width
@@ -231,7 +231,7 @@ Item {
                             radius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
                             color: Appearance.inirEverywhere ? Appearance.inir.colLayer2 : Appearance.colors.colLayer2
 
-                            layer.enabled: true
+                            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
                             layer.effect: OpacityMask {
                                 maskSource: Rectangle {
                                     width: thumb.width

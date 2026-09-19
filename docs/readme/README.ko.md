@@ -111,7 +111,7 @@ Wayland → GPU
 ## 기능
 
 **두 가지 패널 패밀리**, `Super+Shift+W`로 즉시 전환:
-- **Material ii** — 플로팅 바, 사이드바, 독, 6가지 비주얼 스타일 (material, cards, aurora, inir, angel, zzz)
+- **Material ii** — 플로팅 바, 사이드바, 독; 전역 비주얼 테마는 Material만 지원
 - **Waffle** — Windows 11 스타일 작업 표시줄, 시작 메뉴, 알림 센터, 액션 센터
 
 **자동 테마** — 배경화면을 고르면 모든 것이 맞춰짐:
@@ -128,7 +128,7 @@ Wayland → GPU
 
 배경화면을 고르면 전체 시스템이 따라감 — 셸, GTK/Qt 앱, 터미널, Firefox, Discord, SDDM 로그인 화면. 전부 자동.
 
-- **6가지 비주얼 스타일** — Material (솔리드), Cards, Aurora (유리 블러), iNiR (TUI 영감), Angel (네오 브루탈리즘), ZZZ
+- **전역 비주얼 테마** — Material만 지원하며 색상 팔레트와 로컬 컴포넌트 옵션은 별도로 유지됩니다
 - **배경화면 동적 색상** — Material You로 시스템 전체에 전파
 - **10개 터미널 도구 자동 테마** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
 - **앱 테마 적용** — GTK3/4, Qt (plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)

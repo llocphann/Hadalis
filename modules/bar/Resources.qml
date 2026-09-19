@@ -17,8 +17,32 @@ MouseArea {
     Accessible.name: Translation.tr("System resources")
     Accessible.focusable: true
 
-    Component.onCompleted: ResourceUsage.keepAlive()
-    Component.onDestruction: ResourceUsage.releaseKeepAlive()
+    property bool _resourceUsageHeld: false
+    readonly property bool _resourceUsageWanted: root.visible && !GameMode.active
+
+    function syncResourceUsageLifecycle(): void {
+        if (root._resourceUsageWanted === root._resourceUsageHeld)
+            return
+        if (root._resourceUsageWanted)
+            ResourceUsage.keepAlive()
+        else
+            ResourceUsage.releaseKeepAlive()
+        root._resourceUsageHeld = root._resourceUsageWanted
+    }
+
+    Component.onCompleted: root.syncResourceUsageLifecycle()
+    Component.onDestruction: {
+        if (root._resourceUsageHeld) {
+            root._resourceUsageHeld = false
+            ResourceUsage.releaseKeepAlive()
+        }
+    }
+    onVisibleChanged: root.syncResourceUsageLifecycle()
+
+    Connections {
+        target: GameMode
+        function onActiveChanged(): void { root.syncResourceUsageLifecycle() }
+    }
 
     RowLayout {
         id: rowLayout

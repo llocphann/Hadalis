@@ -1,5 +1,6 @@
 module qs.modules.mediaControls
 BarMediaPlayerItem 1.0 BarMediaPlayerItem.qml
 BarMediaPopup 1.0 BarMediaPopup.qml
+EqualizerPanel 1.0 EqualizerPanel.qml
 MediaControls 1.0 MediaControls.qml
 PlayerControl 1.0 PlayerControl.qml

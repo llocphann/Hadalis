@@ -4,6 +4,8 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
+import qs.modules.common.perimeter
 import qs.modules.sidebarLeft
 import qs.modules.sidebarRight
 import QtQuick
@@ -58,6 +60,11 @@ Scope {
         root.roleId, sidebarRoot.screen?.name ?? "")
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
+    // The owning Overlay surface is anchored to the physical display edge.
+    // Let the visible body underlap the entire persistent Screen Edge band,
+    // rather than stopping at its inner boundary with only a 2px seam overlap.
+    // Its inward/free edge stays at the exact same coordinate because the body
+    // grows only toward the attached physical edge.
     // Perimeter sidebars are content-sized by definition. Preserve explicit
     // custom height, but treat legacy/full layout state as fit-to-content.
     readonly property string configuredSizeMode:
@@ -66,9 +73,26 @@ Scope {
         root.configuredSizeMode === "custom" ? "custom" : "fit"
     readonly property int customHeight: Math.round(
         root.roleLayoutState?.customHeight ?? 720)
+    readonly property bool screenEdgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+    // Reserve transparent vertical room for both the concave endpoint shoulders
+    // and the configured free-side shadow. Otherwise large Screen Edge shadow
+    // values clip at the native Sidebar window boundary even though the flare
+    // itself remains visible.
+    readonly property real edgeDecorationMargin: Math.max(
+        Appearance.sizes.hyprlandGapsOut,
+        PerimeterTokens.joinFlareRadius,
+        root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0)
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+    readonly property color screenEdgeShadowColor:
+        ColorUtils.applyAlpha(Appearance.colors.colShadow,
+            root.screenEdgeShadowOpacity)
     readonly property real availableContentHeight: Math.max(0,
         (sidebarRoot.screen?.height ?? 1080)
-            - Appearance.sizes.hyprlandGapsOut * 2)
+            - root.edgeDecorationMargin * 2)
     readonly property real reportedPreferredHeight:
         sidebarContentLoader.item?.preferredContentHeight ?? -1
     readonly property real reportedMinimumHeight:
@@ -418,8 +442,10 @@ Scope {
             screenWidth: sidebarRoot.screen?.width ?? 1920
             screenHeight: sidebarRoot.screen?.height ?? 1080
             panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
             onPluginViewActiveChanged: root.pluginViewActive = pluginViewActive
         }
     }
@@ -431,8 +457,10 @@ Scope {
             screenWidth: sidebarRoot.screen?.width ?? 1920
             screenHeight: sidebarRoot.screen?.height ?? 1080
             panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
         }
     }
 
@@ -443,8 +471,10 @@ Scope {
             screenWidth: sidebarRoot.screen?.width ?? 1920
             screenHeight: sidebarRoot.screen?.height ?? 1080
             panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
         }
     }
 
@@ -469,6 +499,9 @@ Scope {
                 activeContentItem?.notifsCollapsed ?? false
             readonly property bool bottomCollapsed:
                 activeContentItem?.bottomGroupCollapsed ?? false
+            readonly property color connectedSurfaceColor:
+                activeContentItem?.connectedSurfaceColor
+                    ?? Appearance.colors.colLayer0
 
             FadeLoader {
                 id: defaultSystemLoader
@@ -580,7 +613,7 @@ Scope {
         exclusiveZone: 0
         implicitWidth: Math.ceil(root.effectiveSidebarWidth)
         implicitHeight: Math.ceil(root.effectiveContentHeight
-            + Appearance.sizes.hyprlandGapsOut * 2)
+            + root.edgeDecorationMargin * 2)
         WlrLayershell.namespace: root.isLeftEdge
             ? "quickshell:sidebarLeft" : "quickshell:sidebarRight"
         WlrLayershell.layer: WlrLayer.Overlay
@@ -608,6 +641,9 @@ Scope {
             right: !root.isLeftEdge
         }
 
+        // No connector is rendered here. The content loader itself extends to
+        // the physical attached edge, covering the Screen Edge band underneath
+        // this Overlay surface so color/raster differences cannot form a gap.
         Region {
             id: sidebarInputRegion
             item: sidebarContentLoader
@@ -742,7 +778,6 @@ Scope {
 
             active: root._contentResident
             width: Math.max(0, root.effectiveSidebarWidth
-                - Appearance.sizes.hyprlandGapsOut
                 - Appearance.sizes.elevationMargin)
             height: root.effectiveContentHeight
             onStatusChanged: {
@@ -774,9 +809,9 @@ Scope {
                 right: root.isLeftEdge ? undefined : parent.right
                 rightMargin: root.isLeftEdge
                     ? Appearance.sizes.elevationMargin
-                    : Appearance.sizes.hyprlandGapsOut
+                    : 0
                 leftMargin: root.isLeftEdge
-                    ? Appearance.sizes.hyprlandGapsOut
+                    ? 0
                     : Appearance.sizes.elevationMargin
             }
 
@@ -879,18 +914,18 @@ Scope {
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateX"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel
-                                ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateY"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel
-                                ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader
@@ -953,18 +988,18 @@ Scope {
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateX"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel
-                                ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader
                             property: "animTranslateY"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel
-                                ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
                         }
                         NumberAnimation {
                             target: sidebarContentLoader
@@ -1032,6 +1067,9 @@ Scope {
                         ?? roleContentItem?.contentFitActive ?? false
                 readonly property bool bottomCollapsed:
                     roleContentItem?.bottomCollapsed ?? false
+                readonly property color connectedSurfaceColor:
+                    roleContentItem?.connectedSurfaceColor
+                        ?? Appearance.colors.colLayer0
 
                 Item {
                     id: revealViewport
@@ -1055,6 +1093,32 @@ Scope {
                     }
                 }
             }
+        }
+
+        // Caelestia-style concave shoulders where the content-sized sidebar
+        // terminates against the persistent vertical Screen Edge. Render these
+        // in the host (outside revealViewport clipping) so both endpoints remain
+        // visible for slide/reveal animation modes.
+        ConnectedSurfaceJoinFlares {
+            id: sidebarEdgeFlares
+            z: 9000
+            anchors.fill: parent
+            bodyItem: sidebarContentLoader
+            fillColor: sidebarContentLoader.item?.connectedSurfaceColor
+                ?? Appearance.colors.colLayer0
+            flareRadius: PerimeterTokens.joinFlareRadius
+            // JoinFlares maps bodyItem through mapToItem(), so the shoulder
+            // already follows Loader translations exactly once. Keep it visible
+            // through translated slide/drop motion; other morph modes still wait
+            // for their body geometry to settle.
+            readonly property bool tracksBodyTranslation:
+                root.animationType === "slide" || root.animationType === "drop"
+            progress: root.presentationOpen
+                && (!sidebarContentLoader.animating || tracksBodyTranslation)
+                ? 1 : 0
+
+            joinLeft: root.isLeftEdge
+            joinRight: !root.isLeftEdge
         }
 
         ShellEditSurfaceFrame {

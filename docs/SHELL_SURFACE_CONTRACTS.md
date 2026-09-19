@@ -16,7 +16,7 @@ This document records the stabilization contracts that should be checked during 
 - Transparent regions outside the visible popup shape remain click-through.
 - Focused connected popouts preserve Niri layer-shell focus and the existing Hyprland compositor focus grab.
 - Media volume HUD, expanded bar Media controls, tray overflow, taskbar window previews, and the existing battery/resources/weather/clock/timer/update popouts all use the shared connected path. Context menus remain context menus rather than being forced into this presentation contract.
-- Connected popup presentation does not require enabling the broad `iiPerimeter` composition cutover.
+- Connected popup presentation is independent of the retired broad `iiPerimeter` composition runtime; that runtime must not be reintroduced as a popup prerequisite.
 
 ## Classic Bar geometry
 
@@ -24,7 +24,7 @@ This document records the stabilization contracts that should be checked during 
 - Float, Rectangle, and Card are retired choices and must not be exposed as user-selectable Bar styles.
 - The persisted `bar.cornerStyle` key is compatibility-only. Startup normalizes any legacy non-zero value to `0` (Hug), including before the Settings page is opened.
 - Runtime Bar layout must not branch on `cornerStyle`, `floatStyleShadow`, or any retired Float/Card geometry path.
-- Global visual themes may still change color, material, blur, and rounding tokens, but they do not switch the Classic Bar away from Hug geometry.
+- Material palette/theme tokens may still change color, material, blur, and rounding, but they do not switch the Classic Bar away from Hug geometry.
 - Connected bar popouts inherit the Hug-owned surface contract and must not reintroduce a retired corner-style branch.
 
 ## Dock
@@ -69,4 +69,4 @@ For the final local pass, verify at minimum:
 11. verify Waffle behavior is unchanged and is not presented as a Dock style;
 12. restart with a legacy `language.ui` value and verify the shell remains English and normalizes it to `en_US`.
 
-If a full `iiPerimeter` composition is tested separately, keep fallback coverage in scope: do not treat loss of legacy-only functionality as an acceptable connected-surface result.
+The retired full `iiPerimeter` composition must remain absent. Local acceptance should validate the supported connected-surface primitives and feature-owned bridges instead of treating the old runtime as an alternate path.

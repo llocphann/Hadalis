@@ -44,7 +44,7 @@ ContentPage {
             "appearance.cava.gradientCount": 8,
             "appearance.cava.sensitivity": 100,
             "appearance.cava.bars": 0,
-            "appearance.cava.framerate": 60,
+            "appearance.cava.framerate": 30,
             "appearance.cava.stereo": true,
             "appearance.cava.waveOpacity": 30,
         })
@@ -327,7 +327,7 @@ ContentPage {
                 ConfigSpinBox {
                     icon: "speed"
                     text: Translation.tr("Framerate")
-                    value: Config.options?.appearance?.cava?.framerate ?? 60
+                    value: Config.options?.appearance?.cava?.framerate ?? 30
                     from: 30
                     to: 165
                     stepSize: 5

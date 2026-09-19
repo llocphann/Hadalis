@@ -16,7 +16,8 @@ make_fixture() {
     mkdir -p \
         "$root/modules/ii/critical" \
         "$root/modules/ii" \
-        "$root/modules/perimeter" \
+        "$root/modules/screenCorners" \
+        "$root/modules/sidebar" \
         "$root/modules/background" \
         "$root/modules/bar" \
         "$root/modules/verticalBar" \
@@ -25,8 +26,6 @@ make_fixture() {
     cat > "$root/modules/ii/critical/ShellIiCriticalPanels.qml" <<'QML'
 import QtQuick
 import Quickshell
-import qs.modules.perimeter;
-import qs.modules.common.perimeter;
 
 Item {
     component CriticalPanelLoader: LazyLoader {
@@ -34,7 +33,10 @@ Item {
     }
 
     LazyLoader {
-        source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml")
+        source: Qt.resolvedUrl("../../screenCorners/ScreenEdges.qml")
+    }
+    LazyLoader {
+        source: Qt.resolvedUrl("../../sidebar/SidebarEdgeConnectors.qml")
     }
     CriticalPanelLoader {
         source: Qt.resolvedUrl("../../background/Background.qml")
@@ -54,13 +56,14 @@ QML
     cat > "$root/ShellIiPanels.qml" <<'QML'
 Item {
     source: "modules/ii/ShellIiPanelsImpl.qml"
-    loading: root.perimeterFeaturesReady && GlobalStates.deferredPanelsReady
-    activeAsync: root.perimeterFeaturesReady && GlobalStates.deferredPanelsReady
+    loading: GlobalStates.deferredPanelsReady
+    activeAsync: GlobalStates.deferredPanelsReady
 }
 QML
 
     for target in \
-        modules/perimeter/PerimeterRuntime.qml \
+        modules/screenCorners/ScreenEdges.qml \
+        modules/sidebar/SidebarEdgeConnectors.qml \
         modules/background/Background.qml \
         modules/bar/Bar.qml \
         modules/verticalBar/VerticalBar.qml \
@@ -88,13 +91,13 @@ expect_failure() {
 positive="$stage/positive"
 make_fixture "$positive"
 run_guard "$positive" >/dev/null \
-    || fail 'guard rejected URL-isolated positive fixture'
+    || fail 'guard rejected supported source-isolated positive fixture'
 
 aliased_import="$stage/aliased-import"
 make_fixture "$aliased_import"
 sed -i '3i import qs.modules.bar as OptionalBar;' \
     "$aliased_import/modules/ii/critical/ShellIiCriticalPanels.qml"
-expect_failure "$aliased_import" 'critical root still imports optional presentation module'
+expect_failure "$aliased_import" 'critical root still imports optional/broad presentation module'
 
 direct_runtime="$stage/direct-runtime"
 make_fixture "$direct_runtime"
@@ -102,11 +105,24 @@ sed -i '/^Item {/a\    PerimeterRuntime {}' \
     "$direct_runtime/modules/ii/critical/ShellIiCriticalPanels.qml"
 expect_failure "$direct_runtime" 'critical root still embeds a concrete presentation component'
 
+runtime_source="$stage/runtime-source"
+make_fixture "$runtime_source"
+sed -i '/^Item {/a\    LazyLoader { source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml") }' \
+    "$runtime_source/modules/ii/critical/ShellIiCriticalPanels.qml"
+expect_failure "$runtime_source" 'critical root reintroduced the retired PerimeterRuntime source'
+
 inline_bar="$stage/inline-bar"
 make_fixture "$inline_bar"
 sed -i '/^Item {/a\    component EmbeddedBar: Bar {}' \
     "$inline_bar/modules/ii/critical/ShellIiCriticalPanels.qml"
 expect_failure "$inline_bar" 'critical root still embeds a concrete presentation component'
 
+perimeter_bootstrap="$stage/perimeter-bootstrap"
+make_fixture "$perimeter_bootstrap"
+sed -i '1i import qs.modules.perimeter' "$perimeter_bootstrap/ShellIiPanels.qml"
+sed -i '/^Item {/a\    property bool perimeterFeaturesReady: PerimeterFeatureRegistry.registerAll()' \
+    "$perimeter_bootstrap/ShellIiPanels.qml"
+expect_failure "$perimeter_bootstrap" 'deferred ii root still depends on retired perimeter bootstrap'
+
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - critical panel isolation guard rejects aliased imports and direct or inline concrete presentation dependencies'
+printf '%s\n' 'ok 1 - critical panel isolation guard rejects broad perimeter bootstrap and concrete startup dependencies'

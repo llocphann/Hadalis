@@ -50,40 +50,6 @@ ContentPage {
             ContentSubsection {
                 title: Translation.tr("General")
 
-                ConfigSelectionArray {
-                    currentValue: Config.options?.sidebar?.style ?? "panel"
-                    onSelected: newValue => {
-                        Config.setNestedValue("sidebar.style", newValue);
-                    }
-                    options: [
-                        { displayName: Translation.tr("Panel"), icon: "side_navigation", value: "panel" },
-                        { displayName: Translation.tr("Island"), icon: "blur_on", value: "island" }
-                    ]
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Island wraps both sidebars in the gradient card look used by the island bar and dock.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    wrapMode: Text.WordWrap
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "branding_watermark"
-                    text: Translation.tr("Use Card style")
-                    enabled: Appearance.globalStyle === "material" || Appearance.globalStyle === "inir"
-                    checked: Config.options.sidebar?.cardStyle ?? false
-                    onCheckedChanged: {
-                        Config.setNestedValue("sidebar.cardStyle", checked);
-                    }
-                    StyledToolTip {
-                        text: (Appearance.globalStyle === "material" || Appearance.globalStyle === "inir")
-                            ? Translation.tr("Apply rounded card styling to sidebars")
-                            : Translation.tr("Only available with Material or Inir global style")
-                    }
-                }
-
                 SettingsSwitch {
                     buttonIcon: "unfold_less"
                     text: Translation.tr("Collapse notifications when empty")
@@ -308,12 +274,10 @@ ContentPage {
 
                 SettingsSwitch {
                     buttonIcon: "library_music"
-                    text: Translation.tr("YT Music")
-                    checked: Config.options.sidebar?.ytmusic?.enable ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Search and play music from YouTube using yt-dlp")
-                    }
+                    text: Translation.tr("Music")
+                    checked: Config.options.sidebar?.music?.enable ?? false
+                    onCheckedChanged: Config.setNestedValue("sidebar.music.enable", checked)
+                    StyledToolTip { text: LocalMusic.libraryFolder }
                 }
 
                 // DISABLED: webapps — requires quickshell-webengine rebuild
@@ -631,62 +595,92 @@ ContentPage {
 
         SettingsGroup {
             ContentSubsection {
-                title: Translation.tr("YT Music")
-                tooltip: Translation.tr("Control how next-track notifications behave")
-                visible: Config.options.sidebar?.ytmusic?.enable ?? false
+                title: Translation.tr("Music")
+                tooltip: "MPD + MPRIS"
+                visible: Config.options.sidebar?.music?.enable ?? false
 
-                SettingsSwitch {
-                    buttonIcon: "sync"
-                    text: Translation.tr("Reconnect account on launch")
-                    checked: Config.options.sidebar?.ytmusic?.autoConnect ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.autoConnect", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Re-reads your browser's YouTube session on startup so a stale login heals itself.")
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    MaterialSymbol {
+                        text: "dns"
+                        iconSize: 20
+                        color: Appearance.colors.colSubtext
+                    }
+
+                    MaterialTextField {
+                        Layout.fillWidth: true
+                        text: Config.options.sidebar?.music?.mpdHost ?? "127.0.0.1"
+                        onEditingFinished: {
+                            const value = text.trim()
+                            Config.setNestedValue("sidebar.music.mpdHost",
+                                value.length > 0 ? value : "127.0.0.1")
+                        }
+                    }
+
+                    ConfigSpinBox {
+                        icon: "tag"
+                        text: "MPD"
+                        value: Config.options.sidebar?.music?.mpdPort ?? 6600
+                        from: 1
+                        to: 65535
+                        stepSize: 1
+                        onValueChanged: Config.setNestedValue("sidebar.music.mpdPort", value)
                     }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "music_note"
-                    text: Translation.tr("Up Next notifications")
-                    checked: Config.options.sidebar?.ytmusic?.upNextNotifications ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.upNextNotifications", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Show a desktop notification with the upcoming track when playback auto-advances")
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    MaterialTextField {
+                        Layout.fillWidth: true
+                        readOnly: true
+                        text: LocalMusic.libraryFolder
+                    }
+
+                    RippleButton {
+                        implicitWidth: 44
+                        implicitHeight: 44
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: Appearance.colors.colLayer2
+                        onClicked: musicFolderDialog.open()
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "folder_open"
+                            iconSize: 21
+                            color: Appearance.colors.colOnLayer2
+                        }
+                        StyledToolTip { text: Translation.tr("Folder") }
+                    }
+
+                    RippleButton {
+                        implicitWidth: 44
+                        implicitHeight: 44
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: Appearance.colors.colLayer2
+                        enabled: LocalMusic.available && !LocalMusic.scanning
+                        onClicked: LocalMusic.updateDatabase()
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "database"
+                            iconSize: 21
+                            color: Appearance.colors.colOnLayer2
+                        }
+                        StyledToolTip { text: Translation.tr("Update") }
                     }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "sports_esports"
-                    text: Translation.tr("Mute while fullscreen or GameMode")
-                    enabled: Config.options.sidebar?.ytmusic?.upNextNotifications ?? true
-                    checked: Config.options.sidebar?.ytmusic?.suppressUpNextInFullscreen ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.suppressUpNextInFullscreen", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Suppress Up Next notifications when a fullscreen app is active or GameMode is enabled")
-                    }
-                }
-
-                ConfigSelectionArray {
-                    options: [
-                        { displayName: Translation.tr("Best"), icon: "high_quality", value: "best" },
-                        { displayName: Translation.tr("Medium (≤128 kbps)"), icon: "graphic_eq", value: "medium" },
-                        { displayName: Translation.tr("Low"), icon: "data_saver_on", value: "low" }
-                    ]
-                    currentValue: Config.options.sidebar?.ytmusic?.audioQuality ?? "best"
-                    onSelected: (newValue) => Config.setNestedValue("sidebar.ytmusic.audioQuality", newValue)
-                    StyledToolTip {
-                        text: Translation.tr("Audio quality for playback — lower quality uses less bandwidth")
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "graphic_eq"
-                    text: Translation.tr("Normalize loudness")
-                    checked: Config.options.sidebar?.ytmusic?.normalizeVolume ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.ytmusic.normalizeVolume", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Even out volume across tracks (EBU R128, like YouTube Music). Disable for the unprocessed stream.")
-                    }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: "MPD"
+                        + (LocalMusic.mprisAvailable ? " · MPRIS" : "")
+                        + " · " + (LocalMusic.available
+                            ? Translation.tr("Connected") : LocalMusic.error)
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    wrapMode: Text.Wrap
                 }
             }
 
@@ -1025,6 +1019,17 @@ ContentPage {
                 }
             }
         }
+    }
+
+    FolderDialog {
+        id: musicFolderDialog
+        title: Translation.tr("Music")
+        onAccepted: LocalMusic.setLibraryFolder(String(selectedFolder))
+    }
+
+    SettingsNativeDialogGuard {
+        dialog: musicFolderDialog
+        dialogKey: "sidebar-local-music-folder"
     }
 
 }

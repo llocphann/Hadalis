@@ -13,7 +13,7 @@ case "$1" in
 esac
 
 OUTPUT_FILE="${1:-/tmp/cava_config.txt}"
-FRAMERATE="${2:-60}"
+FRAMERATE="${2:-30}"
 SENSITIVITY="${3:-100}"
 BARS="${4:-50}"
 STEREO="${5:-false}"
@@ -69,6 +69,8 @@ source = ${MONITOR}
 method = raw
 raw_target = /dev/stdout
 data_format = ascii
+ascii_max_range = 1000
+bar_delimiter = 59
 channels = ${CHANNELS}
 mono_option = average
 

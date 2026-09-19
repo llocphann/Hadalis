@@ -111,7 +111,7 @@ Ich wollte dass mein Desktop auf eine bestimmte Art aussieht und funktioniert, u
 ## Funktionen
 
 **Zwei Panel-Familien**, im laufenden Betrieb umschaltbar mit `Super+Shift+W`:
-- **Material ii** — schwebende Leiste, Seitenleisten, Dock, 6 visuelle Stile (material, cards, aurora, inir, angel, zzz)
+- **Material ii** — schwebende Leiste, Seitenleisten, Dock; Material ist das einzige globale visuelle Theme
 - **Waffle** — Taskleiste im Windows-11-Stil, Startmenü, Aktionscenter, Benachrichtigungscenter
 
 **Automatische Thematisierung** — Hintergrundbild wählen und alles passt sich an:
@@ -128,7 +128,7 @@ Ich wollte dass mein Desktop auf eine bestimmte Art aussieht und funktioniert, u
 
 Hintergrundbild wählen und das gesamte System folgt — Shell, GTK/Qt-Apps, Terminals, Firefox, Discord, SDDM-Anmeldebildschirm. Vollautomatisch.
 
-- **6 visuelle Stile** — Material (einfarbig), Cards, Aurora (Glasunschärfe), iNiR (TUI-inspiriert), Angel (Neo-Brutalismus), ZZZ
+- **Globales visuelles Theme** — nur Material; Farbpaletten und lokale Komponentenoptionen bleiben unabhängig
 - **Dynamische Hintergrundfarben** über Material You — systemweit propagiert
 - **10 Terminal-Tools automatisch thematisiert** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
 - **App-Thematisierung** — GTK3/4, Qt (über plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)

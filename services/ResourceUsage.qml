@@ -21,6 +21,22 @@ Singleton {
     // Persistent consumers (bar, vertical bar) prevent auto-stop entirely.
     readonly property int _autoStopDelayMs: Config.options?.resources?.autoStopDelay ?? 15000
     readonly property int _diskUpdateIntervalMs: 30000
+    readonly property int _configuredUpdateIntervalMs: {
+        const configured = Number(Config.options?.resources?.updateInterval ?? 3000)
+        return Number.isFinite(configured) ? Math.max(100, Math.round(configured)) : 3000
+    }
+    readonly property int _effectiveUpdateIntervalMs:
+        (Config.options?.performance?.lowPower ?? false)
+            ? Math.max(6000, root._configuredUpdateIntervalMs)
+            : root._configuredUpdateIntervalMs
+    // nvidia-smi and intel_gpu_top spawn helper processes and are much more
+    // expensive than the sysfs path. Keep CPU/RAM responsive while sampling
+    // process-backed GPU usage at a lower cadence.
+    readonly property int _expensiveGpuUpdateIntervalMs:
+        (Config.options?.performance?.lowPower ?? false)
+            ? Math.max(15000, root._effectiveUpdateIntervalMs)
+            : Math.max(6000, root._effectiveUpdateIntervalMs)
+    property real _lastExpensiveGpuPollMs: 0
     // 0 + zero-guard avoids fake "100%" before first poll.
     property real memoryTotal: 0
     property real memoryFree: 0
@@ -234,6 +250,11 @@ Singleton {
         return Math.max(0, Math.min(1, value));
     }
 
+    function _expensiveGpuPollDue(nowMs: real): bool {
+        return root._lastExpensiveGpuPollMs <= 0
+            || (nowMs - root._lastExpensiveGpuPollMs) >= root._expensiveGpuUpdateIntervalMs
+    }
+
     function _releaseInitRequest(stage: string): void {
         root._initRequested = false
         console.warn("[ResourceUsage] Failed to start " + stage + " probe; initialization can retry on the next consumer request")
@@ -296,9 +317,10 @@ Singleton {
     }
 
     function _pollSensors(): void {
-        if (root._persistentConsumers === 0)
-            autoStopTimer.restart();
-
+        // Polling is not a consumer request. Renewing autoStopTimer here keeps a
+        // transient ensureRunning() lease alive forever because this function runs
+        // more often than the idle timeout. Only ensureRunning()/releaseKeepAlive()
+        // may start that timeout.
         // Determine whether GPU polling should be skipped this cycle.
         // On hybrid (iGPU+dGPU) systems, querying GPU data via nvidia-smi or hwmon
         // prevents the discrete GPU from entering runtime suspend, wasting ~9-10W at idle.
@@ -369,9 +391,17 @@ Singleton {
                 gpuUsage = root.clampPercentToUnit(gpuBusyPercent / 100);
             }
         } else if (root._gpuUsageSource === "nvidia-smi" && !nvidiaGpuProc.running) {
-            nvidiaGpuProc.running = true;
+            const nowMs = Date.now()
+            if (root._expensiveGpuPollDue(nowMs)) {
+                root._lastExpensiveGpuPollMs = nowMs
+                nvidiaGpuProc.running = true
+            }
         } else if (root._gpuUsageSource === "intel" && !intelGpuProc.running) {
-            intelGpuProc.running = true;
+            const nowMs = Date.now()
+            if (root._expensiveGpuPollDue(nowMs)) {
+                root._lastExpensiveGpuPollMs = nowMs
+                intelGpuProc.running = true
+            }
         } else if (root._gpuUsageSource === "none") {
             gpuUsage = 0;
         }
@@ -387,7 +417,7 @@ Singleton {
 
     Timer {
         id: pollTimer
-        interval: Config.options?.resources?.updateInterval ?? 3000
+        interval: root._effectiveUpdateIntervalMs
         running: root._runningRequested
         repeat: true
         onTriggered: root._pollSensors()

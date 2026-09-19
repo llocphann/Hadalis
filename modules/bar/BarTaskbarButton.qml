@@ -126,26 +126,17 @@ RippleButton {
     leftInset: 2
     rightInset: 2
 
-    buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-        : Appearance.rounding.small
+    buttonRadius: Appearance.rounding.small
     cookieMorphing: true
 
     colBackground: "transparent"
-    colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer1Hover
-    colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1Active
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
-        : Appearance.colors.colLayer1Active
+    colBackgroundHover: Appearance.colors.colLayer1Hover
+    colRipple: Appearance.colors.colLayer1Active
 
     // Focus is shown by the window-indicator dots/line below the icon, so the
     // active app gets NO filled background box (the dark box read like a shadow
     // and broke the flat look). Hover still gives subtle feedback.
-    colBackgroundToggled: Appearance.cookieEverywhere
-        ? Appearance.colors.colPrimaryContainer : "transparent"
+    colBackgroundToggled: "transparent"
     colBackgroundToggledHover: root.colBackgroundHover
     colRippleToggled: root.colRipple
 
@@ -236,20 +227,16 @@ RippleButton {
         }
     }
 
-    // Context menu direction depends on bar position
-    ContextMenu {
+    // Bar-owned context menu: physical attachment comes from the real taskbar
+    // button through StyledPopup instead of compositor PopupWindow gravity.
+    BarContextMenu {
         id: contextMenu
         anchorItem: root
         anchorHovered: root.buttonHovered
-        // Horizontal bar: top → popup below, bottom → popup above
-        popupAbove: root.barPosition === "bottom"
-        // Vertical bar: left → popup right, right → popup left
-        popupSide: root.vertical
-            ? (root.barPosition === "right" ? Edges.Left : Edges.Right)
-            : 0
 
         onActiveChanged: {
-            if (!active && root.taskbarRoot) root.taskbarRoot.contextMenuOpen = false
+            if (!active && root.taskbarRoot)
+                root.taskbarRoot.contextMenuOpen = false
         }
 
         model: [
@@ -387,8 +374,7 @@ RippleButton {
                     ColorOverlay {
                         anchors.fill: desat
                         source: desat
-                        color: ColorUtils.transparentize(
-                            Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary, 0.9)
+                        color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9)
                     }
                 }
             }
@@ -432,8 +418,7 @@ RippleButton {
 
                             // Unfocused: 3×3 circle. Focused: pill in bar direction.
                             // Both dims animate → squish morph same as dock dots.
-                            radius: Appearance.zzzEverywhere ? Appearance.zzz.cornerRadius
-                                : Appearance.angelEverywhere ? 0 : Math.min(width, height) / 2
+                            radius: Math.min(width, height) / 2
                             Behavior on radius {
                                 enabled: Appearance.animationsEnabled
                                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -441,15 +426,8 @@ RippleButton {
                             implicitWidth: root.vertical ? (isFocused ? 2 : 3) : (isFocused ? 8 : 3)
                             implicitHeight: root.vertical ? (isFocused ? 8 : 3) : (isFocused ? 2 : 3)
                             color: isFocused
-                                ? (Appearance.zzzEverywhere ? Appearance.zzz.accent
-                                : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                                : Appearance.inirEverywhere ? Appearance.inir.colPrimary
-                                : Appearance.colors.colPrimary)
-                                : ColorUtils.transparentize(
-                                    Appearance.zzzEverywhere ? Appearance.zzz.inkMuted
-                                    : Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-                                    : Appearance.inirEverywhere ? Appearance.inir.colText
-                                    : Appearance.colors.colOnLayer0, 0.5)
+                                ? Appearance.colors.colPrimary
+                                : ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.5)
 
                             Behavior on implicitWidth {
                                 enabled: Appearance.animationsEnabled
@@ -472,13 +450,9 @@ RippleButton {
                         visible: opacity > 0
                         width: root.vertical ? 2 : 3
                         height: root.vertical ? 3 : 2
-                        radius: Appearance.zzzEverywhere ? Appearance.zzz.cornerRadius : Math.min(width, height) / 2
-                        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot } }
-                        color: ColorUtils.transparentize(
-                            Appearance.zzzEverywhere ? Appearance.zzz.inkMuted
-                            : Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-                            : Appearance.inirEverywhere ? Appearance.inir.colText
-                            : Appearance.colors.colOnLayer0, 0.5)
+                        radius: Math.min(width, height) / 2
+                        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
+                        color: ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.5)
 
                         Behavior on opacity {
                             enabled: Appearance.animationsEnabled
@@ -497,9 +471,7 @@ RippleButton {
         sourceComponent: Rectangle {
             width: root.vertical ? (root.barSize / 2.5) : 1
             height: root.vertical ? 1 : (root.barSize / 2.5)
-            color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                 : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.7)
-                 : Appearance.colors.colOutlineVariant
+            color: Appearance.colors.colOutlineVariant
         }
     }
 }

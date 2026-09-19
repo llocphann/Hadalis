@@ -16,8 +16,10 @@ Region {
         || geometry?.edge === "bottom"
     readonly property bool sourceAtStart: geometry?.edge === "top"
         || geometry?.edge === "left"
+    readonly property rect visibleBodyRect: geometry?.visibleBodyRect
+        ?? Qt.rect(bodyItem.x, bodyItem.y, bodyItem.width, bodyItem.height)
     readonly property real bodyRadius: Math.min(geometry.outerRadius,
-        bodyItem.width / 2, bodyItem.height / 2)
+        root._visibleBodyItem.width / 2, root._visibleBodyItem.height / 2)
     readonly property real sourceExtent: Math.max(0, Math.min(
         horizontalConnector ? connectorItem.width : connectorItem.height,
         Number(geometry?.connectorSourceExtent ?? 0)))
@@ -41,6 +43,17 @@ Region {
         parent: root.bodyItem?.parent ?? null
         width: 0
         height: 0
+        visible: false
+    }
+
+    // Region cannot clip another Region, so expose only the body portion that is
+    // actually visible outside the fixed Bar/Screen Edge reveal boundary.
+    property Item _visibleBodyItem: Item {
+        parent: root.bodyItem?.parent ?? null
+        x: root.visibleBodyRect.x
+        y: root.visibleBodyRect.y
+        width: root.visibleBodyRect.width
+        height: root.visibleBodyRect.height
         visible: false
     }
 
@@ -78,7 +91,7 @@ Region {
     }
 
     Region {
-        item: root.active ? root.bodyItem : root._emptyItem
+        item: root.active ? root._visibleBodyItem : root._emptyItem
         radius: root.bodyRadius
     }
 

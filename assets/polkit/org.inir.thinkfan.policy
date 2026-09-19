@@ -2,12 +2,12 @@
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
 <policyconfig>
   <action id="org.inir.thinkfan">
-    <description>Change ThinkFan service ownership</description>
-    <message>Authentication is required to change fan-control service ownership.</message>
+    <description>Change fan-control ownership or supported fan level</description>
+    <message>Allow Hadalis to change fan-control ownership or a supported fan level.</message>
     <defaults>
-      <allow_any>auth_admin_keep</allow_any>
-      <allow_inactive>auth_admin_keep</allow_inactive>
-      <allow_active>auth_admin_keep</allow_active>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>yes</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/inir-thinkfan</annotate>
   </action>

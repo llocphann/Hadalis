@@ -110,6 +110,8 @@ Core audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/
 | `cava` | Audio visualizer |
 | `mpv` | Media playback backend |
 | `mpv-mpris` | MPRIS bridge for mpv |
+| `mpd` | Local Music library, saved-playlist and queue backend |
+| `mpd-mpris` | MPRIS bridge for MPD/rmpc/Hadalis Music sessions |
 | `yt-dlp` | YouTube extraction backend |
 
 Equalizer Phase 1 keeps its backend and control transport optional. The group advertises these through `optdepends`, so the source install remains usable without them:
@@ -122,6 +124,8 @@ Equalizer Phase 1 keeps its backend and control transport optional. The group ad
 Missing either optional package must not make Media playback or shell startup fail. Equalizer capability should degrade to unavailable/error state instead.
 
 The installer separately ensures `plasma-browser-integration` is present for browser media sessions and artwork.
+
+Hadalis Music and MPD clients such as `rmpc` share one MPD session. The Arch audio bundle installs both `mpd` and `mpd-mpris`; LocalMusic uses MPD protocol only for library/database/queue operations that MPRIS does not expose, while normal transport stays on the MPRIS boundary. The default bridge service targets MPD at `localhost:6600`.
 
 ---
 

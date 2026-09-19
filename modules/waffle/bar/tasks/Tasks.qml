@@ -83,7 +83,6 @@ MouseArea {
     TaskPreview {
         id: previewPopup
         tasksHovered: root.containsMouse
-        anchor.window: root.QsWindow.window
     }
 
 }

@@ -41,6 +41,7 @@ ContentPage {
     }
 
     readonly property bool isHugStyle: (Config.options?.bar?.cornerStyle ?? 1) === 0
+    readonly property bool isVertical: Config.options?.bar?.vertical ?? false
     readonly property bool isAngel: (Config.options?.appearance?.globalStyle ?? "material") === "angel"
     readonly property bool showBackground: Config.options?.bar?.showBackground ?? true
     readonly property bool spectrumEnabled: Config.options?.bar?.visualizer?.enable ?? false
@@ -613,8 +614,15 @@ ContentPage {
                 }
             }
 
+            SettingsNote {
+                visible: root.isVertical
+                icon: "view_column"
+                text: Translation.tr("Left/Right Bar uses a compact fixed vertical order. Module visibility above stays synchronized with the active Bar; the Top/Bottom drag layout is preserved when you switch back.")
+            }
+
             ContentSubsection {
                 title: Translation.tr("Bar module layout")
+                visible: !root.isVertical
 
                 ConfigSpinBox {
                     icon: "space_bar"

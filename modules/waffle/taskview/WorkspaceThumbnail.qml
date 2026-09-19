@@ -120,6 +120,8 @@ Item {
     }
 
     property bool isEditing: false
+    readonly property bool wallpaperPresented:
+        !root.isCenteredMode || root.isSelected || root.isLastEmpty
     
     signal workspaceRenamed(int wsIdx, string newName)
 
@@ -290,15 +292,19 @@ Item {
                 id: wallpaperSource
                 anchors.fill: parent
                 anchors.margins: 1
-                source: root.wallpaperPath ? "file://" + root.wallpaperPath : ""
+                source: root.wallpaperPresented && root.wallpaperPath
+                    ? "file://" + root.wallpaperPath : ""
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
+                cache: true
+                sourceSize.width: Math.max(1, Math.ceil(root.thumbnailWidth * 1.5))
+                sourceSize.height: Math.max(1, Math.ceil(root.thumbnailHeight * 1.5))
                 visible: false
             }
 
             MultiEffect {
-                // In centered mode, only show for selected or New desktop
-                visible: !root.isCenteredMode || root.isSelected || root.isLastEmpty
+                // In centered mode, only render the selected/new desktop.
+                visible: root.wallpaperPresented
                 anchors.fill: parent
                 anchors.margins: 1
                 source: wallpaperSource
@@ -319,7 +325,7 @@ Item {
 
             Rectangle {
                 // Dark overlay - in centered mode, only show for selected or New desktop
-                visible: !root.isCenteredMode || root.isSelected || root.isLastEmpty
+                visible: root.wallpaperPresented
                 anchors.fill: parent
                 anchors.margins: 1
                 radius: Looks.radius.large - 1

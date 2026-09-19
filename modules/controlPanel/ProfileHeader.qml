@@ -2,21 +2,16 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Qt5Compat.GraphicalEffects as GE
 import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 
 Item {
     id: root
     implicitHeight: 56
     Layout.fillWidth: true
-    
-    readonly property bool inirEverywhere: Appearance.inirEverywhere
-    readonly property bool auroraEverywhere: Appearance.auroraEverywhere
 
     readonly property string greeting: {
         const hour = DateTime.clock.hours
@@ -40,34 +35,19 @@ Item {
         anchors.fill: parent
         spacing: 12
 
-        // Avatar - themed circle with border using OpacityMask
         Item {
             id: avatarContainer
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
 
-            // Cookie mode keeps the photo familiar and uses one organic frame,
-            // avoiding a second animated mask on the image itself.
-            CookieFace {
-                anchors.fill: parent
-                visible: Appearance.cookieEverywhere
-                role: "badge"
-                selected: true
-                color: Appearance.colors.colPrimaryContainer
-            }
             Rectangle {
                 anchors.fill: parent
-                visible: !Appearance.cookieEverywhere
                 radius: width / 2
                 color: "transparent"
                 border.width: 2
-                border.color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                            : root.inirEverywhere ? Appearance.inir.colPrimary
-                            : root.auroraEverywhere ? Appearance.colors.colPrimary
-                            : Appearance.colors.colPrimary
+                border.color: Appearance.colors.colPrimary
             }
 
-            // Avatar with OpacityMask for proper circular clipping
             Item {
                 anchors.centerIn: parent
                 width: 42
@@ -93,23 +73,28 @@ Item {
                     sourceSize.height: 84
                     opacity: status === Image.Ready ? 1 : 0
                     visible: opacity > 0
+
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                        NumberAnimation {
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                        }
                     }
+
                     layer.enabled: status === Image.Ready
                     layer.effect: GE.OpacityMask {
                         maskSource: avatarMask
                     }
                 }
 
-                // Reactive avatar resolver — retries fallback paths without breaking bindings
                 QtObject {
                     id: profileAvatarResolver
                     property int avatarIndex: 0
                     readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
-
                     readonly property string primaryWatch: Directories.userAvatarSourcePrimary
+
                     onPrimaryWatchChanged: avatarIndex = 0
 
                     readonly property int imgStatus: avatarImg.status
@@ -121,61 +106,55 @@ Item {
                         }
                     }
                 }
-                
-                // Fallback
+
                 Rectangle {
                     anchors.fill: parent
                     radius: width / 2
-                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                         : root.inirEverywhere ? Appearance.inir.colLayer2 
-                         : root.auroraEverywhere ? Appearance.aurora.colSubSurface
-                         : Appearance.colors.colLayer2
+                    color: Appearance.colors.colLayer2
                     opacity: avatarImg.status !== Image.Ready ? 1 : 0
                     visible: opacity > 0
+
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                        NumberAnimation {
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                        }
                     }
 
                     MaterialSymbol {
                         anchors.centerIn: parent
                         text: "person"
                         iconSize: 22
-                        color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                             : root.inirEverywhere ? Appearance.inir.colPrimary 
-                             : root.auroraEverywhere ? Appearance.colors.colPrimary
-                             : Appearance.colors.colPrimary
+                        color: Appearance.colors.colPrimary
                     }
                 }
             }
         }
 
-        // Text
         ColumnLayout {
             spacing: 0
+
             StyledText {
                 text: root.greeting
                 font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                     : root.inirEverywhere ? Appearance.inir.colPrimary 
-                     : root.auroraEverywhere ? Appearance.colors.colPrimary
-                     : Appearance.colors.colPrimary
+                color: Appearance.colors.colPrimary
             }
+
             StyledText {
                 text: SystemInfo.displayName || SystemInfo.username
                 font.pixelSize: Appearance.font.pixelSize.normal
                 font.weight: Font.Medium
                 font.capitalization: Font.Capitalize
-                color: Appearance.angelEverywhere ? Appearance.angel.colText
-                     : root.inirEverywhere ? Appearance.inir.colText 
-                     : root.auroraEverywhere ? Appearance.colors.colOnSurface
-                     : Appearance.colors.colOnLayer0
+                color: Appearance.colors.colOnLayer0
             }
         }
 
-        Item { Layout.fillWidth: true }
+        Item {
+            Layout.fillWidth: true
+        }
 
-        // Action Buttons
         RowLayout {
             spacing: 4
 
@@ -183,22 +162,15 @@ Item {
                 implicitWidth: 32
                 implicitHeight: 32
                 buttonText: Translation.tr("Lock")
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                            : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                  : root.inirEverywhere ? Appearance.inir.colLayer2Hover 
-                                  : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                                  : Appearance.colors.colLayer2Hover
+                colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: root.lockScreen()
-                contentItem: MaterialSymbol { 
+                contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "lock"
                     iconSize: 18
-                    color: Appearance.angelEverywhere ? Appearance.angel.colText
-                         : root.inirEverywhere ? Appearance.inir.colText 
-                         : root.auroraEverywhere ? Appearance.colors.colOnSurface
-                         : Appearance.colors.colOnLayer0
+                    color: Appearance.colors.colOnLayer0
                 }
                 StyledToolTip { text: Translation.tr("Lock") }
             }
@@ -207,22 +179,15 @@ Item {
                 implicitWidth: 32
                 implicitHeight: 32
                 buttonText: Translation.tr("Manage my account")
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                            : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                  : root.inirEverywhere ? Appearance.inir.colLayer2Hover 
-                                  : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                                  : Appearance.colors.colLayer2Hover
+                colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: root.openAccountSettings()
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "manage_accounts"
                     iconSize: 18
-                    color: Appearance.angelEverywhere ? Appearance.angel.colText
-                         : root.inirEverywhere ? Appearance.inir.colText
-                         : root.auroraEverywhere ? Appearance.colors.colOnSurface
-                         : Appearance.colors.colOnLayer0
+                    color: Appearance.colors.colOnLayer0
                 }
                 StyledToolTip { text: Translation.tr("Manage my account") }
             }
@@ -231,52 +196,38 @@ Item {
                 implicitWidth: 32
                 implicitHeight: 32
                 buttonText: Translation.tr("Power")
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                            : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                  : root.inirEverywhere ? Appearance.inir.colLayer2Hover 
-                                  : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                                  : Appearance.colors.colLayer2Hover
+                colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: {
                     GlobalStates.controlPanelOpen = false
                     GlobalStates.sessionOpen = true
                 }
-                contentItem: MaterialSymbol { 
+                contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "power_settings_new"
                     iconSize: 18
-                    color: root.inirEverywhere ? Appearance.inir.colError ?? Appearance.colors.colError
-                         : root.auroraEverywhere ? Appearance.colors.colError
-                         : Appearance.colors.colError 
+                    color: Appearance.colors.colError
                 }
                 StyledToolTip { text: Translation.tr("Power") }
             }
-            
+
             RippleButton {
                 implicitWidth: 32
                 implicitHeight: 32
                 buttonText: Translation.tr("Close")
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                            : root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                  : root.inirEverywhere ? Appearance.inir.colLayer2Hover 
-                                  : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                                  : Appearance.colors.colLayer2Hover
+                colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: GlobalStates.controlPanelOpen = false
-                contentItem: MaterialSymbol { 
+                contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "close"
                     iconSize: 18
-                    color: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-                         : root.inirEverywhere ? Appearance.inir.colTextSecondary 
-                         : root.auroraEverywhere ? Appearance.colors.colOutline
-                         : Appearance.colors.colSubtext
+                    color: Appearance.colors.colSubtext
                 }
                 StyledToolTip { text: Translation.tr("Close") }
             }
         }
     }
-
 }

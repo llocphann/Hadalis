@@ -111,7 +111,7 @@ Volevo che il mio desktop avesse un certo aspetto e funzionasse in un certo modo
 ## Funzionalità
 
 **Due famiglie di pannelli**, commutabili al volo con `Super+Shift+W`:
-- **Material ii** — barra flottante, barre laterali, dock, 6 stili visivi (material, cards, aurora, inir, angel, zzz)
+- **Material ii** — barra flottante, barre laterali, dock; Material è l'unico tema visivo globale
 - **Waffle** — barra delle applicazioni stile Windows 11, menu start, centro azioni, centro notifiche
 
 **Tematizzazione automatica** — scegli uno sfondo e tutto si adatta:
@@ -128,7 +128,7 @@ Volevo che il mio desktop avesse un certo aspetto e funzionasse in un certo modo
 
 Scegli uno sfondo e l'intero sistema segue — shell, app GTK/Qt, terminali, Firefox, Discord, schermata di login SDDM. Tutto automatico.
 
-- **6 stili visivi** — Material (pieno), Cards, Aurora (sfocatura vetro), iNiR (ispirato TUI), Angel (neo-brutalismo), ZZZ
+- **Tema visivo globale** — solo Material; palette colori e opzioni locali dei componenti restano indipendenti
 - **Colori dinamici dallo sfondo** via Material You — propagati a tutto il sistema
 - **10 strumenti terminale auto-tematizzati** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
 - **Tematizzazione app** — GTK3/4, Qt (via plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)

@@ -13,8 +13,7 @@ Item {
     implicitHeight: row.implicitHeight
 
     function toggleDark(): void {
-        const current = Config.options?.appearance?.customTheme?.darkmode ?? true
-        Config.setNestedValue("appearance.customTheme.darkmode", !current)
+        Appearance.toggleDarkMode()
     }
 
     function openSettings(): void {

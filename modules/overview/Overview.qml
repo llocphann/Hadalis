@@ -4,6 +4,7 @@ import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.common.perimeter
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -35,6 +36,41 @@ Scope {
                 GlobalStates.overviewPresentationOutput === (root.modelData?.name ?? "")
             readonly property bool shouldShow: GlobalStates.overviewOpen
                 && (taskViewMode ? isTargetOutput : (!activeScreenOnly || isTargetOutput))
+            readonly property bool dashboardPresentationMode:
+                !root.taskViewMode
+                && (Config.options?.overview?.dashboard?.enable ?? false)
+                && root.searchingText === ""
+            readonly property string outputName: String(root.modelData?.name ?? "")
+            readonly property bool iiFamily:
+                (Config.options?.panelFamily ?? "ii") === "ii"
+            readonly property bool bottomBarConfigured: root.iiFamily
+                && !(Config.options?.bar?.vertical ?? false)
+                && (Config.options?.bar?.bottom ?? false)
+                && (Config.options?.enabledPanels ?? []).includes("iiBar")
+                && GlobalStates.barOpen
+            readonly property bool bottomBarTargetsOutput: {
+                if (!root.bottomBarConfigured || root.outputName.length === 0)
+                    return false
+                const list = Config.options?.bar?.screenList ?? []
+                if (!list || list.length === 0)
+                    return true
+                const matched = Quickshell.screens.filter(screen => {
+                    const screenName = String(screen?.name ?? "")
+                    return screenName.length > 0 && list.includes(screenName)
+                })
+                return matched.length === 0 || list.includes(root.outputName)
+            }
+            readonly property bool bottomBarOwnsEdge:
+                root.bottomBarConfigured && root.bottomBarTargetsOutput
+            readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+                Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+            readonly property real bottomAttachmentThickness: root.bottomBarOwnsEdge
+                ? Appearance.sizes.barHeight : root.screenEdgeThickness
+            // Rest at the real inner boundary of the owning bottom Bar/Screen
+            // Edge. The translated Dashboard then retracts behind that owner,
+            // matching the same slide-under contract as connected popups.
+            readonly property real bottomAttachmentY: root.height
+                - root.bottomAttachmentThickness
             readonly property bool applicationDragActive: searchWidget.applicationDragActive
                 || (allAppsGridLoader.item?.applicationDragActive ?? false)
             screen: modelData
@@ -128,7 +164,11 @@ Scope {
                     const a = clamped / 100
                     return ColorUtils.transparentize(Appearance.colors.colLayer0Base, 1 - a)
                 }
-                opacity: root._presentedOpen ? 1 : 0
+                // Dashboard is now a connected popup, not a full Overview scene.
+                // Do not dim the wallpaper behind it; search/task-view presentation
+                // still owns the ordinary Overview scrim.
+                opacity: root.dashboardPresentationMode
+                    ? 0 : (root._presentedOpen ? 1 : 0)
                 visible: opacity > 0.001
 
                 // The scrim fades a little slower than the content on the way out, so
@@ -295,21 +335,30 @@ Scope {
                 // Direction-aware opacity. Open: leads in, fully legible by 70% of the
                 // unfold. Close: leads out, fully faded by the time the surface has
                 // receded ~45%, so the slow decel tail collapses invisibly.
-                opacity: root._presentedOpen
-                    ? Math.min(1, openProgress / 0.7)
-                    : Math.max(0, (openProgress - 0.45) / 0.55)
+                opacity: root.dashboardPresentationMode ? 1
+                    : root._presentedOpen
+                        ? Math.min(1, openProgress / 0.7)
+                        : Math.max(0, (openProgress - 0.45) / 0.55)
                 visible: openProgress > 0.001
 
                 transform: [
                     Scale {
                         origin.x: columnLayout.width / 2
                         origin.y: root.taskViewMode ? columnLayout.height / 2 : 0
-                        xScale: (root.taskViewMode ? 0.94 : 0.975)
-                            + (root.taskViewMode ? 0.06 : 0.025) * columnLayout.openProgress
-                        yScale: (root.taskViewMode ? 0.94 : 0.93)
-                            + (root.taskViewMode ? 0.06 : 0.07) * columnLayout.openProgress
+                        xScale: root.dashboardPresentationMode ? 1
+                            : (root.taskViewMode ? 0.94 : 0.975)
+                                + (root.taskViewMode ? 0.06 : 0.025)
+                                    * columnLayout.openProgress
+                        yScale: root.dashboardPresentationMode ? 1
+                            : (root.taskViewMode ? 0.94 : 0.93)
+                                + (root.taskViewMode ? 0.06 : 0.07)
+                                    * columnLayout.openProgress
                     },
-                    Translate { y: (1 - columnLayout.openProgress) * (root.taskViewMode ? 8 : -12) }
+                    Translate {
+                        y: root.dashboardPresentationMode ? 0
+                            : (1 - columnLayout.openProgress)
+                                * (root.taskViewMode ? 8 : -12)
+                    }
                 ]
 
                 Behavior on openProgress {
@@ -331,11 +380,22 @@ Scope {
                     topMargin: {
                         const ov = Config?.options?.overview;
                         const respectBar = ov && ov.respectBar !== undefined ? ov.respectBar : true;
+                        if (root.dashboardPresentationMode
+                                && dashboardPanel.visible && dashboardPanel.item) {
+                            const rect = dashboardPanel.item.connectedSurfaceRect
+                                ?? Qt.rect(0, 0, dashboardPanel.width, dashboardPanel.height)
+                            const bodyBottomInColumn = dashboardPanel.y + rect.y + rect.height
+                            return Math.round(Math.max(0,
+                                root.bottomAttachmentY - bodyBottomInColumn))
+                        }
                         
                         // Calculate bar/dock offset at top
+                        const frameRadius = Math.max(0, Math.min(96,
+                            Number(Config.options?.appearance?.screenEdge?.radius
+                                ?? PerimeterTokens.frameRadius)))
                         let barOffset = 0;
                         if (respectBar && !(Config.options?.bar?.bottom ?? false)) {
-                            barOffset = Appearance.sizes.barHeight + Appearance.rounding.screenRounding;
+                            barOffset = Appearance.sizes.barHeight + frameRadius;
                         }
                         const dock = Config.options?.dock;
                         if (dock?.enable && dock?.position === "top") {
@@ -345,7 +405,7 @@ Scope {
                         // Calculate bar/dock offset at bottom
                         let bottomOffset = 8;
                         if (respectBar && (Config.options?.bar?.bottom ?? false)) {
-                            bottomOffset += Appearance.sizes.barHeight + Appearance.rounding.screenRounding;
+                            bottomOffset += Appearance.sizes.barHeight + frameRadius;
                         }
                         if (dock?.enable && dock?.position === "bottom") {
                             bottomOffset += (dock.height ?? 60) + 20;
@@ -459,24 +519,22 @@ Scope {
                 Loader {
                     id: dashboardPanel
                     anchors.horizontalCenter: parent.horizontalCenter
-                    active: !root.taskViewMode && (Config.options?.overview?.dashboard?.enable ?? false)
+                    active: !root.taskViewMode
+                        && (Config.options?.overview?.dashboard?.enable ?? false)
+                    // Keep the loader mapped through the reverse slide tail.
                     visible: active && status === Loader.Ready
-                        && root.shouldShow && (root.searchingText == "")
-                    opacity: root._presentedOpen ? 1 : 0
+                        && root.searchingText === ""
+                        && (root._presentedOpen
+                            || (item?.revealProgress ?? 0) > 0.001)
+                    opacity: 1
                     sourceComponent: Component {
                         OverviewDashboard {
                             panelVisible: root.visible
+                            directBottomAttachment: true
+                            popupPresented: root._presentedOpen
+                                && root.searchingText === ""
                             availableWidth: dashboardPanel.parent?.width ?? root.width
                             availableHeight: Math.max(260, root.height * 0.78)
-                        }
-                    }
-
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
                         }
                     }
                 }

@@ -111,7 +111,7 @@ Wayland → GPU
 ## 功能
 
 **两套面板家族**，通过 `Super+Shift+W` 随时切换：
-- **Material ii** — 浮动栏、侧边栏、Dock、5 种视觉风格（material、cards、aurora、inir、angel）
+- **Material ii** — 浮动栏、侧边栏、Dock；全局视觉主题仅支持 Material
 - **Waffle** — Windows 11 风格任务栏、开始菜单、操作中心、通知中心
 
 **自动主题** — 选一张壁纸，一切自动适配：
@@ -128,7 +128,7 @@ Wayland → GPU
 
 选一张壁纸，整个系统跟着变 — Shell、GTK/Qt 应用、终端、Firefox、Discord、SDDM 登录界面。全自动。
 
-- **5 种视觉风格** — Material（纯色）、Cards、Aurora（毛玻璃）、iNiR（TUI 风格）、Angel（新残酷主义）
+- **全局视觉主题** — 仅 Material；配色预设和组件局部选项保持独立
 - **壁纸动态取色** — 通过 Material You 传播到全系统
 - **10 个终端工具自动主题化** — foot、kitty、alacritty、starship、fuzzel、pywalfox、btop、lazygit、yazi
 - **应用主题化** — GTK3/4、Qt（通过 plasma-integration + darkly）、Firefox（MaterialFox）、Discord/Vesktop（System24）

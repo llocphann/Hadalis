@@ -15,14 +15,9 @@ RowLayout {
     spacing: 6
     Layout.fillWidth: true
 
-    readonly property color noteColor: {
-        if (root.warning) {
-            return Appearance.inirEverywhere ? Appearance.inir.colWarning
-                 : Appearance.colors.colTertiary
-        }
-        return Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
-             : Appearance.colors.colSubtext
-    }
+    readonly property color noteColor: root.warning
+        ? Appearance.colors.colTertiary
+        : Appearance.colors.colSubtext
 
     MaterialSymbol {
         text: root.icon

@@ -1,5 +1,6 @@
 import QtQuick
-import Qt5Compat.GraphicalEffects as GE
+import Quickshell.Widgets
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.sidebarLeft.innertune
@@ -37,28 +38,26 @@ Item {
         font.pixelSize: Appearance.font.pixelSize.small
     }
 
-    StyledImage {
-        id: img
+    ClippingRectangle {
         anchors.fill: parent
         visible: root.albumIndex < 0
-        source: root.albumIndex < 0 ? root._src : ""
-        asynchronous: true
-        cache: true
-        fillMode: Image.PreserveAspectCrop
-        // This component appears in long result, album and queue lists. Keep the
-        // decoded bitmap at the physical size it can display instead of retaining
-        // the server's full thumbnail in every delegate.
-        sourceSize.width: Math.max(1, Math.ceil(root.width * root._dpr))
-        sourceSize.height: Math.max(1, Math.ceil(root.height * root._dpr))
-        // Step down the ytimg quality tier if a high-res variant isn't available.
-        onStatusChanged: if (status === Image.Error && root.highRes && root._ytTier < 2) root._ytTier++
-        layer.enabled: true
-        layer.effect: GE.OpacityMask {
-            maskSource: Rectangle {
-                width: img.width
-                height: img.height
-                radius: root.effRadius
-            }
+        radius: root.effRadius
+        color: "transparent"
+
+        StyledImage {
+            id: img
+            anchors.fill: parent
+            source: root.albumIndex < 0 ? root._src : ""
+            asynchronous: true
+            cache: true
+            fillMode: Image.PreserveAspectCrop
+            // This component appears in long result, album and queue lists. Keep the
+            // decoded bitmap at the physical size it can display instead of retaining
+            // the server's full thumbnail in every delegate.
+            sourceSize.width: Math.max(1, Math.ceil(root.width * root._dpr))
+            sourceSize.height: Math.max(1, Math.ceil(root.height * root._dpr))
+            // Step down the ytimg quality tier if a high-res variant isn't available.
+            onStatusChanged: if (status === Image.Error && root.highRes && root._ytTier < 2) root._ytTier++
         }
     }
 
@@ -116,7 +115,7 @@ Item {
     // Drives the random bar heights (InnerTune retargets every ~50ms; 150ms is gentler
     // on the GPU for a sidebar list). Raw timer — gating on animationsEnabled would freeze it.
     Timer {
-        running: root.isActive && root.isPlaying && root.visible
+        running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen
         interval: 150
         repeat: true
         onTriggered: {

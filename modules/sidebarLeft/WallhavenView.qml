@@ -1112,7 +1112,9 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            layer.enabled: true
+            // Wallhaven can keep a large image list resident after closing
+            // the sidebar; release the list mask FBO until it is presented again.
+            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: wallhavenResponseListView.width

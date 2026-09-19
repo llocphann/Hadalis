@@ -1519,7 +1519,7 @@ ContentPage {
         SettingsGroup {
             ContentSubsection {
                 title: Translation.tr("Window gaps")
-                tooltip: Translation.tr("Space between windows and screen edges in pixels")
+                tooltip: Translation.tr("Space from the inner Screen Edge or Bar boundary to tiled windows. Hadalis reserves the Screen Edge thickness separately.")
 
                 ConfigSpinBox {
                     text: Translation.tr("Gap size (px)")
@@ -1855,7 +1855,7 @@ ContentPage {
 
             ContentSubsection {
                 title: Translation.tr("Struts")
-                tooltip: Translation.tr("Shrink the tiling area by this many pixels from each edge")
+                tooltip: Translation.tr("Additional manual shrink beyond the space already reserved by the Screen Edge or Bar.")
             }
 
             RowLayout {

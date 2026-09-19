@@ -74,13 +74,6 @@ MouseArea {
     }
 
     readonly property color accentColor: {
-        if (Appearance.zzzEverywhere) {
-            if (pomodoroActive)
-                return (TimerService?.pomodoroBreak ?? false) ? Appearance.zzz.secondary : Appearance.zzz.accent
-            if (countdownActive)
-                return Appearance.zzz.secondary
-            return Appearance.zzz.ink
-        }
         if (pomodoroActive) {
             return (TimerService?.pomodoroBreak ?? false)
                 ? Appearance.colors.colTertiary
@@ -178,24 +171,14 @@ MouseArea {
         radius: height / 2
         scale: root.pressed ? 0.95 : 1.0
         color: {
-            if (root.pressed) {
-                if (Appearance.angelEverywhere) return Appearance.angel.colGlassCardActive
-                if (Appearance.inirEverywhere) return Appearance.inir.colLayer2Active
-                if (Appearance.auroraEverywhere) return Appearance.aurora.colSubSurfaceActive
+            if (root.pressed)
                 return Appearance.colors.colLayer1Active
-            }
-            if (root.paused) {
-                if (Appearance.angelEverywhere) return root.containsMouse ? Appearance.angel.colGlassCardActive : Appearance.angel.colGlassCardHover
-                if (Appearance.inirEverywhere) return root.containsMouse ? Appearance.inir.colLayer2Active : Appearance.inir.colLayer2Hover
-                if (Appearance.auroraEverywhere) return root.containsMouse ? Appearance.aurora.colSubSurfaceActive : Appearance.aurora.colElevatedSurface
-                return root.containsMouse ? Appearance.colors.colLayer2Active : Appearance.colors.colLayer2Hover
-            }
-            if (root.containsMouse) {
-                if (Appearance.angelEverywhere) return Appearance.angel.colGlassCard
-                if (Appearance.inirEverywhere) return Appearance.inir.colLayer1Hover
-                if (Appearance.auroraEverywhere) return Appearance.aurora.colSubSurface
+            if (root.paused)
+                return root.containsMouse
+                    ? Appearance.colors.colLayer2Active
+                    : Appearance.colors.colLayer2Hover
+            if (root.containsMouse)
                 return Appearance.colors.colLayer1Hover
-            }
             return "transparent"
         }
 
@@ -224,7 +207,7 @@ MouseArea {
             text: root.showPinnedIdle ? "schedule" : root.iconName
             iconSize: Appearance.font.pixelSize.normal
             color: root.paused
-                ? (Appearance.inirEverywhere ? Appearance.inir.colTextMuted : Appearance.colors.colOnLayer1Inactive)
+                ? Appearance.colors.colOnLayer1Inactive
                 : root.accentColor
             Layout.alignment: Qt.AlignVCenter
 
@@ -240,7 +223,7 @@ MouseArea {
             text: root.showPinnedIdle ? Translation.tr("Timer") : root.timeText
             font.pixelSize: Appearance.font.pixelSize.small
             color: root.paused
-                ? (Appearance.inirEverywhere ? Appearance.inir.colTextMuted : Appearance.colors.colOnLayer1Inactive)
+                ? Appearance.colors.colOnLayer1Inactive
                 : Appearance.colors.colOnLayer1
             Layout.alignment: Qt.AlignVCenter
         }
@@ -267,7 +250,7 @@ MouseArea {
                 anchors.centerIn: parent
                 text: "pause"
                 iconSize: Appearance.font.pixelSize.small
-                color: Appearance.inirEverywhere ? Appearance.inir.colTextMuted : Appearance.colors.colOnLayer1Inactive
+                color: Appearance.colors.colOnLayer1Inactive
             }
         }
     }

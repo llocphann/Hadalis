@@ -71,21 +71,20 @@ Singleton {
         ? (_transparencyAutomatic ? autoContentTransparency : (Config?.options?.appearance?.transparency?.contentTransparency ?? 0)) 
         : 0
 
-    // Global style - centralized style detection (reactive bindings)
-    readonly property string globalStyle: Config?.options?.appearance?.globalStyle ?? "material"
+    // Material is the only shell-wide runtime style in v1.0. ThemeService still
+    // migrates persisted legacy values back to Material, but runtime consumers
+    // must never observe those values during singleton initialization.
+    readonly property string globalStyle: "material"
     readonly property string iiMotionProfile: Config?.options?.appearance?.iiMotionProfile ?? "classic"
     readonly property bool contextualMotionProfile: iiMotionProfile === "contextual"
-    readonly property bool inirEverywhere: globalStyle === "inir"
-    // angelEverywhere - flagship neo-brutalism glass style (superset of aurora)
-    readonly property bool angelEverywhere: globalStyle === "angel"
-    // auroraEverywhere controls blur/glass backgrounds — angel inherits aurora blur
-    readonly property bool auroraEverywhere: globalStyle === "aurora" || globalStyle === "angel"
-    // Regalia - engineered luxury: obsidian structure, warm ivory, antique gold, oxblood detail.
-    readonly property bool regaliaEverywhere: globalStyle === "regalia"
-    // zzzEverywhere - Zenless Zone Zero urban graphic identity (poster palette + sharp + bold)
-    readonly property bool zzzEverywhere: globalStyle === "zzz"
-    // cookieEverywhere - Material Expressive organic silhouettes and state morphing
-    readonly property bool cookieEverywhere: globalStyle === "cookie"
+    // Compatibility aliases for old callers. Material is the only runtime
+    // Global Theme in v1.0, so these can never become active.
+    readonly property bool inirEverywhere: false
+    readonly property bool angelEverywhere: false
+    readonly property bool auroraEverywhere: false
+    readonly property bool regaliaEverywhere: false
+    readonly property bool zzzEverywhere: false
+    readonly property bool cookieEverywhere: false
     
     // Explicit surface dialects such as islands/Ricelin own their complete
     // surface. Otherwise the selected global worldview owns it. Consumers use
@@ -94,9 +93,7 @@ Singleton {
         return explicitDialect.length > 0 ? explicitDialect : root.globalStyle
     }
 
-    // Aurora light mode: when aurora + light theme, use ink-colored text for contrast
-    // Ink colors are muted dark tones (not pure black) that work well over light/transparent backgrounds
-    readonly property bool _auroraLightMode: auroraEverywhere && !(m3colors?.darkmode ?? true)
+    readonly property bool _auroraLightMode: false
 
     // GameMode integration - disable effects/animations when fullscreen detected
     property bool _gameModeActive: GameMode?.active ?? false
@@ -173,10 +170,6 @@ Singleton {
         // never a reason to replace a style-owned wallpaper material.
         if (area === "islands" || area === "waffle")
             return "wallpaper"
-        if (auroraEverywhere || angelEverywhere)
-            return "wallpaper"
-        if (zzzEverywhere && (Config.options?.appearance?.zzz?.glass ?? true))
-            return "wallpaper"
         return "off"
     }
 
@@ -217,36 +210,11 @@ Singleton {
         }
     }
 
-    // Style-aware hover/active fills. One source of truth so every component's hover matches the
-    // active global style instead of re-implementing the zzz/angel/inir/aurora/material ternary.
-    // zzz promotes one fill step (paper -> paperAlt) instead of a translucent mix, per its
-    // separate-by-fill doctrine (was missing here; components used to hardcode zzz.paperAlt).
-    // Cookie promotes one tonal step, like zzz: Expressive stacks plates, so a
-    // hover is the next plate up, not a translucent wash of the ink over the
-    // current one.
-    readonly property color colLayer1Hover: regaliaEverywhere ? regalia.hoverPlate
-        : cookieEverywhere ? cookie.bg2
-        : zzzEverywhere ? zzz.paperAlt
-        : angelEverywhere ? angel.colGlassCardHover
-        : inirEverywhere ? inir.colLayer1Hover
-        : auroraEverywhere ? aurora.colSubSurfaceHover
-        : colors.colLayer1Hover
-    readonly property color colLayer2Hover: regaliaEverywhere ? regalia.chassis3
-        : cookieEverywhere ? cookie.bg3
-        : zzzEverywhere ? zzz.bg3
-        : angelEverywhere ? angel.colGlassElevatedHover
-        : inirEverywhere ? inir.colLayer2Hover
-        : auroraEverywhere ? aurora.colElevatedSurfaceHover
-        : colors.colLayer2Hover
-    // Active/pressed fills — did not exist at top level before, so click feedback
-    // (RippleButton etc.) read straight from raw `colors.*`, skipping inir/zzz entirely.
-    readonly property color colLayer1Active: regaliaEverywhere ? regalia.pressPlate
-        : cookieEverywhere ? cookie.bg3
-        : zzzEverywhere ? zzz.bg3
-        : angelEverywhere ? angel.colGlassCardActive
-        : inirEverywhere ? inir.colLayer1Active
-        : auroraEverywhere ? aurora.colSubSurfaceActive
-        : colors.colLayer1Active
+    // Stable aliases for the canonical Material interaction fills. Keep these
+    // public names while callers migrate; v1.0 no longer dispatches by Global Style.
+    readonly property color colLayer1Hover: colors.colLayer1Hover
+    readonly property color colLayer2Hover: colors.colLayer2Hover
+    readonly property color colLayer1Active: colors.colLayer1Active
 
     onEffectsEnabledChanged: if (Qt.application.arguments.indexOf("--debug") !== -1) console.log("[Appearance] effectsEnabled:", effectsEnabled, "gameModeActive:", _gameModeActive)
     onAnimationsEnabledChanged: if (Qt.application.arguments.indexOf("--debug") !== -1) console.log("[Appearance] animationsEnabled:", animationsEnabled)
@@ -312,27 +280,10 @@ Singleton {
 
     property QtObject motion: QtObject {
         property QtObject popupReveal: QtObject {
-            // ZZZ generalizes the AiModelSelector reveal: every shared popup/menu
-            // grows from its anchored origin with a punchy back-out. The enter
-            // curve under zzz is already animationCurves.zzzOvershoot (see
-            // elementMoveEnter), so a deeper closedScale reads as a console plate
-            // snapping into place rather than a soft material fade.
-            property bool enableFade: root.regaliaEverywhere || root.cookieEverywhere || root.zzzEverywhere || root.contextualMotionProfile
-            property bool enableScale: !root.regaliaEverywhere && (root.zzzEverywhere || root.contextualMotionProfile)
-            // 0.97 read as "barely there" in practice — bumped to match zzz's proven-visible
-            // 0.90 pop so Classic (hard snap, no fade) vs Contextual (fade + grow) is unmistakable
-            // on tray menu / context menu / combobox dropdown / widget gear menu.
-            property real closedScale: root.regaliaEverywhere ? 1.0
-                : root.zzzEverywhere ? 0.90
-                : (root.contextualMotionProfile ? 0.90 : 1.0)
-            // Popup windows have fixed geometry. Cookie's spatial spring exceeds
-            // 1.0, so using it for opacity, scale, or an anchored margin makes
-            // the content collide with and get clipped by that fixed boundary.
-            // Keep the spring for free-moving shell elements and use a bounded
-            // deceleration curve for popup reveals.
-            property list<real> enterBezierCurve: root.cookieEverywhere
-                ? root.animationCurves.emphasizedDecel
-                : root.animation.elementMoveEnter.bezierCurve
+            property bool enableFade: root.contextualMotionProfile
+            property bool enableScale: root.contextualMotionProfile
+            property real closedScale: root.contextualMotionProfile ? 0.90 : 1.0
+            property list<real> enterBezierCurve: root.animation.elementMoveEnter.bezierCurve
         }
     }
 
@@ -413,189 +364,193 @@ Singleton {
     }
 
     colors: QtObject {
-        // Ink colors for aurora light mode - sumi-e inspired (Japanese ink wash)
-        // Warm, muted tones instead of pure gray/black
-        readonly property color _inkPrimary: "#2b2622"      // Warm charcoal - main text
-        readonly property color _inkSecondary: "#5c534a"    // Warm gray - secondary text
-        readonly property color _inkMuted: "#8a7f73"        // Warm taupe - inactive/disabled
+        // Keep the historical helper properties stable for callers, but the
+        // v1.0 palette itself is Material-only.
+        readonly property color _inkPrimary: "#2b2622"
+        readonly property color _inkSecondary: "#5c534a"
+        readonly property color _inkMuted: "#8a7f73"
+        readonly property bool _needsHighContrast: false
 
-        // Aurora Mode Contrast Boost Logic
-        // If we are in Aurora Dark mode (glass), we CANNOT use dark variants for text.
-        // We must force lighter text to ensure readability against the blurred backdrop.
-        readonly property bool _needsHighContrast: auroraEverywhere && !root._auroraLightMode
-        
-        // Base text colors from Material theme
         readonly property color _baseOnSurface: m3colors.m3onSurface
         readonly property color _baseOnSurfaceVariant: m3colors.m3onSurfaceVariant
-        
-        property color colSubtext: root.regaliaEverywhere ? root.regalia.onMuted : root.cookieEverywhere ? root.cookie.inkMuted : root.zzzEverywhere ? root.zzz.inkMuted : ColorUtils.ensureReadable(
-            ColorUtils.mix(
-                _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkSecondary : _baseOnSurfaceVariant),
-                colLayer1Base,
-                0.45
-            ),
+
+        property color colSubtext: ColorUtils.ensureReadable(
+            ColorUtils.mix(_baseOnSurfaceVariant, colLayer1Base, 0.45),
             colLayer1Base,
             5.5
         )
-            
+
         // Layer 0
-        property color colLayer0Base: root.regaliaEverywhere ? root.regalia.bg0 : root.cookieEverywhere ? root.cookie.bg0 : root.zzzEverywhere ? root.zzz.bg0 : (m3colors.transparent ? "transparent" : ColorUtils.mix(m3colors.m3background, m3colors.m3primary, Config?.options?.appearance?.extraBackgroundTint ? 0.99 : 1))
-        property color colLayer0: root.regaliaEverywhere ? colLayer0Base
-            : ColorUtils.transparentize(colLayer0Base, root.backgroundTransparency)
-        property color colOnLayer0: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            root._auroraLightMode ? _inkPrimary : _baseOnSurface,
-            colLayer0Base,
-            4.5
-        )
-        property color colLayer0Hover: root.regaliaEverywhere ? root.regalia.hoverPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.9), root.contentTransparency)
-        property color colLayer0Active: root.regaliaEverywhere ? root.regalia.pressPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.8), root.contentTransparency)
-        property color colLayer0Border: root.regaliaEverywhere ? "transparent" : root.cookieEverywhere ? root.cookie.hairline : root.zzzEverywhere ? root.zzz.borderColor : ColorUtils.mix(root.m3colors.m3outlineVariant, colLayer0, 0.4)
+        property color colLayer0Base: m3colors.transparent
+            ? "transparent"
+            : ColorUtils.mix(m3colors.m3background, m3colors.m3primary,
+                Config?.options?.appearance?.extraBackgroundTint ? 0.99 : 1)
+        property color colLayer0: ColorUtils.transparentize(colLayer0Base, root.backgroundTransparency)
+        property color colOnLayer0: ColorUtils.ensureReadable(_baseOnSurface, colLayer0Base, 4.5)
+        property color colLayer0Hover: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer0, colOnLayer0, 0.9), root.contentTransparency)
+        property color colLayer0Active: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer0, colOnLayer0, 0.8), root.contentTransparency)
+        property color colLayer0Border: ColorUtils.mix(root.m3colors.m3outlineVariant, colLayer0, 0.4)
+
         // Layer 1
-        property color colLayer1Base: root.regaliaEverywhere ? root.regalia.bg1 : root.cookieEverywhere ? root.cookie.bg1 : root.zzzEverywhere ? root.zzz.bg1 : m3colors.m3surfaceContainerLow
-        property color colLayer1: root.regaliaEverywhere ? colLayer1Base
-            : auroraEverywhere ? ColorUtils.transparentize(m3colors.m3surfaceContainerLow, root.aurora.layerTransparentize)
-            : ColorUtils.solveOverlayColor(colLayer0Base, colLayer1Base, 1 - root.contentTransparency)
-        property color colOnLayer1: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkPrimary : _baseOnSurfaceVariant),
-            colLayer1Base,
-            4.5
-        )
-        property color colOnLayer1Inactive: ColorUtils.readableSubtext(colOnLayer1, colLayer1Base, 0.55)
-        property color colLayer1Hover: root.regaliaEverywhere ? root.regalia.hoverPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.92), root.contentTransparency)
-        property color colLayer1Active: root.regaliaEverywhere ? root.regalia.pressPlate
-            : ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.85), root.contentTransparency)
+        property color colLayer1Base: m3colors.m3surfaceContainerLow
+        property color colLayer1: ColorUtils.solveOverlayColor(
+            colLayer0Base, colLayer1Base, 1 - root.contentTransparency)
+        property color colOnLayer1: ColorUtils.ensureReadable(
+            _baseOnSurfaceVariant, colLayer1Base, 4.5)
+        property color colOnLayer1Inactive: ColorUtils.readableSubtext(
+            colOnLayer1, colLayer1Base, 0.55)
+        property color colLayer1Hover: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer1, colOnLayer1, 0.92), root.contentTransparency)
+        property color colLayer1Active: ColorUtils.transparentize(
+            ColorUtils.mix(colLayer1, colOnLayer1, 0.85), root.contentTransparency)
+
         // Layer 2
-        property color colLayer2Base: root.regaliaEverywhere ? root.regalia.bg2 : root.cookieEverywhere ? root.cookie.bg2 : root.zzzEverywhere ? root.zzz.bg2 : m3colors.m3surfaceContainer
-        property color colLayer2: root.regaliaEverywhere ? colLayer2Base
-            : auroraEverywhere ? ColorUtils.transparentize(m3colors.m3surfaceContainer, root.aurora.layerTransparentize)
-            : ColorUtils.solveOverlayColor(colLayer1Base, colLayer2Base, 1 - root.contentTransparency)
-        property color colLayer2Hover: root.regaliaEverywhere ? root.regalia.controlPlateHover
-            : ColorUtils.solveOverlayColor(colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.90), 1 - root.contentTransparency)
-        property color colLayer2Active: root.regaliaEverywhere ? root.regalia.controlPlateActive
-            : ColorUtils.solveOverlayColor(colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.80), 1 - root.contentTransparency)
-        property color colLayer2Disabled: ColorUtils.solveOverlayColor(colLayer1Base, ColorUtils.mix(colLayer2Base, m3colors.m3background, 0.8), 1 - root.contentTransparency)
-        property color colOnLayer2: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkPrimary : _baseOnSurface),
-            colLayer2Base,
-            4.5
-        )
-        property color colOnLayer2Disabled: ColorUtils.readableSubtext(colOnLayer2, colLayer2Base, 0.4)
+        property color colLayer2Base: m3colors.m3surfaceContainer
+        property color colLayer2: ColorUtils.solveOverlayColor(
+            colLayer1Base, colLayer2Base, 1 - root.contentTransparency)
+        property color colLayer2Hover: ColorUtils.solveOverlayColor(
+            colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.90),
+            1 - root.contentTransparency)
+        property color colLayer2Active: ColorUtils.solveOverlayColor(
+            colLayer1Base, ColorUtils.mix(colLayer2Base, colOnLayer2, 0.80),
+            1 - root.contentTransparency)
+        property color colLayer2Disabled: ColorUtils.solveOverlayColor(
+            colLayer1Base, ColorUtils.mix(colLayer2Base, m3colors.m3background, 0.8),
+            1 - root.contentTransparency)
+        property color colOnLayer2: ColorUtils.ensureReadable(
+            _baseOnSurface, colLayer2Base, 4.5)
+        property color colOnLayer2Disabled: ColorUtils.readableSubtext(
+            colOnLayer2, colLayer2Base, 0.4)
+
         // Layer 3
-        property color colLayer3Base: root.regaliaEverywhere ? root.regalia.bg3 : root.cookieEverywhere ? root.cookie.bg3 : root.zzzEverywhere ? root.zzz.bg3 : m3colors.m3surfaceContainerHigh
-        property color colLayer3: root.regaliaEverywhere ? colLayer3Base
-            : auroraEverywhere ? ColorUtils.transparentize(m3colors.m3surfaceContainerHigh, root.aurora.layerTransparentize)
-            : ColorUtils.solveOverlayColor(colLayer2Base, colLayer3Base, 1 - root.contentTransparency)
-        property color colLayer3Hover: root.regaliaEverywhere ? root.regalia.chassis3
-            : ColorUtils.solveOverlayColor(colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.90), 1 - root.contentTransparency)
-        property color colLayer3Active: root.regaliaEverywhere ? root.regalia.pressPlateElevated
-            : ColorUtils.solveOverlayColor(colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.80), 1 - root.contentTransparency)
-        property color colOnLayer3: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            _needsHighContrast ? _baseOnSurface : (root._auroraLightMode ? _inkPrimary : _baseOnSurface),
-            colLayer3Base,
-            4.5
-        )
+        property color colLayer3Base: m3colors.m3surfaceContainerHigh
+        property color colLayer3: ColorUtils.solveOverlayColor(
+            colLayer2Base, colLayer3Base, 1 - root.contentTransparency)
+        property color colLayer3Hover: ColorUtils.solveOverlayColor(
+            colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.90),
+            1 - root.contentTransparency)
+        property color colLayer3Active: ColorUtils.solveOverlayColor(
+            colLayer2Base, ColorUtils.mix(colLayer3Base, colOnLayer3, 0.80),
+            1 - root.contentTransparency)
+        property color colOnLayer3: ColorUtils.ensureReadable(
+            _baseOnSurface, colLayer3Base, 4.5)
+
         // Layer 4
-        property color colLayer4Base: root.regaliaEverywhere ? root.regalia.bg4 : root.cookieEverywhere ? root.cookie.bg4 : root.zzzEverywhere ? root.zzz.bg4 : m3colors.m3surfaceContainerHighest
-        property color colLayer4: root.regaliaEverywhere ? colLayer4Base
-            : ColorUtils.solveOverlayColor(colLayer3Base, colLayer4Base, 1 - root.contentTransparency)
-        property color colLayer4Hover: root.regaliaEverywhere ? root.regalia.chassis2
-            : ColorUtils.solveOverlayColor(colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.90), 1 - root.contentTransparency)
-        property color colLayer4Active: root.regaliaEverywhere ? root.regalia.pressPlateElevated
-            : ColorUtils.solveOverlayColor(colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.80), 1 - root.contentTransparency)
-        property color colOnLayer4: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : ColorUtils.ensureReadable(
-            root._auroraLightMode ? _inkPrimary : _baseOnSurface,
-            colLayer4Base,
-            4.5
-        )
+        property color colLayer4Base: m3colors.m3surfaceContainerHighest
+        property color colLayer4: ColorUtils.solveOverlayColor(
+            colLayer3Base, colLayer4Base, 1 - root.contentTransparency)
+        property color colLayer4Hover: ColorUtils.solveOverlayColor(
+            colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.90),
+            1 - root.contentTransparency)
+        property color colLayer4Active: ColorUtils.solveOverlayColor(
+            colLayer3Base, ColorUtils.mix(colLayer4Base, colOnLayer4, 0.80),
+            1 - root.contentTransparency)
+        property color colOnLayer4: ColorUtils.ensureReadable(
+            _baseOnSurface, colLayer4Base, 4.5)
+
         // Primary
-        property color colPrimary: root.regaliaEverywhere ? root.regalia.hardwarePrimary : root.zzzEverywhere ? root.zzz.accent : m3colors.m3primary
-        property color colOnPrimary: root.regaliaEverywhere ? root.regalia.hardwarePrimaryInk : root.zzzEverywhere ? root.zzz.onAccent : m3colors.m3onPrimary
-        property color colPrimaryHover: root.regaliaEverywhere ? root.regalia.hardwarePrimaryHover : ColorUtils.mix(colors.colPrimary, colLayer1Hover, 0.87)
-        property color colPrimaryActive: root.regaliaEverywhere ? root.regalia.hardwarePrimaryActive : ColorUtils.mix(colors.colPrimary, colLayer1Active, 0.7)
-        property color colPrimaryContainer: root.regaliaEverywhere ? root.regalia.primaryPlate : root.cookieEverywhere ? root.cookie.primaryFace : root.zzzEverywhere ? ColorUtils.mix(root.zzz.bg3, root.zzz.sticker, 0.20) : m3colors.m3primaryContainer
-        property color colPrimaryContainerHover: root.regaliaEverywhere ? root.regalia.primaryPlateHover : ColorUtils.mix(colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.9)
-        property color colPrimaryContainerActive: root.regaliaEverywhere ? root.regalia.primaryPlateActive : ColorUtils.mix(colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.8)
-        property color colOnPrimaryContainer: root.regaliaEverywhere ? root.regalia.primaryPlateInk : root.cookieEverywhere ? root.cookie.onFace : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onPrimaryContainer
+        property color colPrimary: m3colors.m3primary
+        property color colOnPrimary: m3colors.m3onPrimary
+        property color colPrimaryHover: ColorUtils.mix(colors.colPrimary, colLayer1Hover, 0.87)
+        property color colPrimaryActive: ColorUtils.mix(colors.colPrimary, colLayer1Active, 0.7)
+        property color colPrimaryContainer: m3colors.m3primaryContainer
+        property color colPrimaryContainerHover: ColorUtils.mix(
+            colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.9)
+        property color colPrimaryContainerActive: ColorUtils.mix(
+            colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.8)
+        property color colOnPrimaryContainer: m3colors.m3onPrimaryContainer
+
         // Secondary
-        property color colSecondary: root.regaliaEverywhere ? root.regalia.hardwareSecondary : root.zzzEverywhere ? root.zzz.secondary : m3colors.m3secondary
-        property color colSecondaryHover: root.regaliaEverywhere ? root.regalia.hardwareSecondaryHover : ColorUtils.mix(colSecondary, colLayer1Hover, 0.85)
-        property color colSecondaryActive: root.regaliaEverywhere ? root.regalia.hardwareSecondaryActive : ColorUtils.mix(colSecondary, colLayer1Active, 0.4)
-        property color colOnSecondary: root.regaliaEverywhere ? root.regalia.hardwareSecondaryInk : root.zzzEverywhere ? root.zzz.onSecondary : m3colors.m3onSecondary
-        property color colSecondaryContainer: root.regaliaEverywhere ? root.regalia.secondaryPlate : root.cookieEverywhere ? root.cookie.secondaryFace : root.zzzEverywhere ? ColorUtils.mix(root.zzz.bg3, root.zzz.secondary, 0.18) : m3colors.m3secondaryContainer
-        property color colSecondaryContainerHover: root.regaliaEverywhere ? root.regalia.secondaryPlateHover : ColorUtils.mix(colSecondaryContainer, colOnSecondaryContainer, 0.90)
-        property color colSecondaryContainerActive: root.regaliaEverywhere ? root.regalia.secondaryPlateActive : ColorUtils.mix(colSecondaryContainer, colOnSecondaryContainer, 0.54)
-        property color colOnSecondaryContainer: root.regaliaEverywhere ? root.regalia.secondaryPlateInk : root.cookieEverywhere ? root.cookie.onFace : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onSecondaryContainer
+        property color colSecondary: m3colors.m3secondary
+        property color colSecondaryHover: ColorUtils.mix(colSecondary, colLayer1Hover, 0.85)
+        property color colSecondaryActive: ColorUtils.mix(colSecondary, colLayer1Active, 0.4)
+        property color colOnSecondary: m3colors.m3onSecondary
+        property color colSecondaryContainer: m3colors.m3secondaryContainer
+        property color colSecondaryContainerHover: ColorUtils.mix(
+            colSecondaryContainer, colOnSecondaryContainer, 0.90)
+        property color colSecondaryContainerActive: ColorUtils.mix(
+            colSecondaryContainer, colOnSecondaryContainer, 0.54)
+        property color colOnSecondaryContainer: m3colors.m3onSecondaryContainer
+
         // Tertiary
-        property color colTertiary: root.regaliaEverywhere ? root.regalia.hardwareTertiary : root.zzzEverywhere ? root.zzz.tertiary : m3colors.m3tertiary
-        property color colTertiaryHover: root.regaliaEverywhere ? root.regalia.hardwareTertiaryHover : ColorUtils.mix(colTertiary, colLayer1Hover, 0.85)
-        property color colTertiaryActive: root.regaliaEverywhere ? root.regalia.hardwareTertiaryActive : ColorUtils.mix(colTertiary, colLayer1Active, 0.4)
-        property color colTertiaryContainer: root.regaliaEverywhere ? root.regalia.tertiaryPlate : root.cookieEverywhere ? root.cookie.tertiaryFace : root.zzzEverywhere ? ColorUtils.mix(root.zzz.bg3, root.zzz.tertiary, 0.18) : m3colors.m3tertiaryContainer
-        property color colTertiaryContainerHover: root.regaliaEverywhere ? root.regalia.tertiaryPlateHover : ColorUtils.mix(colTertiaryContainer, colOnTertiaryContainer, 0.90)
-        property color colTertiaryContainerActive: root.regaliaEverywhere ? root.regalia.tertiaryPlateActive : ColorUtils.mix(colTertiaryContainer, colLayer1Active, 0.54)
-        property color colOnTertiary: root.regaliaEverywhere ? root.regalia.hardwareTertiaryInk : root.zzzEverywhere ? root.zzz.onAccent : m3colors.m3onTertiary
-        property color colOnTertiaryContainer: root.regaliaEverywhere ? root.regalia.tertiaryPlateInk : root.cookieEverywhere ? root.cookie.onFace : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onTertiaryContainer
+        property color colTertiary: m3colors.m3tertiary
+        property color colTertiaryHover: ColorUtils.mix(colTertiary, colLayer1Hover, 0.85)
+        property color colTertiaryActive: ColorUtils.mix(colTertiary, colLayer1Active, 0.4)
+        property color colTertiaryContainer: m3colors.m3tertiaryContainer
+        property color colTertiaryContainerHover: ColorUtils.mix(
+            colTertiaryContainer, colOnTertiaryContainer, 0.90)
+        property color colTertiaryContainerActive: ColorUtils.mix(
+            colTertiaryContainer, colLayer1Active, 0.54)
+        property color colOnTertiary: m3colors.m3onTertiary
+        property color colOnTertiaryContainer: m3colors.m3onTertiaryContainer
+
         // Surface
-        property color colBackgroundSurfaceContainer: root.regaliaEverywhere ? root.regalia.bg2 : root.cookieEverywhere ? root.cookie.bg2 : root.zzzEverywhere ? root.zzz.bg2 : ColorUtils.transparentize(m3colors.m3surfaceContainer, root.backgroundTransparency)
-        property color colSurfaceContainerLow: root.regaliaEverywhere ? root.regalia.bg1 : root.cookieEverywhere ? root.cookie.bg1 : root.zzzEverywhere ? root.zzz.bg1 : ColorUtils.solveOverlayColor(m3colors.m3background, m3colors.m3surfaceContainerLow, 1 - root.contentTransparency)
-        property color colSurfaceContainer: root.regaliaEverywhere ? root.regalia.bg2 : root.cookieEverywhere ? root.cookie.bg2 : root.zzzEverywhere ? root.zzz.bg2 : ColorUtils.solveOverlayColor(m3colors.m3surfaceContainerLow, m3colors.m3surfaceContainer, 1 - root.contentTransparency)
-        property color colSurfaceContainerHigh: root.regaliaEverywhere ? root.regalia.bg3 : root.cookieEverywhere ? root.cookie.bg3 : root.zzzEverywhere ? root.zzz.bg3 : ColorUtils.solveOverlayColor(m3colors.m3surfaceContainer, m3colors.m3surfaceContainerHigh, 1 - root.contentTransparency)
-        property color colSurfaceContainerHighest: root.regaliaEverywhere ? root.regalia.bg4 : root.cookieEverywhere ? root.cookie.bg4 : root.zzzEverywhere ? root.zzz.bg4 : ColorUtils.solveOverlayColor(m3colors.m3surfaceContainerHigh, m3colors.m3surfaceContainerHighest, 1 - root.contentTransparency)
-        property color colSurfaceContainerHighestHover: root.regaliaEverywhere ? root.regalia.hoverPlateElevated : ColorUtils.mix(colSurfaceContainerHighest, colOnSurface, 0.95)
-        property color colSurfaceContainerHighestActive: root.regaliaEverywhere ? root.regalia.pressPlateElevated : ColorUtils.mix(colSurfaceContainerHighest, colOnSurface, 0.85)
-        property color colOnSurface: root.regaliaEverywhere ? root.regalia.onColor : root.cookieEverywhere ? root.cookie.onColor : root.zzzEverywhere ? root.zzz.onColor : m3colors.m3onSurface
-        property color colOnSurfaceVariant: root.regaliaEverywhere ? root.regalia.onMuted : root.cookieEverywhere ? root.cookie.inkMuted : root.zzzEverywhere ? ColorUtils.applyAlpha(root.zzz.onColor, 0.78) : m3colors.m3onSurfaceVariant
+        property color colBackgroundSurfaceContainer: ColorUtils.transparentize(
+            m3colors.m3surfaceContainer, root.backgroundTransparency)
+        property color colSurfaceContainerLow: ColorUtils.solveOverlayColor(
+            m3colors.m3background, m3colors.m3surfaceContainerLow,
+            1 - root.contentTransparency)
+        property color colSurfaceContainer: ColorUtils.solveOverlayColor(
+            m3colors.m3surfaceContainerLow, m3colors.m3surfaceContainer,
+            1 - root.contentTransparency)
+        property color colSurfaceContainerHigh: ColorUtils.solveOverlayColor(
+            m3colors.m3surfaceContainer, m3colors.m3surfaceContainerHigh,
+            1 - root.contentTransparency)
+        property color colSurfaceContainerHighest: ColorUtils.solveOverlayColor(
+            m3colors.m3surfaceContainerHigh, m3colors.m3surfaceContainerHighest,
+            1 - root.contentTransparency)
+        property color colSurfaceContainerHighestHover: ColorUtils.mix(
+            colSurfaceContainerHighest, colOnSurface, 0.95)
+        property color colSurfaceContainerHighestActive: ColorUtils.mix(
+            colSurfaceContainerHighest, colOnSurface, 0.85)
+        property color colOnSurface: m3colors.m3onSurface
+        property color colOnSurfaceVariant: m3colors.m3onSurfaceVariant
+
         // Misc
-        property color colTooltip: root.regaliaEverywhere ? root.regalia.primaryPlate : root.zzzEverywhere ? root.zzz.contrastPlate : m3colors.m3inverseSurface
-        property color colOnTooltip: root.regaliaEverywhere ? root.regalia.primaryPlateInk : root.zzzEverywhere ? root.zzz.onContrastPlate : m3colors.m3inverseOnSurface
-        property color colScrim: root.regaliaEverywhere ? root.regalia.scrim : ColorUtils.transparentize(m3colors.m3scrim, 0.5)
-        property color colShadow: root.regaliaEverywhere ? root.regalia.shadow
-            : (m3colors.transparent ? "transparent" : ColorUtils.transparentize(m3colors.m3shadow, 0.7))
-        property color colOutline: root.regaliaEverywhere ? root.regalia.separatorStrong : root.cookieEverywhere ? root.cookie.borderColor : root.zzzEverywhere ? root.zzz.borderColor : (_needsHighContrast ? ColorUtils.transparentize(m3colors.m3onSurface, 0.8) : m3colors.m3outline) // Brighter border in Aurora Dark
-        property color colOutlineVariant: root.regaliaEverywhere ? root.regalia.separator : root.cookieEverywhere ? root.cookie.hairline : root.zzzEverywhere ? root.zzz.hairlineStrong : (_needsHighContrast ? ColorUtils.transparentize(m3colors.m3onSurface, 0.9) : m3colors.m3outlineVariant)
-        property color colError: root.regaliaEverywhere ? root.regalia.error : m3colors.m3error
+        property color colTooltip: m3colors.m3inverseSurface
+        property color colOnTooltip: m3colors.m3inverseOnSurface
+        property color colScrim: ColorUtils.transparentize(m3colors.m3scrim, 0.5)
+        property color colShadow: m3colors.transparent
+            ? "transparent"
+            : ColorUtils.transparentize(m3colors.m3shadow, 0.7)
+        property color colOutline: m3colors.m3outline
+        property color colOutlineVariant: m3colors.m3outlineVariant
+        property color colError: m3colors.m3error
         property color colErrorHover: ColorUtils.mix(colError, colLayer1Hover, 0.85)
         property color colErrorActive: ColorUtils.mix(colError, colLayer1Active, 0.7)
-        property color colOnError: root.regaliaEverywhere ? root.regalia.errorInk : m3colors.m3onError
-        property color colErrorContainer: root.regaliaEverywhere ? root.regalia.signalPlate : m3colors.m3errorContainer
-        property color colErrorContainerHover: ColorUtils.mix(colErrorContainer, colOnErrorContainer, 0.90)
-        property color colErrorContainerActive: ColorUtils.mix(colErrorContainer, colOnErrorContainer, 0.70)
-        property color colOnErrorContainer: root.regaliaEverywhere ? root.regalia.signalPlateInk : m3colors.m3onErrorContainer
+        property color colOnError: m3colors.m3onError
+        property color colErrorContainer: m3colors.m3errorContainer
+        property color colErrorContainerHover: ColorUtils.mix(
+            colErrorContainer, colOnErrorContainer, 0.90)
+        property color colErrorContainerActive: ColorUtils.mix(
+            colErrorContainer, colOnErrorContainer, 0.70)
+        property color colOnErrorContainer: m3colors.m3onErrorContainer
 
-        // Success and warning existed only on the aurora token set, but the
-        // contrast badges in the theme editor and the colour picker read them
-        // off `colors` — so under every other style they resolved to undefined
-        // and each badge logged "Unable to assign [undefined] to QColor" on
-        // every repaint. zzz keeps its own chip inks: a raw green or orange is
-        // a hex dump in that doctrine, not a console chip.
-        property color colSuccess: root.regaliaEverywhere ? root.regalia.success : m3colors.m3success
-        property color colOnSuccess: root.regaliaEverywhere ? root.regalia.successInk : m3colors.m3onSuccess
-        property color colSuccessContainer: root.regaliaEverywhere ? root.regalia.successPlate : m3colors.m3successContainer
-        property color colOnSuccessContainer: root.regaliaEverywhere ? root.regalia.successPlateInk : m3colors.m3onSuccessContainer
-        property color colWarning: root.regaliaEverywhere ? root.regalia.warning : m3colors.m3tertiary
-        property color colWarningContainer: root.regaliaEverywhere ? root.regalia.warningPlate : root.zzzEverywhere
-            ? root.zzz.secondary : m3colors.m3tertiaryContainer
-        property color colOnWarningContainer: root.regaliaEverywhere ? root.regalia.warningPlateInk : root.zzzEverywhere
-            ? root.zzz.onSecondary : m3colors.m3onTertiaryContainer
+        property color colSuccess: m3colors.m3success
+        property color colOnSuccess: m3colors.m3onSuccess
+        property color colSuccessContainer: m3colors.m3successContainer
+        property color colOnSuccessContainer: m3colors.m3onSuccessContainer
+        property color colWarning: m3colors.m3tertiary
+        property color colWarningContainer: m3colors.m3tertiaryContainer
+        property color colOnWarningContainer: m3colors.m3onTertiaryContainer
     }
 
     rounding: QtObject {
-        // Dynamic rounding scalar based on theme metadata
-        // Matrix -> 0, Zen Garden -> 1.5, Standard -> 1.0
-        property real scale: (root.regaliaEverywhere || root.zzzEverywhere) ? 1.0 : (root._themeMeta.roundingScale ?? 1.0)
+        // Material presets may still tune the canonical rounding scale.
+        property real scale: root._themeMeta.roundingScale ?? 1.0
 
-        property int unsharpen: root.regaliaEverywhere ? 2 : root.cookieEverywhere ? 4 : root.zzzEverywhere ? 2 : Math.max(0, Math.round(2 * scale))
-        property int unsharpenmore: root.regaliaEverywhere ? root.regalia.roundVerySmall : root.cookieEverywhere ? 8 : root.zzzEverywhere ? 4 : Math.max(0, Math.round(6 * scale))
-        property int verysmall: root.regaliaEverywhere ? root.regalia.roundVerySmall : root.cookieEverywhere ? root.cookie.roundVerySmall : root.zzzEverywhere ? root.zzz.roundSmall : Math.max(0, Math.round(8 * scale))
-        property int small: root.regaliaEverywhere ? root.regalia.roundSmall : root.cookieEverywhere ? root.cookie.roundSmall : root.zzzEverywhere ? root.zzz.roundSmall : Math.max(0, Math.round(12 * scale))
-        property int normal: root.regaliaEverywhere ? root.regalia.roundNormal : root.cookieEverywhere ? root.cookie.roundNormal : root.zzzEverywhere ? root.zzz.roundNormal : Math.max(0, Math.round(17 * scale))
-        property int large: root.regaliaEverywhere ? root.regalia.roundLarge : root.cookieEverywhere ? root.cookie.roundLarge : root.zzzEverywhere ? root.zzz.roundLarge : Math.max(0, Math.round(23 * scale))
-        property int verylarge: root.regaliaEverywhere ? root.regalia.panelRadius : root.cookieEverywhere ? root.cookie.panelRadius : root.zzzEverywhere ? root.zzz.panelRadius : Math.max(0, Math.round(30 * scale))
-        property int full: root.zzzEverywhere ? (root.zzz.round ? 9999 : root.zzz.controlRadius) : 9999
+        property int unsharpen: Math.max(0, Math.round(2 * scale))
+        property int unsharpenmore: Math.max(0, Math.round(6 * scale))
+        property int verysmall: Math.max(0, Math.round(8 * scale))
+        property int small: Math.max(0, Math.round(12 * scale))
+        property int normal: Math.max(0, Math.round(17 * scale))
+        property int large: Math.max(0, Math.round(23 * scale))
+        property int verylarge: Math.max(0, Math.round(30 * scale))
+        property int full: 9999
         property int screenRounding: large
-        property int windowRounding: root.regaliaEverywhere ? root.regalia.panelRadius : root.zzzEverywhere ? root.zzz.panelRadius : Math.max(0, Math.round(18 * scale))
+        property int windowRounding: Math.max(0, Math.round(18 * scale))
     }
 
     // Typography scale factor from config
@@ -605,36 +560,22 @@ Singleton {
     readonly property var activeThemePreset: ThemePresets.getPreset(Config.options?.appearance?.theme ?? "auto")
     readonly property var _themeMeta: activeThemePreset.meta || {}
     
-    // Font Strategy:
-    // 1. Inir style -> Always Monospace (TUI feel)
-    // 2. Theme requests mono (Matrix, Vesper) -> Monospace
-    // 3. Theme requests serif (Angel) -> Serif (if mapped)
-    // 4. Default -> Config Main Font
-    readonly property bool _forceMono: globalStyle === "inir" || _themeMeta.fontStyle === "mono"
+    // Material typography may still request a monospace preset through theme metadata.
+    readonly property bool _forceMono: _themeMeta.fontStyle === "mono"
     readonly property string _angelFont: "Oxanium"
-    readonly property bool _useAngelFont: globalStyle === "angel"
+    readonly property bool _useAngelFont: false
     readonly property string _regaliaFont: "Space Grotesk"
     readonly property string _regaliaTechFont: "Oxanium"
-    readonly property bool _useRegaliaFont: globalStyle === "regalia"
-    // ZZZ uses Oxanium (poster geometric). Restored after Space Grotesk felt
-    // thinner/less characteristic — Oxanium keeps the ZZZ identity.
+    readonly property bool _useRegaliaFont: false
     readonly property string _zzzFont: "Oxanium"
-    readonly property bool _useZzzFont: globalStyle === "zzz"
+    readonly property bool _useZzzFont: false
 
     font: QtObject {
         property QtObject family: QtObject {
-            property string main: root._useZzzFont ? root._zzzFont
-                                : root._useAngelFont ? root._angelFont
-                                : root._useRegaliaFont ? root._regaliaFont
-                                : root._forceMono ? monospace
+            property string main: root._forceMono ? monospace
                                 : (Config.options?.appearance?.typography?.mainFont ?? "Roboto Flex")
-            property string numbers: root._useZzzFont ? root._zzzFont
-                                : root._useAngelFont ? root._angelFont
-                                : root._useRegaliaFont ? root._regaliaTechFont : "Rubik"
-            property string title: root._useZzzFont ? root._zzzFont
-                                 : root._useAngelFont ? root._angelFont
-                                 : root._useRegaliaFont ? root._regaliaFont
-                                 : root._forceMono ? monospace
+            property string numbers: "Rubik"
+            property string title: root._forceMono ? monospace
                                  : (Config.options?.appearance?.typography?.titleFont ?? "Gabarito")
             property string iconMaterial: "Material Symbols Rounded"
             property string iconNerd: "JetBrains Mono NF"
@@ -644,9 +585,7 @@ Singleton {
         }
         property QtObject variableAxes: QtObject {
             // Roboto Flex is customized to feel geometric, unserious yet not overly kiddy
-            property var main: root.regaliaEverywhere ? ({
-                "wght": 430,
-            }) : ({
+            property var main: ({
                 "YTUC": 716,
                 "YTFI": 716,
                 "YTAS": 716,
@@ -660,7 +599,7 @@ Singleton {
                 "wght": 400,
             })
             property var title: ({
-                "wght": root.regaliaEverywhere ? 650 : 900,
+                "wght": 900,
             })
         }
         property QtObject pixelSize: QtObject {
@@ -716,15 +655,15 @@ Singleton {
         // color channel creates a dark/bright intermediate flash that reads as
         // a second hover animation, especially when entering from alpha zero.
         property QtObject stateChange: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.stateDuration : 180, root.animationSpeed.clickBounce)
+            property int duration: root.calcEffectiveDuration(180, root.animationSpeed.clickBounce)
             property int type: Easing.BezierSpline
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaPress : animationCurves.expressiveEffects
+            property list<real> bezierCurve: animationCurves.expressiveEffects
         }
 
         property QtObject elementMove: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.moveDuration : animationCurves.expressiveDefaultSpatialDuration, root.animationSpeed.movement)
+            property int duration: root.calcEffectiveDuration(animationCurves.expressiveDefaultSpatialDuration, root.animationSpeed.movement)
             property int type: root.resolveCurveType("movement", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("movement", animationCurves.expressiveDefaultSpatial)
+            property list<real> bezierCurve: root.resolveCurveBezier("movement", animationCurves.expressiveDefaultSpatial)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -736,9 +675,9 @@ Singleton {
         }
 
         property QtObject elementMoveEnter: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.enterDuration : root.cookieEverywhere ? root.cookie.springDuration : root.zzzEverywhere ? root.zzz.overshootDuration : (root.contextualMotionProfile ? 520 : 400), root.animationSpeed.enterExit)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 520 : 400, root.animationSpeed.enterExit)
             property int type: root.resolveCurveType("enterExit", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("enterExit", root.cookieEverywhere ? animationCurves.cookieSpring : root.zzzEverywhere ? animationCurves.zzzOvershoot : animationCurves.emphasizedDecel)
+            property list<real> bezierCurve: root.resolveCurveBezier("enterExit", animationCurves.emphasizedDecel)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -750,13 +689,9 @@ Singleton {
         }
 
         property QtObject elementMoveExit: QtObject {
-            // Cookie enters with a 420ms spatial spring. The generic 200ms exit
-            // made menus vanish in half that time and became a 150ms blink with
-            // the common 0.75 motion multiplier. Keep the exit shorter than the
-            // entrance, but long enough for its rounded surfaces to remain legible.
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.exitDuration : root.cookieEverywhere ? root.cookie.exitDuration : (root.contextualMotionProfile ? 280 : 200), root.animationSpeed.enterExit)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 280 : 200, root.animationSpeed.enterExit)
             property int type: root.resolveCurveType("enterExit", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaExit : root.resolveCurveBezier("enterExit", animationCurves.emphasizedAccel)
+            property list<real> bezierCurve: root.resolveCurveBezier("enterExit", animationCurves.emphasizedAccel)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -768,12 +703,9 @@ Singleton {
         }
 
         property QtObject elementMoveFast: QtObject {
-            // Cookie springs on click too. expressiveEffects does not overshoot,
-            // so without this a cookie button's press felt like material even
-            // while its silhouette was morphing expressively.
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.pressDuration : root.cookieEverywhere ? 300 : (root.contextualMotionProfile ? 260 : animationCurves.expressiveEffectsDuration), root.animationSpeed.clickBounce)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 260 : animationCurves.expressiveEffectsDuration, root.animationSpeed.clickBounce)
             property int type: root.resolveCurveType("clickBounce", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaPress : root.resolveCurveBezier("clickBounce", root.cookieEverywhere ? animationCurves.cookieSpring : animationCurves.expressiveEffects)
+            property list<real> bezierCurve: root.resolveCurveBezier("clickBounce", animationCurves.expressiveEffects)
             property int velocity: 850
             property Component colorAnimation: Component { ColorAnimation {
                 duration: root.animation.elementMoveFast.duration
@@ -788,9 +720,9 @@ Singleton {
         }
 
         property QtObject elementResize: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.resizeDuration : (root.contextualMotionProfile ? 380 : 300), root.animationSpeed.movement)
+            property int duration: root.calcEffectiveDuration(root.contextualMotionProfile ? 380 : 300, root.animationSpeed.movement)
             property int type: root.resolveCurveType("movement", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("movement", animationCurves.emphasized)
+            property list<real> bezierCurve: root.resolveCurveBezier("movement", animationCurves.emphasized)
             property int velocity: 650
             property Component numberAnimation: Component {
                 NumberAnimation {
@@ -802,9 +734,9 @@ Singleton {
         }
 
         property QtObject clickBounce: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.pressDuration : root.zzzEverywhere ? root.zzz.overshootDuration : 400, root.animationSpeed.clickBounce)
+            property int duration: root.calcEffectiveDuration(400, root.animationSpeed.clickBounce)
             property int type: root.resolveCurveType("clickBounce", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaPress : root.resolveCurveBezier("clickBounce", root.zzzEverywhere ? animationCurves.zzzOvershoot : animationCurves.expressiveDefaultSpatial)
+            property list<real> bezierCurve: root.resolveCurveBezier("clickBounce", animationCurves.expressiveDefaultSpatial)
             property int velocity: 850
             property Component numberAnimation: Component { NumberAnimation {
                     duration: root.animation.clickBounce.duration
@@ -814,9 +746,9 @@ Singleton {
         }
         
         property QtObject scroll: QtObject {
-            property int duration: root.calcEffectiveDuration(root.regaliaEverywhere ? root.regalia.scrollDuration : root.zzzEverywhere ? root.zzz.overshootDuration : 200, root.animationSpeed.scroll)
+            property int duration: root.calcEffectiveDuration(200, root.animationSpeed.scroll)
             property int type: root.resolveCurveType("scroll", Easing.BezierSpline)
-            property list<real> bezierCurve: root.regaliaEverywhere ? animationCurves.regaliaWeighted : root.resolveCurveBezier("scroll", root.zzzEverywhere ? animationCurves.zzzSnap : animationCurves.standardDecel)
+            property list<real> bezierCurve: root.resolveCurveBezier("scroll", animationCurves.standardDecel)
         }
 
         property QtObject menuDecel: QtObject {
@@ -1005,14 +937,10 @@ Singleton {
         readonly property color colOnError: root.m3colors.m3onError
         readonly property color colErrorContainer: ColorUtils.transparentize(root.m3colors.m3errorContainer, 0.3)
 
-        // ZZZ-aware success/warning/error plates so the contrast indicator and
-        // form validation render as readable CONSOLE chips, not raw green/orange
-        // hex dumps. The fill is the generated accent/signal scaled to chip range.
         readonly property color colWarning: root.m3colors.m3tertiary
         readonly property color colWarningContainer: ColorUtils.transparentize(
-            Appearance.zzzEverywhere ? root.zzz.secondary : root.m3colors.m3tertiary, 0.42)
-        readonly property color colOnWarningContainer: Appearance.zzzEverywhere
-            ? root.zzz.onSecondary : root.m3colors.m3onTertiaryContainer
+            root.m3colors.m3tertiary, 0.42)
+        readonly property color colOnWarningContainer: root.m3colors.m3onTertiaryContainer
         readonly property color colInfo: root.m3colors.m3secondary
         
         // ═══════════════════════════════════════════════════════════════
@@ -1528,7 +1456,7 @@ Singleton {
         // carries the same mechanical punch as the cookie clock and popups.
         property real shapeT: round ? 1.0 : 0.0
         Behavior on shapeT {
-            enabled: root.animationsEnabled && root.zzzEverywhere
+            enabled: false
             NumberAnimation {
                 duration: root.zzz.overshootDuration
                 easing.type: Easing.BezierSpline
@@ -1700,8 +1628,9 @@ Singleton {
          property real spacingMedium: Math.round(12 * root.fontSizeScale)
          property real spacingLarge: Math.round(16 * root.fontSizeScale)
         property real baseBarHeight: Math.round(Math.max(24, Math.min(80, (Config.options?.bar?.height ?? 40))) * root.fontSizeScale)
-        property real barHeight: (((Config.options?.bar?.cornerStyle ?? 0) === 1) || ((Config.options?.bar?.cornerStyle ?? 0) === 3)) ? 
-            (baseBarHeight + root.sizes.hyprlandGapsOut * 2) : baseBarHeight
+        // Hug is the sole supported Classic Bar geometry; persisted legacy
+        // cornerStyle values must never add detached float gaps to runtime size.
+        property real barHeight: baseBarHeight
         property real barCenterSideModuleWidth: (Config.options?.bar?.verbose ?? true) ? Math.round(360 * root.fontSizeScale) : Math.round(140 * root.fontSizeScale)
         property real barCenterSideModuleWidthShortened: Math.round(280 * root.fontSizeScale)
         property real barCenterSideModuleWidthHellaShortened: Math.round(190 * root.fontSizeScale)
@@ -1720,8 +1649,7 @@ Singleton {
         property real sidebarWidth: Math.round(460 * root.fontSizeScale)
         property real sidebarWidthExtended: Math.round(750 * root.fontSizeScale)
         property real baseVerticalBarWidth: Math.round(46 * root.fontSizeScale)
-        property real verticalBarWidth: (((Config.options?.bar?.cornerStyle ?? 0) === 1) || ((Config.options?.bar?.cornerStyle ?? 0) === 3)) ? 
-            (baseVerticalBarWidth + root.sizes.hyprlandGapsOut * 2) : baseVerticalBarWidth
+        property real verticalBarWidth: baseVerticalBarWidth
         // Legacy selector fixed-card sizing (kept for compatibility; skwd-wall selector computes layout internally)
         property real wallpaperSelectorWidth: 1200
         property real wallpaperSelectorHeight: 690
@@ -1731,17 +1659,10 @@ Singleton {
 
     syntaxHighlightingTheme: root.m3colors.darkmode ? "Monokai" : "ayu Light"
 
-    // Toggle dark mode - switches between light and dark variants of current theme
+    // Dark/light changes must flow through MaterialThemeLoader. It supplies the
+    // requested mode explicitly to switchwall.sh and force-applies the generated
+    // palette, so the shell updates live instead of only after a Quickshell reload.
     function toggleDarkMode(): void {
-        const newMode = !root.m3colors.darkmode
-        // Update the custom theme darkmode setting
-        Config.setNestedValue("appearance.customTheme.darkmode", newMode)
-        // If using auto theme, regenerate from wallpaper with new mode
-        if (ThemeService.isAutoTheme) {
-            ThemeService.regenerateAutoTheme()
-        } else {
-            // For preset themes, just toggle the darkmode flag directly
-            root.m3colors.darkmode = newMode
-        }
+        MaterialThemeLoader.setDarkMode(!root.m3colors.darkmode)
     }
 }

@@ -85,6 +85,7 @@ NotificationGroup 1.0 NotificationGroup.qml
 NotificationItem 1.0 NotificationItem.qml
 NotificationListView 1.0 NotificationListView.qml
 OptionalMaterialSymbol 1.0 OptionalMaterialSymbol.qml
+ObsidianMonthCalendar 1.0 ObsidianMonthCalendar.qml
 PagePlaceholder 1.0 PagePlaceholder.qml
 PanelSurface 1.0 PanelSurface.qml
 PointingHandInteraction 1.0 PointingHandInteraction.qml

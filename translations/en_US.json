@@ -2535,6 +2535,9 @@
   "Screen Snip": "Screen Snip",
   "Screen capture, OCR text extraction, color picker": "Screen capture, OCR text extraction, color picker",
   "Screen cast": "Screen cast",
+  "Screen edge shadow": "Screen edge shadow",
+  "Set Screen Edge, Bar and outward popup contact radius": "Set Screen Edge, Bar and outward popup contact radius",
+  "Configure only the physical Screen Edge shadow": "Configure only the physical Screen Edge shadow",
   "Screen crosshair overlay for aiming": "Screen crosshair overlay for aiming",
   "Screen off": "Screen off",
   "Screen off timeout": "Screen off timeout",
@@ -2662,6 +2665,8 @@
   "Shadow glass blur": "Shadow glass blur",
   "Shadow glass overlay": "Shadow glass overlay",
   "Shadow offset": "Shadow offset",
+  "Shadow opacity (%)": "Shadow opacity (%)",
+  "Shadow size (px)": "Shadow size (px)",
   "Shadow softness": "Shadow softness",
   "Shadow spread": "Shadow spread",
   "Shape": "Shape",
@@ -5358,5 +5363,11 @@
   "No more results for this search.": "No more results for this search.",
   "No wallpapers found for these tags and filters.": "No wallpapers found for these tags and filters.",
   "Wallhaven rate limit reached. Wait a moment and try again.": "Wallhaven rate limit reached. Wait a moment and try again.",
-  "Wallhaven request failed (HTTP %1).": "Wallhaven request failed (HTTP %1)."
+  "Wallhaven request failed (HTTP %1).": "Wallhaven request failed (HTTP %1).",
+  "Effective TLP values": "Effective TLP values",
+  "Apply saves staged changes with one authorization.": "Apply saves staged changes with one authorization.",
+  "Reset removes the invalid iNiR TLP override.": "Reset removes the invalid iNiR TLP override.",
+  "Reset clears the iNiR TLP overrides.": "Reset clears the iNiR TLP overrides.",
+  "Overrides: %1": "Overrides: %1",
+  "Battery care": "Battery care"
 }

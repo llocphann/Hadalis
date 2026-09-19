@@ -97,10 +97,20 @@ Scope {
         fadeIn.stop(); bgScaleIn.stop(); blurIn.stop()
         fadeOut.stop(); bgScaleOut.stop()
         watchdog.stop()
-        // exitComplete may not have run yet; the family still has to be applied.
-        root.exitComplete()
+
+        // Fail open before touching the family/config state. exitComplete() can
+        // synchronously change panelFamily and rebuild family loaders; if that
+        // interrupts this callback, the fullscreen transition surface must
+        // already be unmapped and the singleton transition flag released.
         root._overlayOpacity = 0
         root._active = false
+        GlobalStates.familyTransitionActive = false
+
+        // exitComplete may not have run yet; apply the pending family when the
+        // shell-side connection still exists. enterComplete then clears the
+        // shell-local in-progress flag. Both are deliberately best-effort now:
+        // input release no longer depends on either signal connection surviving.
+        root.exitComplete()
         root.enterComplete()
     }
 
@@ -230,10 +240,13 @@ Scope {
     // OVERLAY WINDOW
     // ════════════════════════════════════════════════════════════════════
     Loader {
-        active: GlobalStates.familyTransitionActive || root._active
+        // The native surface follows the overlay's local presentation state,
+        // never the singleton flag by itself. A stale global transition flag
+        // therefore cannot keep an invisible fullscreen layer mapped forever.
+        active: root._active
 
         sourceComponent: PanelWindow {
-            visible: true
+            visible: root._active
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: -1
@@ -247,7 +260,14 @@ Scope {
 
             WlrLayershell.namespace: "quickshell:familyTransition"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+
+            // This surface is purely visual. It has no controls and must never
+            // become an input/focus owner: a stale fullscreen layer otherwise
+            // makes the desktop look frozen even though compositor shortcuts
+            // still work.
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            Item { id: emptyTransitionInput; width: 0; height: 0 }
+            mask: Region { item: emptyTransitionInput }
 
             implicitWidth: screen?.width ?? 1920
             implicitHeight: screen?.height ?? 1080

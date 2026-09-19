@@ -107,3 +107,66 @@ for raw_path in sys.argv[1:]:
 
 print("PASS: Arch packaging keeps EasyEffects and socat optional with consistent Equalizer metadata")
 PY
+
+media_controller="services/MprisController.qml"
+audio_doc="docs/AUDIO_MEDIA.md"
+packages_doc="docs/PACKAGES.md"
+deps_map="sdata/lib/deps-map.sh"
+audio_bundle="sdata/dist-arch/inir-audio/PKGBUILD"
+deps_bundle="sdata/dist-arch/inir-deps/PKGBUILD"
+meta_pkg="distro/arch/inir-meta/PKGBUILD"
+meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
+mpd_migration="sdata/migrations/042-mpd-mpris-bridge.sh"
+
+for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
+  grep -Fq "'mpd-mpris: MPD/rmpc media controls through MPRIS'" "$pkg" \
+    || { printf 'FAIL: %s does not advertise the MPD MPRIS bridge\n' "$pkg" >&2; exit 1; }
+done
+for srcinfo in distro/arch/inir-shell/.SRCINFO distro/arch/inir-shell-git/.SRCINFO; do
+  grep -Fq "optdepends = mpd-mpris: MPD/rmpc media controls through MPRIS" "$srcinfo" \
+    || { printf 'FAIL: %s does not advertise the MPD MPRIS bridge\n' "$srcinfo" >&2; exit 1; }
+done
+
+grep -Eq '^[[:space:]]+mpd-mpris$' "$audio_bundle" \
+  || { printf 'FAIL: inir-audio must include mpd-mpris for MPD/rmpc media integration\n' >&2; exit 1; }
+grep -Eq '^[[:space:]]+mpd-mpris$' "$deps_bundle" \
+  || { printf 'FAIL: inir-deps must track official mpd-mpris as an installed dependency candidate\n' >&2; exit 1; }
+grep -Eq '^[[:space:]]+mpd-mpris$' "$meta_pkg" \
+  || { printf 'FAIL: full Arch meta-package must install mpd-mpris for MPD/rmpc media integration\n' >&2; exit 1; }
+grep -Fq "depends = mpd-mpris" "$meta_srcinfo" \
+  || { printf 'FAIL: inir-meta .SRCINFO must include mpd-mpris\n' >&2; exit 1; }
+grep -Fq 'DEPS_AUDIO_MPD_MPRIS="arch:mpd-mpris' "$deps_map" \
+  || { printf 'FAIL: dependency routing omits the Arch mpd-mpris bridge\n' >&2; exit 1; }
+
+for marker in \
+  'MIGRATION_ID="042-mpd-mpris-bridge"' \
+  'MIGRATION_REQUIRED=true' \
+  '_mpd_mpris_package_managed()' \
+  'pkg_sudo pacman -S --needed --noconfirm mpd-mpris' \
+  'command -v mpd-mpris >/dev/null 2>&1'; do
+  grep -Fq "$marker" "$mpd_migration" \
+    || { printf 'FAIL: MPD bridge migration contract missing: %s\n' "$marker" >&2; exit 1; }
+done
+
+for marker in \
+  'function _mpdPlaybackStreamPresent(): bool' \
+  'function _maybeStartMpdMprisBridge(): void' \
+  'id: _mpdMprisProbeProc' \
+  'command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1' \
+  '["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' \
+  'name === "org.mpris.MediaPlayer2.mpd"' \
+  'name.startsWith("org.mpris.MediaPlayer2.mpd.")'; do
+  grep -Fq "$marker" "$media_controller" \
+    || { printf 'FAIL: MprisController MPD bridge contract missing: %s\n' "$marker" >&2; exit 1; }
+done
+
+grep -Fq '### MPD and rmpc' "$audio_doc" \
+  || { printf 'FAIL: audio/media docs omit MPD/rmpc bridge behavior\n' >&2; exit 1; }
+grep -Fq 'direct-ALSA output' "$audio_doc" \
+  || { printf 'FAIL: audio/media docs omit direct-ALSA MPD bridge discovery\n' >&2; exit 1; }
+grep -Fq '`rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself' "$audio_doc" \
+  || { printf 'FAIL: audio/media docs no longer explain the MPD/MPRIS boundary\n' >&2; exit 1; }
+grep -Fq '| `mpd-mpris` | MPRIS bridge for MPD/rmpc media sessions |' "$packages_doc" \
+  || { printf 'FAIL: package docs omit mpd-mpris from the Arch audio bundle\n' >&2; exit 1; }
+
+printf '%s\n' 'PASS: MPD/rmpc media integration routes through the mpd-mpris bridge'

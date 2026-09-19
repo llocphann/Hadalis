@@ -19,8 +19,9 @@
 | Service | What it does |
 |---------|-------------|
 | **Audio** | PipeWire integration. Default sink/source, volume, mute, per-app mixer. EasyEffects virtual sink detection. IPC target: `audio`. |
-| **MprisController** | MPRIS player management. Filters real players, deduplicates YT Music instances, tracks active player with grace period for track transitions. IPC target: `mpris`. |
-| **YtMusic** | YouTube Music player. Search, queue, playback via mpv + yt-dlp. IPC target: `ytmusic`. |
+| **MprisController** | MPRIS player management. Filters real players, retains legacy YT Music deduplication compatibility, tracks the active player with a grace period for track transitions, and binds MPD Music to the matching default or Hadalis-named `mpd-mpris` instance. IPC target: `mpris`. |
+| **LocalMusic** | Left Sidebar MPD frontend. Reads MPD songs/saved playlists/queue, performs MPD-only database/queue operations, and requests an endpoint-matched `mpd-mpris` player from MprisController for normal transport. |
+| **YtMusic** | Legacy YouTube Music compatibility backend retained in source while the Left Sidebar has moved to `LocalMusic`; it is no longer the user-facing sidebar music route. IPC target: `ytmusic`. |
 | **SongRec** | Music recognition via SongRec (Shazam-like audio fingerprinting). |
 
 ## System
@@ -32,6 +33,7 @@
 | **Battery** | UPower integration. Percentage, charging state, charge limit control, low/critical thresholds. |
 | **Brightness** | Monitor brightness via brightnessctl (laptop) and ddcutil (external monitors). Per-screen control. IPC target: `brightness`. |
 | **PowerProfilePersistence** | Restores the user's power profile on startup. |
+| **DeviceStatePersistence** | Persists and restores last confirmed Wi-Fi radio, Bluetooth adapter, and microphone mute state across shell restarts/reboots. First run snapshots the current system state instead of forcing defaults. |
 | **GameMode** | Fullscreen detection with auto/manual activation. Suppresses animations, notifications, blur when gaming. IPC target: `gamemode`. |
 | **Idle** | Idle management via swayidle. Screen-off, lock, and suspend timeouts. Set `idle.onBattery.enable` to apply a separate, shorter set of timeouts while a laptop runs unplugged. |
 | **ResourceUsage** | CPU, RAM, GPU, temperature, disk polling. History arrays for graphs. Auto-stop timer (15s) when no consumers active. |

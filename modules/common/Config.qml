@@ -26,7 +26,16 @@ Singleton {
     function flushWrites(): void {
         fileWriteTimer.stop();
         fileReloadTimer.stop();
+        if (!root.ready) {
+            root._pendingWrite = true;
+            return;
+        }
+        if (root._writeInFlight) {
+            root._pendingWrite = true;
+            return;
+        }
         root._prepareCustomInject();
+        root._pendingWrite = false;
         root._writeInFlight = true;
         root._writeRetries = 0;
         root._writeMirrorToDisk();
@@ -478,6 +487,27 @@ Singleton {
             property JsonObject appearance: JsonObject {
                 property string theme: "auto"
                 property string globalStyle: "material"
+                property JsonObject screenEdge: JsonObject {
+                    property int width: 10
+                    property int radius: 25
+
+                    // Connected-surface body shadow contract. Kept separate from
+                    // the physical Screen Edge frame so popup/sidebar tuning can
+                    // never change the perimeter shadow itself.
+                    property JsonObject shadow: JsonObject {
+                        property bool enabled: true
+                        property int size: 15
+                        property real opacity: 0.70
+                    }
+
+                    // Physical Screen Edge shadow only. Defaults mirror
+                    // Caelestia ContentWindow: enabled, blurMax 15, alpha 0.70.
+                    property JsonObject physicalShadow: JsonObject {
+                        property bool enabled: true
+                        property int size: 15
+                        property real opacity: 0.70
+                    }
+                }
                 // Shared skin for island surfaces such as dock, sidebars and search.
                 property JsonObject island: JsonObject {
                     property bool glass: true
@@ -592,7 +622,7 @@ Singleton {
                     property string nightStart: "18:00"
                 }
                 property JsonObject globalStyleCornerStyles: JsonObject {
-                    property int material: 1
+                    property int material: 0
                     property int cards: 3
                     property int aurora: 0
                     property int inir: 1
@@ -735,7 +765,7 @@ Singleton {
                     property string background: ""
                     property int sensitivity: 100
                     property int bars: 0
-                    property int framerate: 60
+                    property int framerate: 30
                     property int barWidth: 2
                     property int barSpacing: 1
                     property bool stereo: true
@@ -806,6 +836,12 @@ Singleton {
             property JsonObject powerProfiles: JsonObject {
                 property bool restoreOnStart: true
                 property string preferredProfile: ""
+                property JsonObject fanControl: JsonObject {
+                    property bool enabled: false
+                    property int powerSaver: 0
+                    property int balanced: 0
+                    property int performance: 0
+                }
             }
 
             property JsonObject idle: JsonObject {
@@ -858,7 +894,7 @@ Singleton {
                 property bool minimalMode: true
                 property int niriWindowListUpdateIntervalMs: 100
                 property int niriWindowListUpdateIntervalMsGameMode: 500
-                property int checkInterval: 5000
+                property int checkInterval: 10000
             }
 
             property JsonObject reloadToasts: JsonObject {
@@ -1577,7 +1613,7 @@ Singleton {
                 property bool bottom: false
                 property int height: 40
                 property real opacity: 1.0
-                property int cornerStyle: 1
+                property int cornerStyle: 0
                 property int customRounding: -1
                 property bool floatStyleShadow: true
                 property bool borderless: true
@@ -2208,6 +2244,20 @@ Singleton {
                     property bool enable: false
                     property string lastActivePlugin: ""
                 }
+                // Canonical local Music frontend. MPD owns the library/queue and
+                // mpd-mpris exposes that same session through the shell's MPRIS path.
+                // libraryFolder is only an optional local-path override for cover art.
+                property JsonObject music: JsonObject {
+                    property bool enable: false
+                    property string libraryFolder: ""
+                    property string mpdHost: "127.0.0.1"
+                    property int mpdPort: 6600
+                    // Deprecated mpv-era compatibility values; runtime MPD state wins.
+                    property bool normalizeVolume: false
+                    property bool shuffleMode: false
+                    property int repeatMode: 0
+                    property int volume: 100
+                }
                 property JsonObject ytmusic: JsonObject {
                     property bool enable: false
                     property bool autoConnect: true
@@ -2346,7 +2396,7 @@ Singleton {
                     property bool showBrightness: true
                 }
                 property JsonObject left: JsonObject {
-                    property list<string> tabOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "ytmusic", "tools", "software"]
+                    property list<string> tabOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]
                 }
                 property JsonObject right: JsonObject {
                     property list<string> enabledWidgets: ["calendar", "events", "todo", "calculator", "sysmon", "weather"]

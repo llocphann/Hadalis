@@ -11,7 +11,6 @@ import Quickshell
 Scope {
     id: root
 
-    readonly property bool perimeterEnabled: PerimeterCutoverPolicy.enabled
     readonly property var targetScreens: {
         const list = Config.options?.sidebar?.screenList ?? []
         const screens = Quickshell.screens
@@ -25,7 +24,7 @@ Scope {
     }
 
     Variants {
-        model: root.perimeterEnabled ? [] : root.targetScreens
+        model: root.targetScreens
 
         SidebarHost {
             required property var modelData

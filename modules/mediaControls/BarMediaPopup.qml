@@ -34,6 +34,30 @@ Item {
     property var _playerCache: []
     property bool _cacheValid: false
     readonly property var _visiblePlayers: root._cacheValid ? root._playerCache : (root.meaningfulPlayers ?? [])
+    // Item.visible alone is insufficient for popout lifecycle: an item's local
+    // visible flag can remain true while its presentation window is closed.
+    // Gate CAVA by the actual Quickshell window so the shared subscription is
+    // released as soon as this surface is no longer presented.
+    readonly property bool presentationActive: root.QsWindow.window?.visible ?? false
+    readonly property bool visualizerActive: root.presentationActive
+        && root.visible
+        && root._visiblePlayers.length > 0
+        && MprisController.isPlaying
+
+    // Keep the bar-attached media popup feature-parity with the dock/global
+    // media surface. PlayerControl already owns the WaveVisualizer; the bar
+    // popup only needs to provide the same live CAVA point stream instead of
+    // the historical empty array.
+    CavaProcess {
+        id: cavaProcess
+        active: root.visualizerActive
+        // Match the Serpantinum visualizer density while keeping Hadalis'
+        // shared CAVA service and per-consumer sample negotiation.
+        sampleCount: 64
+    }
+
+    property list<real> visualizerPoints: cavaProcess.points
+    readonly property real visualizerMaxValue: Math.max(1, cavaProcess.normalizationCeiling)
 
     function _samePlayerOrder(a, b): bool {
         if ((a?.length ?? 0) !== (b?.length ?? 0)) return false
@@ -131,12 +155,8 @@ Item {
                     width: 3
                     radius: 2
                     color: isActive
-                        ? (Appearance.zzzEverywhere ? Appearance.zzz.accent
-                            : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
-                        : (Appearance.zzzEverywhere ? Appearance.zzz.bg3
-                            : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colLayer2 : Appearance.colors.colLayer2)
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colLayer2
                     
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
@@ -150,7 +170,8 @@ Item {
                     anchors.leftMargin: root._visiblePlayers.length > 1
                         ? Appearance.sizes.elevationMargin : 0
                     player: modelData
-                    visualizerPoints: []
+                    visualizerPoints: root.visualizerPoints
+                    visualizerMaxValue: root.visualizerMaxValue
                     radius: root.popupRounding
                     screenX: root.screenX + playerDelegate.x + playerControl.x
                     screenY: root.screenY + playerDelegate.y + playerControl.y
@@ -164,10 +185,7 @@ Item {
                     color: "transparent"
                     radius: root.popupRounding
                     border.width: 2
-                    border.color: Appearance.zzzEverywhere ? Appearance.zzz.accent
-                        : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                        : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colPrimary
-                        : Appearance.colors.colPrimary
+                    border.color: Appearance.colors.colPrimary
                     z: 2
                 }
                 
@@ -196,94 +214,11 @@ Item {
             }
         }
 
-        // No player placeholder - only show if truly no players after debounce
-        Item {
-            id: placeholderItem
-            readonly property bool _noPlayers: (root.meaningfulPlayers?.length ?? 0) === 0 && (Mpris.players.values?.length ?? 0) === 0
-            readonly property bool _cacheEmpty: !root._cacheValid || root._playerCache.length === 0
-            visible: _cacheEmpty && _noPlayers
+        EqualizerPanel {
             Layout.fillWidth: true
-            implicitWidth: placeholderBackground.implicitWidth + Appearance.sizes.elevationMargin
-            implicitHeight: placeholderBackground.implicitHeight + Appearance.sizes.elevationMargin
-
-            StyledRectangularShadow {
-                target: placeholderBackground
-            }
-
-            Rectangle {
-                id: placeholderBackground
-                anchors.centerIn: parent
-                width: Math.min(implicitWidth,
-                    Math.max(0, parent.width - Appearance.sizes.elevationMargin))
-                color: Appearance.zzzEverywhere ? Appearance.zzz.bg0
-                    : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colLayer1
-                    : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.aurora.colPopupSurface
-                     : Appearance.colors.colLayer0
-                radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
-                    : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                    : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.roundingNormal : root.popupRounding
-                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-                Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
-                border.width: Appearance.zzzEverywhere ? 1 : (Appearance.angelEverywhere ? 0 : ((Appearance.inirEverywhere || Appearance.auroraEverywhere) ? 1 : 0))
-                Behavior on border.width {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-                border.color: Appearance.zzzEverywhere ? Appearance.zzz.borderColor
-                            : Appearance.angelEverywhere ? "transparent"
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colBorder
-                            : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.aurora.colPopupBorder
-                            : "transparent"
-                Behavior on border.color {
-                    enabled: Appearance.animationsEnabled
-                    ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-                property real padding: 20
-
-                AngelPartialBorder { targetRadius: placeholderBackground.radius; coverage: 0.5 }
-                implicitWidth: placeholderLayout.implicitWidth + padding * 2
-                implicitHeight: placeholderLayout.implicitHeight + padding * 2
-
-                ColumnLayout {
-                    id: placeholderLayout
-                    anchors.centerIn: parent
-                    width: Math.max(0, parent.width - parent.padding * 2)
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
-                        text: Translation.tr("No active player")
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                            : Appearance.angelEverywhere ? Appearance.angel.colText
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colText
-                            : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.colors.colOnLayer0
-                            : Appearance.colors.colOnLayer0
-                        Behavior on color {
-                            enabled: Appearance.animationsEnabled
-                            ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                        }
-                    }
-                    StyledText {
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
-                        color: Appearance.zzzEverywhere ? Appearance.zzz.ghostInk
-                            : Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-                            : (Appearance.inirEverywhere && Appearance.inir) ? Appearance.inir.colTextSecondary
-                            : (Appearance.auroraEverywhere && Appearance.aurora) ? Appearance.aurora.colTextSecondary
-                            : Appearance.colors.colSubtext
-                        Behavior on color {
-                            enabled: Appearance.animationsEnabled
-                            ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                        }
-                        text: Translation.tr("Make sure your player has MPRIS support\nor try turning off duplicate player filtering")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                    }
-                }
-            }
+            implicitWidth: root.widgetWidth
+            active: root.presentationActive && root.visible
         }
+
     }
 }

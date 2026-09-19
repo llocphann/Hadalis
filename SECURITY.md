@@ -23,7 +23,7 @@ Current privileged integration surfaces include:
 - `/usr/libexec/inir-battery-charge-limit`, authorized through the `org.inir.battery-charge-limit` polkit action for managed TLP/power settings.
 - `/usr/libexec/inir-thinkfan`, authorized through the `org.inir.thinkfan` polkit action for managed ThinkFan service ownership/control integration.
 
-The corresponding polkit policies require administrator authentication. Treat these helpers, their argument validation, file writes, service operations, and policy definitions as security-sensitive code. New privileged behavior must not be added implicitly to the normal user-level shell path.
+The corresponding polkit policies authorize these exact root-owned helper paths without an authentication prompt **only for the active local session**. Inactive and non-local subjects are denied by default. The helpers remain the privilege boundary: their accepted arguments, file writes and service operations must stay narrowly validated, and packaging must keep the helper/policy files root-owned and non-writable by ordinary users. Treat these helpers and policy definitions as security-sensitive code; do not broaden the promptless actions beyond the existing validated operations.
 
 ## Scope
 

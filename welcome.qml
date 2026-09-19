@@ -89,7 +89,7 @@ Scope {
     // Ordering only; no profile enables a provider-backed tab.
     readonly property var profileTabOrder: [
         "widgets", "wallhaven", "news", "tools", "software",
-        "ai", "translator", "anime", "animeSchedule", "ytmusic"
+        "ai", "translator", "anime", "animeSchedule", "music"
     ]
 
     // Desktop widgets all default to the same corner and "leastBusy" cannot see

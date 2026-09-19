@@ -10,20 +10,54 @@ LazyLoader {
     id: root
 
     property Item hoverTarget
+    // Optional rect in hoverTarget-local coordinates. The target itself remains
+    // the real visual/source control for output ownership; this rect only narrows
+    // tangent placement (for example a right-click point inside a broad Bar zone).
+    property var anchorRect: null
     property bool hoverActivates: true
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
     property bool keyboardFocus: false
-    property bool popupHovered: false
+    property bool _bodyHovered: false
+    property bool _contentHovered: false
+    readonly property bool popupHovered: root._bodyHovered || root._contentHovered
     default property Item contentItem
     property real popupBackgroundMargin: 0
+    // Compatibility knob retained for old callers. Placement is now authoritative:
+    // every popup automatically joins any Screen Edge its body actually reaches.
+    property bool connectAdjacentScreenEdge: false
+
+    // Presentation-only handle for the lazily-created connected surface. This is
+    // useful to presentation peers such as the tray focus grab; feature/backend
+    // state never depends on this window object.
+    property var presentationWindow: null
 
     readonly property bool _barVertical: Config.options?.bar?.vertical ?? false
     readonly property bool _trailingEdge: Config.options?.bar?.bottom ?? false
     readonly property string _attachmentEdge: root._barVertical
         ? (root._trailingEdge ? "right" : "left")
         : (root._trailingEdge ? "bottom" : "top")
+    // Source controls own tangent placement; the Bar owns the cross-axis edge.
+    // This follows the Caelestia composition principle where differently sized
+    // controls point at one panel boundary instead of creating uneven stems.
+    readonly property real _barSurfaceThickness: root._barVertical
+        ? Appearance.sizes.verticalBarWidth
+        : Appearance.sizes.barHeight
     readonly property real _contentPadding: 14
+    readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    // Caelestia clamps panel tangent placement to the physical border's inner
+    // boundary. The old -seamOverlap inset made corner-attached popups sit 2 px
+    // inside the frame and changed the apparent fillet geometry.
+    readonly property real _popupScreenMargin: root._screenEdgeThickness
+    readonly property bool _edgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+    readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+    readonly property real _edgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+    readonly property color _edgeShadowColor:
+        ColorUtils.applyAlpha(Appearance.colors.colShadow, root._edgeShadowOpacity)
 
     // The visual anchor is the authority for output/window ownership. StyledPopup
     // itself is a LazyLoader and is not a visual child of the bar, so resolving
@@ -37,6 +71,7 @@ LazyLoader {
         ? root._anchorWindow.screen : null
     readonly property bool _anchorReady: root.hoverTarget !== null
         && root._anchorWindow !== null
+        && root._anchorScreen !== null
         && root.hoverTarget.width > 0
         && root.hoverTarget.height > 0
 
@@ -50,95 +85,108 @@ LazyLoader {
                 && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
             || root.popupHovered))
     property bool _lingerVisible: false
-    property real revealProgress: 0
+    // Match Caelestia's panel wrappers: one normalized offsetScale drives the
+    // whole slide and reverses naturally from its current value. Geometry keeps
+    // consuming revealProgress as the inverse for compatibility.
+    property real offsetScale: 1
+    readonly property real revealProgress: 1 - root.offsetScale
 
-    // Connected popouts continue the sole Hug bar surface. Alternate Classic
-    // corner styles are retired, so popup material no longer branches on the
-    // legacy compatibility field.
-    readonly property color _surfaceColor: Appearance.zzzEverywhere
-        ? Appearance.zzz.chrome
-        : Appearance.regaliaEverywhere ? Appearance.regalia.barSurface
-        : Appearance.angelEverywhere
-            ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-        : Appearance.auroraEverywhere
-            ? (Appearance.wallpaperBlendedColors?.colLayer0 ?? Appearance.colors.colLayer0)
-        : Appearance.colors.colLayer0
-    readonly property color _borderColor: Appearance.zzzEverywhere
-        ? Appearance.zzz.hairline
-        : Appearance.regaliaEverywhere ? "transparent"
-        : Appearance.angelEverywhere ? Appearance.angel.colPanelBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-        : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder
-        : Appearance.colors.colLayer0Border
-    readonly property real _borderWidth: Appearance.zzzEverywhere ? 1
-        : Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
-        : 0
-    readonly property real _surfaceRadius: Appearance.zzzEverywhere
-        ? Appearance.zzz.panelRadius
-        : Appearance.regaliaEverywhere ? Appearance.regalia.roundLarge
-        : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-        : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-        : Appearance.rounding.large
+    // Material is the sole supported Global Theme for v1.0. Keep the connected
+    // popup surface on the canonical Material palette and radius instead of
+    // retaining unreachable alternate-theme branches in the shared popup path.
+    readonly property color _surfaceColor: Appearance.colors.colLayer0
+    readonly property color _borderColor: Appearance.colors.colLayer0Border
+    readonly property real _borderWidth: 0
+    // Caelestia PanelBg uses Tokens.rounding.extraLarge (28px at scale 1).
+    readonly property real _surfaceRadius: PerimeterTokens.popupRadius
 
     signal requestClose()
 
     active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
-    function _syncRequestedVisibility(): void {
-        if (root.requestedVisible) {
-            const alreadyResident = root._lingerVisible
-            retractTimer.stop()
-            root._lingerVisible = true
-            if (!Appearance.animationsEnabled) {
-                root.revealProgress = 1
-                return
-            }
-            if (alreadyResident) {
-                // Reverse an in-flight close from its current geometry rather than
-                // snapping to zero and replaying the opening animation.
-                root.revealProgress = 1
-                return
-            }
-            root.revealProgress = 0
-            Qt.callLater(() => {
-                if (root.requestedVisible)
-                    root.revealProgress = 1
-            })
-            return
-        }
-
-        root.popupHovered = false
+    function _beginRetract(): void {
         if (!root._lingerVisible)
             return
-        root.revealProgress = 0
+        root.offsetScale = 1
         if (Appearance.animationsEnabled)
             retractTimer.restart()
         else
             root._lingerVisible = false
     }
 
+    function _syncRequestedVisibility(): void {
+        if (root.requestedVisible) {
+            const alreadyResident = root._lingerVisible
+            hoverTransferTimer.stop()
+            retractTimer.stop()
+            root._lingerVisible = true
+            if (!Appearance.animationsEnabled) {
+                root.offsetScale = 0
+                return
+            }
+            if (alreadyResident) {
+                // Reverse an in-flight close from its current geometry rather than
+                // snapping to zero and replaying the opening animation.
+                root.offsetScale = 0
+                return
+            }
+            root.offsetScale = 1
+            Qt.callLater(() => {
+                if (root.requestedVisible)
+                    root.offsetScale = 0
+            })
+            return
+        }
+
+        if (!root._lingerVisible)
+            return
+
+        // Bar and popup are separate layer-shell surfaces. Compositors can emit
+        // one leave before the matching enter when the pointer crosses their
+        // shared seam. Give that hand-off a short grace period so a transient
+        // all-false hover state cannot start a retract/reopen oscillation.
+        if (root.hoverActivates) {
+            hoverTransferTimer.restart()
+            return
+        }
+
+        root._beginRetract()
+    }
+
     onRequestedVisibleChanged: root._syncRequestedVisibility()
     Component.onCompleted: root._syncRequestedVisibility()
 
-    Behavior on revealProgress {
+    // Caelestia's wrappers use one default-spatial animation for both enter and
+    // exit instead of separate accelerate/decelerate curves. Hadalis already
+    // ships the same expressive-default-spatial token as elementMove.
+    Behavior on offsetScale {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMoveEnter.duration
-            easing.type: Appearance.animation.elementMoveEnter.type
-            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 
     // `contentItem` is the default property and accepts only QQuickItem. Keep
     // internal QObject/QWindow helpers on explicit object properties so they are
     // never routed through the popup content contract during type construction.
-    property QtObject _retractTimerObject: Timer {
-        id: retractTimer
-        interval: Math.max(1, Appearance.animation.elementMoveEnter.duration + 16)
+    property QtObject _hoverTransferTimerObject: Timer {
+        id: hoverTransferTimer
+        interval: 90
         repeat: false
         onTriggered: {
-            if (!root.requestedVisible && root.revealProgress <= 0.001)
+            if (!root.requestedVisible)
+                root._beginRetract()
+        }
+    }
+
+    property QtObject _retractTimerObject: Timer {
+        id: retractTimer
+        interval: Math.max(1, Appearance.animation.elementMove.duration + 16)
+        repeat: false
+        onTriggered: {
+            if (!root.requestedVisible && root.offsetScale >= 0.999)
                 root._lingerVisible = false
         }
     }
@@ -147,34 +195,41 @@ LazyLoader {
         const target = root.hoverTarget
         const host = target ? target.QsWindow : null
         const hostWindow = root._anchorWindow
-        if (!target || !host || !hostWindow
+        if (!target || !host || !hostWindow || !root._anchorScreen
                 || target.width <= 0 || target.height <= 0
                 || outputWidth <= 0 || outputHeight <= 0)
             return Qt.rect(0, 0, 0, 0)
 
-        // Explicitly touch the target geometry so this binding is refreshed when
-        // bar modules are rearranged or resized. mapFromItem() then supplies the
-        // precise tangent coordinate inside the owning bar window.
+        // mapFromItem() is intentionally non-reactive in Quickshell. Touch both
+        // the item geometry and QsWindow.windowTransform so monitor transforms,
+        // bar moves, scale changes and hotplug force this binding to recompute.
         target.x
         target.y
         target.width
         target.height
-        const mapped = host.mapFromItem(target, 0, 0)
-        let x = mapped.x
-        let y = mapped.y
+        hostWindow.windowTransform
 
-        // Horizontal bars already span the output width, while vertical bars
-        // span its height. Translate the cross-axis coordinate for bottom/right
-        // placement so ConnectedSurfaceGeometry always receives output-local
-        // coordinates, independent of the layer-shell window's anchored edge.
+        const localX = Number(root.anchorRect?.x ?? 0)
+        const localY = Number(root.anchorRect?.y ?? 0)
+        const localWidth = Math.max(1,
+            Number(root.anchorRect?.width ?? target.width))
+        const localHeight = Math.max(1,
+            Number(root.anchorRect?.height ?? target.height))
+        const mapped = host.mapFromItem(target, localX, localY)
+        const thickness = Math.max(1, Number(root._barSurfaceThickness ?? 1))
+
+        // Preserve the source/sub-rect tangent center/extent, but normalize the
+        // cross-axis boundary to the real Bar surface. A click-point rect can
+        // therefore position a context menu without becoming the ownership anchor.
         if (root._barVertical) {
-            if (root._trailingEdge)
-                x += Math.max(0, outputWidth - Number(hostWindow.width ?? 0))
-        } else if (root._trailingEdge) {
-            y += Math.max(0, outputHeight - Number(hostWindow.height ?? 0))
+            const barX = root._trailingEdge
+                ? Math.max(0, outputWidth - thickness) : 0
+            return Qt.rect(barX, mapped.y, thickness, localHeight)
         }
 
-        return Qt.rect(x, y, target.width, target.height)
+        const barY = root._trailingEdge
+            ? Math.max(0, outputHeight - thickness) : 0
+        return Qt.rect(mapped.x, barY, localWidth, thickness)
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside
@@ -219,6 +274,12 @@ LazyLoader {
         WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible
             ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
+        Component.onCompleted: root.presentationWindow = popupWindow
+        Component.onDestruction: {
+            if (root.presentationWindow === popupWindow)
+                root.presentationWindow = null
+        }
+
         // Hyprland still needs an explicit grab for keyboard-driven popouts;
         // Niri uses the layer-shell focus mode above. Keep the behavior inside
         // the shared popup so focused surfaces (notably Media) do not fall back
@@ -241,36 +302,99 @@ LazyLoader {
                 Math.max(1, (root.contentItem?.implicitHeight ?? 0)
                     + root._contentPadding * 2 + Math.max(0, root.popupBackgroundMargin)))
             outerRadius: root._surfaceRadius
+            screenMargin: root._popupScreenMargin
+            // Caelestia composes popouts directly into the edge surface. Keep
+            // the shared geometry, but remove the detached neck/gap entirely.
+            connectorLength: 0
+            // Separate layer-shell surfaces cannot reproduce Caelestia's SDF
+            // border sink by overlapping under the Bar: the reveal clip would
+            // cut that overlap away and leave a pinched shoulder. Start the
+            // popup exactly at the attachment boundary so the flattened flare
+            // owns the full visible contact width.
+            seamOverlap: 0
             progress: root.revealProgress
-            devicePixelRatio: popupWindow.screen?.devicePixelRatio ?? 1
+            devicePixelRatio: popupWindow.devicePixelRatio
         }
 
-        ConnectedSurfaceFrame {
-            id: frame
-            anchors.fill: parent
-            geometry: geometry
-            fillColor: root._surfaceColor
-            borderColor: root._borderColor
-            borderWidth: root._borderWidth
-            // The connector owns the join. Leaving its outline off lets the
-            // shoulder merge into both bar and body instead of drawing a stem.
-            connectorBorderWidth: 0
+        QtObject {
+            id: directEdgeAttachment
+
+            readonly property rect body: geometry.bodyRect
+            readonly property real epsilon:
+                1 / Math.max(1, popupWindow.devicePixelRatio)
+            readonly property real margin: geometry.effectiveScreenMargin
+            // Detect all output edges from the resting body geometry. A popup
+            // moved away from a corner therefore loses that edge join naturally;
+            // a wide/tall popup may join multiple Screen Edges if it reaches them.
+            readonly property bool atLeft:
+                Math.abs(body.x - margin) <= epsilon
+            readonly property bool atRight:
+                Math.abs((popupWindow.width - margin)
+                    - (body.x + body.width)) <= epsilon
+            readonly property bool atTop:
+                Math.abs(body.y - margin) <= epsilon
+            readonly property bool atBottom:
+                Math.abs((popupWindow.height - margin)
+                    - (body.y + body.height)) <= epsilon
         }
 
-        ConnectedSurfaceContentHost {
-            id: popupContentHost
+        // Fixed resting-edge viewport: the full popup translates behind this
+        // clip, so closing/opening reads as sliding underneath the Bar/Screen Edge.
+        ConnectedSurfaceRevealClip {
+            id: popupRevealClip
             geometry: geometry
-            padding: root._contentPadding
-            // Let the surface deform first, then bring content in as the body has
-            // enough area. This keeps the enter motion from reading as card fade.
-            opacity: Math.max(0, Math.min(1,
-                (geometry.revealProgress - 0.18) / 0.82))
-            children: [root.contentItem]
 
-            HoverHandler {
-                id: popupHoverHandler
-                enabled: root.active
-                onHoveredChanged: root.popupHovered = hovered
+            ConnectedSurfaceFrame {
+                id: frame
+                anchors.fill: parent
+                geometry: geometry
+                fillColor: root._surfaceColor
+                borderColor: root._borderColor
+                borderWidth: root._borderWidth
+                connectorBorderWidth: 0
+                connectorVisible: false
+                // Own hover on the complete popup body, including its visual
+                // padding, but not on the reveal viewport's empty screen area.
+                // This closes the Bar→popup dead zone without turning the whole
+                // inward half of the output into a hover bridge.
+                hoverEnabled: root.active
+                onBodyHoveredChanged: root._bodyHovered = bodyHovered
+                shadowEnabled: root._edgeShadowEnabled
+                    && root._edgeShadowExtent > 0
+                    && root._edgeShadowOpacity > 0
+                shadowExtent: root._edgeShadowExtent
+                shadowColor: root._edgeShadowColor
+                joinTop: root._attachmentEdge === "top"
+                    || directEdgeAttachment.atTop
+                joinBottom: root._attachmentEdge === "bottom"
+                    || directEdgeAttachment.atBottom
+                joinLeft: root._attachmentEdge === "left"
+                    || directEdgeAttachment.atLeft
+                joinRight: root._attachmentEdge === "right"
+                    || directEdgeAttachment.atRight
+                shadowTop: !frame.joinTop
+                shadowBottom: !frame.joinBottom
+                shadowLeft: !frame.joinLeft
+                shadowRight: !frame.joinRight
+            }
+
+            ConnectedSurfaceContentHost {
+                id: popupContentHost
+                geometry: geometry
+                padding: root._contentPadding
+                // Pure slide-under motion: no scale/shrink and no staged fade.
+                opacity: 1
+                children: [root.contentItem]
+
+                // Track the actual content plane as well as the decorative body.
+                // Interactive children (notably StyledSwitch/MouseArea controls)
+                // sit above ConnectedSurfaceFrame and can otherwise make the
+                // frame's HoverHandler report a transient leave while the pointer
+                // is still visibly inside the popup, causing retract/reopen jitter.
+                HoverHandler {
+                    enabled: root.active
+                    onHoveredChanged: root._contentHovered = hovered
+                }
             }
         }
 

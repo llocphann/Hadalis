@@ -481,28 +481,12 @@ ApplicationWindow {
     width: 1100
     height: 750
     color: root.uiReady
-        ? (Appearance.inirEverywhere ? Appearance.inir.colLayer0
-          : Appearance.zzzEverywhere ? Appearance.colors.colLayer0
-          : Appearance.m3colors.m3background)
+        ? Appearance.m3colors.m3background
         : "transparent"
 
     Shortcut {
         sequences: [StandardKey.Find]
         onActivated: settingsSearchField.forceActiveFocus()
-    }
-
-    ZzzDiagonalPattern {
-        stripeSpacing: 28
-        stripeThickness: 1
-    }
-
-    ZzzSurfaceAccent {
-        // No top registration tape on this large utility window — it reads as an
-        // ugly hard border along the top edge. Keep only the diagonal backdrop.
-        showTape: false
-        stripeCount: 34
-        edgeMargin: root.contentPadding
-        z: 1
     }
 
     ColumnLayout {
@@ -736,21 +720,12 @@ ApplicationWindow {
                 anchors.bottomMargin: root.navEditMode ? 8 : 6
                 radius: Appearance.rounding.full
                 color: settingsSearchField.activeFocus
-                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                      : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                      : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                      : Appearance.colors.colLayer1)
-                    : (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                      : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                      : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                      : Appearance.colors.colLayer0)
-                border.width: settingsSearchField.activeFocus ? 2
-                    : (Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1)
+                    ? Appearance.colors.colLayer1
+                    : Appearance.colors.colLayer0
+                border.width: settingsSearchField.activeFocus ? 2 : 1
                 border.color: settingsSearchField.activeFocus
                     ? Appearance.colors.colPrimary
-                    : (Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                      : Appearance.inirEverywhere ? Appearance.inir.colBorderMuted
-                      : Appearance.m3colors.m3outlineVariant)
+                    : Appearance.m3colors.m3outlineVariant
 
                 Behavior on color { ColorAnimation { duration: 150 } }
                 Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -1022,9 +997,7 @@ ApplicationWindow {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 spacing: 0
-                                readonly property color headerAccentColor: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                                    : Appearance.inirEverywhere ? Appearance.inir.colAccent
-                                    : Appearance.colors.colPrimary
+                                readonly property color headerAccentColor: Appearance.colors.colPrimary
 
                                 // ── Category header ──
                                 Item {
@@ -1070,35 +1043,16 @@ ApplicationWindow {
 
                                     readonly property int pageRealIndex: navItem.modelData.realIndex !== undefined ? navItem.modelData.realIndex : navItem.index
 
-                                    buttonRadius: Appearance.regaliaEverywhere
-                                        ? Appearance.regalia.roundSmall
-                                        : Appearance.zzzEverywhere
-                                        ? Appearance.zzz.controlRadius
-                                        : Math.min(width, height) / 2
+                                    buttonRadius: Math.min(width, height) / 2
                                     toggled: root.currentPage === pageRealIndex
-                                    // Bgless doctrine: zzz selection reads through the sticker pill
-                                    // below, not a Material ripple / opaque hover fill on this
-                                    // Control's own background (which renders above the pill).
-                                    rippleEnabled: !Appearance.zzzEverywhere
+                                    rippleEnabled: true
                                     colBackground: "transparent"
-                                    colBackgroundToggled: Appearance.regaliaEverywhere
-                                        ? Appearance.regalia.primaryPlate : "transparent"
-                                    colBackgroundToggledHover: Appearance.regaliaEverywhere
-                                        ? Appearance.regalia.primaryPlateHover
-                                        : Appearance.zzzEverywhere
-                                        ? "transparent"
-                                        : Appearance.angelEverywhere
-                                        ? Appearance.angel.colGlassCardHover
-                                        : Appearance.inirEverywhere
-                                            ? Appearance.inir.colLayer1Hover
-                                            : Appearance.auroraEverywhere
-                                                ? Appearance.aurora.colElevatedSurface
-                                                : CF.ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 0.5)
-                                    colBackgroundHover: Appearance.regaliaEverywhere
-                                        ? Appearance.regalia.surfacePlateHover
-                                        : Appearance.zzzEverywhere
-                                        ? Appearance.zzz.paperAlt
-                                        : Appearance.colors.colLayer1Hover
+                                    colBackgroundToggled: "transparent"
+                                    // Keep the travelling Material selection pill visible
+                                    // beneath the transparent toggled button surface.
+                                    colBackgroundToggledHover: CF.ColorUtils.transparentize(
+                                        Appearance.colors.colLayer1Hover, 0.5)
+                                    colBackgroundHover: Appearance.colors.colLayer1Hover
 
                                     onClicked: root.currentPage = pageRealIndex
 
@@ -1114,14 +1068,8 @@ ApplicationWindow {
                                             MaterialSymbol {
                                                 text: navItem.modelData.icon || ""
                                                 iconSize: 18
-                                                color: navBtn.toggled || (Appearance.regaliaEverywhere && navBtn.buttonHovered)
-                                                    ? (Appearance.regaliaEverywhere
-                                                        ? Appearance.regalia.hardwarePrimary
-                                                        : Appearance.zzzEverywhere
-                                                        ? Appearance.zzz.ink
-                                                        : Appearance.inirEverywhere
-                                                        ? Appearance.inir.colAccent
-                                                        : Appearance.colors.colPrimary)
+                                                color: navBtn.toggled
+                                                    ? Appearance.colors.colPrimary
                                                     : Appearance.colors.colOnSurfaceVariant
                                                 rotation: navItem.modelData.iconRotation || 0
 
@@ -1139,10 +1087,8 @@ ApplicationWindow {
                                                     pixelSize: Appearance.font.pixelSize.small
                                                     weight: navBtn.toggled ? Font.Medium : Font.Normal
                                                 }
-                                                color: navBtn.toggled || (Appearance.regaliaEverywhere && navBtn.buttonHovered)
-                                                    ? (Appearance.regaliaEverywhere
-                                                        ? Appearance.regalia.primaryPlateInk
-                                                        : Appearance.colors.colOnLayer1)
+                                                color: navBtn.toggled
+                                                    ? Appearance.colors.colOnLayer1
                                                     : Appearance.colors.colOnSurfaceVariant
                                                 elide: Text.ElideRight
 
@@ -1157,43 +1103,23 @@ ApplicationWindow {
                             }
                         }
 
-                        // Active indicator: pill travelling behind the active item
-                        ZzzPlate {
+                        // Active Material indicator: pill travelling behind the active item.
+                        Rectangle {
                             id: sharedNavIndicator
                             z: -1
                             parent: navCol
                             x: 0
                             width: navCol.width
-                            radius: Appearance.zzzEverywhere
-                                ? (Appearance.zzz.round ? Appearance.zzz.controlRadius : 0)
-                                : Appearance.rounding.small
-                            chamfer: Appearance.zzzEverywhere && !Appearance.zzz.round ? Appearance.zzz.cutCorner : 0
-                            fillColor: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                 : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                                 : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                                 : Appearance.zzzEverywhere ? Appearance.zzz.sticker
-                                 : Appearance.colors.colPrimaryContainer
-                            // No hairline in zzz: the stroke next to the accent bar read
-                            // as two stacked vertical lines (matches SettingsOverlay.qml —
-                            // zzz doctrine: separate by fill, not outline).
-                            strokeColor: "transparent"
-                            strokeWidth: 0
-
-                            // ZZZ: solid vertical accent edge — the sticker fill alone
-                            // reads as a hairline; the active item needs a real marker.
-                            Rectangle {
-                                visible: Appearance.zzzEverywhere
-                                anchors.left: parent.left
-                                anchors.leftMargin: Appearance.zzz.borderThick
-                                anchors.verticalCenter: parent.verticalCenter
-                                height: Math.max(0, parent.height * 0.62)
-                                width: Appearance.zzz.borderThick * 3
-                                color: Appearance.zzz.accent
-                            }
+                            radius: Appearance.rounding.small
+                            color: Appearance.colors.colPrimaryContainer
 
                             Behavior on radius {
                                 enabled: Appearance.animationsEnabled
-                                NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot }
+                                NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
+                            }
+                            Behavior on color {
+                                enabled: Appearance.animationsEnabled
+                                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                             }
 
                             property real targetY: 0
@@ -1239,13 +1165,8 @@ ApplicationWindow {
                                 anchors.leftMargin: 4
                                 width: 3
                                 radius: 1.5
-                                // ZZZ separates by fill, not outlines — the sticker plate above
-                                // already carries the selection signal (matches SettingsOverlay.qml).
-                                visible: !Appearance.zzzEverywhere
-                                height: (parent.hasTarget && visible) ? parent.height * 0.5 : 0
-                                color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                                     : Appearance.inirEverywhere ? Appearance.inir.colAccent
-                                     : Appearance.colors.colPrimary
+                                height: parent.hasTarget ? parent.height * 0.5 : 0
+                                color: Appearance.colors.colPrimary
                                 Behavior on height {
                                     enabled: Appearance.animationsEnabled
                                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -1479,23 +1400,10 @@ ApplicationWindow {
                 id: contentContainer
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                // ZZZ: same bg2 plate + hairline as the overlay-mode content
-                // field, so both settings modes read as the same surface.
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                     : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                     : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                     : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                     : Appearance.colors.colSurfaceContainerLow
-                radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                      : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                      : Appearance.rounding.windowRounding - root.contentPadding
-                border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                            : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-                            : Appearance.inirEverywhere ? 1 : 0
-                border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                            : Appearance.zzzEverywhere ? Appearance.zzz.hairline
-                            : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                            : "transparent"
+                color: Appearance.colors.colSurfaceContainerLow
+                radius: Appearance.rounding.windowRounding - root.contentPadding
+                border.width: 0
+                border.color: "transparent"
 
                 // ── Page header: icon + name + description ──
                 Item {
@@ -1549,7 +1457,7 @@ ApplicationWindow {
                     Rectangle {
                         anchors { bottom: parent.bottom; left: parent.left; right: parent.right; leftMargin: 16; rightMargin: 16 }
                         height: 1
-                        color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle : Appearance.m3colors.m3outlineVariant
+                        color: Appearance.m3colors.m3outlineVariant
                         opacity: 0.5
                     }
                 }
@@ -1601,16 +1509,10 @@ ApplicationWindow {
                         }
                         anchors.top: parent.top
                         anchors.topMargin: 8
-                        radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                             : Appearance.rounding.normal
+                        radius: Appearance.rounding.normal
                         color: "transparent"
-                        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                                    : Appearance.inirEverywhere ? 1 : 1
-                        border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                            : Appearance.auroraEverywhere ? Appearance.aurora.colPopupBorder
-                            : Appearance.m3colors.m3outlineVariant
+                        border.width: 1
+                        border.color: Appearance.m3colors.m3outlineVariant
 
                         GlassBackground {
                             anchors.fill: parent
@@ -1625,7 +1527,7 @@ ApplicationWindow {
                             auroraTransparency: Math.max(0.22, Appearance.aurora.popupTransparentize - 0.12)
                         }
 
-                        layer.enabled: Appearance.effectsEnabled && !Appearance.auroraEverywhere
+                        layer.enabled: Appearance.effectsEnabled
                         layer.effect: DropShadow {
                             color: Qt.rgba(0, 0, 0, 0.3)
                             radius: 12
@@ -1675,20 +1577,12 @@ ApplicationWindow {
 
                                 width: resultsListView.width
                                 implicitHeight: 52
-                                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                                            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-                                            : Appearance.rounding.small
+                                buttonRadius: Appearance.rounding.small
 
                                 colBackground: ListView.isCurrentItem
-                                    ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                      : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                                      : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                                      : Appearance.colors.colPrimaryContainer)
+                                    ? Appearance.colors.colPrimaryContainer
                                     : "transparent"
-                                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                                                  : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-                                                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                                                  : Appearance.colors.colLayer2
+                                colBackgroundHover: Appearance.colors.colLayer2
 
                                 Keys.forwardTo: [resultsListView]
                                 onClicked: root.openSearchResult(modelData)

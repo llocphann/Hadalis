@@ -53,6 +53,14 @@ The media player widget appears in:
 - Right sidebar
 - Waffle action center
 
+### MPD and rmpc
+
+`rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself. Hadalis therefore keeps Media on its normal MPRIS boundary and uses `mpd-mpris` as the bridge. Arch audio/full-experience packages include `mpd-mpris`; existing repo-managed Arch installs receive it through required migration `042-mpd-mpris-bridge` on `inir update`/migration. Its default user service connects to MPD on `localhost:6600`.
+
+Hadalis probes for the `mpd-mpris` binary and watches the MPD/PipeWire session. For the normal local endpoint (`localhost/127.0.0.1:6600`) it starts the distro-provided `mpd-mpris.service` when needed. If Left Sidebar Music is configured for another host, port, or Unix socket, Hadalis launches a shell-owned `mpd-mpris` instance named `org.mpris.MediaPlayer2.mpd.hadalis` with that exact endpoint instead of reusing an unrelated default bridge. The bridge then appears through the same Quickshell MPRIS service as every other player, so the Bar, Media popup and Sidebars observe one playback session. If the bridge binary/service is unavailable, MPD protocol playback remains usable and only MPRIS-wide shell integration is reduced.
+
+NixOS/Home Manager users can still manage their normal MPD/MPRIS services through `services.mpd-mpris`; Hadalis does not overwrite those unit definitions.
+
 ### Player prioritization
 
 When multiple players are active, iNiR picks the most relevant one:
@@ -61,11 +69,19 @@ When multiple players are active, iNiR picks the most relevant one:
 2. The user's manually selected ("tracked") player beats auto-detection
 3. If nothing is playing, the last active player stays visible
 
-### YT Music
+### Local Music
 
-The left sidebar includes a full YT Music player. It uses mpv for playback and yt-dlp for stream extraction. Search, queue management, playlists, and playback controls all work from within the shell.
+The left sidebar **Music** tab is a frontend for the user's MPD library. MPD owns the database, saved playlists and active queue; Hadalis does not create a second player process. The default endpoint is `127.0.0.1:6600`, configurable in Settings. The optional local folder field is only a path override for resolving cover files when MPD cannot report `music_directory`.
 
-When YT Music is playing via the sidebar AND a browser tab is also showing YT Music, iNiR deduplicates them in the media controls (you see one player, not two).
+Songs come from MPD `listallinfo`; saved MPD playlists, folder collections and the live MPD queue are selectable directly in the sidebar. Double-clicking a song appends that database URI to the existing MPD queue with `addid` and immediately starts the exact appended entry with `playid`, so existing queued tracks are preserved. Queue rows can be removed individually through MPD `deleteid`, and the Queue view exposes a Clear action backed by MPD `clear`. Starting a collection still replaces the MPD queue with that collection. Database refresh calls MPD `update`.
+
+Normal transport integration uses the endpoint-matched `mpd-mpris` bridge: play/pause, previous/next, seeking, volume and shuffle prefer the MPD MPRIS player exposed through `MprisController`. Direct MPD commands are only a graceful fallback or are used for MPD-only operations such as queue replacement/database update. Bar, Media Popup and other media surfaces therefore observe the same session.
+
+The sidebar now-playing surface reuses the same `PlayerControl` component as the Bar Media popup, including the shared artwork, progress, transport controls and CAVA presentation. Songs, Playlists and Queue are explicit scrollable views; Songs/Queue use compact 50 px rows, the Queue has per-track remove plus Clear controls, and the Songs search field is height-capped so it cannot consume the library viewport. Song rows resolve folder covers first; when no local cover file exists, the MPD helper reads `albumart` (then `readpicture` for embedded art), caches one image per album/folder under the user cache directory, and exposes it to QML as a `file://` URL.
+
+The **Lyrics** tab is local-only. For the current MPD track, Hadalis looks beside the resolved audio path for same-name `.lrc` (preferred) or `.txt` sidecars. Timed LRC lines follow MPRIS/MPD playback position; unsynchronized text remains manually scrollable. This tab performs no network lyric lookup.
+
+The historical `YtMusic` source remains only as compatibility code and is no longer routed from the Left Sidebar or its Settings UI.
 
 ### Media controls layouts
 

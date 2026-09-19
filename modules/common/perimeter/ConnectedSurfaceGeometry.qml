@@ -181,47 +181,75 @@ QtObject {
         ? bodyRect.x + bodyRect.width / 2
         : bodyRect.y + bodyRect.height / 2
 
-    // A Caelestia-like connected surface starts at roughly the source control's
-    // width, then broadens into the popup body. The connector's body-side extent
-    // therefore includes rounded shoulders instead of remaining a thin stem.
+    // Every connected popup uses the same token-backed neck width. The source
+    // control may be wider or narrower, but it must not resize the connector;
+    // only an unusually narrow popup body is allowed to clamp it. The body-side
+    // shoulder still flares by the shared outer radius so the join stays organic.
     readonly property real connectorSourceExtent: snapSize(Math.min(
         bodyTangentExtent,
-        Math.max(Math.max(0, connectorWidth), anchorTangentExtent)))
+        Math.max(0, connectorWidth)))
     readonly property real connectorBodyExtent: snapSize(Math.min(
         bodyTangentExtent,
         connectorSourceExtent + Math.max(0, outerRadius) * 2))
 
     readonly property real revealProgress: clamp(progress, 0, 1)
-    readonly property real animatedTangentExtent: snapSize(
-        connectorSourceExtent
-            + (bodyTangentExtent - connectorSourceExtent) * revealProgress)
-    readonly property real animatedCrossExtent: snapSize(
-        crossBodyExtent * revealProgress)
-    readonly property real animatedTangentCenter: snap(
-        anchorCenter + (bodyTangentCenter - anchorCenter) * revealProgress)
-    readonly property real animatedTangentStart: snap(
-        animatedTangentCenter - animatedTangentExtent / 2)
+    // Preserve Caelestia's expressive-spatial overshoot for the actual motion.
+    // Semantic visibility/input still consumes the clamped revealProgress, but
+    // the body translation follows the animated scalar itself so the default
+    // spatial curve can travel a few pixels past rest before settling.
+    readonly property real motionProgress: Number.isFinite(Number(progress))
+        ? Number(progress) : 0
+    // Slide the complete body under the owning Bar/Screen Edge. The body never
+    // resizes; its full cross-axis extent travels behind a fixed reveal boundary.
+    readonly property real animatedTangentExtent: bodyTangentExtent
+    readonly property real animatedCrossExtent: crossBodyExtent
+    readonly property real animatedTangentCenter: bodyTangentCenter
+    readonly property real animatedTangentStart: horizontal ? bodyRect.x : bodyRect.y
     readonly property real animationOffset: snap(
-        (1 - revealProgress) * effectiveConnectorLength)
-
-    // Morph from the real anchor: the tangent axis expands from the anchor/neck
-    // width while the inward axis grows from zero to the full body. This reads as
-    // one surface extruding from the bar instead of a floating card fading nearby.
-    readonly property rect animatedBodyRect: edge === "top"
-        ? Qt.rect(animatedTangentStart,
-            snap(bodyRect.y - animationOffset),
-            animatedTangentExtent, animatedCrossExtent)
+        (1 - motionProgress) * crossBodyExtent)
+    // Caelestia panel wrappers translate only on the attachment axis. Tangent
+    // placement remains fixed even when the resting body is corner-clamped;
+    // this avoids a diagonal drift and keeps the connected shoulder stationary
+    // relative to the source while the whole body slides under the owner.
+    // Fixed viewport on the screen-facing side of the resting attachment seam.
+    // Rendering inside this rect makes translated pixels disappear underneath
+    // the Bar/Screen Edge instead of painting over that compositor surface.
+    readonly property real attachmentBoundary: edge === "top"
+        ? anchorRect.y + anchorRect.height
+        : edge === "bottom" ? anchorRect.y
+        : edge === "left" ? anchorRect.x + anchorRect.width
+        : anchorRect.x
+    readonly property rect revealClipRect: edge === "top"
+        ? Qt.rect(outputRect.x, snap(attachmentBoundary),
+            outputRect.width,
+            Math.max(0, outputRect.y + outputRect.height - snap(attachmentBoundary)))
         : edge === "bottom"
-            ? Qt.rect(animatedTangentStart,
-                snap(bodyRect.y + bodyRect.height + animationOffset - animatedCrossExtent),
-                animatedTangentExtent, animatedCrossExtent)
+            ? Qt.rect(outputRect.x, outputRect.y,
+                outputRect.width,
+                Math.max(0, snap(attachmentBoundary) - outputRect.y))
+        : edge === "left"
+            ? Qt.rect(snap(attachmentBoundary), outputRect.y,
+                Math.max(0, outputRect.x + outputRect.width - snap(attachmentBoundary)),
+                outputRect.height)
+        : Qt.rect(outputRect.x, outputRect.y,
+            Math.max(0, snap(attachmentBoundary) - outputRect.x),
+            outputRect.height)
+
+    readonly property rect animatedBodyRect: edge === "top"
+        ? Qt.rect(snap(bodyRect.x),
+            snap(bodyRect.y - animationOffset),
+            bodyRect.width, bodyRect.height)
+        : edge === "bottom"
+            ? Qt.rect(snap(bodyRect.x),
+                snap(bodyRect.y + animationOffset),
+                bodyRect.width, bodyRect.height)
         : edge === "left"
             ? Qt.rect(snap(bodyRect.x - animationOffset),
-                animatedTangentStart,
-                animatedCrossExtent, animatedTangentExtent)
-        : Qt.rect(snap(bodyRect.x + bodyRect.width + animationOffset - animatedCrossExtent),
-            animatedTangentStart,
-            animatedCrossExtent, animatedTangentExtent)
+                snap(bodyRect.y),
+                bodyRect.width, bodyRect.height)
+        : Qt.rect(snap(bodyRect.x + animationOffset),
+            snap(bodyRect.y),
+            bodyRect.width, bodyRect.height)
 
     readonly property real connectorTangentExtent: connectorBodyExtent
 
@@ -283,6 +311,19 @@ QtObject {
 
     readonly property rect restVisualBounds: unionRect(bodyRect, restConnectorRect)
     readonly property rect visualBounds: unionRect(animatedBodyRect, connectorRect)
+
+    function intersectRect(a, b) {
+        const left = Math.max(a.x, b.x)
+        const top = Math.max(a.y, b.y)
+        const right = Math.min(a.x + a.width, b.x + b.width)
+        const bottom = Math.min(a.y + a.height, b.y + b.height)
+        return Qt.rect(left, top,
+            Math.max(0, right - left), Math.max(0, bottom - top))
+    }
+
+    // Input follows only the visible body segment during slide-under motion.
+    readonly property rect visibleBodyRect:
+        intersectRect(animatedBodyRect, revealClipRect)
     readonly property rect blurRect: {
         const expansion = Math.max(0, blurExpansion)
         const left = snapDown(visualBounds.x - expansion)

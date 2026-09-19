@@ -55,15 +55,14 @@ RippleButton {
         }
     }
 
-    // ZZZ: raised carbon keycaps (bg2) over the bg0 backplate, with the active
-    // mod key reading as a signal sticker. Other styles keep the flat layer1.
+    // Material keycaps use the canonical layer/primary interaction colors.
     colBackground: shape == "empty"
         ? ColorUtils.transparentize(Appearance.colors.colLayer1)
         : showPhysicalPress
             ? Appearance.colLayer1Active
-            : (Appearance.zzzEverywhere ? Appearance.zzz.bg2 : Appearance.colors.colLayer1)
-    colBackgroundToggled: Appearance.zzzEverywhere ? Appearance.zzz.sticker : Appearance.colors.colPrimary
-    buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
+            : Appearance.colors.colLayer1
+    colBackgroundToggled: Appearance.colors.colPrimary
+    buttonRadius: Appearance.rounding.small
     implicitWidth: baseWidth * widthMultiplier[shape] || baseWidth
     implicitHeight: baseHeight * heightMultiplier[shape] || baseHeight
     Layout.fillWidth: shape == "space" || shape == "expand"
@@ -139,8 +138,8 @@ RippleButton {
             Appearance.font.pixelSize.large
         horizontalAlignment: Text.AlignHCenter
         color: root.toggled
-            ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimary)
-            : (Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.colors.colOnLayer1)
+            ? Appearance.colors.colOnPrimary
+            : Appearance.colors.colOnLayer1
         text: root.isBackspace ? "backspace" : root.isEnter ? "subdirectory_arrow_left" :
             (root.toggled && root.keyData.labelToggled) ? root.keyData.labelToggled :
             Ydotool.shiftMode == 2 ? (root.keyData.labelCaps || root.keyData.labelShift || root.keyData.label) :

@@ -136,7 +136,9 @@ Button {
             sourceSize.width: root.rowHeight * modelData.aspect_ratio
             sourceSize.height: root.rowHeight
 
-            layer.enabled: true
+            // Delegate masks are numerous on image-heavy feeds. Release
+            // their textures with the containing sidebar.
+            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: root.rowHeight * modelData.aspect_ratio

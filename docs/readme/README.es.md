@@ -111,7 +111,7 @@ Quería que mi escritorio se vea y funcione de cierta forma y nada lo hacía exa
 ## Features
 
 **Dos familias de paneles**, intercambiables al vuelo con `Super+Shift+W`:
-- **Material ii** — barra flotante, sidebars, dock, 6 estilos visuales (material, cards, aurora, inir, angel, zzz)
+- **Material ii** — barra flotante, sidebars, dock; Material es el único tema visual global
 - **Waffle** — barra de tareas estilo Windows 11, menú inicio, centro de acciones, centro de notificaciones
 
 **Tematización automática** — elegís un wallpaper y todo se adapta:
@@ -128,7 +128,7 @@ Quería que mi escritorio se vea y funcione de cierta forma y nada lo hacía exa
 
 Elegís un wallpaper y todo el sistema sigue — shell, apps GTK/Qt, terminales, Firefox, Discord, pantalla de login SDDM. Todo automático.
 
-- **6 estilos visuales** — Material (sólido), Cards, Aurora (blur de vidrio), iNiR (inspirado en TUI), Angel (neo-brutalismo), ZZZ
+- **Tema visual global** — solo Material; las paletas de color y las opciones locales de componentes siguen siendo independientes
 - **Colores dinámicos del wallpaper** vía Material You — se propagan a todo el sistema
 - **10 herramientas de terminal auto-tematizadas** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
 - **Tematización de apps** — GTK3/4, Qt (vía plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)

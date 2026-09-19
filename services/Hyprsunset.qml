@@ -23,6 +23,8 @@ Singleton {
     property bool active: false
     property bool stateKnown: false
     property bool _pendingEnable: false
+    property bool _pendingDisable: false
+    property bool _toggleAfterProbe: false
     property bool _pendingRestart: false
     property bool _restartOwnedAfterExit: false
     property bool _destroying: false
@@ -50,8 +52,9 @@ Singleton {
     property int clockMinute: DateTime.clock.minutes
 
     property var manualActive
-    property int manualActiveHour
-    property int manualActiveMinute
+    // A manual toggle while automatic mode is enabled overrides the schedule
+    // until the next configured boundary, rather than being undone next minute.
+    property real manualOverrideUntilMs: 0
 
     // Debounce temperature-driven restarts of the process Hadalis owns. An
     // externally started night-light process is observed but never restarted.
@@ -75,9 +78,10 @@ Singleton {
 
     onClockMinuteChanged: reEvaluate()
     onAutomaticChanged: {
-        root.manualActive = undefined;
-        root.firstEvaluation = true;
-        reEvaluate();
+        root.manualActive = undefined
+        root.manualOverrideUntilMs = 0
+        root.firstEvaluation = true
+        reEvaluate()
     }
 
     function inBetween(t, from, to) {
@@ -89,16 +93,44 @@ Singleton {
         }
     }
 
-    function reEvaluate() {
-        const t = clockHour * 60 + clockMinute;
-        const from = fromHour * 60 + fromMinute;
-        const to = toHour * 60 + toMinute;
-        const manualActive = manualActiveHour * 60 + manualActiveMinute;
+    function _nextScheduleBoundaryMs() {
+        const now = new Date()
+        const nowMs = now.getTime()
+        let nextMs = Number.MAX_VALUE
 
-        if (root.manualActive !== undefined && (inBetween(from, manualActive, t) || inBetween(to, manualActive, t))) {
-            root.manualActive = undefined;
+        for (let dayOffset = 0; dayOffset <= 1; ++dayOffset) {
+            const fromDate = new Date(now)
+            fromDate.setDate(fromDate.getDate() + dayOffset)
+            fromDate.setHours(root.fromHour, root.fromMinute, 0, 0)
+            const fromMs = fromDate.getTime()
+            if (fromMs > nowMs && fromMs < nextMs)
+                nextMs = fromMs
+
+            const toDate = new Date(now)
+            toDate.setDate(toDate.getDate() + dayOffset)
+            toDate.setHours(root.toHour, root.toMinute, 0, 0)
+            const toMs = toDate.getTime()
+            if (toMs > nowMs && toMs < nextMs)
+                nextMs = toMs
         }
-        root.shouldBeOn = inBetween(t, from, to);
+
+        return nextMs === Number.MAX_VALUE
+            ? nowMs + 24 * 60 * 60 * 1000
+            : nextMs
+    }
+
+    function reEvaluate() {
+        const t = clockHour * 60 + clockMinute
+        const from = fromHour * 60 + fromMinute
+        const to = toHour * 60 + toMinute
+
+        if (root.manualActive !== undefined
+                && root.manualOverrideUntilMs > 0
+                && Date.now() >= root.manualOverrideUntilMs) {
+            root.manualActive = undefined
+            root.manualOverrideUntilMs = 0
+        }
+        root.shouldBeOn = inBetween(t, from, to)
         if (firstEvaluation) {
             firstEvaluation = false;
             root.ensureState();
@@ -113,8 +145,8 @@ Singleton {
 
     onShouldBeOnChanged: ensureState()
     function ensureState() {
-        if (root.manualActive !== undefined)
-            return;
+        if (root.automatic && root.manualActive !== undefined)
+            return
 
         if (root.automatic) {
             if (root.shouldBeOn) {
@@ -129,7 +161,12 @@ Singleton {
         }
     }
 
-    function load() { } // Dummy to force init
+    function load() {
+        // shell.qml calls this once during deferred initialization. Resolve the
+        // configured schedule and real backend state explicitly; state probes
+        // themselves stay one-shot instead of being bound permanently running.
+        root.reEvaluate()
+    }
 
     function _ownedProcessRunning(): bool {
         return CompositorService.isNiri ? wlsunsetProc.running : hyprsunsetProc.running
@@ -184,6 +221,22 @@ Singleton {
     function _finishStateProbe(detectedActive: bool): void {
         root.active = detectedActive || root._ownedProcessRunning()
         root.stateKnown = true
+
+        if (root._toggleAfterProbe) {
+            root._toggleAfterProbe = false
+            root._applyManualDesiredState(!root.active)
+            return
+        }
+
+        if (root._pendingDisable) {
+            root._pendingDisable = false
+            if (root.active) {
+                root._stopDetectedBackend()
+                return
+            }
+            root.active = false
+        }
+
         if (root._pendingEnable) {
             root._pendingEnable = false
             if (!root.active)
@@ -192,6 +245,12 @@ Singleton {
     }
 
     function enable() {
+        root._pendingDisable = false
+
+        if (backendStopProc.running) {
+            root._pendingEnable = true
+            return
+        }
         if (root._ownedProcessRunning()) {
             root.active = true
             return
@@ -201,10 +260,24 @@ Singleton {
             root.fetchState()
             return
         }
-        // A process that Hadalis did not launch is not ours to replace or kill.
+        // An already-active external backend is a valid active state. If the
+        // user later changes temperature, it is migrated to an owned process.
         if (root.active)
             return
         root._startOwnedProcess()
+    }
+
+    function _stopDetectedBackend(): void {
+        if (root._destroying || backendStopProc.running)
+            return
+
+        // Destruction still stops only child processes owned by this singleton.
+        // This path is different: an explicit/scheduled OFF request is
+        // authoritative, so a legacy detached backend must also be disabled.
+        backendStopProc.command = CompositorService.isNiri
+            ? ["/usr/bin/pkill", "-TERM", "-x", "wlsunset"]
+            : ["/usr/bin/pkill", "-TERM", "-x", "hyprsunset"]
+        backendStopProc.running = true
     }
 
     function disable() {
@@ -220,11 +293,25 @@ Singleton {
             return
         }
 
-        // Re-check externally-owned state, but never use kill-by-name here.
-        if (!root.stateKnown || root.active)
+        if (backendStopProc.running) {
+            root._pendingDisable = true
+            return
+        }
+
+        if (!root.stateKnown) {
+            root._pendingDisable = true
             root.fetchState()
-        else
-            root.active = false
+            return
+        }
+
+        if (root.active) {
+            root._pendingDisable = true
+            root._stopDetectedBackend()
+            return
+        }
+
+        root._pendingDisable = false
+        root.active = false
     }
 
     function fetchState() {
@@ -233,6 +320,33 @@ Singleton {
                 niriFetchProc.running = true;
         } else if (!fetchProc.running) {
             fetchProc.running = true;
+        }
+    }
+
+    Process {
+        id: backendStopProc
+        running: false
+        property bool startObserved: false
+
+        onRunningChanged: {
+            if (backendStopProc.running) {
+                backendStopProc.startObserved = false
+                return
+            }
+            if (backendStopProc.startObserved)
+                return
+
+            console.warn("[Hyprsunset] Night-light backend stop command failed to start")
+            stateVerifyTimer.restart()
+        }
+        onStarted: backendStopProc.startObserved = true
+        onExited: (exitCode, exitStatus) => {
+            // pkill returns 1 when no matching process remains; that is already
+            // the desired OFF state. A verification probe is authoritative.
+            if (exitCode > 1)
+                console.warn("[Hyprsunset] Night-light backend stop failed with code", exitCode)
+            root.active = false
+            stateVerifyTimer.restart()
         }
     }
 
@@ -265,7 +379,7 @@ Singleton {
         id: fetchProc
         property bool startObserved: false
         property bool timedOut: false
-        running: !CompositorService.isNiri
+        running: false
         command: ["/usr/bin/bash", "-c", "hyprctl hyprsunset temperature"]
         stdout: StdioCollector {
             id: stateCollector
@@ -348,7 +462,7 @@ Singleton {
         id: niriFetchProc
         property bool startObserved: false
         property bool timedOut: false
-        running: CompositorService.isNiri
+        running: false
         command: ["/usr/bin/pidof", "wlsunset"]
         onRunningChanged: {
             if (niriFetchProc.running) {
@@ -387,33 +501,52 @@ Singleton {
         }
     }
 
-    function toggle(active = undefined) {
-        if (root.manualActive === undefined) {
-            root.manualActive = root.active;
-            root.manualActiveHour = root.clockHour;
-            root.manualActiveMinute = root.clockMinute;
-        }
-
-        root.manualActive = active !== undefined ? active : !root.manualActive;
-        Config.setNestedValue("light.night.enabled", root.manualActive);
-        if (root.manualActive) {
-            root.enable();
-        } else {
-            root.disable();
-        }
+    function _applyManualDesiredState(desired: bool): void {
+        root.manualActive = desired
+        root.manualOverrideUntilMs = root.automatic
+            ? root._nextScheduleBoundaryMs()
+            : 0
+        Config.setNestedValue("light.night.enabled", desired)
+        if (desired)
+            root.enable()
+        else
+            root.disable()
     }
 
-    // React to temperature changes while active. Restart only the process that
-    // this singleton owns; an external night-light process is left untouched.
+    function toggle(active = undefined) {
+        if (active === undefined && !root.stateKnown) {
+            // Resolve the real backend state before inverting it. The singleton
+            // starts with active=false, which is not authoritative before probe.
+            root._toggleAfterProbe = true
+            root.fetchState()
+            return
+        }
+
+        const desired = active !== undefined ? Boolean(active) : !root.active
+        root._applyManualDesiredState(desired)
+    }
+
+    // React to temperature changes while active. Owned backends restart in
+    // place; legacy/detached backends are migrated to an owned process.
     Connections {
         target: Config.options?.light?.night ?? null
         enabled: !!(Config.options?.light?.night)
         
         function onColorTemperatureChanged() {
-            if (!root.active || !root._ownedProcessRunning())
+            if (!root.active)
                 return
-            root._pendingRestart = true
-            restartDebounce.restart()
+
+            if (root._ownedProcessRunning()) {
+                root._pendingRestart = true
+                restartDebounce.restart()
+                return
+            }
+
+            // A legacy detached backend cannot be reconfigured in place on
+            // Niri. Stop it, then let the state probe start an owned instance
+            // with the new temperature.
+            root._pendingEnable = true
+            root._stopDetectedBackend()
         }
     }
 
@@ -423,13 +556,17 @@ Singleton {
         enabled: root.automatic && !!(Config.options?.light?.night)
         
         function onFromChanged() {
-            root.firstEvaluation = true;
-            root.reEvaluate();
+            if (root.manualActive !== undefined)
+                root.manualOverrideUntilMs = root._nextScheduleBoundaryMs()
+            root.firstEvaluation = true
+            root.reEvaluate()
         }
         
         function onToChanged() {
-            root.firstEvaluation = true;
-            root.reEvaluate();
+            if (root.manualActive !== undefined)
+                root.manualOverrideUntilMs = root._nextScheduleBoundaryMs()
+            root.firstEvaluation = true
+            root.reEvaluate()
         }
     }
 
@@ -440,6 +577,9 @@ Singleton {
         hyprStateProbeTimeout.stop()
         niriStateProbeTimeout.stop()
         root._restartOwnedAfterExit = false
+        root._pendingDisable = false
+        root._toggleAfterProbe = false
+        backendStopProc.running = false
         hyprsunsetProc.running = false
         wlsunsetProc.running = false
     }

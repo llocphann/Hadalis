@@ -22,12 +22,9 @@ PanelSurface {
         const _global = Wallpapers.effectiveWallpaperUrl
         return WallpaperListener.wallpaperUrlForScreen(root.surfaceScreen)
     }
-    
-    readonly property bool inirEverywhere: Appearance.inirEverywhere
-    readonly property bool auroraEverywhere: Appearance.auroraEverywhere
 
     elevation: 1
-    radiusOverride: islandSkin ? -1 : (inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal)
+    radiusOverride: islandSkin ? -1 : Appearance.rounding.normal
 
     ColumnLayout {
         id: wallpaperLayout
@@ -43,18 +40,14 @@ PanelSurface {
             MaterialSymbol {
                 text: "wallpaper"
                 iconSize: 16
-                color: root.inirEverywhere ? Appearance.inir.colPrimary
-                     : root.auroraEverywhere ? Appearance.colors.colPrimary
-                     : Appearance.colors.colPrimary
+                color: Appearance.colors.colPrimary
             }
 
             StyledText {
                 text: Translation.tr("Wallpaper")
                 font.pixelSize: Appearance.font.pixelSize.small
                 font.weight: Font.Medium
-                color: root.inirEverywhere ? Appearance.inir.colText
-                     : root.auroraEverywhere ? Appearance.colors.colOnSurface
-                     : Appearance.colors.colOnLayer1
+                color: Appearance.colors.colOnLayer1
             }
 
             Item { Layout.fillWidth: true }
@@ -63,19 +56,15 @@ PanelSurface {
                 implicitWidth: 26
                 implicitHeight: 26
                 buttonText: Translation.tr("Random")
-                buttonRadius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: "transparent"
-                colBackgroundHover: root.inirEverywhere ? Appearance.inir.colLayer2Hover 
-                    : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                    : Appearance.colors.colLayer2Hover
+                colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: Wallpapers.randomFromCurrentFolder()
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "shuffle"
                     iconSize: 14
-                    color: root.inirEverywhere ? Appearance.inir.colTextSecondary
-                         : root.auroraEverywhere ? Appearance.colors.colOnSurfaceVariant
-                         : Appearance.colors.colSubtext
+                    color: Appearance.colors.colSubtext
                 }
                 StyledToolTip { text: Translation.tr("Random") }
             }
@@ -84,19 +73,15 @@ PanelSurface {
                 implicitWidth: 26
                 implicitHeight: 26
                 buttonText: Translation.tr("Browse")
-                buttonRadius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: "transparent"
-                colBackgroundHover: root.inirEverywhere ? Appearance.inir.colLayer2Hover 
-                    : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                    : Appearance.colors.colLayer2Hover
+                colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: GlobalActions.runLauncher(["wallpaperSelector", "toggle"])
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "folder_open"
                     iconSize: 14
-                    color: root.inirEverywhere ? Appearance.inir.colTextSecondary
-                         : root.auroraEverywhere ? Appearance.colors.colOnSurfaceVariant
-                         : Appearance.colors.colSubtext
+                    color: Appearance.colors.colSubtext
                 }
                 StyledToolTip { text: Translation.tr("Browse") }
             }
@@ -111,7 +96,7 @@ PanelSurface {
             Rectangle {
                 id: previewMask
                 anchors.fill: parent
-                radius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+                radius: Appearance.rounding.small
                 visible: false
             }
 
@@ -123,10 +108,10 @@ PanelSurface {
                 asynchronous: true
                 cache: true
                 smooth: true
-                mipmap: true
+                mipmap: false
                 sourceSize.width: previewContainer.width * 2
                 sourceSize.height: previewContainer.height * 2
-                layer.enabled: true
+                layer.enabled: root.visible && GlobalStates.controlPanelOpen
                 layer.effect: GE.OpacityMask {
                     maskSource: previewMask
                 }
@@ -143,7 +128,7 @@ PanelSurface {
                 Rectangle {
                     id: fadeMask
                     anchors.fill: parent
-                    radius: root.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+                    radius: Appearance.rounding.small
                     visible: false
                 }
 

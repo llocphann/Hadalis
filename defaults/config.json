@@ -63,6 +63,20 @@
     },
     "appearance": {
         "globalStyle": "material",
+        "screenEdge": {
+            "width": 10,
+            "radius": 25,
+            "shadow": {
+                "enabled": true,
+                "size": 15,
+                "opacity": 0.7
+            },
+            "physicalShadow": {
+                "enabled": true,
+                "size": 15,
+                "opacity": 0.7
+            }
+        },
         "colorInvert": false,
         "island": {
             "radius": 18,
@@ -109,7 +123,7 @@
         "recentThemes": [],
         "favoriteThemes": [],
         "globalStyleCornerStyles": {
-            "material": 1,
+            "material": 0,
             "cards": 3,
             "aurora": 0,
             "inir": 1,
@@ -132,7 +146,7 @@
             "background": "",
             "sensitivity": 100,
             "bars": 0,
-            "framerate": 60,
+            "framerate": 30,
             "barWidth": 2,
             "barSpacing": 1,
             "stereo": true,
@@ -799,7 +813,7 @@
         },
         "borderless": true,
         "bottom": false,
-        "cornerStyle": 1,
+        "cornerStyle": 0,
         "customRounding": -1,
         "floatStyleShadow": true,
         "height": 40,
@@ -1380,7 +1394,7 @@
                 "translator",
                 "anime",
                 "animeSchedule",
-                "ytmusic"
+                "music"
             ]
         },
         "right": {
@@ -1432,6 +1446,16 @@
         "plugins": {
             "enable": false,
             "lastActivePlugin": ""
+        },
+        "music": {
+            "enable": false,
+            "libraryFolder": "",
+            "mpdHost": "127.0.0.1",
+            "mpdPort": 6600,
+            "normalizeVolume": false,
+            "shuffleMode": false,
+            "repeatMode": 0,
+            "volume": 100
         },
         "ytmusic": {
             "enable": false,
@@ -1684,7 +1708,7 @@
         "disableReloadToasts": true,
         "disableDiscoverOverlay": true,
         "suppressNotifications": true,
-        "checkInterval": 2000,
+        "checkInterval": 10000,
         "minimalMode": false,
         "niriWindowListUpdateIntervalMs": 100,
         "niriWindowListUpdateIntervalMsGameMode": 500
@@ -2006,7 +2030,13 @@
     "knownPanels": [],
     "powerProfiles": {
         "restoreOnStart": true,
-        "preferredProfile": ""
+        "preferredProfile": "",
+        "fanControl": {
+            "enabled": false,
+            "powerSaver": 0,
+            "balanced": 0,
+            "performance": 0
+        }
     },
     "voiceSearch": {
         "duration": 5,

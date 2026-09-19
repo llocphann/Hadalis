@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Regression checks for route-owned connected-surface enter/retract lifecycle."""
+"""Regression checks for supported connected-surface presentation lifecycle."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-failures = []
+failures: list[str] = []
 
 
 def read(path: str) -> str:
@@ -16,69 +16,65 @@ def check(condition: bool, message: str) -> None:
 
 
 def main() -> None:
-    helper = read("modules/common/perimeter/ConnectedSurfaceRouteState.qml")
-    qmldir = read("modules/common/perimeter/qmldir")
+    popup = read("modules/bar/StyledPopup.qml")
+    media = read("modules/bar/Media.qml")
+    weather_bar = read("modules/bar/weather/WeatherBar.qml")
+    weather_popup = read("modules/bar/weather/WeatherPopup.qml")
+    sidebar = read("modules/sidebar/SidebarHost.qml")
 
-    check("ConnectedSurfaceRouteState 1.0 ConnectedSurfaceRouteState.qml" in qmldir,
-          "ConnectedSurfaceRouteState must be exported by the perimeter module")
     for token in (
-        "property var _routeSnapshot",
-        "property bool _routeOwned",
+        "property bool requestedVisible",
         "property bool _lingerVisible",
         "property real revealProgress",
         "readonly property bool visualVisible",
-        "Behavior on revealProgress",
         "retractTimer",
-        "function onOpened",
-        "function onUpdated",
-        "function onClosed",
+        "progress: root.revealProgress",
+        "mask: connectedMask",
     ):
-        check(token in helper,
-              f"ConnectedSurfaceRouteState missing lifecycle contract: {token}")
-    check("root._routeOwned = false" in helper
-          and "root.revealProgress = 0" in helper,
-          "Route close must revoke semantic ownership before retracting visual geometry")
-    check("root._routeSnapshot = null" in helper,
-          "Route snapshot must be released after the retract tail")
+        check(token in popup,
+              f"StyledPopup missing supported connected lifecycle contract: {token}")
 
-    for path, surface_name in (
-        ("modules/perimeter/MediaConnectedSurface.qml", "media"),
-        ("modules/perimeter/WeatherConnectedSurface.qml", "weather"),
+    check("root.requestedVisible || root._lingerVisible" in popup,
+          "StyledPopup must remain resident through its retract tail")
+    check("inputEnabled: root.requestedVisible" in popup,
+          "StyledPopup must revoke semantic input when a click popup closes")
+
+    check(media.count("StyledPopup {") >= 2,
+          "Media wheel HUD and expanded controls must use StyledPopup")
+    check("keyboardFocus: true" in media,
+          "Expanded Media popup must retain keyboard focus ownership")
+    check("SurfaceRouteController" not in media
+          and "qs.modules.perimeter" not in media,
+          "Normal Media UX must not depend on retired broad perimeter routing")
+
+    check("StyledPopup {" in weather_popup,
+          "Weather hover popup must use the supported StyledPopup shell")
+    check('GlobalStates.sidebarRightRequestedWidget = "weather"' in weather_bar
+          and "GlobalStates.openSidebarRight" in weather_bar,
+          "Weather primary activation must route to the right-sidebar Weather tab")
+    check("SurfaceRouteController" not in weather_bar
+          and "SurfaceRouteController" not in weather_popup,
+          "Normal Weather UX must not depend on retired broad perimeter routing")
+
+    for token in (
+        "ConnectedSurfaceConnector",
+        "id: sidebarBridgeGeometry",
+        "geometry: sidebarBridgeGeometry",
+        "PerimeterTokens.seamOverlap",
+        "Config.options?.appearance?.screenEdge?.width ?? 10",
     ):
-        source = read(path)
-        check("ConnectedSurfaceRouteState {" in source,
-              f"{path} must use shared route lifecycle state")
-        check(f'surfaceName: "{surface_name}"' in source,
-              f"{path} must bind lifecycle state to its own route surface")
-        check("visible: routeState.visualVisible && root.sourceScreen !== null" in source,
-              f"{path} must stay visually resident during retract")
-        check("progress: routeState.revealProgress" in source,
-              f"{path} must drive shared connected geometry from route reveal progress")
-        check("mask: root.routeOwned ? connectedMask : emptyInputRegion" in source,
-              f"{path} must revoke pointer input as soon as semantic ownership closes")
-        check("WlrLayershell.keyboardFocus: root.routeOwned" in source,
-              f"{path} must revoke layer-shell keyboard focus while retracting")
-        check("SurfaceRouteController.current" not in source,
-              f"{path} must not bypass the shared route lifecycle state")
-        check("(routeState.revealProgress - 0.18) / 0.82" in source,
-              f"{path} content must follow the connected-surface reveal threshold")
-        check("CompositorService.isNiri" in source
-              and 'SurfaceRouteController.dismiss(root.outputName, "focus-loss")' in source,
-              f"{path} must dismiss its semantic route after Niri focus loss")
-
-    weather = read("modules/perimeter/WeatherConnectedSurface.qml")
-    check("devicePixelRatio: root.sourceScreen?.devicePixelRatio ?? 1" in weather,
-          "Weather connected geometry must snap against the owning output scale")
-    check("weatherViewport.forceActiveFocus()" in weather,
-          "Weather connected surface must request focus so Niri can observe focus loss")
+        check(token in sidebar,
+              f"Sidebar connected route contract missing: {token}")
+    check("SidebarEdgeConnectors.qml" not in sidebar,
+          "Sidebar lifecycle must not depend on the retired standalone bridge window")
 
     if failures:
-        print("Connected route lifecycle regression(s):")
+        print("Connected presentation lifecycle regression(s):")
         for failure in failures:
             print(f"  - {failure}")
         raise SystemExit(1)
 
-    print("Connected route lifecycle: OK")
+    print("Connected presentation lifecycle: OK")
 
 
 if __name__ == "__main__":

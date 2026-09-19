@@ -825,7 +825,7 @@ Singleton {
     }
 
     Timer {
-        interval: 30000
+        interval: 300000
         repeat: true
         running: root.schemaLoaded
         onTriggered: root.refresh()

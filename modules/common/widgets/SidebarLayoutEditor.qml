@@ -18,7 +18,7 @@ ColumnLayout {
     property string liftedId: ""
 
     readonly property var rightDefaultOrder: ["system", "sliders", "toggles", "notifications", "widgets"]
-    readonly property var leftDefaultOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "ytmusic", "tools", "software"]
+    readonly property var leftDefaultOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]
 
     readonly property var rightDescriptors: ({
         system: { icon: "computer", label: Translation.tr("System") },
@@ -36,7 +36,7 @@ ColumnLayout {
         animeSchedule: { icon: "calendar_month", label: Translation.tr("Schedule") },
         wallhaven: { icon: "collections", label: Translation.tr("Wallhaven") },
         news: { icon: "newspaper", label: Translation.tr("News") },
-        ytmusic: { icon: "library_music", label: Translation.tr("YT Music") },
+        music: { icon: "library_music", label: Translation.tr("Music") },
         tools: { icon: "build", label: Translation.tr("Tools") },
         software: { icon: "store", label: Translation.tr("Software") }
     })
@@ -50,9 +50,14 @@ ColumnLayout {
 
     readonly property var leftOrder: {
         root.configVersion
-        return root.sanitizeOrder(
-            Config.options?.sidebar?.left?.tabOrder ?? root.leftDefaultOrder,
-            root.leftDefaultOrder)
+        const saved = Config.options?.sidebar?.left?.tabOrder ?? root.leftDefaultOrder
+        // Existing installs may still persist the retired YT Music tab id.
+        // Normalize it before sanitizing so arranging tabs never drops Music
+        // to an unrelated fallback position.
+        const normalized = Array.isArray(saved)
+            ? saved.map(id => id === "ytmusic" ? "music" : id)
+            : root.leftDefaultOrder
+        return root.sanitizeOrder(normalized, root.leftDefaultOrder)
     }
 
     readonly property real notificationsWeight: Math.max(0.35,

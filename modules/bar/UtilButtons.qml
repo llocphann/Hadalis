@@ -13,20 +13,21 @@ import Quickshell.Services.UPower
 Item {
     id: root
     property bool borderless: Config.options?.bar?.borderless ?? false
-    readonly property color neutralIconColor: Appearance.zzzEverywhere ? Appearance.zzz.ink
-        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer2
-    readonly property color dangerIconColor: Appearance.zzzEverywhere ? Appearance.zzz.signal
-        : Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError
+    property bool vertical: false
+    readonly property color neutralIconColor: Appearance.colors.colOnLayer2
+    readonly property color dangerIconColor: Appearance.colors.colError
     // Exact content width — self-inflating (+spacing*2) made every group that
     // ends with these buttons read asymmetric: the group's own padding is the
     // spacing authority, modules must not add their own.
     implicitWidth: rowLayout.implicitWidth
     implicitHeight: rowLayout.implicitHeight
 
-    RowLayout {
+    GridLayout {
         id: rowLayout
 
-        spacing: 4
+        columns: root.vertical ? 1 : Math.max(1, children.length)
+        columnSpacing: root.vertical ? 0 : 4
+        rowSpacing: root.vertical ? 4 : 0
         anchors.centerIn: parent
 
         Loader {
@@ -228,11 +229,7 @@ Item {
                         iconSize: Appearance.font.pixelSize.large
                         color: micButton.isInUse && !micButton.isMuted
                             ? root.dangerIconColor
-                            : (Appearance.angelEverywhere ? Appearance.angel.colText
-                             : Appearance.inirEverywhere ? Appearance.inir.colOnLayer2
-                             : Appearance.zzzEverywhere ? Appearance.zzz.accent
-                             : Appearance.auroraEverywhere ? Appearance.colors.colOnSurface
-                             : Appearance.colors.colOnLayer2)
+                            : root.neutralIconColor
                     }
 
                     Rectangle {

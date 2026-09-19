@@ -134,6 +134,33 @@ printf '== privileged integration package payload ==\n'
 require_contains 'org.freedesktop.policykit.exec.path">/usr/libexec/inir-thinkfan' \
     assets/polkit/org.inir.thinkfan.policy \
     'ThinkFan polkit action no longer targets the installed helper'
+for policy in \
+    assets/polkit/org.inir.thinkfan.policy \
+    assets/polkit/org.inir.battery-charge-limit.policy; do
+    require_contains '<allow_any>no</allow_any>' "$policy" \
+        "$policy must deny non-local/non-session authorization"
+    require_contains '<allow_inactive>no</allow_inactive>' "$policy" \
+        "$policy must deny inactive-session authorization"
+    require_contains '<allow_active>yes</allow_active>' "$policy" \
+        "$policy must allow the active local session without a password prompt"
+    if grep -Fq 'auth_admin' "$policy"; then
+        fail "$policy must not restore password-gated administrator authorization"
+    fi
+done
+
+require_contains 'cmp -s "$policy" "$installed_policy"' \
+    sdata/migrations/037-battery-charge-limit-helper.sh \
+    'battery helper migration must detect a changed installed polkit policy'
+require_contains 'pkg_sudo install -Dm644 "$policy" /usr/share/polkit-1/actions/org.inir.battery-charge-limit.policy' \
+    sdata/migrations/037-battery-charge-limit-helper.sh \
+    'battery helper migration must refresh the installed polkit policy'
+require_contains 'cmp -s "$policy_src" "$policy_dst"' \
+    sdata/migrations/041-thinkfan-helper-bridge.sh \
+    'ThinkFan bridge migration must detect a changed installed polkit policy'
+require_contains 'pkg_sudo install -Dm644 "$policy_src" "$policy_dst"' \
+    sdata/migrations/041-thinkfan-helper-bridge.sh \
+    'ThinkFan bridge migration must refresh the installed polkit policy'
+
 for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
     for marker in \
         'assets/applications/inir-settings.desktop' \

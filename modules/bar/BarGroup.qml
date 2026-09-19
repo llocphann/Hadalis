@@ -7,8 +7,7 @@ import QtQuick.Layouts
 Item {
     id: root
     property bool vertical: false
-    property real padding: Appearance.regaliaEverywhere && !bare
-        ? Appearance.regalia.tilePadding : 8
+    property real padding: 8
     readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false)
         && (Config.options?.sidebar?.cardStyle ?? false)
         && (Config.options?.bar?.cornerStyle === 3)
@@ -34,10 +33,9 @@ Item {
         }
         visible: !root.bare
         cardStyle: root.cardStyleEverywhere
-        borderless: Appearance.regaliaEverywhere ? false
-            : (Config.options?.bar?.borderless ?? false)
-        radiusOverride: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall : -1
-        elevation: Appearance.regaliaEverywhere ? 2 : 1
+        borderless: Config.options?.bar?.borderless ?? false
+        radiusOverride: -1
+        elevation: 1
         zzzChamfer: false
     }
 

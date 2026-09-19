@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -29,7 +30,7 @@ Item {
 
     Layout.fillWidth: true
     implicitHeight: collapsed ? header.implicitHeight : columnLayout.implicitHeight
-    layer.enabled: true
+    layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
     layer.effect: OpacityMask {
         maskSource: Rectangle {
             width: root.width

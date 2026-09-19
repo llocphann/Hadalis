@@ -196,6 +196,7 @@ meta_required=(
   hicolor-icon-theme
   kdecoration
   mission-center
+  mpd-mpris
   papirus-icon-theme
   qt6-avif-image-plugin
   sddm

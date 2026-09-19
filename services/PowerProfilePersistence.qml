@@ -150,7 +150,7 @@ Singleton {
 
     // Re-probe if package, migration, or service state changes at runtime.
     Timer {
-        interval: 30000
+        interval: 300000
         repeat: true
         running: Config.ready
         onTriggered: root._probeTlpPd()

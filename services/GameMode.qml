@@ -83,7 +83,10 @@ Singleton {
     readonly property bool disableEffects: Config.options?.gameMode?.disableEffects ?? true
     readonly property bool disableReloadToasts: Config.options?.gameMode?.disableReloadToasts ?? true
     readonly property bool minimalMode: Config.options?.gameMode?.minimalMode ?? true
-    readonly property int checkInterval: Config.options?.gameMode?.checkInterval ?? 5000
+    readonly property int checkInterval: {
+        const configured = Number(Config.options?.gameMode?.checkInterval ?? 10000)
+        return Number.isFinite(configured) ? Math.max(10000, Math.round(configured)) : 10000
+    }
     readonly property bool controlNiriAnimations: Config.options?.gameMode?.disableNiriAnimations ?? true
     
     // React to controlNiriAnimations changes while active

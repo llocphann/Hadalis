@@ -75,28 +75,34 @@ Item {
         if (unpinnedItems.length == 0) root.closeOverflowMenu();
     }
 
-    function grabFocus() {
-        focusGrab.active = true;
-    }
-
     function setExtraWindowAndGrabFocus(window) {
+        // Keep CompositorFocusGrab.active declarative. Imperatively assigning the
+        // bound property would detach it from trayOverflowOpen/activeMenu and make
+        // subsequent connected-surface opens lose focus-grab tracking.
         root.activeMenu = window;
-        root.grabFocus();
     }
 
-    function releaseFocus() {
-        focusGrab.active = false;
+    function releaseFocus(window) {
+        // Menu close animations are asynchronous. Ignore a delayed close from a
+        // superseded menu so it cannot clear the focus grab of the current menu.
+        if (root.activeMenu === window)
+            root.activeMenu = null;
     }
 
     function closeOverflowMenu() {
         root.trayOverflowOpen = false;
-        focusGrab.active = false;
     }
 
+    // The overflow is now a lazy full-output connected surface rather than a
+    // visual child window. Track the presentation window explicitly; QsWindow on
+    // the StyledPopup loader describes the loader's own visual ancestry and is
+    // not the lazily-created overlay surface.
     CompositorFocusGrab {
         id: focusGrab
-        active: (root.trayOverflowOpen && overflowPopup.QsWindow?.window != null) || root.activeMenu !== null
-        windows: [overflowPopup.QsWindow?.window, root.activeMenu]
+        active: (root.trayOverflowOpen && overflowPopup.presentationWindow !== null)
+            || root.activeMenu !== null
+        windows: [overflowPopup.presentationWindow, root.activeMenu]
+            .filter(window => window !== null)
         onCleared: {
             if (root.activeMenu) {
                 root.activeMenu.close();
@@ -133,18 +139,9 @@ Item {
             background.implicitWidth: 24
             background.implicitHeight: 24
             background.anchors.centerIn: this
-            colBackgroundToggled: Appearance.zzzEverywhere ? Appearance.zzz.sticker
-                : Appearance.inirEverywhere ? Appearance.inir.colSelection
-                : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface
-                : Appearance.colors.colSecondaryContainer
-            colBackgroundToggledHover: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryHover
-                : Appearance.inirEverywhere ? Appearance.inir.colSelectionHover
-                : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurfaceHover
-                : Appearance.colors.colSecondaryContainerHover
-            colRippleToggled: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryActive
-                : Appearance.inirEverywhere ? Appearance.inir.colPrimaryActive
-                : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
-                : Appearance.colors.colSecondaryContainerActive
+            colBackgroundToggled: Appearance.colors.colSecondaryContainer
+            colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+            colRippleToggled: Appearance.colors.colSecondaryContainerActive
 
             contentItem: MaterialSymbol {
                 anchors.centerIn: parent
@@ -152,8 +149,8 @@ Item {
                 text: "expand_more"
                 horizontalAlignment: Text.AlignHCenter
                 color: root.trayOverflowOpen
-                    ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.angelEverywhere ? Appearance.angel.colOnPrimary : Appearance.inirEverywhere ? Appearance.inir.colOnSelection : Appearance.colors.colOnSecondaryContainer)
-                    : (Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.angelEverywhere ? Appearance.angel.colText : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer2)
+                    ? Appearance.colors.colOnSecondaryContainer
+                    : Appearance.colors.colOnLayer2
                 rotation: (root.trayOverflowOpen ? 180 : 0) - (90 * root.vertical) + (180 * root.invertSide)
                 Behavior on rotation {
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -187,7 +184,7 @@ Item {
                             trayParent: root
                             Layout.fillHeight: !root.vertical
                             Layout.fillWidth: root.vertical
-                            onMenuClosed: root.releaseFocus();
+                            onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
                             onMenuOpened: (qsWindow) => root.setExtraWindowAndGrabFocus(qsWindow);
                         }
                     }
@@ -206,7 +203,7 @@ Item {
                 trayParent: root
                 Layout.fillHeight: !root.vertical
                 Layout.fillWidth: root.vertical
-                onMenuClosed: root.releaseFocus();
+                onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
                 onMenuOpened: (qsWindow) => {
                     root.setExtraWindowAndGrabFocus(qsWindow);
                 }
@@ -216,9 +213,7 @@ Item {
         StyledText {
             Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
             font.pixelSize: Appearance.font.pixelSize.larger
-            color: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-                : Appearance.regaliaEverywhere ? Appearance.regalia.onMuted
-                : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
+            color: Appearance.colors.colSubtext
             text: "•"
             visible: root.showSeparator && SystemTray.items.values.length > 0
         }

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
+import Quickshell.Wayland
 import Quickshell.Services.UPower
 import qs
 import qs.services
@@ -10,8 +11,6 @@ import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.bar as Bar
-import QtQuick.Effects
-import Qt5Compat.GraphicalEffects as GE
 
 Item { // Bar content region
     id: root
@@ -20,39 +19,26 @@ Item { // Bar content region
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
-    readonly property string nativeBlurTopology: Appearance.blurTopology.roundedRectangle
+    readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
     readonly property bool nativeBlurActive: !root.isIslands
         && Appearance.useCompositorBlur("bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
-        && (Config.options?.bar?.showBackground ?? true)
         && !root.gameModeMinimal
 
-    // Right-click context menu anchor (invisible, positioned at click)
-    Item {
-        id: barContextMenuAnchor
-        width: 1
-        height: 1
-    }
-
-    // For vertical bar: bottom config means bar is on the RIGHT side
-    // (same config key reused for different meaning in vertical mode)
-    readonly property bool barOnRight: Config.options?.bar?.bottom ?? false
+    property Item barContextMenuSource: null
+    property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
 
     function openBarContextMenu(clickX, clickY, mouseArea) {
-        // Position anchor at bar edge for correct horizontal popup positioning
-        // If bar on right: anchor at left edge (x=0), popup goes left via popupSide=Edges.Left
-        // If bar on left: anchor at right edge (x=width), popup goes right via popupSide=Edges.Right
-        const mapped = mouseArea.mapToItem(root, clickX, clickY)
-        barContextMenuAnchor.x = root.barOnRight ? 0 : root.width
-        barContextMenuAnchor.y = mapped.y
+        root.barContextMenuSource = mouseArea
+        root.barContextMenuRect = Qt.rect(clickX, clickY, 1, 1)
         barContextMenu.requestOpen()
     }
 
-    ContextMenu {
+    Bar.BarContextMenu {
         id: barContextMenu
-        anchorItem: barContextMenuAnchor
-        popupSide: root.barOnRight ? Edges.Left : Edges.Right
-        closeOnFocusLost: true
+        anchorItem: root.barContextMenuSource ?? root
+        anchorRect: root.barContextMenuRect
+        anchorHovered: root.barContextMenuSource?.hovered ?? false
         closeOnHoverLost: true
 
         model: [
@@ -75,29 +61,35 @@ Item { // Bar content region
             },
         ]
     }
-    readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && (Config.options?.bar?.cornerStyle === 3)
-    readonly property color separatorColor: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong : Appearance.colors.colOutlineVariant
-    readonly property bool inirEverywhere: Appearance.inirEverywhere
-    readonly property bool auroraEverywhere: Appearance.auroraEverywhere
-    readonly property bool zzzEverywhere: Appearance.zzzEverywhere
+    readonly property bool cardStyleEverywhere: false
+    readonly property color separatorColor: Appearance.colors.colOutlineVariant
     readonly property bool gameModeMinimal: Appearance.gameModeMinimal
 
     readonly property string barAppearance: Config.options?.bar?.appearanceStyle ?? "classic"
     readonly property bool isIslands: root.barAppearance === "islands"
 
-    readonly property string wallpaperUrl: Wallpapers.effectiveWallpaperUrl
-
-    ColorQuantizer {
-        id: wallpaperColorQuantizer
-        source: (Appearance.auroraEverywhere || Appearance.angelEverywhere) ? root.wallpaperUrl : ""
-        depth: 0 // 2^0 = 1 color
-        rescaleSize: 10
+    // Bar Settings owns one canonical module-visibility object for every edge.
+    // Keep vertical presentation compact, but never fork visibility state by
+    // orientation again (the old iNiR vertical bar only listened to taskbar).
+    function moduleEnabled(name: string, fallback: bool): bool {
+        const value = Config.options?.bar?.modules?.[name]
+        return value === undefined || value === null ? fallback : Boolean(value)
     }
 
-    readonly property color wallpaperDominantColor: (wallpaperColorQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary)
-    readonly property QtObject blendedColors: AdaptedMaterialScheme {
-        color: ColorUtils.mix(root.wallpaperDominantColor, Appearance.colors.colPrimaryContainer, 0.8) || Appearance.colors.colSecondaryContainer
-    }
+    readonly property bool leftSidebarButtonEnabled: root.moduleEnabled("leftSidebarButton", true)
+    readonly property bool activeWindowEnabled: root.moduleEnabled("activeWindow", true)
+        && !root.taskbarEnabled
+    readonly property bool taskbarEnabled: root.moduleEnabled("taskbar", false)
+    readonly property bool resourcesEnabled: root.moduleEnabled("resources", false)
+    readonly property bool mediaEnabled: root.moduleEnabled("media", true)
+    readonly property bool workspacesEnabled: root.moduleEnabled("workspaces", true)
+    readonly property bool clockEnabled: root.moduleEnabled("clock", true)
+    readonly property bool utilButtonsEnabled: root.moduleEnabled("utilButtons", false)
+    readonly property bool batteryEnabled: root.moduleEnabled("battery", true)
+    readonly property bool weatherEnabled: root.moduleEnabled("weather", true)
+        && (Config.options?.bar?.weather?.enable ?? false)
+    readonly property bool sysTrayEnabled: root.moduleEnabled("sysTray", true)
+    readonly property bool rightSidebarButtonEnabled: root.moduleEnabled("rightSidebarButton", true)
 
     component HorizontalBarSeparator: Rectangle {
         Layout.leftMargin: Appearance.sizes.baseBarHeight / 3
@@ -107,11 +99,51 @@ Item { // Bar content region
         color: root.separatorColor
     }
 
-    // Background shadow - for floating styles or always for angel
+    component VerticalClockModule: Item {
+        id: clockModule
+        implicitWidth: Appearance.sizes.verticalBarWidth
+        implicitHeight: clockStack.implicitHeight
+
+        ColumnLayout {
+            id: clockStack
+            width: parent.width
+            spacing: 12
+
+            VerticalClockWidget {
+                Layout.fillWidth: true
+                Layout.fillHeight: false
+            }
+
+            Rectangle {
+                Layout.leftMargin: Appearance.sizes.baseBarHeight / 3
+                Layout.rightMargin: Appearance.sizes.baseBarHeight / 3
+                Layout.fillWidth: true
+                implicitHeight: 1
+                color: Appearance.colors.colOutlineVariant
+            }
+
+            VerticalDateWidget {
+                Layout.fillWidth: true
+                Layout.fillHeight: false
+            }
+        }
+
+        MouseArea {
+            id: clockHoverArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+        }
+
+        Bar.ClockCalendarPopup {
+            hoverTarget: clockHoverArea
+        }
+    }
+
+    // Detached Float/Card shadow is retired; VerticalBar.qml owns the one
+    // inward Hug shadow shared with Screen Edge and horizontal Bar.
     Loader {
-        active: (Config.options?.bar?.showBackground ?? true) && !root.gameModeMinimal
-            && !root.isIslands
-            && (Appearance.angelEverywhere || ((Config.options?.bar?.cornerStyle ?? 0) === 1 || (Config.options?.bar?.cornerStyle ?? 0) === 3))
+        active: false
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined // The loader's anchors act on this, and this should not have any anchor
@@ -122,50 +154,25 @@ Item { // Bar content region
     // Background
     Rectangle {
         id: barBackground
-        // Floating style: cornerStyle 1 (floating) or 3 (card) - NOT 0 (hug)
-        // Aurora style forces floating appearance but hug mode should still work
-        readonly property bool floatingStyle: (Config.options?.bar?.cornerStyle ?? 0) === 1 || (Config.options?.bar?.cornerStyle ?? 0) === 3
+        readonly property bool floatingStyle: false
 
         anchors {
             fill: parent
-            // Only add margins for floating styles, NOT for hug mode (cornerStyle 0)
-            margins: floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
+            margins: 0
         }
-        visible: (Config.options?.bar?.showBackground ?? true) && !root.gameModeMinimal && !root.isIslands
-        color: {
-            if (root.zzzEverywhere) return Appearance.zzz.bg0
-            if (root.angelEverywhere) {
-                const base = root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
-                if (root.nativeBlurActive)
-                    return ColorUtils.transparentize(base, Appearance.angel.compositorPanelTransparentize)
-                return ColorUtils.applyAlpha(base, 1)
-            }
-            if (root.inirEverywhere) return Appearance.inir.colLayer0
-            if (root.auroraEverywhere) {
-                const base = root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
-                if (root.nativeBlurActive)
-                    return ColorUtils.transparentize(base, Appearance.aurora.compositorOverlayTransparentize)
-                return ColorUtils.applyAlpha(base, 1)
-            }
-            return root.cardStyleEverywhere ? Appearance.colors.colLayer1 : ((Config.options?.bar?.cornerStyle ?? 0) === 3 ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
-        }
-        radius: root.zzzEverywhere ? 0
-            : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-            : root.inirEverywhere ? Appearance.inir.roundingNormal
-            : floatingStyle ? ((Config.options?.bar?.cornerStyle ?? 0) === 3 ? Appearance.rounding.normal : Appearance.rounding.windowRounding) : 0
+        // Hug background is structural connected chrome. Fullscreen/GameMode
+        // may disable effects, but the native Bar surface stays mapped. Niri
+        // covers the Top-layer surface during fullscreen and reveals it on exit.
+        visible: !root.isIslands
+        color: Appearance.colors.colLayer0
+        radius: 0
         // No Behavior on the base radius — the per-corner radii below own the
         // corners, and a second interceptor on radius is unsupported (Qt warn).
 
-        // ZZZ round mode: a FLUSH vertical bar softens only its INNER edge (facing
-        // into the screen); a FLOATING bar rounds all four. bar.bottom doubles as the
-        // side toggle here — false = left edge (inner = right), true = right edge.
-        readonly property bool isRightBar: Config.options?.bar?.bottom ?? false
-        readonly property real zzzRoundEdge: (root.zzzEverywhere && Appearance.zzz.round) ? Appearance.zzz.panelRadius : -1
-        readonly property bool zzzAllCorners: zzzRoundEdge >= 0 && floatingStyle
-        topLeftRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || isRightBar)) ? zzzRoundEdge : radius
-        bottomLeftRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || isRightBar)) ? zzzRoundEdge : radius
-        topRightRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || !isRightBar)) ? zzzRoundEdge : radius
-        bottomRightRadius: (zzzRoundEdge >= 0 && (zzzAllCorners || !isRightBar)) ? zzzRoundEdge : radius
+        topLeftRadius: radius
+        bottomLeftRadius: radius
+        topRightRadius: radius
+        bottomRightRadius: radius
         Behavior on topRightRadius {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -174,15 +181,12 @@ Item { // Bar content region
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
-        border.width: root.zzzEverywhere ? 1 : (Appearance.angelEverywhere ? 0 : (root.inirEverywhere ? 1 : (floatingStyle ? 1 : 0)))
+        border.width: floatingStyle ? 1 : 0
         Behavior on border.width {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
-        border.color: root.zzzEverywhere ? Appearance.zzz.borderColor
-            : Appearance.angelEverywhere ? "transparent"
-            : root.inirEverywhere ? Appearance.inir.colBorder
-            : Appearance.colors.colLayer0Border
+        border.color: Appearance.colors.colLayer0Border
         Behavior on border.color {
             enabled: Appearance.animationsEnabled
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -190,81 +194,6 @@ Item { // Bar content region
 
         clip: true
 
-        // Angel inset glow — top edge
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Appearance.angel.insetGlowHeight
-            visible: Appearance.angelEverywhere
-            color: Appearance.angel.colInsetGlow
-        }
-
-        // Angel partial border
-        AngelPartialBorder {
-            targetRadius: barBackground.radius
-        }
-    }
-
-    // Aurora/Angel blur layer — rendered as sibling of barBackground so the blur
-    // is applied over the full screen-sized wallpaper image (not the narrow
-    // clipped bar region). Placed right after barBackground in z-order so it
-    // sits between background and content.
-    Item {
-        id: auroraBlurLayer
-        anchors.fill: barBackground
-        visible: root.auroraEverywhere && !root.inirEverywhere && !root.gameModeMinimal
-            && (Config.options?.bar?.showBackground ?? true) && !root.nativeBlurActive
-            && !root.isIslands
-
-        // Clip + mask to barBackground shape
-        clip: true
-        layer.enabled: visible
-        layer.effect: GE.OpacityMask {
-            maskSource: Rectangle {
-                width: auroraBlurLayer.width
-                height: auroraBlurLayer.height
-                radius: barBackground.radius
-            }
-        }
-
-        Image {
-            id: blurredWallpaper
-            // Position relative to screen — uses screen-sized source so the
-            // wallpaper portion shown matches corner decorators exactly.
-            readonly property real barMargin: barBackground.floatingStyle ? Appearance.sizes.hyprlandGapsOut : 0
-            x: root.barOnRight
-                ? (-(root.screen?.width ?? 1920) + auroraBlurLayer.width + barMargin)
-                : -barMargin
-            y: -barMargin
-            width: root.screen?.width ?? 1920
-            height: root.screen?.height ?? 1080
-            source: root.nativeBlurActive ? "" : root.wallpaperUrl
-            fillMode: Image.PreserveAspectCrop
-            cache: true
-            sourceSize.width: root.screen?.width ?? 1920
-            sourceSize.height: root.screen?.height ?? 1080
-            asynchronous: true
-
-            layer.enabled: Appearance.effectsEnabled && root.auroraEverywhere && !root.inirEverywhere && !root.nativeBlurActive
-            layer.effect: MultiEffect {
-                source: blurredWallpaper
-                anchors.fill: source
-                saturation: Appearance.angelEverywhere
-                    ? Appearance.angel.blurSaturation
-                    : (Appearance.effectsEnabled ? 0.2 : 0)
-                blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
-                blur: Appearance.effectsEnabled ? 1 : 0
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                color: Appearance.angelEverywhere
-                    ? ColorUtils.transparentize((root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.angel.overlayOpacity)
-                    : ColorUtils.transparentize((root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0Base), Appearance.aurora.overlayTransparentize)
-            }
-        }
     }
 
     FocusedScrollMouseArea { // Top section | scroll to change brightness
@@ -291,9 +220,41 @@ Item { // Bar content region
             spacing: 10
 
             Bar.LeftSidebarButton { // Left sidebar button
+                visible: root.leftSidebarButtonEnabled
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: (Appearance.sizes.baseVerticalBarWidth - implicitWidth) / 2 + Appearance.sizes.hyprlandGapsOut
                 colBackground: buttonHovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
+            }
+
+            Item {
+                id: activeWindowCompact
+                visible: root.activeWindowEnabled
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: root.leftSidebarButtonEnabled ? 0 : Appearance.rounding.screenRounding
+                implicitWidth: 30
+                implicitHeight: 30
+                readonly property var activeWindow: ToplevelManager.activeToplevel
+                readonly property bool hovered: activeWindowHover.hovered
+
+                HoverHandler {
+                    id: activeWindowHover
+                }
+
+                SmartAppIcon {
+                    anchors.centerIn: parent
+                    icon: String(activeWindowCompact.activeWindow?.appId ?? "")
+                    fallback: "window"
+                    iconSize: 20
+                }
+
+                StyledToolTip {
+                    text: {
+                        const appName = String(activeWindowCompact.activeWindow?.appId ?? Translation.tr("Desktop"))
+                        const title = String(activeWindowCompact.activeWindow?.title ?? "")
+                        return title.length > 0 && title !== appName
+                            ? appName + "\n" + title : appName
+                    }
+                }
             }
 
             Item {
@@ -308,31 +269,27 @@ Item { // Bar content region
         anchors.centerIn: parent
         spacing: 4
 
-        // When taskbar is active: clock/date moves up to where resources was
+        // Keep the compact clock near the top of the middle stack when the
+        // vertical taskbar is enabled, without forcing Clock/Battery visible.
         Bar.BarGroup {
             id: clockGroupTop
             vertical: true
             padding: 8
-            visible: Config.options?.bar?.modules?.taskbar ?? false
+            visible: root.taskbarEnabled
+                && (root.clockEnabled || (root.batteryEnabled && Battery.available))
 
-            VerticalClockWidget {
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-            }
-
-            HorizontalBarSeparator {}
-
-            VerticalDateWidget {
+            VerticalClockModule {
+                visible: root.clockEnabled
                 Layout.fillWidth: true
                 Layout.fillHeight: false
             }
 
             HorizontalBarSeparator {
-                visible: Battery.available
+                visible: root.clockEnabled && root.batteryEnabled && Battery.available
             }
 
             BatteryIndicator {
-                visible: Battery.available
+                visible: root.batteryEnabled && Battery.available
                 Layout.fillWidth: true
                 Layout.fillHeight: false
             }
@@ -342,29 +299,36 @@ Item { // Bar content region
             id: resourcesGroup
             vertical: true
             padding: 8
-            // Hide resources when taskbar is active to free vertical space
-            visible: !(Config.options?.bar?.modules?.taskbar ?? false)
+            visible: root.resourcesEnabled || root.mediaEnabled
+
             Resources {
+                visible: root.resourcesEnabled
                 Layout.fillWidth: true
                 Layout.fillHeight: false
             }
-            
-            HorizontalBarSeparator {}
+
+            HorizontalBarSeparator {
+                visible: root.resourcesEnabled && root.mediaEnabled
+            }
 
             VerticalMedia {
+                visible: root.mediaEnabled
                 Layout.fillWidth: true
                 Layout.fillHeight: false
             }
         }
 
-    HorizontalBarSeparator {
-            visible: Config.options?.bar?.borderless ?? false
+        HorizontalBarSeparator {
+            visible: (Config.options?.bar?.borderless ?? false)
+                && (clockGroupTop.visible || resourcesGroup.visible)
+                && middleCenterGroup.visible
         }
 
         Bar.BarGroup {
             id: middleCenterGroup
             vertical: true
             padding: 6
+            visible: root.workspacesEnabled
 
             Bar.Workspaces {
                 id: workspacesWidget
@@ -384,7 +348,9 @@ Item { // Bar content region
         }
 
         HorizontalBarSeparator {
-            visible: (Config.options?.bar?.modules?.taskbar ?? false) && (Config.options?.bar?.borderless ?? false)
+            visible: root.taskbarEnabled
+                && (Config.options?.bar?.borderless ?? false)
+                && middleCenterGroup.visible
         }
 
         // Taskbar (apps in bar) — vertical mode
@@ -392,7 +358,7 @@ Item { // Bar content region
             id: taskbarGroup
             vertical: true
             padding: 4
-            visible: Config.options?.bar?.modules?.taskbar ?? false
+            visible: root.taskbarEnabled
 
             Bar.BarTaskbar {
                 vertical: true
@@ -401,46 +367,57 @@ Item { // Bar content region
                 Layout.fillHeight: false
                 maximumHeight: Math.max(80, root.height
                     - (clockGroupTop.visible ? clockGroupTop.height : 0)
-                    - middleCenterGroup.height
+                    - (resourcesGroup.visible ? resourcesGroup.height : 0)
+                    - (middleCenterGroup.visible ? middleCenterGroup.height : 0)
                     - (clockGroup.visible ? clockGroup.height : 0)
-                    - middleSection.spacing * 6
+                    - (utilButtonsGroup.visible ? utilButtonsGroup.height : 0)
+                    - middleSection.spacing * 7
                     - 140)
             }
         }
 
         HorizontalBarSeparator {
-            visible: Config.options?.bar?.borderless ?? false
+            visible: (Config.options?.bar?.borderless ?? false)
+                && !root.taskbarEnabled
+                && middleCenterGroup.visible
+                && clockGroup.visible
         }
 
-        // When taskbar is NOT active: clock/date stays in its original position
+        // When taskbar is NOT active: clock/date stays in its original position.
         Bar.BarGroup {
             id: clockGroup
             vertical: true
             padding: 8
-            visible: !(Config.options?.bar?.modules?.taskbar ?? false)
-            
-            VerticalClockWidget {
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-            }
+            visible: !root.taskbarEnabled
+                && (root.clockEnabled || (root.batteryEnabled && Battery.available))
 
-            HorizontalBarSeparator {}
-
-            VerticalDateWidget {
+            VerticalClockModule {
+                visible: root.clockEnabled
                 Layout.fillWidth: true
                 Layout.fillHeight: false
             }
 
             HorizontalBarSeparator {
-                visible: Battery.available
+                visible: root.clockEnabled && root.batteryEnabled && Battery.available
             }
 
             BatteryIndicator {
-                visible: Battery.available
+                visible: root.batteryEnabled && Battery.available
                 Layout.fillWidth: true
                 Layout.fillHeight: false
             }
-            
+        }
+
+        Bar.BarGroup {
+            id: utilButtonsGroup
+            vertical: true
+            padding: 4
+            visible: root.utilButtonsEnabled
+
+            Bar.UtilButtons {
+                vertical: true
+                Layout.alignment: Qt.AlignHCenter
+            }
         }
     }
 
@@ -478,7 +455,56 @@ Item { // Bar content region
                 Layout.fillHeight: true 
             }
 
+            Bar.BarGroup {
+                id: weatherGroup
+                vertical: true
+                padding: 4
+                visible: root.weatherEnabled
+                Layout.alignment: Qt.AlignHCenter
+
+                RippleButton {
+                    Layout.alignment: Qt.AlignHCenter
+                    implicitWidth: 34
+                    implicitHeight: 46
+                    buttonText: Translation.tr("Weather")
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: buttonHovered ? Appearance.colors.colLayer1Hover : "transparent"
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    colRipple: Appearance.colors.colLayer1Active
+                    onClicked: {
+                        GlobalStates.sidebarRightRequestedWidget = "weather"
+                        GlobalStates.openSidebarRight(root.screen?.name ?? "")
+                    }
+                    altAction: event => Weather.forceRefresh()
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 0
+
+                        MaterialSymbol {
+                            Layout.alignment: Qt.AlignHCenter
+                            fill: 0
+                            text: Icons.getWeatherIcon(Weather.data?.wCode, Weather.isNightNow()) ?? "cloud"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colOnLayer0
+                        }
+
+                        StyledText {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: Weather.data?.temp ?? "--°"
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colOnLayer0
+                        }
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Weather")
+                    }
+                }
+            }
+
             Bar.SysTray {
+                visible: root.sysTrayEnabled
                 vertical: true
                 Layout.fillWidth: true
                 Layout.fillHeight: false
@@ -487,6 +513,7 @@ Item { // Bar content region
 
             RippleButton { // Right sidebar button
                 id: rightSidebarButton
+                visible: root.rightSidebarButtonEnabled
 
                 Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
                 Layout.bottomMargin: Appearance.rounding.screenRounding
@@ -495,17 +522,17 @@ Item { // Bar content region
                 implicitHeight: indicatorsColumnLayout.implicitHeight + 4 * 2
                 implicitWidth: indicatorsColumnLayout.implicitWidth + 6 * 2
 
-                buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.full
+                buttonRadius: Appearance.rounding.full
                 colBackground: buttonHovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
                 colBackgroundHover: Appearance.colors.colLayer1Hover
                 colRipple: Appearance.colors.colLayer1Active
-                colBackgroundToggled: Appearance.zzzEverywhere ? Appearance.zzz.sticker : Appearance.colors.colSecondaryContainer
-                colBackgroundToggledHover: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                colRippleToggled: Appearance.zzzEverywhere ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
+                colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+                colRippleToggled: Appearance.colors.colSecondaryContainerActive
                 toggled: GlobalStates.sidebarRightOpen
                     && GlobalStates.sidebarRightPresentationOutput === (root.screen?.name ?? "")
                 property color colText: toggled
-                    ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnSecondaryContainer)
+                    ? Appearance.colors.colOnSecondaryContainer
                     : Appearance.colors.colOnLayer0
 
                 Behavior on colText {

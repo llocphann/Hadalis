@@ -6,10 +6,63 @@ import QtQuick.Layouts
 
 StyledPopup {
     id: popup
+    readonly property bool thinkFanManaged:
+        ThinkFanService.stateKnown && ThinkFanService.profile === "managed"
+    readonly property bool thinkFanCanApply:
+        ThinkFanService.stateKnown
+        && ThinkFanService.serviceInstalled
+        && !ThinkFanService.busy
+        && (popup.thinkFanManaged || ThinkFanService.available)
+    readonly property string thinkFanApplyErrorMessage:
+        popup.describeThinkFanApplyError(ThinkFanService.lastApplyError)
+
+    function describeThinkFanApplyError(error): string {
+        switch (String(error ?? "")) {
+        case "":
+            return ""
+        case "unsupported-profile":
+            return Translation.tr("Unsupported ThinkFan profile")
+        case "apply-busy":
+            return Translation.tr("Another ThinkFan change is already in progress")
+        case "service-unavailable":
+            return Translation.tr("thinkfan.service is unavailable")
+        case "thinkfan-unavailable":
+            return Translation.tr("ThinkFan is unavailable")
+        case "apply-start-failed":
+            return Translation.tr("Could not start the privileged ThinkFan helper")
+        case "apply-timeout":
+            return Translation.tr("Changing the ThinkFan profile timed out")
+        case "apply-failed":
+            return Translation.tr("Changing the ThinkFan profile failed")
+        default:
+            return Translation.tr("ThinkFan profile change failed: %1").arg(error)
+        }
+    }
+
+    property bool _resourceUsageHeld: false
+
+    function syncResourceUsageLifecycle(): void {
+        if (popup.active === popup._resourceUsageHeld)
+            return
+        if (popup.active)
+            ResourceUsage.keepAlive()
+        else
+            ResourceUsage.releaseKeepAlive()
+        popup._resourceUsageHeld = popup.active
+    }
+
+    Component.onCompleted: popup.syncResourceUsageLifecycle()
+    Component.onDestruction: {
+        if (popup._resourceUsageHeld) {
+            popup._resourceUsageHeld = false
+            ResourceUsage.releaseKeepAlive()
+        }
+    }
 
     onActiveChanged: {
+        popup.syncResourceUsageLifecycle()
         if (popup.active)
-            ResourceUsage.ensureRunning()
+            ThinkFanService.refresh()
     }
 
     component ResourceItem: RowLayout {
@@ -63,82 +116,203 @@ StyledPopup {
         }
     }
 
-    Row {
-        anchors.centerIn: parent
+    ColumnLayout {
         spacing: 12
 
-        Column {
-            anchors.top: parent.top
-            spacing: 8
+        Row {
+            id: resourcesRow
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 12
 
-            ResourceHeaderItem {
-                icon: "memory"
-                label: "RAM"
-            }
             Column {
-                spacing: 4
-                ResourceItem {
-                    icon: "clock_loader_60"
-                    label: Translation.tr("Used:")
-                    value: (ResourceUsage.memoryUsed / (1024 * 1024)).toFixed(1) + " GB"
-                }
-                ResourceItem {
-                    icon: "check_circle"
-                    label: Translation.tr("Free:")
-                    value: (ResourceUsage.memoryFree / (1024 * 1024)).toFixed(1) + " GB"
-                }
-                ResourceItem {
-                    icon: "empty_dashboard"
-                    label: Translation.tr("Total:")
-                    value: (ResourceUsage.memoryTotal / (1024 * 1024)).toFixed(1) + " GB"
-                }
-            }
-        }
+                id: ramColumn
+                anchors.top: parent.top
+                spacing: 8
 
-        Column {
-            anchors.top: parent.top
-            spacing: 8
-
-            ResourceHeaderItem {
-                icon: "thermostat"
-                label: Translation.tr("Temperature")
-            }
-            Column {
-                spacing: 4
-                ResourceItem {
+                ResourceHeaderItem {
                     icon: "memory"
-                    label: "CPU:"
-                    value: ResourceUsage.cpuTemp + "°C"
+                    label: "RAM"
                 }
-                ResourceItem {
-                    icon: "memory_alt"
-                    label: "GPU:"
-                    value: ResourceUsage.gpuTemp + "°C"
+                Column {
+                    spacing: 4
+                    ResourceItem {
+                        icon: "clock_loader_60"
+                        label: Translation.tr("Used:")
+                        value: (ResourceUsage.memoryUsed / (1024 * 1024)).toFixed(1) + " GB"
+                    }
+                    ResourceItem {
+                        icon: "empty_dashboard"
+                        label: Translation.tr("Total:")
+                        value: (ResourceUsage.memoryTotal / (1024 * 1024)).toFixed(1) + " GB"
+                    }
+                }
+            }
+
+            Column {
+                id: thermalColumn
+                anchors.top: parent.top
+                spacing: 8
+
+                ResourceHeaderItem {
+                    icon: "thermostat"
+                    label: Translation.tr("Thermal")
+                }
+                Column {
+                    spacing: 4
+                    ResourceItem {
+                        icon: "memory"
+                        label: "CPU:"
+                        value: ResourceUsage.cpuTemp + "°C"
+                    }
+                    ResourceItem {
+                        icon: "memory_alt"
+                        label: "GPU:"
+                        value: ResourceUsage.gpuTemp + "°C"
+                    }
+                }
+            }
+
+            Column {
+                id: cpuColumn
+                anchors.top: parent.top
+                spacing: 8
+
+                ResourceHeaderItem {
+                    icon: "planner_review"
+                    label: "CPU"
+                }
+                Column {
+                    spacing: 4
+                    ResourceItem {
+                        icon: "bolt"
+                        label: Translation.tr("Load:")
+                        value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
+                    }
+                    ResourceItem {
+                        icon: "memory_alt"
+                        label: Translation.tr("GPU:")
+                        value: `${Math.round(ResourceUsage.gpuUsage * 100)}%`
+                    }
                 }
             }
         }
 
-        Column {
-            anchors.top: parent.top
-            spacing: 8
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 1
+            color: Appearance.colors.colLayer0Border
+            opacity: 0.65
+        }
 
-            ResourceHeaderItem {
-                icon: "planner_review"
-                label: "CPU"
-            }
-            Column {
-                spacing: 4
-                ResourceItem {
-                    icon: "bolt"
-                    label: Translation.tr("Load:")
-                    value: (ResourceUsage.cpuUsage > 0.8 ? Translation.tr("High") : ResourceUsage.cpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low")) + ` (${Math.round(ResourceUsage.cpuUsage * 100)}%)`
+        Row {
+            id: fanMetricsRow
+            Layout.alignment: Qt.AlignHCenter
+            spacing: resourcesRow.spacing
+
+            Item {
+                width: ramColumn.width
+                height: fanControlRow.implicitHeight
+
+                RowLayout {
+                    id: fanControlRow
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+
+                    MaterialSymbol {
+                        text: "mode_fan"
+                        fill: popup.thinkFanManaged ? 1 : 0
+                        iconSize: Appearance.font.pixelSize.large
+                        color: popup.thinkFanManaged
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colOnSurfaceVariant
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    StyledText {
+                        text: Translation.tr("Fan")
+                        font.weight: Font.Medium
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurfaceVariant
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    StyledSwitch {
+                        id: thinkFanProfileSwitch
+                        checked: popup.thinkFanManaged
+                        enabled: popup.thinkFanCanApply
+                        activeFocusOnTab: true
+                        Accessible.name: Translation.tr("Use ThinkFan managed fan control")
+
+                        onToggled: {
+                            const requestedManaged = checked
+                            ThinkFanService.applyProfile(
+                                requestedManaged ? "managed" : "firmware")
+                            checked = Qt.binding(() => popup.thinkFanManaged)
+                        }
+                    }
                 }
-                ResourceItem {
-                    icon: "memory_alt"
-                    label: Translation.tr("GPU:")
-                    value: (ResourceUsage.gpuUsage > 0.8 ? Translation.tr("High") : ResourceUsage.gpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low")) + ` (${Math.round(ResourceUsage.gpuUsage * 100)}%)`
+            }
+
+            Item {
+                width: thermalColumn.width
+                height: speedRow.implicitHeight
+
+                RowLayout {
+                    id: speedRow
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+
+                    StyledText {
+                        text: Translation.tr("RPM:")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    StyledText {
+                        text: ThinkFanService.fanRpm >= 0
+                            ? String(ThinkFanService.fanRpm)
+                            : "—"
+                        font.weight: Font.Medium
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurface
+                    }
                 }
             }
+
+            Item {
+                width: cpuColumn.width
+                height: levelRow.implicitHeight
+
+                RowLayout {
+                    id: levelRow
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+
+                    StyledText {
+                        text: Translation.tr("Level:")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    StyledText {
+                        text: ThinkFanService.fanLevel.length > 0
+                            ? ThinkFanService.fanLevel : "—"
+                        font.weight: Font.Medium
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnSurface
+                    }
+                }
+            }
+        }
+
+        NoticeBox {
+            visible: popup.thinkFanApplyErrorMessage.length > 0
+            Layout.fillWidth: true
+            materialIcon: "warning"
+            text: popup.thinkFanApplyErrorMessage
         }
     }
 }

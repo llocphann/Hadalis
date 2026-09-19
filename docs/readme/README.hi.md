@@ -111,7 +111,7 @@ Wayland → GPU
 ## विशेषताएँ
 
 **दो पैनल फ़ैमिली**, `Super+Shift+W` से तुरंत स्विच:
-- **Material ii** — फ़्लोटिंग बार, साइडबार, डॉक, 6 विज़ुअल स्टाइल (material, cards, aurora, inir, angel, zzz)
+- **Material ii** — फ़्लोटिंग बार, साइडबार, डॉक; Material ही एकमात्र ग्लोबल विज़ुअल थीम है
 - **Waffle** — Windows 11 शैली टास्कबार, स्टार्ट मेन्यू, एक्शन सेंटर, नोटिफ़िकेशन सेंटर
 
 **ऑटोमैटिक थीमिंग** — वॉलपेपर चुनें और सब कुछ अनुकूलित हो जाता है:
@@ -128,7 +128,7 @@ Wayland → GPU
 
 वॉलपेपर चुनें और पूरा सिस्टम अनुसरण करता है — शेल, GTK/Qt ऐप्स, टर्मिनल, Firefox, Discord, SDDM लॉगिन स्क्रीन। सब स्वचालित।
 
-- **6 विज़ुअल स्टाइल** — Material (ठोस), Cards, Aurora (ग्लास ब्लर), iNiR (TUI-प्रेरित), Angel (नव-ब्रूटलिज़्म), ZZZ
+- **ग्लोबल विज़ुअल थीम** — केवल Material; रंग पैलेट और स्थानीय कॉम्पोनेंट विकल्प अलग रहते हैं
 - **वॉलपेपर से डायनामिक रंग** — Material You के ज़रिए पूरे सिस्टम में प्रसारित
 - **10 टर्मिनल टूल्स ऑटो-थीम** — foot, kitty, alacritty, starship, fuzzel, pywalfox, btop, lazygit, yazi
 - **ऐप थीमिंग** — GTK3/4, Qt (plasma-integration + darkly), Firefox (MaterialFox), Discord/Vesktop (System24)

@@ -12,6 +12,8 @@ Use the setup-owned uninstall path:
 
 This path can identify the active user and safely stop `inir.service`, remove Hadalis-owned user service wiring, back up user state, and preserve shared resources according to the interactive choices. See [Setup & Updates](SETUP.md#uninstall) for the complete repo-managed behavior.
 
+For a repo-managed install, uninstall also removes the Hadalis-owned ThinkFan bridge files (`/usr/libexec/inir-thinkfan` and `org.inir.thinkfan.policy`). If the installed metadata reports package-manager ownership, those system files are preserved for the package manager instead. This cleanup never removes the upstream `thinkfan` package, disables/stops `thinkfan.service`, or deletes `/etc/thinkfan.yaml` / `/etc/thinkfan.conf`.
+
 ## Manual package-style installation (`sudo make install`)
 
 A Makefile install places the system payload under the selected install prefix, but `inir service install` and `inir service enable` create per-user systemd state under `${XDG_CONFIG_HOME:-~/.config}/systemd/user/`. A root `make uninstall` must not guess which user's home directory owns that state.

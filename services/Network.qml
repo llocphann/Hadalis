@@ -19,6 +19,9 @@ Singleton {
     property bool ethernet: false
 
     property bool wifiEnabled: false
+    // False until nmcli has returned a real radio state. Persistence must never
+    // treat the declaration default as a boot-time observation.
+    property bool wifiStateKnown: false
     property bool wifiScanning: false
     property bool wifiConnecting: connectProc.running
     property WifiAccessPoint wifiConnectTarget
@@ -130,6 +133,7 @@ Singleton {
 
     Process {
         id: enableWifiProc
+        onExited: root.update()
     }
 
     Process {
@@ -401,7 +405,11 @@ Singleton {
         })
         stdout: StdioCollector {
             onStreamFinished: {
-                root.wifiEnabled = text.trim() === "enabled";
+                const state = text.trim()
+                if (state !== "enabled" && state !== "disabled")
+                    return
+                root.wifiEnabled = state === "enabled"
+                root.wifiStateKnown = true
             }
         }
     }

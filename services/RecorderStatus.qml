@@ -134,10 +134,15 @@ Singleton {
             checkProcess.running = true
     }
 
-    // Idle poll: infrequent check for externally-started recordings
+    readonly property int idlePollIntervalMs:
+        (Config.options?.performance?.lowPower ?? false) ? 30000 : 15000
+
+    // External recorders are uncommon, and in-shell recording actions already
+    // schedule a fast bounded recheck. Avoid spawning pgrep every five seconds
+    // for the entire desktop session just to discover an external recorder.
     Timer {
         id: idlePollTimer
-        interval: 5000
+        interval: root.idlePollIntervalMs
         running: Config.ready && !root.isRecording
         repeat: true
         onTriggered: root.refreshStatus()

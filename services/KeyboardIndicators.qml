@@ -458,7 +458,10 @@ Singleton {
     }
 
     Timer {
-        interval: 8000
+        // Once sysfs paths are known, FileView watches their value changes.
+        // This timer only needs to rediscover devices after hotplug, so avoid
+        // spawning a shell scan every eight seconds for the lifetime of the shell.
+        interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000
         running: !root.usingEvdev
         repeat: true
         onTriggered: root.refreshLedPaths()

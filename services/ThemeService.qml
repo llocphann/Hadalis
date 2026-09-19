@@ -98,39 +98,31 @@ Singleton {
     }
 
     // ── Global style ────────────────────────────────────────────────────
-    // Single owner of "what does selecting style X write to config". This
-    // lived in three places (both settings families and the action registry)
-    // that had already drifted: waffle ignored the per-style corner defaults
-    // entirely, and the action registry had no cookie branch at all, so cookie
-    // silently inherited material's corner style.
+    // v1.0 supports Material as the only shell-wide visual language. Keep the
+    // public setter as a compatibility boundary for old settings/action callers,
+    // but clamp every request and every persisted legacy value to Material.
+    // Local component/family presentation options remain independent.
+    readonly property string supportedGlobalStyle: "material"
 
-    function cornerStyleForGlobalStyle(styleId: string): int {
-        const styles = Config.options?.appearance?.globalStyleCornerStyles
-        switch (styleId) {
-        case "cards": return styles?.cards ?? 3
-        case "aurora": return styles?.aurora ?? 1
-        case "inir": return styles?.inir ?? 1
-        case "angel": return styles?.angel ?? 1
-        case "regalia": return styles?.regalia ?? 1
-        case "zzz": return styles?.zzz ?? 0
-        case "cookie": return styles?.cookie ?? 1
-        default: return styles?.material ?? 1
-        }
+    function normalizeGlobalStyle(): void {
+        if (!Config.ready)
+            return
+        const persisted = Config.options?.appearance?.globalStyle ?? root.supportedGlobalStyle
+        if (persisted === root.supportedGlobalStyle)
+            return
+        root._log("[ThemeService] Normalizing unsupported global style '" + persisted + "' to Material")
+        Config.setNestedValue("appearance.globalStyle", root.supportedGlobalStyle)
+    }
+
+    function cornerStyleForGlobalStyle(_styleId: string): int {
+        return Config.options?.appearance?.globalStyleCornerStyles?.material ?? 1
     }
 
     function setGlobalStyle(styleId: string): void {
-        root._log("[ThemeService] setGlobalStyle:", styleId)
-        const cards = styleId === "cards"
-        let cornerStyle = root.cornerStyleForGlobalStyle(styleId)
-        // Hug (0) leaves no float gap for angel's escalonado shadows to land in.
-        if (styleId === "angel" && cornerStyle === 0)
-            cornerStyle = 1
-        Config.setNestedValues({
-            "appearance.globalStyle": styleId,
-            "dock.cardStyle": cards,
-            "sidebar.cardStyle": cards,
-            "bar.cornerStyle": cornerStyle
-        })
+        if (styleId !== root.supportedGlobalStyle)
+            root._log("[ThemeService] Ignoring unsupported global style request: " + styleId)
+        if ((Config.options?.appearance?.globalStyle ?? "") !== root.supportedGlobalStyle)
+            Config.setNestedValue("appearance.globalStyle", root.supportedGlobalStyle)
     }
 
     function _triggerVesktopThemeGeneration(): void {
@@ -144,6 +136,7 @@ Singleton {
     }
 
     function applyCurrentTheme(applyExternal = defaultApplyExternal): void {
+        root.normalizeGlobalStyle()
         root._log("[ThemeService] applyCurrentTheme called, currentTheme:", currentTheme, "isAutoTheme:", isAutoTheme);
         if (isAutoTheme) {
             root._log("[ThemeService] Delegating to MaterialThemeLoader");
@@ -261,6 +254,7 @@ Singleton {
         }
         function onReadyChanged() {
             if (!Config.ready) return
+            root.normalizeGlobalStyle()
             // Prime the signature to current value so the first config write
             // doesn't get treated as a delta-from-empty.  The forced regen on
             // shell startup is still done explicitly by shell.qml via
@@ -270,6 +264,11 @@ Singleton {
             root._lastLiveRegenSignature = root.liveRegenSignature
             root._lastPanelFamily = root.panelFamily
         }
+    }
+
+    Component.onCompleted: {
+        if (Config.ready)
+            root.normalizeGlobalStyle()
     }
 
     Timer {

@@ -322,7 +322,6 @@ Scope {
                         }
                     }
 
-                    // Shared with Screen Edge shadow settings so the shell chrome
                     ShellEditSurfaceFrame {
                         anchors.fill: barContent
                         surfaceId: "iiBar"

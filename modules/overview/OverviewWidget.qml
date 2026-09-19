@@ -16,6 +16,9 @@ Item {
     required property var panelWindow
     property bool embeddedSurface: false
     property bool presentationActive: GlobalStates.overviewOpen
+    // Keep the active-workspace indicator static during popup materialization;
+    // once fully revealed, later workspace focus changes may animate normally.
+    property bool focusIndicatorAnimationReady: true
     property var preferredWorkspaceId: null
     signal presentationCloseRequested()
 
@@ -430,7 +433,9 @@ Item {
                 border.width: 2
                 border.color: root.activeBorderColor
                 Behavior on x {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -438,7 +443,9 @@ Item {
                     }
                 }
                 Behavior on y {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -446,7 +453,9 @@ Item {
                     }
                 }
                 Behavior on topLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -454,7 +463,9 @@ Item {
                     }
                 }
                 Behavior on topRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -462,7 +473,9 @@ Item {
                     }
                 }
                 Behavior on bottomLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -470,7 +483,9 @@ Item {
                     }
                 }
                 Behavior on bottomRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type

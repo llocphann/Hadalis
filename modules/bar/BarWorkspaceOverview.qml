@@ -76,6 +76,8 @@ StyledPopup {
                 // not semantic hover state, so close is a pure reverse slide.
                 presentationActive: root.active
                 embeddedSurface: true
+                focusIndicatorAnimationReady:
+                    root.requestedVisible && root.revealProgress >= 0.999
                 preferredWorkspaceId: root.workspaceId
                 onPresentationCloseRequested: root.close()
             }
@@ -90,6 +92,8 @@ StyledPopup {
                 // retract reaches the Bar and StyledPopup finally unmaps.
                 presentationActive: root.active
                 embeddedSurface: true
+                focusIndicatorAnimationReady:
+                    root.requestedVisible && root.revealProgress >= 0.999
                 preferredWorkspaceId: root.workspaceId
                 onPresentationCloseRequested: root.close()
             }

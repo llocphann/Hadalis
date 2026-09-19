@@ -45,6 +45,10 @@ def main() -> None:
             "workspace Overview Loader must remain resident through reverse slide")
     require(popup, "presentationActive: root.active",
             "workspace Overview content must remain live through reverse slide")
+    require(popup, "focusIndicatorAnimationReady:",
+            "workspace Overview must explicitly gate focus-indicator animation")
+    require(popup, "root.requestedVisible && root.revealProgress >= 0.999",
+            "focus-indicator animation must wait until the popup reveal completes")
     forbid(popup, "active: root.previewOpen",
            "workspace Overview must not destroy content at semantic close")
     forbid(popup, "presentationActive: root.previewOpen",
@@ -53,10 +57,18 @@ def main() -> None:
             "shared connected popup content must remain fully opaque during slide")
     require(niri, "property bool embeddedSurface: false",
             "Niri Overview must support embedded popup rendering")
+    require(niri, "property bool focusIndicatorAnimationReady: true",
+            "Niri Overview must expose a presentation-phase focus-animation gate")
+    require(niri, "&& root.focusIndicatorAnimationReady",
+            "Niri focused workspace indicator must not tween during popup reveal")
     require(niri, "property bool presentationActive: GlobalStates.overviewOpen",
             "Niri preview lifecycle must be decoupled from full-screen Overview state")
     require(hypr, "property bool embeddedSurface: false",
             "Hyprland Overview must support embedded popup rendering")
+    require(hypr, "property bool focusIndicatorAnimationReady: true",
+            "Hyprland Overview must expose a presentation-phase focus-animation gate")
+    require(hypr, "&& root.focusIndicatorAnimationReady",
+            "Hyprland focused workspace indicator must not tween during popup reveal")
     require(niri, "function restoreOverviewPosition(): void",
             "Niri Overview drag release must restore x/y bindings")
     require(niri, "property int pendingWorkspaceSlot: -1",

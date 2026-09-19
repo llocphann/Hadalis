@@ -16,6 +16,10 @@ Item {
     property bool taskViewMode: false
     property bool embeddedSurface: false
     property bool presentationActive: GlobalStates.overviewOpen
+    // Embedded Bar presentation disables focus-indicator motion until the
+    // parent connected popup has finished its own reveal. This prevents the
+    // focus ring from composing an x/y tween with the popup's vertical slide.
+    property bool focusIndicatorAnimationReady: true
     property var preferredWorkspaceId: null
     signal presentationCloseRequested()
 
@@ -972,7 +976,9 @@ Item {
                 border.color: root.activeBorderColor
 
                 Behavior on x {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -980,7 +986,9 @@ Item {
                     }
                 }
                 Behavior on y {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -988,7 +996,9 @@ Item {
                     }
                 }
                 Behavior on topLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -996,7 +1006,9 @@ Item {
                     }
                 }
                 Behavior on topRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -1004,7 +1016,9 @@ Item {
                     }
                 }
                 Behavior on bottomLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -1012,7 +1026,9 @@ Item {
                     }
                 }
                 Behavior on bottomRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type

@@ -310,6 +310,8 @@ Scope {
     // Transparent compositor reservation only. ScreenEdge pixels are never
     // painted here, so these windows cannot alter the frame/corner silhouette.
     component ReservationWindow: PanelWindow {
+        id: reservationWindow
+
         required property ShellScreen modelData
         required property string edge
 

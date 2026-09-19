@@ -29,6 +29,11 @@ Item {
     property real popupRounding: Appearance.rounding.normal
     property real screenX: 0
     property real screenY: 0
+    // Media sources are compact tabs: one PlayerControl is presented at a time,
+    // with the same right-rail dot language used by Weather Popup.
+    property int currentTab: 0
+    readonly property int tabCount: root._visiblePlayers.length
+    readonly property int tabSlideDuration: Appearance.animation.elementMove.duration
     
     // Cache to prevent flickering during track transitions
     property var _playerCache: []
@@ -67,19 +72,47 @@ Item {
         return true
     }
 
-    function focusInitialControl(): bool {
-        let fallback = null
-        for (let i = 0; i < playerRepeater.count; i++) {
-            const delegate = playerRepeater.itemAt(i)
-            if (!delegate)
-                continue
-            if (!fallback)
-                fallback = delegate
-            if (delegate.isActive) {
-                delegate.focusPrimaryControl()
-                return true
-            }
+    function playerLabel(player): string {
+        const title = StringUtils.cleanMusicTitle(player?.trackTitle) || ""
+        const artist = player?.trackArtist ?? ""
+        if (title.length > 0 && artist.length > 0)
+            return `${title} — ${artist}`
+        return title || artist || player?.dbusName
+            || Translation.tr("Unknown player")
+    }
+
+    function syncCurrentTabToActivePlayer(): void {
+        const count = root.tabCount
+        if (count <= 0) {
+            root.currentTab = 0
+            return
         }
+        const activeIndex = root._visiblePlayers.indexOf(root.activePlayer)
+        if (activeIndex >= 0) {
+            root.currentTab = activeIndex
+            return
+        }
+        root.currentTab = Math.max(0, Math.min(root.currentTab, count - 1))
+    }
+
+    function selectTab(index): void {
+        const count = root.tabCount
+        if (count <= 0)
+            return
+        const nextIndex = Math.max(0, Math.min(count - 1, index))
+        root.currentTab = nextIndex
+        const player = root._visiblePlayers[nextIndex] ?? null
+        if (player && player !== root.activePlayer)
+            MprisController.setActivePlayer(player)
+    }
+
+    function focusInitialControl(): bool {
+        const current = playerRepeater.itemAt(root.currentTab)
+        if (current) {
+            current.focusPrimaryControl()
+            return true
+        }
+        const fallback = playerRepeater.itemAt(0)
         if (fallback) {
             fallback.focusPrimaryControl()
             return true
@@ -95,11 +128,18 @@ Item {
                 root._playerCache = [...nextPlayers];
             root._cacheValid = true;
             cacheInvalidateTimer.stop();
+            Qt.callLater(() => root.syncCurrentTabToActivePlayer())
         } else if (root._cacheValid && root._playerCache.length > 0) {
             // Keep cache during transitions
             cacheInvalidateTimer.restart();
         }
     }
+
+    onActivePlayerChanged:
+        Qt.callLater(() => root.syncCurrentTabToActivePlayer())
+
+    Component.onCompleted:
+        Qt.callLater(() => root.syncCurrentTabToActivePlayer())
 
     Timer {
         id: cacheInvalidateTimer
@@ -107,6 +147,7 @@ Item {
         onTriggered: {
             if ((root.meaningfulPlayers?.length ?? 0) === 0 && (Mpris.players.values?.length ?? 0) === 0) {
                 root._cacheValid = false;
+                root.currentTab = 0;
             }
         }
     }
@@ -119,97 +160,148 @@ Item {
         anchors.fill: parent
         spacing: 8
 
-        Repeater {
-            id: playerRepeater
-            model: ScriptModel {
-                values: root._visiblePlayers
-            }
-            delegate: Item {
-                id: playerDelegate
-                required property MprisPlayer modelData
-                required property int index
-                Layout.fillWidth: true
-                implicitWidth: root.widgetWidth
-                implicitHeight: root.widgetHeight + (isActive && root._visiblePlayers.length > 1 ? 4 : 0)
-                
-                readonly property bool isActive: modelData === root.activePlayer
-                readonly property string selectorLabel: {
-                    const title = StringUtils.cleanMusicTitle(modelData?.trackTitle) || ""
-                    const artist = modelData?.trackArtist ?? ""
-                    if (title.length > 0 && artist.length > 0) return `${title} — ${artist}`
-                    return title || artist || modelData?.dbusName || Translation.tr("Unknown player")
+        Item {
+            id: playerViewport
+            Layout.fillWidth: true
+            Layout.preferredHeight: root.tabCount > 0 ? root.widgetHeight : 0
+            implicitWidth: root.widgetWidth
+            implicitHeight: Layout.preferredHeight
+            visible: root.tabCount > 0
+            clip: true
+
+            Repeater {
+                id: playerRepeater
+                model: ScriptModel {
+                    values: root._visiblePlayers
                 }
 
-                function focusPrimaryControl(): void {
-                    playerControl.focusPrimaryControl()
-                }
-                
-                Rectangle {
-                    visible: root._visiblePlayers.length > 1
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    anchors.leftMargin: 0
-                    anchors.topMargin: Appearance.sizes.elevationMargin
-                    anchors.bottomMargin: Appearance.sizes.elevationMargin
-                    width: 3
-                    radius: 2
-                    color: isActive
-                        ? Appearance.colors.colPrimary
-                        : Appearance.colors.colLayer2
-                    
-                    Behavior on color {
-                        enabled: Appearance.animationsEnabled
-                        ColorAnimation { duration: 150 }
-                    }
-                }
-                
-                PlayerControl {
-                    id: playerControl
-                    anchors.fill: parent
-                    anchors.leftMargin: root._visiblePlayers.length > 1
-                        ? Appearance.sizes.elevationMargin : 0
-                    player: modelData
-                    visualizerPoints: root.visualizerPoints
-                    visualizerMaxValue: root.visualizerMaxValue
-                    radius: root.popupRounding
-                    screenX: root.screenX + playerDelegate.x + playerControl.x
-                    screenY: root.screenY + playerDelegate.y + playerControl.y
-                }
+                delegate: Item {
+                    id: playerDelegate
+                    required property MprisPlayer modelData
+                    required property int index
 
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.leftMargin: root._visiblePlayers.length > 1
-                        ? Appearance.sizes.elevationMargin : 0
-                    visible: playerSelector.activeFocus
-                    color: "transparent"
-                    radius: root.popupRounding
-                    border.width: 2
-                    border.color: Appearance.colors.colPrimary
-                    z: 2
-                }
-                
-                MouseArea {
-                    id: playerSelector
-                    anchors.fill: parent
-                    visible: !isActive && root._visiblePlayers.length > 1
-                    activeFocusOnTab: visible
-                    Accessible.role: Accessible.Button
-                    Accessible.name: Translation.tr("Switch media player") + ": " + selectorLabel
-                    Accessible.focusable: visible
-                    Keys.onPressed: event => {
-                        if (event.isAutoRepeat
-                                || (event.key !== Qt.Key_Return
-                                    && event.key !== Qt.Key_Enter
-                                    && event.key !== Qt.Key_Space))
-                            return
-                        event.accepted = true
-                        MprisController.setActivePlayer(modelData)
+                    width: playerViewport.width
+                    height: playerViewport.height
+                    x: 0
+                    y: (playerDelegate.index - root.currentTab)
+                        * playerViewport.height
+                    enabled: playerDelegate.index === root.currentTab
+                    z: enabled ? 2 : 1
+
+                    function focusPrimaryControl(): void {
                         playerControl.focusPrimaryControl()
                     }
-                    onClicked: MprisController.setActivePlayer(modelData)
-                    cursorShape: Qt.PointingHandCursor
-                    z: 3
+
+                    Behavior on y {
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation {
+                            duration: root.tabSlideDuration
+                            easing.type: Appearance.animation.elementMove.type
+                            easing.bezierCurve:
+                                Appearance.animation.elementMove.bezierCurve
+                        }
+                    }
+
+                    PlayerControl {
+                        id: playerControl
+                        anchors {
+                            top: parent.top
+                            bottom: parent.bottom
+                            left: parent.left
+                            right: parent.right
+                            rightMargin: root.tabCount > 1 ? 16 : 0
+                        }
+                        player: modelData
+                        visualizerPoints: root.visualizerPoints
+                        visualizerMaxValue: root.visualizerMaxValue
+                        radius: root.popupRounding
+                        screenX: root.screenX + playerDelegate.x + playerControl.x
+                        screenY: root.screenY + playerViewport.y
+                            + playerDelegate.y + playerControl.y
+                    }
+                }
+            }
+
+            // Same compact vertical indicator language as Weather Popup:
+            // each media source is a tab, while the active source is the
+            // primary dot. The rail stays on the right rather than adding a
+            // second row of source labels above the player.
+            Item {
+                id: tabIndicator
+                width: 14
+                height: indicatorDots.implicitHeight
+                anchors.right: parent.right
+                anchors.rightMargin: 4
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.tabCount > 1
+                z: 20
+
+                Column {
+                    id: indicatorDots
+                    anchors.centerIn: parent
+                    spacing: 7
+
+                    Repeater {
+                        model: root.tabCount
+
+                        delegate: Rectangle {
+                            id: indicatorDot
+                            required property int index
+                            readonly property var tabPlayer:
+                                root._visiblePlayers[indicatorDot.index] ?? null
+                            width: 7
+                            height: 7
+                            radius: width / 2
+                            color: indicatorDot.index === root.currentTab
+                                ? Appearance.colors.colPrimary
+                                : Appearance.colors.colLayer2
+                            opacity:
+                                indicatorDot.index === root.currentTab ? 1 : 0.55
+
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -5
+                                hoverEnabled: true
+                                activeFocusOnTab: true
+                                cursorShape: Qt.PointingHandCursor
+                                Accessible.role: Accessible.Button
+                                Accessible.name:
+                                    Translation.tr("Switch media source")
+                                    + ": " + root.playerLabel(indicatorDot.tabPlayer)
+                                Accessible.focusable: true
+
+                                Keys.onPressed: event => {
+                                    if (event.isAutoRepeat
+                                            || (event.key !== Qt.Key_Return
+                                                && event.key !== Qt.Key_Enter
+                                                && event.key !== Qt.Key_Space))
+                                        return
+                                    event.accepted = true
+                                    root.selectTab(indicatorDot.index)
+                                }
+
+                                onClicked:
+                                    root.selectTab(indicatorDot.index)
+                            }
+                        }
+                    }
+                }
+            }
+
+            WheelHandler {
+                target: playerViewport
+                orientation: Qt.Vertical
+                acceptedDevices:
+                    PointerDevice.Mouse | PointerDevice.TouchPad
+                enabled: root.tabCount > 1
+
+                onWheel: event => {
+                    if (event.angleDelta.y < 0)
+                        root.selectTab((root.currentTab + 1) % root.tabCount)
+                    else if (event.angleDelta.y > 0)
+                        root.selectTab((root.currentTab - 1 + root.tabCount)
+                            % root.tabCount)
+                    event.accepted = true
                 }
             }
         }

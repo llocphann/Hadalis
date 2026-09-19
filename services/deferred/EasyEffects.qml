@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
+import qs
 import qs.modules.common
 import QtQuick
 import Quickshell
@@ -17,6 +18,8 @@ Singleton {
     property bool available: false
     property bool active: false
     property bool nativeInstalled: false
+    readonly property bool uiDemand:
+        GlobalStates.sidebarRightOpen || GlobalStates.waffleActionCenterOpen
 
     function fetchAvailability() {
         if (whichProc.running || flatpakInfoProc.running) return
@@ -87,9 +90,13 @@ Singleton {
 
     Timer {
         id: statePollTimer
-        interval: 5000
+        interval: root.uiDemand ? 5000 : 30000
         repeat: true
-        running: Config.ready && root.available
+        // Poll quickly only while a control surface can display the state. When
+        // EasyEffects is active in the background, keep a slow verification
+        // cadence so an external stop is eventually reflected without waking a
+        // subprocess every five seconds for the entire desktop session.
+        running: Config.ready && root.available && (root.uiDemand || root.active)
         onTriggered: root.fetchActiveState()
     }
 
@@ -105,6 +112,18 @@ Singleton {
             if (Config.ready) {
                 initTimer.start()
             }
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSidebarRightOpenChanged(): void {
+            if (GlobalStates.sidebarRightOpen)
+                root.fetchActiveState()
+        }
+        function onWaffleActionCenterOpenChanged(): void {
+            if (GlobalStates.waffleActionCenterOpen)
+                root.fetchActiveState()
         }
     }
 

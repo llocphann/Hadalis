@@ -44,14 +44,12 @@ Scope {
                 id: barRoot
                 screen: barLoader.modelData
                 readonly property string outputName: String(barLoader.modelData?.name ?? "")
-                readonly property bool fullscreenCovered: outputName.length > 0
-                    && GameMode.hasFullscreenOnOutput(outputName)
 
-                // Match horizontal Bar and Screen Edge lifecycle. Explicitly
-                // unmapping/remapping on fullscreen transitions avoids stale
-                // blank contents after the fullscreen client releases the output.
-                visible: !fullscreenCovered
-                updatesEnabled: !fullscreenCovered
+                // FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19):
+                // Keep the PanelWindow mapped and updating across fullscreen.
+                // Fullscreen clients naturally cover Top-layer Bar surfaces;
+                // unmapping/remapping the native layer surface can strand the
+                // QML Bar contents blank after fullscreen exits.
 
                 property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
                 

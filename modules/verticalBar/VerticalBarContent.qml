@@ -65,6 +65,15 @@ Item { // Bar content region
     readonly property color separatorColor: Appearance.colors.colOutlineVariant
     readonly property bool gameModeMinimal: Appearance.gameModeMinimal
 
+    // Keep edge-pinned controls out of the middle stack's budget. If all enabled
+    // modules do not fit, the middle becomes flickable instead of overlapping.
+    readonly property real verticalEdgeReserve: Math.max(
+        Appearance.sizes.baseVerticalBarWidth * 1.5,
+        topSectionColumnLayout.implicitHeight,
+        bottomSectionColumnLayout.implicitHeight)
+    readonly property real middleAvailableHeight:
+        Math.max(0, root.height - root.verticalEdgeReserve * 2)
+
     readonly property string barAppearance: Config.options?.bar?.appearanceStyle ?? "classic"
     readonly property bool isIslands: root.barAppearance === "islands"
 
@@ -264,10 +273,22 @@ Item { // Bar content region
         }
     }
 
-    Column { // Middle section
+    Flickable { // Middle section
         id: middleSection
         anchors.centerIn: parent
-        spacing: 4
+        width: Appearance.sizes.verticalBarWidth
+        height: Math.min(middleContent.implicitHeight, root.middleAvailableHeight)
+        contentWidth: width
+        contentHeight: middleContent.implicitHeight
+        clip: true
+        interactive: contentHeight > height + 0.5
+        boundsBehavior: Flickable.StopAtBounds
+        property real spacing: 4
+
+        Column {
+            id: middleContent
+            width: middleSection.width
+            spacing: middleSection.spacing
 
         // Keep the compact clock near the top of the middle stack when the
         // vertical taskbar is enabled, without forcing Clock/Battery visible.
@@ -408,15 +429,16 @@ Item { // Bar content region
             }
         }
 
-        Bar.BarGroup {
-            id: utilButtonsGroup
-            vertical: true
-            padding: 4
-            visible: root.utilButtonsEnabled
-
-            Bar.UtilButtons {
+            Bar.BarGroup {
+                id: utilButtonsGroup
                 vertical: true
-                Layout.alignment: Qt.AlignHCenter
+                padding: 4
+                visible: root.utilButtonsEnabled
+
+                Bar.UtilButtons {
+                    vertical: true
+                    Layout.alignment: Qt.AlignHCenter
+                }
             }
         }
     }

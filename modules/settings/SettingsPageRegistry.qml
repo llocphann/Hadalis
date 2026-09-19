@@ -28,6 +28,7 @@ Singleton {
     property bool _legacyBarBackgroundMigrationDone: false
     property bool _legacySidebarSurfaceMigrationDone: false
     property bool _legacyScreenEdgeShadowMigrationDone: false
+    property bool _legacyStockBarLayoutMigrationDone: false
 
     function isRetiredFeaturePage(index: int): bool {
         return root.retiredFeaturePageIndexes.includes(index)
@@ -181,6 +182,46 @@ Singleton {
         }
     }
 
+    function _sameStringList(actual, expected): bool {
+        if (!actual || actual.length !== expected.length)
+            return false
+        for (let i = 0; i < expected.length; ++i) {
+            if (String(actual[i]) !== expected[i])
+                return false
+        }
+        return true
+    }
+
+    function _migrateLegacyStockBarLayout(): void {
+        if (root._legacyStockBarLayoutMigrationDone || !Config.ready)
+            return
+
+        root._legacyStockBarLayoutMigrationDone = true
+        const layout = Config.options?.bar?.layout
+        if (!layout || layout.migrated !== true)
+            return
+
+        // A single changed zone makes the layout user-owned and ineligible.
+        const stock = root._sameStringList(layout.left,
+                ["leftSidebarButton", "activeWindow"])
+            && root._sameStringList(layout.centerLeft, ["resources", "media"])
+            && root._sameStringList(layout.center, ["workspaces"])
+            && root._sameStringList(layout.centerRight,
+                ["clock", "utilButtons", "battery"])
+            && root._sameStringList(layout.right,
+                ["rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"])
+
+        if (stock) {
+            Config.setNestedValues({
+                "bar.layout.centerRight": ["clock", "utilButtons"],
+                "bar.layout.right": [
+                    "rightSidebarButton", "battery", "tray", "timer",
+                    "shellUpdate", "spacer", "weather"
+                ]
+            })
+        }
+    }
+
     function consumeLegacyTlpPowerRedirect(): bool {
         if (!root._legacyTlpPowerRedirectPending)
             return false
@@ -224,6 +265,7 @@ Singleton {
         root._migrateLegacyBarBackground()
         root._migrateLegacySidebarSurface()
         root._migrateLegacyScreenEdgeShadow()
+        root._migrateLegacyStockBarLayout()
     }
 
     Connections {
@@ -244,6 +286,7 @@ Singleton {
                 root._migrateLegacyBarBackground()
                 root._migrateLegacySidebarSurface()
                 root._migrateLegacyScreenEdgeShadow()
+                root._migrateLegacyStockBarLayout()
             }
         }
     }

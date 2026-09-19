@@ -47,6 +47,18 @@ def main() -> None:
             "Niri preview lifecycle must be decoupled from full-screen Overview state")
     require(hypr, "property bool embeddedSurface: false",
             "Hyprland Overview must support embedded popup rendering")
+    require(niri, "function restoreOverviewPosition(): void",
+            "Niri Overview drag release must restore x/y bindings")
+    require(niri, "property int pendingWorkspaceSlot: -1",
+            "Niri cross-workspace drag must stage the destination workspace slot")
+    require(niri, "windowItem.restoreOverviewPosition()",
+            "Niri cross-workspace drop must snap the reused delegate back into workspace geometry")
+    require(hypr, "function restoreOverviewPosition(): void",
+            "Hyprland Overview drag release must restore initX/initY bindings")
+    require(hypr, "property int pendingOverviewWorkspace: -1",
+            "Hyprland cross-workspace drag must stage the destination workspace")
+    require(hypr, "window.restoreOverviewPosition()",
+            "Hyprland cross-workspace drop must snap the reused delegate back into workspace geometry")
     require(runtime, "active: root.shouldShow && root.taskViewMode",
             "normal launcher must not instantiate the old full-screen workspace Overview")
     forbid(panels, 'settingsTaskSection: "overview"',

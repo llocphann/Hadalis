@@ -600,12 +600,36 @@ Item {
                     readonly property int workspaceMaxCol: modelData.maxCol || 1
                     readonly property int workspaceMaxRow: modelData.maxRow || 1
 
-                    readonly property int workspaceIndex: workspaceSlot - root.firstVisibleWorkspaceSlot
+                    // MouseArea.drag.target writes x/y imperatively, which breaks the
+                    // bindings below for the lifetime of a reused delegate. Keep a
+                    // transient destination slot during a cross-workspace drop so
+                    // the preview snaps inside the target frame immediately; once
+                    // Niri publishes the authoritative workspace, drop the override.
+                    property int pendingWorkspaceSlot: -1
+                    readonly property int effectiveWorkspaceSlot:
+                        pendingWorkspaceSlot >= 0 ? pendingWorkspaceSlot : workspaceSlot
+                    readonly property int workspaceIndex:
+                        effectiveWorkspaceSlot - root.firstVisibleWorkspaceSlot
                     readonly property int workspaceColIndex: workspaceIndex % root.overviewColumns
                     readonly property int workspaceRowIndex: Math.floor(workspaceIndex / root.overviewColumns)
 
                     readonly property real xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex
                     readonly property real yOffset: (root.workspaceImplicitHeight + workspaceSpacing) * workspaceRowIndex
+
+                    function restoreOverviewPosition(): void {
+                        windowItem.x = Qt.binding(function() {
+                            return windowItem.baseX + windowItem.tileMargin
+                        })
+                        windowItem.y = Qt.binding(function() {
+                            return windowItem.baseY + windowItem.tileMargin
+                        })
+                    }
+
+                    onWorkspaceSlotChanged: {
+                        if (pendingWorkspaceSlot >= 0
+                                && workspaceSlot === pendingWorkspaceSlot)
+                            pendingWorkspaceSlot = -1
+                    }
 
                     readonly property var layoutPos: (windowData.layout && windowData.layout.pos_in_scrolling_layout) ? windowData.layout.pos_in_scrolling_layout : [1, 1]
                     readonly property int layoutCol: layoutPos.length >= 1 && layoutPos[0] ? layoutPos[0] : 1
@@ -828,14 +852,25 @@ Item {
                                 const movedToOtherWorkspace = (targetWorkspace !== -1 && targetWorkspace !== fromWorkspace)
 
                                 if (movedToOtherWorkspace) {
-                                    // Drop válido en otro workspace: mover ventana allí
-                                    NiriService.moveWindowToWorkspaceById(windowData.id, targetWorkspace, true)
-                                    // Force immediate rebuild after move
+                                    const targetSlot = root.workspacesForOutput.findIndex(
+                                        workspace => workspace?.id === targetWorkspace)
+                                    windowItem.pendingWorkspaceSlot =
+                                        targetSlot >= 0 ? targetSlot : -1
+                                    // Restore declarative x/y immediately. Without this,
+                                    // drag.target leaves the reused delegate at the raw
+                                    // pointer drop coordinate, which can sit above/below
+                                    // the target workspace even after the backend move.
+                                    windowItem.restoreOverviewPosition()
+                                    NiriService.moveWindowToWorkspaceById(
+                                        windowData.id, targetWorkspace, true)
+                                    // Force immediate rebuild after move; the restored
+                                    // bindings then follow authoritative Niri layout data.
                                     Qt.callLater(() => windowSpace.rebuildWindowItems())
                                 } else {
-                                    // Drop fuera de cualquier workspace diferente o mismo workspace: efecto imán
-                                    windowItem.x = Qt.binding(function() { return windowItem.baseX + windowItem.tileMargin })
-                                    windowItem.y = Qt.binding(function() { return windowItem.baseY + windowItem.tileMargin })
+                                    windowItem.pendingWorkspaceSlot = -1
+                                    // Same-workspace/cancelled drops also need to repair
+                                    // the x/y bindings broken by MouseArea.drag.target.
+                                    windowItem.restoreOverviewPosition()
 
                                     // Comportamiento de click (sin drag real)
                                     if (isClick && event.button === Qt.LeftButton) {

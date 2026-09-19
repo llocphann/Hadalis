@@ -267,13 +267,26 @@ Item {
 
                 property bool atInitPosition: (initX == x && initY == y)
 
-                // Offset on the canvas
-                property int workspaceColIndex: (windowData?.workspace.id - 1) % Config.options.overview.columns
-                property int workspaceRowIndex: Math.floor((windowData?.workspace.id - 1) % root.workspacesShown / Config.options.overview.columns)
+                // Offset on the canvas. drag.target mutates x/y directly and
+                // therefore detaches OverviewWindow's x:initX / y:initY bindings.
+                // Hold the destination workspace briefly so the restored bindings
+                // point at the target frame even before HyprlandData catches up.
+                property int pendingOverviewWorkspace: -1
+                readonly property int effectiveWorkspaceId:
+                    pendingOverviewWorkspace > 0
+                        ? pendingOverviewWorkspace
+                        : (windowData?.workspace.id ?? 1)
+                property int workspaceColIndex: (effectiveWorkspaceId - 1) % Config.options.overview.columns
+                property int workspaceRowIndex: Math.floor((effectiveWorkspaceId - 1) % root.workspacesShown / Config.options.overview.columns)
                 xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex
                 yOffset: (root.workspaceImplicitHeight + workspaceSpacing) * workspaceRowIndex
                 property real xWithinWorkspaceWidget: Math.max((windowData?.at[0] - (monitor?.x ?? 0) - monitorData?.reserved[0]) * root.scale, 0)
                 property real yWithinWorkspaceWidget: Math.max((windowData?.at[1] - (monitor?.y ?? 0) - monitorData?.reserved[1]) * root.scale, 0)
+
+                function restoreOverviewPosition(): void {
+                    window.x = Qt.binding(function() { return window.initX })
+                    window.y = Qt.binding(function() { return window.initY })
+                }
 
                 // Radius
                 property real minRadius: Appearance.rounding.small
@@ -304,8 +317,14 @@ Item {
                     repeat: false
                     running: false
                     onTriggered: {
-                        window.x = Math.round(xWithinWorkspaceWidget + xOffset)
-                        window.y = Math.round(yWithinWorkspaceWidget + yOffset)
+                        if (window.pendingOverviewWorkspace > 0
+                                && window.windowData?.workspace.id
+                                    === window.pendingOverviewWorkspace)
+                            window.pendingOverviewWorkspace = -1
+                        // Rebind rather than assign coordinates. A plain assignment
+                        // would fix one frame but leave future workspace/layout
+                        // changes detached from initX/initY again.
+                        window.restoreOverviewPosition()
                     }
                 }
 
@@ -338,17 +357,27 @@ Item {
                         window.Drag.active = false
                         root.draggingFromWorkspace = -1
                         if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
+                            window.pendingOverviewWorkspace = targetWorkspace
+                            // Repair x/y immediately so the preview is contained by
+                            // the destination workspace instead of retaining the raw
+                            // drag coordinate above/below its frame.
+                            window.restoreOverviewPosition()
                             Hyprland.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${window.windowData?.address}`)
                             updateWindowPosition.restart()
                         }
                         else {
+                            window.pendingOverviewWorkspace = -1
                             if (!window.windowData.floating) {
-                                updateWindowPosition.restart()
+                                window.restoreOverviewPosition()
                                 return
                             }
+                            // Floating windows still use the raw drop position to
+                            // update compositor geometry. Restore the Overview
+                            // bindings only after deriving that compositor target.
                             const percentageX = Math.round((window.x - xOffset) / root.workspaceImplicitWidth * 100)
                             const percentageY = Math.round((window.y - yOffset) / root.workspaceImplicitHeight * 100)
                             Hyprland.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${window.windowData?.address}`)
+                            window.restoreOverviewPosition()
                         }
                     }
                     onClicked: (event) => {

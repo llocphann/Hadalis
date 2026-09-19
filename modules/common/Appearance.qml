@@ -1659,17 +1659,10 @@ Singleton {
 
     syntaxHighlightingTheme: root.m3colors.darkmode ? "Monokai" : "ayu Light"
 
-    // Toggle dark mode - switches between light and dark variants of current theme
+    // Dark/light changes must flow through MaterialThemeLoader. It supplies the
+    // requested mode explicitly to switchwall.sh and force-applies the generated
+    // palette, so the shell updates live instead of only after a Quickshell reload.
     function toggleDarkMode(): void {
-        const newMode = !root.m3colors.darkmode
-        // Update the custom theme darkmode setting
-        Config.setNestedValue("appearance.customTheme.darkmode", newMode)
-        // If using auto theme, regenerate from wallpaper with new mode
-        if (ThemeService.isAutoTheme) {
-            ThemeService.regenerateAutoTheme()
-        } else {
-            // For preset themes, just toggle the darkmode flag directly
-            root.m3colors.darkmode = newMode
-        }
+        MaterialThemeLoader.setDarkMode(!root.m3colors.darkmode)
     }
 }

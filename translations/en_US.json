@@ -5369,5 +5369,6 @@
   "Reset removes the invalid iNiR TLP override.": "Reset removes the invalid iNiR TLP override.",
   "Reset clears the iNiR TLP overrides.": "Reset clears the iNiR TLP overrides.",
   "Overrides: %1": "Overrides: %1",
-  "Battery care": "Battery care"
+  "Battery care": "Battery care",
+  "Media width (px)": "Media width (px)"
 }

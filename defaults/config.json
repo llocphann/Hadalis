@@ -822,6 +822,9 @@
                 "showUnreadCount": true
             }
         },
+        "media": {
+            "width": 180
+        },
         "modules": {
             "activeWindow": true,
             "battery": true,

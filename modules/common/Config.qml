@@ -1651,6 +1651,9 @@ Singleton {
                     property string dateFontFamily: ""
                     property int datePixelSize: 0
                 }
+                property JsonObject media: JsonObject {
+                    property int width: 180
+                }
                 property JsonObject vignette: JsonObject {
                     property bool enabled: false
                     property real intensity: 0.6

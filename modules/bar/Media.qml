@@ -27,11 +27,15 @@ Item {
     readonly property int effectiveTrackAnimationDirection: pendingTrackDirection !== 0 ? pendingTrackDirection : 1
 
     Layout.fillHeight: true
-    // Clamp width to prevent long song titles from overflowing into Workspaces.
-    // The bar's centerSideModuleWidth binding already accounts for this, but
-    // a stable natural width prevents track-length changes from resizing the
-    // center pill every time metadata changes.
-    readonly property real maxMediaWidth: 220 * Appearance.fontSizeScale
+    // Keep the media footprint compact and user-controlled. A stable width
+    // prevents track-length changes from resizing the center pill while the
+    // marquee handles titles that exceed the configured space.
+    readonly property real maxMediaWidth: {
+        const configured = Number(Config.options?.bar?.media?.width ?? 180)
+        return isFinite(configured)
+            ? Math.max(120, Math.min(320, configured))
+            : 180
+    }
     implicitWidth: lockMediaWidth
         ? maxMediaWidth
         : Math.min(rowLayout.implicitWidth + rowLayout.spacing * 2, maxMediaWidth)

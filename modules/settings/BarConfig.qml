@@ -648,6 +648,23 @@ ContentPage {
             }
 
             ContentSubsection {
+                title: Translation.tr("Media")
+                visible: !root.isVertical
+
+                ConfigSpinBox {
+                    icon: "width_normal"
+                    text: Translation.tr("Media width (px)")
+                    value: Config.options?.bar?.media?.width ?? 180
+                    from: 120
+                    to: 320
+                    stepSize: 10
+                    enabled: Config.options?.bar?.modules?.media ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue("bar.media.width", value)
+                }
+            }
+
+            ContentSubsection {
                 title: Translation.tr("System tray")
 
                 ConfigRow {

@@ -449,6 +449,11 @@ def main() -> None:
     check("id: leftScreenEdgeContact" in bar_runtime
           and "id: rightScreenEdgeContact" in bar_runtime,
           "Horizontal Bar must own both physical Screen Edge contact strips")
+    check("leftMargin: 0" in bar_runtime
+          and "rightMargin: 0" in bar_runtime
+          and "leftMargin: barRoot.frameRadius" in bar_runtime
+          and "rightMargin: barRoot.frameRadius" in bar_runtime,
+          "Horizontal Bar contact arcs must not double-inset by Screen Edge thickness")
     check("id: topScreenEdgeContact" in vertical_bar_runtime
           and "id: bottomScreenEdgeContact" in vertical_bar_runtime,
           "Vertical Bar must own both physical Screen Edge contact strips")

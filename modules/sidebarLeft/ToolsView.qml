@@ -87,17 +87,16 @@ Item {
                 ConfigSwitch {
                     buttonIcon: "dark_mode"
                     text: Translation.tr("Dark mode")
+                    autoToggle: false
                     checked: Appearance.m3colors?.darkmode ?? false
-                    onCheckedChanged: {
-                        const current = Config.options?.appearance?.customTheme?.darkmode ?? true
-                        if (checked !== current) Config.setNestedValue("appearance.customTheme.darkmode", checked)
-                    }
+                    onToggledByUser: checked => MaterialThemeLoader.setDarkMode(checked)
                 }
                 ConfigSwitch {
                     buttonIcon: "nightlight"
                     text: Translation.tr("Night light")
+                    autoToggle: false
                     checked: Hyprsunset.active ?? false
-                    onCheckedChanged: if (checked !== Hyprsunset.active) Hyprsunset.toggle()
+                    onToggledByUser: checked => Hyprsunset.toggle(checked)
                 }
                 ConfigSwitch {
                     buttonIcon: "coffee"

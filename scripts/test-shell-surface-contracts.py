@@ -188,35 +188,18 @@ def main() -> None:
     check("mask: Region { item: emptyFrameInput }" in screen_edge
           and "mask: Region { item: emptyReservationInput }" in screen_edge,
           "Screen Edge frame and reservation surfaces must remain completely click-through")
-    for retired_shadow_geometry in (
+    for retired_shadow in (
         "id: edgeShadow",
+        "shadowEnabled",
         "shadowExtent",
+        "shadowOpacity",
+        "shadowColor",
+        "screenEdge?.shadow",
         "GradientStop",
-        "RadialGradient",
-        "shadowCanvas",
+        "MultiEffect",
     ):
-        check(retired_shadow_geometry not in screen_edge,
-              f"Physical Screen Edge must not restore separate shadow geometry: {retired_shadow_geometry}")
-    check("import QtQuick.Effects" in screen_edge
-          and "Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true" in screen_edge
-          and "Config.options?.appearance?.screenEdge?.shadow?.size ?? 15" in screen_edge
-          and "Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70" in screen_edge
-          and screen_edge.count("const revision = Config.revision") == 3
-          and "readonly property int shadowBlurMax: shadowSize === 15 ? 15 : 32" in screen_edge
-          and "shadowSize / shadowBlurMax" in screen_edge
-          and "layer.enabled: true" in screen_edge
-          and "layer.effect: MultiEffect {" in screen_edge
-          and "shadowEnabled: root.shadowEnabled" in screen_edge
-          and "blurMax: root.shadowBlurMax" in screen_edge
-          and "shadowBlur: root.shadowBlur" in screen_edge
-          and "shadowColor: Appearance.m3colors.m3shadow" in screen_edge
-          and "shadowOpacity: root.shadowOpacity" in screen_edge
-          and "shadowHorizontalOffset: 0" in screen_edge
-          and "shadowVerticalOffset: 0" in screen_edge,
-          "Physical Screen Edge shadow must use live Caelestia MultiEffect semantics")
-    check("readonly property int shadowBlurMax: shadowSize === 15 ? 15 : 32" in screen_edge
-          and "shadowSize === 15 ? 15 : 32" in screen_edge,
-          "Default 15px Screen Edge shadow must preserve Caelestia blurMax=15 exactly")
+        check(retired_shadow not in screen_edge,
+              f"Physical Screen Edge must remain shadow-free: {retired_shadow}")
     check("component FrameWindow: PanelWindow" in screen_edge
           and "component ReservationWindow: PanelWindow" in screen_edge
           and "implicitHeight: horizontal ? root.thickness : 1" in screen_edge
@@ -629,16 +612,6 @@ def main() -> None:
           "Classic Bar schema default must be Hug")
     check('"cornerStyle": 0' in defaults_json,
           "Classic Bar persisted default must be Hug")
-    check("property JsonObject screenEdge: JsonObject {" in config_qml
-          and "property bool enabled: true" in config_qml
-          and "property int size: 15" in config_qml
-          and "property real opacity: 0.70" in config_qml,
-          "Screen Edge schema must retain Caelestia shadow defaults: enabled, 15px, 70%")
-    check('"screenEdge": {' in defaults_json
-          and '"enabled": true' in defaults_json
-          and '"size": 15' in defaults_json
-          and '"opacity": 0.7' in defaults_json,
-          "Persisted Screen Edge shadow defaults must match Caelestia: enabled, 15px, 70%")
     check("property int material: 0" in config_qml
           and '"material": 0' in defaults_json,
           "Material global-style compatibility corner must resolve to Hug")
@@ -671,16 +644,11 @@ def main() -> None:
     check('appearance.screenEdge.radius' not in bar_settings
           and 'Translation.tr("Border radius (px)")' not in bar_settings,
           "Bar settings must not expose retired Screen Edge radius while square baseline is active")
-    check('Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.shadow.enabled", checked)' in bar_settings
-          and 'Config.options?.appearance?.screenEdge?.shadow?.size ?? 15' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.shadow.size", value)' in bar_settings
-          and 'Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.shadow.opacity", value / 100)' in bar_settings
-          and 'Translation.tr("Screen edge shadow")' in bar_settings
-          and 'Translation.tr("Shadow size (px)")' in bar_settings
-          and 'Translation.tr("Shadow opacity (%)")' in bar_settings,
-          "Public Bar settings must expose the restored Caelestia Screen Edge shadow controls")
+    check('appearance.screenEdge.shadow' not in bar_settings
+          and 'Translation.tr("Screen edge shadow")' not in bar_settings
+          and 'Translation.tr("Shadow size (px)")' not in bar_settings
+          and 'Translation.tr("Shadow opacity (%)")' not in bar_settings,
+          "Public Bar settings must not expose retired physical Screen Edge shadow controls")
 
     dock_config = read("modules/settings/DockConfig.qml")
     dock_config_lower = dock_config.lower()
@@ -722,9 +690,8 @@ def main() -> None:
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
-    check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
-          and 'description: Translation.tr("Configure the Screen Edge shadow size and opacity")' in settings_registry_data,
-          "Settings search source must expose the restored Screen Edge shadow controls")
+    check('label: Translation.tr("Screen edge shadow")' not in settings_registry_data,
+          "Settings search source must not expose retired physical Screen Edge shadow controls")
 
     for connected_shadow_path in (
         "modules/sidebarLeft/SidebarLeftContent.qml",

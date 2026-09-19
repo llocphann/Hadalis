@@ -13,8 +13,7 @@ Item {
     implicitHeight: row.implicitHeight
 
     function toggleDark(): void {
-        const current = Config.options?.appearance?.customTheme?.darkmode ?? true
-        Config.setNestedValue("appearance.customTheme.darkmode", !current)
+        Appearance.toggleDarkMode()
     }
 
     function openSettings(): void {
@@ -49,7 +48,7 @@ Item {
             btnIcon: "nightlight"
             tip: Translation.tr("Night light")
             active: Hyprsunset.active ?? false
-            onClicked: Hyprsunset.toggle()
+            onClicked: Hyprsunset.toggle(!(Hyprsunset.active ?? false))
             visible: Config.options?.sidebar?.widgets?.controlsCard?.showNightLight ?? true
         }
         Toggle { 

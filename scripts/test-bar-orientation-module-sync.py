@@ -140,6 +140,12 @@ def main() -> None:
     require(weather_bar, "WeatherPopup {",
             "Shared Weather control must retain the Weather popup for both orientations.")
 
+    require(horizontal_media,
+            "mediaInput.containsMouse || titleHoverHandler.hovered",
+            "Top/Bottom Media popup hover must include the title marquee area.")
+    require(horizontal_media, "hoverTarget: root",
+            "Top/Bottom Media popup must anchor to the whole module hover surface.")
+
     for media, name in ((horizontal_media, "Top/Bottom"),
                         (vertical_media, "Left/Right")):
         require(media, "hoverActivates: true",

@@ -23,6 +23,11 @@ Item {
     readonly property bool hasTrackMetadata: (activePlayer?.trackTitle?.length ?? 0) > 0
         || (activePlayer?.trackArtist?.length ?? 0) > 0
     readonly property bool lockMediaWidth: showVerboseLabel && hasTrackMetadata
+    // The title scroller owns its own HoverHandler to pause the marquee, so the
+    // legacy MouseArea does not report containsMouse over that child. Expose one
+    // module-wide hover state for the connected Media popup instead.
+    readonly property bool containsMouse:
+        mediaInput.containsMouse || titleHoverHandler.hovered
     property int pendingTrackDirection: 0
     readonly property int effectiveTrackAnimationDirection: pendingTrackDirection !== 0 ? pendingTrackDirection : 1
 
@@ -63,7 +68,7 @@ Item {
     // directly from the media module instead of opening a floating window/card.
     StyledPopup {
         id: barMediaPopup
-        hoverTarget: mediaInput
+        hoverTarget: root
         hoverActivates: true
         alternativeVisibleCondition: root.barMediaPopupVisible && root.popupMode === "bar"
         closeOnOutsideClick: root.barMediaPopupVisible

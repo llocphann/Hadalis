@@ -17,15 +17,15 @@ Item {
     property bool shadowBottom: true
     property bool shadowLeft: true
     property bool shadowRight: true
-    // A directly joined edge remains a rounded panel edge, matching Caelestia's
-    // PanelBg/BlobGroup composition. Corners that touch Screen Edge/Bar inherit
-    // the physical frame radius instead of being squared; free corners keep the
-    // normal popup radius. Join flares remain a separate smooth-union shoulder.
+    // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK:
+    // Joined body corners are deliberately square. The visible contact curve is
+    // owned by ConnectedSurfaceJoinFlares outside the body, producing the
+    // outward concave/flattened transition into Screen Edge/Bar. Free corners
+    // keep the normal popup radius.
     property bool joinTop: false
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
-    property real attachedCornerRadius: PerimeterTokens.attachedCornerRadius
     property real joinFlareRadius: PerimeterTokens.joinFlareRadius
     property bool hoverEnabled: false
     readonly property bool bodyHovered: bodyHover.hovered
@@ -56,17 +56,11 @@ Item {
         height: root.geometry.animatedBodyRect.height
         readonly property real surfaceRadius: Math.min(
             root.geometry.outerRadius, width / 2, height / 2)
-        readonly property real attachedRadius: Math.max(0, Math.min(
-            root.attachedCornerRadius, width / 2, height / 2))
         radius: surfaceRadius
-        topLeftRadius: (root.joinTop || root.joinLeft)
-            ? attachedRadius : surfaceRadius
-        topRightRadius: (root.joinTop || root.joinRight)
-            ? attachedRadius : surfaceRadius
-        bottomLeftRadius: (root.joinBottom || root.joinLeft)
-            ? attachedRadius : surfaceRadius
-        bottomRightRadius: (root.joinBottom || root.joinRight)
-            ? attachedRadius : surfaceRadius
+        topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius
+        topRightRadius: (root.joinTop || root.joinRight) ? 0 : surfaceRadius
+        bottomLeftRadius: (root.joinBottom || root.joinLeft) ? 0 : surfaceRadius
+        bottomRightRadius: (root.joinBottom || root.joinRight) ? 0 : surfaceRadius
         color: root.fillColor
         border.color: root.borderColor
         border.width: root.borderWidth
@@ -113,10 +107,9 @@ Item {
         }
     }
 
-    // Caelestia-style smooth-union shoulders at the endpoints of every directly
-    // attached edge. The body already carries the shared rounded contact corner;
-    // these flares only approximate BlobGroup smoothing between that rounded
-    // panel and the owning Bar/Screen Edge, never replace the corner itself.
+    // Outward concave shoulders at every joined endpoint. These own the contact
+    // curvature; the body stays square on the attached edge so the popup never
+    // reads as an inward-rounded detached card.
     ConnectedSurfaceJoinFlares {
         z: 2
         anchors.fill: parent

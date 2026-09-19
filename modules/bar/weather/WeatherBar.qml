@@ -10,8 +10,13 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
-    implicitWidth: rowLayout.implicitWidth + 10 * 2
-    implicitHeight: Appearance.sizes.barHeight
+    property bool vertical: false
+    property color foregroundColor: root.vertical
+        ? Appearance.colors.colOnLayer0
+        : Appearance.colors.colOnLayer1
+
+    implicitWidth: root.vertical ? 34 : rowLayout.implicitWidth + 10 * 2
+    implicitHeight: root.vertical ? 34 : Appearance.sizes.barHeight
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -64,14 +69,14 @@ MouseArea {
             fill: 0
             text: Icons.getWeatherIcon(Weather.data?.wCode, Weather.isNightNow()) ?? "cloud"
             iconSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnLayer1
+            color: root.foregroundColor
             Layout.alignment: Qt.AlignVCenter
         }
 
         StyledText {
-            visible: true
+            visible: !root.vertical
             font.pixelSize: Appearance.font.pixelSize.small
-            color: Appearance.colors.colOnLayer1
+            color: root.foregroundColor
             text: Weather.data?.temp ?? "--°"
             Layout.alignment: Qt.AlignVCenter
         }

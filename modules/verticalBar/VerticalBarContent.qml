@@ -11,6 +11,7 @@ import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.bar as Bar
+import qs.modules.bar.weather as BarWeather
 
 Item { // Bar content region
     id: root
@@ -387,26 +388,8 @@ Item { // Bar content region
     Component { id: shellUpdateComponent; Bar.ShellUpdateIndicator { vertical: true } }
     Component {
         id: weatherComponent
-        RippleButton {
-            implicitWidth: 34; implicitHeight: 34
-            buttonText: Translation.tr("Weather")
-            buttonRadius: Appearance.rounding.full
-            colBackground: buttonHovered ? Appearance.colors.colLayer1Hover : "transparent"
-            colBackgroundHover: Appearance.colors.colLayer1Hover
-            colRipple: Appearance.colors.colLayer1Active
-            onClicked: {
-                GlobalStates.sidebarRightRequestedWidget = "weather"
-                GlobalStates.openSidebarRight(root.screen?.name ?? "")
-            }
-            altAction: event => Weather.forceRefresh()
-            MaterialSymbol {
-                anchors.centerIn: parent
-                fill: 0
-                text: Icons.getWeatherIcon(Weather.data?.wCode, Weather.isNightNow()) ?? "cloud"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnLayer0
-            }
-            StyledToolTip { text: Translation.tr("Weather") + " · " + String(Weather.data?.temp ?? "--°") }
+        BarWeather.WeatherBar {
+            vertical: true
         }
     }
     Component {

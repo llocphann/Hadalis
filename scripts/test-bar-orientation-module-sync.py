@@ -27,6 +27,7 @@ def main() -> None:
     config = read("modules/common/Config.qml")
     defaults = read("defaults/config.json")
     util = read("modules/bar/UtilButtons.qml")
+    weather_bar = read("modules/bar/weather/WeatherBar.qml")
     timer_indicator = read("modules/bar/TimerIndicator.qml")
     shell_update_indicator = read("modules/bar/ShellUpdateIndicator.qml")
     critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
@@ -116,6 +117,20 @@ def main() -> None:
            "Vertical module Loader must not fill the main axis it is measuring.")
     require(vertical, "anchors.horizontalCenter: parent.horizontalCenter",
             "Vertical module Loader must preserve natural main-axis height.")
+    require(vertical, "import qs.modules.bar.weather as BarWeather",
+            "Vertical Bar must import the shared Weather renderer.")
+    require(vertical, "BarWeather.WeatherBar {",
+            "Left/Right Weather must reuse the Top/Bottom Weather control.")
+    require(vertical, "vertical: true",
+            "Left/Right Weather must request the compact icon-only presentation.")
+    forbid(vertical, 'buttonText: Translation.tr("Weather")',
+           "Vertical Weather must not paint a literal Weather label over its icon.")
+    require(weather_bar, "property bool vertical: false",
+            "Shared Weather control must expose an orientation-safe compact mode.")
+    require(weather_bar, "visible: !root.vertical",
+            "Vertical Weather must hide its inline temperature text.")
+    require(weather_bar, "WeatherPopup {",
+            "Shared Weather control must retain the Weather popup for both orientations.")
     require(timer_indicator,
             "? ((anyActive || showPinnedIdle) ? 34 : 0)",
             "Inactive vertical Timer must collapse to zero main-axis height.")

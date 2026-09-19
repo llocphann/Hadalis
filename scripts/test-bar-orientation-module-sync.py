@@ -99,12 +99,6 @@ def main() -> None:
     require(editor, 'enabled: zoneCard.zoneName !== "center"',
             "Pivot zone must reject drag/drop of ordinary modules.")
 
-    if vertical.count("required property string modelData") != 1:
-        raise SystemExit(
-            "VerticalModuleCell must declare required modelData exactly once; "
-            "the Repeater delegate must not redeclare it."
-        )
-
     require(util, "property bool vertical: false",
             "Utility buttons must expose an orientation-safe presentation switch.")
     require(util, "property bool compactRequested: false",

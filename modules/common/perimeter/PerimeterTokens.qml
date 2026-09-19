@@ -6,9 +6,10 @@ QtObject {
     readonly property real outerRadius: 22
     readonly property real neckRadius: 14
 
-    // Physical Screen Edge / Bar perimeter radius. The default remains
-    // Caelestia border.rounding=25 and Settings may change only this shared
-    // perimeter value.
+    // BAR-SCREEN-EDGE-CORNER-LOCK: this is the only user-adjustable
+    // corner parameter for the physical Screen Edge + normal ii Bar perimeter.
+    // The default remains Caelestia border.rounding=25. Do not create a second
+    // Bar endpoint radius or orientation-specific corner token.
     readonly property real frameRadius: {
         const revision = Config.revision
         return Math.max(0, Math.min(96,

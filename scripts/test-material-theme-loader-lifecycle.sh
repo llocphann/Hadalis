@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/MaterialThemeLoader.qml"
+appearance="$repo_root/modules/common/Appearance.qml"
 
 fail() {
     printf 'material theme lifecycle guard failed: %s\n' "$1" >&2
@@ -36,6 +37,12 @@ require 'root._finishGenerator("dark mode", code, false, false)' \
     'dark-mode normal exit must use shared recovery'
 require 'root._finishGenerator("color invert", code, false, false)' \
     'color-invert normal exit must use shared recovery'
+
+grep -Fq -- 'MaterialThemeLoader.setDarkMode(!root.m3colors.darkmode)' "$appearance" \
+    || fail 'Appearance.toggleDarkMode must use the live MaterialThemeLoader pipeline'
+if grep -Fq -- 'ThemeService.regenerateAutoTheme()' "$appearance"; then
+    fail 'Appearance.toggleDarkMode must not use the stale config-read regeneration path'
+fi
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
 if (( start_guard_count < 3 )); then

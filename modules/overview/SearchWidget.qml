@@ -4,6 +4,7 @@ import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.common.perimeter
 import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
@@ -20,6 +21,18 @@ Item { // Wrapper
     property bool panelVisible: true
     property bool applicationDragActive: false
     property real availableHeight: root.QsWindow?.window?.height ?? (root.QsWindow?.window?.screen?.height ?? 1080)
+    // When search has results, Overview can present this whole surface as the
+    // bottom-connected Applications popup. The body geometry is exported so
+    // the owning full-screen layer can align its real painted bottom, not the
+    // wrapper/elevation margin, to Bar/Screen Edge.
+    property bool directBottomAttachment: false
+    readonly property rect connectedSurfaceRect: Qt.rect(
+        searchWidgetContent.x, searchWidgetContent.y,
+        searchWidgetContent.width, searchWidgetContent.height)
+    readonly property color connectedSurfaceColor: searchWidgetContent.fallbackColor
+    readonly property real connectedSurfaceBottomInset: Math.max(0,
+        root.implicitHeight - (root.connectedSurfaceRect.y
+            + root.connectedSurfaceRect.height))
     // Island is an explicit supported search-surface skin. It remains
     // independent from the retired shell-wide Global Theme families.
     readonly property bool islandStyle: (Config.options?.search?.style ?? "default") === "island"
@@ -425,8 +438,20 @@ Item { // Wrapper
     }
 
     StyledRectangularShadow {
+        z: 0
         target: searchWidgetContent
         visible: !root.islandStyle
+        joinBottom: root.directBottomAttachment && root.showResults
+    }
+
+    ConnectedSurfaceJoinFlares {
+        z: 5
+        anchors.fill: parent
+        bodyItem: searchWidgetContent
+        fillColor: root.connectedSurfaceColor
+        flareRadius: PerimeterTokens.joinFlareRadius
+        progress: root.directBottomAttachment && root.showResults ? 1 : 0
+        joinBottom: root.directBottomAttachment && root.showResults
     }
 
     IslandPanel {
@@ -439,6 +464,7 @@ Item { // Wrapper
 
     GlassBackground { // Background
         id: searchWidgetContent
+        z: 1
         anchors {
             top: parent.top
             horizontalCenter: parent.horizontalCenter
@@ -451,6 +477,10 @@ Item { // Wrapper
             ? (root.showResults ? (Config.options?.appearance?.island?.radius ?? 18)
                 : searchBar.height / 2 + searchBar.verticalPadding)
             : searchBar.height / 2 + searchBar.verticalPadding
+        // A result surface attached to the bottom Screen Edge owns no inward
+        // rounding at that contact. Shared outward flares draw the shoulders.
+        bottomLeftRadius: root.directBottomAttachment && root.showResults ? 0 : radius
+        bottomRightRadius: root.directBottomAttachment && root.showResults ? 0 : radius
         fallbackColor: root.islandStyle
             ? "transparent"
             : Appearance.colors.colBackgroundSurfaceContainer
@@ -491,6 +521,10 @@ Item { // Wrapper
                     width: searchWidgetContent.width
                     height: searchWidgetContent.height
                     radius: searchWidgetContent.radius
+                    topLeftRadius: searchWidgetContent.topLeftRadius
+                    topRightRadius: searchWidgetContent.topRightRadius
+                    bottomLeftRadius: searchWidgetContent.bottomLeftRadius
+                    bottomRightRadius: searchWidgetContent.bottomRightRadius
                 }
             }
 

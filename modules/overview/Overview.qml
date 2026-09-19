@@ -40,6 +40,8 @@ Scope {
                 !root.taskViewMode
                 && (Config.options?.overview?.dashboard?.enable ?? false)
                 && root.searchingText === ""
+            readonly property bool applicationsPresentationMode:
+                !root.taskViewMode && root.searchingText !== ""
             readonly property string outputName: String(root.modelData?.name ?? "")
             readonly property bool iiFamily:
                 (Config.options?.panelFamily ?? "ii") === "ii"
@@ -380,6 +382,14 @@ Scope {
                     topMargin: {
                         const ov = Config?.options?.overview;
                         const respectBar = ov && ov.respectBar !== undefined ? ov.respectBar : true;
+                        if (root.applicationsPresentationMode
+                                && searchWidget.visible) {
+                            const rect = searchWidget.connectedSurfaceRect
+                            const bodyBottomInColumn = searchWidget.y
+                                + rect.y + rect.height
+                            return Math.round(Math.max(0,
+                                root.bottomAttachmentY - bodyBottomInColumn))
+                        }
                         if (root.dashboardPresentationMode
                                 && dashboardPanel.visible && dashboardPanel.item) {
                             const rect = dashboardPanel.item.connectedSurfaceRect
@@ -419,7 +429,14 @@ Scope {
                         return centeredMargin;
                     }
                 }
-                spacing: root.taskViewMode ? 0 : -8
+                // In Dashboard mode align painted surfaces, not wrapper bounds:
+                // SearchWidget and OverviewDashboard both reserve elevation space
+                // around their bodies. Cancel only those two facing insets so the
+                // Search bar physically touches the Dashboard without magic pixels.
+                spacing: root.dashboardPresentationMode && dashboardPanel.item
+                    ? -(searchWidget.connectedSurfaceBottomInset
+                        + dashboardPanel.item.connectedSurfaceRect.y)
+                    : (root.taskViewMode ? 0 : -8)
 
 
                 Keys.onPressed: event => {
@@ -462,6 +479,7 @@ Scope {
                     visible: !root.taskViewMode
                     searchingText: root.searchingText
                     panelVisible: root.visible
+                    directBottomAttachment: root.applicationsPresentationMode
                     // Centered mode: limit search results to 60% of screen height
                     availableHeight: Math.max(220, root.height * 0.6)
                     onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText

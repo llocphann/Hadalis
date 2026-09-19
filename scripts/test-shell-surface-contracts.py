@@ -488,6 +488,15 @@ def main() -> None:
         check("ConnectedSurfaceJoinFlares {" not in settings_surface,
               "Settings must not reintroduce floating endpoint shoulder geometry inside the full-screen overlay")
 
+    search_widget = read("modules/overview/SearchWidget.qml")
+    check("property bool directBottomAttachment: false" in search_widget
+          and "readonly property rect connectedSurfaceRect:" in search_widget
+          and "joinBottom: root.directBottomAttachment && root.showResults" in search_widget
+          and "bottomLeftRadius: root.directBottomAttachment && root.showResults ? 0 : radius" in search_widget
+          and "bottomRightRadius: root.directBottomAttachment && root.showResults ? 0 : radius" in search_widget
+          and "ConnectedSurfaceJoinFlares {" in search_widget,
+          "Applications search surface must attach directly to bottom Screen Edge with square contact corners and outward flares")
+
     dashboard = read("modules/overview/OverviewDashboard.qml")
     check("Rectangle {\n        id: dashContainer" in dashboard
           and "color: Appearance.colors.colLayer0" in dashboard
@@ -515,6 +524,13 @@ def main() -> None:
           and "id: dashboardEqualizer" in dashboard,
           "Dashboard Media must expose the shared Equalizer DSP panel")
     overview_runtime = read("modules/overview/Overview.qml")
+    check("readonly property bool applicationsPresentationMode:" in overview_runtime
+          and "root.bottomAttachmentY - bodyBottomInColumn" in overview_runtime
+          and "directBottomAttachment: root.applicationsPresentationMode" in overview_runtime,
+          "Applications results must use the same bottom attachment boundary as Dashboard")
+    check("searchWidget.connectedSurfaceBottomInset" in overview_runtime
+          and "dashboardPanel.item.connectedSurfaceRect.y" in overview_runtime,
+          "Search and Dashboard must cancel their facing wrapper insets and meet without a visual gap")
     check("opacity: root.dashboardPresentationMode" in overview_runtime
           and '? 0 : (root._presentedOpen ? 1 : 0)' in overview_runtime,
           "Dashboard popup mode must not inherit the full-screen Overview scrim")

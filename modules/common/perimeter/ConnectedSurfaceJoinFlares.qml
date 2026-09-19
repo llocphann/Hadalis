@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 
 // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (maintainer clarified 2026-09-19):
 // Contact corners MUST flare outward from the popup/sidebar/dashboard body into
@@ -25,8 +26,24 @@ Item {
     property bool joinRight: false
 
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
-    readonly property point bodyOrigin: root.bodyItem
-        ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
+
+    // mapToItem() returns the right coordinate, but the mapping call itself does
+    // not form a reactive dependency on every x/y/scale/transform in the path.
+    // Observe the relative transform and use its revision to invalidate the
+    // mapped origin whenever the connected body (or an ancestor) moves.
+    property int bodyTransformRevision: 0
+    readonly property point bodyOrigin: {
+        const dependency = root.bodyTransformRevision
+        if (dependency < 0 || !root.bodyItem)
+            return Qt.point(0, 0)
+        return root.bodyItem.mapToItem(root, 0, 0)
+    }
+
+    TransformWatcher {
+        a: root
+        b: root.bodyItem
+        onTransformChanged: root.bodyTransformRevision++
+    }
 
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,

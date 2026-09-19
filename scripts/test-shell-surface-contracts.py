@@ -142,13 +142,19 @@ def main() -> None:
 
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     for token in (
-        "readonly property point bodyOrigin:",
+        "import Quickshell",
+        "property int bodyTransformRevision: 0",
+        "const dependency = root.bodyTransformRevision",
         "root.bodyItem.mapToItem(root, 0, 0)",
+        "TransformWatcher {",
+        "a: root",
+        "b: root.bodyItem",
+        "onTransformChanged: root.bodyTransformRevision++",
         "root.bodyOrigin.x",
         "root.bodyOrigin.y",
     ):
         check(token in join_flares,
-              f"Join flares must map nested body coordinates into their host: {token}")
+              f"Join flares must reactively map nested body coordinates into their host: {token}")
 
     check("hoverEnabled: root.active" in styled_popup
           and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in styled_popup

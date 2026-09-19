@@ -6,7 +6,7 @@
 > **Target:** `1.0`  
 > **Primary development branch:** `dev`  
 > **Stable baseline:** `stable`  
-> **Scope refresh:** 2026-09-18
+> **Scope refresh:** 2026-09-19
 
 ## 1. Source-of-truth and workflow
 
@@ -28,6 +28,57 @@ Working rules:
 - Keep commits focused and fix forward. Do not rewrite shared history.
 - Canonical local validator: `bash scripts/validate-maintainer-local.sh`.
 - A task is not release-complete merely because code exists. Runtime-sensitive items remain open until locally validated on the intended desktop environment.
+
+### 1.1 Fresh-chat handoff — read before editing perimeter/UI geometry
+
+This section is the **maintainer handoff for new chat sessions**. Read it before touching Screen Edge, Bar, popup, Sidebar, Dashboard, Settings overlay or any shared perimeter primitive. If another section appears to conflict with this handoff, the maintainer's newest explicit instruction wins.
+
+**Frozen / do-not-touch unless the maintainer explicitly asks:**
+
+- **Physical Screen Edge geometry is locked.** Do not redesign, refactor or "clean up" `modules/screenCorners/ScreenEdges.qml` while working on Popup/Sidebar/Dashboard. The accepted model is one full-screen `FrameWindow`, one odd-even `ShapePath`, four circular `PathArc` corners and transparent reservation windows only.
+- **Normal ii Bar/VerticalBar perimeter geometry is locked together with Screen Edge.** Do not add Bar-local `RoundCorner`, `PathArc`, rectangle, wedge, contact patch, shadow band or fallback geometry. Bar position top/bottom/left/right is represented only by changing the matching inner-frame inset to Bar/VerticalBar thickness inside the existing Screen Edge frame.
+- The only approved curvature control for that physical perimeter is `appearance.screenEdge.radius` through `PerimeterTokens.frameRadius` (default **25px**, supported range **0–96px**).
+- Physical Screen Edge shadow ownership is separate and already established: `appearance.screenEdge.physicalShadow` controls only the physical frame. Never reuse `appearance.screenEdge.shadow` for the physical frame; that older key remains for connected-surface body shadows.
+- Auto-hide behavior is also frozen for current geometry work: when ii Bar auto-hide is enabled, Bar relinquishes physical-edge ownership back to `ScreenEdges.qml`. Do not reintroduce `autoHideScreenEdge` or another Bar-local physical edge.
+- Waffle is a separate supported panel family. Do not change Waffle geometry as a side effect of ii perimeter work.
+
+**Current active perimeter task — connected surfaces only:**
+
+- The maintainer's current focus is **Popup / Sidebar / Dashboard / Settings / OSK contact geometry** where a connected body physically meets Screen Edge or normal ii Bar.
+- Desired visual result: the touching body corner must be **rounded like the Screen Edge/Bar corner**, not square, and must follow the same `appearance.screenEdge.radius` setting. Free/non-contact popup corners keep their existing component radius.
+- This must be implemented in the **connected-surface layer only**. Do not solve it by changing `ScreenEdges.qml`, Bar/VerticalBar files, the locked physical frame, or by painting a new physical-edge overlay.
+- Prefer one shared connected-body/contact abstraction used by `StyledPopup`, Sidebar, Dashboard, Settings surfaces and OSK. Do not create per-popup patches or a second popup framework.
+- The previous experiment that replaced connected shoulders with standalone exact Screen Edge `PathArc` patches was rejected visually and reverted. **Do not revive that approach as-is.** Caelestia's real model is a rounded `PanelBg` participating in the same blob union as the border; Hadalis must approximate that on separate layer-shell surfaces without touching the physical frame.
+- `PerimeterTokens.joinFlareRadius` / smooth-union shoulder width is conceptually separate from physical border radius. Do not conflate shoulder smoothing width with `frameRadius`.
+- Any connected-surface implementation is **not considered complete until runtime screenshots validate Popup, Sidebar, Dashboard and Settings contact corners** at the relevant Bar/Screen Edge positions.
+
+**Known-good physical perimeter invariants to preserve during all future popup work:**
+
+```text
+ScreenEdges.qml
+└── FrameWindow (full output, ExclusionMode.Ignore)
+    └── Shape
+        └── ShapePath OddEvenFill
+            ├── padded outer rectangle
+            └── one rounded inner workspace hole
+                └── exactly 4 PathArc corners
+
+normal ii Bar:
+top/bottom  -> owned inner inset = Appearance.sizes.barHeight
+left/right  -> owned inner inset = Appearance.sizes.verticalBarWidth
+
+other sides -> inner inset = Screen Edge thickness
+radius      -> PerimeterTokens.frameRadius
+```
+
+**Fresh-session procedure before a perimeter edit:**
+
+1. Read this section and §2.1 completely.
+2. Refetch current `dev` and re-read the exact target file plus its consumers immediately before writing.
+3. Treat `SCREEN-EDGE-GEOMETRY-LOCK` and `BAR-SCREEN-EDGE-CORNER-LOCK` as hard guards.
+4. For Popup/Sidebar/Dashboard work, first inspect `ConnectedSurfaceFrame.qml`, `ConnectedSurfaceJoinFlares.qml`, `ConnectedSurfaceGeometry.qml` and the calling surface; avoid editing locked physical perimeter files.
+5. Update `scripts/test-shell-surface-contracts.py` whenever ownership or geometry contracts change intentionally.
+6. Do not claim runtime success until the maintainer has run `inir update` / `inir restart` and visually validated the result.
 
 ## 2. v1.0 product direction
 

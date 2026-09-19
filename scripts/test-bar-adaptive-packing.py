@@ -41,6 +41,8 @@ def main() -> None:
         "compactRequested: root.horizontalUtilitiesCompact",
         "contentHorizontalAlignment: Qt.AlignRight",
         "contentHorizontalAlignment: Qt.AlignLeft",
+        "z: root.horizontalUtilitiesCompact ? 2 : 0",
+        'clipContent: !(root.horizontalUtilitiesCompact',
         "spacing: root.moduleGap",
     ):
         require(bar, token, f"adaptive horizontal Bar contract missing: {token}")

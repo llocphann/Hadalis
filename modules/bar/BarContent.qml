@@ -970,6 +970,7 @@ Item {
 
     Item {
         id: middleSection
+        z: root.horizontalUtilitiesCompact ? 2 : 0
         anchors {
             top: parent.top
             bottom: parent.bottom
@@ -1027,7 +1028,8 @@ Item {
             visible: !empty
             implicitWidth: empty ? 0
                 : root._pillWidth(contentWidth, root.leftCenterMaxWidth)
-            clipContent: true
+            clipContent: !(root.horizontalUtilitiesCompact
+                && root._zoneContains(root._centerLeftIds, "utilButtons"))
             moduleSpacing: root.moduleGap
             contentHorizontalAlignment: Qt.AlignRight
 
@@ -1088,7 +1090,8 @@ Item {
                 visible: !empty
                 implicitWidth: empty ? 0
                     : root._pillWidth(contentWidth, root.rightCenterMaxWidth)
-                clipContent: true
+                clipContent: !(root.horizontalUtilitiesCompact
+                    && root._zoneContains(root._centerRightIds, "utilButtons"))
                 moduleSpacing: root.moduleGap
                 contentHorizontalAlignment: Qt.AlignLeft
 

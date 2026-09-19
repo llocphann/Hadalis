@@ -14,21 +14,90 @@ Item {
     id: root
     property bool borderless: Config.options?.bar?.borderless ?? false
     property bool vertical: false
+    property bool compactRequested: false
+    property bool pinnedExpanded: false
     readonly property color neutralIconColor: Appearance.colors.colOnLayer2
     readonly property color dangerIconColor: Appearance.colors.colError
-    // Exact content width — self-inflating (+spacing*2) made every group that
-    // ends with these buttons read asymmetric: the group's own padding is the
-    // spacing authority, modules must not add their own.
-    implicitWidth: rowLayout.implicitWidth
-    implicitHeight: rowLayout.implicitHeight
+    readonly property bool hasUrgentState: RecorderStatus.isRecording
+        || Privacy.micActive
+        || (Audio?.micBeingAccessed ?? false)
+        || (Persistent.states.screenCast.active ?? false)
+    readonly property bool inlineExpanded: !root.compactRequested
+        || inlineHover.hovered || root.pinnedExpanded
+    readonly property real expandedMainAxisLength: root.vertical
+        ? controlsLayout.implicitHeight : controlsLayout.implicitWidth
+    readonly property real compactMainAxisLength: root.vertical
+        ? compactTrigger.implicitHeight : compactTrigger.implicitWidth
+
+    // Compact Utilities stays inside the Bar. Revealer animates the main axis
+    // in-place instead of opening a popup/native surface.
+    implicitWidth: inlineLayout.implicitWidth
+    implicitHeight: inlineLayout.implicitHeight
+
+    onCompactRequestedChanged: {
+        if (!compactRequested)
+            pinnedExpanded = false
+    }
+
+    HoverHandler {
+        id: inlineHover
+    }
 
     GridLayout {
-        id: rowLayout
-
-        columns: root.vertical ? 1 : Math.max(1, children.length)
+        id: inlineLayout
+        anchors.centerIn: parent
+        columns: root.vertical ? 1 : 2
         columnSpacing: root.vertical ? 0 : 4
         rowSpacing: root.vertical ? 4 : 0
-        anchors.centerIn: parent
+
+        CircleUtilButton {
+            id: compactTrigger
+            visible: root.compactRequested && root.expandedMainAxisLength > 0
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+            Accessible.name: root.pinnedExpanded
+                ? Translation.tr("Collapse utility buttons")
+                : Translation.tr("Expand utility buttons")
+            onClicked: root.pinnedExpanded = !root.pinnedExpanded
+
+            Item {
+                anchors.fill: parent
+
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    horizontalAlignment: Qt.AlignHCenter
+                    fill: root.inlineExpanded ? 1 : 0
+                    text: "settings"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: root.hasUrgentState
+                        ? root.dangerIconColor : root.neutralIconColor
+                }
+
+                Rectangle {
+                    visible: root.hasUrgentState
+                    width: 6
+                    height: 6
+                    radius: 3
+                    color: root.dangerIconColor
+                    anchors {
+                        top: parent.top
+                        right: parent.right
+                    }
+                }
+            }
+        }
+
+        Revealer {
+            id: controlsRevealer
+            vertical: root.vertical
+            reveal: root.inlineExpanded
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+
+            GridLayout {
+                id: controlsLayout
+
+                columns: root.vertical ? 1 : Math.max(1, children.length)
+                columnSpacing: root.vertical ? 0 : 4
+                rowSpacing: root.vertical ? 4 : 0
 
         Loader {
             active: Config.options?.bar?.utilButtons?.showScreenSnip ?? true
@@ -387,6 +456,8 @@ Item {
                     iconSize: Appearance.font.pixelSize.large
                     color: root.neutralIconColor
                 }
+            }
+        }
             }
         }
     }

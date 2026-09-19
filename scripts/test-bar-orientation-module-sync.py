@@ -91,8 +91,25 @@ def main() -> None:
 
     require(util, "property bool vertical: false",
             "Utility buttons must expose an orientation-safe presentation switch.")
+    require(util, "property bool compactRequested: false",
+            "Utility buttons must expose pressure-driven compact state.")
+    require(util, "readonly property real expandedMainAxisLength",
+            "Utility buttons must expose their expanded main-axis size.")
+    require(util, "Revealer {",
+            "Pressure-compacted utilities must reveal inline on the Bar.")
     require(util, "columns: root.vertical ? 1",
-            "Utility buttons must stack vertically in Left/Right Bar.")
+            "Expanded utility controls must stack vertically in Left/Right Bar.")
+    forbid(util, "StyledPopup {",
+           "Utility expansion must remain inline and must not create a popup.")
+
+    require(vertical, "Flickable { // Middle section",
+            "Left/Right Bar must bound its middle module stack.")
+    require(vertical, "middleAvailableHeight",
+            "Left/Right Bar must reserve edge content before sizing its middle stack.")
+    require(vertical, "compactRequested: root.verticalUtilitiesCompact",
+            "Left/Right Utilities must compact only from real main-axis pressure.")
+    require(vertical, "interactive: contentHeight > height + 0.5",
+            "Overflowing middle modules must remain reachable rather than overlap.")
 
     require(critical, "extraCondition: !root.barVertical",
             "Horizontal Bar loader must remain selected only for Top/Bottom.")

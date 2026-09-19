@@ -13,6 +13,8 @@ Item {
         && (Config.options?.bar?.cornerStyle === 3)
     property bool bare: false
     property bool clipContent: false
+    property real moduleSpacing: root.vertical ? 12 : 4
+    property int contentHorizontalAlignment: Qt.AlignHCenter
     readonly property bool zzzPlate: false
     implicitWidth: vertical ? Appearance.sizes.baseVerticalBarWidth
         : (gridLayout.implicitWidth + padding * 2)
@@ -48,13 +50,21 @@ Item {
             columns: root.vertical ? 1 : -1
             anchors {
                 verticalCenter: root.vertical ? undefined : parent.verticalCenter
-                horizontalCenter: parent.horizontalCenter
+                horizontalCenter: (root.vertical
+                    || root.contentHorizontalAlignment === Qt.AlignHCenter)
+                    ? parent.horizontalCenter : undefined
+                left: (!root.vertical
+                    && root.contentHorizontalAlignment === Qt.AlignLeft)
+                    ? parent.left : undefined
+                right: (!root.vertical
+                    && root.contentHorizontalAlignment === Qt.AlignRight)
+                    ? parent.right : undefined
                 top: root.vertical ? parent.top : undefined
                 bottom: root.vertical ? parent.bottom : undefined
                 margins: root.padding
             }
-            columnSpacing: 4
-            rowSpacing: 12
+            columnSpacing: root.vertical ? 0 : root.moduleSpacing
+            rowSpacing: root.vertical ? root.moduleSpacing : 0
         }
     }
 }

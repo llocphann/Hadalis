@@ -91,6 +91,58 @@ Item { // Bar content region
     readonly property bool sysTrayEnabled: root.moduleEnabled("sysTray", true)
     readonly property bool rightSidebarButtonEnabled: root.moduleEnabled("rightSidebarButton", true)
 
+    readonly property real middleModuleGap: Math.max(3,
+        Math.round(4 * Appearance.fontSizeScale))
+    readonly property real middleSectionGap: Math.max(2,
+        Math.round(4 * Appearance.fontSizeScale))
+    readonly property real topNaturalReserve: topSectionColumnLayout.implicitHeight
+    readonly property real bottomNaturalReserve: bottomSectionColumnLayout.implicitHeight
+    readonly property real middleCorridorTop: Math.min(root.height,
+        root.topNaturalReserve + root.middleSectionGap)
+    readonly property real middleCorridorBottom: Math.max(root.middleCorridorTop,
+        root.height - root.bottomNaturalReserve - root.middleSectionGap)
+    readonly property real middleAvailableHeight: Math.max(0,
+        root.middleCorridorBottom - root.middleCorridorTop)
+
+    function _expandedMiddleNaturalHeight(): real {
+        const fixedItems = [
+            clockGroupTop,
+            resourcesGroup,
+            resourcesPivotSeparator,
+            middleCenterGroup,
+            taskbarPivotSeparator,
+            taskbarGroup,
+            clockPivotSeparator,
+            clockGroup
+        ]
+        let total = 0
+        let count = 0
+        for (const item of fixedItems) {
+            if (!item || !item.visible)
+                continue
+            total += Math.max(0, item.implicitHeight)
+            count += 1
+        }
+        if (utilButtonsGroup.visible) {
+            total += verticalUtilButtons.expandedMainAxisLength
+                + utilButtonsGroup.padding * 2
+            count += 1
+        }
+        if (count > 1)
+            total += (count - 1) * root.middleModuleGap
+        return total
+    }
+
+    readonly property real utilityExpandedGroupHeight:
+        utilButtonsGroup.visible
+            ? verticalUtilButtons.expandedMainAxisLength
+                + utilButtonsGroup.padding * 2
+            : 0
+    readonly property real middleExpandedNaturalHeight:
+        root._expandedMiddleNaturalHeight()
+    readonly property bool verticalUtilitiesCompact: root.utilButtonsEnabled
+        && root.middleExpandedNaturalHeight > root.middleAvailableHeight
+
     component HorizontalBarSeparator: Rectangle {
         Layout.leftMargin: Appearance.sizes.baseBarHeight / 3
         Layout.rightMargin: Appearance.sizes.baseBarHeight / 3
@@ -201,7 +253,7 @@ Item { // Bar content region
         anchors.top: parent.top
         implicitHeight: topSectionColumnLayout.implicitHeight
         implicitWidth: Appearance.sizes.baseVerticalBarWidth
-        height: (root.height - middleSection.height) / 2
+        height: Math.max(0, middleSection.y)
         width: Appearance.sizes.verticalBarWidth
 
         onScrollDown: root.brightnessMonitor.setBrightness(root.brightnessMonitor.brightness - 0.05)
@@ -264,10 +316,23 @@ Item { // Bar content region
         }
     }
 
-    Column { // Middle section
+    Flickable { // Middle section
         id: middleSection
-        anchors.centerIn: parent
-        spacing: 4
+        width: Appearance.sizes.verticalBarWidth
+        height: Math.min(middleContent.implicitHeight, root.middleAvailableHeight)
+        x: 0
+        y: root.middleCorridorTop
+            + Math.max(0, (root.middleAvailableHeight - height) / 2)
+        contentWidth: width
+        contentHeight: middleContent.implicitHeight
+        clip: true
+        interactive: contentHeight > height + 0.5
+        boundsBehavior: Flickable.StopAtBounds
+
+        Column {
+            id: middleContent
+            width: middleSection.width
+            spacing: root.middleModuleGap
 
         // Keep the compact clock near the top of the middle stack when the
         // vertical taskbar is enabled, without forcing Clock/Battery visible.
@@ -319,6 +384,7 @@ Item { // Bar content region
         }
 
         HorizontalBarSeparator {
+            id: resourcesPivotSeparator
             visible: (Config.options?.bar?.borderless ?? false)
                 && (clockGroupTop.visible || resourcesGroup.visible)
                 && middleCenterGroup.visible
@@ -348,6 +414,7 @@ Item { // Bar content region
         }
 
         HorizontalBarSeparator {
+            id: taskbarPivotSeparator
             visible: root.taskbarEnabled
                 && (Config.options?.bar?.borderless ?? false)
                 && middleCenterGroup.visible
@@ -370,13 +437,15 @@ Item { // Bar content region
                     - (resourcesGroup.visible ? resourcesGroup.height : 0)
                     - (middleCenterGroup.visible ? middleCenterGroup.height : 0)
                     - (clockGroup.visible ? clockGroup.height : 0)
-                    - (utilButtonsGroup.visible ? utilButtonsGroup.height : 0)
-                    - middleSection.spacing * 7
+                    - (utilButtonsGroup.visible
+                        ? root.utilityExpandedGroupHeight : 0)
+                    - root.middleModuleGap * 7
                     - 140)
             }
         }
 
         HorizontalBarSeparator {
+            id: clockPivotSeparator
             visible: (Config.options?.bar?.borderless ?? false)
                 && !root.taskbarEnabled
                 && middleCenterGroup.visible
@@ -415,9 +484,12 @@ Item { // Bar content region
             visible: root.utilButtonsEnabled
 
             Bar.UtilButtons {
+                id: verticalUtilButtons
                 vertical: true
+                compactRequested: root.verticalUtilitiesCompact
                 Layout.alignment: Qt.AlignHCenter
             }
+        }
         }
     }
 
@@ -431,7 +503,8 @@ Item { // Bar content region
         }
         implicitWidth: Appearance.sizes.baseVerticalBarWidth
         implicitHeight: bottomSectionColumnLayout.implicitHeight
-        height: (root.height - middleSection.height) / 2
+        height: Math.max(0,
+            root.height - (middleSection.y + middleSection.height))
         width: Appearance.sizes.verticalBarWidth
         
         onScrollDown: Audio.decrementVolume();

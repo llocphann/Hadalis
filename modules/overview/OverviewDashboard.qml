@@ -277,12 +277,10 @@ Item {
         implicitHeight: Math.min(mainCol.implicitHeight + 24, root.dashboardSafeHeight)
         height: implicitHeight
         radius: root.containerRadius
-        readonly property real attachedRadius: Math.max(0, Math.min(
-            PerimeterTokens.attachedCornerRadius, width / 2, height / 2))
         topLeftRadius: radius
         topRightRadius: radius
-        bottomLeftRadius: root.directBottomAttachment ? attachedRadius : radius
-        bottomRightRadius: root.directBottomAttachment ? attachedRadius : radius
+        bottomLeftRadius: root.directBottomAttachment ? 0 : radius
+        bottomRightRadius: root.directBottomAttachment ? 0 : radius
         // Dashboard is a connected Material popup, not a glass scene. A plain
         // solid Rectangle prevents any panel-backdrop tint/saturation from
         // darkening the whole Dashboard while keeping the same colLayer0 owner

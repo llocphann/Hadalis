@@ -4149,33 +4149,6 @@ Singleton {
             return
         }
 
-        const bindingPhase = reloadState.pendingBindingPhase
-        if (bindingPhase === "write-issued"
-                || bindingPhase === "waiting-reload"
-                || bindingPhase === "candidate-verify-issued"
-                || bindingPhase === "postcondition-checking") {
-            reloadState.pendingBindingReloadOutcome = "failed"
-            reloadState.pendingBindingError = message
-            if (bindingCommitProcess.running) {
-                reloadState.pendingBindingPhase =
-                    "rollback-pending"
-                root.status = "binding-rollback-pending"
-            } else {
-                root._startBindingRollback(message)
-            }
-            return
-        }
-        if (bindingPhase === "rollback-issued"
-                || bindingPhase === "rollback-waiting-reload"
-                || bindingPhase === "rollback-verify-issued") {
-            root._setBindingLifecycleFailure(
-                "binding-rollback-failed",
-                "Binding rollback source was restored but reload "
-                    + "also failed: " + message,
-                null)
-            return
-        }
-
         const disconnectPhase = reloadState.pendingDisconnectPhase
         if (disconnectPhase === "write-issued"
                 || disconnectPhase === "waiting-reload"
@@ -4249,6 +4222,33 @@ Singleton {
             root._setConnectLifecycleFailure(
                 "connect-rollback-failed",
                 "Connect rollback source was restored but reload "
+                    + "also failed: " + message,
+                null)
+            return
+        }
+
+        const bindingPhase = reloadState.pendingBindingPhase
+        if (bindingPhase === "write-issued"
+                || bindingPhase === "waiting-reload"
+                || bindingPhase === "candidate-verify-issued"
+                || bindingPhase === "postcondition-checking") {
+            reloadState.pendingBindingReloadOutcome = "failed"
+            reloadState.pendingBindingError = message
+            if (bindingCommitProcess.running) {
+                reloadState.pendingBindingPhase =
+                    "rollback-pending"
+                root.status = "binding-rollback-pending"
+            } else {
+                root._startBindingRollback(message)
+            }
+            return
+        }
+        if (bindingPhase === "rollback-issued"
+                || bindingPhase === "rollback-waiting-reload"
+                || bindingPhase === "rollback-verify-issued") {
+            root._setBindingLifecycleFailure(
+                "binding-rollback-failed",
+                "Binding rollback source was restored but reload "
                     + "also failed: " + message,
                 null)
             return

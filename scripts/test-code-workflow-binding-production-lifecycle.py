@@ -78,6 +78,45 @@ for token in (
     if token not in transaction:
         fail("2K-U-B transaction boundary missing " + token)
 
+# Reload completion and reload failure are separate lifecycle branches. Keep
+# Binding failure handling inside _handleReloadFailed so a duplicate lexical
+# declaration cannot make the singleton fail QML construction at shell startup.
+reload_completed_start = transaction.find("function _handleReloadCompleted(): void")
+reload_failed_start = transaction.find(
+    "function _handleReloadFailed(errorString: string): void",
+    reload_completed_start,
+)
+clear_presentation_start = transaction.find(
+    "function _clearPresentation(): void",
+    reload_failed_start,
+)
+if min(reload_completed_start, reload_failed_start, clear_presentation_start) < 0:
+    fail("Binding reload lifecycle handlers are missing")
+reload_completed_block = transaction[
+    reload_completed_start:reload_failed_start
+]
+reload_failed_block = transaction[
+    reload_failed_start:clear_presentation_start
+]
+if reload_completed_block.count(
+    "const bindingPhase = reloadState.pendingBindingPhase"
+) != 1:
+    fail("_handleReloadCompleted must declare bindingPhase exactly once")
+if "pendingBindingReloadOutcome = \"failed\"" in reload_completed_block:
+    fail("Binding reload failure handling leaked into _handleReloadCompleted")
+if reload_failed_block.count(
+    "const bindingPhase = reloadState.pendingBindingPhase"
+) != 1:
+    fail("_handleReloadFailed must declare bindingPhase exactly once")
+for token in (
+    'pendingBindingReloadOutcome = "failed"',
+    "pendingBindingError = message",
+    "root._startBindingRollback(message)",
+    '"binding-rollback-failed"',
+):
+    if token not in reload_failed_block:
+        fail("Binding reload failure branch missing " + token)
+
 # Binding authorization must be replacement-specific and must not copy Connect
 # proof vocabulary into its authorization snapshot block.
 auth_start = transaction.find("function authorizeBindingWrite(): bool")

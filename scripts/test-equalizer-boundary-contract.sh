@@ -6,6 +6,7 @@ service="$root/services/deferred/EqualizerService.qml"
 qmldir="$root/services/deferred/qmldir"
 shell_root="$root/shell.qml"
 media_popup="$root/modules/mediaControls/BarMediaPopup.qml"
+dashboard_media="$root/modules/dashboard/DashMedia.qml"
 equalizer_panel="$root/modules/mediaControls/EqualizerPanel.qml"
 media_controls_root="$root/modules/mediaControls"
 
@@ -14,7 +15,7 @@ fail() {
     exit 1
 }
 
-for file in "$service" "$qmldir" "$shell_root" "$media_popup" "$equalizer_panel"; do
+for file in "$service" "$qmldir" "$shell_root" "$media_popup" "$dashboard_media" "$equalizer_panel"; do
     [[ -f "$file" ]] || fail "missing ${file#"$root/"}"
 done
 [[ -d "$media_controls_root" ]] || fail 'missing modules/mediaControls'
@@ -31,6 +32,10 @@ if grep -Fq 'EqualizerService' "$shell_root"; then
 fi
 
 grep -Fq 'EqualizerPanel {' "$media_popup"     || fail 'Bar Media Popup does not host the DSP panel'
+grep -Fq 'import qs.modules.mediaControls' "$dashboard_media" || fail 'Dashboard Media does not import the shared media controls module'
+grep -Fq 'EqualizerPanel {' "$dashboard_media" || fail 'Dashboard Media does not host the shared DSP panel'
+grep -Fq 'property bool presentationActive:' "$dashboard_media" || fail 'Dashboard Media does not expose presentation lifecycle'
+grep -Fq 'active: root.presentationActive && root.visible' "$dashboard_media" || fail 'Dashboard DSP lifecycle is not presentation-gated'
 grep -Fq 'EqualizerService.registerConsumer()' "$equalizer_panel"     || fail 'DSP panel does not acquire the optional service on presentation'
 grep -Fq 'EqualizerService.unregisterConsumer()' "$equalizer_panel"     || fail 'DSP panel does not release the optional service on teardown'
 grep -Fq 'model: ["Flat", "Bass", "Treble", "Vocal",' "$equalizer_panel"     || fail 'Serpantinum DSP preset row is missing'
@@ -91,4 +96,4 @@ while IFS= read -r -d '' file; do
     fi
 done < <(find "$media_controls_root" -type f -name '*.qml' -print0)
 
-printf 'PASS: Media DSP stays behind the EqualizerService boundary\n'
+printf 'PASS: Bar and Dashboard Media DSP stay behind the EqualizerService boundary\n'

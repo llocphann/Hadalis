@@ -6,6 +6,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.mediaControls
 
 /**
  * Media card: cover art, track info and transport controls. Shows a playful
@@ -13,6 +14,9 @@ import qs.modules.common.widgets
  */
 DashCard {
     id: root
+
+    property bool presentationActive:
+        GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool hasPlayer: player !== null && (player?.trackTitle ?? "").length > 0
@@ -59,7 +63,8 @@ DashCard {
                         enabled: Appearance.animationsEnabled
                         NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                     }
-                    layer.enabled: (GlobalStates.dashboardOpen || GlobalStates.overviewOpen) && root.visible && status === Image.Ready
+                    layer.enabled: root.presentationActive
+                        && root.visible && status === Image.Ready
                     layer.effect: GE.OpacityMask { maskSource: artMask }
                 }
 
@@ -149,6 +154,19 @@ DashCard {
                     onClicked: MprisController.next()
                 }
             }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.topMargin: 4
+            implicitHeight: 1
+            color: Appearance.colors.colOutlineVariant
+        }
+
+        EqualizerPanel {
+            Layout.fillWidth: true
+            Layout.preferredHeight: implicitHeight
+            active: root.presentationActive && root.visible
         }
     }
 }

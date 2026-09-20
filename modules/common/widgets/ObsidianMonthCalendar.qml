@@ -18,7 +18,11 @@ Item {
     // responsive sizing so the same visual language can use available width
     // without turning into a second Calendar style.
     property bool responsive: false
+    property real responsiveMinCellSize: 30
     property real responsiveMaxCellSize: 42
+    property real responsiveAvailableHeight: 0
+    property bool showWeekNumbers: false
+    property bool autoWeekNumbers: false
 
     signal previousMonthRequested()
     signal nextMonthRequested()
@@ -30,12 +34,28 @@ Item {
     readonly property real responsiveCellSpacing: 6
     readonly property real cellSpacing: root.responsive
         ? root.responsiveCellSpacing : root.compactCellSpacing
+    readonly property real weekNumberWidth: 32
+    readonly property bool effectiveWeekNumbers: root.showWeekNumbers
+        || (root.autoWeekNumbers && root.responsive && root.width > 0
+            && root.width >= (7 * root.responsiveMaxCellSize
+                + 6 * root.cellSpacing + root.weekNumberWidth
+                + root.cellSpacing + 18))
     readonly property real cellSize: {
         if (!root.responsive || !(root.width > 0))
             return root.compactCellSize
-        const available = Math.max(0, root.width - 6 * root.cellSpacing)
-        return Math.max(root.compactCellSize,
-            Math.min(root.responsiveMaxCellSize, available / 7))
+        const weekReserve = root.effectiveWeekNumbers
+            ? root.weekNumberWidth + root.cellSpacing : 0
+        const widthAvailable = Math.max(0,
+            root.width - weekReserve - 6 * root.cellSpacing)
+        let target = widthAvailable / 7
+        if (root.responsiveAvailableHeight > 0) {
+            const fixedHeight = 30 + 10 + 20 + 6 * 3
+            const heightAvailable = Math.max(0,
+                root.responsiveAvailableHeight - fixedHeight) / 6
+            target = Math.min(target, heightAvailable)
+        }
+        return Math.max(root.responsiveMinCellSize,
+            Math.min(root.responsiveMaxCellSize, target))
     }
     readonly property color colText: Appearance.colors.colOnSurface
     readonly property color colMuted: Appearance.colors.colOnSurfaceVariant
@@ -53,7 +73,27 @@ Item {
         return labels
     }
 
-    implicitWidth: calendarGrid.implicitWidth
+    function isoWeekNumber(value): int {
+        if (!(value instanceof Date) || isNaN(value.getTime()))
+            return 0
+        const date = new Date(Date.UTC(
+            value.getFullYear(), value.getMonth(), value.getDate()))
+        const day = date.getUTCDay() || 7
+        date.setUTCDate(date.getUTCDate() + 4 - day)
+        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+        return Math.ceil((((date - yearStart) / 86400000) + 1) / 7)
+    }
+
+    readonly property var weekNumbers: {
+        const result = []
+        for (let row = 0; row < 6; ++row) {
+            const cell = root.calendarCells[row * 7]
+            result.push(root.isoWeekNumber(cell?.date))
+        }
+        return result
+    }
+
+    implicitWidth: calendarBody.implicitWidth
     implicitHeight: contentColumn.implicitHeight
 
     ColumnLayout {
@@ -63,7 +103,7 @@ Item {
 
         Item {
             id: calendarHeader
-            Layout.preferredWidth: calendarGrid.implicitWidth
+            Layout.preferredWidth: calendarBody.implicitWidth
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredHeight: 30
 
@@ -80,7 +120,10 @@ Item {
 
             Row {
                 id: monthTitle
-                x: Math.max(0, (root.cellSize - mondayMeasure.implicitWidth) / 2)
+                x: (root.effectiveWeekNumbers
+                    ? root.weekNumberWidth + root.cellSpacing : 0)
+                    + Math.max(0,
+                        (root.cellSize - mondayMeasure.implicitWidth) / 2)
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 5
 
@@ -168,90 +211,142 @@ Item {
             }
         }
 
-        GridLayout {
-            id: calendarGrid
+        RowLayout {
+            id: calendarBody
             Layout.alignment: Qt.AlignHCenter
-            columns: 7
-            columnSpacing: root.cellSpacing
-            rowSpacing: 3
+            spacing: root.effectiveWeekNumbers ? root.cellSpacing : 0
 
-            Repeater {
-                model: root.weekDaysModel
+            ColumnLayout {
+                visible: root.effectiveWeekNumbers
+                spacing: 3
 
-                delegate: StyledText {
-                    required property var modelData
-                    Layout.preferredWidth: root.cellSize
+                StyledText {
+                    Layout.preferredWidth: root.weekNumberWidth
                     Layout.preferredHeight: 20
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
-                    text: String(modelData)
+                    text: Translation.tr("WK")
                     color: root.colMuted
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     font.weight: Font.DemiBold
                     font.letterSpacing: 1
+                    opacity: 0.7
+                }
+
+                Repeater {
+                    model: root.weekNumbers
+
+                    delegate: StyledText {
+                        required property var modelData
+                        Layout.preferredWidth: root.weekNumberWidth
+                        Layout.preferredHeight: root.cellSize
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: String(modelData ?? "")
+                        color: root.colMuted
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.family: Appearance.font.family.numbers
+                        opacity: 0.62
+                    }
                 }
             }
 
-            Repeater {
-                model: root.calendarCells
+            GridLayout {
+                id: calendarGrid
+                columns: 7
+                columnSpacing: root.cellSpacing
+                rowSpacing: 3
 
-                delegate: Rectangle {
-                    id: dayCell
-                    required property var modelData
+                Repeater {
+                    model: root.weekDaysModel
 
-                    readonly property int eventCount: Number(dayCell.modelData?.eventCount ?? 0)
-                    readonly property var eventColors: dayCell.modelData?.eventColors ?? []
-
-                    Layout.preferredWidth: root.cellSize
-                    Layout.preferredHeight: root.cellSize
-                    radius: Appearance.rounding.small
-                    color: dayHover.containsMouse ? root.colHover : "transparent"
-                    opacity: dayCell.modelData?.currentMonth === false ? 0.25 : 1
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        anchors.verticalCenterOffset: root.showEventDots && dayCell.eventCount > 0 ? -2 : 0
-                        text: String(dayCell.modelData?.day ?? "")
-                        color: dayCell.modelData?.today ? root.colAccent : root.colText
-                        font.pixelSize: root.responsive && root.cellSize >= 38
-                        ? Appearance.font.pixelSize.normal
-                        : Appearance.font.pixelSize.small
-                        font.weight: dayCell.modelData?.today ? Font.DemiBold : Font.Normal
+                    delegate: StyledText {
+                        required property var modelData
+                        Layout.preferredWidth: root.cellSize
+                        Layout.preferredHeight: 20
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: String(modelData)
+                        color: root.colMuted
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 1
                     }
+                }
 
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 2
-                        spacing: 1
-                        visible: root.showEventDots && dayCell.eventCount > 0
+                Repeater {
+                    model: root.calendarCells
 
-                        Repeater {
-                            model: {
-                                if (dayCell.eventColors?.length > 0)
-                                    return dayCell.eventColors.slice(0, 3)
-                                return [root.colAccent]
-                            }
+                    delegate: Rectangle {
+                        id: dayCell
+                        required property var modelData
 
-                            delegate: Rectangle {
-                                required property var modelData
-                                width: 3
-                                height: 3
-                                radius: 1.5
-                                color: modelData
+                        readonly property int eventCount:
+                            Number(dayCell.modelData?.eventCount ?? 0)
+                        readonly property var eventColors:
+                            dayCell.modelData?.eventColors ?? []
+
+                        Layout.preferredWidth: root.cellSize
+                        Layout.preferredHeight: root.cellSize
+                        radius: Appearance.rounding.small
+                        color: dayHover.containsMouse
+                            ? root.colHover : "transparent"
+                        opacity: dayCell.modelData?.currentMonth === false ? 0.25 : 1
+
+                        StyledText {
+                            anchors.centerIn: parent
+                            anchors.verticalCenterOffset:
+                                root.showEventDots && dayCell.eventCount > 0
+                                    ? -2 : 0
+                            text: String(dayCell.modelData?.day ?? "")
+                            color: dayCell.modelData?.today
+                                ? root.colAccent : root.colText
+                            font.pixelSize:
+                                root.responsive && root.cellSize >= 38
+                                    ? Appearance.font.pixelSize.normal
+                                    : Appearance.font.pixelSize.small
+                            font.weight: dayCell.modelData?.today
+                                ? Font.DemiBold : Font.Normal
+                        }
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 2
+                            spacing: 1
+                            visible: root.showEventDots
+                                && dayCell.eventCount > 0
+
+                            Repeater {
+                                model: {
+                                    if (dayCell.eventColors?.length > 0)
+                                        return dayCell.eventColors.slice(0, 3)
+                                    return [root.colAccent]
+                                }
+
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: 3
+                                    height: 3
+                                    radius: 1.5
+                                    color: modelData
+                                }
                             }
                         }
-                    }
 
-                    MouseArea {
-                        id: dayHover
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: root.interactiveDays ? Qt.LeftButton : Qt.NoButton
-                        cursorShape: root.interactiveDays ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: {
-                            if (root.interactiveDays && dayCell.modelData?.date)
-                                root.dayActivated(dayCell.modelData.date)
+                        MouseArea {
+                            id: dayHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: root.interactiveDays
+                                ? Qt.LeftButton : Qt.NoButton
+                            cursorShape: root.interactiveDays
+                                ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: {
+                                if (root.interactiveDays
+                                        && dayCell.modelData?.date)
+                                    root.dayActivated(dayCell.modelData.date)
+                            }
                         }
                     }
                 }

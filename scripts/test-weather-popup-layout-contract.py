@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
-"""Regression contract for right-rail sliding Weather tabs."""
+"""Regression contract for right-rail sliding Weather tabs and shared orbital view."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "modules/bar/weather/WeatherPopupContent.qml"
+ORBITAL = ROOT / "modules/bar/weather/OrbitalWeather.qml"
+DASH_WEATHER = ROOT / "modules/dashboard/DashWeather.qml"
 CARD = ROOT / "modules/bar/weather/WeatherCard.qml"
+
+def require(text: str, token: str, source: str) -> None:
+    if token not in text:
+        raise AssertionError(f"{source} missing weather contract token: {token!r}")
 
 def main() -> None:
     source = SOURCE.read_text(encoding="utf-8")
+    orbital = ORBITAL.read_text(encoding="utf-8")
+    dash_weather = DASH_WEATHER.read_text(encoding="utf-8")
     card = CARD.read_text(encoding="utf-8")
 
-    required = (
+    popup_required = (
         "readonly property real compactBreakpoint: 900",
         "readonly property real panelHeight: 270",
         "readonly property real panelWidth: root.compact ? 360 : 430",
@@ -39,16 +47,8 @@ def main() -> None:
         "acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad",
         "event.angleDelta.y < 0",
         "event.angleDelta.y > 0",
-        "(Weather.data?.hourly ?? []).slice(0, 8)",
-        "function hourFromLabel(label): int",
-        "function arcAngle(startAngle, endAngle, fraction): real",
-        "const quadrant = Math.floor(shiftedHour / 6)",
-        "const fraction = (shiftedHour - quadrant * 6) / 6",
-        "return orbitalTimeline.arcAngle(start, end, fraction)",
-        "orbitalTimeline.orbitAngleForHour(modelData?.label)",
-        "width: 52",
-        "height: 64",
-        'text: Qt.formatDate(root.now, "dddd, MMM d")',
+        "OrbitalWeather {",
+        "id: orbitalTimeline",
         "id: detailSummary",
         "id: primaryMetrics",
         "component PrimaryMetric: Rectangle",
@@ -58,9 +58,31 @@ def main() -> None:
         "root.sunProgress",
         'Translation.tr("Last refresh: %1")',
     )
-    for token in required:
-        if token not in source:
-            raise AssertionError(f"Weather popup missing tab contract token: {token!r}")
+    for token in popup_required:
+        require(source, token, "WeatherPopupContent.qml")
+
+    orbital_required = (
+        "(Weather.data?.hourly ?? []).slice(0, 8)",
+        "function hourFromLabel(label): real",
+        "function arcAngle(startAngle, endAngle, fraction): real",
+        "function orbitAngleForHour(label): real",
+        "const quadrant = Math.floor(shiftedHour / 6)",
+        "const fraction = (shiftedHour - quadrant * 6) / 6",
+        "return root.arcAngle(start, end, fraction)",
+        "root.orbitAngleForHour(modelData?.label)",
+        "readonly property real pointWidth:",
+        "readonly property real pointHeight:",
+        "readonly property real orbitRadiusX:",
+        "readonly property real orbitRadiusY:",
+        'root.width >= 380',
+        'Qt.formatDate(root.now, "dddd, MMM d")',
+        'Qt.formatDate(root.now, "ddd, MMM d")',
+    )
+    for token in orbital_required:
+        require(orbital, token, "OrbitalWeather.qml")
+
+    require(dash_weather, "import qs.modules.bar.weather", "DashWeather.qml")
+    require(dash_weather, "OrbitalWeather {", "DashWeather.qml")
 
     if source.count("Behavior on y") != 2:
         raise AssertionError("Weather tabs must use exactly two vertical slide transitions")
@@ -74,18 +96,16 @@ def main() -> None:
         "function calendarDay(index)",
         "Behavior on x",
         "Behavior on opacity",
-        "anchors.left: parent.left",
-        "anchors.fill: parent\n        radius: Appearance.rounding.large",
         "function orbitAngle(index, count): real",
-        "orbitalTimeline.orbitAngle(index, count)",
         "+ (shiftedHour / 24) * Math.PI * 2",
         "DateTime.timeDisplay",
         "implicitHeight: 300",
         "width: 58",
         "height: 72",
     ):
-        if forbidden in source:
-            raise AssertionError(f"Weather popup still contains retired/non-fade token: {forbidden!r}")
+        if forbidden in source or forbidden in orbital:
+            raise AssertionError(
+                f"Weather composition contains retired token: {forbidden!r}")
 
     for retired in (
         "WeatherCard {",
@@ -93,9 +113,10 @@ def main() -> None:
         'title: Translation.tr("Sunset")',
     ):
         if retired in source:
-            raise AssertionError(f"Detailed Weather regressed to the flat metric grid: {retired!r}")
+            raise AssertionError(
+                f"Detailed Weather regressed to flat metric grid: {retired!r}")
 
-    print("Weather popup right-rail slide composition contract: OK")
+    print("Weather popup + shared orbital composition contract: OK")
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.dashboard
 
 ContentPage {
     id: root
@@ -17,14 +16,14 @@ ContentPage {
         visible: root.isIiActive
         icon: "space_dashboard"
         title: Translation.tr("Dashboard")
-        description: Translation.tr("Set the dashboard behavior first, then tune its visual density or arrange its cards.")
-        summary: Translation.tr("Behavior · appearance · layout")
+        description: Translation.tr("Tune the Dashboard surface, then arrange and resize modules directly on its canvas.")
+        summary: Translation.tr("Behavior · appearance · canvas")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
         options: [
             { displayName: Translation.tr("General"), icon: "tune", value: "general" },
             { displayName: Translation.tr("Appearance"), icon: "palette", value: "appearance" },
-            { displayName: Translation.tr("Layout"), icon: "widgets", value: "layout" }
+            { displayName: Translation.tr("Canvas"), icon: "dashboard_customize", value: "layout" }
         ]
     }
 
@@ -187,12 +186,50 @@ ContentPage {
         settingsTaskSection: "layout"
         visible: root.isIiActive && root.activeSection === "layout"
         expanded: true
-        icon: "widgets"
-        title: Translation.tr("Widgets & layout")
+        icon: "dashboard_customize"
+        title: Translation.tr("Canvas & grid")
 
         SettingsGroup {
-            DashLayoutEditor {
+            StyledText {
                 Layout.fillWidth: true
+                text: Translation.tr("Open the Dashboard and click Edit widgets to move modules freely or resize them from any edge or corner. Outside Edit mode, module geometry is locked.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+
+            ConfigSwitch {
+                text: Translation.tr("Snap modules to grid")
+                description: Translation.tr("Use the Dashboard grid while moving or resizing modules")
+                checked: Config.options?.dashboard?.canvas?.snap ?? true
+                onCheckedChanged:
+                    Config.setNestedValue("dashboard.canvas.snap", checked)
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Grid style")
+                ConfigSelectionArray {
+                    currentValue:
+                        Config.options?.dashboard?.canvas?.gridStyle ?? "dots"
+                    onSelected: value =>
+                        Config.setNestedValue("dashboard.canvas.gridStyle", value)
+                    options: [
+                        { displayName: Translation.tr("Dots"), icon: "drag_indicator", value: "dots" },
+                        { displayName: Translation.tr("Lines"), icon: "grid_4x4", value: "lines" },
+                        { displayName: Translation.tr("Crosshair"), icon: "add", value: "cross" }
+                    ]
+                }
+            }
+
+            ConfigSpinBox {
+                text: Translation.tr("Grid cell size (px)")
+                description: Translation.tr("Smaller cells allow finer placement; larger cells produce stronger alignment")
+                value: Config.options?.dashboard?.canvas?.gridSize ?? 24
+                from: 8
+                to: 96
+                stepSize: 8
+                onValueChanged:
+                    Config.setNestedValue("dashboard.canvas.gridSize", value)
             }
         }
     }

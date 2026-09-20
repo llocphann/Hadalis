@@ -516,14 +516,35 @@ def main() -> None:
           and "SurfaceMotion.easingType" in dashboard,
           "Dashboard connected motion must use immutable SurfaceMotion")
     dashboard_content = read("modules/dashboard/DashboardContent.qml")
-    check("WidgetColumn { id: leftCol" in dashboard_content
-          and "WidgetColumn { id: centerCol" in dashboard_content
-          and "WidgetColumn { id: rightCol" in dashboard_content
-          and "visible: true" in dashboard_content,
-          "Dashboard must keep all three columns present")
-    check("Item {\n                        id: colFlick" in dashboard_content
-          and "StyledFlickable {\n                        id: colFlick" not in dashboard_content,
-          "Dashboard columns must not provide Dashboard-level scrolling")
+    dashboard_canvas = read("modules/dashboard/DashboardCanvas.qml")
+    dashboard_grid = read("modules/dashboard/DashboardEditGrid.qml")
+    check("DashboardCanvas {" in dashboard_content
+          and "DashboardHeader {" in dashboard_content
+          and "WidgetColumn" not in dashboard_content,
+          "Dashboard must use the freeform canvas instead of fixed columns")
+    check('Config.options?.dashboard?.canvas?.widgets' in dashboard_canvas
+          and "function beginMove(" in dashboard_canvas
+          and "function beginResize(" in dashboard_canvas
+          and "function finishInteraction(" in dashboard_canvas,
+          "Dashboard canvas must persist free move/resize geometry")
+    for edge in ('"n"', '"s"', '"e"', '"w"', '"nw"', '"ne"', '"sw"', '"se"'):
+        check(f"edge: {edge}" in dashboard_canvas,
+              f"Dashboard canvas missing resize handle {edge}")
+    check("DashboardEditGrid {" in dashboard_canvas
+          and 'Config.options?.dashboard?.canvas?.gridStyle' in dashboard_canvas
+          and 'Config.options?.dashboard?.canvas?.gridSize' in dashboard_canvas
+          and 'Config.options?.dashboard?.canvas?.snap' in dashboard_canvas,
+          "Dashboard Edit mode must expose configurable grid and snapping")
+    check('property string gridStyle: "dots"' in dashboard_grid
+          and 'gridStyle === "lines"' in dashboard_grid
+          and 'gridStyle === "cross"' in dashboard_grid,
+          "Dashboard edit grid must keep dots/lines/cross rendering modes")
+    check("enabled: !root.editMode" in dashboard_canvas
+          and "visible: root.editMode" in dashboard_canvas,
+          "Dashboard modules must only be movable/resizable in explicit Edit mode")
+    check("Flickable {" not in dashboard_content
+          and "Flickable {" not in dashboard_canvas,
+          "Dashboard canvas must not restore Dashboard-level scrolling")
     overview_runtime = read("modules/overview/Overview.qml")
     check("readonly property bool applicationsPresentationMode:" in overview_runtime
           and "dashboardPanel.item.connectedSurfaceRect" in overview_runtime

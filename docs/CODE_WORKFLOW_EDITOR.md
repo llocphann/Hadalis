@@ -38,7 +38,10 @@ artifacts are bound to transaction history and invalidated by Clock/Config drift
 but Apply remains blocked and source QML is unchanged. A separate research-only
 2K-O engine now proves one-file Connect commit/verify/rollback semantics and
 closes Config drift before/after the atomic source replacement; it is not yet
-runtime-wired.
+runtime-wired. 2K-P adds live headless Sway/Quickshell evidence for the real
+reviewed Clock candidate: one watcher-driven reload, candidate verification,
+inserted-anchor rebind, exact rollback on forced rebind failure, and handoff
+invalidation after an external Config edit. Connect Apply is still not exposed.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

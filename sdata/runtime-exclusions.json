@@ -158,6 +158,7 @@
     "scripts/code-workflow/summarize-profile.py",
     "scripts/code-workflow/virtual-pointer.c",
     "scripts/code-workflow/run-apply-lifecycle.py",
+    "scripts/code-workflow/run-connect-lifecycle.py",
     "scripts/iris-corner-poc"
   ],
   "excludedDirectorySuffixes": {}

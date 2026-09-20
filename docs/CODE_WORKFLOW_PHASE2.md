@@ -805,12 +805,46 @@ Implemented research/proof:
 - No watcher/reload semantic-rebind controller is production-wired by 2K-O, and
   user-facing Connect Apply remains unavailable.
 
+## Milestone 2K-P — live isolated Connect lifecycle acceptance
+
+Implemented live proof:
+
+- `run-connect-lifecycle.py` exports a committed Hadalis revision into a
+  private writable runtime, launches the production shell under headless Sway,
+  and uses the production `CodeWorkflowTransaction` Connect preview and
+  preparation path. The harness and 2K-O commit engine remain excluded from the
+  shipped runtime.
+- Probe-only IPC exposes Connect preview, preparation and analyzer rebind
+  requests plus primitive transaction evidence. No production Settings action or
+  transaction API can start the 2K-O source-write engine.
+- The success case prepares the real reviewed `bar/clock` target, commits the
+  exact prepared Clock candidate through `connect_commit.py`, observes one
+  watcher-driven reload, independently verifies `candidate-present`, and
+  rebinds the prepared inserted semantic anchor with zero parser diagnostics.
+- The same live case then rolls the candidate back through the exact prepared
+  snapshot, observes one watcher-driven reload for rollback, and proves Config
+  bytes were never changed by the Connect lifecycle.
+- A second live case deliberately requests a non-existent semantic anchor after
+  a valid candidate reload. The failed rebind is treated as lifecycle failure
+  and the harness proves exact Clock rollback while preserving Config.
+- A third live case edits the retained `Config.qml` dependency after Connect
+  artifacts are prepared. The production handoff becomes invalid after reload,
+  and the 2K-O engine refuses the source write with
+  `external-source-sha-mismatch-before-write`; the Clock source remains
+  unchanged and the external Config edit is preserved.
+- Combined with 2K-O's deterministic post-write dependency-race proof, live
+  acceptance now covers candidate reload/rebind, exact rollback, and external
+  dependency invalidation across the actual Quickshell watcher lifecycle.
+- Production source-write authorization is still unchanged:
+  `literal-property` remains the only source-writing command and user-facing
+  Connect Apply remains unavailable.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- production Connect watcher/reload/rebind/rollback lifecycle;
+- production wiring of the qualified Connect commit/reload/rebind/rollback lifecycle;
 - user-facing Connect source Apply;
 - signal/action transforms;
 - Connections creation/removal;
@@ -819,18 +853,20 @@ Implemented research/proof:
 
 ## Next gate
 
-2K-O qualifies the one-file Connect commit/verify/rollback engine and closes
-Config dependency races at the artifact engine boundary. The next gate is a
-live isolated lifecycle acceptance, not product Apply enablement.
+2K-P supplies live watcher/reload/rebind evidence for the reviewed Connect
+candidate while keeping the write engine outside production. The next gate must
+promote that lifecycle into `CodeWorkflowTransaction` without exposing a
+user-facing Apply control yet.
 
-That harness must run the production shell against an isolated writable runtime,
-prepare the real reviewed Clock Connect candidate, commit it through the 2K-O
-engine, observe exactly one watcher-driven reload, verify the candidate SHA,
-rebind the inserted binding semantic anchor, and prove exact rollback on reload,
-verification, rebind or dependency failure. It must also prove an external edit
-after preparation invalidates the handoff without being overwritten.
+That production-integration gate must bind the exact prepared Connect manifest
+to the active history command, perform one final source + Config freshness check,
+invoke the one-file commit engine, survive the watcher-driven reload through the
+reload bridge, verify candidate identity, rebind the inserted semantic anchor,
+and automatically rollback on reload/verify/rebind/dependency failure. It must
+also make interrupted lifecycle recovery deterministic across shell generation
+changes.
 
-Until live lifecycle evidence passes, `connect_commit.py` remains outside the
-runtime payload and user-facing Connect Apply stays unavailable. Production
-TYPE/CYCLE labels remain UNKNOWN, and literal-property remains the only
-source-writing command.
+Until that production lifecycle integration is independently qualified,
+`connect_commit.py` remains non-production, Connect source Apply stays
+unavailable, production TYPE/CYCLE labels remain UNKNOWN, and
+`literal-property` remains the only source-writing command.

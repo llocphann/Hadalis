@@ -139,7 +139,28 @@ ShellRoot {
                 applyLifecycleError:
                     CodeWorkflowTransaction.applyLifecycleError,
                 applyLifecycleResult:
-                    CodeWorkflowTransaction.applyLifecycleResult
+                    CodeWorkflowTransaction.applyLifecycleResult,
+                activeCommandKind: String(
+                    CodeWorkflowTransaction.activeCommand?.kind ?? ""),
+                activeCommandSourcePath: String(
+                    CodeWorkflowTransaction.activeCommand?.sourcePath ?? ""),
+                activeCommandBaseSha256: String(
+                    CodeWorkflowTransaction.activeCommand?.baseSha256 ?? ""),
+                activeCommandCandidateSha256: String(
+                    CodeWorkflowTransaction.activeCommand
+                        ?.candidateSha256 ?? ""),
+                connectPreparationBusy:
+                    CodeWorkflowTransaction.connectPreparationBusy,
+                connectPreparationCapability:
+                    CodeWorkflowTransaction.connectPreparationCapability,
+                connectArtifactsReady:
+                    CodeWorkflowTransaction.connectArtifactsReady,
+                connectPreparationError:
+                    CodeWorkflowTransaction.connectPreparationError,
+                activeConnectSafety:
+                    CodeWorkflowTransaction.activeConnectSafety,
+                activeConnectPreparation:
+                    CodeWorkflowTransaction.activeConnectPreparation
             }
             report.mediaActions = RuntimeRegistry.mediaActions
             report.mediaPopupsOpen = Object.values(RuntimeRegistry.entries).some(p =>
@@ -223,6 +244,21 @@ ShellRoot {
         }
         function workflowBeginLifecycle(): bool {
             return CodeWorkflowTransaction.beginApplyLifecycle()
+        }
+        function workflowConnectPreview(): bool {
+            return CodeWorkflowTransaction.previewConnectBinding(
+                "bar/clock",
+                "clock.connect.rootVisible")
+        }
+        function workflowConnectPrepare(): bool {
+            return CodeWorkflowTransaction.prepareConnectArtifacts()
+        }
+        function workflowConnectAnalyze(anchor: string): void {
+            CodeWorkflowAnalyzer.request(
+                "modules/bar/ClockWidget.qml",
+                "visible: root.showDate",
+                String(anchor ?? ""),
+                true)
         }
         function workflowClear(): void {
             CodeWorkflowTransaction.clear()

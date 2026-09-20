@@ -15,6 +15,7 @@ manifest = json.loads(
     (ROOT / "defaults/code-workflow-ir.json").read_text(encoding="utf-8")
 )
 session = (ROOT / "services/CodeWorkflowSession.qml").read_text(encoding="utf-8")
+persistent = (ROOT / "modules/common/Persistent.qml").read_text(encoding="utf-8")
 transaction = (
     ROOT / "services/CodeWorkflowTransaction.qml"
 ).read_text(encoding="utf-8")
@@ -31,6 +32,9 @@ if target.get("typeCompatibility") != "unknown-unresolved":
     fail("2K-G fixture must retain TYPE UNKNOWN")
 if target.get("cycleStatus") != "unknown-incomplete-projection":
     fail("2K-G fixture must retain CYCLE UNKNOWN")
+
+if 'property string codeWorkflowConnectTargetId: ""' not in persistent:
+    fail("Persistent settings schema must declare primitive Connect target ID")
 
 for token in (
     'property string selectedConnectTargetId: ""',

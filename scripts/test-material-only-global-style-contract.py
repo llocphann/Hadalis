@@ -58,6 +58,7 @@ QUICK_WALLPAPER_ITEM = ROOT / "modules" / "settings" / "QuickWallpaperItem.qml"
 WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
 ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
 ANGEL_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "AngelBackground.qml"
+REGALIA_CONTROL_FACE = ROOT / "modules" / "common" / "widgets" / "RegaliaControlFace.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -523,6 +524,14 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # RegaliaControlFace became orphaned after all shared controls collapsed to
+    # Material. Keep the renderer and its module export retired.
+    if REGALIA_CONTROL_FACE.exists():
+        raise AssertionError(
+            "modules/common/widgets/RegaliaControlFace.qml must stay retired under Material-only v1.0"
+        )
+    forbid(widgets_qmldir, "RegaliaControlFace 1.0 RegaliaControlFace.qml", "widgets/qmldir")
 
     # Angel-only wrapper components had no consumers outside their qmldir exports.
     # Keep them retired instead of carrying unreachable wallpaper/effect renderers.

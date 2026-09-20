@@ -92,7 +92,6 @@ PopupToolTip 1.0 PopupToolTip.qml
 ResourceCard 1.0 ResourceCard.qml
 RicelinSurface 1.0 RicelinSurface.qml
 Revealer 1.0 Revealer.qml
-RegaliaControlFace 1.0 RegaliaControlFace.qml
 RegaliaPlate 1.0 RegaliaPlate.qml
 RippleButton 1.0 RippleButton.qml
 RippleButtonWithIcon 1.0 RippleButtonWithIcon.qml

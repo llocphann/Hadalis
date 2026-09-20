@@ -148,7 +148,9 @@ def main() -> None:
         if int(data.get("readinessStableTicks", 0)) < 3:
             fail(f"{key}: insufficient readiness stability")
         if data.get("paintRespectsOwnerSeam") is not True:
-            fail(f"{key}: Overlay paint crosses owner seam")
+            fail(f"{key}: Overlay paint crosses primary owner seam")
+        if data.get("paintRespectsTangentOwners") is not True:
+            fail(f"{key}: Overlay paint crosses tangent Screen Edge owner")
 
         joins, at_start, at_end = expected_join(source)
         if data.get("joins") != joins:
@@ -179,6 +181,24 @@ def main() -> None:
         else:
             if paint[0] + paint[2] > seam + eps or inp[0] + inp[2] > seam + eps:
                 fail(f"{key}: right owner interior is paint/input reachable")
+
+        frame = float(data["frameThickness"])
+        if at_start:
+            if edge in ("top", "bottom"):
+                if paint[0] < frame - eps or inp[0] < frame - eps:
+                    fail(f"{key}: start Screen Edge strip is paint/input reachable")
+            else:
+                if paint[1] < frame - eps or inp[1] < frame - eps:
+                    fail(f"{key}: start Screen Edge strip is paint/input reachable")
+        if at_end:
+            if edge in ("top", "bottom"):
+                if paint[0] + paint[2] > W - frame + eps \
+                        or inp[0] + inp[2] > W - frame + eps:
+                    fail(f"{key}: end Screen Edge strip is paint/input reachable")
+            else:
+                if paint[1] + paint[3] > H - frame + eps \
+                        or inp[1] + inp[3] > H - frame + eps:
+                    fail(f"{key}: end Screen Edge strip is paint/input reachable")
 
         resting_x = float(data["restingPopupX"])
         resting_y = float(data["restingPopupY"])

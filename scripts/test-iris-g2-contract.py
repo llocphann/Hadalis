@@ -38,6 +38,11 @@ for token in (
     "root.frameEndShape",
     "root.popupShape",
     "paintRespectsOwnerSeam",
+    "paintRespectsTangentOwners",
+    "root.horizontal && root.atTangentStart",
+    "root.horizontal && root.atTangentEnd",
+    "!root.horizontal && root.atTangentStart",
+    "!root.horizontal && root.atTangentEnd",
     "visible-body-only",
     "WlrKeyboardFocus.None",
     "RectangularShadow",
@@ -69,6 +74,9 @@ for token in (
     "G2 evidence structure: PASS",
     "Visual split-composition is NOT auto-approved",
     "paintRespectsOwnerSeam",
+    "paintRespectsTangentOwners",
+    "start Screen Edge strip is paint/input reachable",
+    "end Screen Edge strip is paint/input reachable",
     "area_ratio >= 0.30",
     "visible-body-only",
     "animationOffset",
@@ -129,6 +137,18 @@ def geometry(edge: str, source: float, progress: float, W=1920.0, H=1080.0):
         l = max(l, seam)
     else:
         r = min(r, seam)
+
+    at_start = math.isclose(start, inset, abs_tol=0.01)
+    at_end = math.isclose(start + tangent_popup,
+                          tangent_extent - inset, abs_tol=0.01)
+    if horizontal and at_start:
+        l = max(l, frame)
+    if horizontal and at_end:
+        r = min(r, W - frame)
+    if not horizontal and at_start:
+        t = max(t, frame)
+    if not horizontal and at_end:
+        b = min(b, H - frame)
     return (x, y, w, h), (l, t, max(0, r-l), max(0, b-t)), seam, offset
 
 for edge in ("top", "bottom", "left", "right"):
@@ -143,6 +163,16 @@ for edge in ("top", "bottom", "left", "right"):
                 assert paint[0] >= seam
             else:
                 assert paint[0] + paint[2] <= seam
+            if math.isclose(source, 0.02, abs_tol=0.001):
+                if edge in ("top", "bottom"):
+                    assert paint[0] >= 10
+                else:
+                    assert paint[1] >= 10
+            if math.isclose(source, 0.98, abs_tol=0.001):
+                if edge in ("top", "bottom"):
+                    assert paint[0] + paint[2] <= 1920 - 10
+                else:
+                    assert paint[1] + paint[3] <= 1080 - 10
             assert paint[2] * paint[3] < 0.30 * 1920 * 1080
             expected = (1 - progress) * (300 if edge in ("top", "bottom") else 360)
             assert math.isclose(offset, expected, abs_tol=1e-9)

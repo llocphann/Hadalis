@@ -146,6 +146,17 @@ QtObject {
         else
             right = Math.min(right, root.attachmentBoundary)
 
+        // A tangent Screen Edge is another external owner. Keep its record in
+        // the SDF join math, but never rasterize its own strip in Overlay.
+        if (root.horizontal && root.atTangentStart)
+            left = Math.max(left, root.frameThickness)
+        if (root.horizontal && root.atTangentEnd)
+            right = Math.min(right, root.outputWidth - root.frameThickness)
+        if (!root.horizontal && root.atTangentStart)
+            top = Math.max(top, root.frameThickness)
+        if (!root.horizontal && root.atTangentEnd)
+            bottom = Math.min(bottom, root.outputHeight - root.frameThickness)
+
         return Qt.rect(left, top,
             Math.max(0, right - left), Math.max(0, bottom - top))
     }
@@ -164,6 +175,16 @@ QtObject {
             left = Math.max(left, root.attachmentBoundary)
         else
             right = Math.min(right, root.attachmentBoundary)
+
+        if (root.horizontal && root.atTangentStart)
+            left = Math.max(left, root.frameThickness)
+        if (root.horizontal && root.atTangentEnd)
+            right = Math.min(right, root.outputWidth - root.frameThickness)
+        if (!root.horizontal && root.atTangentStart)
+            top = Math.max(top, root.frameThickness)
+        if (!root.horizontal && root.atTangentEnd)
+            bottom = Math.min(bottom, root.outputHeight - root.frameThickness)
+
         return Qt.rect(left, top,
             Math.max(0, right - left), Math.max(0, bottom - top))
     }
@@ -272,6 +293,17 @@ QtObject {
         : root.edgeName === "left"
             ? root.paintBounds.x >= root.attachmentBoundary - 0.01
         : root.paintBounds.x + root.paintBounds.width <= root.attachmentBoundary + 0.01
+    readonly property bool paintRespectsTangentOwners:
+        (!root.horizontal || !root.atTangentStart
+            || root.paintBounds.x >= root.frameThickness - 0.01)
+        && (!root.horizontal || !root.atTangentEnd
+            || root.paintBounds.x + root.paintBounds.width
+                <= root.outputWidth - root.frameThickness + 0.01)
+        && (root.horizontal || !root.atTangentStart
+            || root.paintBounds.y >= root.frameThickness - 0.01)
+        && (root.horizontal || !root.atTangentEnd
+            || root.paintBounds.y + root.paintBounds.height
+                <= root.outputHeight - root.frameThickness + 0.01)
 
     property QtObject ownerWindowObject: PanelWindow {
         id: ownerWindow
@@ -534,6 +566,7 @@ QtObject {
             atTangentStart: root.atTangentStart,
             atTangentEnd: root.atTangentEnd,
             paintRespectsOwnerSeam: root.paintRespectsOwnerSeam,
+            paintRespectsTangentOwners: root.paintRespectsTangentOwners,
             shadowTop: root.shadowTop,
             shadowBottom: root.shadowBottom,
             shadowLeft: root.shadowLeft,

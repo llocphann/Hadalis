@@ -25,9 +25,12 @@ owner pixels are painted again in Overlay
 ```
 
 The field paint rectangle can expand by fuse reach along the tangent axis, but
-never crosses the owner seam on the attachment axis. Cross-axis expansion is
-AA-only. This also makes progress=0 disappear fully underneath the owner instead
-of leaving a smooth-union tail.
+never crosses the primary owner seam on the attachment axis. At a clamp extreme
+it is also clipped to the **inner boundary of the perpendicular physical Screen
+Edge**, so the frame record influences SDF join math without repainting the
+frame strip in Overlay. Cross-axis expansion is AA-only. This also makes
+progress=0 disappear fully underneath the owner instead of leaving a smooth-
+union tail.
 
 A fake dark owner module with a green outline is drawn in the Top window. It
 must remain intact while the yellow Overlay popup joins below/beside it.

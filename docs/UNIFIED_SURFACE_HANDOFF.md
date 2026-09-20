@@ -348,3 +348,85 @@ This is the current hard gate. Do not integrate `StyledPopup` until these live
 captures are accepted. If they are wrong, only the isolated PoC may change.
 
 Waffle remains completely out of scope.
+
+---
+
+## Latest continuation — focused/multi-owner iRiS live gate
+
+Two more isolated PoC commits are now part of the hard visual gate:
+
+- `e7700ea31c5ff07edda001ef0f00674e33f217c0` — focused `grim -g`
+  junction captures plus per-case geometry JSON;
+- `f72af8b8407e796eb117402d1057da47f257aa9d` — multi-owner corner
+  coverage.
+
+The important correction is that the old center-only model did not exercise the
+real Hadalis output-corner topology. The PoC now keeps three owner bodies plus
+the popup:
+
+```text
+primary owner
+frame-start
+frame-end
+popup
+```
+
+Join selection is generic geometry, not module-specific state:
+
+```text
+sourceT 0.50 -> ["owner"]
+sourceT 0.02 -> ["owner", "frame-start"]
+sourceT 0.98 -> ["owner", "frame-end"]
+```
+
+The start/end records model the perpendicular physical Screen Edge (default
+10 logical px). This uses the exact upstream iRiS QSB's two explicit join slots;
+it does not add any corner renderer.
+
+The live harness now writes, per case:
+
+- full-output PNG;
+- focused `*-detail.png`;
+- geometry JSON;
+- Quickshell log;
+- manifest row.
+
+With ImageMagick it also writes both a full contact sheet and a focused detail
+sheet. The focused region is derived from output-local popup geometry plus
+`ShellScreen.x/y` and captured in compositor layout coordinates; do not replace
+this with a DPR-based crop.
+
+Current source-side evidence:
+
+```text
+iRiS PoC contract  PASS
+validator          115 PASS / 22 FAIL / 2 SKIP
+Nix package        PASS
+```
+
+Production is still **not approved for cutover**. The next action is still to run
+both live profiles on the real Wayland/GPU session and inspect the detail sheets:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=diagnostic \
+scripts/iris-corner-poc/capture-matrix.sh
+
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=upstream-relative \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+Acceptance must explicitly cover:
+
+1. center cases: one primary-owner fillet;
+2. start/end clamp cases: primary owner + perpendicular Screen Edge remain one
+   coherent field;
+3. no separate-looking blob below/behind the popup;
+4. all four attachment edges are symmetric;
+5. upstream-relative profile preserves the same topology.
+
+Until that visual evidence is accepted, do not replace
+`ConnectedSurfaceFrame`/`ConnectedSurfaceJoinFlares` in production. Waffle
+remains out of scope and `SurfaceMotion` remains slide-only.
+

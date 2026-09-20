@@ -1825,3 +1825,81 @@ PASS requires the contact sheet to show, for every edge and clamp extreme:
 
 If any case fails, revise/revert only `scripts/iris-corner-poc/`. Do not patch
 production `StyledPopup`, Bar, ScreenEdges or Waffle.
+
+### 26.10 Focused live evidence and multi-owner corner coverage
+
+The first 12-case harness still made the actual 30–56 px fillet small inside a
+full-output screenshot. Two additional developer-only commits tighten the live
+acceptance gate without touching production:
+
+- `e7700ea31c5ff07edda001ef0f00674e33f217c0` —
+  `test(surface): add focused iRiS contact captures`
+- `f72af8b8407e796eb117402d1057da47f257aa9d` —
+  `test(surface): cover iRiS corner multi-owner joins`
+
+Each live case now persists a plain-number `HADALIS_IRIS_POC` JSON record with
+the selected output's layout origin/size and the semantic popup geometry. The
+harness keeps the full-output PNG and also asks `grim -g` for a focused
+junction crop in compositor layout coordinates. This deliberately avoids using
+Qt `devicePixelRatio` as a compositor-scale proxy.
+
+The previous two-body PoC was sufficient for a centered Bar/popup junction but
+did not prove the actual Hadalis corner case: a popup can be attached to its
+primary Bar/owner **and** reach a perpendicular physical Screen Edge.
+
+The isolated field therefore now contains four ordinary records:
+
+```text
+owner                 # primary Bar/attachment owner
+frame-start           # perpendicular Screen Edge at tangent start
+frame-end             # perpendicular Screen Edge at tangent end
+popup
+```
+
+The popup relationship is geometry-derived and uses the existing two iRiS QSB
+join slots:
+
+```text
+center:        joins = ["owner"]
+start clamp:   joins = ["owner", "frame-start"]
+end clamp:     joins = ["owner", "frame-end"]
+```
+
+There is still no module identity, corner flag, Canvas flare, `RoundCorner`,
+`contactInset`, contact plane or border-sink helper. The tangent frame bodies
+are real field owners. The default Hadalis Screen Edge thickness used by the PoC
+is 10 logical px and may be overridden only as a geometry input with
+`HADALIS_IRIS_POC_FRAME_THICKNESS`.
+
+This matters for production planning because current `StyledPopup` already
+derives adjacent Screen Edge attachment from resting body geometry. A future
+field-backed paint path must preserve that generic geometry behavior rather
+than replace it with per-popup corner choices.
+
+Source-side validation after the multi-owner change:
+
+```text
+scripts/test-iris-corner-poc-contract.py  PASS
+canonical validator                       115 PASS / 22 FAIL / 2 SKIP
+Nix package                               PASS
+```
+
+The 22 canonical failures are the same baseline count as the immediate
+pre-change revision. They are not introduced by the PoC. Live GPU appearance is
+still unproven and remains the hard gate.
+
+The matrix output now includes both:
+
+```text
+contact-sheet-card-owner-<profile>.png
+detail-sheet-card-owner-<profile>.png
+```
+
+For `sourceT=0.50`, visually inspect the single primary-owner join. For
+`sourceT=0.02` and `0.98`, inspect the **two-owner** corner: the primary join
+and perpendicular Screen Edge must read as one continuous silhouette without a
+separate blob or hand-drawn corner.
+
+Production `StyledPopup`, `ConnectedSurfaceFrame`, Bar, ScreenEdges and Waffle
+remain unchanged by these commits.
+

@@ -148,3 +148,74 @@ A successful PoC must prove:
 - no input interception;
 - no production geometry mutation.
 ```
+
+
+---
+
+## Continuation update — U0 blockers resolved
+
+Research continued on 2026-09-20 and is recorded in
+\`docs/UNIFIED_SURFACE_RESEARCH.md\`, sections 21–25.
+
+Documentation commit:
+
+- \`1a8781339e2d8198848bf0ce30fa36e2db425e7f\`
+- \`docs(surface): resolve U0 blockers and specify U1\`
+
+No production code was changed.
+
+### Decisions now reached
+
+- **Layer lifetime:** Niri/Smithay same-layer ordering is insertion/remap sensitive.
+  A shared visual host whose relative order matters must stay mapped; mutate shape
+  membership/opacity instead of its Wayland surface lifetime.
+- **Top vs Overlay:** a Top-only host cannot provide the complete material for
+  existing Overlay popouts across fullscreen/overview. Keep the persistent
+  perimeter in a Top base domain, and compose attached popup material in an
+  Overlay-local domain. For \`StyledPopup\`, prefer eventually rendering the local
+  SDF material inside its existing full-output Overlay scenegraph rather than
+  adding a second same-layer visual window.
+- **Blur:** \`BackgroundEffect.blurRegion\` is \`ext-background-effect-v1\`
+  surface state backed by a \`wl_region\`, not shader alpha. Future architecture
+  should project one renderer-neutral shape registry both to the SDF renderer and
+  to a compositor Region mask. U1 uses opaque material and no blur.
+- **Shadow:** future connected-surface shadow belongs to the unified field/alpha,
+  not Niri's rectangular layer-surface shadow. Production shadow remains unchanged
+  during U1.
+- **Settings:** keep Settings as a local Overlay composition domain under its
+  existing backdrop/scrim ordering; do not move its card material into the Top
+  perimeter host.
+- **Renderer:** U1 is explicitly QSB/ShaderEffect. Native QSG remains a U3
+  production candidate only if shape count/fill-rate requires it.
+- **Native packaging, if later needed:** use a separate \`Hadalis.Surface\` QML
+  module package, built with Qt CMake/QML tooling and added to the QML import path.
+  The existing Code Workflow parser split is only a lifecycle precedent, not a
+  direct QML-plugin template. Repo-copy updates must never compile a native plugin.
+- **Caelestia minimum model:** rounded-rect SDF + inverted frame + circular smooth
+  union + generic border sink + bounded affected geometry. Do not port spring
+  deformation or other Blob features into U1.
+
+### U1 is designed but not implemented
+
+The exact isolated U1 contract is in
+\`docs/UNIFIED_SURFACE_RESEARCH.md#24-exact-isolated-u1-sdf-poc-specification\`.
+
+It proposes only non-production files under:
+
+\`\`\`text
+scripts/unified-surface/
+  U1Shell.qml
+  U1Surface.qml
+  U1Surface.frag
+  U1Surface.qsb
+  README.md
+  build-shader.sh
+\`\`\`
+
+Important: do **not** implement U1 unless the maintainer explicitly asks to start
+the PoC. When implementation is approved, refetch \`dev\` first because unrelated
+work may have advanced the branch.
+
+The reverted pre-contact-corner baseline remains authoritative. Do not resurrect
+Canvas flares, contact-plane offsets, \`contactInset\`, or per-consumer seam
+patches.

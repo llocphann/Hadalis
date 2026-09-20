@@ -100,9 +100,9 @@ for forbidden in (
 for token in (
     'mainText: CodeWorkflowTransaction.connectArtifactsReady',
     '"Prepare Connect artifacts"',
-    '"CONNECT ARTIFACTS READY · APPLY BLOCKED"',
+    '"CONNECT READY · AUTHORIZATION REQUIRED"',
     '"Connect preparation capability: READY',
-    "source QML is unchanged · Apply remains blocked",
+    "source QML is unchanged · authorization is separate from source Apply",
     "CodeWorkflowTransaction.prepareConnectArtifacts()",
 ):
     if token not in page:

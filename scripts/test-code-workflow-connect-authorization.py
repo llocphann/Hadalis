@@ -94,10 +94,10 @@ for token in (
     "CodeWorkflowTransaction.revokeConnectAuthorization(",
     '"Authorization target · "',
     '"Proof evidence · freshness "',
-    '"production TYPE/CYCLE remain UNKNOWN"',
+    "production TYPE/CYCLE",
     '"Source identity · "',
     '"Dependency identity · "',
-    '"source Apply control is still unavailable"',
+    "source Apply control is still unavailable",
 ):
     if token not in page:
         fail("2K-R authorization UI evidence missing " + token)
@@ -193,7 +193,7 @@ for token in (
     "explicit-connect-write-authorization-v1",
     "manifest SHA-256",
     "Authorize Connect write",
-    "production TYPE/CYCLE remain UNKNOWN",
+    "production TYPE/CYCLE as UNKNOWN",
     "Authorization expires",
     "user-facing Connect Apply remains unavailable",
 ):

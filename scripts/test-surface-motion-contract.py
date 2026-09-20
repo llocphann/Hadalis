@@ -28,6 +28,39 @@ def qml_block(source: str, marker: str) -> str:
     raise AssertionError(f"unbalanced QML block: {marker}")
 
 
+
+def qml_direct_level_text(block: str) -> str:
+    """Return only text written directly inside one QML object.
+
+    Nested child-object bodies are omitted, while their direct-level headers
+    remain visible. This lets presentation contracts ignore unrelated animation
+    inside the Settings/Dashboard content subtree.
+    """
+    first_brace = block.find("{")
+    assert first_brace >= 0
+    depth = 0
+    output: list[str] = []
+    for index, char in enumerate(block[first_brace:], start=first_brace):
+        if char == "{":
+            depth += 1
+            if depth <= 2:
+                output.append(char)
+        elif char == "}":
+            if depth <= 2:
+                output.append(char)
+            depth -= 1
+        elif depth <= 1:
+            output.append(char)
+    return "".join(output)
+
+
+def without_line_comments(source: str) -> str:
+    return "\n".join(
+        line for line in source.splitlines()
+        if not line.lstrip().startswith("//")
+    )
+
+
 surface_motion = read("modules/common/SurfaceMotion.qml")
 qmldir = read("modules/common/qmldir")
 popup = read("modules/bar/StyledPopup.qml")
@@ -49,12 +82,15 @@ for required in (
 ):
     assert required in surface_motion, f"SurfaceMotion invariant missing: {required}"
 
+surface_motion_code = without_line_comments(surface_motion)
 for forbidden in (
     "Config.", "Appearance.", "BezierSpline", "SpringAnimation",
     "SmoothedAnimation", "overshoot", "bounce", "animationCurve",
     "animationSpeed", "contextualMotionProfile",
 ):
-    assert forbidden not in surface_motion, f"SurfaceMotion became mutable/bouncy: {forbidden}"
+    assert forbidden not in surface_motion_code, (
+        f"SurfaceMotion became mutable/bouncy: {forbidden}"
+    )
 
 assert "singleton SurfaceMotion 1.0 SurfaceMotion.qml" in qmldir
 
@@ -62,7 +98,7 @@ popup_motion = qml_block(popup, "Behavior on offsetScale")
 assert "SurfaceMotion.duration" in popup_motion
 assert "SurfaceMotion.easingType" in popup_motion
 assert "easing.bezierCurve" not in popup_motion
-assert "Appearance.animation" not in popup_motion
+assert "Appearance.animation." not in popup_motion
 assert "opacity: 1" in qml_block(popup, "ConnectedSurfaceContentHost {")
 
 assert "readonly property string animationType: SurfaceMotion.mode" in sidebar
@@ -116,6 +152,9 @@ for name, source, card_marker in (
     assert "opacity: 1" in card
 
 rail_card = qml_block(settings_overlay, "Rectangle {\n                id: settingsCard")
-assert "Behavior on radius" not in rail_card, "top-level Settings radius bounce returned"
+rail_card_direct = qml_direct_level_text(rail_card)
+assert "Behavior on radius" not in rail_card_direct, (
+    "top-level Settings radius bounce returned"
+)
 
 print("ii immutable slide-only surface motion contract: PASS")

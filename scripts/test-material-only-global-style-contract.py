@@ -1906,7 +1906,7 @@ def main() -> None:
         "buttonRadius: Appearance.rounding.small",
         "colBackgroundHover: Appearance.colors.colLayer4Hover",
         "NiriService.switchToWorkspaceById(nextWorkspace.id)",
-        "NiriService.moveWindowToWorkspaceById(windowData.id, targetWorkspace, true)",
+        "NiriService.moveWindowToWorkspaceById(\n                                        draggedWindowId, targetWorkspace, false)",
         "NiriService.focusWindow(windowData.id)",
         "NiriService.closeWindow(windowData.id)",
         "WindowPreviewService.getPreviewUrl",

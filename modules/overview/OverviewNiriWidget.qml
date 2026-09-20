@@ -153,6 +153,11 @@ Item {
     property int wheelStepCounter: 0
     property int wheelStepsRequired: Math.max(1, root.overviewScrollWorkspaceSteps)
 
+    // Drag state is transaction-owned. Keep the exact window id captured at
+    // press time instead of reading a reactive delegate after workspace/model
+    // updates; this guarantees that a drop can only move the window the user
+    // actually grabbed.
+    property int draggingWindowId: -1
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
 
@@ -165,6 +170,7 @@ Item {
         id: dragCleanupTimer
         interval: 100
         onTriggered: {
+            root.draggingWindowId = -1
             root.draggingFromWorkspace = -1
             root.draggingTargetWorkspace = -1
         }
@@ -820,9 +826,23 @@ Item {
                                 pressX = mouse.x
                                 pressY = mouse.y
                                 if (mouse.button === Qt.RightButton) {
-                                    // Click derecho: no iniciar drag, sólo registrar posición
+                                    // Right click opens the context menu; it must
+                                    // never create or reuse a drag transaction.
                                     return
                                 }
+
+                                const draggedId = Number(windowData.id ?? -1)
+                                if (!Number.isFinite(draggedId) || draggedId < 0)
+                                    return
+
+                                // A quick A -> B -> A reverse drag can start
+                                // before the previous 100 ms cleanup fires.
+                                // Cancel that stale timer before publishing the
+                                // new transaction so it cannot clear this drag.
+                                dragCleanupTimer.stop()
+                                root.draggingWindowId = draggedId
+                                root.draggingTargetWorkspace = -1
+
                                 windowItem.pressed = true
                                 const ws = NiriService.workspaces[windowData.workspace_id]
                                 root.draggingFromWorkspace = ws ? ws.id : -1
@@ -835,13 +855,14 @@ Item {
                                 const dx = Math.abs(event.x - pressX)
                                 const dy = Math.abs(event.y - pressY)
                                 const isClick = dx <= 4 && dy <= 4
-
-                                if (!windowData) return
+                                const draggedWindowId = root.draggingWindowId
 
                                 if (event.button === Qt.RightButton) {
-                                    if (isClick) root.openWindowContext(windowItem, event.x, event.y)
+                                    if (isClick && windowData)
+                                        root.openWindowContext(windowItem, event.x, event.y)
                                     windowItem.pressed = false
                                     windowItem.Drag.active = false
+                                    root.draggingWindowId = -1
                                     root.draggingFromWorkspace = -1
                                     root.draggingTargetWorkspace = -1
                                     return
@@ -853,20 +874,46 @@ Item {
                                 windowItem.Drag.active = false
                                 dragCleanupTimer.restart()
 
-                                const movedToOtherWorkspace = (targetWorkspace !== -1 && targetWorkspace !== fromWorkspace)
+                                // The delegate/model can legally rebuild after
+                                // compositor events. Never substitute a new
+                                // modelData window for the one captured at press.
+                                if (draggedWindowId < 0) {
+                                    windowItem.pendingWorkspaceSlot = -1
+                                    windowItem.restoreOverviewPosition()
+                                    return
+                                }
+
+                                const movedToOtherWorkspace =
+                                    targetWorkspace !== -1
+                                    && targetWorkspace !== fromWorkspace
 
                                 if (movedToOtherWorkspace) {
                                     const targetSlot = root.workspacesForOutput.findIndex(
                                         workspace => workspace?.id === targetWorkspace)
+                                    const delegateStillOwnsDraggedWindow =
+                                        !!windowData
+                                        && Number(windowData.id) === draggedWindowId
                                     windowItem.pendingWorkspaceSlot =
-                                        targetSlot >= 0 ? targetSlot : -1
+                                        delegateStillOwnsDraggedWindow && targetSlot >= 0
+                                            ? targetSlot : -1
+
                                     // Restore declarative x/y immediately. Without this,
                                     // drag.target leaves the reused delegate at the raw
                                     // pointer drop coordinate, which can sit above/below
                                     // the target workspace even after the backend move.
                                     windowItem.restoreOverviewPosition()
+
+                                    // Overview reorganization must not change the
+                                    // compositor's focused workspace. Niri's
+                                    // focus=true follows a focused dragged window
+                                    // across workspaces; on a reverse drag that
+                                    // perturbs focus/history and can make subsequent
+                                    // layout events act on the wrong workspace.
+                                    // Address the exact captured window id and keep
+                                    // focus on the user's current workspace.
                                     NiriService.moveWindowToWorkspaceById(
-                                        windowData.id, targetWorkspace, true)
+                                        draggedWindowId, targetWorkspace, false)
+
                                     // Force immediate rebuild after move; the restored
                                     // bindings then follow authoritative Niri layout data.
                                     Qt.callLater(() => windowSpace.rebuildWindowItems())
@@ -876,13 +923,14 @@ Item {
                                     // the x/y bindings broken by MouseArea.drag.target.
                                     windowItem.restoreOverviewPosition()
 
-                                    // Comportamiento de click (sin drag real)
+                                    // Click behavior (no real drag) uses the same
+                                    // immutable id captured at press.
                                     if (isClick && event.button === Qt.LeftButton) {
-                                        NiriService.focusWindow(windowData.id)
+                                        NiriService.focusWindow(draggedWindowId)
                                         if (!root.keepOverviewOpenOnWindowClick)
                                             root.requestPresentationClose()
                                     } else if (isClick && event.button === Qt.MiddleButton) {
-                                        NiriService.closeWindow(windowData.id)
+                                        NiriService.closeWindow(draggedWindowId)
                                     }
                                 }
                             }

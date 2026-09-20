@@ -40,6 +40,12 @@ def main() -> None:
         "BarMediaPopup must request the Serpantinum-density CAVA sample field",
     )
     check(
+        "_playerCache" not in popup
+        and "cacheInvalidateTimer" not in popup
+        and "if (root.activePlayer && !result.includes(root.activePlayer))" in popup,
+        "BarMediaPopup must render only live MPRIS objects and must not retain destroyed-player cache entries",
+    )
+    check(
         "visualizerPoints: root.visualizerPoints" in popup,
         "BarMediaPopup must forward CAVA points into PlayerControl",
     )

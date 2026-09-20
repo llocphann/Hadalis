@@ -35,10 +35,25 @@ Item {
     readonly property int tabCount: root._visiblePlayers.length
     readonly property int tabSlideDuration: Appearance.animation.elementMove.duration
     
-    // Cache to prevent flickering during track transitions
-    property var _playerCache: []
-    property bool _cacheValid: false
-    readonly property var _visiblePlayers: root._cacheValid ? root._playerCache : (root.meaningfulPlayers ?? [])
+    // MprisController already owns membership debouncing/grace. Do not keep a
+    // second cache of MprisPlayer QObject references here: an MPRIS service can
+    // disappear/reappear while the popup stays open, leaving the local cache
+    // pointing at destroyed QObjects. That kept the viewport height reserved
+    // while Repeater had no valid PlayerControl delegate (the blank-media bug).
+    // Use only live controller objects, and keep the live active player visible
+    // through a transient display-filter update.
+    readonly property var _visiblePlayers: {
+        const result = []
+        const players = root.meaningfulPlayers ?? []
+        for (let i = 0; i < players.length; ++i) {
+            const player = players[i]
+            if (player && !result.includes(player))
+                result.push(player)
+        }
+        if (root.activePlayer && !result.includes(root.activePlayer))
+            result.unshift(root.activePlayer)
+        return result
+    }
     // Item.visible alone is insufficient for popout lifecycle: an item's local
     // visible flag can remain true while its presentation window is closed.
     // Gate CAVA by the actual Quickshell window so the shared subscription is
@@ -120,37 +135,14 @@ Item {
         return false
     }
 
-    onMeaningfulPlayersChanged: {
-        const nextPlayers = root.meaningfulPlayers ?? []
-        const count = nextPlayers.length
-        if (count > 0) {
-            if (!root._cacheValid || !root._samePlayerOrder(nextPlayers, root._playerCache))
-                root._playerCache = [...nextPlayers];
-            root._cacheValid = true;
-            cacheInvalidateTimer.stop();
-            Qt.callLater(() => root.syncCurrentTabToActivePlayer())
-        } else if (root._cacheValid && root._playerCache.length > 0) {
-            // Keep cache during transitions
-            cacheInvalidateTimer.restart();
-        }
-    }
+    onMeaningfulPlayersChanged:
+        Qt.callLater(() => root.syncCurrentTabToActivePlayer())
 
     onActivePlayerChanged:
         Qt.callLater(() => root.syncCurrentTabToActivePlayer())
 
     Component.onCompleted:
         Qt.callLater(() => root.syncCurrentTabToActivePlayer())
-
-    Timer {
-        id: cacheInvalidateTimer
-        interval: 2200
-        onTriggered: {
-            if ((root.meaningfulPlayers?.length ?? 0) === 0 && (Mpris.players.values?.length ?? 0) === 0) {
-                root._cacheValid = false;
-                root.currentTab = 0;
-            }
-        }
-    }
 
     implicitWidth: widgetWidth
     implicitHeight: playerColumn.implicitHeight

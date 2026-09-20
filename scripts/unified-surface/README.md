@@ -282,3 +282,19 @@ This mirrors both Caelestia's `BlobInvertedRect { anchors.margins: -50 }` and
 Hadalis `ScreenEdges.qml`'s locked `outerPadding: 50`. It prevents the
 off-screen outer boundary from artificially limiting the inner-frame smooth-max
 radius. The window still clips all drawing to the real output.
+
+
+## Border-facing reveal compression
+
+During reveal/retract, a popup rectangle temporarily travels inside the inverted
+frame's owner band. U1 now applies the same generic border-facing SDF compression
+used by Caelestia: proximity to the four `frameInner` sides scales the popup
+distance field along the locally facing axis, with the same maximum boost of 3.
+
+At a fully opened resting popup, border proximity is zero, so this does **not**
+change the enlarged diagnostic contact corner/shoulder. It only narrows the
+smooth-union influence while the popup is hidden or crossing the owner border.
+
+The operation remains topology-neutral: it consumes only `pixel`,
+`frameInner`, `popupRect`, and `smoothK`. There is no attachment-edge flag,
+contact plane, module name or reveal-specific geometry offset.

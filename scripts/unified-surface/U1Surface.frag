@@ -81,6 +81,54 @@ vec4 popupCornerRadii(vec4 popup, vec4 innerRect, float radius, float k) {
     return vec4(tr, br, bl, tl);
 }
 
+float borderFacingScale(vec2 pixel, vec4 innerRect, vec4 popup, float k) {
+    vec2 center = popup.xy + popup.zw * 0.5;
+    vec2 halfSize = popup.zw * 0.5;
+
+    float innerLeft = innerRect.x;
+    float innerTop = innerRect.y;
+    float innerRight = innerRect.x + innerRect.z;
+    float innerBottom = innerRect.y + innerRect.w;
+
+    // Match Caelestia's inverted-frame proximity measure. At the normal
+    // resting position both relevant distances are >= k, so proximity is zero
+    // and the open popup silhouette is unchanged. Compression appears only
+    // while the rect is travelling inside/behind an owner border.
+    float distY0 = (center.y + halfSize.y) - innerTop;
+    float distY1 = innerBottom - (center.y - halfSize.y);
+    float distX0 = (center.x + halfSize.x) - innerLeft;
+    float distX1 = innerRight - (center.x - halfSize.x);
+
+    float yProx = 1.0 - min(
+        smoothstep(0.0, k, distY0),
+        smoothstep(0.0, k, distY1)
+    );
+    float xProx = 1.0 - min(
+        smoothstep(0.0, k, distX0),
+        smoothstep(0.0, k, distX1)
+    );
+
+    // Weight the compression by the local SDF-facing axis. Outside a rounded
+    // corner use its gradient; inside/on a face use a smooth face classifier.
+    // This avoids an orientation branch at corners.
+    vec2 q = abs(pixel - center) - halfSize;
+    vec2 qp = max(q, vec2(0.0));
+    float cornerLen = length(qp);
+
+    float gradX = qp.x / max(cornerLen, 0.001);
+    float gradY = qp.y / max(cornerLen, 0.001);
+
+    float faceY = smoothstep(-4.0, 4.0, q.y - q.x);
+    float faceX = 1.0 - faceY;
+
+    float t = smoothstep(0.0, 2.0, cornerLen);
+    float xWeight = mix(faceX, gradX, t);
+    float yWeight = mix(faceY, gradY, t);
+
+    const float boost = 3.0;
+    return 1.0 + (xProx * xWeight + yProx * yWeight) * boost;
+}
+
 float frameSink(vec2 pixel, vec4 innerRect, vec4 popup, float k) {
     float innerLeft = innerRect.x;
     float innerTop = innerRect.y;
@@ -162,6 +210,7 @@ void main() {
         ubuf.popupRect, ubuf.frameInner, ubuf.popupRadius, k
     );
     float dPopup = sdRoundedRect4(pixel, ubuf.popupRect, effectiveRadii);
+    dPopup *= borderFacingScale(pixel, ubuf.frameInner, ubuf.popupRect, k);
     float merged = circularSmin(dFrame, dPopup, k);
 
     float aa = max(fwidth(merged), 0.0001);

@@ -1766,6 +1766,27 @@ U1 now uses a generic `outerPadding` input with default 50. The output-local
 window/effect bounds are unchanged; only the SDF outer rectangle extends beyond
 the clipped output. No production geometry is modified.
 
+### 27.3 Border-facing SDF compression
+
+The corrected static junction still omitted one current Caelestia behavior:
+while a BlobRect is near an inverted border, its SDF is compressed on the axis
+facing that border. Caelestia derives this entirely from rectangle/frame
+distances and the local SDF gradient/face direction; the maximum boost is 3
+(`scale <= 4`).
+
+U1 now mirrors that operation as `borderFacingScale()`. It is deliberately
+applied to the popup distance field, not to semantic popup geometry.
+
+At the fully-open resting position the relevant border proximity is zero, so
+the static diagnostic shoulder (`smoothK=28`) is unchanged. During
+reveal/retract, compression narrows the circular-smin influence while the popup
+rectangle is inside/behind the owner band, reducing residual workspace bulge
+without inventing a close-state offset or contact-side branch.
+
+This closes another fidelity gap between U1 and the actual Caelestia Blob field.
+The remaining acceptance question is live pixel behavior, not another geometry
+patch.
+
 Next acceptance remains live nested-Niri GPU validation. If the enlarged
 diagnostic morphology still places the shoulder on the wrong side of the popup,
 do not add offsets or resurrect `ConnectedSurfaceJoinFlares`; revert the U1

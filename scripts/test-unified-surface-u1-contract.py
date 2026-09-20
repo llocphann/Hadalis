@@ -54,6 +54,7 @@ for required in (
     "sdRoundedRect4",
     "cornerFillFactor",
     "popupCornerRadii",
+    "borderFacingScale",
     "circularSmin",
     "circularSmaxSharpA",
     "frameSink",

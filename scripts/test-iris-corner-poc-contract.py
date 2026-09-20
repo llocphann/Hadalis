@@ -51,6 +51,42 @@ for forbidden in (
 
 
 
+
+
+# Lock the ShaderEffect ABI expected by the exact upstream QSB. Qt provides
+# qt_Matrix/qt_Opacity automatically; every application uniform must remain
+# available on the wrapper.
+for index in range(20):
+    assert f"readonly property vector4d shape{index}:" in wrapper, (
+        f"iRiS QSB shape uniform missing: shape{index}"
+    )
+
+for prefix in ("radii", "fuse", "join", "also", "paints", "glass"):
+    for suffix in "ABCDE":
+        assert f"readonly property vector4d {prefix}{suffix}:" in wrapper, (
+            f"iRiS QSB block uniform missing: {prefix}{suffix}"
+        )
+
+for token in (
+    "readonly property vector4d viewport:",
+    "readonly property vector2d screen:",
+    "readonly property vector4d field:",
+    "readonly property color tint:",
+    "readonly property color rim:",
+    "readonly property vector4d edge:",
+    "readonly property vector4d glass:",
+    "readonly property vector4d edgeWave:",
+    "readonly property vector4d waveClock:",
+    "readonly property Item backdrop:",
+):
+    assert token in wrapper, f"iRiS QSB ABI uniform missing: {token}"
+
+# In iRiS v2.31 paints flags no longer alter field topology/fill in GLSL; they
+# are retained for QML-side shadow ownership. Keeping them zero in this
+# topology-only PoC is therefore deliberate, not an omitted material path.
+assert "the union does not treat them differently any more." in field
+assert "united = min(united, bodies[i]);" in field
+
 # Lock both profiles. Diagnostic deliberately enlarges the corner; the
 # upstream-relative profile follows iRiS v2.31 defaults closely.
 for token in (

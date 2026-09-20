@@ -72,6 +72,9 @@ jobs:
       - name: Integrate production Connect preparation
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-production-preparation.py'
 
+      - name: Prove isolated Connect commit and rollback engine
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-commit.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply

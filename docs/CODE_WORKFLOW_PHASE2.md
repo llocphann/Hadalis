@@ -771,12 +771,47 @@ Implemented production boundary:
 - No Connect source-write action, atomic replacement, watcher reload or rollback
   lifecycle is exposed by 2K-N. Apply remains blocked.
 
+## Milestone 2K-O — isolated Connect commit/rollback engine
+
+Implemented research/proof:
+
+- `scripts/code-workflow/connect_commit.py` is a research-only lifecycle engine
+  and remains excluded from the runtime payload. Settings and
+  `CodeWorkflowTransaction` do not invoke it.
+- The engine accepts only a 2K-M/N Connect manifest with exact artifact,
+  qualification, qmllint type and cross-file cycle proof tokens. The manifest
+  must retain `writeAuthorized=false`, `applyEnabled=false`,
+  `artifactsStaged=true` and `productionIntegrated=false`.
+- Commit validates exact snapshot/candidate hashes and requires the retained
+  Config dependency hash to match before any source write. It then delegates the
+  one-file atomic replacement to the already-qualified compare-before-replace
+  primitive used by the literal lifecycle.
+- Only the reviewed source QML may be replaced. Config is dependency evidence
+  and is never written.
+- The Config hash is re-read after source replacement. If it changed in the
+  write window, the engine reports
+  `dependency-drift-after-write`, `sourceWritten=true` and
+  `rollbackRequired=true`; the caller must restore the exact source snapshot.
+- Verify distinguishes `candidate-present`, `base-present` and
+  `diverged`, and reports external dependency freshness independently.
+- Rollback restores the snapshot only when the source still equals the prepared
+  candidate. It deliberately does not require Config to remain fresh, because
+  rollback must undo Hadalis's own source write while preserving an external
+  Config edit.
+- Synthetic acceptance covers successful commit/verify/rollback, Config drift
+  before write, and a deterministic Config drift injected after source replace.
+  The final case proves exact source rollback while preserving the external
+  Config change.
+- No watcher/reload semantic-rebind controller is production-wired by 2K-O, and
+  user-facing Connect Apply remains unavailable.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- Connect source-write authorization/commit/rollback lifecycle;
+- production Connect watcher/reload/rebind/rollback lifecycle;
+- user-facing Connect source Apply;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -784,19 +819,18 @@ Implemented production boundary:
 
 ## Next gate
 
-2K-N moves fresh qualification and exact artifact preparation into production
-without granting source-write authority. The next gate must qualify a dedicated
-Connect commit/verify/rollback lifecycle in isolation before any user-facing
-Connect Apply can exist.
+2K-O qualifies the one-file Connect commit/verify/rollback engine and closes
+Config dependency races at the artifact engine boundary. The next gate is a
+live isolated lifecycle acceptance, not product Apply enablement.
 
-That lifecycle must consume only the exact prepared manifest bound to the active
-history command, perform a final Clock and Config freshness check immediately
-before replacement, atomically replace only the reviewed Clock source, rely on
-one watcher-driven reload, rebind the inserted semantic anchor after reload and
-rollback exact snapshot bytes on reload/verify/rebind failure. Config is
-dependency evidence only and must never be part of a multi-file write.
+That harness must run the production shell against an isolated writable runtime,
+prepare the real reviewed Clock Connect candidate, commit it through the 2K-O
+engine, observe exactly one watcher-driven reload, verify the candidate SHA,
+rebind the inserted binding semantic anchor, and prove exact rollback on reload,
+verification, rebind or dependency failure. It must also prove an external edit
+after preparation invalidates the handoff without being overwritten.
 
-Until that lifecycle has independent live acceptance evidence, Connect source
-Apply stays unavailable. A prepared manifest is not write authorization,
-production TYPE/CYCLE labels remain UNKNOWN, and literal-property remains the
-only source-writing command.
+Until live lifecycle evidence passes, `connect_commit.py` remains outside the
+runtime payload and user-facing Connect Apply stays unavailable. Production
+TYPE/CYCLE labels remain UNKNOWN, and literal-property remains the only
+source-writing command.

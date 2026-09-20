@@ -35,7 +35,10 @@ mode-0600 rollback/candidate/manifest artifacts from Settings when native parser
 qmllint and source writability are available. Low-level proof modules are runtime
 implementation support only; QML invokes just `connect_prepare.py`. Prepared
 artifacts are bound to transaction history and invalidated by Clock/Config drift,
-but Apply remains blocked and source QML is unchanged.
+but Apply remains blocked and source QML is unchanged. A separate research-only
+2K-O engine now proves one-file Connect commit/verify/rollback semantics and
+closes Config drift before/after the atomic source replacement; it is not yet
+runtime-wired.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

@@ -269,7 +269,7 @@ def coordinate_connect_preview(
             target_id,
             connect_target_id,
         )
-    if reviewed.get("opaqueContext") is True:
+    if reviewed.get("opaqueContext") is not False:
         return _blocked(
             "resolver",
             "reviewed-parent-object-became-opaque",

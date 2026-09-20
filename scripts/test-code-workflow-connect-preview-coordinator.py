@@ -193,6 +193,28 @@ if len(calls) != 1:
     fail("resolver drift must block before insertion request")
 
 
+def runner_with_missing_opaque_evidence(argv: list[str]):
+    code, payload = good_runner(argv)
+    if Path(argv[1]).name == "analyze.py":
+        payload = dict(payload)
+        payload["reviewedObjectAnchor"] = dict(payload["reviewedObjectAnchor"])
+        payload["reviewedObjectAnchor"].pop("opaqueContext", None)
+    return code, payload
+
+
+calls.clear()
+blocked = connect_preview.coordinate_connect_preview(
+    ROOT,
+    "bar/clock",
+    target["id"],
+    request_runner=runner_with_missing_opaque_evidence,
+)
+if blocked.get("reason") != "reviewed-parent-object-became-opaque":
+    fail("missing non-opaque evidence must fail closed")
+if len(calls) != 1:
+    fail("missing non-opaque evidence must block before insertion request")
+
+
 def runner_with_sha_drift(argv: list[str]):
     code, payload = good_runner(argv)
     if Path(argv[1]).name == "connect.py":

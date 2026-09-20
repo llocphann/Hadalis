@@ -48,6 +48,16 @@ for test_script in scripts/test-*.sh; do
   fi
 done
 
+# Production StyledPopup resolves the exact iRiS shader relative to its runtime
+# QML module. The standalone G2 test already caught how a missing local QSB can
+# leave structure green while rendering no field, so packaging must fail closed.
+for iris_asset in \
+  modules/common/perimeter/IrisField.frag \
+  modules/common/perimeter/IrisField.frag.qsb; do
+  grep -Fqx "$iris_asset" <<<"$payload_list" \
+    || fail "runtime payload omits production iRiS shader asset: $iris_asset"
+done
+
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
   "$git_pkg:$git_srcinfo" \

@@ -772,3 +772,30 @@ the perpendicular tangent owner.
 
 Re-run the same one-command G2 matrix. Production cutover remains blocked until
 the new sheets show no black intrusion while retaining free-side shadow.
+
+
+### G2 shader asset packaging correction
+
+A second live G2 review exposed that the iRiS field itself had never rendered:
+the cyan semantic outline and Overlay content were visible, but the popup
+interior still showed the desktop/terminal instead of the PoC's yellow
+`#f4c542` field material.
+
+The cause was standalone config packaging. G2 is launched with
+`scripts/iris-corner-poc/g2/` as its Quickshell config root, while
+`IrisSplitField.qml` referenced `../IrisField.frag.qsb`. The locked QSB was
+therefore outside the standalone config root.
+
+Commit `ac4c92fb3ce9e804fcdb5d358f9a50590b47c4d8` fixes this without changing
+the shader or geometry:
+
+- the exact same locked QSB blob is also present inside the G2 config root;
+- the wrapper resolves `IrisField.frag.qsb` locally;
+- the source contract byte-compares local G2 QSB and locked G1 QSB;
+- readiness now requires `ShaderEffect.Compiled`;
+- evidence records shader status/log and structural verification rejects a
+  non-compiled shader or a non-empty shader log.
+
+Earlier G2 structural PASS runs are not visual PASS because they did not render
+the iRiS field. G2 remains open until a fresh matrix visibly shows the yellow
+field while retaining split-owner isolation.

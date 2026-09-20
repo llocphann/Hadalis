@@ -2380,3 +2380,32 @@ The new verifier requires `shadowIsolation=texture-source-rect`, records the
 displayed shadow rect, and checks that it cannot enter either the primary owner
 or a joined perpendicular Screen Edge. Live visual revalidation remains the
 gate.
+
+
+### 26.20 G2 standalone shader packaging failure
+
+The second live split-composition sheet made a separate failure visible: there
+was no yellow iRiS field at all. Only the Top fake owner, cyan semantic outline,
+dark shadow and regular Overlay content were present. Desktop pixels remained
+visible through the popup body.
+
+This invalidates the prior assumption that a structural geometry PASS implied
+the field renderer had participated.
+
+The G2 runner uses its own directory as the Quickshell config root. A relative
+shader URL escaping that root (`../IrisField.frag.qsb`) is not a valid
+standalone packaging contract. G2 now packages the locked QSB inside its own
+config root. It is not a rebuilt or modified shader: Git stores the local G2
+asset with the same blob SHA as the locked G1/upstream QSB.
+
+The live contract now also consumes `ShaderEffect.status` and `log`.
+Readiness cannot be emitted until the field reports `ShaderEffect.Compiled`,
+and the verifier rejects shader errors/warnings before considering geometry.
+
+This separates three independent G2 conditions that must all pass:
+
+1. shader asset is actually loaded/renderable;
+2. field/input/shadow respect external-owner composition boundaries;
+3. the resulting live morphology is visually coherent.
+
+No production cutover is authorized until all three pass in one fresh matrix.

@@ -68,6 +68,17 @@ for token in (
         fail("own source watcher event must preserve lifecycle handoff: " + token)
 
 for token in (
+    'reloadState.pendingApplyReloadOutcome === "failed"',
+    "the running shell never left the base generation",
+    "Qt.callLater(root._startRollbackVerify)",
+):
+    if token not in service:
+        fail(
+            "failed candidate reload must verify exact rollback "
+            "without waiting for a redundant watcher reload: " + token
+        )
+
+for token in (
     "readonly property bool applyCommandMatchesHandoff:",
     "readonly property bool applyEnabled:",
     "root.applyLifecycleReady",

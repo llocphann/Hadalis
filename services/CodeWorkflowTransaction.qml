@@ -1640,7 +1640,10 @@ Singleton {
         }
 
         reloadState.pendingApplyPhase = "rollback-issued"
-        reloadState.pendingApplyReloadOutcome = "none"
+        // Preserve "failed" when the candidate reload failed. In that case
+        // the running shell never left the base generation, so exact source
+        // rollback can be verified without waiting for a redundant watcher
+        // generation that Quickshell may suppress.
         reloadState.pendingApplyVerifyState = "unknown"
         if (String(reason ?? "").length > 0)
             reloadState.pendingApplyError = String(reason)
@@ -1663,8 +1666,11 @@ Singleton {
             root.applyLifecycleResult = payload
             root.applyLifecycleError = ""
             reloadState.pendingApplyPhase = "rollback-waiting-reload"
-            reloadState.pendingApplyReloadOutcome = "none"
             root.status = "rollback-waiting-reload"
+            if (reloadState.pendingApplyReloadOutcome === "failed"
+                    || reloadState.pendingApplyReloadOutcome
+                        === "completed")
+                Qt.callLater(root._startRollbackVerify)
             return
         }
 
@@ -1737,7 +1743,10 @@ Singleton {
         if (phase === "rollback-issued"
                 || phase === "rollback-waiting-reload") {
             root.status = "rollback-waiting-reload"
-            if (reloadState.pendingApplyReloadOutcome === "completed")
+            if (phase === "rollback-waiting-reload"
+                    && (reloadState.pendingApplyReloadOutcome === "failed"
+                        || reloadState.pendingApplyReloadOutcome
+                            === "completed"))
                 root._startRollbackVerify()
             return
         }

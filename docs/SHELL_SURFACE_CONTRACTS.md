@@ -32,6 +32,7 @@ This document records the stabilization contracts that should be checked during 
 
 - Panel is the only supported user-facing Dock style.
 - Dock uses `ConnectedSurfaceIrisEdgeSurface` for top/bottom/left/right attachment, so the visible body stops at the real Screen Edge inner boundary while the SDF weld makes it one connected block with Screen Edge.
+- The painted Dock ignores layer-shell exclusion zones and stays in physical-output coordinates. Pinned workspace reservation is owned by a separate transparent/input-empty reservation surface; never put `exclusiveZone` back on the painted Dock or the Screen Edge reservation will displace the iRiS seam.
 - Dock, Sidebar and Dashboard use the same `appearance.screenEdge.physicalShadow` size/opacity and Material `m3shadow` ink as the physical Screen Edge.
 - Dock reveal/retract remains slide-only through `SurfaceMotion`; the iRiS body follows that translation rather than introducing a second animation stage.
 - Legacy persisted values such as Pill, macOS, Island, or M3 normalize to `panel` during startup.

@@ -195,11 +195,16 @@ for token in (
     "screenEdge?.physicalShadow?.size ?? 15",
     "screenEdge?.physicalShadow?.opacity ?? 0.70",
     "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
+    "exclusionMode: ExclusionMode.Ignore",
+    'WlrLayershell.namespace: "quickshell:dock-reservation"',
+    "exclusiveZone: visible",
+    "mask: Region { item: emptyReservationInput }",
 ):
     require(dock, token, "Dock iRiS edge cutover")
 forbid(dock, "StyledRectangularShadow {", "Dock detached legacy shadow")
 forbid(dock, "fillColor: dockVisualBackground.color", "Dock duplicate body paint")
 forbid(dock, "Config.options?.bar?.bottom !== undefined", "Dock stale Bar orientation probe")
+forbid(dock, "exclusiveZone: root.pinned", "Dock visual surface displaced by Screen Edge reservation")
 
 for source, label in (
     (sidebar, "Sidebar"),

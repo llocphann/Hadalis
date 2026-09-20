@@ -356,6 +356,10 @@ def main() -> None:
         "screenEdge?.physicalShadow?.size ?? 15",
         "screenEdge?.physicalShadow?.opacity ?? 0.70",
         "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
+        "exclusionMode: ExclusionMode.Ignore",
+        'WlrLayershell.namespace: "quickshell:dock-reservation"',
+        "exclusiveZone: visible",
+        "mask: Region { item: emptyReservationInput }",
     ):
         check(token in dock,
               f"Dock iRiS Screen Edge / shadow contract missing: {token}")
@@ -363,6 +367,8 @@ def main() -> None:
           "Dock must not retain its detached local shadow after iRiS cutover")
     check("Config.options?.bar?.bottom !== undefined" not in dock,
           "Dock reload key must track Bar orientation rather than existence of the bottom key")
+    check("exclusiveZone: root.pinned" not in dock,
+          "Painted Dock must not participate in normal exclusion or Screen Edge will displace its iRiS seam")
     check("fillColor: dockVisualBackground.color" not in dock
           and "borderColor: dockVisualBackground.border.color" not in dock,
           "Dock iRiS field must be the sole body painter; duplicate Rectangle paint changes alpha")

@@ -142,12 +142,15 @@ Scope {
                     right: !root.isLeft || !root.isVertical
                 }
 
-                exclusiveZone: root.pinned ? (dockHeight + Appearance.sizes.elevationMargin) : 0
+                // The painted Dock must stay in physical-output coordinates so
+                // its body ends exactly at the Screen Edge seam. A normal
+                // exclusive layer surface is displaced by the Screen Edge
+                // reservation; pinned workspace reservation is therefore owned
+                // by the transparent companion window below.
+                exclusionMode: ExclusionMode.Ignore
                 // Dock is an edge-attached iRiS surface. The native window
                 // retains transparent room for the SDF shoulder/shadow, while
                 // the visible body stops at the real Screen Edge inner boundary.
-                // The Dock exclusive zone remains unchanged; Screen Edge keeps
-                // owning its own physical reservation.
                 implicitWidth: root.isVertical
                     ? (dockHeight + Appearance.sizes.elevationMargin
                         + dockRoot.screenEdgeThickness)
@@ -509,6 +512,61 @@ Scope {
                     }
                 }
             }
+        }
+    }
+
+    // Reservation-only companion for pinned mode. It paints and accepts
+    // nothing; separating it from the visual Dock lets the iRiS surface ignore
+    // other exclusive zones without losing the historical workspace strut.
+    Variants {
+        model: {
+            const screens = Quickshell.screens;
+            const list = Config.options?.dock?.screenList ?? [];
+            if (!list || list.length === 0)
+                return screens;
+            const matchedScreens = screens.filter(screen => {
+                const screenName = screen?.name ?? "";
+                return screenName.length > 0 && list.includes(screenName);
+            });
+            return matchedScreens.length > 0 ? matchedScreens : screens;
+        }
+
+        PanelWindow {
+            id: dockReservation
+            required property var modelData
+
+            screen: modelData
+            visible: root.pinned
+                && GlobalStates.shellEntryReady
+                && !GlobalStates.screenLocked
+                && !GlobalStates.widgetEditMode
+            color: "transparent"
+            exclusiveZone: visible
+                ? Math.max(0, Math.round((Config.options?.dock?.height ?? 70)
+                    + Appearance.sizes.elevationMargin))
+                : 0
+
+            implicitWidth: root.isVertical ? 1 : 0
+            implicitHeight: root.isVertical ? 0 : 1
+
+            WlrLayershell.namespace: "quickshell:dock-reservation"
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors {
+                top: root.isTop || root.isVertical
+                bottom: !root.isTop || root.isVertical
+                left: root.isLeft || !root.isVertical
+                right: !root.isLeft || !root.isVertical
+            }
+
+            Item {
+                id: emptyReservationInput
+                width: 0
+                height: 0
+                visible: false
+            }
+            mask: Region { item: emptyReservationInput }
         }
     }
 }

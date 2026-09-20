@@ -106,7 +106,6 @@ def main() -> None:
               f"System Monitor compact grid must keep screenshot-aligned metrics: {token}")
 
     for token in (
-        "property bool connectAdjacentScreenEdge: false",
         "id: directEdgeAttachment",
         "readonly property real _popupScreenMargin: root._screenEdgeThickness",
         "screenMargin: root._popupScreenMargin",
@@ -119,6 +118,7 @@ def main() -> None:
         check(token in styled_popup,
               f"StyledPopup must use direct Caelestia-style edge attachment: {token}")
     for forbidden in (
+        "connectAdjacentScreenEdge",
         "id: adjacentScreenEdgeGeometry",
         "geometry: adjacentScreenEdgeGeometry",
     ):

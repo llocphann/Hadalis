@@ -260,9 +260,13 @@ for token in (
     "Run isolated reviewed Signal/Action production lifecycle",
     "run-signal-action-production-lifecycle.py",
     "signal-action-production-lifecycle-report.json",
+    "hadalis-wf-sa-prod",
 ):
     if token not in WORKFLOW:
         fail("Code Workflow acceptance missing W-C live contract " + token)
+
+if "hadalis-workflow-signal-action-production" in WORKFLOW:
+    fail("W-C live workdir is too long for Quickshell AF_UNIX IPC socket path")
 
 print(
     "ok - Code Workflow 2K-W-C reviewed signal/action internal "

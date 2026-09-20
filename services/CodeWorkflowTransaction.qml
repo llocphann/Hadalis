@@ -1572,7 +1572,7 @@ Singleton {
         root.status = "binding-postcondition"
         CodeWorkflowAnalyzer.request(
             reloadState.pendingBindingSourcePath,
-            "text: DateTime.date",
+            "",
             reloadState.pendingBindingSemanticAnchor,
             true)
     }
@@ -1597,7 +1597,7 @@ Singleton {
                 CodeWorkflowAnalyzer.semanticRebind?.anchor ?? "")
                 === reloadState.pendingBindingSemanticAnchor
             && String(
-                CodeWorkflowAnalyzer.reviewedAnchor?.semanticValueText ?? "")
+                CodeWorkflowAnalyzer.semanticRebind?.semanticValueText ?? "")
                 === "DateTime.date"
             && CodeWorkflowAnalyzer.diagnostics.length === 0
         if (!matches) {

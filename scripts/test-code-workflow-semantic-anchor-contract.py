@@ -32,6 +32,31 @@ if resolved.get("range") != [120, 150]:
 if resolved.get("editable") is not False:
     fail("semantic rebind must remain read-only")
 
+value_source = b"Item { visible: enabled }\n"
+value_start = value_source.index(b"enabled")
+value_entry = {
+    "anchor": "stable-value",
+    "anchor_unique": True,
+    "kind": "binding",
+    "name": "visible",
+    "range": [7, value_start + len(b"enabled")],
+    "value_range": [value_start, value_start + len(b"enabled")],
+    "value_kind": "identifier",
+    "parent_range": [0, len(value_source)],
+    "scope": ["Item[1]"],
+    "opaque_context": False,
+    "editable": False,
+}
+value_resolved = workflow_analyze.resolve_semantic_anchor(
+    [value_entry],
+    "stable-value",
+    value_source,
+)
+if value_resolved.get("semanticValueText") != "enabled":
+    fail("semantic rebind must expose exact current value text when source is supplied")
+if value_resolved.get("semanticValueRange") != value_entry["value_range"]:
+    fail("semantic rebind value range drifted")
+
 missing = workflow_analyze.resolve_semantic_anchor([entry], "missing")
 if missing.get("status") != "missing":
     fail("missing semantic anchor must fail closed")

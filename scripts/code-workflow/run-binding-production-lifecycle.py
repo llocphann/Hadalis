@@ -275,7 +275,7 @@ def run_success(
             and s["workflowAnalyzer"]["status"] == "ready"
             and s["workflowAnalyzer"]["semanticRebind"]
                 .get("status") == "resolved"
-            and (s["workflowAnalyzer"].get("reviewedAnchor") or {})
+            and (s["workflowAnalyzer"].get("semanticRebind") or {})
                 .get("semanticValueText") == "DateTime.date"
             and len(s["workflowAnalyzer"]["diagnostics"]) == 0
         ),

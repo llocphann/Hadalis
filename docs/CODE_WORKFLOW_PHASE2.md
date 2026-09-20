@@ -1129,7 +1129,10 @@ subset.
 - Success requires `binding_commit.py verify` to report
   `candidate-present`, then Analyzer READY on the candidate SHA with zero
   diagnostics, the original semantic anchor `resolved`, and that exact
-  binding rendering `DateTime.date`.
+  rebound entry rendering `DateTime.date`. The postcondition intentionally
+  uses no reviewed source needle: after replacement the Clock source contains
+  two `text: DateTime.date` bindings, so textual needle uniqueness would be
+  ambiguous even though the semantic anchor remains exact.
 - Reload, candidate-verify or exact-rebind failure automatically restores the
   mode-0600 exact snapshot. Rollback is complete only after verify reports
   `base-present`; a bounded explicit reload fallback covers watcher

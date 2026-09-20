@@ -234,7 +234,11 @@ def resolve_reviewed_object_anchor(
     }
 
 
-def resolve_semantic_anchor(entries: list[dict], anchor: str) -> dict:
+def resolve_semantic_anchor(
+    entries: list[dict],
+    anchor: str,
+    source: bytes | None = None,
+) -> dict:
     if not anchor:
         return {"status": "not-requested"}
 
@@ -252,7 +256,7 @@ def resolve_semantic_anchor(entries: list[dict], anchor: str) -> dict:
         }
 
     entry = matches[0]
-    return {
+    result = {
         "status": "resolved",
         "anchor": anchor,
         "kind": entry.get("kind", ""),
@@ -263,6 +267,20 @@ def resolve_semantic_anchor(entries: list[dict], anchor: str) -> dict:
         "opaqueContext": bool(entry.get("opaque_context", False)),
         "editable": False,
     }
+    value_range = entry.get("value_range")
+    result["semanticValueRange"] = value_range
+    result["semanticValueKind"] = entry.get("value_kind")
+    if (
+        source is not None
+        and isinstance(value_range, list)
+        and len(value_range) == 2
+        and all(isinstance(value, int) for value in value_range)
+        and 0 <= value_range[0] <= value_range[1] <= len(source)
+    ):
+        result["semanticValueText"] = source[
+            value_range[0]:value_range[1]
+        ].decode("utf-8")
+    return result
 
 
 def resolve_source(root: Path, relative: str) -> Path:
@@ -344,6 +362,7 @@ def main() -> int:
             semantic_rebind = resolve_semantic_anchor(
                 semantic["entries"],
                 args.semantic_anchor,
+                source,
             )
             reviewed_object_anchor = resolve_reviewed_object_anchor(
                 source,

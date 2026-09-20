@@ -65,6 +65,7 @@ for token in (
     "function _beginBindingPostconditionCheck(): void",
     "function _finishBindingPostconditionIfReady(): void",
     'CodeWorkflowAnalyzer.semanticRebind?.status === "resolved"',
+    'CodeWorkflowAnalyzer.semanticRebind?.semanticValueText',
     '=== "DateTime.date"',
     "function _startBindingRollback(reason: string): void",
     "function _finalizeBindingRollback(payload): void",
@@ -116,6 +117,29 @@ for token in (
 ):
     if token not in reload_failed_block:
         fail("Binding reload failure branch missing " + token)
+
+postcondition_start = transaction.find(
+    "function _beginBindingPostconditionCheck(): void"
+)
+postcondition_end = transaction.find(
+    "function _finishBindingPostconditionIfReady(): void",
+    postcondition_start,
+)
+if postcondition_start < 0 or postcondition_end < 0:
+    fail("2K-U-B Binding postcondition block is missing")
+postcondition_block = transaction[
+    postcondition_start:postcondition_end
+]
+if '"text: DateTime.date"' in postcondition_block:
+    fail(
+        "Binding postcondition must not use duplicate-prone replacement needle"
+    )
+if (
+    'reloadState.pendingBindingSourcePath,\n            "",\n'
+    '            reloadState.pendingBindingSemanticAnchor'
+    not in postcondition_block
+):
+    fail("Binding postcondition must request exact anchor without a source needle")
 
 # Binding authorization must be replacement-specific and must not copy Connect
 # proof vocabulary into its authorization snapshot block.
@@ -302,7 +326,14 @@ if '"direct-binding"' not in transaction:
     fail("2K-U-B must promote direct-binding, not a renamed Disconnect kind")
 if "semanticRebind?.status === \"resolved\"" not in transaction:
     fail("2K-U-B success must require resolved semantic rebind")
-if 'semanticValueText ?? "")\n                === "DateTime.date"' not in transaction:
-    fail("2K-U-B success must require exact replacement expression")
+if (
+    'semanticRebind?.semanticValueText ?? "")\n'
+    '                === "DateTime.date"'
+    not in transaction
+):
+    fail(
+        "2K-U-B success must require exact replacement expression "
+        "from the rebound semantic anchor"
+    )
 
 print("ok - Code Workflow 2K-U-B reviewed direct-binding replacement production lifecycle")

@@ -353,6 +353,10 @@ def main() -> None:
         "ownerThickness: dockRoot.screenEdgeThickness",
         "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
         "dockRoot.edgeDecorationMargin * 2",
+        "readonly property bool barIsVertical: Config.options?.bar?.vertical ?? false",
+        "fillColor: dockVisualBackground.surfaceColor",
+        'color: "transparent"',
+        "border.width: 0",
         "? dockRoot.screenEdgeThickness",
         "screenEdge?.physicalShadow?.enabled ?? true",
         "screenEdge?.physicalShadow?.size ?? 15",
@@ -363,6 +367,11 @@ def main() -> None:
               f"Dock iRiS Screen Edge / shadow contract missing: {token}")
     check("StyledRectangularShadow {" not in dock,
           "Dock must not retain its detached local shadow after iRiS cutover")
+    check("Config.options?.bar?.bottom !== undefined" not in dock,
+          "Dock reload key must track Bar orientation rather than existence of the bottom key")
+    check("fillColor: dockVisualBackground.color" not in dock
+          and "borderColor: dockVisualBackground.border.color" not in dock,
+          "Dock iRiS field must be the sole body painter; duplicate Rectangle paint changes alpha")
     check(dock.count("duration: SurfaceMotion.duration") >= 4
           and "Appearance.animation.elementMoveEnter.duration" not in dock,
           "Dock reveal/retract must use the same immutable slide motion as connected popups")

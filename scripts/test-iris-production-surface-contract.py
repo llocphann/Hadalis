@@ -188,6 +188,9 @@ for token in (
     "edge: root.position",
     "ownerThickness: dockRoot.screenEdgeThickness",
     "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
+    "fillColor: dockVisualBackground.surfaceColor",
+    'color: "transparent"',
+    "border.width: 0",
     "screenEdge?.physicalShadow?.enabled ?? true",
     "screenEdge?.physicalShadow?.size ?? 15",
     "screenEdge?.physicalShadow?.opacity ?? 0.70",
@@ -195,6 +198,8 @@ for token in (
 ):
     require(dock, token, "Dock iRiS edge cutover")
 forbid(dock, "StyledRectangularShadow {", "Dock detached legacy shadow")
+forbid(dock, "fillColor: dockVisualBackground.color", "Dock duplicate body paint")
+forbid(dock, "Config.options?.bar?.bottom !== undefined", "Dock stale Bar orientation probe")
 
 for source, label in (
     (sidebar, "Sidebar"),

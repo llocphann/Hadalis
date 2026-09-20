@@ -20,7 +20,10 @@ Scope {
     readonly property bool isVertical: root.position === "left" || root.position === "right"
     readonly property bool isTop: root.position === "top"
     readonly property bool isLeft: root.position === "left"
-    readonly property bool barIsVertical: Config.options?.bar?.bottom !== undefined
+    // Reload only when the Bar orientation actually changes. The old
+    // bottom !== undefined probe was permanently true because bottom is a
+    // schema boolean, so switching horizontal/vertical Bar never changed key.
+    readonly property bool barIsVertical: Config.options?.bar?.vertical ?? false
     property string _positionKey: `${root.position}_${barIsVertical}`
 
     Variants {
@@ -192,9 +195,9 @@ Scope {
                         dockVisualBackground.width,
                         dockVisualBackground.height)
                     bodyRadius: dockVisualBackground.radius
-                    fillColor: dockVisualBackground.color
-                    borderColor: dockVisualBackground.border.color
-                    borderWidth: dockVisualBackground.border.width
+                    fillColor: dockVisualBackground.surfaceColor
+                    borderColor: dockVisualBackground.surfaceBorderColor
+                    borderWidth: dockVisualBackground.surfaceBorderWidth
                     progress: 1
                     shadowEnabled: dockRoot.screenEdgeShadowEnabled
                         && dockRoot.screenEdgeShadowSize > 0
@@ -303,6 +306,14 @@ Scope {
                                 id: dockVisualBackground
                                 readonly property bool gameModeMinimal:
                                     Appearance.gameModeMinimal
+                                // iRiS is the sole body painter. Keeping a second
+                                // Rectangle fill here double-composited alpha and
+                                // made transparent Material settings too opaque.
+                                readonly property color surfaceColor:
+                                    Appearance.colors.colLayer0
+                                readonly property color surfaceBorderColor:
+                                    Appearance.colors.colLayer0Border
+                                readonly property real surfaceBorderWidth: 1
 
                                 anchors.fill: parent
                                 anchors.topMargin: root.isTop
@@ -320,9 +331,9 @@ Scope {
 
                                 visible: (Config.options?.dock?.showBackground ?? true)
                                     && !gameModeMinimal
-                                color: Appearance.colors.colLayer0
-                                border.width: 1
-                                border.color: Appearance.colors.colLayer0Border
+                                color: "transparent"
+                                border.width: 0
+                                border.color: "transparent"
                                 radius: Appearance.rounding.large
                                 // The edge-facing corners belong to the
                                 // shared Screen Edge seam and must stay square.
@@ -331,7 +342,7 @@ Scope {
                                 bottomLeftRadius: (root.position === "bottom" || root.isLeft) ? 0 : radius
                                 bottomRightRadius: (root.position === "bottom" || root.position === "right") ? 0 : radius
 
-                                Behavior on color {
+                                Behavior on surfaceColor {
                                     enabled: Appearance.animationsEnabled
                                     ColorAnimation {
                                         duration: Appearance.animation.elementMoveFast.duration
@@ -339,15 +350,7 @@ Scope {
                                         easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                                     }
                                 }
-                                Behavior on border.width {
-                                    enabled: Appearance.animationsEnabled
-                                    NumberAnimation {
-                                        duration: Appearance.animation.elementMoveFast.duration
-                                        easing.type: Appearance.animation.elementMoveFast.type
-                                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                                    }
-                                }
-                                Behavior on border.color {
+                                Behavior on surfaceBorderColor {
                                     enabled: Appearance.animationsEnabled
                                     ColorAnimation {
                                         duration: Appearance.animation.elementMoveFast.duration

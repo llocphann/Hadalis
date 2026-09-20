@@ -8,9 +8,6 @@ Item {
     id: root
     property bool vertical: false
     property real padding: 8
-    readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false)
-        && (Config.options?.sidebar?.cardStyle ?? false)
-        && (Config.options?.bar?.cornerStyle === 3)
     property bool bare: false
     property bool clipContent: false
     property real moduleSpacing: root.vertical ? 12 : 4
@@ -34,7 +31,6 @@ Item {
             rightMargin: root.vertical ? 4 : 0
         }
         visible: !root.bare
-        cardStyle: root.cardStyleEverywhere
         borderless: Config.options?.bar?.borderless ?? false
         radiusOverride: -1
         elevation: 1

@@ -739,6 +739,19 @@ def main() -> None:
           "Horizontal Hug body must ignore persisted retired cornerStyle at runtime")
     check("Config.options?.bar?.cornerStyle" not in vertical_bar_content,
           "Vertical Hug body must ignore persisted retired cornerStyle at runtime")
+    bar_group = read("modules/bar/BarGroup.qml")
+    for retired_constant in (
+        "readonly property int cornerStyle: 0",
+        "readonly property bool floatingStyle: false",
+        "readonly property bool cardStyleEverywhere: false",
+        "Detached Float/Card shadow is retired",
+    ):
+        check(retired_constant not in bar_content
+              and retired_constant not in vertical_bar_content,
+              f"Hug-only Bar runtime must not retain constant-false style residue: {retired_constant}")
+    check("cardStyleEverywhere" not in bar_group
+          and "Config.options?.bar?.cornerStyle" not in bar_group,
+          "BarGroup must not retain unreachable legacy Card-style selection")
     check("(Config.options?.bar?.cornerStyle ?? 0) === 0" not in vertical_bar_runtime,
           "Vertical Hug shoulders must not depend on legacy cornerStyle state")
     for fullscreen_bar_surface in (bar_runtime, vertical_bar_runtime):

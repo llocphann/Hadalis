@@ -326,7 +326,12 @@
           "to": "clock.time",
           "kind": "data",
           "label": "time",
-          "editable": false
+          "editable": false,
+          "previewable": true,
+          "previewTransform": "direct-binding-retarget",
+          "sourceExpression": "DateTime.timeDisplay",
+          "reviewedSemanticKind": "binding",
+          "reviewedValueKind": "member_expression"
         },
         {
           "id": "clock.data.date",
@@ -334,7 +339,12 @@
           "to": "clock.date",
           "kind": "data",
           "label": "date",
-          "editable": false
+          "editable": false,
+          "previewable": true,
+          "previewTransform": "direct-binding-retarget",
+          "sourceExpression": "DateTime.date",
+          "reviewedSemanticKind": "binding",
+          "reviewedValueKind": "member_expression"
         },
         {
           "id": "clock.data.timeComponent",
@@ -462,7 +472,12 @@
           "to": "resources.memory",
           "kind": "data",
           "label": "memory",
-          "editable": false
+          "editable": false,
+          "previewable": true,
+          "previewTransform": "direct-binding-retarget",
+          "sourceExpression": "ResourceUsage.memoryUsedPercentage",
+          "reviewedSemanticKind": "binding",
+          "reviewedValueKind": "member_expression"
         },
         {
           "id": "resources.data.cpu",
@@ -470,7 +485,12 @@
           "to": "resources.cpu",
           "kind": "data",
           "label": "cpu",
-          "editable": false
+          "editable": false,
+          "previewable": true,
+          "previewTransform": "direct-binding-retarget",
+          "sourceExpression": "ResourceUsage.cpuUsage",
+          "reviewedSemanticKind": "binding",
+          "reviewedValueKind": "member_expression"
         },
         {
           "id": "resources.data.memoryComponent",

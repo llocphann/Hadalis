@@ -285,6 +285,46 @@ Implemented:
   subset, and scripts/test-code-workflow-binding-preview.py guards exact
   replacement and write isolation.
 
+## Gate 2K-A — source-backed data-edge eligibility
+
+Implemented foundation:
+
+- Reviewed IR edges remain presentation objects by default; an edge ID alone is
+  never source identity and never grants mutation authority.
+- Only four current ii Bar data edges are marked previewable because their target
+  node is a reviewed direct `ui_binding` already inside the 2J parser subset:
+  `clock.data.time`, `clock.data.date`, `resources.data.memory` and
+  `resources.data.cpu`.
+- Each previewable edge records only reviewed evidence:
+  `previewTransform=direct-binding-retarget`, its current
+  `sourceExpression`, and expected semantic/value kinds. The native analyzer
+  must still resolve the target node to a unique semantic binding before any
+  candidate can be generated.
+- Data edges such as binding -> component are visual propagation edges, not QML
+  constructs, and therefore remain non-previewable.
+- `media.data.player` is excluded even though the IR node is visually a
+  binding: its source is a property declaration initializer, not a `ui_binding`
+  accepted by 2J.
+- `resources.data.gameMode` is excluded because its current value is a compound
+  expression outside the identifier/member-expression subset.
+- CodeWorkflowIr now exposes `edgeFor()` and
+  `previewableDataEdgesFor()` so later canvas/inspector operations can resolve a
+  reviewed edge without scanning arbitrary QML or treating rendered geometry as
+  semantic identity.
+- No edge is editable, no edge can stage Apply artifacts, and literal-property
+  Apply remains the only source-writing transform.
+
+Disconnect remains blocked at this gate. Removing a `ui_binding` is a deletion
+transform with different verification semantics: the old semantic anchor is
+expected to disappear, the candidate must reparse, and the UI must show the
+resulting unbound/default property state. Replacing a binding with `undefined`
+is not considered disconnect.
+
+Cycle diagnostics also remain conservative. A path found in the reviewed graph
+may block a proposed connection; absence of a reviewed path is not proof that no
+QML dependency cycle exists because the current projection is intentionally
+incomplete.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
@@ -296,7 +336,9 @@ Implemented:
 
 ## Next gate
 
-The next gate is semantic connect/disconnect preview for existing direct
-dependencies. It must remain preview-only until dependency identity, cycle
-detection and reload behavior have separate acceptance evidence. Literal Apply
-remains the only production source-writing transform.
+The next gate is edge selection plus source-backed retarget preview for the 2K-A
+allowlist. Disconnect requires a separate exact-member deletion candidate and
+must prove anchor disappearance without parser diagnostics. Cycle analysis may
+hard-block known reviewed cycles but must report unknown coverage rather than
+claiming global acyclicity. Literal Apply remains the only production
+source-writing transform.

@@ -10,8 +10,12 @@ missing/ambiguous anchors fail closed and no ranges are persisted into the IR
 manifest. Generic semantic extraction and stable Arch parser promotion remain unfinished.
 The first literal-property transform now has preview, semantic identity, exact
 artifacts, a qualified atomic commit/rollback lifecycle and guarded user-triggered
-Apply. Direct bindings and broader transforms remain disabled. The on-demand
-parser boundary still degrades to reviewed IR when native capability is absent.
+Apply. Direct bindings now have a preview-only identifier/member-expression
+subset, while direct-binding Apply and broader writes remain disabled. The
+2K edge-editing gate is restricted to reviewed data edges that can re-resolve to
+that semantic binding subset; visual propagation edges are not mutation targets.
+The on-demand parser boundary still degrades to reviewed IR when native
+capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the
 qualified literal-property subset; package-managed/read-only source and every
 unsupported semantic construct remain fail-closed.

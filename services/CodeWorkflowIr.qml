@@ -39,6 +39,19 @@ Singleton {
         return graph.nodes?.find(node => node.id === nodeId) ?? null
     }
 
+    function edgeFor(targetId: string, edgeId: string): var {
+        const graph = root.graphFor(targetId)
+        return graph.edges?.find(edge => edge.id === edgeId) ?? null
+    }
+
+    function previewableDataEdgesFor(targetId: string): var {
+        const graph = root.graphFor(targetId)
+        return (graph.edges ?? []).filter(edge =>
+            edge.kind === "data"
+            && edge.previewable === true
+            && edge.previewTransform === "direct-binding-retarget")
+    }
+
     FileView {
         id: manifestFile
         path: Quickshell.shellPath("defaults/code-workflow-ir.json")

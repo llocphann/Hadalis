@@ -43,25 +43,13 @@ Button {
 
     background: Rectangle {
         id: background
-        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall
-            : Appearance.inirEverywhere ? (Appearance.inir?.roundingSmall ?? 8) : Appearance.rounding.small
-        color: Appearance.regaliaEverywhere ? "transparent"
-            : root.down
-                ? ColorUtils.transparentize(Appearance.inirEverywhere ? Appearance.inir?.colPrimary ?? Appearance.colors.colPrimary : Appearance.colors.colPrimary, 0.7)
-                : (root.hovered
-                    ? ColorUtils.transparentize(Appearance.inirEverywhere ? Appearance.inir?.colLayer2Hover ?? Appearance.colors.colSurfaceContainerHigh : Appearance.colors.colSurfaceContainerHigh, 0.5)
-                    : "transparent")
-        RegaliaControlFace {
-            anchors.fill: parent
-            visible: Appearance.regaliaEverywhere && (root.hovered || root.down)
-            fillColor: root.down ? Appearance.regalia.controlPlateActive
-                : Appearance.regalia.controlPlateHover
-            radius: background.radius
-        }
-
-        // ZZZ console-plate identity: a hairline edge on interaction.
-        border.width: Appearance.zzzEverywhere && (root.hovered || root.down) ? Appearance.zzz.borderThick : 0
-        border.color: Appearance.zzz.hairlineStrong
+        radius: Appearance.rounding.small
+        color: root.down
+            ? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)
+            : (root.hovered
+                ? ColorUtils.transparentize(
+                    Appearance.colors.colSurfaceContainerHigh, 0.5)
+                : "transparent")
 
         Behavior on color {
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -110,9 +98,7 @@ Button {
                     text: root.windowTitle
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.inirEverywhere 
-                        ? (Appearance.inir?.colText ?? Appearance.colors.colOnLayer0)
-                        : Appearance.colors.colOnLayer0
+                    color: Appearance.colors.colOnLayer0
                     verticalAlignment: Text.AlignVCenter
                 }
             }
@@ -146,9 +132,9 @@ Button {
                 contentItem: MaterialSymbol {
                     text: "close"
                     iconSize: 14
-                    color: root.hovered 
+                    color: root.hovered
                         ? Appearance.colors.colError
-                        : (Appearance.inirEverywhere ? Appearance.inir?.colTextSecondary ?? Appearance.colors.colSubtext : Appearance.colors.colSubtext)
+                        : Appearance.colors.colSubtext
                 }
             }
         }
@@ -172,11 +158,8 @@ Button {
             Rectangle {
                 id: shimmerBg
                 anchors.fill: parent
-                radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall : Appearance.rounding.small
-                color: Appearance.regaliaEverywhere ? Appearance.regalia.bg1
-                    : Appearance.inirEverywhere
-                        ? (Appearance.inir?.colLayer1 ?? Appearance.colors.colSurfaceContainerLow)
-                        : Appearance.colors.colSurfaceContainerLow
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colSurfaceContainerLow
                 visible: windowPreview.status !== Image.Ready
 
                 Rectangle {

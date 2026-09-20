@@ -2,7 +2,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
@@ -90,9 +89,6 @@ DockButton {
         return false
     }
     property bool hasWindows: toplevels.length > 0
-    surfaceDialect: Appearance.surfaceDialectFor("")
-    property bool islandStyle: root.surfaceDialect === "island"
-
     readonly property int notificationCount: {
         if (root.isSeparator || (Config.options?.dock?.notificationBadge ?? true) === false)
             return 0
@@ -132,28 +128,14 @@ DockButton {
         return 0;
     }
 
-    // Panel-only Dock: active apps use one small emphasis scale. The delegate
-    // may temporarily override it while dragging, but there is no alternate
-    // macOS/Pill renderer competing for ownership.
-    readonly property real activeScale:
-        root.regaliaStyle ? 1.0 : root.zzzStyle ? 1.02 : 1.05
-    scale: root.appIsActive ? root.activeScale : 1.0
+    // One scale owner covers both active-app emphasis and drag lift. DockApps
+    // only supplies dragEmphasis; it must not replace this binding from outside.
+    property bool dragEmphasis: false
+    readonly property real activeScale: 1.05
+    scale: root.dragEmphasis ? 1.08 : (root.appIsActive ? root.activeScale : 1.0)
     Behavior on scale {
         enabled: Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-    }
-
-    transform: Translate {
-        y: (root.zzzStyle || root.islandStyle) && root.buttonHovered && !root.vertical ? -3 : 0
-        x: (root.zzzStyle || root.islandStyle) && root.buttonHovered && root.vertical ? -3 : 0
-        Behavior on y {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
-        }
-        Behavior on x {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
-        }
     }
 
     property bool isSeparator: appToplevel.appId === "SEPARATOR"
@@ -200,40 +182,12 @@ DockButton {
 
     background.visible: !isSeparator
 
-    // Island mode hovers like a Ricelin row: a faint cream frame fill with a
-    // vermilion-tinted press, instead of the global style's hover chain.
-    colBackgroundHover: root.islandStyle ? PillTheme.frameBg
-        : (root.regaliaStyle ? Appearance.regalia.hoverPlate
-        : root.zzzStyle ? "transparent"
-        : root.angelStyle ? Appearance.angel.colGlassCard
-        : root.inirStyle ? Appearance.inir.colLayer1Hover
-        : root.auroraStyle ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer0Hover)
-    colRipple: root.islandStyle ? Qt.alpha(PillTheme.vermLit, 0.18)
-        : (root.regaliaStyle ? Appearance.regalia.pressPlate
-        : root.zzzStyle ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.22)
-        : root.angelStyle ? Appearance.angel.colGlassCardActive
-        : root.inirStyle ? Appearance.inir.colLayer1Active
-        : root.auroraStyle ? Appearance.aurora.colSubSurfaceActive
-        : Appearance.colors.colLayer0Active)
+    colBackgroundHover: Appearance.colors.colLayer0Hover
+    colRipple: Appearance.colors.colLayer0Active
 
-    // Tune the inherited zzz tile (DockButton owns the only ZzzPlate).
-    // Hover lifts the tile with a fuller cut; active keeps a moderate chamfer so
-    // the focused read differs from hover. Whisper-thin console lift: a very
-    // faint paper tint so the icon stays the hero, edged with a soft stroke.
-    zzzPlateVisible: root.zzzStyle && !root.isSeparator && !root.islandStyle
-    zzzPlateChamfer: Appearance.zzz.cutCorner * (root.buttonHovered ? 0.85 : root.appIsActive ? 0.6 : 0.45)
-    zzzPlateFill: root.buttonHovered ? ColorUtils.applyAlpha(Appearance.zzz.paper, 0.14)
-        : root.appIsActive ? ColorUtils.applyAlpha(Appearance.zzz.sticker, 0.08)
-        : "transparent"
-    zzzPlateStroke: root.buttonHovered ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.55)
-        : root.appIsActive ? ColorUtils.applyAlpha(Appearance.zzz.sticker, 0.65)
-        : "transparent"
-
-    // Hover shadow (disabled for angel — whole dock already has escalonado)
     StyledRectangularShadow {
         target: root.background
-        visible: !root.angelStyle && !root.zzzStyle
+        visible: !root.isSeparator
         opacity: root.buttonHovered && !root.isSeparator
             ? (Appearance.m3colors.darkmode ? 0.18 : 0.35) : 0
         spread: 0
@@ -249,10 +203,7 @@ DockButton {
         sourceComponent: Rectangle {
             width: root.vertical ? root.separatorSize : 1
             height: root.vertical ? 1 : root.separatorSize
-            color: root.inirStyle ? Appearance.inir.colBorderSubtle
-                 : root.zzzStyle ? Appearance.zzz.hairlineStrong
-                 : root.auroraStyle ? ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.7)
-                 : Appearance.colors.colOutlineVariant
+            color: Appearance.colors.colOutlineVariant
         }
     }
 
@@ -649,9 +600,7 @@ DockButton {
                     ColorOverlay {
                         anchors.fill: desaturatedIcon
                         source: desaturatedIcon
-                        color: ColorUtils.transparentize(root.inirStyle ? Appearance.inir.colPrimary
-                            : root.zzzStyle ? Appearance.zzz.accent
-                            : Appearance.colors.colPrimary, 0.9)
+                        color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9)
                     }
                 }
             }
@@ -668,12 +617,10 @@ DockButton {
                   sourceComponent: Rectangle {
                       implicitWidth: Math.max(16, badgeText.implicitWidth + 8)
                       implicitHeight: 16
-                      radius: root.zzzStyle ? Appearance.zzz.controlRadius : height / 2
-                      color: root.zzzStyle ? Appearance.zzz.signal
-                          : root.inirStyle ? Appearance.inir.colError : Appearance.colors.colError
+                      radius: height / 2
+                      color: Appearance.colors.colError
                       border.width: 1
-                      border.color: root.zzzStyle ? Appearance.zzz.paper
-                          : root.inirStyle ? Appearance.inir.colLayer1 : Appearance.colors.colLayer1
+                      border.color: Appearance.colors.colLayer1
 
                       Behavior on implicitWidth {
                           enabled: Appearance.animationsEnabled
@@ -690,8 +637,7 @@ DockButton {
                           text: root.notificationCount > 99 ? "99+" : root.notificationCount
                           font.pixelSize: Appearance.font.pixelSize.smallest
                           font.weight: Font.Bold
-                          color: root.zzzStyle ? Appearance.zzz.onSignal
-                              : root.inirStyle ? Appearance.inir.colOnError : Appearance.colors.colOnError
+                          color: Appearance.colors.colOnError
                       }
                   }
               }
@@ -737,30 +683,14 @@ DockButton {
                                 return index === root.focusedWindowIndex;
                             }
 
-                            // ZZZ indicators are thin signal pills: accent for the
-                            // focused window, whispered ink for siblings.
-                            radius: root.zzzStyle ? Math.min(width, height) / 2
-                                : root.angelStyle ? 0 : Math.min(width, height) / 2
-                            Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-                            implicitWidth: (root.islandStyle || root.zzzStyle)
-                                ? (isFocusedWindow ? 16 : 5)
-                                : root.angelStyle
-                                ? (isFocusedWindow ? 14 : 6)
-                                : (isFocusedWindow ? root.countDotWidth : root.countDotHeight)
-                            implicitHeight: (root.islandStyle || root.zzzStyle) ? 3
-                                : root.angelStyle ? 2 : root.countDotHeight
-                            // Island indicators are Ricelin filaments: a lit vermilion
-                            // thread for the focused window, whispered cream siblings.
-                            // Island opt-in outranks the zzz accent chain.
+                            radius: Math.min(width, height) / 2
+                            implicitWidth: isFocusedWindow
+                                ? root.countDotWidth : root.countDotHeight
+                            implicitHeight: root.countDotHeight
                             color: isFocusedWindow
-                                   ? (root.islandStyle ? PillTheme.vermLit
-                                   : root.zzzStyle ? Appearance.zzz.accent
-                                   : root.angelStyle ? Appearance.angel.colPrimary
-                                   : root.inirStyle ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
-                                   : root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
-                                   : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
-                                   : root.angelStyle ? Appearance.angel.colTextSecondary
-                                   : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0, 0.65)
+                                ? Appearance.colors.colPrimary
+                                : ColorUtils.transparentize(
+                                    Appearance.colors.colOnLayer0, 0.65)
 
                             Behavior on implicitWidth {
                                 enabled: Appearance.animationsEnabled
@@ -781,15 +711,11 @@ DockButton {
                     Rectangle {
                         opacity: (!root.appIsActive && root.hasWindows && Config.options?.dock?.showAllWindowDots === false) ? 1 : 0
                         visible: opacity > 0
-                        width: (root.zzzStyle || root.islandStyle) ? 5 : (root.angelStyle ? 6 : 5)
-                        height: (root.zzzStyle || root.islandStyle) ? 3 : (root.angelStyle ? 2 : 5)
-                        radius: root.zzzStyle ? Math.min(width, height) / 2
-                            : root.angelStyle ? 0 : Math.min(width, height) / 2
-                        color: root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
-                            : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
-                            : root.angelStyle ? Appearance.angel.colTextSecondary
-                            : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0,
-                            root.zzzStyle ? 0.65 : 0.5)
+                        width: 5
+                        height: 5
+                        radius: Math.min(width, height) / 2
+                        color: ColorUtils.transparentize(
+                            Appearance.colors.colOnLayer0, 0.5)
                         Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot } }
                         Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
 

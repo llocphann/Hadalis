@@ -915,9 +915,41 @@ def main() -> None:
         check(retired_token not in dock_app_button
               and retired_token not in dock_apps,
               f"Panel-only Dock runtime must not retain dormant renderer token: {retired_token}")
-    check("readonly property real activeScale:" in dock_app_button
-          and "scale: root.appIsActive ? root.activeScale : 1.0" in dock_app_button,
-          "Panel Dock must own one active-app emphasis scale")
+    check("readonly property real activeScale: 1.05" in dock_app_button
+          and "property bool dragEmphasis: false" in dock_app_button
+          and "scale: root.dragEmphasis ? 1.08 : (root.appIsActive ? root.activeScale : 1.0)" in dock_app_button
+          and "dragEmphasis: isBeingDragged" in dock_apps
+          and "scale: isBeingDragged ? 1.08" not in dock_apps,
+          "Panel Dock must keep active/drag emphasis under one scale owner")
+
+    dock_runtime_sources = (
+        dock,
+        read("modules/dock/DockButton.qml"),
+        dock_app_button,
+        dock_apps,
+        read("modules/dock/DockPreview.qml"),
+        read("modules/dock/DockWindowPreview.qml"),
+    )
+    for retired_dock_style_token in (
+        "surfaceDialect",
+        "PillTheme",
+        "Appearance.zzz",
+        "Appearance.regalia",
+        "Appearance.angel",
+        "Appearance.inir",
+        "Appearance.aurora",
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "ZzzPlate",
+        "RegaliaPlate",
+        "RegaliaControlFace",
+    ):
+        check(all(retired_dock_style_token not in source
+                  for source in dock_runtime_sources),
+              f"Panel-only Dock runtime must not retain dormant global-style token: {retired_dock_style_token}")
 
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,

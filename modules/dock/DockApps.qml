@@ -2,7 +2,6 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.services
-import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -26,10 +25,6 @@ Item {
     property bool vertical: false
     property string dockPosition: "bottom"
     property var parentWindow: null
-    readonly property string surfaceDialect: Appearance.surfaceDialectFor("")
-    readonly property bool zzzStyle: surfaceDialect === "zzz"
-    readonly property bool inirStyle: surfaceDialect === "inir"
-
     property Item lastHoveredButton
     property bool buttonHovered: false
     property bool contextMenuOpen: false
@@ -636,7 +631,7 @@ Item {
             }
 
             z: isBeingDragged ? 100 : 0
-            scale: isBeingDragged ? 1.08 : (dockDelegate.appIsActive ? 1.05 : 1.0)
+            dragEmphasis: isBeingDragged
 
             opacity: isBeingDragged ? 0.8
                    : root.dragActive ? 0.85 : 1.0
@@ -668,9 +663,7 @@ Item {
                         : -(listView.spacing + height) / 2)
                     : (parent.height - height) / 2
 
-                color: root.zzzStyle ? Appearance.zzz.tertiary
-                     : root.inirStyle ? Appearance.inir.colPrimary
-                     : Appearance.colors.colPrimary
+                color: Appearance.colors.colPrimary
                 Behavior on color {
                     enabled: Appearance.animationsEnabled
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

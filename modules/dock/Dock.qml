@@ -9,9 +9,7 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects as GE
 import Quickshell.Io
 import Quickshell
 import Quickshell.Widgets
@@ -25,10 +23,6 @@ Scope {
     readonly property bool isVertical: root.position === "left" || root.position === "right"
     readonly property bool isTop: root.position === "top"
     readonly property bool isLeft: root.position === "left"
-    readonly property string surfaceDialect: Appearance.surfaceDialectFor("")
-    readonly property bool zzzEverywhere: root.surfaceDialect === "zzz"
-    readonly property bool regaliaEverywhere: root.surfaceDialect === "regalia"
-
     readonly property bool barIsVertical: Config.options?.bar?.bottom !== undefined
     property string _positionKey: `${root.position}_${barIsVertical}`
 
@@ -169,9 +163,7 @@ Scope {
                 color: "transparent"
 
                 readonly property string nativeBlurTopology:
-                    !(root.zzzEverywhere && !Appearance.zzz.round)
-                    ? Appearance.blurTopology.roundedRectangle
-                    : Appearance.blurTopology.unsupported
+                    Appearance.blurTopology.roundedRectangle
                 readonly property bool nativeBlurGeometryExact:
                     Appearance.blurTopologyExact(dockRoot.nativeBlurTopology)
                 readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
@@ -312,42 +304,8 @@ Scope {
 
                             Rectangle {
                                 id: dockVisualBackground
-                                readonly property bool zzzGlassActive: root.zzzEverywhere
-                                    && Appearance.effectsEnabled
-                                    && (Config.options?.appearance?.zzz?.glass ?? true)
-                                readonly property bool regaliaEverywhere:
-                                    root.surfaceDialect === "regalia"
-                                readonly property bool angelEverywhere:
-                                    root.surfaceDialect === "angel"
-                                readonly property bool auroraEverywhere:
-                                    root.surfaceDialect === "aurora" || angelEverywhere
-                                readonly property bool inirEverywhere:
-                                    root.surfaceDialect === "inir"
                                 readonly property bool gameModeMinimal:
                                     Appearance.gameModeMinimal
-                                readonly property string wallpaperUrl: {
-                                    const _dep1 = WallpaperListener.multiMonitorEnabled
-                                    const _dep2 = WallpaperListener.effectivePerMonitor
-                                    const _dep3 = Wallpapers.effectiveWallpaperUrl
-                                    return WallpaperListener.wallpaperUrlForScreen(dockRoot.screen)
-                                }
-
-                                ColorQuantizer {
-                                    id: dockWallpaperQuantizer
-                                    source: dockVisualBackground.auroraEverywhere
-                                        ? dockVisualBackground.wallpaperUrl : ""
-                                    depth: 0
-                                    rescaleSize: 10
-                                }
-
-                                readonly property color wallpaperDominantColor:
-                                    dockWallpaperQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary
-                                readonly property QtObject blendedColors: AdaptedMaterialScheme {
-                                    color: ColorUtils.mix(
-                                        dockVisualBackground.wallpaperDominantColor,
-                                        Appearance.colors.colPrimaryContainer,
-                                        0.8) || Appearance.colors.colSecondaryContainer
-                                }
 
                                 anchors.fill: parent
                                 anchors.topMargin: root.isTop
@@ -365,36 +323,10 @@ Scope {
 
                                 visible: (Config.options?.dock?.showBackground ?? true)
                                     && !gameModeMinimal
-                                color: root.zzzEverywhere || regaliaEverywhere
-                                    ? "transparent"
-                                    : auroraEverywhere
-                                        ? ColorUtils.applyAlpha(
-                                            (blendedColors?.colLayer0
-                                                ?? Appearance.colors.colLayer0),
-                                            dockRoot.nativeBlurActive ? 0.46 : 1)
-                                        : inirEverywhere
-                                            ? Appearance.inir.colLayer1
-                                            : Appearance.colors.colLayer0
-                                border.width: root.zzzEverywhere || regaliaEverywhere
-                                    ? 0
-                                    : angelEverywhere
-                                        ? Appearance.angel.panelBorderWidth : 1
-                                border.color: root.zzzEverywhere || regaliaEverywhere
-                                    ? "transparent"
-                                    : angelEverywhere
-                                        ? Appearance.angel.colPanelBorder
-                                        : inirEverywhere
-                                            ? Appearance.inir.colBorder
-                                            : Appearance.colors.colLayer0Border
-                                radius: root.zzzEverywhere
-                                    ? Appearance.zzz.panelRadius
-                                    : regaliaEverywhere
-                                        ? Appearance.regalia.roundLarge
-                                        : angelEverywhere
-                                            ? Appearance.angel.roundingNormal
-                                            : inirEverywhere
-                                                ? Appearance.inir.roundingNormal
-                                                : Appearance.rounding.large
+                                color: Appearance.colors.colLayer0
+                                border.width: 1
+                                border.color: Appearance.colors.colLayer0Border
+                                radius: Appearance.rounding.large
                                 // The edge-facing corners belong to the
                                 // shared Screen Edge seam and must stay square.
                                 topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius
@@ -427,136 +359,14 @@ Scope {
                                     }
                                 }
 
-                                RegaliaPlate {
-                                    anchors.fill: parent
-                                    visible: dockVisualBackground.regaliaEverywhere
-                                    fillColor: Appearance.regalia.barSurfaceFloating
-                                    radius: dockVisualBackground.radius
-                                    inset: Appearance.regalia.surfaceInset
-                                    deepFrame: true
-                                    glassEnabled: true
-                                }
-
-                                ZzzPlate {
-                                    anchors.fill: parent
-                                    z: -1
-                                    visible: root.zzzEverywhere
-                                    chamfer: Appearance.zzz.cutCorner
-                                    chamferBottomRight: true
-                                    chamferTopRight: false
-                                    fillColor: dockVisualBackground.zzzGlassActive
-                                        ? "transparent"
-                                        : Appearance.zzz.chromeAlt
-                                    strokeColor: Appearance.zzz.hairline
-                                    strokeWidth: 1
-                                }
-
-                                ZzzGlassWash {
-                                    anchors.fill: parent
-                                    z: -2
-                                    maskRadius: Appearance.zzz.round
-                                        ? dockVisualBackground.radius : 0
-                                    chamfer: Appearance.zzz.cutCorner
-                                    chamferTopRight: false
-                                    chamferBottomRight: true
-                                    glassEnabled: dockVisualBackground.zzzGlassActive
-                                    selfBacked: true
-                                    veilAlpha: Appearance.zzz.dark ? 0.66 : 0.72
-                                }
-
-                                clip: true
-                                layer.enabled: auroraEverywhere
-                                    && !inirEverywhere
-                                    && !root.zzzEverywhere
-                                    && !gameModeMinimal
-                                    && !dockRoot.nativeBlurActive
-                                layer.effect: GE.OpacityMask {
-                                    maskSource: Rectangle {
-                                        width: dockVisualBackground.width
-                                        height: dockVisualBackground.height
-                                        radius: dockVisualBackground.radius
-                                    }
-                                }
-
-                                Image {
-                                    id: dockBlurredWallpaper
-                                    x: root.isVertical
-                                        ? (root.isLeft
-                                            ? 0
-                                            : (-(dockRoot.screen?.width ?? 1920)
-                                                + dockVisualBackground.width
-                                                + Appearance.sizes.hyprlandGapsOut))
-                                        : (-(dockRoot.screen?.width ?? 1920) / 2
-                                            + dockVisualBackground.width / 2)
-                                    y: root.isVertical
-                                        ? (-(dockRoot.screen?.height ?? 1080) / 2
-                                            + dockVisualBackground.height / 2)
-                                        : (root.isTop
-                                            ? 0
-                                            : (-(dockRoot.screen?.height ?? 1080)
-                                                + dockVisualBackground.height
-                                                + Appearance.sizes.hyprlandGapsOut))
-                                    width: dockRoot.screen?.width ?? 1920
-                                    height: dockRoot.screen?.height ?? 1080
-                                    visible: dockVisualBackground.auroraEverywhere
-                                        && !dockVisualBackground.inirEverywhere
-                                        && !root.zzzEverywhere
-                                        && !dockVisualBackground.gameModeMinimal
-                                        && !dockRoot.nativeBlurActive
-                                    source: visible ? dockVisualBackground.wallpaperUrl : ""
-                                    fillMode: Image.PreserveAspectCrop
-                                    cache: true
-                                    sourceSize.width: dockRoot.screen?.width ?? 1920
-                                    sourceSize.height: dockRoot.screen?.height ?? 1080
-                                    asynchronous: true
-
-                                    layer.enabled: Appearance.effectsEnabled
-                                        && dockVisualBackground.auroraEverywhere
-                                        && !dockVisualBackground.inirEverywhere
-                                        && !dockVisualBackground.gameModeMinimal
-                                        && !dockRoot.nativeBlurActive
-                                    layer.effect: MultiEffect {
-                                        source: dockBlurredWallpaper
-                                        anchors.fill: source
-                                        saturation: dockVisualBackground.angelEverywhere
-                                            ? (Appearance.angel.blurSaturation
-                                                * Appearance.angel.colorStrength)
-                                            : (Appearance.effectsEnabled ? 0.2 : 0)
-                                        blurEnabled: Appearance.effectsEnabled
-                                        blurMax: 64
-                                        blur: Appearance.effectsEnabled
-                                            ? (dockVisualBackground.angelEverywhere
-                                                ? Appearance.angel.blurIntensity : 1)
-                                            : 0
-                                    }
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: dockVisualBackground.angelEverywhere
-                                            ? ColorUtils.transparentize(
-                                                (dockVisualBackground.blendedColors?.colLayer0
-                                                    ?? Appearance.colors.colLayer0Base),
-                                                Appearance.angel.overlayOpacity
-                                                    * Appearance.angel.panelTransparentize)
-                                            : ColorUtils.transparentize(
-                                                (dockVisualBackground.blendedColors?.colLayer0
-                                                    ?? Appearance.colors.colLayer0Base),
-                                                Appearance.aurora.overlayTransparentize)
-                                    }
-                                }
-
-                                AngelPartialBorder {
-                                    visible: dockVisualBackground.angelEverywhere
-                                    targetRadius: dockVisualBackground.radius
-                                }
                             }
 
                             RowLayout {
                                 id: dockRow
                                 visible: !root.isVertical
                                 anchors.centerIn: dockVisualBackground
-                                spacing: root.zzzEverywhere ? 5 : 2
-                                property real padding: root.zzzEverywhere ? 7 : 5
+                                spacing: 2
+                                property real padding: 5
 
                                 DockApps {
                                     id: dockApps
@@ -575,9 +385,7 @@ Scope {
                                         anchors.centerIn: parent
                                         font.pixelSize: parent.width * 0.5
                                         text: "apps"
-                                        color: root.zzzEverywhere
-                                            ? Appearance.zzz.ink
-                                            : Appearance.colors.colOnLayer0
+                                        color: Appearance.colors.colOnLayer0
                                         Behavior on color {
                                             enabled: Appearance.animationsEnabled
                                             ColorAnimation {
@@ -594,8 +402,8 @@ Scope {
                                 id: dockColumn
                                 visible: root.isVertical
                                 anchors.centerIn: dockVisualBackground
-                                spacing: root.zzzEverywhere ? 5 : 2
-                                property real padding: root.zzzEverywhere ? 7 : 5
+                                spacing: 2
+                                property real padding: 5
 
                                 DockApps {
                                     id: dockAppsVertical
@@ -614,9 +422,7 @@ Scope {
                                         anchors.centerIn: parent
                                         font.pixelSize: parent.width * 0.5
                                         text: "apps"
-                                        color: root.zzzEverywhere
-                                            ? Appearance.zzz.ink
-                                            : Appearance.colors.colOnLayer0
+                                        color: Appearance.colors.colOnLayer0
                                         Behavior on color {
                                             enabled: Appearance.animationsEnabled
                                             ColorAnimation {

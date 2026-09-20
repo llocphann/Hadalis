@@ -234,24 +234,36 @@ Only unresolved runtime findings belong here. Remove an item after the maintaine
 
 ## 4. Connected-surface architecture contract
 
-The existing popup path remains authoritative:
+The existing connected-surface paths remain authoritative:
 
 ```text
+ii Bar popups:
 modules/bar/StyledPopup.qml
-modules/common/perimeter/ConnectedSurfaceGeometry.qml
-modules/common/perimeter/ConnectedSurfaceJoinFlares.qml
-modules/common/perimeter/ConnectedSurfaceFrame.qml
-modules/common/perimeter/ConnectedSurfaceContentHost.qml
-modules/common/perimeter/ConnectedSurfaceMask.qml
-modules/common/perimeter/PerimeterTokens.qml
+  -> modules/common/perimeter/ConnectedSurfaceGeometry.qml
+  -> modules/common/perimeter/ConnectedSurfaceRevealClip.qml
+  -> modules/common/perimeter/ConnectedSurfaceIrisFrame.qml
+       -> modules/common/perimeter/ConnectedSurfaceIrisField.qml
+  -> modules/common/perimeter/ConnectedSurfaceContentHost.qml
+  -> modules/common/perimeter/ConnectedSurfaceBodyMask.qml
+  -> modules/common/perimeter/PerimeterTokens.qml
+
+feature-owned Screen Edge bodies:
+Sidebar / Dashboard / Settings
+  -> modules/common/perimeter/ConnectedSurfaceIrisEdgeSurface.qml
+  -> modules/common/perimeter/ConnectedSurfaceIrisFrame.qml
+
+direct square-seam compatibility:
+Waffle -> ConnectedSurfaceFrame.qml + ConnectedSurfaceMask.qml
+Search / OSK -> feature-owned body geometry, no auxiliary wedge painter
 ```
 
 Rules:
 
-- `StyledPopup.qml` remains the entry point for existing bar popouts.
-- Shared geometry/tokens own seam overlap, placement-driven edge attachment, joined-edge corner ownership, concave union shoulders and shadow clipping.
-- Consumers provide content and source ownership; they must not recreate connector/stem geometry or private edge gaps.
-- Keep source-aware placement and shaped input regions.
+- `StyledPopup.qml` remains the entry point for existing ii Bar popouts.
+- Curved connected contact is owned by iRiS; direct-seam surfaces keep square joined body edges.
+- `ConnectedSurfaceJoinFlares`, `PerimeterCornerShadow`, common `RoundCorner` and the `joinFlare*` token family are retired and must not be recreated.
+- Consumers provide content and source ownership; they must not recreate connector/stem geometry, private edge gaps or standalone corner wedges.
+- Keep source-aware placement, owner clipping and shaped input regions.
 - Preserve top/bottom/left/right attachment and output ownership.
 - Fix shared geometry when the defect is systemic; do not paper over the same seam bug in every popup.
 
@@ -351,7 +363,7 @@ If the maintainer gives a newer explicit instruction, that instruction supersede
 This section contains **unfinished work only**. When an item is source-complete *and* its required local/runtime acceptance has passed, delete it from this section rather than leaving a checked task or a historical implementation narrative.
 
 1. **Boot integrity:** update/reload the maintainer runtime and confirm the Code Workflow Binding lifecycle fix eliminates the startup crash chain through `CodeWorkflowTransaction -> CodeWorkflowSession -> CodeWorkflowRuntime -> CodeWorkflowPicker`. Any new boot blocker takes precedence over visual polish.
-2. **Connected surfaces:** complete live acceptance for iRiS/shared contact geometry across normal ii Popups, Left/Right Sidebar, Dashboard, Settings and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve the locked physical Screen Edge/Bar geometry.
+2. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact geometry across normal ii Popups, Left/Right Sidebar, Dashboard, Settings and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve the locked physical Screen Edge/Bar geometry.
 3. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank or stranded surfaces.
 4. **Music/media:** live-test Local Music Stop/resume after long idle, bulk selection actions, queue operations and the unified Shuffle/Repeat/CAVA surfaces. Validate the 10-band EasyEffects DSP and CAVA lifecycle through pause/resume, player switching and reopen.
 5. **Dashboard/Overview:** visually accept SongRec geometry cleanup, Dashboard <-> Search Applications crossfade, the redesigned System Monitor, and the horizontal Available Modules row including narrow-width overflow behavior.

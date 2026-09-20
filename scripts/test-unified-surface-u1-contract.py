@@ -135,6 +135,10 @@ for live_invariant in (
     "run_motion_lifecycle_case",
     "run_reveal_lifecycle_case",
     "run_fullscreen_lifecycle_case",
+    "junction_morphology",
+    "near_exposure",
+    "deep_exposure",
+    "taper_required",
     "fullscreen-window",
     "HADALIS_U1_FULLSCREEN_PROBE",
 ):

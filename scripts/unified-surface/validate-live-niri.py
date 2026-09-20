@@ -201,6 +201,165 @@ def crop_iou(
     return intersection / union if union else 1.0
 
 
+def junction_morphology(
+    mask: bytearray,
+    width: int,
+    height: int,
+    geometry: dict,
+) -> dict:
+    """Measure whether the contact shoulder is exposed at the seam, then tapers.
+
+    The user's failure mode is not merely disconnection: a corrective corner can
+    remain connected while sitting underneath the popup body. For a real unified
+    field, a free tangent side must protrude outside the popup close to the owner
+    seam, then converge back to the popup side deeper into the body.
+    """
+    popup = geometry["popupRect"]
+    inner = geometry["frameInner"]
+    edge = str(geometry["edge"])
+    logical_width = float(geometry["width"])
+    logical_height = float(geometry["height"])
+    smooth_k = max(1.0, float(geometry["smoothK"]))
+
+    if logical_width <= 0 or logical_height <= 0:
+        raise RuntimeError("invalid logical output size for morphology check")
+
+    sx = width / logical_width
+    sy = height / logical_height
+
+    px = float(popup["x"])
+    py = float(popup["y"])
+    pw = float(popup["width"])
+    ph = float(popup["height"])
+    il = float(inner["x"])
+    it = float(inner["y"])
+    ir = il + float(inner["width"])
+    ib = it + float(inner["height"])
+
+    near_depth = min(smooth_k * 0.25, (ph if edge in ("top", "bottom") else pw) * 0.20)
+    deep_depth = min(smooth_k * 0.95, (ph if edge in ("top", "bottom") else pw) * 0.40)
+    deep_depth = max(deep_depth, near_depth + min(4.0, smooth_k * 0.20))
+
+    def row_extent(y_logical: float) -> tuple[float, float]:
+        y = max(0, min(height - 1, int(round(y_logical * sy))))
+        left = int(round(px * sx))
+        right = int(round((px + pw) * sx))
+        radius = max(2, int(math.ceil(smooth_k * 2.0 * sx)))
+
+        left_start = max(0, left - radius)
+        left_stop = min(width - 1, left + max(2, int(math.ceil(2.0 * sx))))
+        left_hits = [
+            x for x in range(left_start, left_stop + 1)
+            if mask[y * width + x]
+        ]
+
+        right_start = max(0, right - max(2, int(math.ceil(2.0 * sx))))
+        right_stop = min(width - 1, right + radius)
+        right_hits = [
+            x for x in range(right_start, right_stop + 1)
+            if mask[y * width + x]
+        ]
+
+        left_exposure = max(0.0, (left - min(left_hits)) / sx) if left_hits else 0.0
+        right_exposure = max(0.0, (max(right_hits) - right) / sx) if right_hits else 0.0
+        return left_exposure, right_exposure
+
+    def column_extent(x_logical: float) -> tuple[float, float]:
+        x = max(0, min(width - 1, int(round(x_logical * sx))))
+        top = int(round(py * sy))
+        bottom = int(round((py + ph) * sy))
+        radius = max(2, int(math.ceil(smooth_k * 2.0 * sy)))
+
+        top_start = max(0, top - radius)
+        top_stop = min(height - 1, top + max(2, int(math.ceil(2.0 * sy))))
+        top_hits = [
+            y for y in range(top_start, top_stop + 1)
+            if mask[y * width + x]
+        ]
+
+        bottom_start = max(0, bottom - max(2, int(math.ceil(2.0 * sy))))
+        bottom_stop = min(height - 1, bottom + radius)
+        bottom_hits = [
+            y for y in range(bottom_start, bottom_stop + 1)
+            if mask[y * width + x]
+        ]
+
+        top_exposure = max(0.0, (top - min(top_hits)) / sy) if top_hits else 0.0
+        bottom_exposure = max(0.0, (max(bottom_hits) - bottom) / sy) if bottom_hits else 0.0
+        return top_exposure, bottom_exposure
+
+    tolerance = max(1.5, 2.0 / min(sx, sy))
+    if edge == "top":
+        near = row_extent(py + near_depth)
+        deep = row_extent(py + deep_depth)
+        labels = ("left", "right")
+        free = (px > il + tolerance, px + pw < ir - tolerance)
+    elif edge == "bottom":
+        near = row_extent(py + ph - near_depth)
+        deep = row_extent(py + ph - deep_depth)
+        labels = ("left", "right")
+        free = (px > il + tolerance, px + pw < ir - tolerance)
+    elif edge == "left":
+        near = column_extent(px + near_depth)
+        deep = column_extent(px + deep_depth)
+        labels = ("top", "bottom")
+        free = (py > it + tolerance, py + ph < ib - tolerance)
+    else:
+        near = column_extent(px + pw - near_depth)
+        deep = column_extent(px + pw - deep_depth)
+        labels = ("top", "bottom")
+        free = (py > it + tolerance, py + ph < ib - tolerance)
+
+    free_indices = [index for index, value in enumerate(free) if value]
+    if not free_indices:
+        return {
+            "passed": False,
+            "reason": "no free tangent side available to assess shoulder",
+            "near_depth": near_depth,
+            "deep_depth": deep_depth,
+            "near_exposure": dict(zip(labels, near)),
+            "deep_exposure": dict(zip(labels, deep)),
+            "free_sides": [],
+        }
+
+    near_required = max(3.0, smooth_k * 0.20)
+    deep_allowed = max(3.0, smooth_k * 0.15)
+    taper_required = max(2.0, smooth_k * 0.12)
+
+    per_side = {}
+    passed = True
+    for index in free_indices:
+        name = labels[index]
+        near_value = float(near[index])
+        deep_value = float(deep[index])
+        taper = near_value - deep_value
+        side_passed = (
+            near_value >= near_required
+            and deep_value <= deep_allowed
+            and taper >= taper_required
+        )
+        per_side[name] = {
+            "near": near_value,
+            "deep": deep_value,
+            "taper": taper,
+            "passed": side_passed,
+        }
+        passed = passed and side_passed
+
+    return {
+        "passed": passed,
+        "near_depth": near_depth,
+        "deep_depth": deep_depth,
+        "near_required": near_required,
+        "deep_allowed": deep_allowed,
+        "taper_required": taper_required,
+        "near_exposure": dict(zip(labels, near)),
+        "deep_exposure": dict(zip(labels, deep)),
+        "free_sides": [labels[index] for index in free_indices],
+        "per_side": per_side,
+    }
+
+
 def parse_marker(path: Path, marker: str):
     text = path.read_text(encoding="utf-8", errors="replace")
     for line in reversed(text.splitlines()):
@@ -1025,12 +1184,19 @@ def main() -> int:
                     )
                     clamp_ok = clamp_expected(bounded_geometry, source_t, edge)
                     source_ok = abs(float(bounded_geometry["sourceT"]) - source_t) <= 0.001
+                    morphology = junction_morphology(
+                        bounded_mask,
+                        bw,
+                        bh,
+                        bounded_geometry,
+                    )
 
                     passed = (
                         dominant_ratio >= 0.98
                         and iou >= 0.995
                         and clamp_ok
                         and source_ok
+                        and morphology["passed"]
                     )
                     case = {
                         "scale": scale,
@@ -1044,6 +1210,7 @@ def main() -> int:
                         "bounded_full_iou": iou,
                         "clamp_ok": clamp_ok,
                         "source_ok": source_ok,
+                        "junction_morphology": morphology,
                         "dpr": bounded_geometry.get("dpr"),
                         "bounded_effect_rect": bounded_geometry.get("effectRect"),
                         "bounded_capture": bounded_path.name,
@@ -1056,6 +1223,7 @@ def main() -> int:
                     print(
                         f"U1 scale={scale:g} edge={edge} t={source_t:g} "
                         f"dominant={dominant_ratio:.5f} iou={iou:.5f} "
+                        f"shoulder={min((v['near'] for v in morphology.get('per_side', {}).values()), default=0):.2f} "
                         f"dpr={bounded_geometry.get('dpr')} {'PASS' if passed else 'FAIL'}"
                     )
                     if not passed:

@@ -1787,6 +1787,32 @@ This closes another fidelity gap between U1 and the actual Caelestia Blob field.
 The remaining acceptance question is live pixel behavior, not another geometry
 patch.
 
+### 27.4 Explicit shoulder-position acceptance gate
+
+The original topology validator could prove connectivity while still accepting
+the maintainer's reported visual defect: a corrective corner may be connected
+but buried underneath the popup body.
+
+The live validator now measures **junction morphology** from the rendered GPU
+mask. For every free tangent side it samples two cross-sections:
+
+1. near the owner seam at `0.25 * smoothK`, where a real unified circular
+   shoulder must extend visibly outside the popup side;
+2. deeper in the body near `0.95 * smoothK`, where that extension must have
+   tapered back toward the ordinary popup edge.
+
+At the current enlarged research preset (`smoothK=28`), a scalar reference of
+the exact U1 equations gives about 9 logical pixels of exposure at the near
+sample and approximately 0px by the deep sample. The live GPU capture is still
+authoritative; these values only informed conservative relative thresholds.
+
+The validator infers whether a tangent side is Screen-Edge-clamped from
+`frameInner` and popup geometry. The renderer itself remains free of join flags.
+
+This converts the reported visual requirement into an acceptance property:
+**the shoulder must live at the owner/popup junction and taper there, not merely
+exist somewhere underneath the popup.**
+
 Next acceptance remains live nested-Niri GPU validation. If the enlarged
 diagnostic morphology still places the shoulder on the wrong side of the popup,
 do not add offsets or resurrect `ConnectedSurfaceJoinFlares`; revert the U1

@@ -298,3 +298,28 @@ smooth-union influence while the popup is hidden or crossing the owner border.
 The operation remains topology-neutral: it consumes only `pixel`,
 `frameInner`, `popupRect`, and `smoothK`. There is no attachment-edge flag,
 contact plane, module name or reveal-specific geometry offset.
+
+
+## Junction morphology gate
+
+Connectivity alone is not sufficient. A corner/flare can be technically attached
+while still being buried underneath the popup, which is the visual failure this
+research is trying to eliminate.
+
+The live validator therefore samples the actual rendered material near every
+free tangent side of the popup:
+
+- at `0.25 * smoothK` into the popup, the unified field must protrude visibly
+  outside the popup side;
+- near `0.95 * smoothK`, that protrusion must have tapered back toward the
+  ordinary popup side;
+- screen-edge-clamped tangent sides are inferred from `frameInner` geometry and
+  are not mistaken for a free shoulder.
+
+With the current diagnostic `smoothK=28`, the CPU reference predicts roughly
+9 logical pixels of exposed shoulder at the near sample and approximately zero
+by the deep sample. The GPU capture, not the reference prediction, is the
+acceptance source.
+
+This gate directly rejects the old failure mode where a decorative corner sits
+below/behind the popup even though the total mask remains connected.

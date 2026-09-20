@@ -37,6 +37,8 @@ GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qm
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
 STYLED_SWITCH = ROOT / "modules" / "common" / "widgets" / "StyledSwitch.qml"
 TOOLBAR = ROOT / "modules" / "common" / "widgets" / "Toolbar.qml"
+DIALOG_BUTTON = ROOT / "modules" / "common" / "widgets" / "DialogButton.qml"
+STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -135,6 +137,8 @@ def main() -> None:
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
     styled_switch = STYLED_SWITCH.read_text(encoding="utf-8")
     toolbar = TOOLBAR.read_text(encoding="utf-8")
+    dialog_button = DIALOG_BUTTON.read_text(encoding="utf-8")
+    styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -479,6 +483,28 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # DialogButton and StyledDropShadow are shared Material primitives. Legacy
+    # style aliases must not change text treatment or suppress an otherwise enabled shadow.
+    for source, content in (
+        ("DialogButton.qml", dialog_button),
+        ("StyledDropShadow.qml", styled_drop_shadow),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        "property color colEnabled: Appearance.colors.colPrimary",
+        "property color colDisabled: Appearance.colors.colOutline",
+        "colBackground: ColorUtils.transparentize(Appearance.colors.colLayer3)",
+        "colBackgroundHover: Appearance.colors.colLayer3Hover",
+        "colRipple: Appearance.colors.colLayer3Active",
+        "text: root.buttonText",
+        "font.family: Appearance.font.family.main",
+        "font.weight: Font.Normal",
+    ):
+        require(dialog_button, token, "DialogButton.qml")
+    require(styled_drop_shadow, "visible: Appearance.effectsEnabled", "StyledDropShadow.qml")
 
     # Toolbar is a shared shell primitive. Its wallpaper-backdrop positioning,
     # public aliases and shadow toggle remain, but Global Theme decorations are dead.

@@ -582,13 +582,50 @@ Implemented research/proof:
   `productionIntegrated=false`; no transaction/UI authorization consumes the
   research result.
 
+## Milestone 2K-J — source-backed cross-file Connect closure
+
+Implemented research/proof:
+
+- 2K-I remains the first gate and still returns UNKNOWN when the local
+  same-object closure encounters the real Clock expression
+  `Config.options?.bar?.verbose ?? true`.
+- The 2K-J fallback accepts only one narrow external shape: a local `qs.*`
+  singleton imported by the consumer, exported exactly once through its
+  `qmldir`, followed by one alias-to-object-id and nested `JsonObject`
+  properties ending in a parser-classified direct literal.
+- Optional-member/nullish syntax is parsed by a small explicit subset parser;
+  calls, indexing, arbitrary JavaScript, non-literal fallbacks and additional
+  operators remain UNKNOWN.
+- The singleton resolver derives `Config.qml` from the consumer's
+  `import qs.modules.common` plus the module's `singleton Config ...`
+  declaration. It does not use a hand-authored Config file path.
+- In `Config.qml`, source evidence must uniquely resolve
+  `property alias options: configOptionsJsonAdapter`, the non-opaque
+  `JsonAdapter` object with that QML id, the nested `JsonObject bar`, and
+  `property bool verbose: true`. Each container is linked by semantic scope
+  and parser value ranges rather than presentation edges.
+- The real reviewed Clock candidate therefore has a research-only
+  `cycleSafetyProof=acyclic-source-backed-cross-file-closure` with both
+  `ClockWidget.qml` and `Config.qml` source hashes retained as evidence.
+  The nullish fallback `true` is also a literal terminal.
+- Any ambiguous import/export, alias, object id, JsonObject container, scope,
+  parser diagnostic, non-literal terminal or source-read failure returns UNKNOWN.
+  External state mutation does not become a declarative dependency edge merely
+  because the literal-backed Config property may change at runtime.
+- This does not promote production authorization. `cycleStatus` remains
+  `unknown-incomplete-projection`, TYPE remains UNKNOWN, and the helper still
+  returns `applyEnabled=false`, `artifactsStaged=false` and
+  `productionIntegrated=false`.
+- Native acceptance now replays the real Clock/Config closure twice and requires
+  deterministic source hashes, semantic terminal identity and dependency path.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - promotion/integration of the 2K-H type proof into production Connect authorization;
-- dependency coverage beyond the 2K-I same-object closed-chain subset, including the real Clock source dependency;
-- promotion/integration of any cycle proof into production Connect authorization;
+- dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
+- composition/promotion of the isolated type and cycle proofs into one production qualification contract;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -596,17 +633,17 @@ Implemented research/proof:
 
 ## Next gate
 
-2K-I proves that cycle analysis can distinguish CYCLE, ACYCLIC and UNKNOWN when
-the parser can close the complete local dependency chain. It deliberately does
-not claim the first real Clock fixture is acyclic: `root.showDate` leaves the
-closed subset through a compound Config dependency.
+2K-J closes the real Clock dependency through source-backed local singleton
+metadata and a literal Config terminal. The first reviewed Connect fixture now
+has an isolated qmllint type proof and an isolated cross-file acyclic proof, but
+those proofs were produced by separate research requests.
 
-The next research gate must extend source-backed dependency resolution without
-falling back to presentation edges or runtime-value guesses. Promotion remains a
-separate decision even after a real candidate has both a qualified type proof
-and a closed cycle proof.
+The next gate must compose them into one deterministic qualification request:
+same reviewed Connect identity, same Clock source SHA, retained external Config
+source SHA, explicit primitive evidence only, and no stale proof reuse. That
+composition is still research-only and must not open Apply or artifact staging.
 
-Until then, do not open Connect Apply, stage Connect artifacts, mark reviewed
-connect targets editable/previewable as mutation authority, or translate either
-`compatible-qmllint-proof` or `acyclic-closed-local-closure` into production
-SAFE status. Production TYPE and CYCLE remain UNKNOWN.
+Until a separate production-promotion gate exists, do not translate either
+`compatible-qmllint-proof` or
+`acyclic-source-backed-cross-file-closure` into production SAFE status.
+Production TYPE and CYCLE remain UNKNOWN.

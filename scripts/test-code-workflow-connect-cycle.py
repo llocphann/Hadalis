@@ -204,6 +204,124 @@ if result.get("reason") != "dependency-value-kind-outside-closed-subset":
     fail("complex dependency UNKNOWN reason drifted")
 
 
+
+parsed = connect_cycle.parse_optional_member_chain_with_literal_fallback(
+    "Config.options?.bar?.verbose ?? true"
+)
+if parsed.get("status") != "resolved":
+    fail("reviewed Config optional/nullish chain must enter 2K-J subset")
+if parsed.get("base") != "Config":
+    fail("external dependency base drifted")
+if parsed.get("path") != ["options", "bar", "verbose"]:
+    fail("external dependency member path drifted")
+if parsed.get("optionalHops") != [False, True, True]:
+    fail("optional member hop evidence drifted")
+if parsed.get("fallbackLiteral") != "true":
+    fail("nullish fallback literal evidence drifted")
+
+for expression in (
+    "Config.options.bar.verbose",
+    "Config.options?.bar?.verbose || true",
+    "Config.options?.bar?.verbose ?? root.enabled",
+    "Config.options[index]?.verbose ?? true",
+    "Config.options?.bar?.verbose?.value ?? true",
+):
+    rejected = connect_cycle.parse_optional_member_chain_with_literal_fallback(
+        expression
+    )
+    if rejected.get("status") != "unknown":
+        fail("unsupported cross-file expression must remain UNKNOWN: " + expression)
+
+
+alias_source = (
+    b"Singleton { property alias options: adapter; "
+    b"JsonAdapter { id: adapter; "
+    b"property JsonObject bar: JsonObject { "
+    b"property bool verbose: true } } }\n"
+)
+options_span = value_span(alias_source, b"adapter")
+bar_value = b"JsonObject { property bool verbose: true }"
+bar_value_span = value_span(alias_source, bar_value)
+bar_object_start = bar_value_span[0]
+bar_object_end = bar_value_span[1]
+verbose_span = value_span(alias_source, b"true")
+alias_entries = [
+    {
+        "anchor": "options",
+        "anchor_unique": True,
+        "kind": "property",
+        "name": "options",
+        "scope": ["Singleton#root[1]"],
+        "declared_type": "alias",
+        "value_range": options_span,
+        "value_kind": "identifier",
+        "opaque_context": False,
+    },
+    {
+        "anchor": "adapter",
+        "anchor_unique": True,
+        "kind": "object",
+        "name": "JsonAdapter",
+        "qml_id": "adapter",
+        "scope": ["Singleton#root[1]", "JsonAdapter#adapter[1]"],
+        "range": [alias_source.index(b"JsonAdapter"), len(alias_source) - 3],
+        "opaque_context": False,
+    },
+    {
+        "anchor": "bar",
+        "anchor_unique": True,
+        "kind": "property",
+        "name": "bar",
+        "scope": ["Singleton#root[1]", "JsonAdapter#adapter[1]"],
+        "declared_type": "JsonObject",
+        "value_range": bar_value_span,
+        "value_kind": "ui_object_definition",
+        "opaque_context": False,
+    },
+    {
+        "anchor": "bar-object",
+        "anchor_unique": True,
+        "kind": "object",
+        "name": "JsonObject",
+        "qml_id": None,
+        "scope": [
+            "Singleton#root[1]",
+            "JsonAdapter#adapter[1]",
+            "JsonObject[1]",
+        ],
+        "range": [bar_object_start, bar_object_end],
+        "opaque_context": False,
+    },
+    {
+        "anchor": "verbose",
+        "anchor_unique": True,
+        "kind": "property",
+        "name": "verbose",
+        "scope": [
+            "Singleton#root[1]",
+            "JsonAdapter#adapter[1]",
+            "JsonObject[1]",
+        ],
+        "declared_type": "bool",
+        "value_range": verbose_span,
+        "value_kind": "true",
+        "opaque_context": False,
+    },
+]
+nested = connect_cycle._resolve_alias_nested_literal(
+    alias_source,
+    alias_entries,
+    "options",
+    ["bar", "verbose"],
+)
+if nested.get("status") != "resolved":
+    fail("alias -> JsonObject -> literal proof subset must resolve")
+if nested.get("terminalValueText") != "true":
+    fail("cross-file literal terminal value drifted")
+if nested.get("dependencyPath") != ["options", "bar", "verbose"]:
+    fail("cross-file nested dependency path drifted")
+
+
 manifest = json.loads(
     (ROOT / "defaults/code-workflow-ir.json").read_text(encoding="utf-8")
 )
@@ -221,10 +339,16 @@ for token in (
     "def prove_local_dependency_closure(",
     'PROVEN_CYCLE = "cycle-proven-local-closure"',
     'PROVEN_ACYCLIC = "acyclic-closed-local-closure"',
+    'PROVEN_ACYCLIC_CROSS_FILE = "acyclic-source-backed-cross-file-closure"',
     'PROOF_UNKNOWN = "unknown-incomplete-local-closure"',
     '"dependency-closure-reaches-connect-target"',
     '"dependency-leaves-reviewed-parent-scope"',
     '"dependency-value-kind-outside-closed-subset"',
+    "def parse_optional_member_chain_with_literal_fallback(",
+    "def _resolve_imported_local_singleton(",
+    "def _resolve_alias_nested_literal(",
+    "def prove_cross_file_dependency_closure(",
+    '"source-backed-cross-file-chain-ends-in-literal"',
     '"cycleStatus": CYCLE_UNKNOWN',
     '"typeCompatibility": TYPE_UNKNOWN',
     '"applyEnabled": False',
@@ -266,10 +390,11 @@ if "scripts/code-workflow/connect_cycle.py" in set(payload):
 
 for token in (
     "Milestone 2K-I — parser-closed Connect cycle proof",
+    "Milestone 2K-J — source-backed cross-file Connect closure",
     "cycle-proven-local-closure",
     "acyclic-closed-local-closure",
-    "UNKNOWN",
-    "root.showDate",
+    "acyclic-source-backed-cross-file-closure",
+    "Config.options?.bar?.verbose ?? true",
     "production CYCLE remains UNKNOWN",
 ):
     if token not in phase2:
@@ -348,11 +473,43 @@ if grammar and Path(grammar).is_file():
             library,
         )
         if payload.get("status") != "analysis":
-            fail("native 2K-I real fixture analysis failed")
-        if payload.get("cycleSafetyProof") != connect_cycle.PROOF_UNKNOWN:
-            fail("real clock fixture must remain UNKNOWN in first local subset")
-        if payload.get("cycleAnalysisStatus") != "unknown":
-            fail("real clock fixture cycle analysis status must stay unknown")
+            fail("native 2K-J real fixture analysis failed")
+        if payload.get("localCycleSafetyProof") != connect_cycle.PROOF_UNKNOWN:
+            fail("2K-I local subset must still report the real Clock as UNKNOWN")
+        if payload.get("cycleSafetyProof") != (
+            connect_cycle.PROVEN_ACYCLIC_CROSS_FILE
+        ):
+            fail("real Clock dependency must close through source-backed Config")
+        if payload.get("cycleAnalysisStatus") != "proven-acyclic":
+            fail("real Clock cross-file cycle analysis must prove acyclic")
+        if payload.get("cycleAnalysisReason") != (
+            "source-backed-cross-file-chain-ends-in-literal"
+        ):
+            fail("real Clock cross-file proof reason drifted")
+        if payload.get("externalModuleUri") != "qs.modules.common":
+            fail("real Clock external module resolution drifted")
+        if payload.get("externalSourcePath") != "modules/common/Config.qml":
+            fail("real Clock Config source resolution drifted")
+        if len(str(payload.get("externalSourceSha256") or "")) != 64:
+            fail("real Clock Config source SHA evidence missing")
+        if payload.get("aliasTargetId") != "configOptionsJsonAdapter":
+            fail("real Clock Config alias target drifted")
+        if payload.get("terminalDeclaredType") != "bool":
+            fail("real Clock Config terminal type must resolve to bool")
+        if payload.get("terminalValueKind") != "true":
+            fail("real Clock Config terminal must be direct true literal")
+        if payload.get("terminalValueText") != "true":
+            fail("real Clock Config terminal value drifted")
+        if payload.get("fallbackLiteral") != "true":
+            fail("real Clock nullish fallback evidence drifted")
+        if payload.get("dependencyPath") != [
+            "showDate",
+            "Config",
+            "options",
+            "bar",
+            "verbose",
+        ]:
+            fail("real Clock cross-file dependency path drifted")
         if payload.get("cycleStatus") != "unknown-incomplete-projection":
             fail("production CYCLE must remain UNKNOWN after research proof")
         if payload.get("typeCompatibility") != "unknown-unresolved":
@@ -374,6 +531,17 @@ if grammar and Path(grammar).is_file():
         "cycleSafetyProof",
         "cycleAnalysisReason",
         "dependencyPath",
+        "localCycleSafetyProof",
+        "localCycleAnalysisReason",
+        "externalModuleUri",
+        "externalSourcePath",
+        "externalSourceSha256",
+        "aliasTargetId",
+        "terminalPropertySemanticAnchor",
+        "terminalDeclaredType",
+        "terminalValueKind",
+        "terminalValueText",
+        "fallbackLiteral",
         "cycleStatus",
         "typeCompatibility",
     )
@@ -382,4 +550,4 @@ if grammar and Path(grammar).is_file():
     if first != second:
         fail("repeated native 2K-I analysis must be deterministic")
 
-print("ok - Code Workflow 2K-I parser-closed Connect cycle proof")
+print("ok - Code Workflow 2K-J source-backed cross-file Connect cycle proof")

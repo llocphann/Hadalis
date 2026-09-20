@@ -19,11 +19,12 @@ explicit reviewed-target selection plus coordinator-backed preview history in
 Settings: identity is parent semantic anchor + absent binding name + source
 expression, and the two parser requests use a same-SHA primitive handoff. An
 isolated qmllint-backed research proof can establish bool compatibility for the
-first reviewed fixture. A separate parser-closed cycle proof distinguishes
-CYCLE/ACYCLIC/UNKNOWN only for fully covered same-object dependency chains; the
-real Clock candidate still leaves that subset through Config and remains UNKNOWN.
-Neither proof is production authorization: the UI and transaction path keep
-TYPE/CYCLE UNKNOWN visibly blocking Connect writes.
+first reviewed fixture. Cycle research now has two fail-closed layers: a
+same-object parser closure and a source-backed local-singleton fallback that
+resolves the real Clock dependency through Config.qml to the literal
+bar.verbose terminal. The latter can prove the reviewed Clock candidate acyclic
+as research evidence, but neither proof is production authorization: the UI and
+transaction path keep TYPE/CYCLE UNKNOWN visibly blocking Connect writes.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

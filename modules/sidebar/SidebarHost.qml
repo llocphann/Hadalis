@@ -622,6 +622,11 @@ Scope {
             root.setRoleOpen(false)
         }
 
+        // Screen Edge reservation windows occupy the solid frame thickness.
+        // This Overlay must still anchor to physical output coordinates; without
+        // Ignore Niri offsets it by the reservation and the content's own
+        // screenEdgeHoverWidth margin creates a second, visible gap.
+        exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
         implicitWidth: Math.ceil(root.effectiveSidebarWidth)
         implicitHeight: Math.ceil(root.effectiveContentHeight

@@ -63,11 +63,10 @@ LazyLoader {
     readonly property real _contentPadding: 14
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    // Accepted G2 morphology welds the SDF body a few logical pixels under a
-    // tangent Screen Edge, then clips Overlay paint/input at the frame's actual
-    // inner boundary. Placement therefore uses frame thickness minus weld.
-    readonly property real _popupScreenMargin: Math.max(0,
-        root._screenEdgeThickness - PerimeterTokens.irisWeldDepth)
+    // Placement stops at the real Screen Edge inner boundary. Tangent welding
+    // is SDF-only inside ConnectedSurfaceIrisFrame, so content/input never need
+    // to live underneath the physical Screen Edge just to keep the fillet.
+    readonly property real _popupScreenMargin: root._screenEdgeThickness
     readonly property bool _edgeShadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,

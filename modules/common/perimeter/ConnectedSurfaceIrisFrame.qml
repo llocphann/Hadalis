@@ -110,6 +110,35 @@ Item {
     readonly property rect visibleBodyRect:
         root.clipExternalOwners(root.body)
 
+    // Tangent joins use the same weld rule as direct edge adapters: only the
+    // SDF record extends underneath a physical Screen Edge. The visible body,
+    // content, input region and shadow all remain on the real inner boundary.
+    // This fixes corner-clamped Bar popups where moving the whole body under the
+    // owner clipped away one of the two visible contact fillets.
+    readonly property rect sdfBodyRect: {
+        const b = root.body
+        const weld = Math.max(0, Number(PerimeterTokens.irisWeldDepth ?? 0))
+        let left = b.x
+        let top = b.y
+        let right = b.x + b.width
+        let bottom = b.y + b.height
+
+        if (root.horizontal) {
+            if (root.tangentStartJoined)
+                left -= weld
+            if (root.tangentEndJoined)
+                right += weld
+        } else {
+            if (root.tangentStartJoined)
+                top -= weld
+            if (root.tangentEndJoined)
+                bottom += weld
+        }
+
+        return Qt.rect(left, top,
+            Math.max(0, right - left), Math.max(0, bottom - top))
+    }
+
     readonly property rect ownerShapeRect: {
         const a = root.geometry?.anchorRect ?? Qt.rect(0, 0, 0, 0)
         const pad = root.fuse * 2
@@ -196,10 +225,10 @@ Item {
     }
 
     readonly property var popupShape: ({
-        x: root.body.x,
-        y: root.body.y,
-        width: root.body.width,
-        height: root.body.height,
+        x: root.sdfBodyRect.x,
+        y: root.sdfBodyRect.y,
+        width: root.sdfBodyRect.width,
+        height: root.sdfBodyRect.height,
         radius: Number(root.geometry?.outerRadius ?? 0),
         fuse: root.fuse,
         id: "popup",
@@ -213,10 +242,10 @@ Item {
         root.tangentStartJoined && root.tangentEndJoined
     readonly property var popupEndJoinShape: root.needsEndJoinAux
         ? ({
-            x: root.body.x,
-            y: root.body.y,
-            width: root.body.width,
-            height: root.body.height,
+            x: root.sdfBodyRect.x,
+            y: root.sdfBodyRect.y,
+            width: root.sdfBodyRect.width,
+            height: root.sdfBodyRect.height,
             radius: Number(root.geometry?.outerRadius ?? 0),
             fuse: root.fuse,
             id: "popup-end-join",

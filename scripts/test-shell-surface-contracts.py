@@ -120,7 +120,10 @@ def main() -> None:
           and "tangentRevealDirection" not in geometry,
           "Connected popup slide must remain on the attachment axis like Caelestia wrappers")
     check("seamOverlap: PerimeterTokens.irisWeldDepth" in styled_popup,
-          "Bar popup SDF must preserve the G2 owner weld while the reveal clip keeps owner pixels hidden")
+          "Bar popup SDF must preserve the primary-owner weld while the reveal clip keeps owner pixels hidden")
+    check("readonly property real _popupScreenMargin: root._screenEdgeThickness" in styled_popup
+          and "readonly property rect sdfBodyRect:" in iris_frame,
+          "Tangent-clamped Bar popups must stop at the real Screen Edge boundary and weld only their SDF record")
     check("ConnectedSurfaceRevealClip {" in styled_popup
           and "opacity: 1" in styled_popup,
           "Connected popup must use pure slide-under clipping instead of staged fade/scale")
@@ -413,6 +416,7 @@ def main() -> None:
         "ConnectedSurfaceIrisEdgeSurface {",
         "id: sidebarIrisSurface",
         "ownerThickness: root.screenEdgeHoverWidth",
+        "exclusionMode: ExclusionMode.Ignore",
     ):
         check(token in sidebar_host, f"Sidebar iRiS/full-hide contract missing: {token}")
     for retired in ("ConnectedSurfaceJoinFlares", "joinFlareRadius", "sidebarEdgeFlares"):
@@ -607,6 +611,9 @@ def main() -> None:
     for token in (
         "function clipExternalOwners(raw)",
         "readonly property rect visibleBodyRect:",
+        "readonly property rect sdfBodyRect:",
+        "x: root.sdfBodyRect.x",
+        "y: root.sdfBodyRect.y",
         "readonly property var ownerShape:",
         "readonly property var frameStartShape: !root.tangentStartJoined",
         "readonly property var frameEndShape: !root.tangentEndJoined",

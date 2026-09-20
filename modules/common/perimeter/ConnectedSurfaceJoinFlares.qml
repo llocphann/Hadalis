@@ -20,11 +20,13 @@ Item {
     property real flareRadius: PerimeterTokens.joinFlareRadius
     property real crossScale: PerimeterTokens.joinFlareCrossScale
     property real progress: 1
-    // Distance from the physical body edge to the owner's real inner contact
-    // plane. Most popups already stop at that plane and keep this at 0.
-    // Surfaces that deliberately underlap Screen Edge pixels (Sidebar/OSK)
-    // pass the underlap thickness here without moving their body geometry.
-    property real contactInset: 0
+    // Owner-authoritative contact planes in this item's coordinate space.
+    // Negative means "use the mapped body edge" for compatibility. Consumers
+    // connected to Bar/Screen Edge should pass the real owner seam explicitly.
+    property real topContactPlane: -1
+    property real bottomContactPlane: -1
+    property real leftContactPlane: -1
+    property real rightContactPlane: -1
     property bool joinTop: false
     property bool joinBottom: false
     property bool joinLeft: false
@@ -45,20 +47,16 @@ Item {
         return root.bodyItem.mapToItem(root, 0, 0,
             root.bodyItem.width, root.bodyItem.height)
     }
-    readonly property real effectiveContactInset: Math.max(0,
-        Number.isFinite(Number(root.contactInset)) ? Number(root.contactInset) : 0)
-    readonly property real horizontalContactInset: Math.min(
-        root.effectiveContactInset, Math.max(0, root.bodyRect.height))
-    readonly property real verticalContactInset: Math.min(
-        root.effectiveContactInset, Math.max(0, root.bodyRect.width))
     readonly property real topContactY:
-        root.bodyRect.y + root.horizontalContactInset
+        root.topContactPlane >= 0 ? root.topContactPlane : root.bodyRect.y
     readonly property real bottomContactY:
-        root.bodyRect.y + root.bodyRect.height - root.horizontalContactInset
+        root.bottomContactPlane >= 0
+            ? root.bottomContactPlane : root.bodyRect.y + root.bodyRect.height
     readonly property real leftContactX:
-        root.bodyRect.x + root.verticalContactInset
+        root.leftContactPlane >= 0 ? root.leftContactPlane : root.bodyRect.x
     readonly property real rightContactX:
-        root.bodyRect.x + root.bodyRect.width - root.verticalContactInset
+        root.rightContactPlane >= 0
+            ? root.rightContactPlane : root.bodyRect.x + root.bodyRect.width
 
     TransformWatcher {
         a: root
@@ -76,6 +74,16 @@ Item {
     visible: root.reveal > 0.001 && root.radius > 0 && root.depth > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
+    // Ancestor visibility changes do not toggle each Canvas.visible property.
+    // Bump a paint revision whenever the flare host becomes visible so reused
+    // hover popups cannot return with a stale/empty Canvas texture.
+    property int paintRevision: 0
+    onVisibleChanged: {
+        if (visible)
+            root.paintRevision++
+    }
+    Component.onCompleted: root.paintRevision++
+
     component Flare: Canvas {
         id: flare
 
@@ -84,11 +92,21 @@ Item {
 
         visible: width > 0 && height > 0
         antialiasing: true
+        property int paintRevision: root.paintRevision
 
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        onFlareColorChanged: requestPaint()
-        onFlareCornerChanged: requestPaint()
+        function queuePaint(): void {
+            if (available && visible && width > 0 && height > 0)
+                requestPaint()
+        }
+
+        onAvailableChanged: queuePaint()
+        onVisibleChanged: queuePaint()
+        onWidthChanged: queuePaint()
+        onHeightChanged: queuePaint()
+        onFlareColorChanged: queuePaint()
+        onFlareCornerChanged: queuePaint()
+        onPaintRevisionChanged: queuePaint()
+        Component.onCompleted: queuePaint()
 
         onPaint: {
             const ctx = getContext("2d")

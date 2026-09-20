@@ -25,9 +25,13 @@ Scope { // Scope
     Behavior on _oskRevealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: GlobalStates.oskOpen
+                ? Appearance.animation.elementMoveEnter.duration
+                : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: GlobalStates.oskOpen
+                ? Appearance.animationCurves.standardDecel
+                : Appearance.animationCurves.standardAccel
         }
     }
 
@@ -230,7 +234,10 @@ Scope { // Scope
                 bodyItem: oskBackground
                 fillColor: oskBackground.color
                 flareRadius: PerimeterTokens.joinFlareRadius
-                contactInset: root.screenEdgeThickness
+                topContactPlane: oskRoot.snappedEdge === "top"
+                    ? root.screenEdgeThickness : -1
+                bottomContactPlane: oskRoot.snappedEdge === "bottom"
+                    ? oskRoot.height - root.screenEdgeThickness : -1
                 progress: root._oskRevealProgress
                 transform: Translate { y: oskRoot.revealOffsetY }
                 joinTop: oskRoot.snappedEdge === "top"

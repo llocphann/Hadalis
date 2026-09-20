@@ -151,15 +151,18 @@ Item {
 
     onPopupPresentedChanged: root.syncReveal()
 
-    // Keep the connected Dashboard on the same Caelestia-style spatial
-    // gesture as shared popups: one scalar, one default-spatial curve, and a
-    // natural reverse from the current value.
+    // Directly connected chrome must slide without overshoot so its bottom seam
+    // never appears to detach from the owning Bar/Screen Edge.
     Behavior on revealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: root.popupPresented
+                ? Appearance.animation.elementMoveEnter.duration
+                : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.popupPresented
+                ? Appearance.animationCurves.standardDecel
+                : Appearance.animationCurves.standardAccel
         }
     }
 
@@ -284,6 +287,9 @@ Item {
         fillColor: dashContainer.color
         flareRadius: PerimeterTokens.joinFlareRadius
         progress: root.revealProgress > 0.001 ? 1 : 0
+        // Overview places this component so its local bottom coincides with the
+        // authoritative bottomAttachmentY seam of the current physical owner.
+        bottomContactPlane: root.directBottomAttachment ? root.height : -1
         joinBottom: root.directBottomAttachment
     }
 

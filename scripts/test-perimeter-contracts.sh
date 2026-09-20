@@ -29,7 +29,10 @@ done
 join_flares="$common/ConnectedSurfaceJoinFlares.qml"
 for token in \
     'import Quickshell' \
-    'property real contactInset: 0' \
+    'property real topContactPlane: -1' \
+    'property real bottomContactPlane: -1' \
+    'property real leftContactPlane: -1' \
+    'property real rightContactPlane: -1' \
     'property int bodyTransformRevision: 0' \
     'readonly property rect bodyRect:' \
     'root.bodyItem.mapToItem(root, 0, 0,' \
@@ -37,13 +40,15 @@ for token in \
     'a: root' \
     'b: root.bodyItem' \
     'onTransformChanged: root.bodyTransformRevision++' \
-    'readonly property real topContactY:' \
-    'readonly property real bottomContactY:' \
-    'readonly property real leftContactX:' \
-    'readonly property real rightContactX:'; do
+    'property int paintRevision: 0' \
+    'onAvailableChanged: queuePaint()' \
+    'onPaintRevisionChanged: queuePaint()'; do
     grep -Fq "$token" "$join_flares" \
         || fail "join flares must follow live body geometry and the real contact plane: $token"
 done
+if grep -Fq 'contactInset' "$join_flares"; then
+    fail 'join flares must not infer owner seams from a generic contact inset'
+fi
 
 for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceMask; do
     grep -Fq "$primitive" "$styled" \
@@ -93,15 +98,27 @@ fi
 for token in \
     'import qs.modules.common.perimeter' \
     'readonly property real edgeDecorationMargin:' \
-    'readonly property real edgeContactInset:' \
+    'readonly property real edgeContactPlane:' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
     'bodyItem: sidebarContentLoader' \
-    'contactInset: root.edgeContactInset' \
+    'leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1' \
+    'sidebarRoot.width - root.edgeContactPlane' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$sidebar" \
         || fail "SidebarHost must render Caelestia-style Screen Edge endpoint flares: $token"
+done
+
+for token in \
+    'topContactPlane: root._attachmentEdge === "top"' \
+    'bottomContactPlane: root._attachmentEdge === "bottom"' \
+    'leftContactPlane: root._attachmentEdge === "left"' \
+    'rightContactPlane: root._attachmentEdge === "right"' \
+    'Appearance.animationCurves.standardDecel' \
+    'Appearance.animationCurves.standardAccel'; do
+    grep -Fq "$token" "$styled" \
+        || fail "StyledPopup must own explicit Bar/Screen Edge contact planes and non-bounce motion: $token"
 done
 
 for token in \
@@ -130,6 +147,7 @@ for token in \
     '(1 - root.revealProgress) * dashContainer.height' \
     'clip: root.directBottomAttachment' \
     'ConnectedSurfaceJoinFlares {' \
+    'bottomContactPlane: root.directBottomAttachment ? root.height : -1' \
     'joinBottom: root.directBottomAttachment' \
     'blur: root.screenEdgeShadowSize' \
     'readonly property rect connectedSurfaceRect:'; do

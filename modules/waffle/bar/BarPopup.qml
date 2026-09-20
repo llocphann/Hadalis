@@ -270,6 +270,13 @@ Loader {
                     && root.visualMargin > 0
                 shadowExtent: Math.max(0, root.visualMargin)
                 shadowColor: Looks.colors.shadow
+                topContactPlane: root._attachmentEdge === "top"
+                    ? geometry.attachmentBoundary : root._screenEdgeThickness
+                bottomContactPlane: root._attachmentEdge === "bottom"
+                    ? geometry.attachmentBoundary
+                    : popupWindow.height - root._screenEdgeThickness
+                leftContactPlane: root._screenEdgeThickness
+                rightContactPlane: popupWindow.width - root._screenEdgeThickness
                 joinTop: root._attachmentEdge === "top"
                     || directEdgeAttachment.atTop
                 joinBottom: root._attachmentEdge === "bottom"

@@ -74,10 +74,13 @@ fi
 
 for token in \
     'readonly property real edgeDecorationMargin:' \
+    'readonly property real edgeContactPlane:' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
     'bodyItem: sidebarContentLoader' \
     'fillColor: sidebarContentLoader.item?.connectedSurfaceColor' \
+    'leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1' \
+    'sidebarRoot.width - root.edgeContactPlane' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
@@ -297,39 +300,34 @@ grep -Fq 'readonly property bool bodyHovered: bodyHover.hovered' "$connected_fra
     || fail 'ConnectedSurfaceFrame must expose full-body hover ownership'
 grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must source join flare size from shared perimeter tokens'
-grep -Fq 'No stem is' "$join_flares" \
-    || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
-grep -Fq 'root.bodyItem.mapToItem(root, 0, 0)' "$join_flares" \
-    || fail 'join flares must map nested body geometry into the flare host coordinate space'
-grep -Fq 'import qs.modules.common.widgets' "$join_flares" \
-    || fail 'join flares must reuse the common Hug corner primitive'
-grep -Fq 'component Flare: Item {' "$join_flares" \
-    || fail 'connected shoulders must compose fill and curved shadow in one flare item'
-grep -Fq 'RoundCorner {' "$join_flares" \
-    || fail 'connected shoulder fill must reuse the Hug RoundCorner primitive'
-grep -Fq 'PerimeterCornerShadow {' "$join_flares" \
-    || fail 'connected shoulder shadow must follow the same concave arc'
 for token in \
-    'property bool shadowEnabled: false' \
-    'property real shadowExtent: 0' \
-    'property color shadowColor: "transparent"'; do
+    'property real topContactPlane: -1' \
+    'property real bottomContactPlane: -1' \
+    'property real leftContactPlane: -1' \
+    'property real rightContactPlane: -1' \
+    'topContactPlane: root.topContactPlane' \
+    'rightContactPlane: root.rightContactPlane'; do
+    grep -Fq "$token" "$connected_frame" \
+        || fail "ConnectedSurfaceFrame must forward explicit owner contact planes: $token"
+done
+for token in \
+    'import Quickshell' \
+    'property real topContactPlane: -1' \
+    'property real bottomContactPlane: -1' \
+    'property real leftContactPlane: -1' \
+    'property real rightContactPlane: -1' \
+    'property int bodyTransformRevision: 0' \
+    'readonly property rect bodyRect:' \
+    'root.bodyItem.mapToItem(root, 0, 0,' \
+    'TransformWatcher {' \
+    'property int paintRevision: 0' \
+    'component Flare: Canvas {' \
+    'ctx.bezierCurveTo'; do
     grep -Fq "$token" "$join_flares" \
-        || fail "connected shoulders must expose live perimeter shadow state: $token"
+        || fail "connected shoulder runtime contract missing: $token"
 done
-for mapping in \
-    'case "topLeft": return RoundCorner.CornerEnum.TopRight' \
-    'case "topRight": return RoundCorner.CornerEnum.TopLeft' \
-    'case "bottomLeft": return RoundCorner.CornerEnum.BottomRight' \
-    'case "bottomRight": return RoundCorner.CornerEnum.BottomLeft' \
-    'case "leftTop": return RoundCorner.CornerEnum.BottomLeft' \
-    'case "leftBottom": return RoundCorner.CornerEnum.TopLeft' \
-    'case "rightTop": return RoundCorner.CornerEnum.BottomRight' \
-    'case "rightBottom": return RoundCorner.CornerEnum.TopRight'; do
-    grep -Fq "$mapping" "$join_flares" \
-        || fail "connected shoulder orientation drifted: $mapping"
-done
-if grep -Fq 'component Flare: Canvas {' "$join_flares"; then
-    fail 'connected shoulders must not keep a second Canvas corner renderer'
+if grep -Fq 'contactInset' "$join_flares"; then
+    fail 'connected shoulders must consume explicit owner contact planes, not a generic inset'
 fi
 grep -Fq 'visible: root.reveal > 0.001 && root.radius > 0' "$join_flares" \
     || fail 'connected join flares must remain fully formed while the body slides'
@@ -354,9 +352,15 @@ fi
 for token in \
     'property var anchorRect: null' \
     'Number(root.anchorRect?.x ?? 0)' \
-    'host.mapFromItem(target, localX, localY)'; do
+    'host.mapFromItem(target, localX, localY)' \
+    'topContactPlane: root._attachmentEdge === "top"' \
+    'bottomContactPlane: root._attachmentEdge === "bottom"' \
+    'leftContactPlane: root._attachmentEdge === "left"' \
+    'rightContactPlane: root._attachmentEdge === "right"' \
+    'Appearance.animationCurves.standardDecel' \
+    'Appearance.animationCurves.standardAccel'; do
     grep -Fq "$token" "$styled_popup" \
-        || fail "StyledPopup must support source-local tangent sub-rect placement: $token"
+        || fail "StyledPopup must keep explicit contact planes and slide-only connected motion: $token"
 done
 grep -Fq 'anchorRect: root.anchorRect' "$bar_context_menu" \
     || fail 'BarContextMenu must forward source-local anchorRect into StyledPopup'
@@ -423,6 +427,14 @@ grep -Fq 'frame.bodyHovered || popupHoverHandler.hovered' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup hover ownership must include the complete connected body'
 grep -Fq 'hoverEnabled: root.active' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup must enable shared full-body hover tracking'
+for token in \
+    'topContactPlane: root._attachmentEdge === "top"' \
+    'bottomContactPlane: root._attachmentEdge === "bottom"' \
+    'leftContactPlane: root._screenEdgeThickness' \
+    'rightContactPlane: popupWindow.width - root._screenEdgeThickness'; do
+    grep -Fq "$token" "$waffle_bar_popup" \
+        || fail "Waffle connected popup must expose all owner contact planes: $token"
+done
 if grep -Eq 'focusGrab\.active[[:space:]]*=' "$waffle_bar_popup"; then
     fail 'Waffle BarPopup must not imperatively detach the focusGrab.active binding'
 fi
@@ -450,6 +462,8 @@ for token in \
     'y: parent ? parent.height - height : 0' \
     'ConnectedSurfaceJoinFlares {' \
     'flareRadius: PerimeterTokens.joinFlareRadius' \
+    'topContactPlane: oskRoot.snappedEdge === "top"' \
+    'bottomContactPlane: oskRoot.snappedEdge === "bottom"' \
     'joinTop: oskRoot.snappedEdge === "top"' \
     'joinBottom: oskRoot.snappedEdge === "bottom"'; do
     grep -Fq "$token" "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

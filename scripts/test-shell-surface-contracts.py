@@ -143,7 +143,10 @@ def main() -> None:
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     for token in (
         "import Quickshell",
-        "property real contactInset: 0",
+        "property real topContactPlane: -1",
+        "property real bottomContactPlane: -1",
+        "property real leftContactPlane: -1",
+        "property real rightContactPlane: -1",
         "property int bodyTransformRevision: 0",
         "readonly property rect bodyRect:",
         "root.bodyItem.mapToItem(root, 0, 0,",
@@ -151,17 +154,23 @@ def main() -> None:
         "a: root",
         "b: root.bodyItem",
         "onTransformChanged: root.bodyTransformRevision++",
-        "readonly property real topContactY:",
-        "readonly property real bottomContactY:",
-        "readonly property real leftContactX:",
-        "readonly property real rightContactX:",
+        "property int paintRevision: 0",
+        "onAvailableChanged: queuePaint()",
+        "onPaintRevisionChanged: queuePaint()",
     ):
         check(token in join_flares,
-              f"Join flares must follow live body geometry and an explicit contact plane: {token}")
-    check("contactInset: root.edgeContactInset" in sidebar_host,
-          "Sidebar flare contact plane must start at the Screen Edge inner boundary")
-    check("contactInset: root.screenEdgeThickness" in osk,
-          "OSK flare contact plane must start at the Screen Edge inner boundary")
+              f"Join flares must follow live geometry, explicit owner seams, and repaint reliably: {token}")
+    check("contactInset" not in join_flares,
+          "Join flares must not infer owner seams from a generic body inset")
+    check("leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1" in sidebar_host
+          and "sidebarRoot.width - root.edgeContactPlane" in sidebar_host,
+          "Sidebar flare contact plane must use the explicit Screen Edge owner seam")
+    check('topContactPlane: oskRoot.snappedEdge === "top"' in osk
+          and 'bottomContactPlane: oskRoot.snappedEdge === "bottom"' in osk,
+          "OSK flare contact plane must use explicit top/bottom owner seams")
+    check("Appearance.animationCurves.standardDecel" in styled_popup
+          and "Appearance.animationCurves.standardAccel" in styled_popup,
+          "Connected StyledPopup motion must remain monotonic and non-overshooting")
 
     check("hoverEnabled: root.active" in styled_popup
           and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in styled_popup

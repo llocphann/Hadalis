@@ -26,6 +26,10 @@ Item {
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
+    property real topContactPlane: -1
+    property real bottomContactPlane: -1
+    property real leftContactPlane: -1
+    property real rightContactPlane: -1
     property real joinFlareRadius: PerimeterTokens.joinFlareRadius
     property bool hoverEnabled: false
     readonly property bool bodyHovered: bodyHover.hovered
@@ -117,6 +121,10 @@ Item {
         fillColor: root.fillColor
         flareRadius: root.joinFlareRadius
         progress: root.geometry.revealProgress ?? root.geometry.progress ?? 1
+        topContactPlane: root.topContactPlane
+        bottomContactPlane: root.bottomContactPlane
+        leftContactPlane: root.leftContactPlane
+        rightContactPlane: root.rightContactPlane
         joinTop: root.joinTop
         joinBottom: root.joinBottom
         joinLeft: root.joinLeft

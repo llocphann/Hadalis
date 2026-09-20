@@ -60,6 +60,7 @@ PanelWindow {
     readonly property bool animateSource: envBool("HADALIS_U1_ANIMATE", true)
     readonly property bool cycleReveal: envBool("HADALIS_U1_REVEAL_CYCLE", false)
     readonly property bool benchmarkEnabled: envBool("HADALIS_U1_BENCHMARK", false)
+    readonly property bool traceGeometry: envBool("HADALIS_U1_TRACE_GEOMETRY", false)
     readonly property real targetHz: Math.max(1, envReal("HADALIS_U1_TARGET_HZ", 60))
     readonly property int warmupFrames: Math.max(0, Math.round(envReal("HADALIS_U1_WARMUP_FRAMES", 120)))
     readonly property int sampleFrames: Math.max(60, Math.round(envReal("HADALIS_U1_SAMPLE_FRAMES", 600)))
@@ -247,6 +248,7 @@ PanelWindow {
             width: width,
             height: height,
             sourceT: sourceT,
+            reveal: reveal,
             smoothK: smoothK,
             frameOuter: rectObject(frameOuter),
             frameInner: rectObject(frameInner),
@@ -313,14 +315,15 @@ PanelWindow {
     }
 
     Timer {
-        interval: 50
+        interval: root.traceGeometry ? 100 : 50
         repeat: true
         running: true
         onTriggered: {
             if (root.width <= 0 || root.height <= 0)
                 return
             console.log("HADALIS_U1_GEOMETRY " + JSON.stringify(root.geometryReport()))
-            stop()
+            if (!root.traceGeometry)
+                stop()
         }
     }
 

@@ -210,6 +210,63 @@ def parse_marker(path: Path, marker: str):
     return None
 
 
+def parse_markers(path: Path, marker: str) -> list[dict]:
+    values: list[dict] = []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    for line in text.splitlines():
+        if marker not in line:
+            continue
+        payload = line.split(marker, 1)[1].strip()
+        try:
+            value = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            values.append(value)
+    return values
+
+
+def count_strong_material_pixels(path: Path) -> int:
+    width, height, pixels = ppm_payload(path)
+    del width, height
+    count = 0
+    for offset in range(0, len(pixels), 3):
+        red, green, blue = pixels[offset:offset + 3]
+        if red >= 170 and blue >= 170 and green <= 100:
+            count += 1
+    return count
+
+
+def layer_surface_creation_count(log_text: str, layer: str) -> int:
+    namespace = f"hadalis:u1-unified-surface-{layer}"
+    return sum(
+        1
+        for line in log_text.splitlines()
+        if "get_layer_surface" in line and namespace in line
+    )
+
+
+def niri_windows(niri: str, env: dict[str, str]) -> list[dict]:
+    raw = subprocess.check_output(
+        [niri, "msg", "-j", "windows"],
+        env=env,
+        text=True,
+        stderr=subprocess.PIPE,
+        timeout=8,
+    )
+    value = json.loads(raw)
+    if not isinstance(value, list):
+        raise RuntimeError(f"unexpected niri windows payload: {value!r}")
+    return [item for item in value if isinstance(item, dict)]
+
+
+def window_by_title(niri: str, env: dict[str, str], title: str) -> dict | None:
+    for item in niri_windows(niri, env):
+        if str(item.get("title") or "") == title:
+            return item
+    return None
+
+
 def niri_outputs(niri: str, env: dict[str, str]) -> dict:
     raw = subprocess.check_output(
         [niri, "msg", "-j", "outputs"],
@@ -367,6 +424,356 @@ def clamp_expected(geometry: dict, source_t: float, edge: str) -> bool:
     return True
 
 
+def run_motion_lifecycle_case(
+    *,
+    work: Path,
+    quickshell: str,
+    grim: str,
+    env: dict[str, str],
+    output: str,
+    scale: float,
+    layer: str,
+) -> dict:
+    log_path = work / f"motion-lifecycle-{layer}.log"
+    case_env = env.copy()
+    case_env.update(
+        HADALIS_U1_OUTPUT=output,
+        HADALIS_U1_EDGE="top",
+        HADALIS_U1_LAYER=layer,
+        HADALIS_U1_MODE="bounded",
+        HADALIS_U1_SOURCE_T="0.08",
+        HADALIS_U1_ANIMATE="1",
+        HADALIS_U1_REVEAL_CYCLE="0",
+        HADALIS_U1_TRACE_GEOMETRY="1",
+        HADALIS_U1_BENCHMARK="0",
+        HADALIS_U1_COLOR="#ff00ff",
+        QT_QUICK_CONTROLS_STYLE="Basic",
+        WAYLAND_DEBUG="client",
+    )
+    case_env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
+
+    process = None
+    captures: list[dict] = []
+    try:
+        with log_path.open("w", encoding="utf-8") as log:
+            process = subprocess.Popen(
+                dbus_session([quickshell, "-p", str(HERE), "--no-color"], case_env),
+                env=case_env,
+                stdout=log,
+                stderr=log,
+                start_new_session=True,
+            )
+
+        targets = (
+            ("left", lambda value: float(value.get("sourceT", 1)) <= 0.20),
+            ("center", lambda value: 0.45 <= float(value.get("sourceT", -1)) <= 0.55),
+            ("right", lambda value: float(value.get("sourceT", -1)) >= 0.80),
+        )
+
+        for label, predicate in targets:
+            def target_ready():
+                if process.poll() is not None:
+                    text = log_path.read_text(encoding="utf-8", errors="replace")
+                    raise RuntimeError(
+                        f"motion lifecycle exited before {label}:\n{text[-5000:]}"
+                    )
+                values = parse_markers(log_path, "HADALIS_U1_GEOMETRY ")
+                matches = [value for value in values if predicate(value)]
+                return matches[-1] if matches else None
+
+            geometry = wait_for(
+                target_ready,
+                f"motion lifecycle source position {label}",
+                timeout=12,
+            )
+            shot_path = work / f"motion-{layer}-{label}.ppm"
+            subprocess.run(
+                [grim, "-t", "ppm", "-o", output, str(shot_path)],
+                env=case_env,
+                check=True,
+                text=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=15,
+            )
+            width, height, mask, count, _ = material_mask(shot_path)
+            components = component_sizes(mask, width, height)
+            dominant_ratio = components[0] / count if components else 0
+            if dominant_ratio < 0.98:
+                raise RuntimeError(
+                    f"motion {layer}/{label}: disconnected material "
+                    f"ratio={dominant_ratio:.6f}"
+                )
+            captures.append(
+                {
+                    "label": label,
+                    "sourceT": geometry.get("sourceT"),
+                    "capture": shot_path.name,
+                    "material_pixels": count,
+                    "dominant_ratio": dominant_ratio,
+                }
+            )
+
+        values = parse_markers(log_path, "HADALIS_U1_GEOMETRY ")
+        source_values = [float(value["sourceT"]) for value in values if "sourceT" in value]
+        if len(source_values) < 5:
+            raise RuntimeError("motion lifecycle produced too few geometry samples")
+        source_span = max(source_values) - min(source_values)
+        if source_span < 0.65:
+            raise RuntimeError(f"motion lifecycle source span too small: {source_span}")
+
+        log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        creations = layer_surface_creation_count(log_text, layer)
+        if creations != 1:
+            raise RuntimeError(
+                f"motion lifecycle remapped layer surface: creations={creations}"
+            )
+        return {
+            "scale": scale,
+            "layer": layer,
+            "source_span": source_span,
+            "geometry_samples": len(values),
+            "layer_surface_creations": creations,
+            "captures": captures,
+            "passed": True,
+        }
+    finally:
+        terminate(process)
+
+
+def run_reveal_lifecycle_case(
+    *,
+    work: Path,
+    quickshell: str,
+    env: dict[str, str],
+    output: str,
+    scale: float,
+    layer: str,
+) -> dict:
+    log_path = work / f"reveal-lifecycle-{layer}.log"
+    case_env = env.copy()
+    case_env.update(
+        HADALIS_U1_OUTPUT=output,
+        HADALIS_U1_EDGE="top",
+        HADALIS_U1_LAYER=layer,
+        HADALIS_U1_MODE="bounded",
+        HADALIS_U1_SOURCE_T="0.5",
+        HADALIS_U1_ANIMATE="0",
+        HADALIS_U1_REVEAL_CYCLE="1",
+        HADALIS_U1_TRACE_GEOMETRY="1",
+        HADALIS_U1_BENCHMARK="0",
+        HADALIS_U1_COLOR="#ff00ff",
+        QT_QUICK_CONTROLS_STYLE="Basic",
+        WAYLAND_DEBUG="client",
+    )
+    case_env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
+
+    process = None
+    try:
+        with log_path.open("w", encoding="utf-8") as log:
+            process = subprocess.Popen(
+                dbus_session([quickshell, "-p", str(HERE), "--no-color"], case_env),
+                env=case_env,
+                stdout=log,
+                stderr=log,
+                start_new_session=True,
+            )
+
+        def reveal_swept():
+            if process.poll() is not None:
+                text = log_path.read_text(encoding="utf-8", errors="replace")
+                raise RuntimeError(
+                    f"reveal lifecycle exited early:\n{text[-5000:]}"
+                )
+            values = parse_markers(log_path, "HADALIS_U1_GEOMETRY ")
+            reveals = [float(value["reveal"]) for value in values if "reveal" in value]
+            if len(reveals) < 8:
+                return None
+            return values if min(reveals) <= 0.08 and max(reveals) >= 0.92 else None
+
+        values = wait_for(reveal_swept, "reveal lifecycle sweep", timeout=10)
+        reveals = [float(value["reveal"]) for value in values if "reveal" in value]
+        log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        creations = layer_surface_creation_count(log_text, layer)
+        if creations != 1:
+            raise RuntimeError(
+                f"reveal lifecycle remapped layer surface: creations={creations}"
+            )
+        return {
+            "scale": scale,
+            "layer": layer,
+            "reveal_min": min(reveals),
+            "reveal_max": max(reveals),
+            "geometry_samples": len(values),
+            "layer_surface_creations": creations,
+            "passed": True,
+        }
+    finally:
+        terminate(process)
+
+
+def run_fullscreen_lifecycle_case(
+    *,
+    work: Path,
+    niri: str,
+    quickshell: str,
+    grim: str,
+    env: dict[str, str],
+    output: str,
+    scale: float,
+    layer: str,
+) -> dict:
+    title = "Hadalis U1 Fullscreen Probe"
+    log_path = work / f"fullscreen-lifecycle-{layer}.log"
+    case_env = env.copy()
+    case_env.update(
+        HADALIS_U1_OUTPUT=output,
+        HADALIS_U1_EDGE="top",
+        HADALIS_U1_LAYER=layer,
+        HADALIS_U1_MODE="bounded",
+        HADALIS_U1_SOURCE_T="0.5",
+        HADALIS_U1_ANIMATE="0",
+        HADALIS_U1_REVEAL_CYCLE="0",
+        HADALIS_U1_TRACE_GEOMETRY="1",
+        HADALIS_U1_FULLSCREEN_PROBE="1",
+        HADALIS_U1_BENCHMARK="0",
+        HADALIS_U1_COLOR="#ff00ff",
+        QT_QUICK_CONTROLS_STYLE="Basic",
+        WAYLAND_DEBUG="client",
+    )
+    case_env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)
+
+    process = None
+    try:
+        with log_path.open("w", encoding="utf-8") as log:
+            process = subprocess.Popen(
+                dbus_session([quickshell, "-p", str(HERE), "--no-color"], case_env),
+                env=case_env,
+                stdout=log,
+                stderr=log,
+                start_new_session=True,
+            )
+
+        def ready():
+            if process.poll() is not None:
+                text = log_path.read_text(encoding="utf-8", errors="replace")
+                raise RuntimeError(
+                    f"fullscreen lifecycle {layer} exited early:\n{text[-5000:]}"
+                )
+            geometry = parse_marker(log_path, "HADALIS_U1_GEOMETRY ")
+            window = window_by_title(niri, case_env, title)
+            return (geometry, window) if geometry and window else None
+
+        geometry, window = wait_for(
+            ready,
+            f"fullscreen probe window ({layer})",
+            timeout=20,
+        )
+        window_id = window.get("id")
+        if window_id is None:
+            raise RuntimeError(f"fullscreen probe has no Niri window id: {window}")
+
+        before_path = work / f"fullscreen-{layer}-before.ppm"
+        fullscreen_path = work / f"fullscreen-{layer}-active.ppm"
+        after_path = work / f"fullscreen-{layer}-after.ppm"
+
+        subprocess.run(
+            [grim, "-t", "ppm", "-o", output, str(before_path)],
+            env=case_env,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=15,
+        )
+        bw, bh, before_mask, before_count, before_bbox = material_mask(before_path)
+
+        subprocess.run(
+            [niri, "msg", "action", "fullscreen-window", "--id", str(window_id)],
+            env=case_env,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=8,
+        )
+        time.sleep(1.0)
+        subprocess.run(
+            [grim, "-t", "ppm", "-o", output, str(fullscreen_path)],
+            env=case_env,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=15,
+        )
+        fullscreen_count = count_strong_material_pixels(fullscreen_path)
+
+        if layer == "overlay" and fullscreen_count < 100:
+            raise RuntimeError(
+                "Overlay U1 material disappeared behind fullscreen content"
+            )
+
+        subprocess.run(
+            [niri, "msg", "action", "fullscreen-window", "--id", str(window_id)],
+            env=case_env,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=8,
+        )
+        time.sleep(1.0)
+        subprocess.run(
+            [grim, "-t", "ppm", "-o", output, str(after_path)],
+            env=case_env,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=15,
+        )
+        aw, ah, after_mask, after_count, _ = material_mask(after_path)
+        if (bw, bh) != (aw, ah):
+            raise RuntimeError(
+                f"fullscreen lifecycle capture mismatch: {bw}x{bh} vs {aw}x{ah}"
+            )
+        return_iou = crop_iou(
+            before_mask,
+            after_mask,
+            bw,
+            bh,
+            before_bbox,
+        )
+        if return_iou < 0.995:
+            raise RuntimeError(
+                f"{layer} material did not return identically after fullscreen: "
+                f"IoU={return_iou:.6f}"
+            )
+
+        log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        creations = layer_surface_creation_count(log_text, layer)
+        if creations != 1:
+            raise RuntimeError(
+                f"fullscreen lifecycle remapped layer surface: creations={creations}"
+            )
+
+        return {
+            "scale": scale,
+            "layer": layer,
+            "window_id": window_id,
+            "dpr": geometry.get("dpr"),
+            "before_material_pixels": before_count,
+            "fullscreen_material_pixels": fullscreen_count,
+            "after_material_pixels": after_count,
+            "return_iou": return_iou,
+            "layer_surface_creations": creations,
+            "overlay_visible_above_fullscreen": (
+                fullscreen_count >= 100 if layer == "overlay" else None
+            ),
+            "passed": True,
+        }
+    finally:
+        terminate(process)
+
+
 def benchmark_mode(
     *,
     work: Path,
@@ -449,6 +856,11 @@ def main() -> int:
         help="Synthetic source positions; extremes exercise screen-edge clamping.",
     )
     parser.add_argument("--layer", choices=("top", "overlay"), default="overlay")
+    parser.add_argument(
+        "--skip-lifecycle",
+        action="store_true",
+        help="Skip motion/reveal/fullscreen lifecycle gates during focused topology iteration.",
+    )
     parser.add_argument("--benchmark", action="store_true")
     parser.add_argument("--benchmark-warmup", type=int, default=60)
     parser.add_argument("--benchmark-samples", type=int, default=300)
@@ -513,6 +925,9 @@ def main() -> int:
         "source_ts": args.source_ts,
         "layer": args.layer,
         "cases": [],
+        "motion_lifecycle": {},
+        "reveal_lifecycle": {},
+        "fullscreen_lifecycle": {},
         "benchmarks": {},
         "failure": None,
     }
@@ -640,6 +1055,38 @@ def main() -> int:
                     )
                     if not passed:
                         raise RuntimeError(f"U1 topology case failed: {case}")
+
+        if not args.skip_lifecycle:
+            lifecycle_scale = float(args.scales[0])
+            set_output_scale(niri, child_env, output_name, lifecycle_scale)
+            report["motion_lifecycle"] = run_motion_lifecycle_case(
+                work=work,
+                quickshell=quickshell,
+                grim=grim,
+                env=child_env,
+                output=output_name,
+                scale=lifecycle_scale,
+                layer=args.layer,
+            )
+            report["reveal_lifecycle"] = run_reveal_lifecycle_case(
+                work=work,
+                quickshell=quickshell,
+                env=child_env,
+                output=output_name,
+                scale=lifecycle_scale,
+                layer=args.layer,
+            )
+            for lifecycle_layer in ("top", "overlay"):
+                report["fullscreen_lifecycle"][lifecycle_layer] = run_fullscreen_lifecycle_case(
+                    work=work,
+                    niri=niri,
+                    quickshell=quickshell,
+                    grim=grim,
+                    env=child_env,
+                    output=output_name,
+                    scale=lifecycle_scale,
+                    layer=lifecycle_layer,
+                )
 
         if args.benchmark:
             outputs = niri_outputs(niri, child_env)

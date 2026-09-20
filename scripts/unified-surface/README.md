@@ -53,6 +53,7 @@ HADALIS_U1_LAYER=top|overlay
 HADALIS_U1_MODE=control|bounded|full
 HADALIS_U1_ANIMATE=0|1
 HADALIS_U1_REVEAL_CYCLE=0|1
+HADALIS_U1_TRACE_GEOMETRY=0|1
 HADALIS_U1_TARGET_HZ=60
 HADALIS_U1_BENCHMARK=0|1
 ```
@@ -193,3 +194,28 @@ correct rather than adding a one-pixel compensation patch.
 `--benchmark` additionally compares control, bounded and full modes using the
 existing FrameAnimation instrumentation. Evidence is kept in a fresh
 `/tmp/hadalis-u1-live-*` directory unless `--work-dir` is supplied.
+
+
+## Motion and fullscreen lifecycle gates
+
+The live validator also proves that the unified visual host remains the same
+Wayland layer surface while geometry changes. Motion/reveal runs enable
+`WAYLAND_DEBUG=client` and require exactly one `get_layer_surface` creation
+for the U1 namespace while:
+
+- the synthetic source sweeps from left through center to right;
+- captured moving silhouettes remain one dominant connected component;
+- reveal traverses hidden/open states;
+- geometry trace demonstrates that data changed without remapping the host.
+
+A test-only `FloatingWindow` is created only when
+`HADALIS_U1_FULLSCREEN_PROBE=1`. The validator asks the **nested** Niri
+instance to fullscreen that window by IPC. It requires:
+
+- the Top U1 host to return with the same material after fullscreen exits;
+- the Overlay U1 host to stay visible over fullscreen content;
+- exactly one layer-surface creation through each enter/exit sequence.
+
+These probes are isolated to U1 and never modify the production shell or host
+Niri configuration. Use `--skip-lifecycle` only for focused topology
+iteration; it is not a complete U1 acceptance run.

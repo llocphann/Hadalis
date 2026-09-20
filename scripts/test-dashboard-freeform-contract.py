@@ -194,10 +194,17 @@ def main() -> None:
         "focusPolicy: Qt.StrongFocus",
         'Config.setNestedValue(\n                    "dashboard.canvas.autoAdjustSize"',
         "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",
-        "implicitWidth: Math.ceil(editActions.implicitWidth",
+        "implicitWidth: Math.ceil(Math.max(",
+        "editActions.implicitWidth,",
+        "availableModulesRow.implicitWidth)",
+        "id: availableModulesViewport",
+        "contentWidth: availableModulesRow.implicitWidth",
+        "flickableDirection: Flickable.HorizontalFlick",
+        "id: availableModulesRow",
         "readonly property real horizontalPadding: 7",
     ):
         require(toolbar, token, "DashboardEditToolbar.qml")
+    forbid(toolbar, "Flow {", "DashboardEditToolbar.qml")
     for source, text in (
         ("Dashboard.qml", standalone),
         ("OverviewDashboard.qml", overview),

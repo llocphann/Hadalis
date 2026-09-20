@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard the static ii panel type chain against retired QML APIs."""
+"""Guard the deferred ii host against cross-panel type-chain regressions."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,11 +18,44 @@ def forbid(source: str, token: str, label: str) -> None:
         failures.append(f"{label}: forbidden {token!r}")
 
 for token in (
-    'PanelLoader { identifier: "iiOnScreenDisplay"; component: OnScreenDisplay {} }',
+    'PanelLoader { identifier: "iiOnScreenDisplay"; source: "../onScreenDisplay/OnScreenDisplay.qml" }',
     'identifier: "iiDashboard"',
+    'source: "../dashboard/Dashboard.qml"',
+    'identifier: "iiOverview"',
+    'source: "../overview/Overview.qml"',
     'identifier: "iiScreenCorners"',
+    'source: "../screenCorners/ScreenCorners.qml"',
+    'identifier: "iiSidebarLeft"',
+    'source: "../sidebarLeft/SidebarLeft.qml"',
+    'identifier: "iiSidebarRight"',
+    'source: "../sidebarRight/SidebarRight.qml"',
 ):
     require(panels, token, "ii panel registry")
+
+# Optional panel implementations must stay behind URL boundaries. A parse/type
+# regression in OSD, lock, wallpaper, etc. must not make the shared deferred
+# host unavailable and take Sidebar/Dashboard/Overview down with it.
+for token in (
+    "component: NotificationPopup {}",
+    "component: OnScreenDisplay {}",
+    "component: BootGreeting {}",
+    "component: Lock {}",
+    "component: MediaControls {}",
+    "component: OnScreenKeyboard {}",
+    "component: Overlay {}",
+    "component: Polkit {}",
+    "component: RegionSelector {}",
+    "component: ScreenCorners {}",
+    "component: SessionScreen {}",
+    "component: TilingOverlay {}",
+    "component: WallpaperSelector {}",
+    "component: WallpaperLauncher {}",
+    "component: WallpaperCoverflow {}",
+    "component: ClipboardModule.ClipboardPanel {}",
+    "component: ShellUpdateOverlay {}",
+    "component: RecordingOsd {}",
+):
+    forbid(panels, token, "ii deferred host isolation")
 
 for token in (
     "ConnectedSurfaceBodyMask 1.0 ConnectedSurfaceBodyMask.qml",

@@ -1829,12 +1829,14 @@ def main() -> None:
     for token in (
         "GlobalStates.toggleSidebarLeft",
         "GlobalStates.toggleSidebarRight",
-        "GlobalStates.openOrbit(",
+        "GlobalStates.openTaskView(",
+        'GlobalStates.overviewMode !== "taskview"',
         "Brightness.getMonitorForScreen",
         "Audio.incrementVolume()",
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+    forbid(screen_corners, "GlobalStates.openOrbit(", "screenCorners/ScreenCorners.qml")
     for token in ("RoundCorner", "fakeScreenRounding", "showFakeRounding", "roundingSize"):
         forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
 

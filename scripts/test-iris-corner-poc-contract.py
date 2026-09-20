@@ -12,6 +12,7 @@ wrapper = (POC / "IrisCornerField.qml").read_text(encoding="utf-8")
 window = (POC / "IrisCornerPocWindow.qml").read_text(encoding="utf-8")
 readme = (POC / "README.md").read_text(encoding="utf-8")
 capture = (POC / "capture-matrix.sh").read_text(encoding="utf-8")
+g1_capture = (POC / "capture-g1.sh").read_text(encoding="utf-8")
 exclusions = json.loads((ROOT / "sdata" / "runtime-exclusions.json").read_text(encoding="utf-8"))
 
 assert "scripts/iris-corner-poc" in exclusions["excludedPaths"]
@@ -234,5 +235,25 @@ for forbidden in (
     "modules/waffle",
 ):
     assert forbidden not in capture, f"live matrix may affect production: {forbidden}"
+
+for token in (
+    "G1 acceptance must use HADALIS_IRIS_POC_MODE=card-owner",
+    "python3 \"$repo_root/scripts/test-iris-corner-poc-contract.py\"",
+    "g1-run.txt",
+    "repo_head=",
+    "for profile in diagnostic upstream-relative",
+    "HADALIS_IRIS_POC_MODE=card-owner",
+    "detail-sheet-card-owner-diagnostic.png",
+    "detail-sheet-card-owner-upstream-relative.png",
+):
+    assert token in g1_capture, f"G1 wrapper contract missing: {token}"
+
+for forbidden in (
+    "edge-reach",
+    "inir restart",
+    "inir reload",
+    "modules/waffle",
+):
+    assert forbidden not in g1_capture, f"G1 wrapper may change acceptance scope: {forbidden}"
 
 print("iRiS corner PoC contract: PASS")

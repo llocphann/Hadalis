@@ -200,6 +200,21 @@ labelling fallback geometry with the wrong artifact name.
 Use `edge-reach` only as a diagnostic comparison after the card-owner matrix
 has been reviewed.
 
+## Run the complete G1 acceptance pair
+
+For the normal acceptance run, prefer the wrapper so both profiles belong to
+one timestamped evidence directory and the static source contract runs first:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+scripts/iris-corner-poc/capture-g1.sh
+```
+
+It forces `card-owner`, captures `diagnostic` then `upstream-relative`,
+and writes `g1-run.txt` with the repository HEAD plus the paired profile
+artifacts. Set `HADALIS_IRIS_POC_CAPTURE_DIR` only when you intentionally want
+a specific evidence directory.
+
 ## Acceptance before production work
 
 The first gate is visual, not architectural:

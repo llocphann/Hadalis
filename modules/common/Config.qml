@@ -500,8 +500,9 @@ Singleton {
                         property real opacity: 0.70
                     }
 
-                    // Physical Screen Edge shadow only. Defaults mirror
-                    // Caelestia ContentWindow: enabled, blurMax 15, alpha 0.70.
+                    // Public Screen Edge depth controls. The physical frame and
+                    // ii Bar popups share these values so popup depth matches
+                    // the perimeter. Defaults mirror Caelestia ContentWindow.
                     property JsonObject physicalShadow: JsonObject {
                         property bool enabled: true
                         property int size: 15

@@ -108,10 +108,13 @@ def main() -> None:
     for token in (
         "property bool connectAdjacentScreenEdge: false",
         "id: directEdgeAttachment",
+        "readonly property real _popupScreenMargin: root._screenEdgeThickness",
         "screenMargin: root._popupScreenMargin",
         "connectorLength: 0",
-        "connectorVisible: false",
+        "ConnectedSurfaceIrisFrame {",
         "shadowEnabled: root._edgeShadowEnabled",
+        "screenEdge?.physicalShadow?.enabled ?? true",
+        "Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)",
     ):
         check(token in styled_popup,
               f"StyledPopup must use direct Caelestia-style edge attachment: {token}")

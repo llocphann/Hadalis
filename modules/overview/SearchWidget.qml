@@ -17,6 +17,13 @@ Item { // Wrapper
     readonly property string xdgConfigHome: Directories.config
     property string searchingText: ""
     property bool showResults: searchingText != ""
+    // The embedded Dashboard waits for the 60 ms query debounce to finish
+    // before crossfading away from its module canvas. This prevents the first
+    // search frame from fading into an empty result model and then resizing a
+    // second time when results arrive.
+    readonly property bool resultsReady: !root.showResults
+        || (!searchDebounceTimer.running
+            && root.debouncedSearchText === root.searchingText)
     // Embedded Dashboard owns the crossfade. Standalone search keeps 1.0.
     property real resultsOpacity: 1
     property bool panelVisible: true

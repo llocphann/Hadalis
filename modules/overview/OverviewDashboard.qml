@@ -16,6 +16,7 @@ Item {
     property string searchingText: ""
     property real revealProgress: 0
     property real dashboardProgress: 1
+    property bool _hasPresentedOnce: false
     property real availableWidth: root.QsWindow?.window?.screen?.width ?? 1920
     property real availableHeight: root.QsWindow?.window?.screen?.height ?? 1080
     property real attachmentThickness: Math.max(1, Math.min(32,
@@ -23,6 +24,16 @@ Item {
 
     readonly property bool applicationDragActive: searchWidget.applicationDragActive
     readonly property bool searching: root.searchingText.length > 0
+    readonly property bool presentingSearch:
+        root.searching && searchWidget.resultsReady
+    readonly property real searchTransitionProgress:
+        1 - root.dashboardProgress
+    readonly property int modeTransitionDuration:
+        Math.max(220, Math.round(SurfaceMotion.duration * 0.9))
+    readonly property real dashboardOpacity:
+        1 - root._smooth01(root.searchTransitionProgress / 0.44)
+    readonly property real searchResultsOpacity:
+        root._smooth01((root.searchTransitionProgress - 0.22) / 0.78)
     readonly property real widthRatio: Math.min(0.9, Math.max(0.4, Config.options?.dashboard?.widthRatio ?? 0.72))
     readonly property real heightRatio: Math.min(0.9, Math.max(0.45, Config.options?.dashboard?.heightRatio ?? 0.72))
     readonly property real dashboardWidth: Math.round(Math.max(0,
@@ -61,15 +72,58 @@ Item {
     function cancelSearch(): void { searchWidget.cancelSearch() }
     function focusFirstItem(): void { searchWidget.focusFirstItem() }
     function setSearchingText(text): void { searchWidget.setSearchingText(text) }
-    function syncReveal(): void { root.revealProgress = root.popupPresented ? 1 : 0 }
-    function syncDashboard(): void { root.dashboardProgress = root.searching ? 0 : 1 }
+    function _clamp01(value): real {
+        return Math.max(0, Math.min(1, value))
+    }
+    function _smooth01(value): real {
+        const t = root._clamp01(value)
+        return t * t * (3 - 2 * t)
+    }
+    function syncReveal(): void {
+        if (!root.popupPresented) {
+            firstRevealFrameTimer.stop()
+            root.revealProgress = 0
+            return
+        }
+
+        // The first mapped frame used to race the PanelWindow mapping: the
+        // reveal animation was already progressing while the compositor had
+        // not presented the surface yet, so the first open looked like a fade/
+        // pop instead of a slide. Keep one closed frame resident, then start
+        // the immutable SurfaceMotion slide. Later opens reverse normally.
+        if (!root._hasPresentedOnce) {
+            root._hasPresentedOnce = true
+            root.revealProgress = 0
+            firstRevealFrameTimer.restart()
+            return
+        }
+        root.revealProgress = 1
+    }
+    function syncDashboard(): void {
+        root.dashboardProgress = root.presentingSearch ? 0 : 1
+    }
     onPopupPresentedChanged: root.syncReveal()
     onSearchingChanged: root.syncDashboard()
 
+    Connections {
+        target: searchWidget
+        function onResultsReadyChanged(): void { root.syncDashboard() }
+    }
+
+    Timer {
+        id: firstRevealFrameTimer
+        interval: 16
+        repeat: false
+        onTriggered: {
+            if (root.popupPresented)
+                root.revealProgress = 1
+        }
+    }
+
     Component.onCompleted: {
         root.revealProgress = 0
-        root.dashboardProgress = root.searching ? 0 : 1
-        Qt.callLater(root.syncReveal)
+        root.dashboardProgress = root.presentingSearch ? 0 : 1
+        root.syncReveal()
     }
 
     Behavior on revealProgress {
@@ -78,7 +132,10 @@ Item {
     }
     Behavior on dashboardProgress {
         enabled: Appearance.animationsEnabled
-        NumberAnimation { duration: SurfaceMotion.duration; easing.type: SurfaceMotion.easingType }
+        NumberAnimation {
+            duration: root.modeTransitionDuration
+            easing.type: Easing.InOutCubic
+        }
     }
 
     Item {
@@ -153,7 +210,8 @@ Item {
             verticalCenter: root.directBottomAttachment ? undefined : parent.verticalCenter
         }
         width: root.dashboardWidth
-        height: root.searching ? root.searchOnlyHeight : root.configuredHeight
+        height: root.presentingSearch
+            ? root.searchOnlyHeight : root.configuredHeight
         radius: Appearance.rounding.large
         topLeftRadius: radius
         topRightRadius: radius
@@ -165,7 +223,10 @@ Item {
 
         Behavior on height {
             enabled: Appearance.animationsEnabled
-            NumberAnimation { duration: SurfaceMotion.duration; easing.type: SurfaceMotion.easingType }
+            NumberAnimation {
+                duration: root.modeTransitionDuration
+                easing.type: Easing.InOutCubic
+            }
         }
 
         Item {
@@ -175,14 +236,15 @@ Item {
             width: Math.max(0, dashContainer.width - 24)
             height: root.dashboardContentHeight
             clip: true
-            visible: root.dashboardProgress > 0.001
-            opacity: root.dashboardProgress
+            visible: root.dashboardOpacity > 0.001
+            opacity: root.dashboardOpacity
 
             DashboardContent {
                 id: dashboardContent
                 anchors.fill: parent
                 embeddedSurface: true
-                presentationActive: root.panelVisible && root.popupPresented && root.dashboardProgress > 0.001
+                presentationActive: root.panelVisible && root.popupPresented
+                    && root.dashboardOpacity > 0.001
                 screenWidth: root.availableWidth
                 screenHeight: root.availableHeight
             }
@@ -199,7 +261,7 @@ Item {
             panelVisible: root.panelVisible
             directBottomAttachment: false
             searchingText: root.searchingText
-            resultsOpacity: 1 - root.dashboardProgress
+            resultsOpacity: root.searchResultsOpacity
             availableHeight: Math.max(220, root.configuredHeight - 24)
             onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
         }

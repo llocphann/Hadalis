@@ -98,10 +98,12 @@ for forbidden in (
         )
 
 helper_path = "scripts/code-workflow/signal_action.py"
-if helper_path not in set(EXCLUSIONS.get("excludedPaths", [])):
-    fail("2K-W-A helper must remain outside runtime payload")
-if helper_path in SERVICE or helper_path in PAGE:
-    fail("2K-W-A helper must not be production-wired")
+if helper_path in set(EXCLUSIONS.get("excludedPaths", [])):
+    fail("2K-W-C promoted signal_action.py must ship in runtime payload")
+if helper_path not in SERVICE:
+    fail("2K-W-C transaction service must invoke signal_action.py")
+if helper_path in PAGE:
+    fail("Settings must never invoke signal_action.py directly")
 
 for token in (
     "Milestone 2K-W-A — reviewed signal-to-existing-action preview proof",

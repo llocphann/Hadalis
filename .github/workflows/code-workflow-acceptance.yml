@@ -108,6 +108,9 @@ jobs:
       - name: Prove isolated reviewed signal-action transaction
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-signal-action-transaction.py'
 
+      - name: Validate reviewed Signal/Action internal production lifecycle
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-signal-action-production-lifecycle.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply

@@ -37,10 +37,12 @@ for path in (
     "scripts/code-workflow/signal_action_prepare.py",
     "scripts/code-workflow/signal_action_commit.py",
 ):
-    if path not in set(EXCLUSIONS.get("excludedPaths", [])):
-        fail("2K-W-B helper must remain runtime-excluded: " + path)
-    if path in SERVICE or path in PAGE:
-        fail("2K-W-B helper must not be production-wired: " + path)
+    if path in set(EXCLUSIONS.get("excludedPaths", [])):
+        fail("2K-W-C promoted helper is still runtime-excluded: " + path)
+    if path not in SERVICE:
+        fail("2K-W-C transaction service must reference helper: " + path)
+    if path in PAGE:
+        fail("Settings must never invoke signal/action Python helper directly: " + path)
 
 for token in (
     'ARTIFACT_PROOF = "prepared-reviewed-signal-action-artifacts-v1"',

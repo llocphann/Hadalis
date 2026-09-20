@@ -36,6 +36,8 @@ Singleton {
     property string _pendingBindingGraphTargetId: ""
     property string _pendingDisconnectGraphTargetId: ""
     property string _pendingDisconnectEdgeId: ""
+    property string _pendingSignalActionGraphTargetId: ""
+    property string _pendingSignalActionTargetId: ""
     property int _pendingConnectSafetyIndex: -1
     property string _pendingConnectSafetyCandidateSha: ""
     property int _pendingConnectPreparationIndex: -1
@@ -55,6 +57,14 @@ Singleton {
     property var bindingLifecycleResult: ({})
     property string bindingLifecycleError: ""
     property var bindingAuthorizationDiagnostics: ({
+        status: "not-authorized",
+        ready: false,
+        reason: "not-authorized"
+    })
+    property string signalActionPreparationError: ""
+    property var signalActionLifecycleResult: ({})
+    property string signalActionLifecycleError: ""
+    property var signalActionAuthorizationDiagnostics: ({
         status: "not-authorized",
         ready: false,
         reason: "not-authorized"
@@ -125,9 +135,12 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && reloadState.pendingApplyManifestPath.length > 0
     readonly property bool previewBusy:
-        previewProcess.running || connectPreviewProcess.running
+        previewProcess.running
+        || connectPreviewProcess.running
+        || signalActionPreviewProcess.running
     readonly property bool connectSafetyBusy:
         connectSafetyProcess.running
     readonly property bool connectPreparationBusy:
@@ -185,7 +198,9 @@ Singleton {
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.applyLifecycleBusy
         && !root.bindingArtifactsReady
     readonly property bool bindingAuthorizeEnabled:
@@ -198,7 +213,9 @@ Singleton {
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.applyLifecycleBusy
         && !root.bindingAuthorizationReady
     readonly property bool bindingApplyEnabled:
@@ -216,7 +233,107 @@ Singleton {
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
+        && !root.applyLifecycleBusy
+
+
+    readonly property bool signalActionPreparationBusy:
+        signalActionPrepareProcess.running
+    readonly property bool signalActionLifecycleBusy:
+        [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "postcondition-checking",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ].includes(reloadState.pendingSignalActionPhase)
+        || signalActionCommitProcess.running
+        || signalActionVerifyProcess.running
+        || signalActionRollbackProcess.running
+    readonly property string pendingSignalActionPhase:
+        reloadState.pendingSignalActionPhase
+    readonly property var activeSignalActionPreparation:
+        root._signalActionPreparationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.signalActionPreparation
+            : null
+    readonly property bool signalActionArtifactsReady:
+        root.activeSignalActionPreparation !== null
+    readonly property var activeSignalActionAuthorization:
+        root._signalActionAuthorizationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.signalActionAuthorization
+            : null
+    readonly property bool signalActionAuthorizationReady:
+        root.activeSignalActionAuthorization !== null
+        && root.signalActionArtifactsReady
+        && root.activeCommand?.stale !== true
+    readonly property bool signalActionPrepareEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "signal-action"
+        && String(root.activeCommand?.targetId ?? "") === "bar/media"
+        && String(root.activeCommand?.signalActionTargetId ?? "")
+            === "media.signal.doubleClickToggle"
+        && String(root.activeCommand?.sourcePath ?? "")
+            === "modules/bar/Media.qml"
+        && String(root.activeCommand?.handlerName ?? "")
+            === "onDoubleClicked"
+        && String(root.activeCommand?.actionExpression ?? "")
+            === "root.toggleExpanded()"
+        && String(root.activeCommand?.insertedSemanticKind ?? "")
+            === "handler-candidate"
+        && String(root.activeCommand?.insertedValueKind ?? "")
+            === "call_expression"
+        && root.activeCommand?.sourceWritable === true
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.signalActionPreparationBusy
+        && !root.signalActionLifecycleBusy
+        && !root.bindingPreparationBusy
+        && !root.bindingLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.applyLifecycleBusy
+        && !root.signalActionArtifactsReady
+    readonly property bool signalActionAuthorizeEnabled:
+        root.signalActionArtifactsReady
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.signalActionPreparationBusy
+        && !root.signalActionLifecycleBusy
+        && !root.bindingPreparationBusy
+        && !root.bindingLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.applyLifecycleBusy
+        && !root.signalActionAuthorizationReady
+    readonly property bool signalActionApplyEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "signal-action"
+        && root.signalActionAuthorizationReady
+        && root.signalActionArtifactsReady
+        && root.status === "preview"
+        && Quickshell.watchFiles
+        && reloadState.pendingSignalActionPhase === "idle"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.signalActionPreparationBusy
+        && !root.signalActionLifecycleBusy
+        && !root.bindingPreparationBusy
+        && !root.bindingLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
         && !root.applyLifecycleBusy
 
     readonly property bool disconnectPreparationBusy:
@@ -265,8 +382,10 @@ Singleton {
         && !root.previewBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
         && !root.applyLifecycleBusy
@@ -278,8 +397,10 @@ Singleton {
         && !root.previewBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
         && !root.applyLifecycleBusy
@@ -296,8 +417,10 @@ Singleton {
         && !root.previewBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
         && !root.applyLifecycleBusy
@@ -350,8 +473,10 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.applyLifecycleBusy
         && !root.connectAuthorizationReady
     readonly property bool connectApplyEnabled:
@@ -369,8 +494,10 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.applyLifecycleBusy
     readonly property bool connectPrepareEnabled:
         !!root.activeCommand
@@ -384,8 +511,10 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && !root.connectArtifactsReady
@@ -396,8 +525,10 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex >= 0
@@ -408,8 +539,10 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex + 1 < root.history.length
@@ -435,8 +568,10 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.signalActionLifecycleBusy
         && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.signalActionPreparationBusy
 
     readonly property string reloadStateJson: JSON.stringify({
         version: 1,
@@ -529,6 +664,40 @@ Singleton {
             reloadState.pendingBindingRollbackRecovery,
         pendingBindingError:
             reloadState.pendingBindingError,
+        pendingSignalActionPhase:
+            reloadState.pendingSignalActionPhase,
+        pendingSignalActionGraphTargetId:
+            reloadState.pendingSignalActionGraphTargetId,
+        pendingSignalActionTargetId:
+            reloadState.pendingSignalActionTargetId,
+        pendingSignalActionSourcePath:
+            reloadState.pendingSignalActionSourcePath,
+        pendingSignalActionBaseSha256:
+            reloadState.pendingSignalActionBaseSha256,
+        pendingSignalActionCandidateSha256:
+            reloadState.pendingSignalActionCandidateSha256,
+        pendingSignalActionParentSemanticAnchor:
+            reloadState.pendingSignalActionParentSemanticAnchor,
+        pendingSignalActionExistingActionSemanticAnchor:
+            reloadState.pendingSignalActionExistingActionSemanticAnchor,
+        pendingSignalActionInsertedHandlerSemanticAnchor:
+            reloadState.pendingSignalActionInsertedHandlerSemanticAnchor,
+        pendingSignalActionHistoryIndex:
+            reloadState.pendingSignalActionHistoryIndex,
+        pendingSignalActionManifestPath:
+            reloadState.pendingSignalActionManifestPath,
+        pendingSignalActionManifestSha256:
+            reloadState.pendingSignalActionManifestSha256,
+        pendingSignalActionAuthorizationToken:
+            reloadState.pendingSignalActionAuthorizationToken,
+        pendingSignalActionReloadOutcome:
+            reloadState.pendingSignalActionReloadOutcome,
+        pendingSignalActionVerifyState:
+            reloadState.pendingSignalActionVerifyState,
+        pendingSignalActionRollbackRecovery:
+            reloadState.pendingSignalActionRollbackRecovery,
+        pendingSignalActionError:
+            reloadState.pendingSignalActionError,
         pendingDisconnectPhase:
             reloadState.pendingDisconnectPhase,
         pendingDisconnectGraphTargetId:
@@ -606,6 +775,18 @@ Singleton {
         const bindingPhase = String(
             reloadState.pendingBindingPhase ?? "idle")
         const activeBindingPhases = [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "postcondition-checking",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ]
+        const signalActionPhase = String(
+            reloadState.pendingSignalActionPhase ?? "idle")
+        const activeSignalActionPhases = [
             "write-issued",
             "waiting-reload",
             "candidate-verify-issued",
@@ -698,6 +879,35 @@ Singleton {
                 })
             }
 
+            const signalActionAuthorization =
+                command?.signalActionAuthorization
+            const preserveSignalActionAuthorization =
+                !!signalActionAuthorization
+                && activeSignalActionPhases.includes(signalActionPhase)
+                && index === Number(
+                    reloadState.pendingSignalActionHistoryIndex ?? -1)
+                && String(command?.candidateSha256 ?? "")
+                    === String(
+                        reloadState.pendingSignalActionCandidateSha256 ?? "")
+                && String(
+                    signalActionAuthorization?.authorizationToken ?? "")
+                    === String(
+                        reloadState.pendingSignalActionAuthorizationToken ?? "")
+            if (signalActionAuthorization
+                    && !preserveSignalActionAuthorization) {
+                next = Object.assign({}, next, {
+                    signalActionAuthorization: Object.assign(
+                        {},
+                        signalActionAuthorization,
+                        {
+                            status: "expired",
+                            authorized: false,
+                            reason:
+                                "cross-generation-reauthorization-required"
+                        })
+                })
+            }
+
             const disconnectAuthorization =
                 command?.disconnectAuthorization
             const preserveDisconnectAuthorization =
@@ -760,6 +970,12 @@ Singleton {
                 String(reloadState.pendingBindingSourcePath ?? "")
             restoredOwnerIndex =
                 Number(reloadState.pendingBindingHistoryIndex ?? -1)
+        } else if (activeSignalActionPhases.includes(signalActionPhase)) {
+            restoredOwnerKind = "signal-action"
+            restoredOwnerPath =
+                String(reloadState.pendingSignalActionSourcePath ?? "")
+            restoredOwnerIndex =
+                Number(reloadState.pendingSignalActionHistoryIndex ?? -1)
         } else if (activeDisconnectPhases.includes(disconnectPhase)) {
             restoredOwnerKind = "disconnect"
             restoredOwnerPath =
@@ -779,6 +995,7 @@ Singleton {
         Qt.callLater(root._recoverApplyLifecycle)
         Qt.callLater(root._recoverConnectLifecycle)
         Qt.callLater(root._recoverBindingLifecycle)
+        Qt.callLater(root._recoverSignalActionLifecycle)
         Qt.callLater(root._recoverDisconnectLifecycle)
         Qt.callLater(root.reverifyActiveConnectSafety)
         Qt.callLater(root.probeActiveConnectPreparationCapability)
@@ -895,6 +1112,40 @@ Singleton {
             snapshot.pendingBindingRollbackRecovery ?? "none")
         reloadState.pendingBindingError = String(
             snapshot.pendingBindingError ?? "")
+        reloadState.pendingSignalActionPhase = String(
+            snapshot.pendingSignalActionPhase ?? "idle")
+        reloadState.pendingSignalActionGraphTargetId = String(
+            snapshot.pendingSignalActionGraphTargetId ?? "")
+        reloadState.pendingSignalActionTargetId = String(
+            snapshot.pendingSignalActionTargetId ?? "")
+        reloadState.pendingSignalActionSourcePath = String(
+            snapshot.pendingSignalActionSourcePath ?? "")
+        reloadState.pendingSignalActionBaseSha256 = String(
+            snapshot.pendingSignalActionBaseSha256 ?? "")
+        reloadState.pendingSignalActionCandidateSha256 = String(
+            snapshot.pendingSignalActionCandidateSha256 ?? "")
+        reloadState.pendingSignalActionParentSemanticAnchor = String(
+            snapshot.pendingSignalActionParentSemanticAnchor ?? "")
+        reloadState.pendingSignalActionExistingActionSemanticAnchor = String(
+            snapshot.pendingSignalActionExistingActionSemanticAnchor ?? "")
+        reloadState.pendingSignalActionInsertedHandlerSemanticAnchor = String(
+            snapshot.pendingSignalActionInsertedHandlerSemanticAnchor ?? "")
+        reloadState.pendingSignalActionHistoryIndex = Number(
+            snapshot.pendingSignalActionHistoryIndex ?? -1)
+        reloadState.pendingSignalActionManifestPath = String(
+            snapshot.pendingSignalActionManifestPath ?? "")
+        reloadState.pendingSignalActionManifestSha256 = String(
+            snapshot.pendingSignalActionManifestSha256 ?? "")
+        reloadState.pendingSignalActionAuthorizationToken = String(
+            snapshot.pendingSignalActionAuthorizationToken ?? "")
+        reloadState.pendingSignalActionReloadOutcome = String(
+            snapshot.pendingSignalActionReloadOutcome ?? "none")
+        reloadState.pendingSignalActionVerifyState = String(
+            snapshot.pendingSignalActionVerifyState ?? "unknown")
+        reloadState.pendingSignalActionRollbackRecovery = String(
+            snapshot.pendingSignalActionRollbackRecovery ?? "none")
+        reloadState.pendingSignalActionError = String(
+            snapshot.pendingSignalActionError ?? "")
         reloadState.pendingDisconnectPhase = String(
             snapshot.pendingDisconnectPhase ?? "idle")
         reloadState.pendingDisconnectGraphTargetId = String(
@@ -1335,7 +1586,8 @@ Singleton {
                 || root.applyLifecycleBusy
                 || root.connectLifecycleBusy
                 || root.bindingLifecycleBusy
-                || root.disconnectLifecycleBusy)
+                || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy)
             return false
 
         reloadState.pendingBindingPhase = "prepared"
@@ -1872,6 +2124,887 @@ Singleton {
     }
 
     
+    function _signalActionPreparationMatchesCommand(command): bool {
+        if (!command
+                || command.stale === true
+                || String(command.kind ?? "") !== "signal-action"
+                || String(command.targetId ?? "") !== "bar/media"
+                || String(command.signalActionTargetId ?? "")
+                    !== "media.signal.doubleClickToggle"
+                || String(command.sourcePath ?? "")
+                    !== "modules/bar/Media.qml"
+                || String(command.handlerName ?? "")
+                    !== "onDoubleClicked"
+                || String(command.actionFunctionName ?? "")
+                    !== "toggleExpanded"
+                || String(command.actionExpression ?? "")
+                    !== "root.toggleExpanded()"
+                || String(command.insertedSemanticKind ?? "")
+                    !== "handler-candidate"
+                || String(command.insertedValueKind ?? "")
+                    !== "call_expression")
+            return false
+        const prepared = command.signalActionPreparation
+        if (!prepared || Number(prepared.version ?? 0) !== 1)
+            return false
+        return String(prepared.status ?? "") === "prepared"
+            && prepared.stale !== true
+            && String(prepared.artifactProof ?? "")
+                === "prepared-reviewed-signal-action-artifacts-v1"
+            && String(prepared.targetId ?? "")
+                === String(command.targetId ?? "")
+            && String(prepared.signalActionTargetId ?? "")
+                === String(command.signalActionTargetId ?? "")
+            && String(prepared.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(prepared.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(prepared.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(prepared.parentSemanticAnchor ?? "")
+                === String(command.parentSemanticAnchor ?? "")
+            && String(prepared.existingActionSemanticAnchor ?? "")
+                === String(command.existingActionSemanticAnchor ?? "")
+            && String(prepared.insertedHandlerSemanticAnchor ?? "")
+                === String(command.insertedHandlerSemanticAnchor ?? "")
+            && String(prepared.handlerName ?? "")
+                === String(command.handlerName ?? "")
+            && String(prepared.actionExpression ?? "")
+                === String(command.actionExpression ?? "")
+            && String(prepared.postcondition ?? "")
+                === "inserted-handler-rebound-exact-action"
+            && String(prepared.manifestPath ?? "").length > 0
+            && root._sha256LooksValid(prepared.manifestSha256)
+            && prepared.writeAuthorized === false
+            && prepared.applyEnabled === false
+            && prepared.artifactsStaged === true
+            && prepared.productionIntegrated === false
+    }
+
+    function _sanitizeSignalActionPreparation(payload): var {
+        return {
+            version: 1,
+            status: "prepared",
+            stale: false,
+            staleReason: "",
+            artifactProof: String(payload?.artifactProof ?? ""),
+            transactionId: String(payload?.transactionId ?? ""),
+            targetId: String(payload?.targetId ?? ""),
+            signalActionTargetId:
+                String(payload?.signalActionTargetId ?? ""),
+            sourcePath: String(payload?.sourcePath ?? ""),
+            baseSha256: String(payload?.baseSha256 ?? ""),
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            parentSemanticAnchor:
+                String(payload?.parentSemanticAnchor ?? ""),
+            existingActionSemanticAnchor:
+                String(payload?.existingActionSemanticAnchor ?? ""),
+            insertedHandlerSemanticAnchor:
+                String(payload?.insertedHandlerSemanticAnchor ?? ""),
+            eventNodeId: String(payload?.eventNodeId ?? ""),
+            actionNodeId: String(payload?.actionNodeId ?? ""),
+            signalName: String(payload?.signalName ?? ""),
+            handlerName: String(payload?.handlerName ?? ""),
+            actionFunctionName:
+                String(payload?.actionFunctionName ?? ""),
+            actionExpression: String(payload?.actionExpression ?? ""),
+            insertedSemanticKind:
+                String(payload?.insertedSemanticKind ?? ""),
+            insertedValueKind:
+                String(payload?.insertedValueKind ?? ""),
+            postcondition: String(payload?.postcondition ?? ""),
+            snapshotPath: String(payload?.snapshotPath ?? ""),
+            candidatePath: String(payload?.candidatePath ?? ""),
+            manifestPath: String(payload?.manifestPath ?? ""),
+            manifestSha256: String(payload?.manifestSha256 ?? ""),
+            writeAuthorized: false,
+            applyEnabled: false,
+            artifactsStaged: true,
+            productionIntegrated: false
+        }
+    }
+
+    function prepareSignalActionArtifacts(): bool {
+        const command = root.activeCommand
+        if (!root.signalActionPrepareEnabled || !command)
+            return false
+        root.signalActionPreparationError = ""
+        signalActionPrepareProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/signal_action_prepare.py"),
+            "--target-id", String(command.targetId ?? ""),
+            "--signal-action-target-id",
+                String(command.signalActionTargetId ?? ""),
+            "--base-sha256", String(command.baseSha256 ?? ""),
+            "--expected-candidate-sha256",
+                String(command.candidateSha256 ?? ""),
+            "--parent-semantic-anchor",
+                String(command.parentSemanticAnchor ?? ""),
+            "--existing-action-semantic-anchor",
+                String(command.existingActionSemanticAnchor ?? ""),
+            "--inserted-handler-semantic-anchor",
+                String(command.insertedHandlerSemanticAnchor ?? ""),
+            "--state-dir",
+                Quickshell.statePath(
+                    "code-workflow/signal-action-transactions")
+        ]
+        signalActionPrepareProcess.running = true
+        return true
+    }
+
+    function finishSignalActionPreparation(exitCode: int): void {
+        const payload = root._parseProcessPayload(signalActionPrepareStdout)
+        const command = root.activeCommand
+        const exact = payload?.protocol === 1
+            && String(payload?.status ?? "")
+                === "prepared-signal-action-artifacts"
+            && !!command
+            && String(command.kind ?? "") === "signal-action"
+            && String(payload?.targetId ?? "")
+                === String(command.targetId ?? "")
+            && String(payload?.signalActionTargetId ?? "")
+                === String(command.signalActionTargetId ?? "")
+            && String(payload?.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(payload?.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(payload?.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(payload?.parentSemanticAnchor ?? "")
+                === String(command.parentSemanticAnchor ?? "")
+            && String(payload?.existingActionSemanticAnchor ?? "")
+                === String(command.existingActionSemanticAnchor ?? "")
+            && String(payload?.insertedHandlerSemanticAnchor ?? "")
+                === String(command.insertedHandlerSemanticAnchor ?? "")
+            && String(payload?.handlerName ?? "")
+                === String(command.handlerName ?? "")
+            && String(payload?.actionExpression ?? "")
+                === String(command.actionExpression ?? "")
+            && String(payload?.postcondition ?? "")
+                === "inserted-handler-rebound-exact-action"
+            && payload?.writeAuthorized === false
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === true
+            && payload?.productionIntegrated === false
+        if (exact) {
+            const prepared = root._sanitizeSignalActionPreparation(payload)
+            const promoted = Object.assign({}, command, {
+                signalActionPreparation: prepared
+            })
+            if (root._signalActionPreparationMatchesCommand(promoted)) {
+                const index = root.historyIndex
+                const next = root.history.slice()
+                next[index] = promoted
+                root.history = next
+                root.signalActionPreparationError = ""
+                root.status = "preview"
+                return
+            }
+        }
+        const stderrText = String(signalActionPrepareStderr.text ?? "").trim()
+        root.signalActionPreparationError = String(
+            payload?.detail ?? payload?.reason ?? stderrText
+            ?? ("Signal/action preparation exited " + exitCode))
+        root.status = payload?.status === "conflict" ? "conflict" : "error"
+        root.error = root.signalActionPreparationError
+    }
+
+    function _signalActionAuthorizationIdentityMatchesCommand(command): bool {
+        if (!command
+                || String(command.kind ?? "") !== "signal-action"
+                || !root._signalActionPreparationMatchesCommand(command))
+            return false
+        const authorization = command.signalActionAuthorization
+        const prepared = command.signalActionPreparation
+        if (!authorization || Number(authorization.version ?? 0) !== 1)
+            return false
+        return String(authorization.status ?? "") === "authorized"
+            && authorization.authorized === true
+            && String(authorization.authorizationProof ?? "")
+                === "explicit-signal-action-write-authorization-v1"
+            && String(authorization.authorizationToken ?? "")
+                === "signal-action-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? "")
+            && String(authorization.targetId ?? "")
+                === String(command.targetId ?? "")
+            && String(authorization.signalActionTargetId ?? "")
+                === String(command.signalActionTargetId ?? "")
+            && String(authorization.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(authorization.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(authorization.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(authorization.parentSemanticAnchor ?? "")
+                === String(command.parentSemanticAnchor ?? "")
+            && String(authorization.existingActionSemanticAnchor ?? "")
+                === String(command.existingActionSemanticAnchor ?? "")
+            && String(authorization.insertedHandlerSemanticAnchor ?? "")
+                === String(command.insertedHandlerSemanticAnchor ?? "")
+            && String(authorization.handlerName ?? "")
+                === String(command.handlerName ?? "")
+            && String(authorization.actionExpression ?? "")
+                === String(command.actionExpression ?? "")
+            && String(authorization.postcondition ?? "")
+                === "inserted-handler-rebound-exact-action"
+            && String(authorization.manifestPath ?? "")
+                === String(prepared.manifestPath ?? "")
+            && String(authorization.manifestSha256 ?? "")
+                === String(prepared.manifestSha256 ?? "")
+            && root._sha256LooksValid(authorization.manifestSha256)
+            && String(authorization.transactionId ?? "")
+                === String(prepared.transactionId ?? "")
+            && String(authorization.rollbackGuarantee ?? "")
+                === "exact-snapshot-auto-rollback-v1"
+    }
+
+    function _signalActionAuthorizationMatchesCommand(command): bool {
+        return !!command
+            && command.stale !== true
+            && root._signalActionPreparationMatchesCommand(command)
+            && root._signalActionAuthorizationIdentityMatchesCommand(command)
+    }
+
+    function _expireSignalActionAuthorization(command, reason: string): var {
+        const authorization = command?.signalActionAuthorization
+        if (!authorization
+                || authorization.authorized !== true
+                || String(authorization.status ?? "") !== "authorized")
+            return command
+        return Object.assign({}, command, {
+            signalActionAuthorization: Object.assign({}, authorization, {
+                status: "expired",
+                authorized: false,
+                reason: String(reason ?? "authorization-expired")
+            })
+        })
+    }
+
+    function _expireAllSignalActionAuthorizations(reason: string): void {
+        let changed = false
+        const next = root.history.map(command => {
+            const expired = root._expireSignalActionAuthorization(
+                command, reason)
+            if (expired !== command)
+                changed = true
+            return expired
+        })
+        if (changed)
+            root.history = next
+        root.signalActionAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "authorization-expired")
+        })
+    }
+
+    function authorizeSignalActionWrite(): bool {
+        if (!root.signalActionAuthorizeEnabled)
+            return false
+        const command = root.activeCommand
+        const prepared = root.activeSignalActionPreparation
+        if (!command || !prepared)
+            return false
+        const authorization = {
+            version: 1,
+            status: "authorized",
+            authorized: true,
+            reason: "explicit-user-authorization",
+            authorizationProof:
+                "explicit-signal-action-write-authorization-v1",
+            authorizationToken:
+                "signal-action-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? ""),
+            targetId: String(command.targetId ?? ""),
+            signalActionTargetId:
+                String(command.signalActionTargetId ?? ""),
+            sourcePath: String(command.sourcePath ?? ""),
+            baseSha256: String(command.baseSha256 ?? ""),
+            candidateSha256: String(command.candidateSha256 ?? ""),
+            parentSemanticAnchor:
+                String(command.parentSemanticAnchor ?? ""),
+            existingActionSemanticAnchor:
+                String(command.existingActionSemanticAnchor ?? ""),
+            insertedHandlerSemanticAnchor:
+                String(command.insertedHandlerSemanticAnchor ?? ""),
+            handlerName: String(command.handlerName ?? ""),
+            actionExpression: String(command.actionExpression ?? ""),
+            postcondition: "inserted-handler-rebound-exact-action",
+            manifestPath: String(prepared.manifestPath ?? ""),
+            manifestSha256: String(prepared.manifestSha256 ?? ""),
+            transactionId: String(prepared.transactionId ?? ""),
+            rollbackGuarantee: "exact-snapshot-auto-rollback-v1"
+        }
+        const promoted = Object.assign({}, command, {
+            signalActionAuthorization: authorization
+        })
+        if (!root._signalActionAuthorizationMatchesCommand(promoted))
+            return false
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+        const next = root.history.slice()
+        next[index] = promoted
+        root.history = next
+        root.signalActionAuthorizationDiagnostics = ({
+            status: "authorized",
+            ready: true,
+            reason: "explicit-user-authorization",
+            authorizationToken: authorization.authorizationToken
+        })
+        return true
+    }
+
+    function revokeSignalActionAuthorization(reason: string): bool {
+        if (root.signalActionLifecycleBusy)
+            return false
+        const command = root.activeCommand
+        if (!command?.signalActionAuthorization)
+            return false
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+        const next = root.history.slice()
+        next[index] = root._expireSignalActionAuthorization(
+            command, String(reason ?? "user-revoked"))
+        root.history = next
+        root.signalActionAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "user-revoked")
+        })
+        return true
+    }
+
+    function _signalActionLifecycleCommandMatchesHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = command?.signalActionPreparation
+        return !!command
+            && String(command.kind ?? "") === "signal-action"
+            && root.historyIndex === reloadState.pendingSignalActionHistoryIndex
+            && String(command.targetId ?? "")
+                === reloadState.pendingSignalActionGraphTargetId
+            && String(command.signalActionTargetId ?? "")
+                === reloadState.pendingSignalActionTargetId
+            && String(command.sourcePath ?? "")
+                === reloadState.pendingSignalActionSourcePath
+            && String(command.baseSha256 ?? "")
+                === reloadState.pendingSignalActionBaseSha256
+            && String(command.candidateSha256 ?? "")
+                === reloadState.pendingSignalActionCandidateSha256
+            && String(command.parentSemanticAnchor ?? "")
+                === reloadState.pendingSignalActionParentSemanticAnchor
+            && String(command.existingActionSemanticAnchor ?? "")
+                === reloadState.pendingSignalActionExistingActionSemanticAnchor
+            && String(command.insertedHandlerSemanticAnchor ?? "")
+                === reloadState.pendingSignalActionInsertedHandlerSemanticAnchor
+            && String(prepared?.manifestPath ?? "")
+                === reloadState.pendingSignalActionManifestPath
+            && String(prepared?.manifestSha256 ?? "")
+                === reloadState.pendingSignalActionManifestSha256
+            && root._signalActionAuthorizationIdentityMatchesCommand(command)
+            && String(command?.signalActionAuthorization?.authorizationToken ?? "")
+                === reloadState.pendingSignalActionAuthorizationToken
+    }
+
+    function stageSignalActionLifecycleHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = root.activeSignalActionPreparation
+        if (!root.signalActionAuthorizationReady
+                || !root.signalActionArtifactsReady
+                || !command || !prepared
+                || command.stale === true
+                || String(command.kind ?? "") !== "signal-action"
+                || !Quickshell.watchFiles
+                || root.applyLifecycleBusy
+                || root.connectLifecycleBusy
+                || root.bindingLifecycleBusy
+                || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy)
+            return false
+        reloadState.pendingSignalActionPhase = "prepared"
+        reloadState.pendingSignalActionGraphTargetId =
+            String(command.targetId ?? "")
+        reloadState.pendingSignalActionTargetId =
+            String(command.signalActionTargetId ?? "")
+        reloadState.pendingSignalActionSourcePath =
+            String(command.sourcePath ?? "")
+        reloadState.pendingSignalActionBaseSha256 =
+            String(command.baseSha256 ?? "")
+        reloadState.pendingSignalActionCandidateSha256 =
+            String(command.candidateSha256 ?? "")
+        reloadState.pendingSignalActionParentSemanticAnchor =
+            String(command.parentSemanticAnchor ?? "")
+        reloadState.pendingSignalActionExistingActionSemanticAnchor =
+            String(command.existingActionSemanticAnchor ?? "")
+        reloadState.pendingSignalActionInsertedHandlerSemanticAnchor =
+            String(command.insertedHandlerSemanticAnchor ?? "")
+        reloadState.pendingSignalActionHistoryIndex = root.historyIndex
+        reloadState.pendingSignalActionManifestPath =
+            String(prepared.manifestPath ?? "")
+        reloadState.pendingSignalActionManifestSha256 =
+            String(prepared.manifestSha256 ?? "")
+        reloadState.pendingSignalActionAuthorizationToken =
+            String(command.signalActionAuthorization?.authorizationToken ?? "")
+        reloadState.pendingSignalActionReloadOutcome = "none"
+        reloadState.pendingSignalActionVerifyState = "unknown"
+        reloadState.pendingSignalActionRollbackRecovery = "none"
+        reloadState.pendingSignalActionError = ""
+        return root._signalActionLifecycleCommandMatchesHandoff()
+    }
+
+    function clearSignalActionLifecycleHandoff(): void {
+        signalActionRollbackReloadFallbackTimer.stop()
+        reloadState.pendingSignalActionPhase = "idle"
+        reloadState.pendingSignalActionGraphTargetId = ""
+        reloadState.pendingSignalActionTargetId = ""
+        reloadState.pendingSignalActionSourcePath = ""
+        reloadState.pendingSignalActionBaseSha256 = ""
+        reloadState.pendingSignalActionCandidateSha256 = ""
+        reloadState.pendingSignalActionParentSemanticAnchor = ""
+        reloadState.pendingSignalActionExistingActionSemanticAnchor = ""
+        reloadState.pendingSignalActionInsertedHandlerSemanticAnchor = ""
+        reloadState.pendingSignalActionHistoryIndex = -1
+        reloadState.pendingSignalActionManifestPath = ""
+        reloadState.pendingSignalActionManifestSha256 = ""
+        reloadState.pendingSignalActionAuthorizationToken = ""
+        reloadState.pendingSignalActionReloadOutcome = "none"
+        reloadState.pendingSignalActionVerifyState = "unknown"
+        reloadState.pendingSignalActionRollbackRecovery = "none"
+        reloadState.pendingSignalActionError = ""
+    }
+
+    function _signalActionPayloadMatchesPending(payload): bool {
+        return String(payload?.targetId ?? "")
+                === reloadState.pendingSignalActionGraphTargetId
+            && String(payload?.signalActionTargetId ?? "")
+                === reloadState.pendingSignalActionTargetId
+            && String(payload?.sourcePath ?? "")
+                === reloadState.pendingSignalActionSourcePath
+            && String(payload?.baseSha256 ?? "")
+                === reloadState.pendingSignalActionBaseSha256
+            && String(payload?.candidateSha256 ?? "")
+                === reloadState.pendingSignalActionCandidateSha256
+            && String(payload?.parentSemanticAnchor ?? "")
+                === reloadState.pendingSignalActionParentSemanticAnchor
+            && String(payload?.existingActionSemanticAnchor ?? "")
+                === reloadState.pendingSignalActionExistingActionSemanticAnchor
+            && String(payload?.insertedHandlerSemanticAnchor ?? "")
+                === reloadState.pendingSignalActionInsertedHandlerSemanticAnchor
+            && String(payload?.handlerName ?? "") === "onDoubleClicked"
+            && String(payload?.actionExpression ?? "")
+                === "root.toggleExpanded()"
+            && String(payload?.postcondition ?? "")
+                === "inserted-handler-rebound-exact-action"
+            && String(payload?.manifestPath ?? "")
+                === reloadState.pendingSignalActionManifestPath
+            && String(payload?.manifestSha256 ?? "")
+                === reloadState.pendingSignalActionManifestSha256
+    }
+
+    function _setSignalActionLifecycleFailure(
+        phase: string, message: string, payload
+    ): void {
+        reloadState.pendingSignalActionPhase = phase
+        reloadState.pendingSignalActionError = String(message ?? "")
+        root.signalActionLifecycleResult = payload ?? ({})
+        root.signalActionLifecycleError = String(message ?? "")
+        if (root.activeCommand?.signalActionAuthorization)
+            root.revokeSignalActionAuthorization(
+                "signal-action-lifecycle-failed")
+        root.status = phase.includes("conflict") ? "conflict" : "error"
+        root.error = String(message ?? "")
+    }
+
+    function beginAuthorizedSignalActionApply(): bool {
+        if (!root.signalActionApplyEnabled)
+            return false
+        const authorizationToken = String(
+            root.activeSignalActionAuthorization?.authorizationToken ?? "")
+        if (authorizationToken.length === 0)
+            return false
+        if (!root.beginSignalActionLifecycle())
+            return false
+        root.signalActionAuthorizationDiagnostics = ({
+            status: "consumed",
+            ready: false,
+            reason: "signal-action-apply-started",
+            authorizationToken: authorizationToken
+        })
+        return true
+    }
+
+    function beginSignalActionLifecycle(): bool {
+        if (!root.stageSignalActionLifecycleHandoff())
+            return false
+        reloadState.pendingSignalActionPhase = "write-issued"
+        reloadState.pendingSignalActionReloadOutcome = "none"
+        reloadState.pendingSignalActionVerifyState = "unknown"
+        reloadState.pendingSignalActionRollbackRecovery = "none"
+        reloadState.pendingSignalActionError = ""
+        root.signalActionLifecycleResult = ({})
+        root.signalActionLifecycleError = ""
+        root.status = "signal-action-writing"
+        signalActionCommitProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/signal_action_commit.py"),
+            "commit",
+            "--manifest", reloadState.pendingSignalActionManifestPath,
+            "--manifest-sha256",
+                reloadState.pendingSignalActionManifestSha256
+        ]
+        signalActionCommitProcess.running = true
+        return true
+    }
+
+    function finishSignalActionCommit(exitCode: int): void {
+        if (reloadState.pendingSignalActionPhase === "rollback-pending") {
+            root._startSignalActionRollback(
+                reloadState.pendingSignalActionError)
+            return
+        }
+        const payload = root._parseProcessPayload(signalActionCommitStdout)
+        if (payload?.status === "written"
+                && root._signalActionPayloadMatchesPending(payload)
+                && payload?.sourceWritten === true
+                && payload?.rollbackRequired === false) {
+            root.signalActionLifecycleResult = payload
+            root.signalActionLifecycleError = ""
+            reloadState.pendingSignalActionPhase = "waiting-reload"
+            root.status = "signal-action-waiting-reload"
+            if (reloadState.pendingSignalActionReloadOutcome === "completed")
+                Qt.callLater(root._startSignalActionCandidateVerify)
+            return
+        }
+        const sourceWritten = payload?.sourceWritten === true
+        const stderrText = String(signalActionCommitStderr.text ?? "").trim()
+        const message = String(
+            payload?.reason ?? payload?.detail ?? stderrText
+            ?? ("Signal/action commit exited " + exitCode))
+        if (sourceWritten) {
+            root._startSignalActionRollback(message)
+            return
+        }
+        root._setSignalActionLifecycleFailure(
+            payload?.status === "conflict"
+                ? "signal-action-commit-conflict"
+                : "signal-action-commit-failed",
+            message, payload)
+    }
+
+    function _startSignalActionCandidateVerify(): void {
+        if (signalActionVerifyProcess.running
+                || reloadState.pendingSignalActionManifestPath.length === 0)
+            return
+        reloadState.pendingSignalActionPhase = "candidate-verify-issued"
+        root.status = "signal-action-verifying"
+        signalActionVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/signal_action_commit.py"),
+            "verify",
+            "--manifest", reloadState.pendingSignalActionManifestPath,
+            "--manifest-sha256",
+                reloadState.pendingSignalActionManifestSha256
+        ]
+        signalActionVerifyProcess.running = true
+    }
+
+    function _startSignalActionRollbackVerify(): void {
+        if (signalActionVerifyProcess.running
+                || reloadState.pendingSignalActionManifestPath.length === 0)
+            return
+        signalActionRollbackReloadFallbackTimer.stop()
+        reloadState.pendingSignalActionPhase = "rollback-verify-issued"
+        root.status = "signal-action-rollback-verifying"
+        signalActionVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/signal_action_commit.py"),
+            "verify",
+            "--manifest", reloadState.pendingSignalActionManifestPath,
+            "--manifest-sha256",
+                reloadState.pendingSignalActionManifestSha256
+        ]
+        signalActionVerifyProcess.running = true
+    }
+
+    function finishSignalActionVerify(exitCode: int): void {
+        const phase = reloadState.pendingSignalActionPhase
+        const payload = root._parseProcessPayload(signalActionVerifyStdout)
+        if (payload?.status !== "verified"
+                || !root._signalActionPayloadMatchesPending(payload)) {
+            const stderrText = String(
+                signalActionVerifyStderr.text ?? "").trim()
+            const message = String(
+                payload?.reason ?? payload?.detail ?? stderrText
+                ?? ("Signal/action verify exited " + exitCode))
+            if (phase === "rollback-verify-issued")
+                root._setSignalActionLifecycleFailure(
+                    "signal-action-rollback-conflict", message, payload)
+            else
+                root._startSignalActionRollback(message)
+            return
+        }
+        const state = String(payload?.sourceState ?? "")
+        reloadState.pendingSignalActionVerifyState = state
+        if (phase === "candidate-verify-issued") {
+            if (state !== "candidate-present") {
+                if (state === "base-present")
+                    root._setSignalActionLifecycleFailure(
+                        "signal-action-commit-failed",
+                        "Signal/action source returned to base before "
+                            + "candidate verification.",
+                        payload)
+                else
+                    root._startSignalActionRollback(
+                        "Signal/action candidate verification reported "
+                            + state + ".")
+                return
+            }
+            root._beginSignalActionPostconditionCheck()
+            return
+        }
+        if (phase === "rollback-verify-issued") {
+            if (state !== "base-present") {
+                root._setSignalActionLifecycleFailure(
+                    "signal-action-rollback-conflict",
+                    "Expected signal/action rollback base after recovery "
+                        + "reload; verify reported " + state,
+                    payload)
+                return
+            }
+            root._finalizeSignalActionRollback(payload)
+        }
+    }
+
+    function _beginSignalActionPostconditionCheck(): void {
+        reloadState.pendingSignalActionPhase = "postcondition-checking"
+        root.status = "signal-action-postcondition"
+        CodeWorkflowAnalyzer.request(
+            reloadState.pendingSignalActionSourcePath,
+            "",
+            reloadState.pendingSignalActionInsertedHandlerSemanticAnchor,
+            true)
+    }
+
+    function _finishSignalActionPostconditionIfReady(): void {
+        if (reloadState.pendingSignalActionPhase !== "postcondition-checking")
+            return
+        if (CodeWorkflowAnalyzer.status === "analyzing"
+                || CodeWorkflowAnalyzer.status === "idle")
+            return
+        const matches = CodeWorkflowAnalyzer.status === "ready"
+            && CodeWorkflowAnalyzer.sourcePath
+                === reloadState.pendingSignalActionSourcePath
+            && CodeWorkflowAnalyzer.semanticAnchor
+                === reloadState.pendingSignalActionInsertedHandlerSemanticAnchor
+            && String(CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+                === reloadState.pendingSignalActionCandidateSha256
+            && CodeWorkflowAnalyzer.semanticRebind?.status === "resolved"
+            && String(CodeWorkflowAnalyzer.semanticRebind?.anchor ?? "")
+                === reloadState.pendingSignalActionInsertedHandlerSemanticAnchor
+            && String(CodeWorkflowAnalyzer.semanticRebind?.kind ?? "")
+                === "handler-candidate"
+            && String(CodeWorkflowAnalyzer.semanticRebind?.name ?? "")
+                === "onDoubleClicked"
+            && String(
+                CodeWorkflowAnalyzer.semanticRebind?.semanticValueText ?? "")
+                === "root.toggleExpanded()"
+            && CodeWorkflowAnalyzer.diagnostics.length === 0
+        if (!matches) {
+            root._startSignalActionRollback(
+                "Committed signal/action candidate reloaded, but the exact "
+                    + "inserted-handler/action postcondition failed.")
+            return
+        }
+        root._finalizeSignalActionSuccess()
+    }
+
+    function _markHistorySignalActionLifecycleResult(
+        applied: bool, reason: string
+    ): void {
+        const index = Number(
+            reloadState.pendingSignalActionHistoryIndex ?? -1)
+        if (index < 0 || index >= root.history.length)
+            return
+        const next = root.history.slice()
+        next[index] = Object.assign({}, next[index], {
+            signalActionApplied: applied,
+            signalActionAppliedSha256: applied
+                ? reloadState.pendingSignalActionCandidateSha256 : "",
+            signalActionRolledBack: !applied,
+            stale: true,
+            staleReason: reason,
+            signalActionPreparation:
+                next[index]?.signalActionPreparation
+                ? Object.assign({}, next[index].signalActionPreparation, {
+                    status: "stale", stale: true, staleReason: reason
+                })
+                : next[index]?.signalActionPreparation,
+            signalActionAuthorization:
+                next[index]?.signalActionAuthorization
+                ? Object.assign({}, next[index].signalActionAuthorization, {
+                    status: "expired", authorized: false, reason: reason
+                })
+                : next[index]?.signalActionAuthorization
+        })
+        root.history = next
+        root.historyIndex = index
+    }
+
+    function _finalizeSignalActionSuccess(): void {
+        const payload = {
+            status: "signal-action-applied",
+            sourcePath: reloadState.pendingSignalActionSourcePath,
+            sourceSha256: reloadState.pendingSignalActionCandidateSha256,
+            semanticAnchor:
+                reloadState.pendingSignalActionInsertedHandlerSemanticAnchor,
+            actionExpression: "root.toggleExpanded()",
+            postcondition: "inserted-handler-rebound-exact-action"
+        }
+        root._markHistorySignalActionLifecycleResult(
+            true,
+            "Signal/action handler applied and exact handler/action rebound; "
+                + "regenerate before editing again.")
+        root.clearSignalActionLifecycleHandoff()
+        root.signalActionLifecycleResult = payload
+        root.signalActionLifecycleError = ""
+        root.status = "signal-action-applied"
+        root.error = ""
+    }
+
+    function _startSignalActionRollback(reason: string): void {
+        if (signalActionRollbackProcess.running)
+            return
+        if (reloadState.pendingSignalActionManifestPath.length === 0) {
+            root._setSignalActionLifecycleFailure(
+                "signal-action-rollback-failed",
+                "Signal/action lifecycle has no prepared manifest for rollback.",
+                null)
+            return
+        }
+        reloadState.pendingSignalActionPhase = "rollback-issued"
+        reloadState.pendingSignalActionReloadOutcome = "none"
+        reloadState.pendingSignalActionVerifyState = "unknown"
+        if (String(reason ?? "").length > 0)
+            reloadState.pendingSignalActionError = String(reason)
+        root.status = "signal-action-rollback-writing"
+        signalActionRollbackProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/signal_action_commit.py"),
+            "rollback",
+            "--manifest", reloadState.pendingSignalActionManifestPath,
+            "--manifest-sha256",
+                reloadState.pendingSignalActionManifestSha256
+        ]
+        signalActionRollbackProcess.running = true
+    }
+
+    function finishSignalActionRollback(exitCode: int): void {
+        const payload = root._parseProcessPayload(signalActionRollbackStdout)
+        if (payload?.status === "rolled-back"
+                && root._signalActionPayloadMatchesPending(payload)) {
+            root.signalActionLifecycleResult = payload
+            root.signalActionLifecycleError = ""
+            reloadState.pendingSignalActionPhase = "rollback-waiting-reload"
+            reloadState.pendingSignalActionReloadOutcome = "none"
+            root.status = "signal-action-rollback-waiting-reload"
+            signalActionRollbackReloadFallbackTimer.restart()
+            return
+        }
+        const stderrText = String(
+            signalActionRollbackStderr.text ?? "").trim()
+        root._setSignalActionLifecycleFailure(
+            payload?.status === "conflict"
+                ? "signal-action-rollback-conflict"
+                : "signal-action-rollback-failed",
+            String(payload?.reason ?? payload?.detail ?? stderrText
+                ?? ("Signal/action rollback exited " + exitCode)),
+            payload)
+    }
+
+    function _finalizeSignalActionRollback(payload): void {
+        const failure = String(
+            reloadState.pendingSignalActionError
+            ?? "Signal/action lifecycle failed.")
+        const recovery = String(
+            reloadState.pendingSignalActionRollbackRecovery ?? "none")
+        const result = {
+            status: "signal-action-rolled-back",
+            sourcePath: reloadState.pendingSignalActionSourcePath,
+            sourceSha256: reloadState.pendingSignalActionBaseSha256,
+            semanticAnchor:
+                reloadState.pendingSignalActionInsertedHandlerSemanticAnchor,
+            lifecycleError: failure,
+            recoveryMode: recovery,
+            verify: payload
+        }
+        root._markHistorySignalActionLifecycleResult(
+            false,
+            "Signal/action lifecycle failed and exact rollback restored "
+                + "the base; regenerate before retrying.")
+        root.clearSignalActionLifecycleHandoff()
+        root.signalActionLifecycleResult = result
+        root.signalActionLifecycleError = failure
+        root.status = "signal-action-rollback-complete"
+        root.error = failure
+    }
+
+    function _recoverSignalActionLifecycle(): void {
+        const phase = reloadState.pendingSignalActionPhase
+        if (phase === "write-issued" || phase === "waiting-reload") {
+            root.status = "signal-action-waiting-reload"
+            if (reloadState.pendingSignalActionReloadOutcome === "completed")
+                root._startSignalActionCandidateVerify()
+            return
+        }
+        if (phase === "candidate-verify-issued") {
+            root._startSignalActionCandidateVerify()
+            return
+        }
+        if (phase === "postcondition-checking") {
+            root._beginSignalActionPostconditionCheck()
+            return
+        }
+        if (phase === "rollback-pending") {
+            root.status = "signal-action-rollback-pending"
+            if (!signalActionCommitProcess.running)
+                root._startSignalActionRollback(
+                    reloadState.pendingSignalActionError)
+            return
+        }
+        if (phase === "rollback-issued"
+                || phase === "rollback-waiting-reload") {
+            root.status = "signal-action-rollback-waiting-reload"
+            if (reloadState.pendingSignalActionReloadOutcome === "completed")
+                root._startSignalActionRollbackVerify()
+            else if (phase === "rollback-waiting-reload")
+                signalActionRollbackReloadFallbackTimer.restart()
+            return
+        }
+        if (phase === "rollback-verify-issued") {
+            root._startSignalActionRollbackVerify()
+            return
+        }
+        if ([
+                "signal-action-commit-conflict",
+                "signal-action-commit-failed",
+                "signal-action-rollback-conflict",
+                "signal-action-rollback-failed"
+            ].includes(phase)) {
+            root.signalActionLifecycleError =
+                reloadState.pendingSignalActionError
+            root.error = reloadState.pendingSignalActionError
+            root.status = phase.includes("conflict") ? "conflict" : "error"
+        }
+    }
+
     function _disconnectPreparationMatchesCommand(command): bool {
         if (!command
                 || command.stale === true
@@ -2270,7 +3403,8 @@ Singleton {
                 || root.applyLifecycleBusy
                 || root.connectLifecycleBusy
                 || root.bindingLifecycleBusy
-        || root.disconnectLifecycleBusy)
+        || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy)
             return false
 
         reloadState.pendingDisconnectPhase = "prepared"
@@ -3062,7 +4196,8 @@ Singleton {
                 || root.applyLifecycleBusy
                 || root.connectLifecycleBusy
                 || root.bindingLifecycleBusy
-                || root.disconnectLifecycleBusy)
+                || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy)
             return false
 
         reloadState.pendingConnectPhase = "prepared"
@@ -4203,6 +5338,28 @@ Singleton {
             return
         }
 
+        const signalActionPhase =
+            reloadState.pendingSignalActionPhase
+        if (signalActionPhase === "write-issued"
+                || signalActionPhase === "waiting-reload"
+                || signalActionPhase === "candidate-verify-issued") {
+            reloadState.pendingSignalActionReloadOutcome = "completed"
+            root._startSignalActionCandidateVerify()
+            return
+        }
+        if (signalActionPhase === "rollback-issued"
+                || signalActionPhase === "rollback-waiting-reload"
+                || signalActionPhase === "rollback-verify-issued") {
+            if (reloadState.pendingSignalActionRollbackRecovery
+                    === "none")
+                reloadState.pendingSignalActionRollbackRecovery =
+                    "watcher"
+            reloadState.pendingSignalActionReloadOutcome = "completed"
+            signalActionRollbackReloadFallbackTimer.stop()
+            root._startSignalActionRollbackVerify()
+            return
+        }
+
         const disconnectPhase = reloadState.pendingDisconnectPhase
         if (disconnectPhase === "write-issued"
                 || disconnectPhase === "waiting-reload"
@@ -4304,6 +5461,34 @@ Singleton {
                 "binding-rollback-failed",
                 "Binding rollback source was restored but reload "
                     + "also failed: " + message,
+                null)
+            return
+        }
+
+        const signalActionPhase =
+            reloadState.pendingSignalActionPhase
+        if (signalActionPhase === "write-issued"
+                || signalActionPhase === "waiting-reload"
+                || signalActionPhase === "candidate-verify-issued"
+                || signalActionPhase === "postcondition-checking") {
+            reloadState.pendingSignalActionReloadOutcome = "failed"
+            reloadState.pendingSignalActionError = message
+            if (signalActionCommitProcess.running) {
+                reloadState.pendingSignalActionPhase =
+                    "rollback-pending"
+                root.status = "signal-action-rollback-pending"
+            } else {
+                root._startSignalActionRollback(message)
+            }
+            return
+        }
+        if (signalActionPhase === "rollback-issued"
+                || signalActionPhase === "rollback-waiting-reload"
+                || signalActionPhase === "rollback-verify-issued") {
+            root._setSignalActionLifecycleFailure(
+                "signal-action-rollback-failed",
+                "Signal/action rollback source was restored but its "
+                    + "watcher reload also failed: " + message,
                 null)
             return
         }
@@ -4634,8 +5819,10 @@ Singleton {
                 || root.connectPreparationBusy
                 || root.bindingPreparationBusy
         || root.disconnectPreparationBusy
+                || root.signalActionPreparationBusy
                 || root.bindingLifecycleBusy
         || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -5288,8 +6475,10 @@ Singleton {
                 || root.connectLifecycleBusy
                 || root.bindingPreparationBusy
         || root.disconnectPreparationBusy
+                || root.signalActionPreparationBusy
                 || root.bindingLifecycleBusy
         || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return
@@ -5298,6 +6487,8 @@ Singleton {
             root.clearConnectLifecycleHandoff()
         if (reloadState.pendingDisconnectPhase !== "idle")
             root.clearDisconnectLifecycleHandoff()
+        if (reloadState.pendingSignalActionPhase !== "idle")
+            root.clearSignalActionLifecycleHandoff()
         root.history = []
         root.historyIndex = -1
         root._pendingReplaceIndex = -1
@@ -5373,6 +6564,9 @@ Singleton {
         root._markBindingArtifactsStaleExcept(
             changedPath,
             owner === "binding" ? preserved : -1)
+        root._markSignalActionArtifactsStaleExcept(
+            changedPath,
+            owner === "signal-action" ? preserved : -1)
         root._markDisconnectArtifactsStaleExcept(
             changedPath,
             owner === "disconnect" ? preserved : -1)
@@ -5393,6 +6587,8 @@ Singleton {
         const connectPhase = reloadState.pendingConnectPhase
         const bindingPhase = reloadState.pendingBindingPhase
         const disconnectPhase = reloadState.pendingDisconnectPhase
+        const signalActionPhase =
+            reloadState.pendingSignalActionPhase
         const lifecycleOwnsSource = changedPath
                 === reloadState.pendingApplySourcePath
             && [
@@ -5469,6 +6665,31 @@ Singleton {
             return
         }
 
+        const signalActionLifecycleOwnsSource = changedPath
+                === reloadState.pendingSignalActionSourcePath
+            && [
+                "write-issued",
+                "waiting-reload",
+                "candidate-verify-issued",
+                "postcondition-checking",
+                "rollback-pending",
+                "rollback-issued",
+                "rollback-waiting-reload",
+                "rollback-verify-issued"
+            ].includes(signalActionPhase)
+        if (signalActionLifecycleOwnsSource) {
+            root._invalidateCompetingHandoffsForOwnedSource(
+                changedPath,
+                "signal-action",
+                reloadState.pendingSignalActionHistoryIndex)
+            if (signalActionPhase.startsWith("rollback"))
+                root.status =
+                    "signal-action-rollback-waiting-reload"
+            else
+                root.status = "signal-action-waiting-reload"
+            return
+        }
+
         const disconnectLifecycleOwnsSource = changedPath
                 === reloadState.pendingDisconnectSourcePath
             && [
@@ -5503,6 +6724,7 @@ Singleton {
         root._markHistoryStale(changedPath)
         root._markConnectSafetyStale(changedPath)
         root._markBindingArtifactsStale(changedPath)
+        root._markSignalActionArtifactsStale(changedPath)
         root._markDisconnectArtifactsStale(changedPath)
         if (phase !== "idle"
                 && changedPath
@@ -5568,6 +6790,53 @@ Singleton {
     }
 
     
+    function _markSignalActionArtifactsStale(path: string): void {
+        root._markSignalActionArtifactsStaleExcept(path, -1)
+    }
+
+    function _markSignalActionArtifactsStaleExcept(
+        path: string,
+        preserveIndex: int
+    ): void {
+        const changedPath = String(path ?? "")
+        if (changedPath.length === 0)
+            return
+        const preserved = Number(preserveIndex ?? -1)
+        let changed = false
+        const next = root.history.map((command, index) => {
+            if (index === preserved)
+                return command
+            const prepared = command?.signalActionPreparation
+            if (!prepared
+                    || String(command.sourcePath ?? "") !== changedPath)
+                return command
+            changed = true
+            const reason =
+                "Signal/action source changed; reprepare before write."
+            return Object.assign({}, command, {
+                signalActionPreparation:
+                    Object.assign({}, prepared, {
+                        status: "stale",
+                        stale: true,
+                        staleReason: reason
+                    }),
+                signalActionAuthorization:
+                    command?.signalActionAuthorization
+                    ? Object.assign(
+                        {},
+                        command.signalActionAuthorization,
+                        {
+                            status: "expired",
+                            authorized: false,
+                            reason: reason
+                        })
+                    : command?.signalActionAuthorization
+            })
+        })
+        if (changed)
+            root.history = next
+    }
+
     function _markDisconnectArtifactsStale(path: string): void {
         root._markDisconnectArtifactsStaleExcept(path, -1)
     }
@@ -5627,8 +6896,10 @@ Singleton {
                 || root.connectLifecycleBusy
                 || root.bindingPreparationBusy
         || root.disconnectPreparationBusy
+                || root.signalActionPreparationBusy
                 || root.bindingLifecycleBusy
         || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -5809,7 +7080,9 @@ Singleton {
                 || root.bindingPreparationBusy
                 || root.bindingLifecycleBusy
                 || root.disconnectPreparationBusy
+                || root.signalActionPreparationBusy
                 || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -5854,6 +7127,64 @@ Singleton {
             targetId, connectTargetId, -1)
     }
 
+
+    function _startSignalActionPreview(
+        targetId: string,
+        signalActionTargetId: string,
+        replaceIndex: int
+    ): bool {
+        if (root.previewBusy
+                || root.connectSafetyBusy
+                || root.connectPreparationBusy
+                || root.bindingPreparationBusy
+                || root.disconnectPreparationBusy
+                || root.signalActionPreparationBusy
+                || root.applyLifecycleBusy
+                || root.connectLifecycleBusy
+                || root.bindingLifecycleBusy
+                || root.disconnectLifecycleBusy
+                || root.signalActionLifecycleBusy)
+            return false
+        const nextTargetId = String(targetId ?? "")
+        const nextSignalActionTargetId =
+            String(signalActionTargetId ?? "")
+        if (nextTargetId !== "bar/media"
+                || nextSignalActionTargetId
+                    !== "media.signal.doubleClickToggle")
+            return false
+
+        root._pendingReplaceIndex = replaceIndex
+        root._pendingSignalActionGraphTargetId = nextTargetId
+        root._pendingSignalActionTargetId = nextSignalActionTargetId
+        root.status = "previewing"
+        root.sourcePath = ""
+        root.baseSha256 = ""
+        root.semanticAnchor = ""
+        root.replacement = ""
+        root.result = ({})
+        root.patch = ({})
+        root.previewText = ""
+        root.error = ""
+
+        signalActionPreviewProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/signal_action.py"),
+            "--target-id", nextTargetId,
+            "--signal-action-target-id", nextSignalActionTargetId
+        ]
+        signalActionPreviewProcess.running = true
+        return true
+    }
+
+    function previewSignalAction(
+        targetId: string,
+        signalActionTargetId: string
+    ): bool {
+        return root._startSignalActionPreview(
+            targetId, signalActionTargetId, -1)
+    }
+
     function regenerate(baseSha: string): bool {
         const command = root.activeCommand
         if (!command)
@@ -5863,6 +7194,12 @@ Singleton {
             return root._startConnectPreview(
                 String(command.targetId ?? ""),
                 String(command.connectTargetId ?? ""),
+                root.historyIndex)
+        }
+        if (commandKind === "signal-action") {
+            return root._startSignalActionPreview(
+                String(command.targetId ?? ""),
+                String(command.signalActionTargetId ?? ""),
                 root.historyIndex)
         }
         if (commandKind === "disconnect-binding") {
@@ -5975,6 +7312,106 @@ Singleton {
             stale: false,
             staleReason: ""
         })
+    }
+
+
+    function _commitSignalActionPreviewCommand(payload): void {
+        root._storeCommand({
+            kind: "signal-action",
+            targetId: root._pendingSignalActionGraphTargetId,
+            signalActionTargetId: root._pendingSignalActionTargetId,
+            sourcePath: String(payload?.sourcePath ?? ""),
+            baseSha256: String(payload?.baseSha256 ?? ""),
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            semanticAnchor: String(
+                payload?.insertedHandlerSemanticAnchor ?? ""),
+            parentSemanticAnchor: String(
+                payload?.parentSemanticAnchor ?? ""),
+            existingActionSemanticAnchor: String(
+                payload?.existingActionSemanticAnchor ?? ""),
+            insertedHandlerSemanticAnchor: String(
+                payload?.insertedHandlerSemanticAnchor ?? ""),
+            eventNodeId: String(payload?.eventNodeId ?? ""),
+            actionNodeId: String(payload?.actionNodeId ?? ""),
+            signalName: String(payload?.signalName ?? ""),
+            handlerName: String(payload?.handlerName ?? ""),
+            actionFunctionName: String(
+                payload?.actionFunctionName ?? ""),
+            actionExpression: String(payload?.actionExpression ?? ""),
+            insertedSemanticKind: String(
+                payload?.insertedSemanticKind ?? ""),
+            insertedValueKind: String(
+                payload?.insertedValueKind ?? ""),
+            replacement: String(payload?.actionExpression ?? ""),
+            expectedCurrent: "",
+            result: payload,
+            patch: payload?.patch ?? ({}),
+            previewText: String(payload?.preview ?? ""),
+            sourceWritable: payload?.sourceWritable === true,
+            stale: false,
+            staleReason: ""
+        })
+    }
+
+    function finishSignalActionPreview(exitCode: int): void {
+        const payload = root._parseProcessPayload(
+            signalActionPreviewStdout)
+        const nextStatus = String(payload?.status ?? "error")
+        const identityMatches = payload?.protocol === 1
+            && String(payload?.targetId ?? "")
+                === root._pendingSignalActionGraphTargetId
+            && String(payload?.signalActionTargetId ?? "")
+                === root._pendingSignalActionTargetId
+        const previewSafe = nextStatus === "preview"
+            && String(payload?.commandKind ?? "") === "signal-action"
+            && String(payload?.sourcePath ?? "")
+                === "modules/bar/Media.qml"
+            && String(payload?.baseSha256 ?? "").length > 0
+            && String(payload?.candidateSha256 ?? "").length > 0
+            && String(payload?.parentSemanticAnchor ?? "").length > 0
+            && String(payload?.existingActionSemanticAnchor ?? "").length > 0
+            && String(payload?.insertedHandlerSemanticAnchor ?? "").length > 0
+            && String(payload?.handlerName ?? "") === "onDoubleClicked"
+            && String(payload?.actionExpression ?? "")
+                === "root.toggleExpanded()"
+            && String(payload?.insertedSemanticKind ?? "")
+                === "handler-candidate"
+            && String(payload?.insertedValueKind ?? "")
+                === "call_expression"
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === false
+            && payload?.writeAuthorized === false
+            && payload?.productionIntegrated === false
+
+        if (identityMatches && previewSafe) {
+            root._commitSignalActionPreviewCommand(payload)
+            root._pendingSignalActionGraphTargetId = ""
+            root._pendingSignalActionTargetId = ""
+            return
+        }
+
+        root._pendingReplaceIndex = -1
+        root.result = payload ?? ({})
+        root.patch = payload?.patch ?? ({})
+        root.previewText = String(payload?.preview ?? "")
+        root._pendingSignalActionGraphTargetId = ""
+        root._pendingSignalActionTargetId = ""
+        if (payload?.protocol === 1
+                && ["blocked", "conflict", "unsupported", "unavailable",
+                    "invalid-request", "invalid-patch"].includes(nextStatus)) {
+            root.status = nextStatus
+            root.error = String(
+                payload?.detail ?? payload?.reason ?? nextStatus)
+            return
+        }
+        root.status = "error"
+        const stderrText = String(
+            signalActionPreviewStderr.text ?? "").trim()
+        root.error = String(
+            payload?.detail
+            ?? payload?.reason
+            ?? stderrText
+            ?? ("signal/action preview exited " + exitCode))
     }
 
     function finish(exitCode: int): void {
@@ -6097,6 +7534,8 @@ Singleton {
                 "history-selection-changed")
             root._expireAllBindingAuthorizations(
                 "history-selection-changed")
+            root._expireAllSignalActionAuthorizations(
+                "history-selection-changed")
             root._expireAllDisconnectAuthorizations(
                 "history-selection-changed")
         }
@@ -6156,6 +7595,23 @@ Singleton {
         property string pendingBindingVerifyState: "unknown"
         property string pendingBindingRollbackRecovery: "none"
         property string pendingBindingError: ""
+        property string pendingSignalActionPhase: "idle"
+        property string pendingSignalActionGraphTargetId: ""
+        property string pendingSignalActionTargetId: ""
+        property string pendingSignalActionSourcePath: ""
+        property string pendingSignalActionBaseSha256: ""
+        property string pendingSignalActionCandidateSha256: ""
+        property string pendingSignalActionParentSemanticAnchor: ""
+        property string pendingSignalActionExistingActionSemanticAnchor: ""
+        property string pendingSignalActionInsertedHandlerSemanticAnchor: ""
+        property int pendingSignalActionHistoryIndex: -1
+        property string pendingSignalActionManifestPath: ""
+        property string pendingSignalActionManifestSha256: ""
+        property string pendingSignalActionAuthorizationToken: ""
+        property string pendingSignalActionReloadOutcome: "none"
+        property string pendingSignalActionVerifyState: "unknown"
+        property string pendingSignalActionRollbackRecovery: "none"
+        property string pendingSignalActionError: ""
         property string pendingDisconnectPhase: "idle"
         property string pendingDisconnectGraphTargetId: ""
         property string pendingDisconnectEdgeId: ""
@@ -6194,8 +7650,70 @@ Singleton {
             root._finishSemanticRebindIfReady()
             root._finishConnectSemanticRebindIfReady()
             root._finishBindingPostconditionIfReady()
+            root._finishSignalActionPostconditionIfReady()
             root._finishDisconnectPostconditionIfReady()
         }
+    }
+
+    Timer {
+        id: signalActionRollbackReloadFallbackTimer
+        interval: 1800
+        repeat: false
+        onTriggered: {
+            if (reloadState.pendingSignalActionPhase
+                    !== "rollback-waiting-reload"
+                    || reloadState.pendingSignalActionReloadOutcome
+                        !== "none")
+                return
+            reloadState.pendingSignalActionRollbackRecovery =
+                "explicit-recovery"
+            Quickshell.reload(false)
+        }
+    }
+
+    Process {
+        id: signalActionPreviewProcess
+        running: false
+        stdout: StdioCollector { id: signalActionPreviewStdout }
+        stderr: StdioCollector { id: signalActionPreviewStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishSignalActionPreview(exitCode)
+    }
+
+    Process {
+        id: signalActionPrepareProcess
+        running: false
+        stdout: StdioCollector { id: signalActionPrepareStdout }
+        stderr: StdioCollector { id: signalActionPrepareStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishSignalActionPreparation(exitCode)
+    }
+
+    Process {
+        id: signalActionCommitProcess
+        running: false
+        stdout: StdioCollector { id: signalActionCommitStdout }
+        stderr: StdioCollector { id: signalActionCommitStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishSignalActionCommit(exitCode)
+    }
+
+    Process {
+        id: signalActionVerifyProcess
+        running: false
+        stdout: StdioCollector { id: signalActionVerifyStdout }
+        stderr: StdioCollector { id: signalActionVerifyStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishSignalActionVerify(exitCode)
+    }
+
+    Process {
+        id: signalActionRollbackProcess
+        running: false
+        stdout: StdioCollector { id: signalActionRollbackStdout }
+        stderr: StdioCollector { id: signalActionRollbackStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishSignalActionRollback(exitCode)
     }
 
     Timer {

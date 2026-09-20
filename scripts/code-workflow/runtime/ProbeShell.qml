@@ -154,6 +154,14 @@ ShellRoot {
                             command?.bindingAuthorization?.authorized === true,
                         bindingRolledBack:
                             command?.bindingRolledBack === true,
+                        signalActionPreparationStatus: String(
+                            command?.signalActionPreparation?.status ?? ""),
+                        signalActionAuthorizationStatus: String(
+                            command?.signalActionAuthorization?.status ?? ""),
+                        signalActionAuthorizationAuthorized:
+                            command?.signalActionAuthorization?.authorized === true,
+                        signalActionRolledBack:
+                            command?.signalActionRolledBack === true,
                         disconnectPreparationStatus: String(
                             command?.disconnectPreparation?.status ?? ""),
                         disconnectAuthorizationStatus: String(
@@ -244,6 +252,33 @@ ShellRoot {
                     CodeWorkflowTransaction.activeBindingAuthorization,
                 activeBindingPreparation:
                     CodeWorkflowTransaction.activeBindingPreparation,
+                signalActionPreparationBusy:
+                    CodeWorkflowTransaction.signalActionPreparationBusy,
+                signalActionArtifactsReady:
+                    CodeWorkflowTransaction.signalActionArtifactsReady,
+                signalActionPreparationError:
+                    CodeWorkflowTransaction.signalActionPreparationError,
+                signalActionLifecycleBusy:
+                    CodeWorkflowTransaction.signalActionLifecycleBusy,
+                pendingSignalActionPhase:
+                    CodeWorkflowTransaction.pendingSignalActionPhase,
+                signalActionLifecycleError:
+                    CodeWorkflowTransaction.signalActionLifecycleError,
+                signalActionLifecycleResult:
+                    CodeWorkflowTransaction.signalActionLifecycleResult,
+                signalActionAuthorizationReady:
+                    CodeWorkflowTransaction.signalActionAuthorizationReady,
+                signalActionAuthorizeEnabled:
+                    CodeWorkflowTransaction.signalActionAuthorizeEnabled,
+                signalActionApplyEnabled:
+                    CodeWorkflowTransaction.signalActionApplyEnabled,
+                signalActionAuthorizationDiagnostics:
+                    CodeWorkflowTransaction
+                        .signalActionAuthorizationDiagnostics,
+                activeSignalActionAuthorization:
+                    CodeWorkflowTransaction.activeSignalActionAuthorization,
+                activeSignalActionPreparation:
+                    CodeWorkflowTransaction.activeSignalActionPreparation,
                 disconnectPreparationBusy:
                     CodeWorkflowTransaction.disconnectPreparationBusy,
                 disconnectArtifactsReady:
@@ -414,6 +449,65 @@ ShellRoot {
                     command.bindingPreparation,
                     {
                         semanticAnchor: String(anchor ?? ""),
+                        manifestSha256:
+                            String(manifestSha256 ?? "")
+                    })
+            })
+            CodeWorkflowTransaction.history = next
+            return true
+        }
+
+
+        function workflowSignalActionPreview(): bool {
+            return CodeWorkflowTransaction.previewSignalAction(
+                "bar/media",
+                "media.signal.doubleClickToggle")
+        }
+        function workflowSignalActionPrepare(): bool {
+            return CodeWorkflowTransaction.prepareSignalActionArtifacts()
+        }
+        function workflowSignalActionAuthorize(): bool {
+            return CodeWorkflowTransaction.authorizeSignalActionWrite()
+        }
+        function workflowSignalActionRevoke(): bool {
+            return CodeWorkflowTransaction.revokeSignalActionAuthorization(
+                "probe-user-revoked")
+        }
+        function workflowSignalActionBeginLifecycle(): bool {
+            return CodeWorkflowTransaction.beginSignalActionLifecycle()
+        }
+        function workflowSignalActionApply(): bool {
+            return CodeWorkflowTransaction
+                .beginAuthorizedSignalActionApply()
+        }
+        function workflowSignalActionAnalyzeExistingAction(): void {
+            CodeWorkflowAnalyzer.request(
+                "modules/bar/Media.qml",
+                "function toggleExpanded(): void",
+                "",
+                true)
+        }
+        function workflowSignalActionOverridePreparedAnchor(
+            anchor: string,
+            manifestSha256: string
+        ): bool {
+            const index = CodeWorkflowTransaction.historyIndex
+            const command = CodeWorkflowTransaction.activeCommand
+            if (index < 0
+                    || !command
+                    || !command.signalActionPreparation)
+                return false
+            const next = CodeWorkflowTransaction.history.slice()
+            next[index] = Object.assign({}, command, {
+                semanticAnchor: String(anchor ?? ""),
+                insertedHandlerSemanticAnchor:
+                    String(anchor ?? ""),
+                signalActionPreparation: Object.assign(
+                    {},
+                    command.signalActionPreparation,
+                    {
+                        insertedHandlerSemanticAnchor:
+                            String(anchor ?? ""),
                         manifestSha256:
                             String(manifestSha256 ?? "")
                     })

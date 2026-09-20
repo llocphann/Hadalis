@@ -1280,17 +1280,64 @@ a production write path:
 - Native acceptance uses a temporary runtime copy of the real Media source and
   proves exact preparation, commit, candidate verification, rollback,
   manifest-drift rejection and preservation of an external source edit.
-- All W-A/W-B helpers remain runtime-excluded and are referenced by neither
-  Settings nor `CodeWorkflowTransaction`. Apply remains unavailable.
+- At the W-B boundary all W-A/W-B helpers remained runtime-excluded and were
+  referenced by neither Settings nor `CodeWorkflowTransaction`; W-C later
+  promotes only this exact reviewed fixture into the internal lifecycle.
 - No TYPE/CYCLE or Connect qualification token is used by the signal/action
   artifact or atomic engine.
+
+## Milestone 2K-W-C — reviewed signal/action internal production lifecycle
+
+Integrated the single W-A/W-B fixture into the production transaction service
+without exposing a Settings write action yet:
+
+- The production allowlist remains exact: graph `bar/media`, target
+  `media.signal.doubleClickToggle`, source `modules/bar/Media.qml`, parent
+  `MouseArea#mediaInput`, handler `onDoubleClicked`, existing action
+  `toggleExpanded()`, exact call `root.toggleExpanded()`, inserted semantic
+  kind `handler-candidate` and value kind `call_expression`.
+- `signal_action.py`, `signal_action_prepare.py` and
+  `signal_action_commit.py` are promoted into the runtime payload. Preview
+  remains parser-backed and preparation remains source-non-writing.
+- Explicit authorization uses
+  `explicit-signal-action-write-authorization-v1`. It binds target/source
+  identity, base/candidate SHA, parent/existing-action/inserted-handler semantic
+  anchors, exact handler/action expression, transaction ID, manifest path/SHA,
+  `inserted-handler-rebound-exact-action` and
+  `exact-snapshot-auto-rollback-v1`.
+- The authorization snapshot contains no TYPE/CYCLE or Connect qualification
+  evidence. Signal/action safety is independently reviewed semantic identity;
+  no TYPE/CYCLE inference is made from data-binding gates.
+- The internal lifecycle owns persisted `pendingSignalAction*` primitive state
+  across shell generations. Phases cover atomic write, watcher reload, exact
+  candidate verification, inserted-handler postcondition, snapshot rollback,
+  rollback reload and exact base verification.
+- Candidate success requires `candidate-present`, Analyzer READY on the exact
+  candidate SHA with zero diagnostics, and the prepared inserted-handler
+  semantic anchor resolved as `handler-candidate` named
+  `onDoubleClicked` whose exact value text is `root.toggleExpanded()`.
+  No source needle is used for the postcondition.
+- Reload, verify or semantic-postcondition failure enters automatic exact
+  rollback. Completion requires `base-present`; the bounded explicit reload
+  fallback is separate from the four earlier pipeline recovery timers.
+- Signal/Action is the fifth shared writer. Literal, Connect, Binding,
+  Disconnect and Signal/Action lifecycle starts mutually exclude each other.
+  Source watcher ownership preserves the active owner while staling competing
+  same-source handoffs; reload restoration re-derives that owner-preserving
+  invalidation from primitive persisted state.
+- ProbeShell exposes preview/prepare/authorize/internal-Apply instrumentation for
+  isolated acceptance only. Settings Apply remains unavailable in W-C:
+  production Settings has no Signal/Action prepare, authorize or Apply control.
+- Static W-C contract and Nix/QML parse must pass before live acceptance is
+  added. W-C is not considered fully qualified until a live success path and a
+  forced exact-postcondition rollback path both pass.
 
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond `clock.data.time`;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- production signal/action integration/authorization/lifecycle/Apply;
+- user-facing Signal/Action selection, authorization and Settings Apply;
 - additional reviewed signal/action targets beyond `media.signal.doubleClickToggle`;
 - Connections creation/removal;
 - multi-file transactions;
@@ -1298,13 +1345,13 @@ a production write path:
 
 ## Next gate
 
-2K-W-B proves exact private artifacts and atomic rollback for the single reviewed
-signal/action fixture while keeping production writes disabled. The next gate,
-2K-W-C, should promote only `media.signal.doubleClickToggle` into a production
-prepared + explicitly authorized lifecycle with watcher reload, candidate SHA
-verification, exact inserted-handler semantic rebind and automatic exact
-rollback.
+W-C internal integration is present but remains unqualified until isolated live
+acceptance proves both lifecycle outcomes. The next step is to run the real
+`media.signal.doubleClickToggle` candidate through watcher reload, exact
+candidate SHA verification and inserted-handler semantic rebind, then inject a
+surviving wrong semantic anchor and prove automatic exact rollback to the base.
 
-Do not generalize from `onDoubleClicked` to arbitrary handlers or script
-bodies, and do not reuse data-binding TYPE/CYCLE proof tokens. Multi-file writes
-remain out of scope.
+Only after that live gate is green should a W-D gate consider user-facing
+Settings selection/authorization/Apply. Do not generalize from
+`onDoubleClicked` to arbitrary handlers or script bodies, and do not reuse
+data-binding TYPE/CYCLE proof tokens. Multi-file writes remain out of scope.

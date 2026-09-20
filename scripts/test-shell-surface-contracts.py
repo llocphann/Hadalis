@@ -911,8 +911,8 @@ def main() -> None:
           and 'description: Translation.tr("Set Screen Edge, Bar and attached popup corner radius")' in settings_registry_data,
           "Settings search must expose the shared Screen Edge/Bar/attached-popup corner radius")
     check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
-          and 'description: Translation.tr("Configure only the physical Screen Edge shadow")' in settings_registry_data,
-          "Settings search must expose the dedicated physical Screen Edge shadow controls")
+          and 'description: Translation.tr("Configure Screen Edge and connected Bar popup shadows")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/Bar-popup shadow controls")
 
     for connected_shadow_path in (
         "modules/sidebarLeft/SidebarLeftContent.qml",
@@ -932,11 +932,17 @@ def main() -> None:
         "modules/overview/OverviewDashboard.qml",
         "modules/settings/SettingsOverlay.qml",
         "modules/settings/SettingsFocus.qml",
-        "modules/bar/StyledPopup.qml",
     ):
         independent_connected_shadow_source = read(independent_connected_shadow_path)
         check("physicalShadow" not in independent_connected_shadow_source,
               f"{independent_connected_shadow_path} must remain independent from the physical Screen Edge shadow owner")
+
+    check("screenEdge?.physicalShadow?.enabled ?? true" in styled_popup
+          and "screenEdge?.physicalShadow?.size ?? 15" in styled_popup
+          and "screenEdge?.physicalShadow?.opacity ?? 0.70" in styled_popup
+          and "Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)" in styled_popup
+          and "screenEdge?.shadow?.enabled" not in styled_popup,
+          "All ii Bar StyledPopup surfaces must share the visible Screen Edge shadow controls and ink")
 
     osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     check("visible: root._oskResident" in osk_shadow

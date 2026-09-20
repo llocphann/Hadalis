@@ -67,14 +67,17 @@ LazyLoader {
     // is SDF-only inside ConnectedSurfaceIrisFrame, so content/input never need
     // to live underneath the physical Screen Edge just to keep the fillet.
     readonly property real _popupScreenMargin: root._screenEdgeThickness
+    // Share the public Screen Edge shadow controls and raw Material shadow ink.
+    // colShadow can become transparent in transparent-material modes, which made
+    // popup depth disappear even while the physical Screen Edge shadow remained.
     readonly property bool _edgeShadowEnabled:
-        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
     readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
     readonly property real _edgeShadowOpacity: Math.max(0, Math.min(1.0,
-        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
     readonly property color _edgeShadowColor:
-        ColorUtils.applyAlpha(Appearance.colors.colShadow, root._edgeShadowOpacity)
+        Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)
 
     // The visual anchor is the authority for output/window ownership. StyledPopup
     // itself is a LazyLoader and is not a visual child of the bar, so resolving

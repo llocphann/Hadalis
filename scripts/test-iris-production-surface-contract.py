@@ -60,11 +60,16 @@ for token in (
     "visibleBodyRect: frame.visibleBodyRect",
     "progress: root.revealProgress",
     "mask: connectedMask",
+    "screenEdge?.physicalShadow?.enabled ?? true",
+    "screenEdge?.physicalShadow?.size ?? 15",
+    "screenEdge?.physicalShadow?.opacity ?? 0.70",
+    "Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)",
 ):
     require(styled, token, "StyledPopup cutover")
 
 for token in ("ConnectedSurfaceFrame {", "ConnectedSurfaceMask {"):
     forbid(styled, token, "StyledPopup legacy renderer")
+forbid(styled, "screenEdge?.shadow?.enabled", "StyledPopup obsolete private shadow owner")
 
 for token in (
     "function clipExternalOwners(raw)",

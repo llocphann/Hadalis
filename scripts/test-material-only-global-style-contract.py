@@ -39,6 +39,8 @@ STYLED_SWITCH = ROOT / "modules" / "common" / "widgets" / "StyledSwitch.qml"
 TOOLBAR = ROOT / "modules" / "common" / "widgets" / "Toolbar.qml"
 DIALOG_BUTTON = ROOT / "modules" / "common" / "widgets" / "DialogButton.qml"
 STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
+INPUT_CHIP = ROOT / "modules" / "common" / "widgets" / "InputChip.qml"
+FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -139,6 +141,8 @@ def main() -> None:
     toolbar = TOOLBAR.read_text(encoding="utf-8")
     dialog_button = DIALOG_BUTTON.read_text(encoding="utf-8")
     styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
+    input_chip = INPUT_CHIP.read_text(encoding="utf-8")
+    filter_chip = FILTER_CHIP.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -483,6 +487,35 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # Shared Material chips keep interaction/accessibility behavior but no longer
+    # instantiate or branch through retired Regalia/ZZZ Global Theme chrome.
+    for source, content in (
+        ("InputChip.qml", input_chip),
+        ("FilterChip.qml", filter_chip),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+        forbid(content, "RegaliaControlFace {", source)
+    for token in (
+        "implicitHeight: 30",
+        "radius: height / 2",
+        "border.width: 1",
+        "anchors.rightMargin: root.removable ? 24 : 0",
+        "onClicked: root.activated()",
+        "onClicked: root.removed()",
+    ):
+        require(input_chip, token, "InputChip.qml")
+    for token in (
+        "implicitHeight: 30",
+        "buttonRadius: height / 2",
+        "Accessible.checkable: true",
+        "Accessible.checked: root.selected",
+        "ColorUtils.ensureReadable(",
+        "border.width: root.visualFocus ? 2",
+        "spacing: icon.visible ? 6 : 0",
+    ):
+        require(filter_chip, token, "FilterChip.qml")
 
     # DialogButton and StyledDropShadow are shared Material primitives. Legacy
     # style aliases must not change text treatment or suppress an otherwise enabled shadow.

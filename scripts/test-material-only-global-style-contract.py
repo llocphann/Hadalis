@@ -76,6 +76,7 @@ OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
 OVERVIEW_ACTION_MODE_VIEW = ROOT / "modules" / "overview" / "ActionModeView.qml"
 OVERVIEW_ALL_APPS_GRID = ROOT / "modules" / "overview" / "OverviewAllAppsGrid.qml"
 OVERVIEW_DASHBOARD = ROOT / "modules" / "overview" / "OverviewDashboard.qml"
+DASHBOARD_CONTENT = ROOT / "modules" / "dashboard" / "DashboardContent.qml"
 OVERVIEW_NIRI_WIDGET = ROOT / "modules" / "overview" / "OverviewNiriWidget.qml"
 OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
 
@@ -171,6 +172,7 @@ def main() -> None:
     overview_action_mode_view = OVERVIEW_ACTION_MODE_VIEW.read_text(encoding="utf-8")
     overview_all_apps_grid = OVERVIEW_ALL_APPS_GRID.read_text(encoding="utf-8")
     overview_dashboard = OVERVIEW_DASHBOARD.read_text(encoding="utf-8")
+    dashboard_content = DASHBOARD_CONTENT.read_text(encoding="utf-8")
     overview_niri_widget = OVERVIEW_NIRI_WIDGET.read_text(encoding="utf-8")
     overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
 
@@ -1812,6 +1814,31 @@ def main() -> None:
         'Drag.keys: ["application/x-inir-desktop-entry"]',
     ):
         require(overview_all_apps_grid, token, "overview/OverviewAllAppsGrid.qml")
+
+    # DashboardContent reuses the established Material shell background. It must
+    # not grow a Dashboard-specific wallpaper/global-style renderer.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "ZzzPlate {",
+        "ZzzPanelBackdrop {",
+        "ColorQuantizer {",
+        "AdaptedMaterialScheme {",
+        "id: blurredWallpaper",
+        "useWallpaperBackdrop",
+    ):
+        forbid(dashboard_content, token, "dashboard/DashboardContent.qml")
+    for token in (
+        'color: root.embeddedSurface ? "transparent" : Appearance.colors.colLayer0',
+        'radius: root.embeddedSurface ? 0 : Appearance.rounding.large',
+        "border.width: 0",
+        'border.color: "transparent"',
+        "StyledRectangularShadow {",
+        "ColorUtils.applyAlpha(Appearance.colors.colShadow",
+    ):
+        require(dashboard_content, token, "dashboard/DashboardContent.qml")
 
     # Launcher Dashboard is a lean connected host around shared DashboardContent
     # plus the embedded bottom SearchWidget.

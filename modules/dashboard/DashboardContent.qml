@@ -2,13 +2,9 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Effects
-import Qt5Compat.GraphicalEffects as GE
-import Quickshell
 import qs
 import qs.services
 import qs.modules.common
-import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.sidebarRight.events
@@ -21,10 +17,6 @@ Item {
     property bool embeddedSurface: false
     property bool presentationActive: GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
-    readonly property bool inirEverywhere: Appearance.inirEverywhere
-    readonly property bool angelEverywhere: Appearance.angelEverywhere
-    readonly property bool auroraEverywhere: Appearance.auroraEverywhere
-    readonly property bool zzzEverywhere: Appearance.zzzEverywhere
     readonly property bool showHeader: Config.options?.dashboard?.showHeader ?? true
 
     property var _agendaEditEvent: null
@@ -49,146 +41,33 @@ Item {
         root._agendaDialogShown = true
     }
 
-    readonly property string wallpaperUrl: Wallpapers.effectiveWallpaperUrl
-    readonly property bool useWallpaperBackdrop:
-        root.auroraEverywhere && !root.inirEverywhere
-        && !Appearance.gameModeMinimal && root.wallpaperUrl.length > 0
-
-    ColorQuantizer {
-        id: wallpaperColorQuantizer
-        source: (Appearance.auroraEverywhere || Appearance.angelEverywhere)
-            ? root.wallpaperUrl : ""
-        depth: 0
-        rescaleSize: 10
-    }
-
-    readonly property color wallpaperDominantColor:
-        wallpaperColorQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary
-    readonly property QtObject blendedColors: AdaptedMaterialScheme {
-        color: ColorUtils.mix(root.wallpaperDominantColor,
-            Appearance.colors.colPrimaryContainer, 0.8)
-            || Appearance.colors.colSecondaryContainer
-    }
-
+    // Dashboard does not own a separate background renderer. Detached Dashboard
+    // uses the same canonical Material layer-0 surface and shadow vocabulary as
+    // existing ii popups/sidebars; the launcher-embedded form stays transparent
+    // because OverviewDashboard already owns that same layer-0 surface.
     StyledRectangularShadow {
         target: background
+        radius: background.radius
+        blur: Math.max(0, Math.min(32,
+            Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+        spread: 0
+        offset: Qt.vector2d(0, 0)
+        color: ColorUtils.applyAlpha(Appearance.colors.colShadow,
+            Math.max(0, Math.min(1.0,
+                Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
         visible: !root.embeddedSurface
-            && (Appearance.angelEverywhere
-                || (!root.inirEverywhere && !root.auroraEverywhere))
+            && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
             && !Appearance.gameModeMinimal
-    }
-
-    ZzzPlate {
-        anchors.fill: background
-        visible: !root.embeddedSurface && Appearance.zzzEverywhere
-        fillColor: Appearance.colors.colLayer0
-        strokeColor: Appearance.zzz.hairlineStrong
-        strokeWidth: Appearance.zzz.hairlineThick
-        chamfer: Appearance.zzz.cutCorner
     }
 
     Rectangle {
         id: background
         anchors.fill: parent
         clip: true
-
-        color: root.embeddedSurface ? "transparent"
-            : Appearance.zzzEverywhere ? "transparent"
-            : root.inirEverywhere ? Appearance.inir.colLayer0
-            : root.auroraEverywhere
-                ? ColorUtils.applyAlpha(
-                    root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0, 1)
-                : Appearance.colors.colLayer0
-
-        radius: root.embeddedSurface ? 0
-            : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
-            : root.angelEverywhere ? Appearance.angel.roundingLarge
-            : root.inirEverywhere ? Appearance.inir.roundingLarge
-            : Appearance.rounding.large
-
-        border.width: root.embeddedSurface || Appearance.zzzEverywhere ? 0 : 1
-        border.color: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-            : root.angelEverywhere ? Appearance.angel.colBorder
-            : root.inirEverywhere ? Appearance.inir.colBorder
-            : root.auroraEverywhere ? Appearance.aurora.colTooltipBorder
-            : Appearance.colors.colLayer0Border
-
-        layer.enabled: !root.embeddedSurface
-            && (root.useWallpaperBackdrop
-                || (root.zzzEverywhere && !Appearance.gameModeMinimal))
-        layer.effect: GE.OpacityMask {
-            maskSource: Rectangle {
-                width: background.width
-                height: background.height
-                radius: background.radius
-            }
-        }
-
-        Image {
-            id: blurredWallpaper
-            anchors.centerIn: parent
-            width: root.screenWidth
-            height: root.screenHeight
-            visible: !root.embeddedSurface && root.useWallpaperBackdrop
-            source: root.useWallpaperBackdrop ? root.wallpaperUrl : ""
-            fillMode: Image.PreserveAspectCrop
-            cache: true
-            sourceSize.width: root.screenWidth
-            sourceSize.height: root.screenHeight
-            asynchronous: true
-            layer.enabled: Appearance.effectsEnabled
-                && root.auroraEverywhere && !root.inirEverywhere
-            layer.effect: MultiEffect {
-                source: blurredWallpaper
-                anchors.fill: source
-                saturation: root.angelEverywhere
-                    ? Appearance.angel.blurSaturation
-                    : (Appearance.effectsEnabled ? 0.2 : 0)
-                blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
-                blur: Appearance.effectsEnabled ? 1 : 0
-            }
-            Rectangle {
-                anchors.fill: parent
-                color: root.angelEverywhere
-                    ? ColorUtils.transparentize(
-                        root.blendedColors?.colLayer0
-                            ?? Appearance.colors.colLayer0Base,
-                        Appearance.angel.overlayOpacity)
-                    : ColorUtils.transparentize(
-                        root.blendedColors?.colLayer0
-                            ?? Appearance.colors.colLayer0Base,
-                        Appearance.aurora.overlayTransparentize)
-            }
-        }
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Appearance.angel.insetGlowHeight
-            visible: !root.embeddedSurface && root.angelEverywhere
-            color: Appearance.angel.colInsetGlow
-            z: 10
-        }
-
-        ZzzPanelBackdrop {
-            anchors.fill: parent
-            visible: !root.embeddedSurface
-            label: "AUTONOMIC STRIDER"
-            index: "52"
-            ghostText: "DASH"
-            accentColor: Appearance.zzz.accent
-            burstTriad: true
-            burstScale: 0.52
-            showTicks: false
-            showGrid: false
-            horizontalBias: 0.1
-            verticalBias: -0.06
-            ghostWidthFactor: 0.78
-            ghostStrength: 0.7
-            z: 0
-        }
+        color: root.embeddedSurface ? "transparent" : Appearance.colors.colLayer0
+        radius: root.embeddedSurface ? 0 : Appearance.rounding.large
+        border.width: 0
+        border.color: "transparent"
 
         ColumnLayout {
             id: mainColumn

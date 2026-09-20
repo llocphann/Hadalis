@@ -30,11 +30,26 @@ def main() -> None:
     settings = read("modules/settings/DashboardConfig.qml")
 
     require(content, "DashboardCanvas {", "DashboardContent.qml")
-    require(content, "import Quickshell", "DashboardContent.qml")
-    require(content, "import qs.modules.common.models", "DashboardContent.qml")
     require(canvas, "import qs.modules.common.functions", "DashboardCanvas.qml")
     forbid(content, "component WidgetColumn:", "DashboardContent.qml")
     forbid(content, "dashboard.layout.", "DashboardContent.qml")
+
+    for token in (
+        'color: root.embeddedSurface ? "transparent" : Appearance.colors.colLayer0',
+        'radius: root.embeddedSurface ? 0 : Appearance.rounding.large',
+        "border.width: 0",
+    ):
+        require(content, token, "DashboardContent.qml")
+    for token in (
+        "ColorQuantizer {",
+        "AdaptedMaterialScheme {",
+        "ZzzPanelBackdrop {",
+        "ZzzPlate {",
+        "id: blurredWallpaper",
+        "useWallpaperBackdrop",
+        "wallpaperDominantColor",
+    ):
+        forbid(content, token, "DashboardContent.qml")
 
     for token in (
         'Config.options?.dashboard?.canvas?.widgets',

@@ -522,6 +522,25 @@ def main() -> None:
           and "DashboardHeader {" in dashboard_content
           and "WidgetColumn" not in dashboard_content,
           "Dashboard must use the freeform canvas instead of fixed columns")
+    check('color: root.embeddedSurface ? "transparent" : Appearance.colors.colLayer0' in dashboard_content
+          and 'radius: root.embeddedSurface ? 0 : Appearance.rounding.large' in dashboard_content
+          and "border.width: 0" in dashboard_content,
+          "Dashboard outer surface must reuse the canonical Material popup/sidebar background")
+    for retired_dashboard_surface in (
+        "ColorQuantizer {",
+        "AdaptedMaterialScheme {",
+        "ZzzPanelBackdrop {",
+        "ZzzPlate {",
+        "id: blurredWallpaper",
+        "useWallpaperBackdrop",
+        "wallpaperDominantColor",
+        "Appearance.auroraEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.zzzEverywhere",
+    ):
+        check(retired_dashboard_surface not in dashboard_content,
+              f"Dashboard must not introduce a separate background style: {retired_dashboard_surface}")
     check('Config.options?.dashboard?.canvas?.widgets' in dashboard_canvas
           and "function beginMove(" in dashboard_canvas
           and "function beginResize(" in dashboard_canvas

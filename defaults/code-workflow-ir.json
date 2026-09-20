@@ -233,7 +233,8 @@
           "to": "media.toggle",
           "kind": "event",
           "label": "left/keyboard",
-          "editable": false
+          "editable": false,
+          "signalActionTargetId": "media.signal.doubleClickToggle"
         },
         {
           "id": "media.action.expand",

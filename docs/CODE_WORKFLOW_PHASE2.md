@@ -1337,6 +1337,37 @@ without exposing a Settings write action yet:
 - W-C is fully qualified only when both live scenarios pass; Settings Apply
   remains unavailable at this gate.
 
+## Milestone 2K-W-D — user-facing reviewed Signal/Action Apply
+
+Exposed the already-qualified W-C lifecycle in Settings for only the exact
+reviewed Media fixture:
+
+- The existing `media.event.input` graph edge is now the user-selection
+  identity for `media.signal.doubleClickToggle`. It resolves only when graph
+  `bar/media`, event node `media.input`, action node `media.toggle` and the
+  reviewed target all agree; unrelated event/action edges remain non-selectable.
+- Settings can preview only that target, then explicitly `Prepare Signal/Action
+  artifacts`, `Authorize Signal/Action write`, and `Apply Signal/Action`.
+  The Apply control calls `beginAuthorizedSignalActionApply()`; Settings never
+  calls the lifecycle engine or Python helpers directly.
+- Authorization remains one-shot and exact-manifest/history scoped. Apply is
+  unavailable before explicit authorization, a second start is rejected, and
+  source/history drift expires the authorization.
+- User-facing lifecycle state reports write, watcher reload, candidate verify,
+  exact inserted-handler postcondition, rollback, rollback reload and exact
+  base verification. Mutation/history/preparation controls remain locked while
+  the fifth writer owns the lifecycle.
+- Success still requires the inserted `onDoubleClicked` handler to rebind as
+  `handler-candidate` with exact value `root.toggleExpanded()`. Signal/Action
+  uses no TYPE/CYCLE proof.
+- Live W-D acceptance reuses the W-C production wrapper and proves both
+  exactly once authorized Apply success and automatic exact rollback when the
+  surviving `toggleExpanded()` function anchor is substituted for the
+  inserted-handler anchor.
+- Additional Signal/Action targets remain unavailable. W-D does not generalize
+  arbitrary handlers, script bodies, Connections creation/removal or multi-file
+  writes.
+
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;
@@ -1350,14 +1381,12 @@ without exposing a Settings write action yet:
 
 ## Next gate
 
-2K-W-C now has static, Nix and isolated live lifecycle coverage for the single
-reviewed `media.signal.doubleClickToggle` target. The next gate, 2K-W-D, may
-consider user-facing Settings selection/authorization/Apply for only this exact
-fixture, reusing the already-qualified internal lifecycle rather than creating
-another write engine.
+2K-W-D completes the reviewed `media.signal.doubleClickToggle` path from graph
+selection through explicit Settings authorization and production Apply. No
+additional Signal/Action target is promoted by default.
 
-W-D must preserve explicit one-shot authorization, fifth-writer serialization,
-exact handler semantic rebind and automatic exact rollback. Do not generalize
-from `onDoubleClicked` to arbitrary handlers or script bodies, and do not
-reuse data-binding TYPE/CYCLE proof tokens. Multi-file writes remain out of
-scope.
+A later W-E gate should start only from a separately reviewed concrete target
+with runtime evidence and its own exact semantic identity. Do not generalize
+from `onDoubleClicked` to arbitrary handlers or script bodies, do not reuse
+data-binding TYPE/CYCLE proof tokens, and keep Connections creation/removal and
+multi-file writes out of scope.

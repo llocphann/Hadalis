@@ -189,16 +189,9 @@ for helper in (
     if helper in PAGE:
         fail("Settings must never invoke Signal/Action Python helper directly")
 
-# W-C qualifies the internal lifecycle only. User-facing Settings selection and
-# Apply exposure remain a later gate.
-for forbidden in (
-    "Apply Signal/Action",
-    "Prepare Signal/Action artifacts",
-    "Authorize Signal/Action write",
-    "CodeWorkflowTransaction.beginAuthorizedSignalActionApply()",
-):
-    if forbidden in PAGE:
-        fail("W-C must not expose user-facing Signal/Action Apply yet: " + forbidden)
+# W-C qualifies the internal lifecycle. A later W-D gate may expose the same
+# authorized wrapper in Settings, but Settings must still never invoke the
+# Python helpers directly.
 
 for token in (
     "signalActionPreparationBusy:",

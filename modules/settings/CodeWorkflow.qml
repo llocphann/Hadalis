@@ -36,6 +36,22 @@ Item {
         CodeWorkflowIr.edgeFor(
             CodeWorkflowSession.subflowTargetId,
             CodeWorkflowSession.selectedEdgeId)
+    readonly property var selectedSignalActionTarget:
+        CodeWorkflowIr.reviewedSignalActionTargetForEdge(
+            CodeWorkflowSession.subflowTargetId,
+            CodeWorkflowSession.selectedEdgeId)
+    readonly property var reviewedSignalActionTargetForSelection:
+        CodeWorkflowIr.reviewedSignalActionTargetForNode(
+            CodeWorkflowSession.subflowTargetId,
+            CodeWorkflowSession.selectedNodeId)
+    readonly property var reviewedSignalActionEdgeForSelection:
+        root.reviewedSignalActionTargetForSelection === null
+            ? null
+            : (root.graph?.edges ?? []).find(edge =>
+                String(edge.signalActionTargetId ?? "")
+                    === String(
+                        root.reviewedSignalActionTargetForSelection.id ?? ""))
+                ?? null
     readonly property var reviewedConnectTargetsForSelection:
         CodeWorkflowIr.connectTargetsFor(
             CodeWorkflowSession.subflowTargetId).filter(target =>
@@ -49,16 +65,19 @@ Item {
             edge.previewable === true
             && edge.to === CodeWorkflowSession.selectedNodeId) ?? null
     readonly property string sourcePath:
-        root.selectedConnectTarget?.sourcePath
+        root.selectedSignalActionTarget?.sourcePath
+            ?? root.selectedConnectTarget?.sourcePath
             ?? root.selectedIrNode?.sourcePath
             ?? root.descriptor?.sourcePath
             ?? ""
     readonly property string sourceNeedle:
-        root.selectedConnectTarget?.parentObjectNeedle
+        root.selectedSignalActionTarget?.parentObjectNeedle
+            ?? root.selectedConnectTarget?.parentObjectNeedle
             ?? root.selectedIrNode?.sourceNeedle
             ?? ""
     readonly property string storedSemanticAnchor:
         CodeWorkflowSession.selectedConnectTargetId.length > 0
+                || root.selectedSignalActionTarget !== null
             ? ""
             : CodeWorkflowSession.semanticAnchorNodeId
                 === CodeWorkflowSession.selectedNodeId
@@ -184,6 +203,14 @@ Item {
                     === CodeWorkflowSession.selectedConnectTargetId
                 && String(command.sourcePath ?? "") === root.sourcePath
         }
+        if (String(command.kind ?? "") === "signal-action") {
+            return root.selectedSignalActionTarget !== null
+                && String(command.targetId ?? "")
+                    === CodeWorkflowSession.subflowTargetId
+                && String(command.signalActionTargetId ?? "")
+                    === String(root.selectedSignalActionTarget?.id ?? "")
+                && String(command.sourcePath ?? "") === root.sourcePath
+        }
         if (String(command.kind ?? "") === "direct-binding") {
             return String(command.targetId ?? "")
                     === CodeWorkflowSession.subflowTargetId
@@ -304,6 +331,39 @@ Item {
         }
     }
 
+    readonly property string signalActionLifecyclePhaseText: {
+        const phase = String(
+            CodeWorkflowTransaction.pendingSignalActionPhase ?? "idle")
+        switch (phase) {
+        case "write-issued":
+            return "WRITING SOURCE"
+        case "waiting-reload":
+            return "WAITING FOR RELOAD"
+        case "candidate-verify-issued":
+            return "VERIFYING CANDIDATE"
+        case "postcondition-checking":
+            return "VERIFYING EXACT HANDLER"
+        case "rollback-pending":
+            return "ROLLBACK PENDING"
+        case "rollback-issued":
+            return "RESTORING SNAPSHOT"
+        case "rollback-waiting-reload":
+            return "WAITING FOR ROLLBACK RELOAD"
+        case "rollback-verify-issued":
+            return "VERIFYING ROLLBACK"
+        case "signal-action-commit-conflict":
+            return "COMMIT CONFLICT"
+        case "signal-action-commit-failed":
+            return "COMMIT FAILED"
+        case "signal-action-rollback-conflict":
+            return "ROLLBACK CONFLICT"
+        case "signal-action-rollback-failed":
+            return "ROLLBACK FAILED"
+        default:
+            return phase.toUpperCase()
+        }
+    }
+
     readonly property string analyzerStatusText: {
         if (!root.analyzerMatchesAnchor)
             return "IDLE"
@@ -389,7 +449,8 @@ Item {
     }
 
     function captureSemanticAnchor(): void {
-        if (CodeWorkflowSession.selectedConnectTargetId.length > 0)
+        if (CodeWorkflowSession.selectedConnectTargetId.length > 0
+                || root.selectedSignalActionTarget !== null)
             return
         if (!root.analyzerMatchesAnchor
                 || CodeWorkflowAnalyzer.status !== "ready")
@@ -443,6 +504,17 @@ Item {
             CodeWorkflowSession.selectedConnectTargetId)
     }
 
+    function previewSelectedSignalAction(): void {
+        if (root.selectedSignalActionTarget === null
+                || String(root.selectedSignalActionTarget?.id ?? "")
+                    !== "media.signal.doubleClickToggle"
+                || CodeWorkflowSession.subflowTargetId !== "bar/media")
+            return
+        CodeWorkflowTransaction.previewSignalAction(
+            CodeWorkflowSession.subflowTargetId,
+            String(root.selectedSignalActionTarget.id))
+    }
+
     function previewSelectedEdgeDisconnect(): void {
         if (!root.selectedIrEdge
                 || !root.bindingPreviewEligible
@@ -491,7 +563,9 @@ Item {
         if (!root.transactionMatchesSelection)
             return
         if (CodeWorkflowTransaction.activeCommand?.kind
-                === "connect-binding") {
+                === "connect-binding"
+                || CodeWorkflowTransaction.activeCommand?.kind
+                    === "signal-action") {
             CodeWorkflowTransaction.regenerate("")
             return
         }
@@ -892,6 +966,66 @@ Item {
                                     root.previewableInboundEdge.id)
                         }
                     }
+                    RippleButtonWithIcon {
+                        visible: root.selectedIrEdge === null
+                            && root.reviewedSignalActionTargetForSelection
+                                !== null
+                            && root.reviewedSignalActionEdgeForSelection
+                                !== null
+                        Layout.fillWidth: true
+                        materialIcon: "conversion_path"
+                        mainText: root.reviewedSignalActionTargetForSelection
+                            ? "Select Signal/Action · "
+                                + String(
+                                    root.reviewedSignalActionTargetForSelection
+                                        .label ?? "")
+                            : "Select Signal/Action"
+                        onClicked: {
+                            if (root.reviewedSignalActionEdgeForSelection)
+                                CodeWorkflowSession.selectEdge(
+                                    root.reviewedSignalActionEdgeForSelection.id)
+                        }
+                    }
+                    StyledText {
+                        visible: root.selectedSignalActionTarget !== null
+                        text: "Reviewed Signal/Action"
+                        color: Appearance.colors.colSubtext
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedSignalActionTarget !== null
+                        text: root.selectedSignalActionTarget
+                            ? String(
+                                root.selectedSignalActionTarget.handlerName ?? "")
+                                + " → "
+                                + String(
+                                    root.selectedSignalActionTarget
+                                        .actionExpression ?? "")
+                            : ""
+                        color: Appearance.colors.colPrimary
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedSignalActionTarget !== null
+                        text: "EXACT REVIEWED TARGET · one handler + one existing action · no TYPE/CYCLE proof"
+                        color: Appearance.colors.colTertiary
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: Font.Medium
+                        wrapMode: Text.WordWrap
+                    }
+                    RippleButtonWithIcon {
+                        visible: root.selectedSignalActionTarget !== null
+                        Layout.fillWidth: true
+                        materialIcon: "bolt"
+                        mainText: "Preview Signal/Action"
+                        enabled: !CodeWorkflowTransaction.previewBusy
+                            && root.selectedSignalActionTarget?.id
+                                === "media.signal.doubleClickToggle"
+                        onClicked: root.previewSelectedSignalAction()
+                    }
                     Repeater {
                         model: root.reviewedConnectTargetsForSelection
 
@@ -1167,6 +1301,11 @@ Item {
                                     + String(CodeWorkflowTransaction.status)
                                         .toUpperCase()
                                 : CodeWorkflowTransaction.activeCommand?.kind
+                                    === "signal-action"
+                                    ? "Signal/Action Preview · "
+                                        + String(CodeWorkflowTransaction.status)
+                                            .toUpperCase()
+                                : CodeWorkflowTransaction.activeCommand?.kind
                                     === "direct-binding"
                                     ? "Binding Preview · "
                                         + String(CodeWorkflowTransaction.status)
@@ -1224,6 +1363,26 @@ Item {
                                                             ? "DISCONNECT PREPARING"
                                                             : "PREVIEW ONLY"
                                 : CodeWorkflowTransaction.activeCommand?.kind
+                                        === "signal-action"
+                                    ? CodeWorkflowTransaction.signalActionLifecycleBusy
+                                        ? "SIGNAL/ACTION APPLY · "
+                                            + root.signalActionLifecyclePhaseText
+                                        : CodeWorkflowTransaction.status
+                                                === "signal-action-applied"
+                                            ? "SIGNAL/ACTION APPLIED"
+                                            : CodeWorkflowTransaction.status
+                                                    === "signal-action-rollback-complete"
+                                                ? "SIGNAL/ACTION ROLLED BACK"
+                                                : CodeWorkflowTransaction.signalActionApplyEnabled
+                                                    ? "SIGNAL/ACTION APPLY READY"
+                                                    : CodeWorkflowTransaction.signalActionAuthorizationReady
+                                                        ? "SIGNAL/ACTION AUTHORIZED"
+                                                        : CodeWorkflowTransaction.signalActionArtifactsReady
+                                                            ? "SIGNAL/ACTION READY · AUTHORIZATION REQUIRED"
+                                                            : CodeWorkflowTransaction.signalActionPreparationBusy
+                                                                ? "SIGNAL/ACTION PREPARING"
+                                                                : "PREVIEW ONLY"
+                                : CodeWorkflowTransaction.activeCommand?.kind
                                         === "direct-binding"
                                     ? CodeWorkflowTransaction.bindingLifecycleBusy
                                         ? "BINDING APPLY · "
@@ -1258,6 +1417,12 @@ Item {
                                         .connectAuthorizationReady)
                             ? Appearance.colors.colPrimary
                             : CodeWorkflowTransaction.activeCommand?.kind
+                                    === "signal-action"
+                                && (CodeWorkflowTransaction.signalActionArtifactsReady
+                                    || CodeWorkflowTransaction
+                                        .signalActionAuthorizationReady)
+                            ? Appearance.colors.colPrimary
+                            : CodeWorkflowTransaction.activeCommand?.kind
                                     === "direct-binding"
                                 && (CodeWorkflowTransaction.bindingArtifactsReady
                                     || CodeWorkflowTransaction
@@ -1272,7 +1437,8 @@ Item {
                             : [
                                 "direct-binding",
                                 "disconnect-binding",
-                                "connect-binding"
+                                "connect-binding",
+                                "signal-action"
                             ].includes(
                                     CodeWorkflowTransaction.activeCommand?.kind)
                                 ? Appearance.colors.colTertiary
@@ -1335,6 +1501,58 @@ Item {
                         enabled: !CodeWorkflowTransaction.connectLifecycleBusy
                         onClicked:
                             CodeWorkflowTransaction.revokeConnectAuthorization(
+                                "user-revoked")
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "signal-action"
+                            && root.transactionMatchesSelection
+                        materialIcon: "inventory_2"
+                        mainText: CodeWorkflowTransaction.signalActionArtifactsReady
+                            ? "Signal/Action artifacts prepared"
+                            : "Prepare Signal/Action artifacts"
+                        enabled: CodeWorkflowTransaction.signalActionPrepareEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.prepareSignalActionArtifacts()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "signal-action"
+                            && CodeWorkflowTransaction.signalActionArtifactsReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "verified_user"
+                        mainText: CodeWorkflowTransaction.signalActionAuthorizationReady
+                            ? "Signal/Action write authorized"
+                            : "Authorize Signal/Action write"
+                        enabled: CodeWorkflowTransaction.signalActionAuthorizeEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.authorizeSignalActionWrite()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "signal-action"
+                            && CodeWorkflowTransaction.signalActionAuthorizationReady
+                            && !CodeWorkflowTransaction.signalActionLifecycleBusy
+                            && root.transactionMatchesSelection
+                        materialIcon: "bolt"
+                        mainText: "Apply Signal/Action"
+                        enabled: CodeWorkflowTransaction.signalActionApplyEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.beginAuthorizedSignalActionApply()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "signal-action"
+                            && CodeWorkflowTransaction.signalActionAuthorizationReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "gpp_bad"
+                        mainText: "Revoke Signal/Action authorization"
+                        enabled: !CodeWorkflowTransaction.signalActionLifecycleBusy
+                        onClicked:
+                            CodeWorkflowTransaction.revokeSignalActionAuthorization(
                                 "user-revoked")
                     }
                     RippleButtonWithIcon {
@@ -1487,6 +1705,8 @@ Item {
                             && !CodeWorkflowTransaction.bindingLifecycleBusy
                             && !CodeWorkflowTransaction.disconnectPreparationBusy
                             && !CodeWorkflowTransaction.disconnectLifecycleBusy
+                            && !CodeWorkflowTransaction.signalActionPreparationBusy
+                            && !CodeWorkflowTransaction.signalActionLifecycleBusy
                             && !CodeWorkflowTransaction.bindingPreparationBusy
                             && !CodeWorkflowTransaction.bindingLifecycleBusy
                             && !CodeWorkflowTransaction.disconnectPreparationBusy
@@ -1495,6 +1715,8 @@ Item {
                                     === "connect-binding"
                                 || CodeWorkflowTransaction.activeCommand?.kind
                                         === "disconnect-binding"
+                                || CodeWorkflowTransaction.activeCommand?.kind
+                                        === "signal-action"
                                 || CodeWorkflowAnalyzer.status === "ready")
                         onClicked: root.regenerateTransaction()
                     }
@@ -1509,6 +1731,8 @@ Item {
                             && !CodeWorkflowTransaction.bindingLifecycleBusy
                             && !CodeWorkflowTransaction.disconnectPreparationBusy
                             && !CodeWorkflowTransaction.disconnectLifecycleBusy
+                            && !CodeWorkflowTransaction.signalActionPreparationBusy
+                            && !CodeWorkflowTransaction.signalActionLifecycleBusy
                         onClicked: CodeWorkflowTransaction.clear()
                     }
                 }
@@ -1671,6 +1895,111 @@ Item {
                         .length > 0
                     text: "Prepare Connect artifacts: "
                         + CodeWorkflowTransaction.connectPreparationError
+                    color: Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.signalActionArtifactsReady
+                    text: "Signal/Action artifacts prepared · exact rollback snapshot + candidate + manifest are stored in shell state · tracked Media.qml is unchanged"
+                    color: Appearance.colors.colPrimary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.signalActionArtifactsReady
+                    text: "Signal/Action identity · "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.signalActionTargetId ?? "")
+                        + " · "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.handlerName ?? "")
+                        + ": "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.actionExpression ?? "")
+                        + " · postcondition EXACT INSERTED HANDLER"
+                    color: Appearance.colors.colOnLayer1
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.signalActionArtifactsReady
+                    text: "Signal/Action safety · exact parent + existing-action + inserted-handler semantic identity + exact candidate SHA + inserted-handler-rebound-exact-action · no TYPE/CYCLE proof is used for Signal/Action"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.signalActionArtifactsReady
+                    text: CodeWorkflowTransaction.signalActionAuthorizationReady
+                        ? "Signal/Action authorization ACTIVE · bound to this exact manifest SHA/history command · Apply Signal/Action may consume it once · exact-snapshot rollback is qualified"
+                        : "Signal/Action authorization REQUIRED · source/history drift expires it · Apply Signal/Action stays disabled until explicit authorization"
+                    color: CodeWorkflowTransaction.signalActionAuthorizationReady
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colTertiary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "signal-action"
+                        && (CodeWorkflowTransaction.signalActionLifecycleBusy
+                            || CodeWorkflowTransaction.signalActionLifecycleError
+                                .length > 0
+                            || Object.keys(
+                                CodeWorkflowTransaction
+                                    .signalActionLifecycleResult ?? {}
+                            ).length > 0)
+                    text: CodeWorkflowTransaction.signalActionLifecycleBusy
+                        ? "Signal/Action Apply lifecycle · "
+                            + root.signalActionLifecyclePhaseText
+                            + " · mutation/history/preparation controls are locked"
+                        : CodeWorkflowTransaction.status
+                                === "signal-action-applied"
+                            ? "Signal/Action Apply complete · candidate verified and exact inserted handler rebound to root.toggleExpanded() · authorization consumed · regenerate before another write"
+                            : CodeWorkflowTransaction.status
+                                    === "signal-action-rollback-complete"
+                                ? "Signal/Action Apply rolled back · exact base snapshot verified · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .signalActionLifecycleError ?? "")
+                                : "Signal/Action Apply stopped · "
+                                    + root.signalActionLifecyclePhaseText
+                                    + " · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .signalActionLifecycleError ?? "")
+                    color: CodeWorkflowTransaction.status
+                            === "signal-action-applied"
+                        ? Appearance.colors.colPrimary
+                        : CodeWorkflowTransaction.signalActionLifecycleBusy
+                            ? Appearance.colors.colTertiary
+                            : Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.signalActionPreparationError
+                        .length > 0
+                    text: "Prepare Signal/Action artifacts: "
+                        + CodeWorkflowTransaction.signalActionPreparationError
                     color: Appearance.colors.colError
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     wrapMode: Text.WordWrap

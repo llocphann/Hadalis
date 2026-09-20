@@ -111,6 +111,9 @@ jobs:
       - name: Validate reviewed Signal/Action internal production lifecycle
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-signal-action-production-lifecycle.py'
 
+      - name: Validate user-facing Signal/Action Apply boundary
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-signal-action-settings.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply
@@ -191,6 +194,16 @@ jobs:
             python3 scripts/code-workflow/run-signal-action-production-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
           '
 
+      - name: Run isolated user-facing Signal/Action Apply acceptance
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-wf-sa-user
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-signal-action-user-apply.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
+          '
+
       - name: Run cross-pipeline mutation contention acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-mutation-contention
@@ -232,6 +245,9 @@ jobs:
             ${{ runner.temp }}/hadalis-wf-sa-prod/signal-action-production-lifecycle-report.json
             ${{ runner.temp }}/hadalis-wf-sa-prod/*.log
             ${{ runner.temp }}/hadalis-wf-sa-prod/xdg-state/**
+            ${{ runner.temp }}/hadalis-wf-sa-user/signal-action-user-apply-report.json
+            ${{ runner.temp }}/hadalis-wf-sa-user/*.log
+            ${{ runner.temp }}/hadalis-wf-sa-user/xdg-state/**
             ${{ runner.temp }}/hadalis-workflow-mutation-contention/mutation-contention-report.json
             ${{ runner.temp }}/hadalis-workflow-mutation-contention/*.log
             ${{ runner.temp }}/hadalis-workflow-mutation-contention/xdg-state/**

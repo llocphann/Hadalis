@@ -62,6 +62,56 @@ Singleton {
             .find(target => target.id === connectTargetId) ?? null
     }
 
+    function signalActionTargetsFor(targetId: string): var {
+        return root.graphFor(targetId)?.signalActionTargets ?? []
+    }
+
+    function signalActionTargetFor(
+        targetId: string,
+        signalActionTargetId: string
+    ): var {
+        return root.signalActionTargetsFor(targetId)
+            .find(target => target.id === signalActionTargetId) ?? null
+    }
+
+    function reviewedSignalActionTargetForEdge(
+        targetId: string,
+        edgeId: string
+    ): var {
+        if (String(targetId ?? "") !== "bar/media")
+            return null
+        const edge = root.edgeFor(targetId, edgeId)
+        if (!edge
+                || String(edge.signalActionTargetId ?? "")
+                    !== "media.signal.doubleClickToggle")
+            return null
+        const target = root.signalActionTargetFor(
+            targetId, String(edge.signalActionTargetId ?? ""))
+        if (!target
+                || target.previewable !== false
+                || target.editable !== false
+                || String(target.eventNodeId ?? "") !== String(edge.from ?? "")
+                || String(target.actionNodeId ?? "") !== String(edge.to ?? ""))
+            return null
+        return target
+    }
+
+    function reviewedSignalActionTargetForNode(
+        targetId: string,
+        nodeId: string
+    ): var {
+        if (String(targetId ?? "") !== "bar/media")
+            return null
+        const target = root.signalActionTargetFor(
+            targetId, "media.signal.doubleClickToggle")
+        if (!target)
+            return null
+        const nextNodeId = String(nodeId ?? "")
+        return nextNodeId === String(target.eventNodeId ?? "")
+                || nextNodeId === String(target.actionNodeId ?? "")
+            ? target : null
+    }
+
     FileView {
         id: manifestFile
         path: Quickshell.shellPath("defaults/code-workflow-ir.json")

@@ -164,6 +164,7 @@
     "scripts/code-workflow/run-disconnect-production-lifecycle.py",
     "scripts/code-workflow/run-binding-production-lifecycle.py",
     "scripts/code-workflow/run-signal-action-production-lifecycle.py",
+    "scripts/code-workflow/run-signal-action-user-apply.py",
     "scripts/code-workflow/run-mutation-contention.py",
     "scripts/iris-corner-poc"
   ],

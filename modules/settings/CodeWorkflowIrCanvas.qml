@@ -119,6 +119,34 @@ Item {
         return bestId
     }
 
+    function selectableEdgeAt(screenX: real, screenY: real): string {
+        const previewable = root.previewableEdgeAt(screenX, screenY)
+        if (previewable.length > 0)
+            return previewable
+
+        const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
+        const worldX = (screenX - CodeWorkflowSession.panX) / zoom
+        const worldY = (screenY - CodeWorkflowSession.panY) / zoom
+        if (root.nodeAtWorld(worldX, worldY))
+            return ""
+
+        const tolerance = 9 / zoom
+        let bestId = ""
+        let bestDistance = tolerance
+        for (const edge of root.edges) {
+            if (CodeWorkflowIr.reviewedSignalActionTargetForEdge(
+                    CodeWorkflowSession.subflowTargetId,
+                    String(edge.id ?? "")) === null)
+                continue
+            const distance = root.edgeDistance(edge, worldX, worldY)
+            if (distance <= bestDistance) {
+                bestDistance = distance
+                bestId = String(edge.id ?? "")
+            }
+        }
+        return bestId
+    }
+
     function accentForKind(kind: string): color {
         if (kind === "service")
             return Appearance.colors.colSecondary
@@ -189,7 +217,7 @@ Item {
         acceptedButtons: Qt.LeftButton
 
         onTapped: (eventPoint, button) => {
-            const edgeId = root.previewableEdgeAt(
+            const edgeId = root.selectableEdgeAt(
                 eventPoint.position.x, eventPoint.position.y)
             if (edgeId.length > 0)
                 CodeWorkflowSession.selectEdge(edgeId)

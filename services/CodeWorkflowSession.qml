@@ -52,8 +52,21 @@ Singleton {
                 root.subflowTargetId).rootNodeId ?? ""
         const restoredEdge = CodeWorkflowIr.edgeFor(
             root.subflowTargetId, root.selectedEdgeId)
-        if (!restoredEdge || restoredEdge.previewable !== true) {
+        const restoredSignalAction =
+            CodeWorkflowIr.reviewedSignalActionTargetForEdge(
+                root.subflowTargetId, root.selectedEdgeId)
+        if (!restoredEdge
+                || (restoredEdge.previewable !== true
+                    && restoredSignalAction === null)) {
             root.selectedEdgeId = ""
+        } else if (restoredSignalAction !== null) {
+            const actionNode = CodeWorkflowIr.nodeFor(
+                root.subflowTargetId,
+                String(restoredSignalAction.actionNodeId ?? ""))
+            if (actionNode)
+                root.selectedNodeId = actionNode.id
+            else
+                root.selectedEdgeId = ""
         } else if (CodeWorkflowIr.nodeFor(
                 root.subflowTargetId, restoredEdge.to)) {
             root.selectedNodeId = restoredEdge.to
@@ -173,9 +186,30 @@ Singleton {
     }
 
     function selectEdge(edgeId: string): bool {
+        const nextEdgeId = String(edgeId ?? "")
         const edge = CodeWorkflowIr.edgeFor(
-            root.subflowTargetId, String(edgeId ?? ""))
-        if (!edge || edge.previewable !== true)
+            root.subflowTargetId, nextEdgeId)
+        if (!edge)
+            return false
+
+        const signalAction =
+            CodeWorkflowIr.reviewedSignalActionTargetForEdge(
+                root.subflowTargetId, nextEdgeId)
+        if (signalAction !== null) {
+            const actionNode = CodeWorkflowIr.nodeFor(
+                root.subflowTargetId,
+                String(signalAction.actionNodeId ?? ""))
+            if (!actionNode || actionNode.kind !== "action")
+                return false
+            root.selectedEdgeId = edge.id
+            root.selectedConnectTargetId = ""
+            root.selectedNodeId = actionNode.id
+            root.clearSemanticAnchor()
+            root.persist()
+            return true
+        }
+
+        if (edge.previewable !== true)
             return false
         const target = CodeWorkflowIr.nodeFor(
             root.subflowTargetId, String(edge.to ?? ""))

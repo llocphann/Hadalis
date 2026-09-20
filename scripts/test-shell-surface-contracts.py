@@ -567,9 +567,9 @@ def main() -> None:
     dashboard_toolbar = read("modules/dashboard/DashboardEditToolbar.qml")
     check("id: editToolbar" not in dashboard_canvas
           and "DashboardEditToolbar {" in dashboard
-          and "anchors.bottom: dashContainer.top" in dashboard
-          and "anchors.bottomMargin: -1" in dashboard,
-          "Dashboard edit toolbar must live above and outside the Dashboard canvas")
+          and "x: Math.round(dashContainer.x" in dashboard
+          and "y: Math.round(dashContainer.y - height + 1)" in dashboard,
+          "Dashboard edit toolbar must stay centered and attached above the Dashboard canvas")
     check("bottomLeftRadius: 0" in dashboard_toolbar
           and "bottomRightRadius: 0" in dashboard_toolbar,
           "Dashboard edit toolbar must visually join the Dashboard top edge")

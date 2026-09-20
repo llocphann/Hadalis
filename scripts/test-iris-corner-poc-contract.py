@@ -51,18 +51,22 @@ for forbidden in (
 
 
 
-# Lock the deliberately enlarged default card-owner morphology. This is the
-# settled iRiS card analogue: a small weld overlap plus explicit smooth union,
-# not the edge-piece reach rule.
+# Lock both profiles. Diagnostic deliberately enlarges the corner; the
+# upstream-relative profile follows iRiS v2.31 defaults closely.
 for token in (
-    'HADALIS_IRIS_POC_OWNER_THICKNESS", 56',
-    'HADALIS_IRIS_POC_POPUP_WIDTH", 380',
-    'HADALIS_IRIS_POC_POPUP_HEIGHT", 300',
-    'HADALIS_IRIS_POC_POPUP_RADIUS", 48',
-    'HADALIS_IRIS_POC_WELD", 4',
-    'HADALIS_IRIS_POC_FUSE", 56',
+    'HADALIS_IRIS_POC_PROFILE',
+    'value === "upstream-relative" ? value : "diagnostic"',
+    'root.upstreamRelative ? 42 : 56',
+    'root.upstreamRelative ? 360 : 380',
+    'root.upstreamRelative ? 30 : 48',
+    'root.upstreamRelative ? 3 : 4',
+    'root.upstreamRelative ? 30 : 56',
 ):
-    assert token in window, f"default morphology drifted: {token}"
+    assert token in window, f"profile morphology drifted: {token}"
+
+assert 'String(raw).trim().length === 0' in window, (
+    "empty environment variables must not collapse profile defaults to zero"
+)
 
 
 def rounded_box(x, y, cx, cy, half_w, half_h, radius):
@@ -82,53 +86,56 @@ def smooth_union(a, b, k):
 
 
 screen_w = 900.0
-owner_h = 56.0
-popup_w = 380.0
-popup_h = 300.0
-popup_r = 48.0
-weld = 4.0
-fuse = 56.0
-popup_x = (screen_w - popup_w) / 2.0
-popup_y = owner_h - weld
 
 
-def field_distance(x, y):
-    owner = rounded_box(
-        x, y,
-        screen_w / 2.0, owner_h / 2.0,
-        screen_w / 2.0 + 2.0 * fuse, owner_h / 2.0,
-        0.0,
-    )
-    popup = rounded_box(
-        x, y,
-        popup_x + popup_w / 2.0, popup_y + popup_h / 2.0,
-        popup_w / 2.0, popup_h / 2.0,
-        popup_r,
-    )
-    return min(owner, popup, smooth_union(owner, popup, fuse))
+def shoulder_extensions(owner_h, popup_w, popup_h, popup_r, weld, fuse, depths):
+    popup_x = (screen_w - popup_w) / 2.0
+    popup_y = owner_h - weld
+
+    def field_distance(x, y):
+        owner = rounded_box(
+            x, y,
+            screen_w / 2.0, owner_h / 2.0,
+            screen_w / 2.0 + 2.0 * fuse, owner_h / 2.0,
+            0.0,
+        )
+        popup = rounded_box(
+            x, y,
+            popup_x + popup_w / 2.0, popup_y + popup_h / 2.0,
+            popup_w / 2.0, popup_h / 2.0,
+            popup_r,
+        )
+        return min(owner, popup, smooth_union(owner, popup, fuse))
+
+    extensions = []
+    for depth in depths:
+        y = owner_h + depth
+        x = popup_x - max(80.0, 2.0 * fuse)
+        while x <= popup_x + 1.0:
+            if field_distance(x, y) <= 0.0:
+                extensions.append(popup_x - x)
+                break
+            x += 0.05
+        else:
+            raise AssertionError(f"no joined field at depth {depth}")
+    return extensions
 
 
-def left_shoulder_extension(depth):
-    y = owner_h + depth
-    x = popup_x - 80.0
-    while x <= popup_x + 1.0:
-        if field_distance(x, y) <= 0.0:
-            return popup_x - x
-        x += 0.05
-    raise AssertionError(f"no joined field at depth {depth}")
+diagnostic_depths = (1, 4, 8, 16, 24, 48, 56)
+diagnostic = shoulder_extensions(56, 380, 300, 48, 4, 56, diagnostic_depths)
+assert 24.0 <= diagnostic[0] <= 40.0, diagnostic
+for previous, current in zip(diagnostic, diagnostic[1:]):
+    assert current <= previous + 0.15, diagnostic
+assert 8.0 <= diagnostic[2] <= 16.0, diagnostic
+assert diagnostic[-1] <= 0.6, diagnostic
 
-
-depths = (1, 4, 8, 16, 24, 48, 56)
-extensions = [left_shoulder_extension(depth) for depth in depths]
-
-# The join must start visibly outside the popup at the seam, taper inward
-# monotonically, then converge to the popup side. A second blob underneath the
-# popup would violate this single-contour taper.
-assert 24.0 <= extensions[0] <= 40.0, extensions
-for previous, current in zip(extensions, extensions[1:]):
-    assert current <= previous + 0.15, extensions
-assert 8.0 <= extensions[2] <= 16.0, extensions
-assert extensions[-1] <= 0.6, extensions
+upstream_depths = (1, 4, 8, 16, 24, 30)
+upstream = shoulder_extensions(42, 360, 300, 30, 3, 30, upstream_depths)
+assert 9.0 <= upstream[0] <= 16.0, upstream
+for previous, current in zip(upstream, upstream[1:]):
+    assert current <= previous + 0.15, upstream
+assert 0.8 <= upstream[2] <= 3.0, upstream
+assert upstream[-1] <= 0.6, upstream
 
 
 
@@ -138,6 +145,7 @@ for token in (
     "for edge in top bottom left right",
     "for source_t in 0.02 0.50 0.98",
     "HADALIS_IRIS_POC_MODE",
+    "HADALIS_IRIS_POC_PROFILE",
     "HADALIS_IRIS_POC",
     "grim",
     "manifest.tsv",

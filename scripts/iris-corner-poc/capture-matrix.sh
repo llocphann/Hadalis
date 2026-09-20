@@ -5,6 +5,7 @@ here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 out_dir="${HADALIS_IRIS_POC_CAPTURE_DIR:-$here/captures}"
 warmup="${HADALIS_IRIS_POC_CAPTURE_WARMUP:-0.35}"
 mode="${HADALIS_IRIS_POC_MODE:-card-owner}"
+profile="${HADALIS_IRIS_POC_PROFILE:-diagnostic}"
 output="${HADALIS_IRIS_POC_OUTPUT:-}"
 
 if [[ -z "${WAYLAND_DISPLAY:-}" || -z "${XDG_RUNTIME_DIR:-}" ]]; then
@@ -29,7 +30,7 @@ fi
 
 mkdir -p "$out_dir"
 manifest="$out_dir/manifest.tsv"
-printf 'edge\tsource_t\tmode\tpng\tlog\n' > "$manifest"
+printf 'edge\tsource_t\tmode\tprofile\tpng\tlog\n' > "$manifest"
 
 current_pid=""
 cleanup() {
@@ -45,15 +46,16 @@ capture_case() {
     local edge="$1"
     local source_t="$2"
     local safe_t="${source_t/./p}"
-    local stem="${edge}-${safe_t}-${mode}"
+    local stem="${edge}-${safe_t}-${mode}-${profile}"
     local png="$out_dir/$stem.png"
     local log="$out_dir/$stem.log"
 
-    printf 'capture %-6s source=%s mode=%s\n' "$edge" "$source_t" "$mode"
+    printf 'capture %-6s source=%s mode=%s profile=%s\n' "$edge" "$source_t" "$mode" "$profile"
 
     HADALIS_IRIS_POC_EDGE="$edge" \
     HADALIS_IRIS_POC_SOURCE_T="$source_t" \
     HADALIS_IRIS_POC_MODE="$mode" \
+    HADALIS_IRIS_POC_PROFILE="$profile" \
     HADALIS_IRIS_POC_OUTPUT="$output" \
     HADALIS_IRIS_POC_GUIDES=1 \
         "$qs_bin" -n -p "$here" >"$log" 2>&1 &
@@ -85,8 +87,8 @@ capture_case() {
         grim "$png"
     fi
 
-    printf '%s\t%s\t%s\t%s\t%s\n' \
-        "$edge" "$source_t" "$mode" "$png" "$log" >> "$manifest"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$edge" "$source_t" "$mode" "$profile" "$png" "$log" >> "$manifest"
 
     cleanup
 }
@@ -97,20 +99,20 @@ for edge in top bottom left right; do
     done
 done
 
-contact="$out_dir/contact-sheet-${mode}.png"
+contact="$out_dir/contact-sheet-${mode}-${profile}.png"
 images=(
-    "$out_dir/top-0p02-${mode}.png"
-    "$out_dir/top-0p50-${mode}.png"
-    "$out_dir/top-0p98-${mode}.png"
-    "$out_dir/bottom-0p02-${mode}.png"
-    "$out_dir/bottom-0p50-${mode}.png"
-    "$out_dir/bottom-0p98-${mode}.png"
-    "$out_dir/left-0p02-${mode}.png"
-    "$out_dir/left-0p50-${mode}.png"
-    "$out_dir/left-0p98-${mode}.png"
-    "$out_dir/right-0p02-${mode}.png"
-    "$out_dir/right-0p50-${mode}.png"
-    "$out_dir/right-0p98-${mode}.png"
+    "$out_dir/top-0p02-${mode}-${profile}.png"
+    "$out_dir/top-0p50-${mode}-${profile}.png"
+    "$out_dir/top-0p98-${mode}-${profile}.png"
+    "$out_dir/bottom-0p02-${mode}-${profile}.png"
+    "$out_dir/bottom-0p50-${mode}-${profile}.png"
+    "$out_dir/bottom-0p98-${mode}-${profile}.png"
+    "$out_dir/left-0p02-${mode}-${profile}.png"
+    "$out_dir/left-0p50-${mode}-${profile}.png"
+    "$out_dir/left-0p98-${mode}-${profile}.png"
+    "$out_dir/right-0p02-${mode}-${profile}.png"
+    "$out_dir/right-0p50-${mode}-${profile}.png"
+    "$out_dir/right-0p98-${mode}-${profile}.png"
 )
 
 if command -v magick >/dev/null 2>&1; then

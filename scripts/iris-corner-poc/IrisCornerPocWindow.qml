@@ -10,7 +10,10 @@ PanelWindow {
     required property var modelData
 
     function envReal(name, fallback) {
-        const value = Number(Quickshell.env(name))
+        const raw = Quickshell.env(name)
+        if (raw === undefined || raw === null || String(raw).trim().length === 0)
+            return fallback
+        const value = Number(raw)
         return Number.isFinite(value) ? value : fallback
     }
 
@@ -22,21 +25,33 @@ PanelWindow {
         const value = String(Quickshell.env("HADALIS_IRIS_POC_MODE") || "card-owner").toLowerCase()
         return value === "edge-reach" ? value : "card-owner"
     }
+    readonly property string profileName: {
+        const value = String(Quickshell.env("HADALIS_IRIS_POC_PROFILE") || "diagnostic").toLowerCase()
+        return value === "upstream-relative" ? value : "diagnostic"
+    }
+    readonly property bool upstreamRelative: root.profileName === "upstream-relative"
+    readonly property real profileOwnerThickness: root.upstreamRelative ? 42 : 56
+    readonly property real profilePopupWidth: root.upstreamRelative ? 360 : 380
+    readonly property real profilePopupHeight: 300
+    readonly property real profilePopupRadius: root.upstreamRelative ? 30 : 48
+    readonly property real profileWeld: root.upstreamRelative ? 3 : 4
+    readonly property real profileFuse: root.upstreamRelative ? 30 : 56
+
     readonly property bool horizontal: root.edgeName === "top" || root.edgeName === "bottom"
     readonly property real sourceT:
         Math.max(0, Math.min(1, root.envReal("HADALIS_IRIS_POC_SOURCE_T", 0.5)))
     readonly property real ownerThickness:
-        Math.max(16, root.envReal("HADALIS_IRIS_POC_OWNER_THICKNESS", 56))
+        Math.max(16, root.envReal("HADALIS_IRIS_POC_OWNER_THICKNESS", root.profileOwnerThickness))
     readonly property real popupWidth:
-        Math.max(120, root.envReal("HADALIS_IRIS_POC_POPUP_WIDTH", 380))
+        Math.max(120, root.envReal("HADALIS_IRIS_POC_POPUP_WIDTH", root.profilePopupWidth))
     readonly property real popupHeight:
-        Math.max(120, root.envReal("HADALIS_IRIS_POC_POPUP_HEIGHT", 300))
+        Math.max(120, root.envReal("HADALIS_IRIS_POC_POPUP_HEIGHT", root.profilePopupHeight))
     readonly property real popupRadius:
-        Math.max(0, root.envReal("HADALIS_IRIS_POC_POPUP_RADIUS", 48))
+        Math.max(0, root.envReal("HADALIS_IRIS_POC_POPUP_RADIUS", root.profilePopupRadius))
     readonly property real weld:
-        Math.max(0, root.envReal("HADALIS_IRIS_POC_WELD", 4))
+        Math.max(0, root.envReal("HADALIS_IRIS_POC_WELD", root.profileWeld))
     readonly property real fuse:
-        Math.max(0, root.envReal("HADALIS_IRIS_POC_FUSE", 56))
+        Math.max(0, root.envReal("HADALIS_IRIS_POC_FUSE", root.profileFuse))
     readonly property bool showGuides:
         String(Quickshell.env("HADALIS_IRIS_POC_GUIDES") || "1") !== "0"
 
@@ -179,6 +194,7 @@ PanelWindow {
         color: "white"
         font.pixelSize: 16
         text: "iRiS v2.31 field · " + root.geometryMode
+            + " · " + root.profileName
             + " · " + root.edgeName
             + " · fuse " + Math.round(root.fuse)
             + " · weld " + Math.round(root.weld)
@@ -189,6 +205,7 @@ PanelWindow {
         JSON.stringify({
             output: root.screen?.name ?? "",
             mode: root.geometryMode,
+            profile: root.profileName,
             edge: root.edgeName,
             semanticPopup: root.semanticPopup,
             fieldPopup: root.fieldPopup,

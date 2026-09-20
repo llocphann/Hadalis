@@ -71,13 +71,15 @@ Defaults are deliberately exaggerated for visual inspection:
 - cyan semantic popup outline;
 - magenta owner seam;
 - popup radius 48 px;
-- fuse 56 px.
+- fuse 56 px;
+- profile `diagnostic`.
 
 Useful overrides:
 
 ```sh
 HADALIS_IRIS_POC_EDGE=top|bottom|left|right \
 HADALIS_IRIS_POC_MODE=card-owner|edge-reach \
+HADALIS_IRIS_POC_PROFILE=diagnostic|upstream-relative \
 HADALIS_IRIS_POC_SOURCE_T=0.5 \
 HADALIS_IRIS_POC_OWNER_THICKNESS=56 \
 HADALIS_IRIS_POC_POPUP_WIDTH=380 \
@@ -92,6 +94,46 @@ scripts/iris-corner-poc/run.sh
 Set `HADALIS_IRIS_POC_OUTPUT=<output-name>` on a multi-output desktop.
 
 
+
+
+
+## Geometry profiles
+
+The PoC separates visual diagnosis from upstream-scale calibration.
+
+`diagnostic` is the default because the maintainer requested larger corners for
+easy inspection:
+
+```text
+owner thickness 56
+popup           380 x 300
+radius          48
+fuse            56
+weld            4
+```
+
+`upstream-relative` follows the default iRiS v2.31 scale much more closely:
+
+```text
+owner thickness 42
+popup           360 x 300
+radius          30
+fuseDeep        30
+weld            3
+```
+
+The upstream values come from `IrisStyle.qml` at density/melt defaults:
+`radiusPanel = corner(30)`, `fuseDeep = 30 * density * meltDepth`,
+`weld = 3 * density`, and the default Bar height is 42.
+
+Select it with:
+
+```sh
+HADALIS_IRIS_POC_PROFILE=upstream-relative \
+scripts/iris-corner-poc/run.sh
+```
+
+Explicit geometry environment variables still override either profile.
 
 ## Capture the full live visual matrix
 
@@ -115,7 +157,7 @@ The output defaults to `scripts/iris-corner-poc/captures/` and contains:
 - 12 PNG screenshots;
 - one Quickshell log per case;
 - `manifest.tsv`;
-- `contact-sheet-card-owner.png` when ImageMagick is available.
+- `contact-sheet-<mode>-<profile>.png` when ImageMagick is available.
 
 The harness launches only this developer PoC, waits for its
 `HADALIS_IRIS_POC` readiness marker, captures with `grim`, then terminates

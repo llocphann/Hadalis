@@ -25,9 +25,9 @@ Sidebar, Dashboard and Settings use this adapter.
 
 The old standalone corner/wedge painters are retired and must remain absent:
 
-- `ConnectedSurfaceJoinFlares.qml`;
-- `PerimeterCornerShadow.qml`;
-- `RoundCorner.qml`;
+- `ConnectedSurfaceJoinFlares`;
+- `PerimeterCornerShadow`;
+- `RoundCorner`;
 - the `joinFlareRadius` / `joinFlareCrossScale` token family;
 - fake screen-rounding paint in `ScreenCorners.qml`.
 

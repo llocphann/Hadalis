@@ -48,7 +48,7 @@ The current production files involved in those experiments are byte-identical to
 
 This was re-verified against current `dev` for all relevant paths, including:
 
-- `modules/common/perimeter/ConnectedSurfaceJoinFlares.qml`
+- `modules/common/perimeter/ConnectedSurfaceJoinFlares`
 - `modules/common/perimeter/ConnectedSurfaceFrame.qml`
 - `modules/common/perimeter/ConnectedSurfaceRevealClip.qml`
 - `modules/bar/StyledPopup.qml`

@@ -76,9 +76,9 @@ Current Search/OSK/Waffle compatibility paths do not paint auxiliary endpoint we
 
 The following are intentionally absent from runtime QML and exports:
 
-- `ConnectedSurfaceJoinFlares.qml`;
-- `PerimeterCornerShadow.qml`;
-- common `RoundCorner.qml`;
+- `ConnectedSurfaceJoinFlares`;
+- `PerimeterCornerShadow`;
+- common `RoundCorner`;
 - `joinFlareRadius`;
 - `joinFlareCrossScale`;
 - fake-screen-rounding configuration and paint.

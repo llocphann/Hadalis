@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Live isolated acceptance for explicit Connect write authorization.
 
-2K-R does not expose Connect Apply. The product UI may authorize one exact
-prepared Connect manifest/history command, but production source writing remains
-reachable only through ProbeShell acceptance IPC. This harness proves that
+2K-R proves authorization independently of the later Apply control. The product
+UI may authorize one exact prepared Connect manifest/history command; 2K-S
+separately proves the user-facing source-write wrapper. This harness proves that
 preparation alone cannot start the lifecycle, authorization is exact and
 revocable, history/dependency changes expire it, and manifest drift is rejected
 before any source write.
@@ -416,7 +416,7 @@ def main() -> int:
             "headless Sway, isolated XDG/private bus, production "
             "Connect preview/preparation/authorization transaction",
         "limitations": [
-            "Settings exposes authorization/revoke only; no Connect Apply.",
+            "This 2K-R harness tests authorization only; 2K-S tests user-facing Apply separately.",
             "Lifecycle start remains reachable only through ProbeShell IPC.",
             "The source tree under test is a temporary exported runtime.",
         ],

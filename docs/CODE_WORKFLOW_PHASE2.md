@@ -926,12 +926,51 @@ Implemented authorization boundary:
   evidence (prepared anchor + manifest SHA) before authorization so automatic
   semantic-failure rollback remains independently covered.
 
+## Milestone 2K-S — user-facing authorized Connect Apply
+
+Implemented user-facing write boundary:
+
+- `connectApplyEnabled` is true only for an active reviewed Connect command
+  whose prepared artifacts, FRESH promoted safety snapshot, parser/qmllint/source
+  capability and exact 2K-R authorization all still match. It is false before
+  authorization, after expiry, while any lifecycle is busy and after the
+  command becomes stale.
+- Settings exposes `Apply Connect` only for the selected matching transaction.
+  It calls `beginAuthorizedConnectApply()`; Settings never calls the internal
+  `beginConnectLifecycle()` function or `connect_commit.py` directly.
+- `beginAuthorizedConnectApply()` consumes the existing deliberate
+  authorization as a single start opportunity and invokes the already-qualified
+  2K-Q lifecycle exactly once. A second start while the lifecycle is in flight
+  fails closed. The wrapper never prepares, reproves or reauthorizes.
+- The Connect transaction header exposes the lifecycle phases:
+  source write, watcher reload, candidate verification, inserted-anchor rebind,
+  snapshot restoration, rollback reload and rollback verification. While any
+  of those phases are active, preparation, authorization, regeneration, history
+  and Clear controls are disabled.
+- Success requires the same watcher-driven reload, exact candidate/dependency
+  verification and semantic rebind already qualified by 2K-Q. The history
+  command then becomes stale, authorization is expired and another write
+  requires regenerate → prepare → authorize.
+- Verify/rebind/dependency failures retain the 2K-Q automatic rollback path.
+  Rollback/conflict diagnostics stay visible after the lifecycle ends and there
+  is no automatic retry.
+- Live 2K-S acceptance proves pre-authorization Apply is blocked, authorized
+  Apply starts exactly once, the real reviewed Clock candidate completes
+  reload/verify/rebind, and a forced inserted-anchor failure automatically
+  restores the exact base snapshot.
+- The historical literal-property Apply pipeline remains a separate gate and
+  lifecycle. The production source-writing subset is now literal-property plus
+  this single reviewed prepared+authorized Connect command.
+- Direct binding and Disconnect remain preview-only. The Connect proof evidence
+  remains explicit and production TYPE/CYCLE remain UNKNOWN; the UI does not
+  relabel either proof as generic SAFE.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
-- applying Connect or Disconnect transforms;
+- applying Disconnect transforms;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- user-facing Connect source Apply control;
+- additional reviewed Connect targets beyond the first Clock fixture;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -939,24 +978,18 @@ Implemented authorization boundary:
 
 ## Next gate
 
-2K-R qualifies deliberate authorization without making authorization itself a
-write action. The next gate, 2K-S, is the user-facing Connect source Apply
-control over the already-qualified internal lifecycle.
+2K-S completes the first end-to-end reviewed Connect edit without broadening the
+projection or introducing a second mutation engine. The next gate, 2K-T, should
+promote the already-qualified simple Disconnect preview into the same
+transactional architecture.
 
-That control must appear or enable only while the exact 2K-R authorization is
-active and the selected transaction still matches. Clicking it must consume the
-existing authorization and call the 2K-Q lifecycle exactly once; it must never
-silently reprepare or reauthorize. While the lifecycle is running, mutation,
-history and preparation controls must remain disabled and the UI must expose
-write/reload/verify/rebind/rollback phase state. Any authorization expiry before
-the click must disable the control immediately.
+2K-T must remove only one exact reviewed direct binding, bind deletion artifacts
+to source SHA + semantic anchor + property identity, require an explicit
+authorization snapshot, and reuse atomic commit/reload/verify/rebind-or-static
+postcondition/rollback semantics. Disconnect must not inherit Connect's type or
+cycle proofs because deletion has a different safety argument; its acceptance
+must instead prove exact binding identity, post-delete absence and rollback on
+reload/verification failure.
 
-After success or rollback, authorization and prepared evidence remain stale and
-the user must regenerate/reprepare/reauthorize before another source write.
-Rollback/conflict diagnostics must remain visible and no automatic retry is
-allowed. The literal-property Apply control stays independently literal-only and
-must not be merged with the Connect authorization or lifecycle state.
-
-Until 2K-S is independently qualified, user-facing Connect Apply remains
-unavailable even though the internal lifecycle and authorization boundary are
-production-wired.
+Direct-binding replacement remains preview-only until its own proof and
+authorization gate is qualified. Multi-file writes remain out of scope.

@@ -52,7 +52,7 @@ for token in (
     '"external-source-sha-mismatch-before-write"',
     '"sourceWritten") is False',
     '"reloadCompletions"] == 1',
-    '"No production Settings Connect Apply action exists."',
+    '"This 2K-P harness does not invoke the current Settings Connect Apply action."',
 ):
     if token not in harness:
         fail("2K-P live Connect harness missing " + token)
@@ -76,9 +76,10 @@ for token in (
 
 if 'Quickshell.shellPath("scripts/code-workflow/connect_commit.py")' not in transaction:
     fail("2K-Q must production-wire the previously qualified Connect engine")
-for forbidden in ("Connect Apply", "Apply Connect", "beginConnectApply"):
-    if forbidden in page or forbidden in transaction:
-        fail("2K-P must not expose user-facing Connect Apply: " + forbidden)
+if "CodeWorkflowTransaction.beginConnectLifecycle()" in page:
+    fail("Settings must not invoke the internal Connect lifecycle directly")
+if "connect_commit.py" in page:
+    fail("Settings must not invoke the Connect commit engine directly")
 
 for token in (
     'String(root.activeCommand?.kind ?? "") === "literal-property"',

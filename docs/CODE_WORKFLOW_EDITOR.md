@@ -28,8 +28,10 @@ same Clock SHA and exact Connect candidate SHA, then reverify both Clock and
 Config hashes after proof generation. The transaction now defines a
 non-authorizing promotion boundary that can retain only an allowlisted primitive
 safety snapshot and re-hash its Clock/Config dependencies across history/reload.
-TYPE/CYCLE UNKNOWN continue to block Connect source writes. The 2K-M exact
-preparation proof is now promoted through a single production coordinator:
+Production TYPE/CYCLE remain UNKNOWN and are never relabeled SAFE; the reviewed
+Connect subset instead uses separately named proof tokens and exact identity
+gates. The 2K-M exact preparation proof is now promoted through a single
+production coordinator:
 runtime capability is probed explicitly, and the user may prepare qualified
 mode-0600 rollback/candidate/manifest artifacts from Settings when native parser,
 qmllint and source writability are available. Low-level proof modules are runtime
@@ -44,12 +46,15 @@ separate explicit user-authorization snapshot bound to the exact prepared
 manifest SHA, source/dependency identities and history command. Settings exposes
 Authorize/Revoke plus complete evidence while keeping production TYPE/CYCLE
 UNKNOWN; authorization never writes source and expires on dependency, history,
-capability or lifecycle invalidation. User-facing Connect Apply remains
-unavailable until the separate 2K-S gate.
+capability or lifecycle invalidation. 2K-S adds the user-facing Apply Connect
+control over that exact authorization and the already-qualified lifecycle.
+The control starts once, exposes write/reload/verify/rebind/rollback phase state,
+and requires regeneration after success or rollback.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
-Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the
-qualified literal-property subset; package-managed/read-only source and every
+Curve sustained-memory acceptance remains HOLD. Phase 2 can write the qualified
+literal-property subset and the first reviewed prepared+authorized Connect
+command; direct binding, Disconnect, package-managed/read-only source and every
 unsupported semantic construct remain fail-closed.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
 [Phase 1 status](CODE_WORKFLOW_PHASE1.md),

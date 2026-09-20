@@ -188,6 +188,39 @@ Item {
             && CodeWorkflowTransaction.semanticAnchor
                 === root.storedSemanticAnchor
     }
+    readonly property string connectLifecyclePhaseText: {
+        const phase = String(
+            CodeWorkflowTransaction.pendingConnectPhase ?? "idle")
+        switch (phase) {
+        case "write-issued":
+            return "WRITING SOURCE"
+        case "waiting-reload":
+            return "WAITING FOR RELOAD"
+        case "candidate-verify-issued":
+            return "VERIFYING CANDIDATE"
+        case "rebinding":
+            return "REBINDING SEMANTIC ANCHOR"
+        case "rollback-pending":
+            return "ROLLBACK PENDING"
+        case "rollback-issued":
+            return "RESTORING SNAPSHOT"
+        case "rollback-waiting-reload":
+            return "WAITING FOR ROLLBACK RELOAD"
+        case "rollback-verify-issued":
+            return "VERIFYING ROLLBACK"
+        case "connect-commit-conflict":
+            return "COMMIT CONFLICT"
+        case "connect-commit-failed":
+            return "COMMIT FAILED"
+        case "connect-rollback-conflict":
+            return "ROLLBACK CONFLICT"
+        case "connect-rollback-failed":
+            return "ROLLBACK FAILED"
+        default:
+            return phase.toUpperCase()
+        }
+    }
+
     readonly property string analyzerStatusText: {
         if (!root.analyzerMatchesAnchor)
             return "IDLE"
@@ -988,7 +1021,7 @@ Item {
                     Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Only qualified literal-property commands may Apply. Direct bindings and Disconnect are preview-only. Connect may prepare and explicitly authorize one exact state-artifact handoff, but user-facing source Apply remains unavailable."
+                        text: "Literal-property Apply remains independently qualified. Direct bindings and Disconnect are preview-only. Connect Apply requires one exact prepared + authorized handoff and uses the qualified transactional reload/rebind/rollback lifecycle."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -1055,13 +1088,24 @@ Item {
                     Pill {
                         label: CodeWorkflowTransaction.activeCommand?.kind
                                 === "connect-binding"
-                            ? CodeWorkflowTransaction.connectAuthorizationReady
-                                ? "CONNECT AUTHORIZED · APPLY BLOCKED"
-                                : CodeWorkflowTransaction.connectArtifactsReady
-                                    ? "CONNECT READY · AUTHORIZATION REQUIRED"
-                                    : CodeWorkflowTransaction.connectPreparationBusy
-                                        ? "CONNECT CHECKING"
-                                        : "PREVIEW ONLY"
+                            ? CodeWorkflowTransaction.connectLifecycleBusy
+                                ? "CONNECT APPLY · "
+                                    + root.connectLifecyclePhaseText
+                                : CodeWorkflowTransaction.status
+                                        === "connect-applied"
+                                    ? "CONNECT APPLIED"
+                                    : CodeWorkflowTransaction.status
+                                            === "connect-rollback-complete"
+                                        ? "CONNECT ROLLED BACK"
+                                        : CodeWorkflowTransaction.connectApplyEnabled
+                                            ? "CONNECT APPLY READY"
+                                            : CodeWorkflowTransaction.connectAuthorizationReady
+                                                ? "CONNECT AUTHORIZED"
+                                                : CodeWorkflowTransaction.connectArtifactsReady
+                                                    ? "CONNECT READY · AUTHORIZATION REQUIRED"
+                                                    : CodeWorkflowTransaction.connectPreparationBusy
+                                                        ? "CONNECT CHECKING"
+                                                        : "PREVIEW ONLY"
                             : [
                                 "direct-binding",
                                 "disconnect-binding"
@@ -1129,6 +1173,19 @@ Item {
                         visible: CodeWorkflowTransaction.activeCommand?.kind
                             === "connect-binding"
                             && CodeWorkflowTransaction.connectAuthorizationReady
+                            && !CodeWorkflowTransaction.connectLifecycleBusy
+                            && root.transactionMatchesSelection
+                        materialIcon: "save"
+                        mainText: "Apply Connect"
+                        enabled: CodeWorkflowTransaction.connectApplyEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.beginAuthorizedConnectApply()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "connect-binding"
+                            && CodeWorkflowTransaction.connectAuthorizationReady
                             && root.transactionMatchesSelection
                         materialIcon: "gpp_bad"
                         mainText: "Revoke authorization"
@@ -1174,6 +1231,7 @@ Item {
                         mainText: "Regenerate"
                         enabled: root.transactionMatchesSelection
                             && !CodeWorkflowTransaction.connectPreparationBusy
+                            && !CodeWorkflowTransaction.connectLifecycleBusy
                             && (CodeWorkflowTransaction.activeCommand?.kind
                                     === "connect-binding"
                                 || CodeWorkflowAnalyzer.status === "ready")
@@ -1185,6 +1243,7 @@ Item {
                         enabled: CodeWorkflowTransaction.status !== "previewing"
                             && !CodeWorkflowTransaction.applyLifecycleBusy
                             && !CodeWorkflowTransaction.connectPreparationBusy
+                            && !CodeWorkflowTransaction.connectLifecycleBusy
                         onClicked: CodeWorkflowTransaction.clear()
                     }
                 }
@@ -1292,11 +1351,50 @@ Item {
                     Layout.fillWidth: true
                     visible: CodeWorkflowTransaction.connectArtifactsReady
                     text: CodeWorkflowTransaction.connectAuthorizationReady
-                        ? "Authorization ACTIVE · bound to this exact prepared manifest/history command · automatic exact-snapshot rollback is qualified · source Apply control is still unavailable"
-                        : "Authorization REQUIRED · deliberate authorization will bind only this exact prepared manifest/history command · any Clock/Config/history change expires it · source Apply control is still unavailable"
+                        ? "Authorization ACTIVE · bound to this exact prepared manifest/history command · Apply Connect may consume it once · automatic exact-snapshot rollback is qualified"
+                        : "Authorization REQUIRED · deliberate authorization will bind only this exact prepared manifest/history command · any Clock/Config/history change expires it · Apply Connect stays disabled"
                     color: CodeWorkflowTransaction.connectAuthorizationReady
                         ? Appearance.colors.colPrimary
                         : Appearance.colors.colTertiary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "connect-binding"
+                        && (CodeWorkflowTransaction.connectLifecycleBusy
+                            || CodeWorkflowTransaction.connectLifecycleError
+                                .length > 0
+                            || Object.keys(
+                                CodeWorkflowTransaction
+                                    .connectLifecycleResult ?? {}
+                            ).length > 0)
+                    text: CodeWorkflowTransaction.connectLifecycleBusy
+                        ? "Connect Apply lifecycle · "
+                            + root.connectLifecyclePhaseText
+                            + " · mutation/history/preparation controls are locked"
+                        : CodeWorkflowTransaction.status === "connect-applied"
+                            ? "Connect Apply complete · candidate verified and inserted semantic anchor rebound · authorization consumed · regenerate before another write"
+                            : CodeWorkflowTransaction.status
+                                    === "connect-rollback-complete"
+                                ? "Connect Apply rolled back · exact base snapshot verified · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .connectLifecycleError ?? "")
+                                : "Connect Apply stopped · "
+                                    + root.connectLifecyclePhaseText
+                                    + " · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .connectLifecycleError ?? "")
+                    color: CodeWorkflowTransaction.status === "connect-applied"
+                        ? Appearance.colors.colPrimary
+                        : CodeWorkflowTransaction.connectLifecycleBusy
+                            ? Appearance.colors.colTertiary
+                            : Appearance.colors.colError
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     font.weight: Font.Medium
                     wrapMode: Text.WordWrap

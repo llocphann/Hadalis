@@ -114,13 +114,8 @@ for token in (
     if token not in harness:
         fail("2K-Q live production lifecycle harness missing " + token)
 
-for forbidden in (
-    "Connect Apply",
-    "Apply Connect",
-    "beginConnectApply",
-):
-    if forbidden in page:
-        fail("2K-Q must not expose user-facing Connect Apply: " + forbidden)
+if "CodeWorkflowTransaction.beginConnectLifecycle()" in page:
+    fail("Settings must not invoke the internal 2K-Q lifecycle directly")
 
 # The historical literal Apply pipeline remains independently scoped.
 for token in (

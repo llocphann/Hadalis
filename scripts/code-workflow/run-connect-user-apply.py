@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""Live isolated production-internal Connect lifecycle acceptance.
+"""Live isolated acceptance for the user-facing Connect Apply boundary.
 
-2K-Q proves the production-internal Connect lifecycle independently of the
-later Settings Apply wrapper. This harness uses ProbeShell-only IPC to invoke
-the internal transaction lifecycle after the normal production Connect preview
-+ preparation + authorization path has produced an exact manifest. The success case crosses a watcher-driven Quickshell reload and
-semantic rebind. The failure case corrupts only the temporary prepared
-manifest's inserted semantic anchor, proving the transaction automatically
-rolls the committed candidate back when post-reload semantic rebind fails.
+The Settings button is statically bound to beginAuthorizedConnectApply().
+ProbeShell exposes that same transaction wrapper for live acceptance. The
+harness proves exactly-once authorized start, successful reload/verify/rebind,
+and automatic rollback on semantic failure without silent retry.
 """
 
 from __future__ import annotations
@@ -20,42 +17,25 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-spec = importlib.util.spec_from_file_location(
-    "connect_live",
-    HERE / "run-connect-lifecycle.py",
+prod_spec = importlib.util.spec_from_file_location(
+    "connect_production",
+    HERE / "run-connect-production-lifecycle.py",
 )
-live = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(live)
+prod = importlib.util.module_from_spec(prod_spec)
+prod_spec.loader.exec_module(prod)
 
-Probe = live.Probe
-prepare_module = live.prepare_module
-prepare_connect = live.prepare_connect
-wait_snapshot = live.wait_snapshot
-recover_after_rollback = live.recover_after_rollback
-reset_connect = live.reset_connect
-engine = live.engine
+Probe = prod.Probe
+prepare_module = prod.prepare_module
+prepare_connect = prod.prepare_connect
+wait_snapshot = prod.wait_snapshot
+reset_connect = prod.reset_connect
+engine = prod.engine
+recover_after_rollback = prod.recover_after_rollback
+authorize_connect = prod.authorize_connect
 
 
 def file_sha(path: Path) -> str:
     return sha256(path.read_bytes()).hexdigest()
-
-
-def authorize_connect(probe: Probe) -> dict:
-    if probe.ipc("workflowConnectAuthorize") != "true":
-        raise AssertionError(
-            "explicit Connect authorization did not succeed")
-    return wait_snapshot(
-        probe,
-        lambda s: (
-            s["workflowTransaction"]["connectAuthorizationReady"] is True
-            and (
-                s["workflowTransaction"].get(
-                    "activeConnectAuthorization") or {}
-            ).get("status") == "authorized"
-        ),
-        "explicit Connect write authorization",
-        timeout=30,
-    )
 
 
 def cleanup_success(
@@ -69,16 +49,17 @@ def cleanup_success(
     rolled_back = engine(work_dir, "rollback", manifest_path)
     if rolled_back.get("status") != "rolled-back":
         raise AssertionError(
-            "2K-Q success cleanup rollback failed: "
+            "2K-S success cleanup rollback failed: "
             + json.dumps(rolled_back, sort_keys=True)
         )
     if clock_path.read_bytes() != source_before:
         raise AssertionError(
-            "2K-Q success cleanup did not restore exact Clock bytes")
+            "2K-S success cleanup did not restore exact Clock bytes"
+        )
     restored, mode = recover_after_rollback(
         probe,
         previous_epoch,
-        "2K-Q success cleanup",
+        "2K-S success cleanup",
     )
     return {
         "rollback": rolled_back,
@@ -87,7 +68,7 @@ def cleanup_success(
     }
 
 
-def run_success(
+def run_user_apply_success(
     probe: Probe,
     work_dir: Path,
     clock_path: Path,
@@ -95,19 +76,40 @@ def run_success(
     report: dict,
 ) -> None:
     prepared_state, source_before = prepare_connect(probe, clock_path)
-    transaction = prepared_state["prepared"]
-    prepared = transaction["activeConnectPreparation"] or {}
-    safety = transaction["activeConnectSafety"] or {}
+    prepared_tx = prepared_state["prepared"]
+    prepared = prepared_tx["activeConnectPreparation"] or {}
     manifest_path = str(prepared["manifestPath"])
     inserted_anchor = str(prepared["insertedSemanticAnchor"])
-    candidate_sha = str(transaction["activeCommandCandidateSha256"])
+    candidate_sha = str(prepared_tx["activeCommandCandidateSha256"])
     config_before = config_path.read_bytes()
+
+    before_auth = probe.snapshot()
+    pre_authorization_start = probe.ipc("workflowConnectApply")
+    if pre_authorization_start != "false":
+        raise AssertionError(
+            "2K-S Connect Apply started before explicit authorization"
+        )
+
     authorized = authorize_connect(probe)
+    ready = wait_snapshot(
+        probe,
+        lambda s: (
+            s["workflowTransaction"]["connectApplyEnabled"] is True
+            and s["workflowTransaction"]["connectAuthorizationReady"]
+                is True
+            and s["workflowTransaction"]["pendingConnectPhase"] == "idle"
+        ),
+        "user-facing Connect Apply ready",
+        timeout=30,
+    )
     before = probe.snapshot()
 
-    if probe.ipc("workflowConnectBeginLifecycle") != "true":
-        raise AssertionError(
-            "production internal Connect lifecycle did not start")
+    first_start = probe.ipc("workflowConnectApply")
+    second_start = probe.ipc("workflowConnectApply")
+    if first_start != "true":
+        raise AssertionError("2K-S authorized Connect Apply did not start")
+    if second_start != "false":
+        raise AssertionError("2K-S Connect Apply was not exactly-once")
 
     completed = wait_snapshot(
         probe,
@@ -115,6 +117,9 @@ def run_success(
             s["workflowTransaction"]["status"] == "connect-applied"
             and s["workflowTransaction"]["pendingConnectPhase"] == "idle"
             and s["workflowTransaction"]["connectLifecycleBusy"] is False
+            and s["workflowTransaction"]["connectApplyEnabled"] is False
+            and s["workflowTransaction"]["connectAuthorizationReady"]
+                is False
             and (s["workflowTransaction"].get(
                 "connectLifecycleResult") or {}).get("status")
                 == "connect-applied"
@@ -125,26 +130,30 @@ def run_success(
                 .get("status") == "resolved"
             and len(s["workflowAnalyzer"]["diagnostics"]) == 0
         ),
-        "production internal Connect lifecycle success",
+        "user-facing Connect Apply success",
         timeout=120,
     )
 
     probe.record(
-        "2K-Q production lifecycle commits, reloads, verifies and rebinds",
-        before["epoch"] != completed["epoch"]
+        "2K-S authorized Apply starts once and completes qualified lifecycle",
+        before_auth["workflowTransaction"]["connectApplyEnabled"] is False
+        and pre_authorization_start == "false"
+        and ready["workflowTransaction"]["connectApplyEnabled"] is True
+        and first_start == "true"
+        and second_start == "false"
+        and before["epoch"] != completed["epoch"]
         and completed["reloadCompletions"] == 1
         and completed["reloadFailures"] == 0
         and file_sha(clock_path) == candidate_sha
-        and config_path.read_bytes() == config_before
-        and safety.get("freshness") == "fresh",
+        and config_path.read_bytes() == config_before,
         {
             "manifestPath": manifest_path,
             "candidateSha256": candidate_sha,
             "insertedSemanticAnchor": inserted_anchor,
-            "lifecycleResult":
+            "authorized": authorized["workflowTransaction"],
+            "lifecycle":
                 completed["workflowTransaction"]["connectLifecycleResult"],
             "analyzer": completed["workflowAnalyzer"],
-            "reloadCompletions": completed["reloadCompletions"],
         },
     )
 
@@ -156,28 +165,17 @@ def run_success(
         source_before,
         clock_path,
     )
-    probe.record(
-        "2K-Q success cleanup restores isolated Clock baseline",
-        clock_path.read_bytes() == source_before
-        and config_path.read_bytes() == config_before
-        and cleanup["recoveryMode"]
-            in ("watcher", "explicit-recovery"),
-        cleanup,
-    )
-
     report["success"] = {
         "prepared": prepared_state,
         "authorized": authorized["workflowTransaction"],
         "completed": completed["workflowTransaction"],
-        "analyzer": completed["workflowAnalyzer"],
         "cleanup": cleanup,
     }
     reset_connect(probe)
 
 
-def run_automatic_rebind_rollback(
+def run_user_apply_rollback(
     probe: Probe,
-    work_dir: Path,
     clock_path: Path,
     config_path: Path,
     report: dict,
@@ -190,32 +188,38 @@ def run_automatic_rebind_rollback(
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     valid_anchor = str(manifest["insertedSemanticAnchor"])
-    invalid_anchor = valid_anchor + "#2kq-forced-missing"
+    invalid_anchor = valid_anchor + "#2ks-forced-missing"
     manifest["insertedSemanticAnchor"] = invalid_anchor
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    manifest_sha = file_sha(manifest_path)
 
     if probe.ipc(
         "workflowConnectOverridePreparedAnchor",
         invalid_anchor,
     ) != "true":
         raise AssertionError(
-            "ProbeShell could not align temporary preparation anchor")
-    manifest_sha = file_sha(manifest_path)
+            "2K-S ProbeShell could not align temporary preparation anchor"
+        )
     if probe.ipc(
         "workflowConnectOverridePreparedManifestSha",
         manifest_sha,
     ) != "true":
         raise AssertionError(
-            "ProbeShell could not align temporary manifest SHA")
-    authorized = authorize_connect(probe)
+            "2K-S ProbeShell could not align temporary manifest SHA"
+        )
 
-    before = probe.snapshot()
-    if probe.ipc("workflowConnectBeginLifecycle") != "true":
+    authorized = authorize_connect(probe)
+    if probe.ipc("workflowConnectApply") != "true":
         raise AssertionError(
-            "forced-rebind Connect lifecycle did not start")
+            "2K-S forced-failure authorized Apply did not start"
+        )
+    if probe.ipc("workflowConnectApply") != "false":
+        raise AssertionError(
+            "2K-S forced-failure Apply accepted a duplicate start"
+        )
 
     recovered = wait_snapshot(
         probe,
@@ -224,23 +228,23 @@ def run_automatic_rebind_rollback(
                 == "connect-rollback-complete"
             and s["workflowTransaction"]["pendingConnectPhase"] == "idle"
             and s["workflowTransaction"]["connectLifecycleBusy"] is False
+            and s["workflowTransaction"]["connectApplyEnabled"] is False
+            and s["workflowTransaction"]["connectAuthorizationReady"]
+                is False
             and (s["workflowTransaction"].get(
                 "connectLifecycleResult") or {}).get("status")
                 == "connect-rolled-back"
         ),
-        "production Connect automatic rollback after rebind failure",
+        "user-facing Connect Apply automatic rollback",
         timeout=150,
     )
     result = (
-        recovered["workflowTransaction"]["connectLifecycleResult"]
-        or {}
+        recovered["workflowTransaction"]["connectLifecycleResult"] or {}
     )
 
     probe.record(
-        "2K-Q failed inserted-anchor rebind automatically rolls source back",
-        before["epoch"] != recovered["epoch"]
-        and file_sha(clock_path) == sha256(source_before).hexdigest()
-        and clock_path.read_bytes() == source_before
+        "2K-S failed authorized Apply rolls back and requires regeneration",
+        clock_path.read_bytes() == source_before
         and config_path.read_bytes() == config_before
         and bool(
             recovered["workflowTransaction"]["connectLifecycleError"])
@@ -251,17 +255,15 @@ def run_automatic_rebind_rollback(
         {
             "validAnchor": valid_anchor,
             "forcedAnchor": invalid_anchor,
-            "lifecycleResult": result,
-            "lifecycleError":
-                recovered["workflowTransaction"]["connectLifecycleError"],
-            "reloadCompletions": recovered["reloadCompletions"],
+            "manifestSha256": manifest_sha,
+            "authorized": authorized["workflowTransaction"],
+            "lifecycle": recovered["workflowTransaction"],
         },
     )
 
-    report["automaticRollback"] = {
+    report["rollback"] = {
         "prepared": prepared_state,
         "authorized": authorized["workflowTransaction"],
-        "manifestSha256": manifest_sha,
         "recovered": recovered["workflowTransaction"],
     }
     reset_connect(probe)
@@ -291,7 +293,7 @@ def main() -> int:
 
     report = {
         "schema": 1,
-        "gate": "Phase 2K-Q",
+        "gate": "Phase 2K-S",
         "manifest": manifest,
         "grammar": str(grammar),
         "grammarSha256": file_sha(grammar),
@@ -299,10 +301,10 @@ def main() -> int:
         "checks": [],
         "environment":
             "headless Sway, isolated XDG/private bus, production "
-            "Connect preview/preparation/lifecycle state machine",
+            "Connect preview/preparation/authorization/user-Apply wrapper",
         "limitations": [
-            "This 2K-Q harness invokes the internal lifecycle; 2K-S tests the Settings Apply wrapper separately.",
-            "Lifecycle start is reachable only through ProbeShell IPC.",
+            "Settings button wiring is locked by static contract; live start "
+            "uses ProbeShell IPC bound to the same transaction wrapper.",
             "The source tree under test is a temporary exported runtime.",
         ],
     }
@@ -312,10 +314,10 @@ def main() -> int:
     probe.env["QT_QUICK_BACKEND"] = "software"
     try:
         probe.launch()
-        run_success(
+        run_user_apply_success(
             probe, work_dir, clock_path, config_path, report)
-        run_automatic_rebind_rollback(
-            probe, work_dir, clock_path, config_path, report)
+        run_user_apply_rollback(
+            probe, clock_path, config_path, report)
     except Exception as exc:
         report["failure"] = repr(exc)
         try:
@@ -324,14 +326,13 @@ def main() -> int:
             pass
     finally:
         probe.close()
-        (work_dir / "connect-production-lifecycle-report.json").write_text(
+        (work_dir / "connect-user-apply-report.json").write_text(
             json.dumps(report, indent=2) + "\n",
             encoding="utf-8",
         )
 
     print(json.dumps({
-        "report": str(
-            work_dir / "connect-production-lifecycle-report.json"),
+        "report": str(work_dir / "connect-user-apply-report.json"),
         "checks": len(report["checks"]),
         "failure": report.get("failure"),
     }, indent=2))

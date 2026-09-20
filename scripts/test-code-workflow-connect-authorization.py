@@ -102,13 +102,8 @@ for token in (
     if token not in page:
         fail("2K-R authorization UI evidence missing " + token)
 
-for forbidden in (
-    "Connect Apply",
-    "Apply Connect",
-    "beginConnectLifecycle()",
-):
-    if forbidden in page:
-        fail("2K-R Settings must not expose Connect source Apply: " + forbidden)
+if "CodeWorkflowTransaction.beginConnectLifecycle()" in page:
+    fail("Settings must not bypass explicit Connect authorization wrapper")
 
 for token in (
     "connectAuthorizationReady:",
@@ -146,7 +141,7 @@ for token in (
     '"workflowRedo"',
     '"manifest hash mismatch"',
     '"connect-commit-failed"',
-    '"Settings exposes authorization/revoke only; no Connect Apply."',
+    '"This 2K-R harness tests authorization only; 2K-S tests user-facing Apply separately."',
 ):
     if token not in authorization_harness:
         fail("2K-R live authorization harness missing " + token)

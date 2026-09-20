@@ -517,7 +517,7 @@ def main() -> int:
             "headless Sway, isolated XDG/private bus, production "
             "Connect preview/preparation, research-only 2K-O commit engine",
         "limitations": [
-            "No production Settings Connect Apply action exists.",
+            "This 2K-P harness does not invoke the current Settings Connect Apply action.",
             "connect_commit.py is invoked only by this isolated harness.",
             "The source tree under test is a temporary exported runtime.",
         ],

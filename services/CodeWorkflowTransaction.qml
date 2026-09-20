@@ -160,6 +160,20 @@ Singleton {
         && !root.connectLifecycleBusy
         && !root.applyLifecycleBusy
         && !root.connectAuthorizationReady
+    readonly property bool connectApplyEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "connect-binding"
+        && root.connectAuthorizationReady
+        && root.connectArtifactsReady
+        && root.connectPreparationCapability?.ready === true
+        && root.status === "preview"
+        && reloadState.pendingConnectPhase === "idle"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.connectSafetyBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.applyLifecycleBusy
     readonly property bool connectPrepareEnabled:
         !!root.activeCommand
         && String(root.activeCommand?.kind ?? "") === "connect-binding"
@@ -802,6 +816,26 @@ Singleton {
             ? "conflict"
             : "error"
         root.error = String(message ?? "")
+    }
+
+    function beginAuthorizedConnectApply(): bool {
+        if (!root.connectApplyEnabled)
+            return false
+
+        const authorizationToken = String(
+            root.activeConnectAuthorization?.authorizationToken ?? "")
+        if (authorizationToken.length === 0)
+            return false
+        if (!root.beginConnectLifecycle())
+            return false
+
+        root.connectAuthorizationDiagnostics = ({
+            status: "consumed",
+            ready: false,
+            reason: "connect-apply-started",
+            authorizationToken: authorizationToken
+        })
+        return true
     }
 
     function beginConnectLifecycle(): bool {

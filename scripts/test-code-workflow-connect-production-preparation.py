@@ -108,13 +108,8 @@ for token in (
     if token not in page:
         fail("2K-N Connect preparation UI missing " + token)
 
-for forbidden in (
-    "Apply Connect",
-    "Connect Apply",
-    "beginConnectApply",
-):
-    if forbidden in page or forbidden in transaction:
-        fail("2K-N must not expose Connect source Apply: " + forbidden)
+if "CodeWorkflowTransaction.beginConnectLifecycle()" in page:
+    fail("Settings must not bypass later Connect authorization/Apply gates")
 
 for token in (
     'String(root.activeCommand?.kind ?? "") === "literal-property"',

@@ -167,6 +167,8 @@ ShellRoot {
                     CodeWorkflowTransaction.connectLifecycleResult,
                 connectAuthorizationReady:
                     CodeWorkflowTransaction.connectAuthorizationReady,
+                connectApplyEnabled:
+                    CodeWorkflowTransaction.connectApplyEnabled,
                 connectAuthorizeEnabled:
                     CodeWorkflowTransaction.connectAuthorizeEnabled,
                 connectAuthorizationDiagnostics:
@@ -278,6 +280,9 @@ ShellRoot {
         }
         function workflowConnectBeginLifecycle(): bool {
             return CodeWorkflowTransaction.beginConnectLifecycle()
+        }
+        function workflowConnectApply(): bool {
+            return CodeWorkflowTransaction.beginAuthorizedConnectApply()
         }
         function workflowUndo(): bool {
             return CodeWorkflowTransaction.undoPreview()

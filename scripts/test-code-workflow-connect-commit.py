@@ -198,8 +198,10 @@ for forbidden in (
 
 if 'Quickshell.shellPath("scripts/code-workflow/connect_commit.py")' not in transaction:
     fail("2K-Q must production-wire the qualified Connect lifecycle engine")
-if "Connect Apply" in page or "Apply Connect" in page:
-    fail("2K-Q must still keep user-facing Connect Apply unavailable")
+if "connect_commit.py" in page:
+    fail("Settings must never invoke the Connect commit engine directly")
+if "CodeWorkflowTransaction.beginConnectLifecycle()" in page:
+    fail("Settings must never bypass the authorized Connect Apply wrapper")
 
 for token in (
     'String(root.activeCommand?.kind ?? "") === "literal-property"',

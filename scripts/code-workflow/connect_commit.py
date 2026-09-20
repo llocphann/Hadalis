@@ -220,6 +220,7 @@ def verify_connect_prepared(root: Path, manifest_path: Path) -> dict:
         "candidateSha256": manifest["candidateSha256"],
         "parentSemanticAnchor": manifest["parentSemanticAnchor"],
         "insertedSemanticAnchor": manifest["insertedSemanticAnchor"],
+        "manifestPath": str(manifest_path.expanduser().resolve()),
         **dependency,
     }
 

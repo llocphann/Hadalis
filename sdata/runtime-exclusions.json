@@ -147,7 +147,6 @@
     "scripts/code-workflow/README.md",
     "scripts/code-workflow/build-parser.sh",
     "scripts/code-workflow/build-pointer.sh",
-    "scripts/code-workflow/connect_commit.py",
     "scripts/code-workflow/corpus.py",
     "scripts/code-workflow/prepare-runtime.py",
     "scripts/code-workflow/run-graph-matrix.py",
@@ -159,6 +158,7 @@
     "scripts/code-workflow/virtual-pointer.c",
     "scripts/code-workflow/run-apply-lifecycle.py",
     "scripts/code-workflow/run-connect-lifecycle.py",
+    "scripts/code-workflow/run-connect-production-lifecycle.py",
     "scripts/iris-corner-poc"
   ],
   "excludedDirectorySuffixes": {}

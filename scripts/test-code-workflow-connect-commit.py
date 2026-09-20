@@ -196,10 +196,10 @@ for forbidden in (
     if forbidden in helper:
         fail("2K-O must never write the retained Config dependency: " + forbidden)
 
-if 'Quickshell.shellPath("scripts/code-workflow/connect_commit.py")' in transaction:
-    fail("2K-O lifecycle proof must remain outside production transaction")
+if 'Quickshell.shellPath("scripts/code-workflow/connect_commit.py")' not in transaction:
+    fail("2K-Q must production-wire the qualified Connect lifecycle engine")
 if "Connect Apply" in page or "Apply Connect" in page:
-    fail("2K-O must not expose user-facing Connect Apply")
+    fail("2K-Q must still keep user-facing Connect Apply unavailable")
 
 for token in (
     'String(root.activeCommand?.kind ?? "") === "literal-property"',
@@ -209,9 +209,9 @@ for token in (
     if token not in transaction:
         fail("2K-O must preserve literal-only production Apply")
 
-if "scripts/code-workflow/connect_commit.py" not in exclusions.get(
+if "scripts/code-workflow/connect_commit.py" in exclusions.get(
         "excludedPaths", []):
-    fail("2K-O lifecycle proof helper must remain outside runtime payload")
+    fail("2K-Q production Connect lifecycle engine must ship at runtime")
 
 runtime_payload = subprocess.run(
     [
@@ -227,8 +227,8 @@ runtime_payload = subprocess.run(
     stderr=subprocess.PIPE,
     check=True,
 ).stdout.splitlines()
-if "scripts/code-workflow/connect_commit.py" in set(runtime_payload):
-    fail("2K-O lifecycle proof helper leaked into runtime payload")
+if "scripts/code-workflow/connect_commit.py" not in set(runtime_payload):
+    fail("2K-Q production Connect lifecycle engine missing from runtime payload")
 
 for token in (
     "Milestone 2K-O — isolated Connect commit/rollback engine",

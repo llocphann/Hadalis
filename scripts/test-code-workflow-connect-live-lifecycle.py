@@ -74,8 +74,8 @@ for token in (
     if token not in probe:
         fail("2K-P isolated ProbeShell instrumentation missing " + token)
 
-if 'Quickshell.shellPath("scripts/code-workflow/connect_commit.py")' in transaction:
-    fail("2K-P must not production-wire research Connect commit engine")
+if 'Quickshell.shellPath("scripts/code-workflow/connect_commit.py")' not in transaction:
+    fail("2K-Q must production-wire the previously qualified Connect engine")
 for forbidden in ("Connect Apply", "Apply Connect", "beginConnectApply"):
     if forbidden in page or forbidden in transaction:
         fail("2K-P must not expose user-facing Connect Apply: " + forbidden)
@@ -91,9 +91,9 @@ for token in (
 if "scripts/code-workflow/run-connect-lifecycle.py" not in exclusions.get(
         "excludedPaths", []):
     fail("2K-P live harness must remain outside runtime payload")
-if "scripts/code-workflow/connect_commit.py" not in exclusions.get(
+if "scripts/code-workflow/connect_commit.py" in exclusions.get(
         "excludedPaths", []):
-    fail("2K-P commit engine must remain outside runtime payload")
+    fail("2K-Q production Connect commit engine must ship at runtime")
 
 for token in (
     "Run isolated Connect lifecycle acceptance",

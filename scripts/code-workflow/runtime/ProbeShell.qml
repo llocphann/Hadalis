@@ -157,6 +157,14 @@ ShellRoot {
                     CodeWorkflowTransaction.connectArtifactsReady,
                 connectPreparationError:
                     CodeWorkflowTransaction.connectPreparationError,
+                connectLifecycleBusy:
+                    CodeWorkflowTransaction.connectLifecycleBusy,
+                pendingConnectPhase:
+                    CodeWorkflowTransaction.pendingConnectPhase,
+                connectLifecycleError:
+                    CodeWorkflowTransaction.connectLifecycleError,
+                connectLifecycleResult:
+                    CodeWorkflowTransaction.connectLifecycleResult,
                 activeConnectSafety:
                     CodeWorkflowTransaction.activeConnectSafety,
                 activeConnectPreparation:
@@ -252,6 +260,28 @@ ShellRoot {
         }
         function workflowConnectPrepare(): bool {
             return CodeWorkflowTransaction.prepareConnectArtifacts()
+        }
+        function workflowConnectBeginLifecycle(): bool {
+            return CodeWorkflowTransaction.beginConnectLifecycle()
+        }
+        function workflowConnectOverridePreparedAnchor(
+            anchor: string
+        ): bool {
+            const index = CodeWorkflowTransaction.historyIndex
+            const command = CodeWorkflowTransaction.activeCommand
+            if (index < 0
+                    || !command
+                    || !command.connectPreparation)
+                return false
+            const next = CodeWorkflowTransaction.history.slice()
+            next[index] = Object.assign({}, command, {
+                connectPreparation: Object.assign(
+                    {},
+                    command.connectPreparation,
+                    { insertedSemanticAnchor: String(anchor ?? "") })
+            })
+            CodeWorkflowTransaction.history = next
+            return true
         }
         function workflowConnectAnalyze(anchor: string): void {
             CodeWorkflowAnalyzer.request(

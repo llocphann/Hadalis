@@ -75,6 +75,9 @@ jobs:
       - name: Prove isolated Connect commit and rollback engine
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-commit.py'
 
+      - name: Validate production internal Connect lifecycle
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-production-lifecycle.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply
@@ -95,6 +98,16 @@ jobs:
             python3 scripts/code-workflow/run-connect-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
           '
 
+      - name: Integrate production internal Connect lifecycle
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-connect-production
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-connect-production-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
+          '
+
       - name: Upload lifecycle evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -108,5 +121,8 @@ jobs:
             ${{ runner.temp }}/hadalis-workflow-connect/connect-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-connect/*.log
             ${{ runner.temp }}/hadalis-workflow-connect/xdg-state/**
+            ${{ runner.temp }}/hadalis-workflow-connect-production/connect-production-lifecycle-report.json
+            ${{ runner.temp }}/hadalis-workflow-connect-production/*.log
+            ${{ runner.temp }}/hadalis-workflow-connect-production/xdg-state/**
           if-no-files-found: warn
           retention-days: 14

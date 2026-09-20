@@ -844,13 +844,51 @@ Implemented live proof:
 
 Production invariant: literal-property remains the only source-writing command.
 
+## Milestone 2K-Q — production internal Connect lifecycle integration
+
+Implemented production lifecycle boundary:
+
+- The previously qualified `connect_commit.py` engine now ships in the runtime
+  and is invoked only by `CodeWorkflowTransaction`'s internal Connect
+  lifecycle. Settings still exposes no Connect Apply control.
+- `beginConnectLifecycle()` stages a primitive persisted handoff from the exact
+  active prepared history command: reviewed graph/target IDs, source/base SHA,
+  candidate SHA, parent and inserted semantic anchors, manifest path, retained
+  Config path/hash and history index must all match.
+- Connect lifecycle persistence is separate from the historical literal
+  `pendingApply*` state. `pendingConnect*` fields survive Quickshell
+  generation replacement through the existing ReloadBridge without broadening
+  the literal Apply handoff.
+- Before replacement, the 2K-O engine rechecks current Clock + Config identity.
+  Successful source replacement waits for the watcher-driven reload, verifies
+  the exact candidate and retained dependency, and rebinds the prepared inserted
+  semantic anchor with zero parser diagnostics.
+- Verify or semantic-rebind failure automatically invokes exact rollback. Config
+  drift after source replacement also forces rollback; rollback never writes the
+  Config dependency.
+- Rollback recovery first waits for the watcher generation. If Quickshell
+  suppresses the baseline-return watcher reload demonstrated in 2K-P, a bounded
+  timer records `explicit-recovery` and calls `Quickshell.reload(false)`.
+  Base verification must still pass before rollback is finalized.
+- Cross-generation recovery handles write-issued, candidate verification,
+  semantic rebind, rollback-pending, rollback write/wait and rollback verify
+  phases deterministically. In-flight history remains semantic/primitive-only.
+- A ProbeShell-only lifecycle start is used for acceptance. Probe-only prepared
+  anchor override mutates only isolated state-artifact/history evidence and is
+  not present in product Settings.
+- Live 2K-Q acceptance proves production internal commit → watcher reload →
+  candidate verify → inserted-anchor rebind success, plus automatic exact
+  rollback after a forced semantic-rebind failure. The success fixture is
+  cleaned up only inside the isolated exported runtime.
+- The historical literal Apply pipeline remains unchanged and independently
+  literal-only. User-facing Connect Apply remains unavailable.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- production wiring of the qualified Connect commit/reload/rebind/rollback lifecycle;
-- user-facing Connect source Apply;
+- user-facing Connect source Apply/authorization control;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -858,22 +896,18 @@ Production invariant: literal-property remains the only source-writing command.
 
 ## Next gate
 
-2K-P supplies live watcher/reload/rebind evidence for the reviewed Connect
-candidate while keeping the write engine outside production. The next gate must
-promote that lifecycle into `CodeWorkflowTransaction` without exposing a
-user-facing Apply control yet.
+2K-Q promotes the qualified Connect lifecycle into the production transaction
+while deliberately leaving it unreachable from Settings. The next gate is the
+explicit user-authorization boundary, not another mutation engine.
 
-That production-integration gate must bind the exact prepared Connect manifest
-to the active history command, perform one final source + Config freshness check,
-invoke the one-file commit engine, survive the watcher-driven reload through the
-reload bridge, verify candidate identity, rebind the inserted semantic anchor,
-and automatically rollback on reload/verify/rebind/dependency failure. After a
-rollback source replace it must use watcher reload when available and an explicit
-reload fallback when returning to baseline does not emit a new generation. It
-must also make interrupted lifecycle recovery deterministic across shell
-generation changes.
+Before a Connect source-write control can appear, the product must present the
+exact prepared target/expression, proof freshness, source/dependency identities
+and rollback guarantee; require a deliberate user action; refuse authorization
+when preparation is stale or capability disappears; and bind that authorization
+to one exact prepared manifest/history command. The UI must not relabel research
+TYPE/CYCLE evidence as generic SAFE, and authorization must expire on any
+Clock/Config/history change.
 
-Until that production lifecycle integration is independently qualified,
-`connect_commit.py` remains non-production, Connect source Apply stays
-unavailable, production TYPE/CYCLE labels remain UNKNOWN, and
-`literal-property` remains the only source-writing command.
+Until that authorization gate is independently qualified, user-facing Connect
+Apply stays unavailable even though the internal lifecycle is production-wired.
+The historical literal Apply control remains unchanged and literal-only.

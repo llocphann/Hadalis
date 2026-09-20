@@ -46,6 +46,8 @@ Singleton {
         artifactsStaged: false
     })
     property string connectPreparationError: ""
+    property var connectLifecycleResult: ({})
+    property string connectLifecycleError: ""
     property var connectSafetyDiagnostics: ({
         status: "not-evaluated",
         ready: false,
@@ -96,6 +98,7 @@ Singleton {
         && root.applyCommandMatchesHandoff
         && Quickshell.watchFiles
         && !root.applyLifecycleBusy
+        && !root.connectLifecycleBusy
         && reloadState.pendingApplyManifestPath.length > 0
     readonly property bool previewBusy:
         previewProcess.running || connectPreviewProcess.running
@@ -103,6 +106,22 @@ Singleton {
         connectSafetyProcess.running
     readonly property bool connectPreparationBusy:
         connectCapabilityProcess.running || connectPrepareProcess.running
+    readonly property bool connectLifecycleBusy:
+        [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "rebinding",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ].includes(reloadState.pendingConnectPhase)
+        || connectCommitProcess.running
+        || connectVerifyProcess.running
+        || connectRollbackProcess.running
+    readonly property string pendingConnectPhase:
+        reloadState.pendingConnectPhase
     readonly property var activeConnectSafety:
         root._connectSafetyMatchesCommand(root.activeCommand, false)
             ? root.activeCommand.connectSafety
@@ -125,6 +144,7 @@ Singleton {
         && !root.previewBusy
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && !root.connectArtifactsReady
@@ -132,6 +152,7 @@ Singleton {
         !root.previewBusy
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex >= 0
@@ -139,6 +160,7 @@ Singleton {
         !root.previewBusy
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex + 1 < root.history.length
@@ -161,6 +183,7 @@ Singleton {
         && reloadState.pendingApplyPhase === "idle"
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
+        && !root.connectLifecycleBusy
 
     readonly property string reloadStateJson: JSON.stringify({
         version: 1,
@@ -187,7 +210,38 @@ Singleton {
             reloadState.pendingApplyReloadOutcome,
         pendingApplyVerifyState:
             reloadState.pendingApplyVerifyState,
-        pendingApplyError: reloadState.pendingApplyError
+        pendingApplyError: reloadState.pendingApplyError,
+        pendingConnectPhase: reloadState.pendingConnectPhase,
+        pendingConnectGraphTargetId:
+            reloadState.pendingConnectGraphTargetId,
+        pendingConnectTargetId:
+            reloadState.pendingConnectTargetId,
+        pendingConnectSourcePath:
+            reloadState.pendingConnectSourcePath,
+        pendingConnectBaseSha256:
+            reloadState.pendingConnectBaseSha256,
+        pendingConnectCandidateSha256:
+            reloadState.pendingConnectCandidateSha256,
+        pendingConnectParentSemanticAnchor:
+            reloadState.pendingConnectParentSemanticAnchor,
+        pendingConnectInsertedSemanticAnchor:
+            reloadState.pendingConnectInsertedSemanticAnchor,
+        pendingConnectHistoryIndex:
+            reloadState.pendingConnectHistoryIndex,
+        pendingConnectManifestPath:
+            reloadState.pendingConnectManifestPath,
+        pendingConnectExternalSourcePath:
+            reloadState.pendingConnectExternalSourcePath,
+        pendingConnectExternalSourceSha256:
+            reloadState.pendingConnectExternalSourceSha256,
+        pendingConnectReloadOutcome:
+            reloadState.pendingConnectReloadOutcome,
+        pendingConnectVerifyState:
+            reloadState.pendingConnectVerifyState,
+        pendingConnectRollbackRecovery:
+            reloadState.pendingConnectRollbackRecovery,
+        pendingConnectError:
+            reloadState.pendingConnectError
     })
 
     function _syncReloadState(): void {
@@ -228,6 +282,7 @@ Singleton {
         root._reloadStateReady = true
         root._showCommand(root.activeCommand)
         Qt.callLater(root._recoverApplyLifecycle)
+        Qt.callLater(root._recoverConnectLifecycle)
         Qt.callLater(root.reverifyActiveConnectSafety)
         Qt.callLater(root.probeActiveConnectPreparationCapability)
     }
@@ -277,10 +332,575 @@ Singleton {
             snapshot.pendingApplyVerifyState ?? "unknown")
         reloadState.pendingApplyError = String(
             snapshot.pendingApplyError ?? "")
+        reloadState.pendingConnectPhase = String(
+            snapshot.pendingConnectPhase ?? "idle")
+        reloadState.pendingConnectGraphTargetId = String(
+            snapshot.pendingConnectGraphTargetId ?? "")
+        reloadState.pendingConnectTargetId = String(
+            snapshot.pendingConnectTargetId ?? "")
+        reloadState.pendingConnectSourcePath = String(
+            snapshot.pendingConnectSourcePath ?? "")
+        reloadState.pendingConnectBaseSha256 = String(
+            snapshot.pendingConnectBaseSha256 ?? "")
+        reloadState.pendingConnectCandidateSha256 = String(
+            snapshot.pendingConnectCandidateSha256 ?? "")
+        reloadState.pendingConnectParentSemanticAnchor = String(
+            snapshot.pendingConnectParentSemanticAnchor ?? "")
+        reloadState.pendingConnectInsertedSemanticAnchor = String(
+            snapshot.pendingConnectInsertedSemanticAnchor ?? "")
+        reloadState.pendingConnectHistoryIndex = Number(
+            snapshot.pendingConnectHistoryIndex ?? -1)
+        reloadState.pendingConnectManifestPath = String(
+            snapshot.pendingConnectManifestPath ?? "")
+        reloadState.pendingConnectExternalSourcePath = String(
+            snapshot.pendingConnectExternalSourcePath ?? "")
+        reloadState.pendingConnectExternalSourceSha256 = String(
+            snapshot.pendingConnectExternalSourceSha256 ?? "")
+        reloadState.pendingConnectReloadOutcome = String(
+            snapshot.pendingConnectReloadOutcome ?? "none")
+        reloadState.pendingConnectVerifyState = String(
+            snapshot.pendingConnectVerifyState ?? "unknown")
+        reloadState.pendingConnectRollbackRecovery = String(
+            snapshot.pendingConnectRollbackRecovery ?? "none")
+        reloadState.pendingConnectError = String(
+            snapshot.pendingConnectError ?? "")
         root._restoringReloadState = false
 
         root._restoreReloadState()
         return true
+    }
+
+    function _connectLifecycleCommandMatchesHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = command?.connectPreparation
+        return !!command
+            && String(command.kind ?? "") === "connect-binding"
+            && root.historyIndex === reloadState.pendingConnectHistoryIndex
+            && String(command.targetId ?? "")
+                === reloadState.pendingConnectGraphTargetId
+            && String(command.connectTargetId ?? "")
+                === reloadState.pendingConnectTargetId
+            && String(command.sourcePath ?? "")
+                === reloadState.pendingConnectSourcePath
+            && String(command.baseSha256 ?? "")
+                === reloadState.pendingConnectBaseSha256
+            && String(command.candidateSha256 ?? "")
+                === reloadState.pendingConnectCandidateSha256
+            && String(command.semanticAnchor ?? "")
+                === reloadState.pendingConnectParentSemanticAnchor
+            && String(prepared?.insertedSemanticAnchor ?? "")
+                === reloadState.pendingConnectInsertedSemanticAnchor
+            && String(prepared?.manifestPath ?? "")
+                === reloadState.pendingConnectManifestPath
+            && String(prepared?.externalSourcePath ?? "")
+                === reloadState.pendingConnectExternalSourcePath
+            && String(prepared?.externalSourceSha256 ?? "")
+                === reloadState.pendingConnectExternalSourceSha256
+    }
+
+    function stageConnectLifecycleHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = root.activeConnectPreparation
+        if (!root.connectArtifactsReady
+                || !command
+                || !prepared
+                || command.stale === true
+                || String(command.kind ?? "") !== "connect-binding"
+                || !Quickshell.watchFiles
+                || root.applyLifecycleBusy
+                || root.connectLifecycleBusy)
+            return false
+
+        reloadState.pendingConnectPhase = "prepared"
+        reloadState.pendingConnectGraphTargetId = String(
+            command.targetId ?? "")
+        reloadState.pendingConnectTargetId = String(
+            command.connectTargetId ?? "")
+        reloadState.pendingConnectSourcePath = String(
+            command.sourcePath ?? "")
+        reloadState.pendingConnectBaseSha256 = String(
+            command.baseSha256 ?? "")
+        reloadState.pendingConnectCandidateSha256 = String(
+            command.candidateSha256 ?? "")
+        reloadState.pendingConnectParentSemanticAnchor = String(
+            command.semanticAnchor ?? "")
+        reloadState.pendingConnectInsertedSemanticAnchor = String(
+            prepared.insertedSemanticAnchor ?? "")
+        reloadState.pendingConnectHistoryIndex = root.historyIndex
+        reloadState.pendingConnectManifestPath = String(
+            prepared.manifestPath ?? "")
+        reloadState.pendingConnectExternalSourcePath = String(
+            prepared.externalSourcePath ?? "")
+        reloadState.pendingConnectExternalSourceSha256 = String(
+            prepared.externalSourceSha256 ?? "")
+        reloadState.pendingConnectReloadOutcome = "none"
+        reloadState.pendingConnectVerifyState = "unknown"
+        reloadState.pendingConnectRollbackRecovery = "none"
+        reloadState.pendingConnectError = ""
+        return root._connectLifecycleCommandMatchesHandoff()
+    }
+
+    function clearConnectLifecycleHandoff(): void {
+        connectRollbackReloadFallbackTimer.stop()
+        reloadState.pendingConnectPhase = "idle"
+        reloadState.pendingConnectGraphTargetId = ""
+        reloadState.pendingConnectTargetId = ""
+        reloadState.pendingConnectSourcePath = ""
+        reloadState.pendingConnectBaseSha256 = ""
+        reloadState.pendingConnectCandidateSha256 = ""
+        reloadState.pendingConnectParentSemanticAnchor = ""
+        reloadState.pendingConnectInsertedSemanticAnchor = ""
+        reloadState.pendingConnectHistoryIndex = -1
+        reloadState.pendingConnectManifestPath = ""
+        reloadState.pendingConnectExternalSourcePath = ""
+        reloadState.pendingConnectExternalSourceSha256 = ""
+        reloadState.pendingConnectReloadOutcome = "none"
+        reloadState.pendingConnectVerifyState = "unknown"
+        reloadState.pendingConnectRollbackRecovery = "none"
+        reloadState.pendingConnectError = ""
+    }
+
+    function _connectPayloadMatchesPending(payload): bool {
+        return String(payload?.sourcePath ?? "")
+                === reloadState.pendingConnectSourcePath
+            && String(payload?.baseSha256 ?? "")
+                === reloadState.pendingConnectBaseSha256
+            && String(payload?.candidateSha256 ?? "")
+                === reloadState.pendingConnectCandidateSha256
+            && String(payload?.parentSemanticAnchor ?? "")
+                === reloadState.pendingConnectParentSemanticAnchor
+            && String(payload?.insertedSemanticAnchor ?? "")
+                === reloadState.pendingConnectInsertedSemanticAnchor
+            && String(payload?.manifestPath ?? "")
+                === reloadState.pendingConnectManifestPath
+            && String(payload?.externalSourcePath ?? "")
+                === reloadState.pendingConnectExternalSourcePath
+            && String(payload?.externalSourceSha256 ?? "")
+                === reloadState.pendingConnectExternalSourceSha256
+    }
+
+    function _setConnectLifecycleFailure(
+        phase: string,
+        message: string,
+        payload
+    ): void {
+        reloadState.pendingConnectPhase = phase
+        reloadState.pendingConnectError = String(message ?? "")
+        root.connectLifecycleResult = payload ?? ({})
+        root.connectLifecycleError = String(message ?? "")
+        root.status = phase.includes("conflict")
+            ? "conflict"
+            : "error"
+        root.error = String(message ?? "")
+    }
+
+    function beginConnectLifecycle(): bool {
+        if (!root.stageConnectLifecycleHandoff())
+            return false
+
+        reloadState.pendingConnectPhase = "write-issued"
+        reloadState.pendingConnectReloadOutcome = "none"
+        reloadState.pendingConnectVerifyState = "unknown"
+        reloadState.pendingConnectRollbackRecovery = "none"
+        reloadState.pendingConnectError = ""
+        root.connectLifecycleResult = ({})
+        root.connectLifecycleError = ""
+        root.status = "connect-writing"
+
+        connectCommitProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
+            "commit",
+            "--manifest",
+            reloadState.pendingConnectManifestPath
+        ]
+        connectCommitProcess.running = true
+        return true
+    }
+
+    function finishConnectCommit(exitCode: int): void {
+        if (reloadState.pendingConnectPhase === "rollback-pending") {
+            root._startConnectRollback(
+                reloadState.pendingConnectError)
+            return
+        }
+
+        const payload = root._parseProcessPayload(
+            connectCommitStdout)
+        if (payload?.status === "written"
+                && root._connectPayloadMatchesPending(payload)
+                && payload?.sourceWritten === true
+                && payload?.rollbackRequired === false
+                && String(payload?.dependencyState ?? "")
+                    === "fresh") {
+            root.connectLifecycleResult = payload
+            root.connectLifecycleError = ""
+            reloadState.pendingConnectPhase = "waiting-reload"
+            root.status = "connect-waiting-reload"
+            if (reloadState.pendingConnectReloadOutcome
+                    === "completed")
+                Qt.callLater(root._startConnectCandidateVerify)
+            return
+        }
+
+        const sourceWritten = payload?.sourceWritten === true
+        const stderrText = String(
+            connectCommitStderr.text ?? "").trim()
+        const message = String(
+            payload?.reason
+            ?? payload?.detail
+            ?? stderrText
+            ?? ("Connect commit exited " + exitCode))
+
+        if (sourceWritten) {
+            root._startConnectRollback(message)
+            return
+        }
+
+        root._setConnectLifecycleFailure(
+            payload?.status === "conflict"
+                ? "connect-commit-conflict"
+                : "connect-commit-failed",
+            message,
+            payload)
+    }
+
+    function _startConnectCandidateVerify(): void {
+        if (connectVerifyProcess.running
+                || reloadState.pendingConnectManifestPath.length === 0)
+            return
+        reloadState.pendingConnectPhase = "candidate-verify-issued"
+        root.status = "connect-verifying"
+        connectVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingConnectManifestPath
+        ]
+        connectVerifyProcess.running = true
+    }
+
+    function _startConnectRollbackVerify(): void {
+        if (connectVerifyProcess.running
+                || reloadState.pendingConnectManifestPath.length === 0)
+            return
+        connectRollbackReloadFallbackTimer.stop()
+        reloadState.pendingConnectPhase = "rollback-verify-issued"
+        root.status = "connect-rollback-verifying"
+        connectVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingConnectManifestPath
+        ]
+        connectVerifyProcess.running = true
+    }
+
+    function finishConnectVerify(exitCode: int): void {
+        const phase = reloadState.pendingConnectPhase
+        const payload = root._parseProcessPayload(
+            connectVerifyStdout)
+
+        if (payload?.status !== "verified"
+                || !root._connectPayloadMatchesPending(payload)) {
+            const stderrText = String(
+                connectVerifyStderr.text ?? "").trim()
+            const message = String(
+                payload?.reason
+                ?? payload?.detail
+                ?? stderrText
+                ?? ("Connect verify exited " + exitCode))
+            if (phase === "rollback-verify-issued") {
+                root._setConnectLifecycleFailure(
+                    "connect-rollback-conflict",
+                    message,
+                    payload)
+            } else {
+                root._startConnectRollback(message)
+            }
+            return
+        }
+
+        const state = String(payload?.sourceState ?? "")
+        reloadState.pendingConnectVerifyState = state
+
+        if (phase === "candidate-verify-issued") {
+            if (state !== "candidate-present") {
+                if (state === "base-present") {
+                    root._setConnectLifecycleFailure(
+                        "connect-commit-failed",
+                        "Connect source returned to base before candidate verification.",
+                        payload)
+                } else {
+                    root._startConnectRollback(
+                        "Connect candidate verification reported "
+                            + state + ".")
+                }
+                return
+            }
+            if (String(payload?.dependencyState ?? "")
+                    !== "fresh") {
+                root._startConnectRollback(
+                    "Retained Config dependency changed after Connect commit.")
+                return
+            }
+            root._beginConnectSemanticRebind()
+            return
+        }
+
+        if (phase === "rollback-verify-issued") {
+            if (state !== "base-present") {
+                root._setConnectLifecycleFailure(
+                    "connect-rollback-conflict",
+                    "Expected Connect rollback base after recovery reload; "
+                        + "verify reported " + state,
+                    payload)
+                return
+            }
+            root._finalizeConnectRollback(payload)
+        }
+    }
+
+    function _beginConnectSemanticRebind(): void {
+        reloadState.pendingConnectPhase = "rebinding"
+        root.status = "connect-rebinding"
+        CodeWorkflowAnalyzer.request(
+            reloadState.pendingConnectSourcePath,
+            "",
+            reloadState.pendingConnectInsertedSemanticAnchor,
+            true)
+    }
+
+    function _finishConnectSemanticRebindIfReady(): void {
+        if (reloadState.pendingConnectPhase !== "rebinding")
+            return
+        if (CodeWorkflowAnalyzer.status === "analyzing"
+                || CodeWorkflowAnalyzer.status === "idle")
+            return
+
+        const matches = CodeWorkflowAnalyzer.status === "ready"
+            && CodeWorkflowAnalyzer.sourcePath
+                === reloadState.pendingConnectSourcePath
+            && CodeWorkflowAnalyzer.semanticAnchor
+                === reloadState.pendingConnectInsertedSemanticAnchor
+            && String(CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+                === reloadState.pendingConnectCandidateSha256
+            && CodeWorkflowAnalyzer.semanticRebind?.status === "resolved"
+            && String(
+                CodeWorkflowAnalyzer.semanticRebind?.anchor ?? "")
+                === reloadState.pendingConnectInsertedSemanticAnchor
+            && CodeWorkflowAnalyzer.diagnostics.length === 0
+
+        if (!matches) {
+            root._startConnectRollback(
+                "Committed Connect candidate reloaded, but inserted "
+                    + "semantic anchor rebind did not resolve.")
+            return
+        }
+
+        root._finalizeConnectSuccess()
+    }
+
+    function _markHistoryConnectLifecycleResult(
+        applied: bool,
+        reason: string
+    ): void {
+        const index = Number(
+            reloadState.pendingConnectHistoryIndex ?? -1)
+        if (index < 0 || index >= root.history.length)
+            return
+        const next = root.history.slice()
+        next[index] = Object.assign({}, next[index], {
+            connectApplied: applied,
+            connectAppliedSha256: applied
+                ? reloadState.pendingConnectCandidateSha256
+                : "",
+            connectRolledBack: !applied,
+            stale: true,
+            staleReason: reason,
+            connectSafety: next[index]?.connectSafety
+                ? Object.assign({}, next[index].connectSafety, {
+                    freshness: "stale",
+                    stale: true,
+                    staleReason: reason
+                })
+                : next[index]?.connectSafety,
+            connectPreparation: next[index]?.connectPreparation
+                ? Object.assign({}, next[index].connectPreparation, {
+                    status: "stale",
+                    stale: true,
+                    staleReason: reason
+                })
+                : next[index]?.connectPreparation
+        })
+        root.history = next
+        root.historyIndex = index
+    }
+
+    function _finalizeConnectSuccess(): void {
+        const payload = {
+            status: "connect-applied",
+            sourcePath: reloadState.pendingConnectSourcePath,
+            sourceSha256:
+                reloadState.pendingConnectCandidateSha256,
+            parentSemanticAnchor:
+                reloadState.pendingConnectParentSemanticAnchor,
+            insertedSemanticAnchor:
+                reloadState.pendingConnectInsertedSemanticAnchor
+        }
+        root._markHistoryConnectLifecycleResult(
+            true,
+            "Connect candidate applied in internal lifecycle; "
+                + "regenerate before editing again.")
+        root.clearConnectLifecycleHandoff()
+        root.connectLifecycleResult = payload
+        root.connectLifecycleError = ""
+        root.status = "connect-applied"
+        root.error = ""
+    }
+
+    function _startConnectRollback(reason: string): void {
+        if (connectRollbackProcess.running)
+            return
+        if (reloadState.pendingConnectManifestPath.length === 0) {
+            root._setConnectLifecycleFailure(
+                "connect-rollback-failed",
+                "Connect lifecycle has no prepared manifest for rollback.",
+                null)
+            return
+        }
+
+        reloadState.pendingConnectPhase = "rollback-issued"
+        reloadState.pendingConnectReloadOutcome = "none"
+        reloadState.pendingConnectVerifyState = "unknown"
+        if (String(reason ?? "").length > 0)
+            reloadState.pendingConnectError = String(reason)
+        root.status = "connect-rollback-writing"
+
+        connectRollbackProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
+            "rollback",
+            "--manifest",
+            reloadState.pendingConnectManifestPath
+        ]
+        connectRollbackProcess.running = true
+    }
+
+    function finishConnectRollback(exitCode: int): void {
+        const payload = root._parseProcessPayload(
+            connectRollbackStdout)
+        if (payload?.status === "rolled-back"
+                && root._connectPayloadMatchesPending(payload)) {
+            root.connectLifecycleResult = payload
+            root.connectLifecycleError = ""
+            reloadState.pendingConnectPhase =
+                "rollback-waiting-reload"
+            reloadState.pendingConnectReloadOutcome = "none"
+            root.status = "connect-rollback-waiting-reload"
+            connectRollbackReloadFallbackTimer.restart()
+            return
+        }
+
+        const stderrText = String(
+            connectRollbackStderr.text ?? "").trim()
+        root._setConnectLifecycleFailure(
+            payload?.status === "conflict"
+                ? "connect-rollback-conflict"
+                : "connect-rollback-failed",
+            String(
+                payload?.reason
+                ?? payload?.detail
+                ?? stderrText
+                ?? ("Connect rollback exited " + exitCode)),
+            payload)
+    }
+
+    function _finalizeConnectRollback(payload): void {
+        const failure = String(
+            reloadState.pendingConnectError
+            ?? "Connect lifecycle failed.")
+        const recovery = String(
+            reloadState.pendingConnectRollbackRecovery
+            ?? "none")
+        const result = {
+            status: "connect-rolled-back",
+            sourcePath: reloadState.pendingConnectSourcePath,
+            sourceSha256: reloadState.pendingConnectBaseSha256,
+            parentSemanticAnchor:
+                reloadState.pendingConnectParentSemanticAnchor,
+            insertedSemanticAnchor:
+                reloadState.pendingConnectInsertedSemanticAnchor,
+            lifecycleError: failure,
+            recoveryMode: recovery,
+            verify: payload
+        }
+        root._markHistoryConnectLifecycleResult(
+            false,
+            "Connect lifecycle failed and exact rollback restored "
+                + "the base; regenerate before retrying.")
+        root.clearConnectLifecycleHandoff()
+        root.connectLifecycleResult = result
+        root.connectLifecycleError = failure
+        root.status = "connect-rollback-complete"
+        root.error = failure
+    }
+
+    function _recoverConnectLifecycle(): void {
+        const phase = reloadState.pendingConnectPhase
+        if (phase === "write-issued"
+                || phase === "waiting-reload") {
+            root.status = "connect-waiting-reload"
+            if (reloadState.pendingConnectReloadOutcome
+                    === "completed")
+                root._startConnectCandidateVerify()
+            return
+        }
+        if (phase === "candidate-verify-issued") {
+            root._startConnectCandidateVerify()
+            return
+        }
+        if (phase === "rebinding") {
+            root._beginConnectSemanticRebind()
+            return
+        }
+        if (phase === "rollback-pending") {
+            root.status = "connect-rollback-pending"
+            if (!connectCommitProcess.running)
+                root._startConnectRollback(
+                    reloadState.pendingConnectError)
+            return
+        }
+        if (phase === "rollback-issued"
+                || phase === "rollback-waiting-reload") {
+            root.status = "connect-rollback-waiting-reload"
+            if (reloadState.pendingConnectReloadOutcome
+                    === "completed") {
+                root._startConnectRollbackVerify()
+            } else if (phase === "rollback-waiting-reload") {
+                connectRollbackReloadFallbackTimer.restart()
+            }
+            return
+        }
+        if (phase === "rollback-verify-issued") {
+            root._startConnectRollbackVerify()
+            return
+        }
+        if ([
+                "connect-commit-conflict",
+                "connect-commit-failed",
+                "connect-rollback-conflict",
+                "connect-rollback-failed"
+            ].includes(phase)) {
+            root.connectLifecycleError =
+                reloadState.pendingConnectError
+            root.error = reloadState.pendingConnectError
+            root.status = phase.includes("conflict")
+                ? "conflict"
+                : "error"
+        }
     }
 
     function _invalidateApplyHandoff(): void {
@@ -829,6 +1449,27 @@ Singleton {
                 || phase === "rollback-waiting-reload") {
             reloadState.pendingApplyReloadOutcome = "completed"
             root._startRollbackVerify()
+            return
+        }
+
+        const connectPhase = reloadState.pendingConnectPhase
+        if (connectPhase === "write-issued"
+                || connectPhase === "waiting-reload"
+                || connectPhase === "candidate-verify-issued") {
+            reloadState.pendingConnectReloadOutcome = "completed"
+            root._startConnectCandidateVerify()
+            return
+        }
+        if (connectPhase === "rollback-issued"
+                || connectPhase === "rollback-waiting-reload"
+                || connectPhase === "rollback-verify-issued") {
+            if (reloadState.pendingConnectRollbackRecovery
+                    === "none")
+                reloadState.pendingConnectRollbackRecovery =
+                    "watcher"
+            reloadState.pendingConnectReloadOutcome = "completed"
+            connectRollbackReloadFallbackTimer.stop()
+            root._startConnectRollbackVerify()
         }
     }
 
@@ -856,6 +1497,34 @@ Singleton {
             root._setLifecycleFailure(
                 "rollback-failed",
                 "Rollback source was restored but its watcher reload "
+                    + "also failed: " + message,
+                null)
+            return
+        }
+
+        const connectPhase = reloadState.pendingConnectPhase
+        if (connectPhase === "write-issued"
+                || connectPhase === "waiting-reload"
+                || connectPhase === "candidate-verify-issued"
+                || connectPhase === "rebinding") {
+            reloadState.pendingConnectReloadOutcome = "failed"
+            reloadState.pendingConnectError = message
+            if (connectCommitProcess.running) {
+                reloadState.pendingConnectPhase =
+                    "rollback-pending"
+                root.status = "connect-rollback-pending"
+            } else {
+                root._startConnectRollback(message)
+            }
+            return
+        }
+
+        if (connectPhase === "rollback-issued"
+                || connectPhase === "rollback-waiting-reload"
+                || connectPhase === "rollback-verify-issued") {
+            root._setConnectLifecycleFailure(
+                "connect-rollback-failed",
+                "Connect rollback source was restored but reload "
                     + "also failed: " + message,
                 null)
         }
@@ -891,6 +1560,8 @@ Singleton {
             artifactsStaged: false
         })
         root.connectPreparationError = ""
+        root.connectLifecycleResult = ({})
+        root.connectLifecycleError = ""
     }
 
     function _sha256LooksValid(value): bool {
@@ -1428,6 +2099,7 @@ Singleton {
         if (root.connectPreparationBusy
                 || root.previewBusy
                 || root.connectSafetyBusy
+                || root.connectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -1764,6 +2436,7 @@ Singleton {
         if (root.previewBusy
                 || root.connectSafetyBusy
                 || root.connectPreparationBusy
+                || root.connectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return
@@ -1819,6 +2492,7 @@ Singleton {
             return
 
         const phase = reloadState.pendingApplyPhase
+        const connectPhase = reloadState.pendingConnectPhase
         const lifecycleOwnsSource = changedPath
                 === reloadState.pendingApplySourcePath
             && [
@@ -1841,6 +2515,33 @@ Singleton {
             else
                 root.status = "apply-waiting-reload"
             return
+        }
+
+        const connectLifecycleOwnsSource = changedPath
+                === reloadState.pendingConnectSourcePath
+            && [
+                "write-issued",
+                "waiting-reload",
+                "candidate-verify-issued",
+                "rebinding",
+                "rollback-pending",
+                "rollback-issued",
+                "rollback-waiting-reload",
+                "rollback-verify-issued"
+            ].includes(connectPhase)
+        if (connectLifecycleOwnsSource) {
+            if (connectPhase.startsWith("rollback"))
+                root.status = "connect-rollback-waiting-reload"
+            else
+                root.status = "connect-waiting-reload"
+            return
+        }
+
+        if (connectPhase !== "idle"
+                && changedPath
+                    === reloadState.pendingConnectExternalSourcePath) {
+            reloadState.pendingConnectError =
+                "Retained Config dependency changed during Connect lifecycle."
         }
 
         root._markHistoryStale(changedPath)
@@ -2258,6 +2959,22 @@ Singleton {
         property string pendingApplyReloadOutcome: "none"
         property string pendingApplyVerifyState: "unknown"
         property string pendingApplyError: ""
+        property string pendingConnectPhase: "idle"
+        property string pendingConnectGraphTargetId: ""
+        property string pendingConnectTargetId: ""
+        property string pendingConnectSourcePath: ""
+        property string pendingConnectBaseSha256: ""
+        property string pendingConnectCandidateSha256: ""
+        property string pendingConnectParentSemanticAnchor: ""
+        property string pendingConnectInsertedSemanticAnchor: ""
+        property int pendingConnectHistoryIndex: -1
+        property string pendingConnectManifestPath: ""
+        property string pendingConnectExternalSourcePath: ""
+        property string pendingConnectExternalSourceSha256: ""
+        property string pendingConnectReloadOutcome: "none"
+        property string pendingConnectVerifyState: "unknown"
+        property string pendingConnectRollbackRecovery: "none"
+        property string pendingConnectError: ""
     }
 
     Component.onCompleted: root._restoreReloadState()
@@ -2279,7 +2996,51 @@ Singleton {
 
         function onStatusChanged(): void {
             root._finishSemanticRebindIfReady()
+            root._finishConnectSemanticRebindIfReady()
         }
+    }
+
+    Timer {
+        id: connectRollbackReloadFallbackTimer
+        interval: 1800
+        repeat: false
+        onTriggered: {
+            if (reloadState.pendingConnectPhase
+                    !== "rollback-waiting-reload"
+                    || reloadState.pendingConnectReloadOutcome
+                        !== "none")
+                return
+            reloadState.pendingConnectRollbackRecovery =
+                "explicit-recovery"
+            Quickshell.reload(false)
+        }
+    }
+
+    Process {
+        id: connectCommitProcess
+        running: false
+        stdout: StdioCollector { id: connectCommitStdout }
+        stderr: StdioCollector { id: connectCommitStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishConnectCommit(exitCode)
+    }
+
+    Process {
+        id: connectVerifyProcess
+        running: false
+        stdout: StdioCollector { id: connectVerifyStdout }
+        stderr: StdioCollector { id: connectVerifyStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishConnectVerify(exitCode)
+    }
+
+    Process {
+        id: connectRollbackProcess
+        running: false
+        stdout: StdioCollector { id: connectRollbackStdout }
+        stderr: StdioCollector { id: connectRollbackStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishConnectRollback(exitCode)
     }
 
     Process {

@@ -34,14 +34,14 @@ runtime capability is probed explicitly, and the user may prepare qualified
 mode-0600 rollback/candidate/manifest artifacts from Settings when native parser,
 qmllint and source writability are available. Low-level proof modules are runtime
 implementation support only; QML invokes just `connect_prepare.py`. Prepared
-artifacts are bound to transaction history and invalidated by Clock/Config drift,
-but Apply remains blocked and source QML is unchanged. A separate research-only
-2K-O engine now proves one-file Connect commit/verify/rollback semantics and
-closes Config drift before/after the atomic source replacement; it is not yet
-runtime-wired. 2K-P adds live headless Sway/Quickshell evidence for the real
-reviewed Clock candidate: one watcher-driven reload, candidate verification,
-inserted-anchor rebind, exact rollback on forced rebind failure, and handoff
-invalidation after an external Config edit. Connect Apply is still not exposed.
+artifacts are bound to transaction history and invalidated by Clock/Config drift.
+The 2K-O engine and 2K-P live evidence are now promoted into an internal
+production transaction lifecycle: exact manifest commit, watcher reload,
+candidate/dependency verify, inserted-anchor rebind and automatic rollback all
+survive shell generations. A bounded explicit reload fallback handles rollback
+to baseline when Quickshell suppresses the watcher generation. Settings still
+exposes no Connect Apply control; the next gate is explicit user authorization,
+not another write engine.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

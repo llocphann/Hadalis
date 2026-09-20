@@ -23,6 +23,12 @@ styled = read("modules/bar/StyledPopup.qml")
 frame = read("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
 field = read("modules/common/perimeter/ConnectedSurfaceIrisField.qml")
 mask = read("modules/common/perimeter/ConnectedSurfaceBodyMask.qml")
+edge_surface = read("modules/common/perimeter/ConnectedSurfaceIrisEdgeSurface.qml")
+sidebar = read("modules/sidebar/SidebarHost.qml")
+settings_overlay = read("modules/settings/SettingsOverlay.qml")
+settings_focus = read("modules/settings/SettingsFocus.qml")
+dashboard = read("modules/overview/OverviewDashboard.qml")
+search_bar = read("modules/overview/SearchBar.qml")
 tokens = read("modules/common/perimeter/PerimeterTokens.qml")
 qmldir = read("modules/common/perimeter/qmldir")
 motion = read("modules/common/SurfaceMotion.qml")
@@ -103,9 +109,56 @@ require(tokens, "readonly property real irisWeldDepth: 3", "validated G2 weld to
 for export in (
     "ConnectedSurfaceIrisField 1.0 ConnectedSurfaceIrisField.qml",
     "ConnectedSurfaceIrisFrame 1.0 ConnectedSurfaceIrisFrame.qml",
+    "ConnectedSurfaceIrisEdgeSurface 1.0 ConnectedSurfaceIrisEdgeSurface.qml",
     "ConnectedSurfaceBodyMask 1.0 ConnectedSurfaceBodyMask.qml",
 ):
     require(qmldir, export, "perimeter module export")
+
+for token in (
+    "required property rect bodyRect",
+    "required property string edge",
+    "property real weldDepth: PerimeterTokens.irisWeldDepth",
+    "readonly property rect weldedBodyRect:",
+    "ConnectedSurfaceIrisFrame {",
+):
+    require(edge_surface, token, "ConnectedSurfaceIrisEdgeSurface")
+
+for token in (
+    "ConnectedSurfaceIrisEdgeSurface {",
+    "ownerThickness: root.screenEdgeHoverWidth",
+    "sidebarContentLoader.x + sidebarContentLoader.animTranslateX",
+    "progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0",
+):
+    require(sidebar, token, "Sidebar iRiS edge cutover")
+for token in ("ConnectedSurfaceJoinFlares {", "ConnectedSurfaceConnector {"):
+    forbid(sidebar, token, "Sidebar legacy edge renderer")
+
+for settings in (settings_overlay, settings_focus):
+    for token in (
+        "ConnectedSurfaceIrisEdgeSurface {",
+        'edge: "bottom"',
+        "ownerThickness: root._screenEdgeThickness",
+        "settingsPanel.height - root._screenEdgeThickness - height",
+    ):
+        require(settings, token, "Settings iRiS edge cutover")
+
+for token in (
+    "ConnectedSurfaceIrisEdgeSurface {",
+    'edge: "bottom"',
+    "ownerThickness: root.attachmentThickness",
+    "root.height + root.attachmentThickness",
+):
+    require(dashboard, token, "Dashboard/Search iRiS edge cutover")
+forbid(dashboard, "ConnectedSurfaceJoinFlares {", "Dashboard legacy edge renderer")
+
+for token in (
+    'colBackground: "transparent"',
+    'colBackgroundHover: "transparent"',
+    'colRipple: "transparent"',
+    "rippleEnabled: false",
+    "pressScaleEnabled: false",
+):
+    require(search_bar, token, "SongRec geometry cleanup")
 
 require(motion, 'readonly property string mode: "slide"', "immutable motion")
 require(waffle, "ConnectedSurfaceFrame {", "Waffle compatibility")

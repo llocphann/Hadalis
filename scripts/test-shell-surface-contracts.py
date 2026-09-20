@@ -328,24 +328,22 @@ def main() -> None:
         "GlobalStates.sidebarRightPresentationOutput",
         "PanelWindow {",
         "width: Math.max(0, root.effectiveSidebarWidth",
-        "- Appearance.sizes.elevationMargin)",
-        "rightMargin: root.isLeftEdge",
-        "? Appearance.sizes.elevationMargin",
-        ": 0",
-        "leftMargin: root.isLeftEdge",
-        "? 0",
-        ": Appearance.sizes.elevationMargin",
+        "- root.screenEdgeHoverWidth)",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        "ownerThickness: root.screenEdgeHoverWidth",
+        "sidebarContentLoader.x + sidebarContentLoader.animTranslateX",
+        "progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0",
     ):
         check(token in sidebar_host,
-              f"Sidebar physical-edge underlap contract missing: {token}")
+              f"Sidebar iRiS physical-edge contract missing: {token}")
     for retired in (
         "ConnectedSurfaceConnector",
+        "ConnectedSurfaceJoinFlares {",
         "sidebarBridgeGeometry",
         "directEdgeInset",
-        "screenEdgeThickness",
     ):
         check(retired not in sidebar_host,
-              f"Sidebar must not stop at an inner-edge inset or restore a connector: {retired}")
+              f"Sidebar must not restore connector/flare patch geometry: {retired}")
     check(sidebar_host.count('property: "animTranslateX"') == 2
           and "SurfaceMotion.duration" in sidebar_host
           and "SurfaceMotion.easingType" in sidebar_host
@@ -458,17 +456,18 @@ def main() -> None:
         settings_surface = read(settings_path)
         for token in (
             "PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay",
-            "y: settingsPanel.height - height",
-            "StyledRectangularShadow {",
-            "joinBottom: true",
-            "bottomLeftRadius: 0",
-            "bottomRightRadius: 0",
+            "import qs.modules.common.perimeter",
+            "readonly property real _screenEdgeThickness:",
+            "ConnectedSurfaceIrisEdgeSurface {",
+            'edge: "bottom"',
+            "ownerThickness: root._screenEdgeThickness",
+            "settingsPanel.height - root._screenEdgeThickness - height",
+            'color: "transparent"',
         ):
             check(token in settings_surface,
-                  f"{settings_path} must remain a square bottom-connected popup below Polkit: {token}")
-        check("ConnectedSurfaceJoinFlares {" not in settings_surface
-              and "PerimeterTokens.joinFlareRadius" not in settings_surface,
-              f"{settings_path} must not paint full-overlay endpoint flares that float beside the centered Settings card")
+                  f"{settings_path} must use iRiS bottom Screen Edge composition: {token}")
+        check("ConnectedSurfaceJoinFlares {" not in settings_surface,
+              f"{settings_path} must not paint legacy endpoint flare geometry")
 
     settings_overlay = read("modules/settings/SettingsOverlay.qml")
     settings_focus = read("modules/settings/SettingsFocus.qml")
@@ -506,6 +505,12 @@ def main() -> None:
           and "SearchWidget {" in dashboard
           and "embeddedSurface: true" in dashboard,
           "Launcher Dashboard must be one shared three-column/search surface")
+    check("ConnectedSurfaceIrisEdgeSurface {" in dashboard
+          and 'edge: "bottom"' in dashboard
+          and "ownerThickness: root.attachmentThickness" in dashboard
+          and "root.height + root.attachmentThickness" in dashboard
+          and "ConnectedSurfaceJoinFlares {" not in dashboard,
+          "Dashboard/Search Applications must share the production iRiS Screen Edge contact")
     check("Config.options?.dashboard?.widthRatio" in dashboard
           and "Config.options?.dashboard?.heightRatio" in dashboard
           and "height: root.searching ? root.searchOnlyHeight : root.configuredHeight" in dashboard,

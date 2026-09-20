@@ -57,36 +57,22 @@ grep -Fq 'readonly property real connectorWidth: 40' "$common/PerimeterTokens.qm
     || fail 'shared connector width token changed unexpectedly'
 for token in \
     'width: Math.max(0, root.effectiveSidebarWidth' \
-    '- Appearance.sizes.elevationMargin)' \
-    'rightMargin: root.isLeftEdge' \
-    '? Appearance.sizes.elevationMargin' \
-    ': 0' \
-    'leftMargin: root.isLeftEdge' \
-    '? 0' \
-    ': Appearance.sizes.elevationMargin'; do
+    '- Appearance.sizes.elevationMargin' \
+    '- root.screenEdgeHoverWidth)' \
+    '? root.screenEdgeHoverWidth' \
+    ': Appearance.sizes.elevationMargin' \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'ownerThickness: root.screenEdgeHoverWidth' \
+    'sidebarContentLoader.x + sidebarContentLoader.animTranslateX' \
+    'progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0'; do
     grep -Fq -- "$token" "$sidebar" \
-        || fail "SidebarHost must underlap the full attached Screen Edge band: $token"
+        || fail "SidebarHost must use owner-clipped iRiS Screen Edge composition: $token"
 done
-if grep -Fq 'directEdgeInset' "$sidebar" \
-        || grep -Fq 'screenEdgeThickness' "$sidebar"; then
-    fail 'SidebarHost must not stop the body at the inner Screen Edge boundary'
-fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$sidebar" \
-        || grep -Fq 'ConnectedSurfaceConnector {' "$sidebar"; then
-    fail 'SidebarHost must not retain a visible connector-shaped bridge'
+        || grep -Fq 'ConnectedSurfaceConnector {' "$sidebar" \
+        || grep -Fq 'ConnectedSurfaceJoinFlares {' "$sidebar"; then
+    fail 'SidebarHost must not retain connector/flare patch geometry'
 fi
-
-for token in \
-    'import qs.modules.common.perimeter' \
-    'readonly property real edgeDecorationMargin:' \
-    'PerimeterTokens.joinFlareRadius' \
-    'ConnectedSurfaceJoinFlares {' \
-    'bodyItem: sidebarContentLoader' \
-    'joinLeft: root.isLeftEdge' \
-    'joinRight: !root.isLeftEdge'; do
-    grep -Fq "$token" "$sidebar" \
-        || fail "SidebarHost must render Caelestia-style Screen Edge endpoint flares: $token"
-done
 
 for token in \
     'import qs.modules.common.perimeter' \
@@ -110,16 +96,22 @@ for token in \
     'property bool directBottomAttachment: false' \
     'property bool popupPresented: true' \
     'property real revealProgress: 0' \
+    'property real attachmentThickness:' \
     'id: dashboardSurfaceLayer' \
     '(1 - root.revealProgress) * dashContainer.height' \
     'clip: root.directBottomAttachment' \
-    'ConnectedSurfaceJoinFlares {' \
-    'joinBottom: root.directBottomAttachment' \
-    'blur: root.screenEdgeShadowSize' \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'edge: "bottom"' \
+    'ownerThickness: root.attachmentThickness' \
+    'root.height + root.attachmentThickness' \
+    'fillColor: Appearance.colors.colLayer0' \
     'readonly property rect connectedSurfaceRect:'; do
     grep -Fq "$token" "$dashboard" \
-        || fail "OverviewDashboard must behave like a bottom-connected popup: $token"
+        || fail "OverviewDashboard must use the iRiS bottom-owner composition: $token"
 done
+if grep -Fq 'ConnectedSurfaceJoinFlares {' "$dashboard"; then
+    fail 'OverviewDashboard must not retain the legacy flare renderer'
+fi
 
 for token in \
     'import qs.modules.waffle.looks as WaffleLooks' \

@@ -50,6 +50,7 @@ for export in \
     'ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml' \
     'ConnectedSurfaceIrisField 1.0 ConnectedSurfaceIrisField.qml' \
     'ConnectedSurfaceIrisFrame 1.0 ConnectedSurfaceIrisFrame.qml' \
+    'ConnectedSurfaceIrisEdgeSurface 1.0 ConnectedSurfaceIrisEdgeSurface.qml' \
     'ConnectedSurfaceBodyMask 1.0 ConnectedSurfaceBodyMask.qml'; do
     grep -Fq "$export" "$qmldir" || fail "supported perimeter export missing: $export"
 done
@@ -63,13 +64,13 @@ for primitive in ConnectedSurfaceGeometry ConnectedSurfaceIrisFrame ConnectedSur
     grep -Fq "$primitive" "$styled" || fail "StyledPopup no longer uses supported primitive: $primitive"
 done
 
-grep -Fq 'ConnectedSurfaceConnector {' "$sidebar" \
-    || fail 'SidebarHost lost its shared edge connector'
-grep -Fq 'PerimeterTokens.seamOverlap' "$sidebar" \
-    || fail 'SidebarHost lost shared seam geometry'
-grep -Fq 'ConnectedSurfaceConnector {' "$overview" \
-    || fail 'Overview lost its bottom Screen Edge connector'
-grep -Fq 'PerimeterTokens.seamOverlap' "$overview" \
-    || fail 'Overview lost shared seam geometry'
+grep -Fq 'ConnectedSurfaceIrisEdgeSurface {' "$sidebar" \
+    || fail 'SidebarHost lost the supported iRiS edge-surface adapter'
+if grep -Fq 'ConnectedSurfaceConnector {' "$sidebar" \
+        || grep -Fq 'ConnectedSurfaceJoinFlares {' "$sidebar"; then
+    fail 'SidebarHost restored retired connector/flare patch geometry'
+fi
+grep -Fq 'attachmentThickness: root.bottomAttachmentThickness' "$overview" \
+    || fail 'Overview no longer passes the real bottom owner thickness to Dashboard'
 
 printf 'PASS: broad perimeter runtime/common helpers are retired; connected primitives remain supported\n'

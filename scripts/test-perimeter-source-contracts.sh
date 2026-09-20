@@ -62,30 +62,21 @@ if grep -Fq 'SidebarEdgeConnectors.qml' "$critical"; then
 fi
 grep -Fq 'width: Math.max(0, root.effectiveSidebarWidth' "$root/modules/sidebar/SidebarHost.qml" \
     || fail 'SidebarHost must keep its visible body width tied to the host edge surface'
-grep -Fq -- '- Appearance.sizes.elevationMargin)' "$root/modules/sidebar/SidebarHost.qml" \
-    || fail 'Sidebar body must reserve margin only on its free inward side'
-if grep -Fq 'directEdgeInset' "$root/modules/sidebar/SidebarHost.qml" \
-        || grep -Fq 'screenEdgeThickness' "$root/modules/sidebar/SidebarHost.qml"; then
-    fail 'Sidebar body must extend through the full Screen Edge band to the physical edge'
-fi
-if grep -Fq 'id: sidebarBridgeGeometry' "$root/modules/sidebar/SidebarHost.qml"; then
-    fail 'SidebarHost must not retain connector bridge geometry'
-fi
-if grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qml"; then
-    fail 'SidebarHost must attach its body directly instead of rendering a connector stem'
-fi
-
+grep -Fq -- '- root.screenEdgeHoverWidth)' "$root/modules/sidebar/SidebarHost.qml" \
+    || fail 'Sidebar body must stop at the physical Screen Edge inner boundary'
 for token in \
-    'readonly property real edgeDecorationMargin:' \
-    'PerimeterTokens.joinFlareRadius' \
-    'ConnectedSurfaceJoinFlares {' \
-    'bodyItem: sidebarContentLoader' \
-    'fillColor: sidebarContentLoader.item?.connectedSurfaceColor' \
-    'joinLeft: root.isLeftEdge' \
-    'joinRight: !root.isLeftEdge'; do
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'ownerThickness: root.screenEdgeHoverWidth' \
+    'sidebarContentLoader.x + sidebarContentLoader.animTranslateX' \
+    'progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0'; do
     grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
-        || fail "SidebarHost must own visible flared Screen Edge endpoints: $token"
+        || fail "SidebarHost iRiS edge composition missing: $token"
 done
+if grep -Fq 'id: sidebarBridgeGeometry' "$root/modules/sidebar/SidebarHost.qml" \
+        || grep -Fq 'ConnectedSurfaceConnector {' "$root/modules/sidebar/SidebarHost.qml" \
+        || grep -Fq 'ConnectedSurfaceJoinFlares {' "$root/modules/sidebar/SidebarHost.qml"; then
+    fail 'SidebarHost must not retain connector/flare patch geometry'
+fi
 
 grep -Fq 'root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0' \
     "$root/modules/sidebar/SidebarHost.qml" \
@@ -97,12 +88,10 @@ for sidebar_surface in \
     "$root/modules/sidebarRight/CompactSidebarRightContent.qml"; do
     grep -Fq 'border.width: 0 // Screen Edge seam owns the outer boundary' "$sidebar_surface" \
         || fail "${sidebar_surface#$root/} must not draw an outer border against Screen Edge"
-    grep -Fq 'StyledRectangularShadow {' "$sidebar_surface" \
-        || fail "${sidebar_surface#$root/} must derive its outer shadow from the rounded sidebar surface"
-    grep -Fq 'joinLeft: root.attachedEdge === "left"' "$sidebar_surface" \
-        || fail "${sidebar_surface#$root/} must stop shadow at a joined left Screen Edge"
-    grep -Fq 'joinRight: root.attachedEdge === "right"' "$sidebar_surface" \
-        || fail "${sidebar_surface#$root/} must stop shadow at a joined right Screen Edge"
+    grep -Fq 'property bool externalConnectedSurface: false' "$sidebar_surface" \
+        || fail "${sidebar_surface#$root/} must expose host-owned connected rendering"
+    grep -Fq 'visible: root.panelVisible && !root.externalConnectedSurface' "$sidebar_surface" \
+        || fail "${sidebar_surface#$root/} must suppress its legacy shadow under iRiS host ownership"
     grep -Fq 'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' "$sidebar_surface" \
         || fail "${sidebar_surface#$root/} must share Screen Edge shadow enable state"
     grep -Fq 'readonly property color connectedSurfaceColor:' "$sidebar_surface" \
@@ -496,22 +485,25 @@ for token in \
     'property bool directBottomAttachment: false' \
     'property bool popupPresented: true' \
     'property real revealProgress: 0' \
+    'property real attachmentThickness:' \
     'id: dashboardSurfaceLayer' \
     '(1 - root.revealProgress) * dashContainer.height' \
     'clip: root.directBottomAttachment' \
-    'ConnectedSurfaceJoinFlares {' \
-    'flareRadius: PerimeterTokens.joinFlareRadius' \
-    'joinBottom: root.directBottomAttachment' \
-    'Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true' \
-    'blur: root.screenEdgeShadowSize' \
-    'bottomLeftRadius: root.directBottomAttachment ? 0 : radius' \
-    'color: Appearance.colors.colLayer0' \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'edge: "bottom"' \
+    'ownerThickness: root.attachmentThickness' \
+    'root.height + root.attachmentThickness' \
+    'fillColor: Appearance.colors.colLayer0' \
+    'color: root.directBottomAttachment' \
     'DashboardContent {' \
     'SearchWidget {' \
     'embeddedSurface: true'; do
     grep -Fq "$token" "$overview_dashboard" \
-        || fail "OverviewDashboard popup contract missing: $token"
+        || fail "OverviewDashboard iRiS popup contract missing: $token"
 done
+if grep -Fq 'ConnectedSurfaceJoinFlares {' "$overview_dashboard"; then
+    fail 'OverviewDashboard must not retain legacy flare geometry'
+fi
 
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'normal Media UX must stay on StyledPopup'

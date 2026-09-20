@@ -1684,14 +1684,19 @@ def main() -> None:
         forbid(overview_search_bar, token, "overview/SearchBar.qml")
     forbid(overview_search_bar, "RegaliaControlFace {", "overview/SearchBar.qml")
     for token in (
-        "? Appearance.colors.colOnPrimaryContainer",
         ": Appearance.colors.colOnSurfaceVariant",
-        "colBackgroundToggled: Appearance.colors.colPrimaryContainer",
-        "colBackgroundToggledHover: Appearance.colors.colPrimaryContainer",
+        'colBackground: "transparent"',
+        'colBackgroundHover: "transparent"',
+        'colBackgroundToggled: "transparent"',
+        'colBackgroundToggledHover: "transparent"',
+        'colRipple: "transparent"',
+        'colRippleToggled: "transparent"',
+        "rippleEnabled: false",
+        "pressScaleEnabled: false",
+        "stateTransitionsEnabled: false",
         "position: \"top\"",
         "onClicked: SongRec.toggleRunning()",
         'text: "music_cast"',
-        "RotationAnimation on rotation",
     ):
         require(overview_search_bar, token, "overview/SearchBar.qml")
     forbid(overview_search_bar, "background: Item {", "overview/SearchBar.qml")
@@ -1856,10 +1861,12 @@ def main() -> None:
         "height: root.searching ? root.searchOnlyHeight : root.configuredHeight",
         "y: (1 - root.revealProgress) * dashContainer.height",
         "(1 - root.dashboardProgress) * dashboardViewport.height",
-        "ConnectedSurfaceJoinFlares {",
-        "fillColor: dashContainer.color",
-        "flareRadius: PerimeterTokens.joinFlareRadius",
-        "joinBottom: root.directBottomAttachment",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        'edge: "bottom"',
+        "ownerThickness: root.attachmentThickness",
+        "root.height + root.attachmentThickness",
+        "fillColor: Appearance.colors.colLayer0",
+        "color: root.directBottomAttachment",
         "StyledRectangularShadow {",
         "blur: root.screenEdgeShadowSize",
         "bottomLeftRadius: root.directBottomAttachment ? 0 : radius",

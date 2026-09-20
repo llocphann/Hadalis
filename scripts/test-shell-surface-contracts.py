@@ -344,19 +344,25 @@ def main() -> None:
 
     dock = read("modules/dock/Dock.qml")
     for token in (
+        "import qs.modules.common.perimeter",
         "duration: SurfaceMotion.duration",
         "easing.type: SurfaceMotion.easingType",
-        "? (dockHeight + Appearance.sizes.elevationMargin)",
-        ": (dockHeight + Appearance.sizes.elevationMargin)",
-        "anchors.topMargin: root.isTop\n                                    ? 0",
-        'anchors.bottomMargin: root.position === "bottom"\n                                    ? 0',
-        "anchors.leftMargin: root.isLeft\n                                    ? 0",
-        'anchors.rightMargin: root.position === "right"\n                                    ? 0',
-        "topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius",
-        'bottomRightRadius: (root.position === "bottom" || root.position === "right") ? 0 : radius',
+        "ConnectedSurfaceIrisEdgeSurface {",
+        "id: dockIrisSurface",
+        "edge: root.position",
+        "ownerThickness: dockRoot.screenEdgeThickness",
+        "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
+        "dockRoot.edgeDecorationMargin * 2",
+        "? dockRoot.screenEdgeThickness",
+        "screenEdge?.physicalShadow?.enabled ?? true",
+        "screenEdge?.physicalShadow?.size ?? 15",
+        "screenEdge?.physicalShadow?.opacity ?? 0.70",
+        "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
     ):
         check(token in dock,
-              f"Dock direct Screen Edge / slide contract missing: {token}")
+              f"Dock iRiS Screen Edge / shadow contract missing: {token}")
+    check("StyledRectangularShadow {" not in dock,
+          "Dock must not retain its detached local shadow after iRiS cutover")
     check(dock.count("duration: SurfaceMotion.duration") >= 4
           and "Appearance.animation.elementMoveEnter.duration" not in dock,
           "Dock reveal/retract must use the same immutable slide motion as connected popups")
@@ -912,8 +918,8 @@ def main() -> None:
           and 'description: Translation.tr("Set Screen Edge, Bar and attached popup corner radius")' in settings_registry_data,
           "Settings search must expose the shared Screen Edge/Bar/attached-popup corner radius")
     check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
-          and 'description: Translation.tr("Configure Screen Edge and connected Bar popup shadows")' in settings_registry_data,
-          "Settings search must expose the shared Screen Edge/Bar-popup shadow controls")
+          and 'description: Translation.tr("Configure Screen Edge and connected surface shadows")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/connected-surface shadow controls")
 
     for connected_shadow_path in (
         "modules/sidebarLeft/SidebarLeftContent.qml",
@@ -929,8 +935,6 @@ def main() -> None:
               f"{connected_shadow_path} must not consume the physical Screen Edge shadow owner")
 
     for independent_connected_shadow_path in (
-        "modules/sidebar/SidebarHost.qml",
-        "modules/overview/OverviewDashboard.qml",
         "modules/settings/SettingsOverlay.qml",
         "modules/settings/SettingsFocus.qml",
     ):
@@ -944,6 +948,18 @@ def main() -> None:
           and "Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)" in styled_popup
           and "screenEdge?.shadow?.enabled" not in styled_popup,
           "All ii Bar StyledPopup surfaces must share the visible Screen Edge shadow controls and ink")
+
+    for shared_edge_shadow_source, label in (
+        (sidebar_host, "SidebarHost"),
+        (dashboard, "OverviewDashboard"),
+        (dock, "Dock"),
+    ):
+        check("screenEdge?.physicalShadow?.enabled ?? true" in shared_edge_shadow_source
+              and "screenEdge?.physicalShadow?.size ?? 15" in shared_edge_shadow_source
+              and "screenEdge?.physicalShadow?.opacity ?? 0.70" in shared_edge_shadow_source
+              and "Appearance.m3colors.m3shadow" in shared_edge_shadow_source,
+              f"{label} must share the visible Screen Edge shadow controls and Material shadow ink")
+
 
     osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     check("visible: root._oskResident" in osk_shadow

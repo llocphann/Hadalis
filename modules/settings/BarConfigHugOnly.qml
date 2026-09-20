@@ -121,7 +121,7 @@ BarConfig {
 
             SettingsNote {
                 icon: "info"
-                text: Translation.tr("These shadow controls apply to the Screen Edge and connected Bar popups. The screen edge stays visible on the desktop and maximized windows; true fullscreen and lock screen hide it.")
+                text: Translation.tr("These shadow controls apply to the Screen Edge, Bar popups, Dock, Sidebar and Dashboard. The screen edge stays visible on the desktop and maximized windows; true fullscreen and lock screen hide it.")
             }
         }
     }

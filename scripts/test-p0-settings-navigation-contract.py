@@ -43,7 +43,7 @@ for needle in [
     'section: Translation.tr("Screen Edge")',
     'label: Translation.tr("Screen edge width (px)")',
     'label: Translation.tr("Screen edge shadow")',
-    'description: Translation.tr("Configure Screen Edge and connected Bar popup shadows")',
+    'description: Translation.tr("Configure Screen Edge and connected surface shadows")',
 ]:
     require(data, needle, "static Settings search lost Screen Edge discoverability")
 forbid(data, 'label: Translation.tr("Corner style")',

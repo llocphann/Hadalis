@@ -580,7 +580,7 @@ Singleton {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Screen Edge"),
             label: Translation.tr("Screen edge shadow"),
-            description: Translation.tr("Configure Screen Edge and connected Bar popup shadows"),
+            description: Translation.tr("Configure Screen Edge and connected surface shadows"),
             keywords: ["screen", "edge", "shadow", "popup", "physical", "size", "opacity", "blur", "perimeter", "caelestia"]
         },
         {

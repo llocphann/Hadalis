@@ -5,6 +5,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/WindowPreviewService.qml"
 capture_script="$repo_root/scripts/capture-windows.sh"
 bar_preview="$repo_root/modules/bar/BarTaskbarPreview.qml"
+dock_preview="$repo_root/modules/dock/DockPreview.qml"
 workspace_overview="$repo_root/modules/bar/BarWorkspaceOverview.qml"
 workspaces="$repo_root/modules/bar/Workspaces.qml"
 waffle_preview="$repo_root/modules/waffle/bar/tasks/TaskPreview.qml"
@@ -32,6 +33,12 @@ require_bar_preview() {
     local needle="$1"
     local message="$2"
     grep -Fq -- "$needle" "$bar_preview" || fail "$message"
+}
+
+require_dock_preview() {
+    local needle="$1"
+    local message="$2"
+    grep -Fq -- "$needle" "$dock_preview" || fail "$message"
 }
 
 require_workspaces() {
@@ -110,6 +117,14 @@ require_workspace_overview 'WindowPreviewService.captureForTaskView()' \
     'workspace Overview must preserve the shared preview capture lifecycle'
 require_workspaces 'BarTaskbarPreview {' \
     'workspace strip must retain the compact preview fallback when Overview hover is disabled'
+
+require_dock_preview 'const windowIds = []' \
+    'Dock preview must build a scoped capture request for the hovered app'
+require_dock_preview 'WindowPreviewService.captureForTaskView(windowIds)' \
+    'Dock preview must not request a full-session capture for one app hover'
+if grep -Fq 'WindowPreviewService.captureForTaskView()' "$dock_preview"; then
+    fail 'Dock preview must not capture every window on each app hover'
+fi
 
 require_waffle_preview 'BarPopup {' \
     'Waffle task preview must reuse the shared Waffle connected BarPopup'

@@ -48,7 +48,18 @@ PopupWindow {
         root.appEntry = appEntry
         root.anchorItem = button
         root.anchor.updateAnchor()
-        WindowPreviewService.captureForTaskView()
+
+        // Dock hover needs previews only for this app. Passing null asks the
+        // shared service to capture every window on the output/session, which
+        // turns a one-icon hover into unnecessary compositor screenshots.
+        const toplevels = button?.toplevels ?? appEntry?.toplevels ?? []
+        const windowIds = []
+        for (const toplevel of toplevels) {
+            const id = Number(toplevel?.niriWindowId ?? toplevel?.id ?? 0)
+            if (Number.isFinite(id) && id > 0)
+                windowIds.push(id)
+        }
+        WindowPreviewService.captureForTaskView(windowIds)
         root.open()
     }
 

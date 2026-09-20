@@ -17,6 +17,10 @@ Item {
     id: root
     required property MprisPlayer player
     required property list<real> visualizerPoints
+    // Optional backend adapter. LocalMusic uses this to keep the same media
+    // surface usable even while mpd-mpris is temporarily absent.
+    property var playbackAdapter: null
+    readonly property bool usingPlaybackAdapter: playbackAdapter !== null
     // CAVA's shared service adapts this ceiling to the real signal. Keep a
     // conservative fallback for external/legacy callers, while active owners
     // pass the shared normalization ceiling so quiet-but-real audio stays visible.
@@ -37,7 +41,9 @@ Item {
     }
     
     function doTogglePlaying(): void {
-        if (isYtMusicPlayer) {
+        if (root.usingPlaybackAdapter) {
+            root.playbackAdapter.togglePlaying()
+        } else if (isYtMusicPlayer) {
             YtMusic.togglePlaying()
         } else {
             player?.togglePlaying()
@@ -46,12 +52,41 @@ Item {
     
     function doPrevious(): void {
         root.slideDirection = -1
-        MprisController.previousForPlayer(root.player)
+        if (root.usingPlaybackAdapter)
+            root.playbackAdapter.previous()
+        else
+            MprisController.previousForPlayer(root.player)
     }
     
     function doNext(): void {
         root.slideDirection = 1
-        MprisController.nextForPlayer(root.player)
+        if (root.usingPlaybackAdapter)
+            root.playbackAdapter.next()
+        else
+            MprisController.nextForPlayer(root.player)
+    }
+
+    function doSeek(seconds: real): void {
+        if (root.usingPlaybackAdapter)
+            root.playbackAdapter.seek(seconds)
+        else if (root.isYtMusicPlayer)
+            YtMusic.seek(seconds)
+        else if (root.player)
+            root.player.position = seconds
+    }
+
+    function doToggleShuffle(): void {
+        if (root.usingPlaybackAdapter)
+            root.playbackAdapter.toggleShuffle()
+        else
+            MprisController.toggleShuffleForPlayer(root.player)
+    }
+
+    function doCycleRepeat(): void {
+        if (root.usingPlaybackAdapter)
+            root.playbackAdapter.cycleRepeat()
+        else
+            MprisController.cycleLoopForPlayer(root.player)
     }
 
     function focusPrimaryControl(): void {
@@ -69,9 +104,15 @@ Item {
         return WallpaperListener.wallpaperUrlForScreen(root.surfaceScreen)
     }
 
-    readonly property string effectiveArtUrl: isYtMusicPlayer ? YtMusic.currentThumbnail : MprisController.effectiveArtUrl(player)
-    readonly property string effectiveTitle: isYtMusicPlayer ? YtMusic.currentTitle : (player?.trackTitle ?? "")
-    readonly property string effectiveArtist: isYtMusicPlayer ? YtMusic.currentArtist : (player?.trackArtist ?? "")
+    readonly property string effectiveArtUrl: root.usingPlaybackAdapter
+        ? String(root.playbackAdapter.artUrl ?? "")
+        : (isYtMusicPlayer ? YtMusic.currentThumbnail : MprisController.effectiveArtUrl(player))
+    readonly property string effectiveTitle: root.usingPlaybackAdapter
+        ? String(root.playbackAdapter.title ?? "")
+        : (isYtMusicPlayer ? YtMusic.currentTitle : (player?.trackTitle ?? ""))
+    readonly property string effectiveArtist: root.usingPlaybackAdapter
+        ? String(root.playbackAdapter.artist ?? "")
+        : (isYtMusicPlayer ? YtMusic.currentArtist : (player?.trackArtist ?? ""))
     // Only the artwork identity may trigger cover motion. Title/artist often
     // arrive before the real art URL and caused the same cover to slide twice.
     readonly property string mediaTransitionKey: (root.effectiveArtUrl ?? "").split("?")[0].split("#")[0]
@@ -79,15 +120,46 @@ Item {
     readonly property string resolverDisplaySource: artworkResolver.displaySource
     readonly property bool downloaded: root.displayedArtFilePath !== ""
     property string displayedArtFilePath: ""
-    readonly property bool effectiveCanGoPrevious: isYtMusicPlayer ? YtMusic.canGoPrevious : MprisController.canGoPreviousForPlayer(root.player)
-    readonly property bool effectiveCanGoNext: isYtMusicPlayer ? YtMusic.canGoNext : MprisController.canGoNextForPlayer(root.player)
+    readonly property real effectivePosition: root.usingPlaybackAdapter
+        ? Number(root.playbackAdapter.position ?? 0)
+        : (root.isYtMusicPlayer ? YtMusic.currentPosition : (root.player?.position ?? 0))
+    readonly property real effectiveLength: root.usingPlaybackAdapter
+        ? Number(root.playbackAdapter.length ?? 0)
+        : (root.isYtMusicPlayer ? YtMusic.currentDuration : (root.player?.length ?? 0))
+    readonly property bool effectiveIsPlaying: root.usingPlaybackAdapter
+        ? !!root.playbackAdapter.isPlaying
+        : (root.isYtMusicPlayer ? YtMusic.isPlaying : (root.player?.isPlaying ?? false))
+    readonly property bool effectiveCanSeek: root.usingPlaybackAdapter
+        ? !!root.playbackAdapter.canSeek
+        : (root.isYtMusicPlayer ? YtMusic.canSeek : (root.player?.canSeek ?? false))
+    readonly property bool effectiveCanGoPrevious: root.usingPlaybackAdapter
+        ? !!root.playbackAdapter.canGoPrevious
+        : (isYtMusicPlayer ? YtMusic.canGoPrevious : MprisController.canGoPreviousForPlayer(root.player))
+    readonly property bool effectiveCanGoNext: root.usingPlaybackAdapter
+        ? !!root.playbackAdapter.canGoNext
+        : (isYtMusicPlayer ? YtMusic.canGoNext : MprisController.canGoNextForPlayer(root.player))
+    readonly property bool effectiveShuffleSupported: root.usingPlaybackAdapter
+        ? !!root.playbackAdapter.shuffleSupported
+        : MprisController.shuffleSupportedForPlayer(root.player)
+    readonly property bool effectiveShuffleEnabled: root.usingPlaybackAdapter
+        ? !!root.playbackAdapter.shuffle
+        : MprisController.shuffleForPlayer(root.player)
+    readonly property bool effectiveRepeatSupported: root.usingPlaybackAdapter
+        ? !!root.playbackAdapter.repeatSupported
+        : MprisController.loopSupportedForPlayer(root.player)
+    readonly property bool effectiveRepeatActive: root.usingPlaybackAdapter
+        ? Number(root.playbackAdapter.repeatMode ?? 0) !== 0
+        : Number(MprisController.loopStateForPlayer(root.player)) !== 0
+    readonly property bool effectiveRepeatOne: root.usingPlaybackAdapter
+        ? Number(root.playbackAdapter.repeatMode ?? 0) === 1
+        : Number(MprisController.loopStateForPlayer(root.player)) === 2
 
     function checkAndDownloadArt() {
         artworkResolver.refresh()
     }
 
     Connections {
-        target: root.player
+        target: root.usingPlaybackAdapter ? null : root.player
         function onTrackArtUrlChanged() {
             if (!root.isYtMusicPlayer)
                 root.checkAndDownloadArt()
@@ -118,7 +190,9 @@ Item {
         sourceUrl: root.effectiveArtUrl
         title: root.effectiveTitle
         artist: root.effectiveArtist
-        album: root.player?.trackAlbum ?? ""
+        album: root.usingPlaybackAdapter
+            ? String(root.playbackAdapter.album ?? "")
+            : (root.player?.trackAlbum ?? "")
         cacheDirectory: root.artDownloadLocation
     }
 
@@ -137,7 +211,8 @@ Item {
     }
 
     Timer {
-        running: root.player?.playbackState === MprisPlaybackState.Playing
+        running: !root.usingPlaybackAdapter
+            && root.player?.playbackState === MprisPlaybackState.Playing
         interval: 1000
         repeat: true
         onTriggered: root.player?.positionChanged()
@@ -232,7 +307,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 35
-            live: root.player?.isPlaying ?? false
+            live: root.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: Math.max(1, root.visualizerMaxValue)
             smoothing: 2
@@ -269,7 +344,7 @@ Item {
                 // Title
                 StyledText {
                     Layout.fillWidth: true
-                    text: StringUtils.cleanMusicTitle(root.isYtMusicPlayer ? YtMusic.currentTitle : root.player?.trackTitle) || "—"
+                    text: StringUtils.cleanMusicTitle(root.effectiveTitle) || "—"
                     font.pixelSize: Appearance.font.pixelSize.large
                     font.weight: Font.Medium
                     font.italic: false
@@ -287,7 +362,7 @@ Item {
                 // Artist
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.isYtMusicPlayer ? YtMusic.currentArtist : (root.player?.trackArtist || "")
+                    text: root.effectiveArtist
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: blendedColors?.colSubtext ?? Appearance.colors.colSubtext
                     Behavior on color {
@@ -311,30 +386,30 @@ Item {
                     Loader {
                         id: seekLoader
                         anchors.fill: parent
-                        active: root.player?.canSeek ?? false
+                        active: root.effectiveCanSeek
                         sourceComponent: StyledSlider {
                             Accessible.name: Translation.tr("Playback position")
                             configuration: StyledSlider.Configuration.Wavy
-                            wavy: root.player?.isPlaying ?? false
-                            animateWave: root.player?.isPlaying ?? false
+                            wavy: root.effectiveIsPlaying
+                            animateWave: root.effectiveIsPlaying
                             highlightColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
                             trackColor: blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer
                             handleColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
-                            value: root.player?.length > 0 ? root.player.position / root.player.length : 0
-                            onMoved: root.player.position = value * root.player.length
+                            value: root.effectiveLength > 0 ? root.effectivePosition / root.effectiveLength : 0
+                            onMoved: root.doSeek(value * root.effectiveLength)
                             scrollable: true
                         }
                     }
 
                     Loader {
                         anchors.fill: parent
-                        active: !(root.player?.canSeek ?? false)
+                        active: !(root.effectiveCanSeek)
                         sourceComponent: StyledProgressBar {
-                            wavy: root.player?.isPlaying ?? false
-                            animateWave: root.player?.isPlaying ?? false
+                            wavy: root.effectiveIsPlaying
+                            animateWave: root.effectiveIsPlaying
                             highlightColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
                             trackColor: blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer
-                            value: root.player?.length > 0 ? root.player.position / root.player.length : 0
+                            value: root.effectiveLength > 0 ? root.effectivePosition / root.effectiveLength : 0
                         }
                     }
 
@@ -350,7 +425,7 @@ Item {
                     spacing: 4
 
                     StyledText {
-                        text: StringUtils.friendlyTimeForSeconds(root.player?.position ?? 0)
+                        text: StringUtils.friendlyTimeForSeconds(root.effectivePosition)
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.family: Appearance.font.family.numbers
                         color: blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0
@@ -361,6 +436,32 @@ Item {
                     }
 
                     Item { Layout.fillWidth: true }
+
+                    RippleButton {
+                        implicitWidth: 30; implicitHeight: 30
+                        buttonText: Translation.tr("Shuffle")
+                        enabled: root.effectiveShuffleSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: root.effectiveShuffleEnabled
+                            ? ColorUtils.transparentize(
+                                blendedColors?.colPrimary ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(
+                            blendedColors?.colLayer1 ?? Appearance.colors.colLayer1, 0.5)
+                        colRipple: blendedColors?.colLayer1Active ?? Appearance.colors.colLayer1Active
+                        onClicked: root.doToggleShuffle()
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "shuffle"
+                                iconSize: 19
+                                fill: root.effectiveShuffleEnabled ? 1 : 0
+                                color: root.effectiveShuffleEnabled
+                                    ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                    }
 
                     RippleButton {
                         implicitWidth: 32; implicitHeight: 32
@@ -432,10 +533,36 @@ Item {
                         }
                     }
 
+                    RippleButton {
+                        implicitWidth: 30; implicitHeight: 30
+                        buttonText: Translation.tr("Repeat")
+                        enabled: root.effectiveRepeatSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: root.effectiveRepeatActive
+                            ? ColorUtils.transparentize(
+                                blendedColors?.colPrimary ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(
+                            blendedColors?.colLayer1 ?? Appearance.colors.colLayer1, 0.5)
+                        colRipple: blendedColors?.colLayer1Active ?? Appearance.colors.colLayer1Active
+                        onClicked: root.doCycleRepeat()
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: root.effectiveRepeatOne ? "repeat_one" : "repeat"
+                                iconSize: 19
+                                fill: root.effectiveRepeatActive ? 1 : 0
+                                color: root.effectiveRepeatActive
+                                    ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                    }
+
                     Item { Layout.fillWidth: true }
 
                     StyledText {
-                        text: StringUtils.friendlyTimeForSeconds(root.player?.length ?? 0)
+                        text: StringUtils.friendlyTimeForSeconds(root.effectiveLength)
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.family: Appearance.font.family.numbers
                         color: blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0

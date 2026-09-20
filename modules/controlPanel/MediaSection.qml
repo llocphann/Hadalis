@@ -321,6 +321,35 @@ Item {
                     RippleButton {
                         implicitWidth: root.controlButtonSize
                         implicitHeight: root.controlButtonSize
+                        buttonText: Translation.tr("Shuffle")
+                        enabled: MprisController.shuffleSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: MprisController.hasShuffle
+                            ? ColorUtils.transparentize(root.blendedColors?.colPrimary
+                                ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(
+                            root.blendedColors?.colLayer1 ?? Appearance.colors.colLayer1, 0.5)
+                        colRipple: root.blendedColors?.colLayer1Active
+                            ?? Appearance.colors.colLayer1Active
+                        onClicked: MprisController.toggleShuffleForPlayer(root.player)
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "shuffle"
+                                iconSize: root.controlIconSize
+                                fill: MprisController.hasShuffle ? 1 : 0
+                                color: MprisController.hasShuffle
+                                    ? (root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (root.blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                        StyledToolTip { text: Translation.tr("Shuffle") }
+                    }
+
+                    RippleButton {
+                        implicitWidth: root.controlButtonSize
+                        implicitHeight: root.controlButtonSize
                         buttonText: Translation.tr("Previous")
                         enabled: MprisController.canGoPrevious
                         buttonRadius: Appearance.rounding.full
@@ -402,6 +431,35 @@ Item {
                         StyledToolTip {
                             text: Translation.tr("Next")
                         }
+                    }
+
+                    RippleButton {
+                        implicitWidth: root.controlButtonSize
+                        implicitHeight: root.controlButtonSize
+                        buttonText: Translation.tr("Repeat")
+                        enabled: MprisController.loopSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: MprisController.loopState !== 0
+                            ? ColorUtils.transparentize(root.blendedColors?.colPrimary
+                                ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(
+                            root.blendedColors?.colLayer1 ?? Appearance.colors.colLayer1, 0.5)
+                        colRipple: root.blendedColors?.colLayer1Active
+                            ?? Appearance.colors.colLayer1Active
+                        onClicked: MprisController.cycleLoopForPlayer(root.player)
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: MprisController.loopState === 2 ? "repeat_one" : "repeat"
+                                iconSize: root.controlIconSize
+                                fill: MprisController.loopState !== 0 ? 1 : 0
+                                color: MprisController.loopState !== 0
+                                    ? (root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (root.blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                        StyledToolTip { text: Translation.tr("Repeat") }
                     }
 
                     Item {

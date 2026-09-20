@@ -6,6 +6,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.modules.mediaControls
 
 /**
@@ -21,6 +22,12 @@ DashCard {
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool hasPlayer: player !== null && (player?.trackTitle ?? "").length > 0
     readonly property bool isPlaying: player?.isPlaying ?? false
+
+    CavaProcess {
+        id: dashMediaCava
+        active: root.presentationActive && root.visible && root.isPlaying
+        sampleCount: 64
+    }
 
     ColumnLayout {
         Layout.fillWidth: true
@@ -138,6 +145,12 @@ DashCard {
                 }
 
                 MediaButton {
+                    iconName: "shuffle"
+                    enabled: MprisController.shuffleSupported
+                    iconColor: MprisController.hasShuffle ? root.colAccent : root.colText
+                    onClicked: MprisController.toggleShuffleForPlayer(root.player)
+                }
+                MediaButton {
                     iconName: "skip_previous"
                     enabled: MprisController.canGoPrevious
                     onClicked: MprisController.previous()
@@ -153,7 +166,23 @@ DashCard {
                     enabled: MprisController.canGoNext
                     onClicked: MprisController.next()
                 }
+                MediaButton {
+                    iconName: MprisController.loopState === 2 ? "repeat_one" : "repeat"
+                    enabled: MprisController.loopSupported
+                    iconColor: MprisController.loopState !== 0 ? root.colAccent : root.colText
+                    onClicked: MprisController.cycleLoopForPlayer(root.player)
+                }
             }
+        }
+
+        WaveVisualizer {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 24
+            live: root.isPlaying
+            points: dashMediaCava.points
+            maxVisualizerValue: Math.max(1, dashMediaCava.normalizationCeiling)
+            smoothing: 2
+            color: ColorUtils.transparentize(root.colAccent, 0.55)
         }
 
         Rectangle {

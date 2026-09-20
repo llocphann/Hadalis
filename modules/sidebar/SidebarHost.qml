@@ -49,8 +49,13 @@ Scope {
         && GameMode.hasFullscreenOnOutput(root._screenName)
     readonly property bool edgeOpenEnabled: (Config.options?.sidebar?.edgeOpen?.enable ?? false)
         && !root.fullscreenCovered && !GlobalStates.screenLocked
-    readonly property int edgeOpenWidth: Math.max(1,
-        Config.options?.sidebar?.edgeOpen?.regionWidth ?? 2)
+    // Edge reveal must cover the whole painted Screen Edge band, not only the
+    // tiny configurable hot-strip at the physical display boundary.
+    readonly property int screenEdgeHoverWidth: Math.max(1, Math.round(
+        Config.options?.appearance?.screenEdge?.width ?? 10))
+    readonly property int edgeOpenWidth: Math.max(
+        screenEdgeHoverWidth,
+        Math.max(1, Math.round(Config.options?.sidebar?.edgeOpen?.regionWidth ?? 2)))
     property bool edgeRevealTransient: false
     readonly property bool roleHoldOpen: root.featureRole
         && GlobalStates.sidebarLeftHoldOpen

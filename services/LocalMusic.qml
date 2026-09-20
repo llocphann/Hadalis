@@ -53,6 +53,7 @@ Singleton {
     property var activeQueue: []
     property string activeQueueName: ""
     property int currentIndex: -1
+    property int resumeIndex: -1
     property string currentPath: ""
     property string currentUri: ""
     property string currentTitle: ""
@@ -188,6 +189,8 @@ Singleton {
         const status = payload.status ?? {}
         mpdState = String(status.state ?? "stop")
         currentIndex = Number(status.song ?? -1)
+        if (currentIndex >= 0)
+            resumeIndex = currentIndex
         currentPosition = Math.max(0, Number(status.elapsed ?? 0) || 0)
         currentDuration = Math.max(0, Number(status.duration ?? 0) || 0)
         const mpdVolume = Number(status.volume)
@@ -205,15 +208,26 @@ Singleton {
         if (current) {
             _applyCurrentTrack(current)
         } else {
-            currentIndex = -1
-            currentUri = ""
-            currentPath = ""
-            currentTitle = ""
-            currentArtist = ""
-            currentAlbum = ""
-            currentArt = ""
-            currentDuration = 0
-            currentPosition = 0
+            const resumable = mpdState === "stop"
+                && resumeIndex >= 0 && resumeIndex < activeQueue.length
+                ? activeQueue[resumeIndex] : null
+            if (resumable) {
+                currentIndex = resumeIndex
+                currentPosition = 0
+                _applyCurrentTrack(resumable)
+            } else {
+                currentIndex = -1
+                currentUri = ""
+                currentPath = ""
+                currentTitle = ""
+                currentArtist = ""
+                currentAlbum = ""
+                currentArt = ""
+                currentDuration = 0
+                currentPosition = 0
+                if (activeQueue.length === 0)
+                    resumeIndex = -1
+            }
         }
     }
 
@@ -447,6 +461,7 @@ Singleton {
         activeQueue = valid
         activeQueueName = String(name ?? "")
         currentIndex = index
+        resumeIndex = index
         _applyCurrentTrack(valid[index])
         currentPosition = 0
         error = ""
@@ -500,6 +515,20 @@ Singleton {
     }
 
     function togglePlaying(): void {
+        // MPD remains authoritative while stopped. mpd-mpris may disappear
+        // after an idle stop, so Play must wake the queue without the bridge.
+        if (!playing && mpdState === "stop") {
+            const index = currentIndex >= 0 && currentIndex < activeQueue.length
+                ? currentIndex
+                : (resumeIndex >= 0 && resumeIndex < activeQueue.length
+                    ? resumeIndex : (activeQueue.length > 0 ? 0 : -1))
+            if (index >= 0) {
+                resumeIndex = index
+                _sendMpd("play", [index])
+                return
+            }
+        }
+
         const player = mprisPlayer
         if (player && (player.canTogglePlaying ?? false)) {
             player.togglePlaying()
@@ -534,8 +563,10 @@ Singleton {
     }
 
     function jumpTo(index: int): void {
-        if (index >= 0 && index < activeQueue.length)
+        if (index >= 0 && index < activeQueue.length) {
+            resumeIndex = index
             _sendMpd("play", [index])
+        }
     }
 
     function removeQueueTrack(index: int): void {
@@ -598,12 +629,10 @@ Singleton {
     }
 
     function stop(): void {
-        const player = mprisPlayer
-        if (player && (player.canStop ?? false)) {
-            player.stop()
-            statusRefreshTimer.restart()
-            return
-        }
+        // Keep resume state in the MPD backend even if the MPRIS bridge is
+        // reaped while idle.
+        if (currentIndex >= 0 && currentIndex < activeQueue.length)
+            resumeIndex = currentIndex
         _sendMpd("stop", [])
     }
 

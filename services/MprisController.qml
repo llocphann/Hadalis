@@ -1472,20 +1472,47 @@ Singleton {
 			root.activePlayer.volume = clamped;
 	}
 
-	property bool loopSupported: this.activePlayer && this.activePlayer.loopSupported && this.activePlayer.canControl;
-	property var loopState: this.activePlayer?.loopState ?? MprisLoopState.None;
-	function setLoopState(loopState: var): void {
-		if (this.loopSupported) {
-			this.activePlayer.loopState = loopState;
-		}
+	function loopSupportedForPlayer(player): bool {
+		return !!(player && player.loopSupported && player.canControl);
+	}
+	function loopStateForPlayer(player): var {
+		return player?.loopState ?? MprisLoopState.None;
+	}
+	function setLoopStateForPlayer(player, loopState: var): bool {
+		if (!root.loopSupportedForPlayer(player)) return false;
+		player.loopState = loopState;
+		return true;
+	}
+	function cycleLoopForPlayer(player): bool {
+		const current = Number(root.loopStateForPlayer(player)) || 0;
+		return root.setLoopStateForPlayer(player, (current + 1) % 3);
 	}
 
-	property bool shuffleSupported: this.activePlayer && this.activePlayer.shuffleSupported && this.activePlayer.canControl;
-	property bool hasShuffle: this.activePlayer?.shuffle ?? false;
+	function shuffleSupportedForPlayer(player): bool {
+		return !!(player && player.shuffleSupported && player.canControl);
+	}
+	function shuffleForPlayer(player): bool {
+		return player?.shuffle ?? false;
+	}
+	function setShuffleForPlayer(player, shuffle: bool): bool {
+		if (!root.shuffleSupportedForPlayer(player)) return false;
+		player.shuffle = shuffle;
+		return true;
+	}
+	function toggleShuffleForPlayer(player): bool {
+		return root.setShuffleForPlayer(player, !root.shuffleForPlayer(player));
+	}
+
+	property bool loopSupported: root.loopSupportedForPlayer(root.activePlayer);
+	property var loopState: root.loopStateForPlayer(root.activePlayer);
+	function setLoopState(loopState: var): void {
+		root.setLoopStateForPlayer(root.activePlayer, loopState);
+	}
+
+	property bool shuffleSupported: root.shuffleSupportedForPlayer(root.activePlayer);
+	property bool hasShuffle: root.shuffleForPlayer(root.activePlayer);
 	function setShuffle(shuffle: bool): void {
-		if (this.shuffleSupported) {
-			this.activePlayer.shuffle = shuffle;
-		}
+		root.setShuffleForPlayer(root.activePlayer, shuffle);
 	}
 
 	function setActivePlayer(player: MprisPlayer): void {

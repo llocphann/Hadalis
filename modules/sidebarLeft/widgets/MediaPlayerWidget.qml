@@ -286,6 +286,32 @@ Item {
 
                     // Controls
                     RippleButton {
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        enabled: MprisController.shuffleSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: MprisController.hasShuffle
+                            ? ColorUtils.transparentize(blendedColors?.colPrimary
+                                ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: Appearance.colors.colLayer1Hover
+                        colRipple: Appearance.colors.colLayer1Active
+                        onClicked: MprisController.toggleShuffleForPlayer(root.player)
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "shuffle"
+                                iconSize: 19
+                                fill: MprisController.hasShuffle ? 1 : 0
+                                color: MprisController.hasShuffle
+                                    ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                        StyledToolTip { text: Translation.tr("Shuffle") }
+                    }
+
+                    RippleButton {
                         implicitWidth: 32
                         implicitHeight: 32
                         enabled: MprisController.canGoPrevious
@@ -419,6 +445,32 @@ Item {
                         }
 
                         StyledToolTip { text: Translation.tr("Next") }
+                    }
+
+                    RippleButton {
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        enabled: MprisController.loopSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: MprisController.loopState !== 0
+                            ? ColorUtils.transparentize(blendedColors?.colPrimary
+                                ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: Appearance.colors.colLayer1Hover
+                        colRipple: Appearance.colors.colLayer1Active
+                        onClicked: MprisController.cycleLoopForPlayer(root.player)
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: MprisController.loopState === 2 ? "repeat_one" : "repeat"
+                                iconSize: 19
+                                fill: MprisController.loopState !== 0 ? 1 : 0
+                                color: MprisController.loopState !== 0
+                                    ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                        StyledToolTip { text: Translation.tr("Repeat") }
                     }
 
                     Item { Layout.fillWidth: true }

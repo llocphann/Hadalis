@@ -34,6 +34,13 @@ Item {
         positionUpdatesActive: root.visible && GlobalStates.sidebarRightOpen
     }
 
+    CavaProcess {
+        id: compactMediaCava
+        active: root.visible && GlobalStates.sidebarRightOpen
+            && playerBase.effectiveIsPlaying
+        sampleCount: 64
+    }
+
     property QtObject blendedColors: AdaptedMaterialScheme {
         color: playerBase.artDominantColor
     }
@@ -390,8 +397,22 @@ Item {
             }
         }
 
+        WaveVisualizer {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 28
+            z: 0
+            live: playerBase.effectiveIsPlaying
+            points: compactMediaCava.points
+            maxVisualizerValue: Math.max(1, compactMediaCava.normalizationCeiling)
+            smoothing: 2
+            color: ColorUtils.transparentize(root.accentColor, 0.62)
+        }
+
         ColumnLayout {
             id: playerLayout
+            z: 1
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.leftMargin: root.contentPadding + root.artworkSize + root.contentGap

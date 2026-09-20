@@ -26,6 +26,30 @@ Item {
     property bool playlistDialogVisible: false
     property var pendingPlaylistTracks: []
 
+    QtObject {
+        id: localMusicPlayerAdapter
+        readonly property string title: LocalMusic.currentTitle
+        readonly property string artist: LocalMusic.currentArtist
+        readonly property string album: LocalMusic.currentAlbum
+        readonly property string artUrl: LocalMusic.currentArt
+        readonly property real position: LocalMusic.lyricsPosition
+        readonly property real length: LocalMusic.currentDuration
+        readonly property bool isPlaying: LocalMusic.playing
+        readonly property bool canSeek: LocalMusic.hasCurrentTrack
+        readonly property bool canGoPrevious: LocalMusic.canGoPrevious
+        readonly property bool canGoNext: LocalMusic.canGoNext
+        readonly property bool shuffleSupported: LocalMusic.available
+        readonly property bool shuffle: LocalMusic.shuffleMode
+        readonly property bool repeatSupported: LocalMusic.available
+        readonly property int repeatMode: LocalMusic.repeatMode
+        function togglePlaying(): void { LocalMusic.togglePlaying() }
+        function previous(): void { LocalMusic.previous() }
+        function next(): void { LocalMusic.next() }
+        function seek(seconds): void { LocalMusic.seek(seconds) }
+        function toggleShuffle(): void { LocalMusic.toggleShuffle() }
+        function cycleRepeat(): void { LocalMusic.cycleRepeatMode() }
+    }
+
     readonly property string query: searchField.text.trim().toLowerCase()
     readonly property var filteredTracks: {
         if (!root.query) return LocalMusic.libraryTracks
@@ -341,7 +365,7 @@ Item {
 
     CavaProcess {
         id: localMusicCava
-        active: root.visible && LocalMusic.mprisAvailable && LocalMusic.playing
+        active: root.visible && LocalMusic.playing
         sampleCount: 64
     }
 
@@ -636,11 +660,12 @@ Item {
             id: nowPlayingPanel
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? Appearance.sizes.mediaControlsHeight : 0
-            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
+            visible: LocalMusic.hasCurrentTrack
 
             PlayerControl {
                 anchors.fill: parent
                 player: LocalMusic.mprisPlayer
+                playbackAdapter: localMusicPlayerAdapter
                 visualizerPoints: localMusicCava.points
                 visualizerMaxValue: Math.max(1, localMusicCava.normalizationCeiling)
                 radius: Appearance.rounding.normal
@@ -651,24 +676,9 @@ Item {
             id: classicPlaybackOptions
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? 34 : 0
-            visible: LocalMusic.hasCurrentTrack && LocalMusic.mprisAvailable
+            visible: LocalMusic.hasCurrentTrack
             spacing: 6
 
-            ToolIconButton {
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"
-                showTip: false
-                onClicked: LocalMusic.toggleShuffle()
-            }
-            ToolIconButton {
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                symbol: LocalMusic.repeatMode === 1 ? "repeat_one_on"
-                    : (LocalMusic.repeatMode === 2 ? "repeat_on" : "repeat")
-                showTip: false
-                onClicked: LocalMusic.cycleRepeatMode()
-            }
             Item { Layout.fillWidth: true }
             MaterialSymbol {
                 text: LocalMusic.volume <= 0 ? "volume_off"
@@ -677,7 +687,9 @@ Item {
                 color: Appearance.colors.colSubtext
             }
             StyledSlider {
-                Layout.preferredWidth: 120
+                Layout.preferredWidth: 100
+                configuration: StyledSlider.Configuration.XS
+                stopIndicatorValues: []
                 from: 0
                 to: 1
                 value: LocalMusic.volume
@@ -854,6 +866,30 @@ Item {
                                 font.weight: Font.Medium
                             }
 
+                            ToolIconButton {
+                                visible: root.selectedEntryCount > 0
+                                Layout.preferredWidth: visible ? 30 : 0
+                                Layout.preferredHeight: 30
+                                symbol: "play_arrow"
+                                tip: Translation.tr("Play selection")
+                                onClicked: {
+                                    const tracks = root.selectedTracks
+                                    if (tracks.length > 0)
+                                        LocalMusic.playQueue(tracks, 0, Translation.tr("Play selection"))
+                                }
+                            }
+                            ToolIconButton {
+                                visible: root.selectedEntryCount > 0
+                                Layout.preferredWidth: visible ? 30 : 0
+                                Layout.preferredHeight: 30
+                                symbol: "playlist_add"
+                                tip: Translation.tr("Add to queue")
+                                onClicked: {
+                                    const tracks = root.selectedTracks
+                                    if (tracks.length > 0)
+                                        LocalMusic.enqueueTracks(tracks)
+                                }
+                            }
                             ToolIconButton {
                                 visible: root.selectedEntryCount > 0
                                 Layout.preferredWidth: visible ? 30 : 0

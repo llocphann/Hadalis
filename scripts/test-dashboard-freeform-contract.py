@@ -234,22 +234,28 @@ def main() -> None:
     ):
         require(canvas, token, "DashboardCanvas.qml")
 
+    # System monitor is intentionally card-based now: compact utilization
+    # tiles with history sparklines, secondary thermal/storage chips, and one
+    # integrated ThinkFan panel. Keep the freeform contract focused on its
+    # adaptive primitives rather than the retired three vertical meters.
     for token in (
-        "anchors.centerIn: parent",
-        "width: Math.min(parent.width, 220)",
-        "height: Math.min(parent.height, 104)",
-    ):
-        require(system, token, "DashSystem.qml")
-    for token in (
+        "component MetricTile: Rectangle",
+        "component StatusChip: Rectangle",
+        "columns: 3",
+        "history: ResourceUsage.cpuUsageHistory",
+        "history: ResourceUsage.memoryUsageHistory",
+        "history: ResourceUsage.gpuUsageHistory",
+        "Graph {",
         "ThinkFanService.refresh()",
         "ThinkFanService.applyProfile(",
-        'Translation.tr("Fan")',
+        'text: Translation.tr("Fan control")',
         'Translation.tr("RPM:")',
-        'Translation.tr("Level:")',
         "ThinkFanService.fanRpm",
         "ThinkFanService.fanLevel",
+        "StyledSwitch {",
     ):
         require(system, token, "DashSystem.qml")
+    forbid(system, "component VerticalBar:", "DashSystem.qml")
     require(calendar_widget,
         "anchors.verticalCenter: root.dashboardAdaptive",
         "CalendarWidget.qml")

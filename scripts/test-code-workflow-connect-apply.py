@@ -73,7 +73,7 @@ for token in (
     '"RESTORING SNAPSHOT"',
     '"VERIFYING ROLLBACK"',
     '"Connect Apply lifecycle · "',
-    '"mutation/history/preparation controls are locked"',
+    "mutation/history/preparation controls are locked",
     '"Connect Apply complete · candidate verified',
     '"Connect Apply rolled back · exact base snapshot verified',
 ):

@@ -665,3 +665,74 @@ from the model; the custom window's inherited requirement was therefore left
 unsatisfied. The window now receives the delegate's screen explicitly through
 `targetScreen`. This is a PoC lifecycle fix only; no field or production
 geometry changed.
+
+
+### G1 CLOSED / PASS — real Niri evidence
+
+G1 is no longer pending.
+
+Accepted live evidence:
+
+```text
+scripts/iris-corner-poc/captures/g1-20260920T150214Z
+output: eDP-1
+G1 evidence structure: PASS (eDP-1)
+```
+
+The maintainer supplied both focused detail sheets after the stable-readiness and
+Variants fixes. Visual review accepted all 24 required cases:
+
+- top / bottom / left / right;
+- sourceT 0.02 / 0.50 / 0.98;
+- diagnostic and upstream-relative profiles.
+
+The center cases preserve one primary-owner fillet. Both clamp extremes preserve
+one coherent popup/owner/perpendicular-frame silhouette, and the
+upstream-relative profile keeps the same topology. Therefore G1 is formally
+closed and G2 is authorized.
+
+### Current hard gate — G2 split composition
+
+Source-side G2 lives under:
+
+```text
+scripts/iris-corner-poc/g2/
+```
+
+Initial commits:
+
+```text
+5b25aa3123fdf32eea0cea13d9f82639315fc46d
+test(surface): add iRiS G2 split composition
+
+6ecadc91ce7bf6edee53acbecb0cdc0c0c6cef2e
+test(surface): scissor G2 external owners
+```
+
+G2 uses two actual layer-shell surfaces:
+
+- Top: fake Bar/Screen Edge owner plus a visible fake module;
+- Overlay: popup field/content.
+
+The Overlay shader still receives full output-local owner/frame records for the
+exact iRiS SDF/join calculation, but rasterization is clipped away from **all
+external-owner interiors**:
+
+- primary Bar/owner interior is excluded at the attachment seam;
+- at 0.02/0.98 the perpendicular physical Screen Edge strip is excluded at its
+  inner boundary.
+
+This is a composition-domain scissor, not a corner geometry patch. The exact
+upstream iRiS QSB is unchanged.
+
+The one-command live gate is:
+
+```sh
+HADALIS_IRIS_G2_OUTPUT=eDP-1 \
+scripts/iris-corner-poc/g2/capture-g2.sh
+```
+
+It captures 24 cases: four edges x three source positions x open/mid-slide
+(progress 1.00 and 0.55), then runs the structural verifier.
+
+Production remains unchanged until G2 receives both structural and visual PASS.

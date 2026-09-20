@@ -2282,3 +2282,62 @@ The fix changes readiness semantics, not field geometry:
 
 No shader, fuse, weld, radius, join policy or production surface changed. G1
 therefore remains pending a fresh complete live run.
+
+
+### 26.18 G1 accepted; G2 split-composition implementation
+
+The real Niri evidence directory
+`g1-20260920T150214Z` passed the structural verifier on `eDP-1`, and both
+focused profile sheets were visually accepted. G1 is therefore closed.
+
+G2 now tests the actual Hadalis layer split rather than another same-window
+field:
+
+```text
+Top owner window
+  primary Bar/owner
+  perpendicular Screen Edge owners
+  fake owner module
+
+Overlay popup window
+  full owner/frame/popup SDF records
+  local ShaderEffect raster viewport
+  popup content/input/shadow
+```
+
+The important implementation result is that a rectangular local raster viewport
+is sufficient only after clipping **both classes of external owner**. Clipping
+just at the primary attachment seam prevents Bar repaint, but a clamp case would
+still rasterize the perpendicular `frame-start` / `frame-end` strip because
+that owner shape extends across the output.
+
+The corrected G2 viewport therefore applies two independent generic half-plane
+constraints:
+
+1. primary attachment seam: never rasterize into the Bar/primary-owner side;
+2. tangent clamp boundary: when the popup joins a perpendicular physical edge,
+   never rasterize into that frame strip.
+
+The owner records remain present in the exact iRiS SDF calculation, so the
+smooth-union fillet immediately **outside** each external owner is preserved.
+Only pixels already owned and painted by the Top domain are excluded from the
+Overlay raster.
+
+The popup input proxy uses the same owner exclusions. Shadow is still a
+separate rectangular production-compatible path: the attached side is clipped,
+and a tangent side is also clipped when that physical edge is joined.
+
+Cross-axis field bounds deliberately expand only by AA reach, not fuse reach.
+Fuse expansion is tangent-only. This avoids a closing popup leaving a visible
+smooth-union tail after its full body has slid underneath the owner.
+
+The G2 live matrix is 24 cases:
+
+```text
+4 edges x 3 source positions x progress {1.00, 0.55}
+```
+
+Structural verification checks layer ownership, join labels, pure slide
+translation, local paint-area ratio, primary/tangent owner exclusion, body-only
+input, shadow suppression and provenance. Visual acceptance still remains
+mandatory before production cutover.

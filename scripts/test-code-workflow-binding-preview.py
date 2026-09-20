@@ -107,7 +107,8 @@ for token in (
     "CodeWorkflowTransaction.previewBinding(",
     '"Preview binding patch"',
     '"PREVIEW ONLY"',
-    '"Only qualified literal-property commands may Apply. Direct bindings are preview-only."',
+    "Only qualified literal-property commands may Apply.",
+    "Direct bindings are preview-only.",
 ):
     if token not in page:
         fail("binding preview UI missing " + token)

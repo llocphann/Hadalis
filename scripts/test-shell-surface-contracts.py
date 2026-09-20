@@ -804,6 +804,9 @@ def main() -> None:
           "Taskbar window previews must not draw a second floating card inside the connected shell")
     check("anchorItem" in taskbar_preview and "previewOpen" in taskbar_preview,
           "Taskbar preview must preserve real button anchoring and hover lifecycle")
+    check("import Quickshell.Wayland" in taskbar_preview
+          and "target: ToplevelManager.toplevels" in taskbar_preview,
+          "Taskbar preview must import the Wayland owner of ToplevelManager")
 
     tray = read("modules/bar/SysTray.qml")
     check("alternativeVisibleCondition: root.trayOverflowOpen" in tray,
@@ -1069,6 +1072,8 @@ def main() -> None:
     check('component: "modules/settings/BarConfig.qml"' in settings_registry_data
           and 'component: "modules/settings/QuickConfig.qml"' in settings_registry_data,
           "Settings registry data must route directly to canonical Bar/Quick pages")
+    check("onGeneratedTranslationsChanged" not in settings_registry_data,
+          "Settings search registry must not listen for the retired generatedTranslations signal")
     check('label: Translation.tr("Bar background")' not in settings_registry_data,
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,

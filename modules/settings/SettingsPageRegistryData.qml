@@ -323,7 +323,6 @@ Singleton {
         target: Translation
         function onLanguageCodeChanged(): void { root._staticSearchIndex = null }
         function onTranslationsChanged(): void { root._staticSearchIndex = null }
-        function onGeneratedTranslationsChanged(): void { root._staticSearchIndex = null }
     }
 
     function searchIndex(): var {

@@ -58,6 +58,7 @@ def main() -> None:
         "id: secondaryStrip",
         "id: sunTimeline",
         "root.sunProgress",
+        "border.color: Appearance.colors.colLayer2",
         'Translation.tr("Last refresh: %1")',
     )
     for token in popup_required:
@@ -109,6 +110,9 @@ def main() -> None:
         if forbidden in source or forbidden in orbital:
             raise AssertionError(
                 f"Weather composition contains retired token: {forbidden!r}")
+
+    if "Appearance.colors.colSurface" in source:
+        raise AssertionError("Weather popup must not use the retired colSurface alias")
 
     for retired in (
         "WeatherCard {",

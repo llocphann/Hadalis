@@ -200,18 +200,31 @@ PanelWindow {
             + " · weld " + Math.round(root.weld)
     }
 
+    // Keep the readiness payload plain-number JSON. The live capture harness
+    // persists it beside each PNG and uses output-local geometry to make a
+    // high-magnification junction crop without guessing compositor scale.
     Component.onCompleted: console.info(
         "HADALIS_IRIS_POC",
         JSON.stringify({
             output: root.screen?.name ?? "",
+            outputX: Number(root.screen?.x ?? 0),
+            outputY: Number(root.screen?.y ?? 0),
+            outputWidth: Number(root.width),
+            outputHeight: Number(root.height),
+            devicePixelRatio: Number(root.devicePixelRatio),
             mode: root.geometryMode,
             profile: root.profileName,
             edge: root.edgeName,
-            semanticPopup: root.semanticPopup,
-            fieldPopup: root.fieldPopup,
-            owner: root.ownerShape,
-            popup: root.popupShape,
-            reach: root.edgeReach
+            sourceT: Number(root.sourceT),
+            popupX: Number(root.semanticPopup.x),
+            popupY: Number(root.semanticPopup.y),
+            popupWidth: Number(root.semanticPopup.width),
+            popupHeight: Number(root.semanticPopup.height),
+            ownerThickness: Number(root.ownerThickness),
+            radius: Number(root.popupRadius),
+            fuse: Number(root.fuse),
+            weld: Number(root.weld),
+            reach: Number(root.edgeReach)
         })
     )
 }

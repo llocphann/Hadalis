@@ -154,15 +154,24 @@ scripts/iris-corner-poc/capture-matrix.sh
 
 The output defaults to `scripts/iris-corner-poc/captures/` and contains:
 
-- 12 PNG screenshots;
-- one Quickshell log per case;
+- 12 full-output PNG screenshots;
+- 12 focused junction PNGs (`*-detail.png`);
+- one machine-readable geometry JSON and one Quickshell log per case;
 - `manifest.tsv`;
-- `contact-sheet-<mode>-<profile>.png` when ImageMagick is available.
+- `contact-sheet-<mode>-<profile>.png` when ImageMagick is available;
+- `detail-sheet-<mode>-<profile>.png` when ImageMagick is available.
 
 The harness launches only this developer PoC, waits for its
-`HADALIS_IRIS_POC` readiness marker, captures with `grim`, then terminates
-that exact PoC process before moving to the next case. It does **not** restart,
-reload or IPC-call the running Hadalis shell.
+`HADALIS_IRIS_POC` readiness marker, persists the reported output-local
+geometry, captures with `grim`, then terminates that exact PoC process before
+moving to the next case. It does **not** restart, reload or IPC-call the running
+Hadalis shell.
+
+The focused crop is computed from the semantic popup/owner geometry and
+`ShellScreen.x/y`, then passed to `grim -g` in compositor layout coordinates.
+This avoids shrinking a 1440p/4K full screenshot just to inspect a 30–56 px
+fillet, and it does not assume that Qt `devicePixelRatio` equals the
+compositor's fractional output scale.
 
 For the first acceptance pass, leave the default:
 

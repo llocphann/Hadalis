@@ -104,6 +104,18 @@ assert 'String(raw).trim().length === 0' in window, (
     "empty environment variables must not collapse profile defaults to zero"
 )
 
+for token in (
+    "outputX: Number(root.screen?.x ?? 0)",
+    "outputY: Number(root.screen?.y ?? 0)",
+    "outputWidth: Number(root.width)",
+    "outputHeight: Number(root.height)",
+    "devicePixelRatio: Number(root.devicePixelRatio)",
+    "popupX: Number(root.semanticPopup.x)",
+    "popupY: Number(root.semanticPopup.y)",
+    "ownerThickness: Number(root.ownerThickness)",
+):
+    assert token in window, f"capture metadata drifted: {token}"
+
 
 def rounded_box(x, y, cx, cy, half_w, half_h, radius):
     radius = min(radius, half_w, half_h)
@@ -184,8 +196,11 @@ for token in (
     "HADALIS_IRIS_POC_PROFILE",
     "HADALIS_IRIS_POC",
     "grim",
+    'grim -g "$detail_geometry"',
     "manifest.tsv",
+    "metadata_json",
     "contact-sheet-",
+    "detail-sheet-",
 ):
     assert token in capture, f"live matrix harness missing: {token}"
 

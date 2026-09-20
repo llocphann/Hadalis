@@ -1,8 +1,10 @@
 # Unified Surface Composition Research
 
-Status: **research only — no production implementation is approved yet**
+> **Historical research / superseded execution guidance.** Production iRiS cutover has already landed. Do not use this document as the active implementation contract. Current instructions live in `README.md` §1.1/§2.1, `docs/UNIFIED_SURFACE_HANDOFF.md`, `docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`. References below to JoinFlares, RoundCorner, pre-cutover baselines or “not approved for production” describe the investigation history only.
 
-Last synchronized against `dev` at `c233d1c4aaac911d7fd2e8daac9fb3857f740860` on 2026-09-20.
+Status: **archived research context**
+
+Last active research synchronization: 2026-09-20.
 
 ## 1. Why this document exists
 

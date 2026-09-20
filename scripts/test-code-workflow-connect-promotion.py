@@ -195,7 +195,7 @@ for token in (
     "PENDING",
     "FRESH",
     "STALE",
-    "only source-writing command",
+    "literal-property remains the only",
 ):
     if token not in phase2:
         fail("2K-L documentation missing " + token)

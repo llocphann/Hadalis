@@ -160,7 +160,7 @@ for token in (
     "connect_prepare.py",
     "Prepare Connect artifacts",
     "Apply remains blocked",
-    "only source-writing command",
+    "literal-property remains the only",
 ):
     if token not in phase2:
         fail("2K-N documentation missing " + token)

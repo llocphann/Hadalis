@@ -1,8 +1,8 @@
 # Unified Surface Composition Research
 
-Status: **research only — no production implementation is approved yet**
+Status: **research + isolated U1 PoC — no production integration is approved yet**
 
-Last synchronized against `dev` at `c233d1c4aaac911d7fd2e8daac9fb3857f740860` on 2026-09-20.
+Last synchronized against `dev` at `2cbb6c235f7e98f8fd94179060674f526cfffa9a` on 2026-09-20.
 
 ## 1. Why this document exists
 
@@ -1541,3 +1541,155 @@ Only U3 may choose the production renderer.
 
 Production cutover still requires explicit maintainer approval and remains
 separate from this research/documentation work.
+
+
+---
+
+## 26. U0.5 and U1 implementation status — 2026-09-20
+
+The maintainer explicitly approved starting the isolated PoC after the U0 research
+phase. U1 now exists under `scripts/unified-surface/`; it is still not imported
+by the production shell and remains excluded from the runtime payload.
+
+### 26.1 What was implemented
+
+Current U1 files include:
+
+```text
+scripts/unified-surface/
+  shell.qml
+  U1Shell.qml
+  U1Surface.qml
+  U1Surface.frag
+  U1Surface.qsb
+  build-shader.sh
+  verify-shader-package.sh
+  smoke-headless-sway.py
+  validate-live-niri.py
+  run-u1.sh
+  README.md
+```
+
+The implementation preserves the architecture constraints established above:
+
+- one persistent input-transparent layer-shell visual host per test output;
+- output-local logical geometry;
+- bounded ShaderEffect by default plus full-output diagnostic mode;
+- rounded-rect SDF + inverted frame + smooth union + generic border sink;
+- no Canvas/contact flares;
+- no `contactInset`, contact-plane offsets, manual join-corner selection or
+  module-specific shader branches;
+- source movement changes only generic popup placement data;
+- no production `ScreenEdges`, Bar, `StyledPopup`, Sidebar, Dashboard or
+  Settings files are imported or modified by U1.
+
+### 26.2 QSB pipeline result
+
+U1 stores GLSL source and a committed precompiled QSB. Runtime never needs
+`qsb`, CMake, a compiler or a network connection.
+
+An important build-system finding was that the Qt 6.4 QShader package container
+is not byte-deterministic across equivalent bakes. Therefore raw QSB SHA equality
+is not a valid reproducibility gate.
+
+The accepted gate is semantic package equivalence:
+
+- reflection metadata after JSON normalization;
+- SPIR-V payload;
+- GLSL ES 300 payload;
+- GLSL 330 payload.
+
+This gate is implemented by `verify-shader-package.sh` and passes in the
+dedicated U1 workflow.
+
+Relevant commits:
+
+- `b9f376318a2d541734a24208caa679d4fb07b456` —
+  `feat(surface): add isolated U1 SDF prototype source`
+- `084e3fe16b4ed5f246e7a67205bc9841d706ce67` —
+  `build(surface): update U1 shader artifact`
+- `2a788d71758dea370b288621c1575e665ec461a6` —
+  `test(surface): compare U1 shader semantics`
+
+### 26.3 CI vs live-GPU validation split
+
+The first headless attempt correctly exposed that a GitHub-hosted runner with a
+Pixman-only headless compositor cannot honestly validate ShaderEffect pixels:
+Qt Quick could not create the required RHI/GLES context.
+
+The CI architecture was therefore corrected rather than hiding the failure:
+
+- CI uses an owned Sway headless compositor + Pixman + Qt Quick software backend
+  only for QML/layer-shell lifecycle in U1 `control` mode;
+- QSB executable semantics are checked separately;
+- actual SDF pixels/topology remain a local-GPU nested-Niri gate.
+
+The dedicated `Unified Surface U1 Shader` workflow passed on
+`8bf0483b4ef9d0354930a370ced7020d0db226f4`, including:
+
+- canonical QSB semantic verification;
+- static architecture contract;
+- Top/Overlay control-mode layer-shell startup/lifetime smoke;
+- QSB artifact upload.
+
+The general repository CI may still fail or be cancelled because unrelated
+baseline contracts/Code Workflow work run concurrently; do not reinterpret those
+unrelated results as U1 renderer evidence.
+
+### 26.4 Live nested-Niri validator
+
+`validate-live-niri.py` starts a fresh nested Niri inside the current Wayland
+session and never edits/reloads the host Niri config.
+
+Static topology coverage:
+
+- scales: 1.0, 1.25, 1.5, 1.75, 2.0 for the full matrix;
+- edges: top, bottom, left, right;
+- generic source positions: 0.02, 0.5, 0.98;
+- bounded vs full-output reference rendering;
+- strong-material connected-component test;
+- bounded/full mask IoU;
+- ordinary screen-edge clamp verification;
+- DPR reporting without assuming DPR equals fractional output scale.
+
+Lifecycle coverage added in
+`8bf0483b4ef9d0354930a370ced7020d0db226f4`:
+
+- source motion is traced while the Wayland client protocol log must show exactly
+  one `get_layer_surface` creation for the U1 namespace;
+- reveal animation likewise must not recreate the layer surface;
+- moving captures at left/center/right must remain one dominant connected
+  material component;
+- a test-only normal `FloatingWindow` is fullscreened by the nested Niri IPC;
+- Top mode must return to the same material after fullscreen exits;
+- Overlay mode must remain visible above fullscreen content;
+- fullscreen enter/exit must not remap the U1 layer surface.
+
+The fullscreen probe is test-only and is created only when
+`HADALIS_U1_FULLSCREEN_PROBE=1`.
+
+### 26.5 Current gate
+
+U0.5 is complete enough for implementation work.
+
+U1 source/build/control-lifecycle gates are complete and passing.
+
+**U1 is not yet accepted as topology/performance complete** until the live
+nested-Niri GPU validator is run on real hardware and the required matrix passes:
+
+```sh
+python3 scripts/unified-surface/validate-live-niri.py \
+  --scales 1 1.25 1.5 1.75 2 \
+  --benchmark
+```
+
+Do not begin U2 production integration merely because CI is green. The next
+decision must be based on the live report:
+
+- topology/AA/lifecycle PASS + bounded performance PASS -> proceed to U2 dynamic
+  registry research/PoC;
+- topology failure -> revise SDF math only;
+- bounded performance failure -> evaluate minimal native QSG behind the same
+  renderer-neutral contract;
+- any need for module-specific contact patches -> reject the direction before
+  production integration.

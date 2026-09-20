@@ -219,3 +219,101 @@ work may have advanced the branch.
 The reverted pre-contact-corner baseline remains authoritative. Do not resurrect
 Canvas flares, contact-plane offsets, \`contactInset\`, or per-consumer seam
 patches.
+
+
+---
+
+## Latest continuation update — U1 implemented, production still untouched
+
+This section supersedes the older instruction above that said U1 was only
+designed and must not yet be implemented. The maintainer subsequently explicitly
+approved starting U1.
+
+Current `dev` synchronization point when this update was written:
+
+- `2cbb6c235f7e98f8fd94179060674f526cfffa9a`
+- unrelated Code Workflow work continues in parallel, so refetch before every
+  audit/write.
+
+### U1 current state
+
+The isolated PoC now exists under `scripts/unified-surface/`.
+
+Production remains unchanged by the PoC:
+
+- no production `ScreenEdges.qml` integration;
+- no production Bar/`StyledPopup` integration;
+- no Sidebar/Dashboard/Settings migration;
+- no Canvas flare/contact-plane/contactInset resurrection;
+- U1 is excluded from the runtime payload.
+
+Important implementation commits:
+
+- `b9f376318a2d541734a24208caa679d4fb07b456` — initial isolated SDF PoC
+- `084e3fe16b4ed5f246e7a67205bc9841d706ce67` — canonical QSB artifact
+- `2a788d71758dea370b288621c1575e665ec461a6` — semantic QSB verification
+- `aea30452b881de85ebaf0e5c2fdbfa0b5415b682` — split CI lifecycle from GPU validation
+- `4a75ab9d2492eb2af3f1ca6a7bd8acead6aa48ce` — nested-Niri topology validator
+- `8bf0483b4ef9d0354930a370ced7020d0db226f4` — motion/reveal/fullscreen lifecycle gates
+
+Dedicated U1 workflow result for `8bf0483...`: **PASS**.
+
+It verifies QSB semantics, static U1 architecture, and headless control-mode
+Top/Overlay lifecycle. It does not pretend the GitHub runner proves GPU pixels.
+
+### Why CI no longer attempts SDF pixel validation
+
+The initial headless pixel smoke reached the real renderer boundary and showed
+that the hosted environment had no usable DRM/RHI path for ShaderEffect.
+Forcing Pixman/software rendering would make a false renderer test.
+
+The corrected split is:
+
+```text
+CI:
+  QSB semantic equivalence
+  + static architecture
+  + QML/layer-shell control lifecycle
+
+live nested Niri on real GPU:
+  actual SDF pixels
+  + topology
+  + fractional scale
+  + motion/reveal no-remap
+  + fullscreen Top/Overlay lifecycle
+  + performance
+```
+
+### Exact next action
+
+Do **not** integrate a real popup yet.
+
+On the maintainer's live Wayland/Niri-capable machine, run:
+
+```sh
+python3 scripts/unified-surface/validate-live-niri.py \
+  --scales 1 1.25 1.5 1.75 2 \
+  --benchmark
+```
+
+The script starts a separate nested Niri and does not edit/reload the host Niri
+configuration.
+
+Required evidence before U2:
+
+1. all static bounded/full topology cases pass;
+2. no persistent seam at fractional scales;
+3. moving source captures remain one connected material;
+4. motion/reveal each show one layer-surface creation only;
+5. Top material returns after fullscreen exit without remap;
+6. Overlay material remains above fullscreen;
+7. bounded p95 <= 110% of control;
+8. bounded missed-frame ratio <= control + 0.01;
+9. bounded rendering remains materially preferable to full-output diagnostic at
+   higher resolutions/scales.
+
+If the live gate fails, fix the mathematical field/bounds/lifecycle assumption
+inside U1 only. Do not patch production geometry.
+
+If it passes, the next phase is U2: renderer-neutral dynamic shape registry plus
+a real module-anchor feed, still before any broad production migration.

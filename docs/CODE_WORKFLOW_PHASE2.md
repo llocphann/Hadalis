@@ -197,6 +197,11 @@ Implemented, but **not yet qualified as passing evidence**:
 - The driver refuses an existing work directory, requires an explicit grammar
   and Sway executable, and confines its mutable fixture below the staged config.
 - The driver is excluded from the installed runtime payload.
+- flake.nix exposes devShells.workflow-acceptance from the same packaged runtime
+  and QML dependency closures plus Sway/DBus/parser capability.
+- .github/workflows/code-workflow-acceptance.yml runs the harness headlessly on
+  relevant Workflow changes and uploads report/log/state artifacts even on
+  failure.
 - No claim of live acceptance is made until a retained
   apply-lifecycle-report.json records all checks passing.
 

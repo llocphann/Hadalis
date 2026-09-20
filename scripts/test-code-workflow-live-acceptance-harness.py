@@ -19,6 +19,11 @@ page = (ROOT / "modules/settings/CodeWorkflow.qml").read_text(
     encoding="utf-8")
 phase2 = (ROOT / "docs/CODE_WORKFLOW_PHASE2.md").read_text(
     encoding="utf-8")
+flake = (ROOT / "flake.nix").read_text(encoding="utf-8")
+nix_package = (ROOT / "nix/package.nix").read_text(encoding="utf-8")
+workflow = (
+    ROOT / ".github/workflows/code-workflow-acceptance.yml"
+).read_text(encoding="utf-8")
 exclusions = json.loads(
     (ROOT / "sdata/runtime-exclusions.json").read_text(encoding="utf-8"))
 
@@ -74,6 +79,37 @@ for forbidden in (
 
 if "scripts/code-workflow/run-apply-lifecycle.py" not in exclusions["excludedPaths"]:
     fail("acceptance driver must stay outside the installed runtime payload")
+
+for token in (
+    "qmlDependencies = qmlDeps;",
+):
+    if token not in nix_package:
+        fail("Nix package must expose existing QML dependency closure")
+
+for token in (
+    "devShells = forAllSystems",
+    "workflow-acceptance = pkgs.mkShell",
+    "package.passthru.runtimeDependencies",
+    "package.passthru.qmlDependencies",
+    "HADALIS_WORKFLOW_GRAMMAR",
+    "HADALIS_TREE_SITTER_LIBRARY",
+    "pkgs.sway",
+    "pkgs.dbus",
+):
+    if token not in flake:
+        fail("workflow acceptance devShell missing " + token)
+
+for token in (
+    "name: Code Workflow acceptance",
+    "nix develop .#workflow-acceptance",
+    "run-apply-lifecycle.py",
+    "--revision",
+    "actions/upload-artifact@v4",
+    "apply-lifecycle-report.json",
+    "fetch-depth: 0",
+):
+    if token not in workflow:
+        fail("automated Workflow acceptance job missing " + token)
 
 if "beginApplyLifecycle()" in page or 'mainText: "Apply"' in page:
     fail("harness readiness must not enable user-triggered Apply")

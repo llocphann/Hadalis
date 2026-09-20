@@ -349,6 +349,7 @@ EOF
 
   passthru = {
     runtimeDependencies = runtimeDeps;
+    qmlDependencies = qmlDeps;
     inherit withWorkflowParser workflowParser;
   };
 

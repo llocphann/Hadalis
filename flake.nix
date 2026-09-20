@@ -33,6 +33,35 @@
           inir-with-workflow-parser = packageWithWorkflowParser;
         });
 
+      devShells = forAllSystems (pkgs:
+        let
+          package = pkgs.callPackage ./nix/package.nix { inherit pkgs; };
+          workflowParser = pkgs.callPackage ./nix/workflow-parser.nix { inherit pkgs; };
+        in
+        {
+          workflow-acceptance = pkgs.mkShell {
+            packages =
+              package.passthru.runtimeDependencies
+              ++ [
+                pkgs.python3
+                pkgs.sway
+                pkgs.dbus
+                workflowParser
+              ];
+
+            QML2_IMPORT_PATH = lib.makeSearchPath
+              "lib/qt-6/qml"
+              package.passthru.qmlDependencies;
+            QT_PLUGIN_PATH = lib.makeSearchPath
+              "lib/qt-6/plugins"
+              package.passthru.qmlDependencies;
+            HADALIS_WORKFLOW_GRAMMAR =
+              "${workflowParser}/lib/inir/code-workflow/qmljs.so";
+            HADALIS_TREE_SITTER_LIBRARY =
+              workflowParser.passthru.treeSitterLibrary;
+          };
+        });
+
       nixosModules.default = nixosModule;
       nixosModules.inir = nixosModule;
 

@@ -14,8 +14,13 @@ capture = (G2 / "capture-g2.sh").read_text(encoding="utf-8")
 verify = (G2 / "verify-g2-evidence.py").read_text(encoding="utf-8")
 readme = (G2 / "README.md").read_text(encoding="utf-8")
 exclusions = json.loads((ROOT / "sdata" / "runtime-exclusions.json").read_text(encoding="utf-8"))
+gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
 
 assert "scripts/iris-corner-poc" in exclusions["excludedPaths"]
+assert "/scripts/iris-corner-poc/g2/captures/" in gitignore, (
+    "G2 live evidence must remain local-only and must not dirty the source scope"
+)
+assert 'out_dir="${HADALIS_IRIS_G2_CAPTURE_DIR:-$here/captures/g2-$stamp}"' in capture
 assert (BASE / "IrisField.frag.qsb").stat().st_size == 16765
 assert "fragmentShader: Qt.resolvedUrl(\"../IrisField.frag.qsb\")" in field
 assert "required property rect paintBounds" in field

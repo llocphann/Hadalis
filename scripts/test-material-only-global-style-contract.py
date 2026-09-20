@@ -1610,6 +1610,39 @@ def main() -> None:
     ):
         require(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
 
+    # Horizontal BarContent is active runtime and Material-only. Retired global
+    # styles must not keep hidden renderers, image effects or constant-dead branches alive.
+    for token in legacy_style_tokens:
+        forbid(bar_content, token, "bar/BarContent.qml")
+    for token in (
+        "surfaceDialect",
+        "root.zzzEverywhere",
+        "root.regaliaEverywhere",
+        "root.angelEverywhere",
+        "root.inirEverywhere",
+        "root.auroraEverywhere",
+        "RegaliaPlate {",
+        "ZzzGlassWash {",
+        "ZzzTechFrame {",
+        "AngelPartialBorder {",
+        "MultiEffect {",
+        "GE.OpacityMask {",
+        "ColorQuantizer {",
+        "nativeBlurActive",
+        "nativeBlurAllowed",
+    ):
+        forbid(bar_content, token, "bar/BarContent.qml")
+    for token in (
+        "readonly property color separatorColor: Appearance.colors.colOutlineVariant",
+        "root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary",
+        "color: Appearance.colors.colLayer0",
+        "border.width: 0",
+        "border.color: Appearance.colors.colLayer0Border",
+        "CavaSpectrum {",
+    ):
+        require(bar_content, token, "bar/BarContent.qml")
+    forbid(bar, "nativeBlurAllowed: false", "bar/Bar.qml")
+
     # VerticalBarContent owns the supported ii vertical bar chrome. Keep the
     # independent islands/cornerStyle/cardStyle, compositor blur and connected
     # BarContextMenu behavior while removing retired Global Theme routing.

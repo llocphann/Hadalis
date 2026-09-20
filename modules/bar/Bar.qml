@@ -177,8 +177,6 @@ Scope {
 
                     BarContent {
                         id: barContent
-                        nativeBlurAllowed: false
-
                         implicitHeight: barRoot.panelSurfaceHeight
                         anchors {
                             right: parent.right

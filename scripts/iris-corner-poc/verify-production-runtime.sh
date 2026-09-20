@@ -10,6 +10,7 @@ fail() {
 }
 
 python3 "$root/scripts/test-iris-production-surface-contract.py"
+bash "$root/scripts/test-perimeter-source-contracts.sh"
 
 [[ -d "$runtime_root" ]] \
     || fail "runtime root not found: $runtime_root (set HADALIS_RUNTIME_ROOT for a direct repo run)"

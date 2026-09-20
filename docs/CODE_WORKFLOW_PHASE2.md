@@ -532,8 +532,7 @@ Implemented research/proof:
   qmllint's incompatible-type diagnostic. The proof therefore does not treat
   mere absence of one diagnostic as sufficient type evidence.
 - A qualified result is reported separately as
-  `typeCompatibilityProof=compatible-qmllint-proof`. **The production Connect
-  still reports TYPE UNKNOWN**: the proof is not wired into
+  `typeCompatibilityProof=compatible-qmllint-proof`. The production Connect still reports TYPE UNKNOWN: the proof is not wired into
   `CodeWorkflowTransaction`, the production coordinator does not consume it,
   cycle safety remains UNKNOWN, and no Connect Apply/artifact path is opened.
 - Every proof result keeps `applyEnabled=false`,

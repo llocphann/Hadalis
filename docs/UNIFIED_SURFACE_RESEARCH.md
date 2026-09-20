@@ -891,3 +891,653 @@ Do these **before writing production code**:
 6. Specify an isolated U1 PoC that does not touch current production surfaces.
 
 No commit beyond documentation should be made until those points are understood well enough to choose the PoC implementation deliberately.
+
+
+---
+
+## 21. U0 blocker resolution — 2026-09-20 continuation
+
+This section records the research performed after the initial handoff. It is still
+**research/design only**. No production surface, renderer, package, or geometry was
+changed by this work.
+
+Research was resumed from \`dev\` at:
+
+- \`7ae39986719b0127c24c10ade9b8ec1ad84c32fb\`
+- \`docs(surface): capture unified composition research handoff\`
+
+That commit is exactly one commit above the research synchronization point
+\`c233d1c4aaac911d7fd2e8daac9fb3857f740860\`, and its only changed files are:
+
+- \`docs/UNIFIED_SURFACE_HANDOFF.md\`
+- \`docs/UNIFIED_SURFACE_RESEARCH.md\`
+
+Therefore the handoff commit itself did not alter any production file and did not
+resurrect the reverted Canvas/flare/contact-plane work.
+
+### 21.1 Niri/Smithay same-layer lifetime is not stack-neutral
+
+Current Niri maps layer surfaces through Smithay's \`LayerMap\`. Smithay stores
+mapped layer surfaces in an insertion-ordered \`IndexSet\`:
+
+- \`map_layer()\` inserts a newly mapped surface;
+- \`unmap_layer()\` removes it with \`shift_remove()\`;
+- a later remap inserts it again at the end;
+- Niri reverses the layer iterator to obtain its render/input order.
+
+Niri's own render code explicitly says that \`LayerMap\` returns layers in reverse
+stacking order and applies \`.rev()\` for rendering. Its input lookup uses the same
+reversed ordering.
+
+Architectural consequence:
+
+> A visual host whose relationship to other same-layer Hadalis surfaces matters
+> must remain mapped. Shape enable/disable, opacity and registry membership may
+> change; the host's Wayland surface lifetime must not be used as an animation or
+> visibility mechanism.
+
+This independently validates the existing Hadalis fullscreen lifecycle locks on
+\`ScreenEdges.FrameWindow\` and the Bar.
+
+Upstream references inspected:
+
+- Niri \`src/handlers/layer_shell.rs\`, current main during research:
+  \`7256ccf6274a1f953c6987ade34ea1c0e4944c27\`
+- Niri \`src/niri.rs\`, especially \`layers_in_render_order()\`
+- Smithay \`desktop/wayland/layer.rs\`, \`LayerMap::{map_layer,unmap_layer,layers_on}\`
+
+### 21.2 Top cannot be the sole visual domain for an Overlay popout
+
+Current Hadalis layering is materially different between the perimeter and
+popouts:
+
+- \`ScreenEdges.FrameWindow\`: \`WlrLayer.Top\`
+- Classic Bar: Top-layer panel semantics
+- \`StyledPopup\` presentation window: \`WlrLayer.Overlay\`
+- \`StyledPopup\` click-outside catcher: \`WlrLayer.Overlay\`
+- Settings overlay: normally \`WlrLayer.Overlay\`, with deliberate temporary
+  transitions to Bottom/Top for native-dialog/Polkit semantics.
+
+Niri renders Overlay above the rest of the normal shell composition. It can render
+fullscreen/overview content above Top while Overlay remains above it. Therefore a
+Top-only material host cannot be the complete visual background for a popup whose
+content intentionally remains Overlay: during fullscreen/overview the popup
+content could remain visible while its Top-layer material disappears underneath
+the client.
+
+Rejected for the first production design:
+
+1. moving existing Overlay popout content down to Top merely to share a host;
+2. moving the persistent physical Screen Edge host permanently to Overlay;
+3. repeatedly mapping/unmapping a second visual host to chase popup lifetime.
+
+The preferred domain split is now:
+
+\`\`\`text
+Top base domain
+  persistent physical perimeter / Bar material
+
+Overlay attached-surface domain
+  popup-local unified material
+  = virtual owner edge/frame representation + popup rounded rect
+  rendered inside the same Overlay scenegraph as the popup when possible
+\`\`\`
+
+The phrase "virtual owner edge/frame representation" does **not** mean a contact
+patch. It is a generic frame/owner shape record evaluated by the same SDF as the
+popup. The shader never selects a left/right contact corner. The popup's live
+output-space rectangle is the only moving topology input.
+
+For \`StyledPopup\`, the strongest first production candidate is therefore to keep
+its full-output Overlay \`PanelWindow\` and let that window eventually render the
+local unified SDF material behind its existing content. This avoids introducing a
+second same-layer visual/content ordering relationship. The persistent Top frame
+continues underneath; the Overlay domain draws only the affected attachment
+region and visually occludes the identical material below it.
+
+A separate persistent Overlay visual host remains possible later for domains with
+multiple content windows, but it needs an explicit creation-order contract and
+tests against other Overlay surfaces. It is no longer required for U1.
+
+### 21.3 Blur is surface-owned protocol state, not shader-alpha state
+
+Quickshell's \`BackgroundEffect.blurRegion\` is a client request through
+\`ext-background-effect-v1\`. The protocol attaches the effect to one
+\`wl_surface\` and accepts a copied \`wl_region\` in surface-local coordinates.
+The blur region is double-buffered with the surface commit.
+
+Niri's current implementation caches that blur region as rectangles and uses it as
+a transformed subregion for the background effect.
+
+Quickshell \`Region\` can compose regions and supports rounded-rectangle/per-corner
+radii, but the protocol payload is still a Wayland region rather than an arbitrary
+SDF/alpha texture.
+
+Consequences:
+
+- the SDF result cannot simply be passed as \`blurRegion\`;
+- a loose bounding rectangle is unacceptable for translucent material because
+  transparent pixels outside the SDF fill would expose blur that should not exist;
+- compositor blur must be requested by the same Wayland surface/layer that owns
+  the visible translucent material;
+- Top and Overlay composition domains therefore need their own blur requests.
+
+The production abstraction should be:
+
+\`\`\`text
+one renderer-neutral shape registry
+    ├── SDF projection     -> fill / border / common shadow
+    └── Region projection  -> compositor blur request
+\`\`\`
+
+The Region projection is generic geometry derived from the same shape records. It
+must not contain source-module names or corner/contact flags.
+
+Exact SDF-to-\`wl_region\` fidelity is not required for U1. A later production
+experiment may compare:
+
+- ordinary rounded-rect Region union;
+- a bounded scanline/rect decomposition of the final SDF;
+- disabling compositor blur for configurations where an accurate dynamic region
+  is too expensive.
+
+U1 deliberately uses opaque fill and no compositor blur so that field topology is
+measured independently.
+
+### 21.4 Shadow ownership belongs to the unified renderer
+
+Niri layer-rule shadows are surface-geometry shadows. The compositor sees layer
+surface geometry, not Hadalis' arbitrary SDF alpha silhouette. They are therefore
+not a correct source for the future common connected-surface shadow.
+
+Production target:
+
+- unified renderer owns one shadow derived from the union field/alpha;
+- content windows own no competing connected-body shadow;
+- current Screen Edge \`MultiEffect\` and connected-popup shadows stay untouched
+  until an actual migration phase.
+
+U1 order remains:
+
+1. prove fill;
+2. optionally prove a field-derived shadow in a separate U1b step;
+3. do not migrate production shadow ownership.
+
+### 21.5 Settings remains a local Overlay composition domain
+
+\`SettingsOverlay.qml\` currently combines:
+
+- a full-output Overlay window;
+- optional full-screen \`GlassBackground\` backdrop blur;
+- scrim dimming;
+- click-outside interaction;
+- a Settings card with its own existing depth treatment;
+- special layer changes for native dialogs and Polkit.
+
+Its card material must not be moved into the persistent Top edge domain. If/when
+Settings receives SDF attachment behavior, it should be composed inside the
+Settings Overlay domain so the ordering remains:
+
+\`\`\`text
+background/app
+  -> Settings backdrop blur
+  -> Settings scrim
+  -> Settings unified card/edge material
+  -> Settings content
+\`\`\`
+
+This closes the earlier question of whether one global visual host should own
+Settings: it should not.
+
+---
+
+## 22. QSB versus native QSG — architecture decision for the PoC
+
+### 22.1 U1 uses QSB
+
+U1 should use a QML \`ShaderEffect\` with a committed precompiled \`.qsb\`.
+
+Reasons:
+
+- Hadalis already ships and loads \`FluidRipple.qsb\` by relative URL;
+- Qt 6 \`ShaderEffect\` is explicitly designed to consume offline-compiled QSB
+  shader packs;
+- no new C++ QML module or ABI is required;
+- repo-copy/source installs can consume a committed QSB exactly like the existing
+  shader asset;
+- U1 needs to validate field math and bounds, not a native registry implementation.
+
+The shader compiler is a **developer/build-time** dependency only. Runtime must
+never compile or download shader source.
+
+### 22.2 Native QSG remains a production candidate, not a U1 prerequisite
+
+Caelestia's current Blob implementation confirms the production benefits of native
+QSG:
+
+- bounded QSG geometry rather than one permanent full-output fragment pass;
+- C++ shape/group registry;
+- one custom QSG material with batched shape uniforms;
+- dirty/polish updates localized to affected shapes;
+- the inverted frame is rendered as four frame strips with an inner hole rather
+  than a full-screen quad.
+
+But this requires a compiled QML module. Caelestia builds \`Caelestia.Blobs\`
+with \`qt_add_qml_module()\`, compiles shaders with \`qt_add_shaders()\`, and
+installs the backing library, plugin, \`qmldir\`, and typeinfo under the Qt QML
+import hierarchy.
+
+Hadalis must not add that infrastructure merely to run U1.
+
+### 22.3 Proposed native package boundary if U3 selects QSG
+
+If U3 demonstrates that QSB cannot meet the production shape-count/fill-rate
+budget, the native module should be a separate capability package:
+
+\`\`\`text
+URI: Hadalis.Surface
+
+SurfaceGroup
+SurfaceRect
+SurfaceFrame
+internal SurfaceMaterial
+\`\`\`
+
+Suggested installation boundary:
+
+\`\`\`text
+Arch:
+  /usr/lib/qt6/qml/Hadalis/Surface/
+    qmldir
+    *.qmltypes
+    plugin/backing .so files as generated by Qt CMake
+
+Nix:
+  <store>/lib/qt-6/qml/Hadalis/Surface/
+\`\`\`
+
+Use \`qt_add_qml_module()\` and \`qt_add_shaders()\`; do not hand-maintain plugin
+metadata that Qt can generate.
+
+The Code Workflow parser packaging is useful only as a **lifecycle pattern**:
+
+- native capability has its own Arch/Nix package;
+- runtime shell can remain separately deployable;
+- developer-only build helper does not install into runtime.
+
+It is **not** a direct technical template because the workflow parser is loaded as
+a native grammar/library, not as a Qt QML plugin.
+
+### 22.4 Repo-copy and fallback contract for a future native renderer
+
+A future native renderer must not turn \`inir update\` into a compiler.
+
+Recommended contract:
+
+\`\`\`text
+repo-copy/default capability:
+  committed QSB renderer available
+
+package-manager enhanced capability:
+  optional/required Hadalis.Surface native QML module
+  wrapper exposes deterministic capability flag/import path
+\`\`\`
+
+Do not statically import an optional native module from a QML file that must also
+work without it. Keep native and QSB renderer implementations in separate lazily
+loaded QML files, so the fallback file can load without parsing
+\`import Hadalis.Surface\`.
+
+Qt plugin compatibility also matters: Qt rejects plugins built against a higher
+minor Qt than the runtime's lower minor, and binary compatibility assumes a
+compatible toolchain/system environment. Arch/Nix packages should therefore
+rebuild the renderer as part of normal Qt package rebuilds rather than treating
+the plugin as a forever-compatible copied binary.
+
+No runtime download/build path is approved.
+
+---
+
+## 23. Minimum Caelestia Blob model actually needed by Hadalis
+
+Current Caelestia \`blob.frag\` contains substantially more behavior than Hadalis
+needs initially. The minimum transferable mathematical model is:
+
+### Rounded rectangle SDF
+
+U1 needs one rounded rectangle distance function. Per-corner radii may be kept in
+the shader API for future use, but the first popup can use one radius.
+
+Conceptually:
+
+\`\`\`text
+dRect = sdRoundedBox(pixel, center, halfSize, radius)
+\`\`\`
+
+### Circular smooth union
+
+Caelestia currently uses a circular smooth minimum whose support is local to the
+two fields:
+
+\`\`\`text
+smin(a, b, k)
+\`\`\`
+
+U1 should use the same class of operation rather than a hand-drawn shoulder.
+
+### Inverted frame
+
+The physical perimeter is represented as outer box minus rounded inner workspace:
+
+\`\`\`text
+dOuter = sdBox(...)
+dInner = sdRoundedBox(...)
+dFrame = smooth-max(dOuter, -dInner, kFrame)
+\`\`\`
+
+\`kFrame\` must be clamped to the thinnest frame side so the smooth-max fillet
+cannot exceed the available border thickness.
+
+The locked Hadalis Screen Edge/Bar dimensions are inputs to this frame record.
+U1 does not modify \`ScreenEdges.qml\`.
+
+### Border sink
+
+A plain union between a popup and an inverted frame is not always sufficient to
+produce the Caelestia-style owner edge yielding around the entering body.
+
+The minimum generic sink model is:
+
+1. for each frame side, compute how far the popup's opposite edge has penetrated
+   past the frame's inner wall;
+2. clamp that penetration to the physical frame thickness;
+3. weight it by lateral distance from the popup extent and perpendicular proximity
+   to the relevant inner wall;
+4. take the maximum generic sink contribution;
+5. subtract it from \`dInner\`;
+6. rebuild \`dFrame\`;
+7. smooth-union the popup field with the frame field.
+
+This may use four frame-side distance calculations because the frame itself has
+four sides. It must not branch on popup/module identity, source position labels or
+contact-corner flags.
+
+### Bounding/fill-rate strategy
+
+Caelestia does not rely on a permanent full-output fragment pass. Its native
+inverted frame uses explicit frame-strip geometry and regular blob shapes use
+padded bounds.
+
+The QSB U1 analogue should be:
+
+- one full-output **window/coordinate domain**;
+- one **bounded ShaderEffect item** covering only the popup plus the neighboring
+  owner-frame region, expanded by smoothing/AA/shadow padding;
+- pass \`effectOrigin\` so the fragment shader still evaluates in output-local
+  logical coordinates;
+- include a diagnostic full-output mode only for correctness/performance
+  comparison.
+
+This preserves one scenegraph/field while avoiding full-screen fill rate in the
+normal PoC path.
+
+Do not split the contact into separate corner ShaderEffects.
+
+---
+
+## 24. Exact isolated U1 SDF PoC specification
+
+U1 is now sufficiently specified to implement later, but this research commit does
+**not** implement it.
+
+### 24.1 Isolation boundary
+
+Proposed location:
+
+\`\`\`text
+scripts/unified-surface/
+  U1Shell.qml
+  U1Surface.qml
+  U1Surface.frag
+  U1Surface.qsb
+  README.md
+  build-shader.sh      # developer-only; optional
+\`\`\`
+
+No production module imports U1.
+
+No changes to:
+
+- \`modules/screenCorners/ScreenEdges.qml\`
+- \`modules/bar/Bar.qml\`
+- \`modules/bar/StyledPopup.qml\`
+- Sidebar/Dashboard/Settings production files
+- existing connected-surface helpers
+
+### 24.2 Host contract
+
+U1 creates one full-output, input-transparent \`PanelWindow\` on one selected
+output.
+
+Required properties:
+
+- transparent window color;
+- \`ExclusionMode.Ignore\`;
+- zero-size/click-through input mask;
+- persistent mapping for the lifetime of the test;
+- no \`visible\` toggling while shapes animate;
+- no exclusive zone;
+- explicit test layer chosen at launch.
+
+Run the same PoC separately in:
+
+- Top mode, to reproduce the perimeter host semantics;
+- Overlay mode, to validate the local popup-domain semantics.
+
+Do not change layer dynamically in one mapped instance because that would
+confound the stacking/lifetime test.
+
+### 24.3 Registry contract used by U1
+
+U1 may use fixed properties rather than a dynamic model. The data contract still
+matches the future registry:
+
+\`\`\`text
+outputSizeLogical
+
+frame:
+  outerRect
+  innerRect
+  innerRadius
+  sideInsets
+
+popup:
+  enabled
+  rect
+  radius
+
+material:
+  color
+  smoothK
+\`\`\`
+
+Coordinates are output-local logical coordinates.
+
+Not allowed:
+
+\`\`\`text
+joinTop
+joinBottom
+joinLeft
+joinRight
+leftFlare
+rightFlare
+contactInset
+moduleName
+batterySpecialCase
+\`\`\`
+
+### 24.4 Shader uniforms
+
+Minimum U1 uniforms:
+
+\`\`\`text
+qt_Matrix
+qt_Opacity
+
+effectOrigin
+effectSize
+outputSize
+
+frameOuter
+frameInner
+frameRadius
+
+popupRect
+popupRadius
+popupEnabled
+
+smoothK
+materialColor
+\`\`\`
+
+Fragment-space output coordinate:
+
+\`\`\`text
+pixel = effectOrigin + qt_TexCoord0 * effectSize
+\`\`\`
+
+The shader owns only SDF evaluation and material output. Popup placement/clamping
+remains a controller/layout concern.
+
+### 24.5 Moving source/anchor
+
+The first test source can be synthetic:
+
+\`\`\`text
+fake module x/y
+  -> ordinary popup placement/clamp function
+  -> popup output-local rect
+  -> shader uniform
+\`\`\`
+
+Animate/sweep the fake module through the Bar rather than dragging inside the
+input-transparent visual host.
+
+A second U1 run may feed a real Bar module anchor through the existing
+\`StyledPopup\`-style mapping semantics, but still must not replace production
+popup rendering.
+
+The renderer sees only the resulting popup rectangle. It does not know which
+module produced it.
+
+### 24.6 Bounded effect rectangle
+
+Normal mode computes a CPU/QML bounding box from:
+
+- popup rect;
+- the adjacent frame strip needed for the field interaction;
+- \`2 * smoothK\` safety padding;
+- one AA pixel in physical space;
+- future shadow padding when U1b is enabled.
+
+The effect rectangle may extend to the screen corner when the popup is near an
+edge. This is enough for corner topology tests without shading the entire output.
+
+Diagnostic mode renders the same equations full-output. For identical uniforms,
+pixels inside the bounded region must match the full-output reference within the
+normal AA tolerance.
+
+### 24.7 Test matrix
+
+Required geometry cases:
+
+| Axis | Cases |
+| --- | --- |
+| Horizontal Bar | top-center, top-left, top-right, bottom-center, bottom-left, bottom-right |
+| Vertical Bar | left-center, left-top, left-bottom, right-center, right-top, right-bottom |
+| Clamp | popup unclamped, clamped to each applicable screen side |
+| Motion | slow sweep, fast sweep, opening/closing while source moves |
+| Scale | 1.0, 1.25, 1.5, 1.75, 2.0 where compositor setup permits |
+| Resolution | 1080p, 1440p, 4K where available |
+| Shape stress | one popup, then two generic popup records in diagnostic extension |
+
+Top/bottom/left/right variants must be produced by frame/rect data, not separate
+shader source variants.
+
+### 24.8 U1 pass/fail gates
+
+**Topology — PASS only if all hold**
+
+- no visible transparent seam between frame and popup during static or moving
+  attachment;
+- no independently drawn corrective corner/flare exists;
+- moving the source changes only popup placement data and the shoulder follows;
+- near-screen-edge clamping does not require a topology flag;
+- top/bottom/left/right use the same shader equations;
+- bounded and full-output reference renders agree inside the bounded region.
+
+**Scale/AA — PASS only if all hold**
+
+- no persistent 1-physical-pixel gap appears at tested fractional scales;
+- semantic logical rects are not modified by AA compensation;
+- AA is derived from the field derivative/\`fwidth\`, not magic offsets.
+
+**Lifetime/input — PASS only if all hold**
+
+- visual host intercepts no pointer/keyboard input;
+- moving/opening/closing test shapes never unmaps/remaps the host;
+- Top-mode test survives enter/exit fullscreen without a blank/reordered PoC host;
+- Overlay-mode test remains visually above fullscreen as expected.
+
+**Performance — PASS only if all hold**
+
+Measure a control scene, bounded U1, and diagnostic full-output U1 under the same
+refresh/resolution.
+
+- bounded U1 creates no sustained idle animation/redraw once geometry is still;
+- moving-shape p95 frame time is no more than 10% above the control scene;
+- missed-frame ratio increases by no more than 1 percentage point relative to the
+  control scene;
+- bounded U1 must materially outperform the full-output diagnostic at 1440p/4K;
+  if it does not, investigate before U2;
+- any configuration that only works acceptably by leaving a permanent full-output
+  shader active is not automatically eligible for production.
+
+The relative gates are intentional: they avoid inventing an absolute GPU
+millisecond budget that would be meaningless across user hardware.
+
+**Architecture — FAIL immediately if any hold**
+
+- shader/QML code contains module-specific contact branches;
+- a contact plane is shifted solely to hide AA/compositor cracks;
+- the PoC requires production \`ScreenEdges\`, Bar or \`StyledPopup\` geometry to
+  change;
+- runtime needs \`qsb\`, a compiler, CMake, network access or a native plugin;
+- blur correctness is used to excuse an SDF topology defect.
+
+### 24.9 U1 rollback
+
+U1 is additive under \`scripts/unified-surface/\`. Rollback is deletion of that
+directory plus its research-only launch instructions.
+
+Because no production file references U1, rollback must leave the installed shell
+byte-identical to the pre-U1 production behavior.
+
+---
+
+## 25. Decision gates after U1
+
+If U1 fails field topology, stop and revise the mathematical model. Do not proceed
+to registry or package work.
+
+If U1 passes topology but fails bounded performance, investigate a minimal native
+QSG renderer under the same data contract.
+
+If U1 passes both topology and performance, proceed to U2 and test a real dynamic
+shape registry before deciding whether native QSG is necessary.
+
+Only U3 may choose the production renderer.
+
+Production cutover still requires explicit maintainer approval and remains
+separate from this research/documentation work.

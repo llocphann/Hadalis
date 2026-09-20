@@ -271,7 +271,6 @@ Scope {
                                     expanded: navRail.expanded
                                     buttonIcon: modelData.icon
                                     buttonText: modelData.name
-                                    showToggledHighlight: false
                                 }
                             }
                         }

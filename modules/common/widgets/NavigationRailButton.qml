@@ -15,7 +15,6 @@ TabButton {
     property string buttonText
     Accessible.name: root.buttonText
     property bool expanded: false
-    property bool showToggledHighlight: true
     readonly property real visualWidth: root.expanded ? root.baseSize + 20 + itemText.implicitWidth : root.baseSize
 
     property real baseSize: 56

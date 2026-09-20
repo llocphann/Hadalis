@@ -156,8 +156,7 @@
     "scripts/code-workflow/runtime",
     "scripts/code-workflow/summarize-profile.py",
     "scripts/code-workflow/virtual-pointer.c",
-    "scripts/code-workflow/run-apply-lifecycle.py",
-    "scripts/unified-surface"
+    "scripts/code-workflow/run-apply-lifecycle.py"
   ],
   "excludedDirectorySuffixes": {}
 }

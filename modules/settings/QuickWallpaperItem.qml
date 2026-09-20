@@ -18,9 +18,6 @@ MouseArea {
     property color colBackground: interactionHighlighted ? Appearance.colors.colPrimary
         : isSelected ? Appearance.colors.colSecondaryContainer
         : ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
-    property color colText: interactionHighlighted ? Appearance.colors.colOnPrimary
-        : isSelected ? Appearance.colors.colOnSecondaryContainer
-        : Appearance.colors.colOnLayer1
 
     signal activated()
 

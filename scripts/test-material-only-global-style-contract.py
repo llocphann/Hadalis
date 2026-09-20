@@ -567,6 +567,7 @@ def main() -> None:
     for token in legacy_style_tokens:
         forbid(quick_wallpaper_item, token, "QuickWallpaperItem.qml")
     forbid(quick_wallpaper_item, "RegaliaControlFace {", "QuickWallpaperItem.qml")
+    forbid(quick_wallpaper_item, "property color colText:", "QuickWallpaperItem.qml")
     for token in (
         "signal activated()",
         "activeFocusOnTab: true",

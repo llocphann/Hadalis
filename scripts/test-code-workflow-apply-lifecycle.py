@@ -43,10 +43,20 @@ apply_region_start = service.index("function beginApplyLifecycle(): bool")
 apply_region_end = service.index("function _clearPresentation(): void")
 if "Quickshell.reload(" in service[apply_region_start:apply_region_end]:
     fail("literal Apply lifecycle must rely on exactly one watcher-driven reload")
-if service.count("Quickshell.reload(false)") != 1:
-    fail("only Connect rollback fallback may issue an explicit shell reload")
-if "connectRollbackReloadFallbackTimer" not in service:
-    fail("explicit shell reload must remain scoped to Connect rollback recovery")
+if service.count("Quickshell.reload(false)") != 2:
+    fail(
+        "only Connect and Disconnect rollback recovery may issue "
+        "explicit shell reloads"
+    )
+for token in (
+    "connectRollbackReloadFallbackTimer",
+    "disconnectRollbackReloadFallbackTimer",
+):
+    if token not in service:
+        fail(
+            "explicit shell reload must remain scoped to rollback recovery: "
+            + token
+        )
 
 for token in (
     "target: Quickshell",

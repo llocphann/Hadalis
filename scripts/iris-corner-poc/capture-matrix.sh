@@ -8,6 +8,21 @@ mode="${HADALIS_IRIS_POC_MODE:-card-owner}"
 profile="${HADALIS_IRIS_POC_PROFILE:-diagnostic}"
 output="${HADALIS_IRIS_POC_OUTPUT:-}"
 
+case "$mode" in
+    card-owner|edge-reach) ;;
+    *)
+        printf 'Invalid HADALIS_IRIS_POC_MODE=%s (expected card-owner or edge-reach).\n' "$mode" >&2
+        exit 2
+        ;;
+esac
+case "$profile" in
+    diagnostic|upstream-relative) ;;
+    *)
+        printf 'Invalid HADALIS_IRIS_POC_PROFILE=%s (expected diagnostic or upstream-relative).\n' "$profile" >&2
+        exit 2
+        ;;
+esac
+
 if [[ -z "${WAYLAND_DISPLAY:-}" || -z "${XDG_RUNTIME_DIR:-}" ]]; then
     printf 'capture-matrix.sh requires an existing Wayland session.\n' >&2
     exit 2

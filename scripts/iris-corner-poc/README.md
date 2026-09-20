@@ -194,6 +194,9 @@ For the first acceptance pass, leave the default:
 HADALIS_IRIS_POC_MODE=card-owner
 ```
 
+The matrix harness rejects unknown mode/profile names instead of silently
+labelling fallback geometry with the wrong artifact name.
+
 Use `edge-reach` only as a diagnostic comparison after the card-owner matrix
 has been reviewed.
 

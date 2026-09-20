@@ -212,6 +212,8 @@ for token in (
     "for source_t in 0.02 0.50 0.98",
     "HADALIS_IRIS_POC_MODE",
     "HADALIS_IRIS_POC_PROFILE",
+    "Invalid HADALIS_IRIS_POC_MODE",
+    "Invalid HADALIS_IRIS_POC_PROFILE",
     "HADALIS_IRIS_POC",
     "grim",
     'grim -g "$detail_geometry"',

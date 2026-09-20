@@ -74,10 +74,41 @@ class SpikeA(unittest.TestCase):
     def test_exact_binding_and_handler_ranges(self):
         entries = self.entries()["entries"]
         current = next(e for e in entries if e["name"] == "current")
-        self.assertEqual(SAMPLE[slice(*current["value_range"])].strip(), b"service.activePlayer")
+        self.assertEqual(
+            SAMPLE[slice(*current["value_range"])].strip(),
+            b"service.activePlayer",
+        )
+        self.assertEqual(current["value_kind"], "member_expression")
         handlers = [e for e in entries if e["name"] == "onChanged"]
         self.assertEqual(len(handlers), 2)
         self.assertTrue(any(e.get("body_range") for e in handlers))
+
+    def test_expression_statement_values_unwrap_to_semantic_expression(self):
+        source = (
+            b"import QtQuick\n"
+            b"QtObject {\n"
+            b"    property bool flag: false\n"
+            b"    property int count: 42\n"
+            b"    property string label: \"hello\"\n"
+            b"    property var dynamic: service.activePlayer\n"
+            b"}\n"
+        )
+        entries = {
+            entry["name"]: entry
+            for entry in self.entries(source)["entries"]
+            if entry["kind"] == "property"
+        }
+        expected = {
+            "flag": ("false", b"false"),
+            "count": ("number", b"42"),
+            "label": ("string", b'"hello"'),
+            "dynamic": ("member_expression", b"service.activePlayer"),
+        }
+        for name, (kind, rendered) in expected.items():
+            with self.subTest(name=name):
+                entry = entries[name]
+                self.assertEqual(entry["value_kind"], kind)
+                self.assertEqual(source[slice(*entry["value_range"])], rendered)
 
     def test_grouped_binding_is_opaque_including_descendants(self):
         entries = self.entries()["entries"]

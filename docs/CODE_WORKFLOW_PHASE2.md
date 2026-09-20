@@ -204,6 +204,11 @@ Implemented, but **not yet qualified as passing evidence**:
 - .github/workflows/code-workflow-acceptance.yml runs the harness headlessly on
   relevant Workflow changes and uploads report/log/state artifacts even on
   failure.
+- The first automated run exposed a real parser/transaction boundary defect:
+  tree-sitter-qmljs can wrap a QML value in expression_statement. The semantic
+  extractor now unwraps only a unique healthy named expression child, preserving
+  fail-closed behavior for ambiguous wrappers; literal/member value kinds and
+  exact ranges have dedicated regression coverage.
 - No claim of live acceptance is made until a retained
   apply-lifecycle-report.json records all checks passing.
 

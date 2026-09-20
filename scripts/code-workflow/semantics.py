@@ -13,6 +13,33 @@ OBJECTS = {"ui_object_definition", "ui_object_definition_binding"}
 LIFECYCLE = {"Loader", "LazyLoader", "Variants", "Instantiator", "Repeater"}
 
 
+def semantic_value_node(nodes, index):
+    """Return the expression node that owns a QML value's semantic bytes.
+
+    tree-sitter-qmljs 0.3.1 can expose a QML member's value field as an
+    expression_statement wrapper. Source transforms must classify/replace the
+    expression itself, not the statement wrapper. Only unwrap when there is
+    exactly one healthy named non-comment child; ambiguous wrappers stay opaque
+    to later edit gates.
+    """
+    current = index
+    while current is not None and nodes[current].kind == "expression_statement":
+        wrapper = nodes[current]
+        candidates = [
+            child for child in wrapper.children
+            if nodes[child].named
+            and nodes[child].kind != "comment"
+            and not nodes[child].error
+            and not nodes[child].missing
+            and wrapper.start <= nodes[child].start
+            and nodes[child].end <= wrapper.end
+        ]
+        if len(candidates) != 1:
+            break
+        current = candidates[0]
+    return current
+
+
 def extract(path, source, nodes):
     def field(index, name):
         return next((c for c in nodes[index].children if nodes[c].field_name == name), None)
@@ -84,8 +111,11 @@ def extract(path, source, nodes):
                 kind = "handler-candidate"  # Must resolve the signal/property in Phase 1.
             if n.kind == "ui_binding" and name == "id":
                 kind = "id"
-            value = field(i, "value")
-            details = {"value_range": span(value), "value_kind": nodes[value].kind if value is not None else None}
+            value = semantic_value_node(nodes, field(i, "value"))
+            details = {
+                "value_range": span(value),
+                "value_kind": nodes[value].kind if value is not None else None,
+            }
             if n.kind == "ui_property":
                 details["declared_type"] = field_text(i, "type")
                 details["modifiers"] = [text(c) for c in n.children if nodes[c].kind == "ui_property_modifier"]

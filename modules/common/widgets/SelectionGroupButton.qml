@@ -16,7 +16,6 @@ GroupButton {
     verticalPadding: 6
     bounce: false
     property string buttonIcon
-    property string buttonPreviewKind: ""
     property real maxTextWidth: 180
     // Opt-in only. Most segmented controls keep their centered label; callers
     // such as the TLP category browser can request a tidy left-aligned list

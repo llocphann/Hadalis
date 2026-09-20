@@ -142,7 +142,6 @@ Flow {
             leftmost: index === 0
             rightmost: index === root.options.length - 1
             buttonIcon: modelData.icon || ""
-            buttonPreviewKind: modelData.previewKind || ""
             buttonText: modelData.displayName
             opacity: modelData?.dimmed === true ? 0.45 : 1
             toggled: (root.currentValue != null && root.currentValue == modelData.value) ?? false

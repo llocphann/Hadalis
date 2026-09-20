@@ -646,7 +646,6 @@ def main() -> None:
     ):
         require(group_button, token, "GroupButton.qml")
     for token in (
-        "property string buttonPreviewKind:",
         "Accessible.checkable: true",
         "Accessible.checked: root.toggled",
         "horizontalPadding: 11",
@@ -655,6 +654,8 @@ def main() -> None:
     ):
         require(selection_group_button, token, "SelectionGroupButton.qml")
     forbid(selection_group_button, "ZzzCornerPreview", "SelectionGroupButton.qml")
+    forbid(selection_group_button, "buttonPreviewKind", "SelectionGroupButton.qml")
+    forbid(config_selection_array, "buttonPreviewKind", "ConfigSelectionArray.qml")
     for token in (
         "property bool shown: false",
         "property string position:",

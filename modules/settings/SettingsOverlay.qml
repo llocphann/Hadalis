@@ -25,10 +25,8 @@ Scope {
     property bool settingsOpen: GlobalStates.settingsOverlayOpen ?? false
     property bool navEditMode: false
 
-    // Keep the PanelWindow alive briefly after close so the scrim backdrop
-    // can fade out (the settings card itself shows/hides instantly, matching
-    // the window-mode settings UI). Without this the Loader tears down the
-    // instant settingsOpen flips false and the scrim cut to black.
+    // Keep the PanelWindow alive through the card's exit slide. Backdrop and
+    // scrim state snap; top-level Settings presentation is slide-only.
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
     property real _surfaceReveal: settingsOpen ? 1 : 0
@@ -42,9 +40,8 @@ Scope {
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 
@@ -67,7 +64,7 @@ Scope {
     // Keep the native host alive until the bottom-edge exit slide completes.
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMove.duration + 40
+        interval: SurfaceMotion.duration + 40
         repeat: false
         onTriggered: _closeAnimRunning = false
     }
@@ -493,10 +490,6 @@ Scope {
                     auroraTransparency: 0.35
 
                     opacity: (GlobalStates.settingsOverlayOpen ?? false) ? 1 : 0
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                    }
                 }
             }
 
@@ -556,10 +549,6 @@ Scope {
                 // actually renders before the Loader tears the panel down.
                 visible: opacity > 0
 
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
             }
 
             // Click-outside-to-close hit area — a sibling of scrimBg, not a child.
@@ -623,10 +612,6 @@ Scope {
                 radius: Appearance.rounding.windowRounding
                 bottomLeftRadius: 0
                 bottomRightRadius: 0
-                Behavior on radius {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot }
-                }
                 color: CF.ColorUtils.applyAlpha(
                     Appearance.colors.colLayer0Base,
                     settingsCard.panelBgOpacity)

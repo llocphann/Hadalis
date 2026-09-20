@@ -151,15 +151,13 @@ Item {
 
     onPopupPresentedChanged: root.syncReveal()
 
-    // Keep the connected Dashboard on the same Caelestia-style spatial
-    // gesture as shared popups: one scalar, one default-spatial curve, and a
-    // natural reverse from the current value.
+    // Immutable ii surface-motion contract: this presentation may translate
+    // only; the easing is monotonic and cannot be overridden by theme/config.
     Behavior on revealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 

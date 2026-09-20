@@ -53,7 +53,7 @@ Scope {
 
         Timer {
             id: _closeTimer
-            interval: 250
+            interval: SurfaceMotion.duration + 16
             onTriggered: panelRoot.visible = false
         }
 
@@ -99,21 +99,19 @@ Scope {
 
         Loader {
             id: contentLoader
-            active: GlobalStates.dashboardOpen || (Config.options?.dashboard?.keepLoaded ?? false)
+            active: panelRoot.visible || (Config.options?.dashboard?.keepLoaded ?? false)
 
             // Shell desaturation effect
             layer.enabled: Appearance.shouldDesaturate("overlays") && contentLoader.visible
             layer.effect: ShellDesaturationEffect {}
 
-            property real panelTranslateY: 18
+            property real panelTranslateY: SurfaceMotion.dashboardOffset
             states: [
                 State {
                     name: "open"
                     when: root._presentedOpen
                     PropertyChanges {
                         target: contentLoader
-                        opacity: 1
-                        scale: 1
                         panelTranslateY: 0
                     }
                 },
@@ -122,9 +120,7 @@ Scope {
                     when: !root._presentedOpen
                     PropertyChanges {
                         target: contentLoader
-                        opacity: 0
-                        scale: 0.96
-                        panelTranslateY: 18
+                        panelTranslateY: SurfaceMotion.dashboardOffset
                     }
                 }
             ]
@@ -132,55 +128,21 @@ Scope {
                 Transition {
                     to: "open"
                     enabled: Appearance.animationsEnabled
-                    ParallelAnimation {
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "opacity"
-                            duration: Math.round((Appearance.animation?.elementMoveEnter?.duration ?? 400) * 0.7)
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.standardDecel ?? [0, 0, 0, 1, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "scale"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "panelTranslateY"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
-                        }
+                    NumberAnimation {
+                        target: contentLoader
+                        property: "panelTranslateY"
+                        duration: SurfaceMotion.duration
+                        easing.type: SurfaceMotion.easingType
                     }
                 },
                 Transition {
                     to: "closed"
                     enabled: Appearance.animationsEnabled
-                    ParallelAnimation {
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "opacity"
-                            duration: Math.round((Appearance.animation?.elementMoveExit?.duration ?? 200) * 0.7)
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.standardAccel ?? [0.3, 0, 1, 1, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "scale"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "panelTranslateY"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]
-                        }
+                    NumberAnimation {
+                        target: contentLoader
+                        property: "panelTranslateY"
+                        duration: SurfaceMotion.duration
+                        easing.type: SurfaceMotion.easingType
                     }
                 }
             ]
@@ -192,8 +154,8 @@ Scope {
             width: root.panelWidth
             height: root.panelHeight
 
-            opacity: 0
-            scale: 0.96
+            opacity: 1
+            scale: 1
             transform: Translate { y: contentLoader.panelTranslateY }
 
             focus: GlobalStates.dashboardOpen

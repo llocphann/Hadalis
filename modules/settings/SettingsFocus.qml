@@ -33,9 +33,8 @@ Scope {
 
     property bool settingsOpen: GlobalStates.settingsOverlayOpen ?? false
 
-    // Keep the PanelWindow alive briefly after close so the scrim can fade
-    // out. Mirrors SettingsOverlay: without it the Loader tears down the
-    // instant settingsOpen flips and the backdrop cuts to black.
+    // Keep the PanelWindow alive through the card's exit slide. Mirrors the
+    // rail overlay: backdrop/scrim snap and top-level Settings motion slides.
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
     property real _surfaceReveal: settingsOpen ? 1 : 0
@@ -43,9 +42,8 @@ Scope {
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 
@@ -98,7 +96,7 @@ Scope {
 
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMove.duration + 40
+        interval: SurfaceMotion.duration + 40
         repeat: false
         onTriggered: root._closeAnimRunning = false
     }
@@ -476,10 +474,6 @@ Scope {
                     auroraTransparency: 0.35
 
                     opacity: (GlobalStates.settingsOverlayOpen ?? false) ? 1 : 0
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                    }
                 }
             }
 
@@ -579,14 +573,6 @@ Scope {
                     ? (Config.options?.settingsUi?.overlayAppearance?.scrimDim ?? 35) / 100 : 0
                 visible: opacity > 0
 
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    animation: NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                        easing.type: Appearance.animation.elementMoveFast.type
-                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                    }
-                }
             }
 
             // Sibling of the scrim on purpose: scrimBg goes invisible at

@@ -104,10 +104,10 @@ def main() -> None:
     check("Math.max(Math.max(0, connectorWidth), anchorTangentExtent)" not in geometry,
           "Connected popup neck width must not expand or shrink with the source control width")
     check("(1 - motionProgress) * crossBodyExtent" in geometry,
-          "Connected popup motion must translate the complete body with the expressive spatial scalar")
+          "Connected popup motion must translate the complete body with its spatial scalar")
     check("readonly property real revealProgress: clamp(progress, 0, 1)" in geometry
           and "readonly property real motionProgress:" in geometry,
-          "Connected popup must clamp semantic reveal while preserving spatial overshoot for translation")
+          "Connected popup must clamp semantic reveal while preserving continuous translation state")
     check("readonly property rect revealClipRect:" in geometry,
           "Connected popup reveal must expose a fixed resting-edge clip")
     check("readonly property rect visibleBodyRect:" in geometry,
@@ -480,9 +480,9 @@ def main() -> None:
           and "settingsPanel.height * 0.92" in settings_focus,
           "Focus Settings overlay must use the enlarged bottom-connected footprint")
     for settings_surface in (settings_overlay, settings_focus):
-        check("Appearance.animation.elementMove.duration" in settings_surface
-              and "Appearance.animation.elementMove.bezierCurve" in settings_surface,
-              "Connected Settings overlays must use the Caelestia-style default-spatial slide")
+        check("SurfaceMotion.duration" in settings_surface
+              and "SurfaceMotion.easingType" in settings_surface,
+              "Connected Settings overlays must use the immutable slide-only SurfaceMotion contract")
         check("Appearance.colors.colShadow" in settings_surface
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface,
@@ -509,9 +509,9 @@ def main() -> None:
           and "bottomLeftRadius: root.directBottomAttachment ? 0 : radius" in dashboard
           and "bottomRightRadius: root.directBottomAttachment ? 0 : radius" in dashboard,
           "Dashboard attached body edge must stay square; outward flare owns the Bar/Screen Edge shoulder")
-    check("Appearance.animation.elementMove.duration" in dashboard
-          and "Appearance.animation.elementMove.bezierCurve" in dashboard,
-          "Dashboard connected slide must use the default-spatial motion token")
+    check("SurfaceMotion.duration" in dashboard
+          and "SurfaceMotion.easingType" in dashboard,
+          "Dashboard connected slide must use the immutable SurfaceMotion contract")
     check("Appearance.colors.colShadow" in dashboard
           and "Appearance.m3colors.m3shadow" not in dashboard,
           "Dashboard connected shadow must use the same themed shadow ink as Screen Edge and Bar")

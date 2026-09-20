@@ -4,9 +4,11 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects as GE
+import Quickshell
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.sidebarRight.events

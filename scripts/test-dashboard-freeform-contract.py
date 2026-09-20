@@ -30,6 +30,9 @@ def main() -> None:
     settings = read("modules/settings/DashboardConfig.qml")
 
     require(content, "DashboardCanvas {", "DashboardContent.qml")
+    require(content, "import Quickshell", "DashboardContent.qml")
+    require(content, "import qs.modules.common.models", "DashboardContent.qml")
+    require(canvas, "import qs.modules.common.functions", "DashboardCanvas.qml")
     forbid(content, "component WidgetColumn:", "DashboardContent.qml")
     forbid(content, "dashboard.layout.", "DashboardContent.qml")
 

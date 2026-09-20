@@ -18,11 +18,26 @@ assets=(
     modules/bar/StyledPopup.qml
     modules/common/perimeter/ConnectedSurfaceIrisField.qml
     modules/common/perimeter/ConnectedSurfaceIrisFrame.qml
+    modules/common/perimeter/ConnectedSurfaceIrisEdgeSurface.qml
     modules/common/perimeter/ConnectedSurfaceBodyMask.qml
     modules/common/perimeter/IrisField.frag
     modules/common/perimeter/IrisField.frag.qsb
     modules/common/perimeter/PerimeterTokens.qml
     modules/common/perimeter/qmldir
+
+    # Extended production callers. These are deliberately checked here rather
+    # than relying on shader parity alone: a stale installed Sidebar/Dashboard
+    # file can reproduce old geometry even while the QSB itself is current.
+    modules/sidebar/SidebarHost.qml
+    modules/sidebarLeft/SidebarLeftContent.qml
+    modules/sidebarRight/SidebarRightContent.qml
+    modules/sidebarRight/CompactSidebarRightContent.qml
+    modules/settings/SettingsOverlay.qml
+    modules/settings/SettingsFocus.qml
+    modules/overview/Overview.qml
+    modules/overview/OverviewDashboard.qml
+    modules/overview/SearchWidget.qml
+    modules/overview/SearchBar.qml
 )
 
 for relative in "${assets[@]}"; do

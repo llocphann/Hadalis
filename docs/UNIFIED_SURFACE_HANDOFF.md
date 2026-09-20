@@ -840,3 +840,26 @@ The remaining gate is a live production acceptance pass after reloading Hadalis:
 representative horizontal and vertical Bar popups, center and both corner clamps,
 open/reverse-retract, hover transfer, outside click, keyboard focus, and a
 fractional-scale output if available.
+
+
+### Production runtime preflight PASS — 2026-09-20
+
+The maintainer ran the production runtime preflight against the installed Niri
+session after syncing the iRiS cutover. Reported output:
+
+```text
+iRiS production surface contract: PASS
+Production iRiS runtime preflight: PASS
+repo_head=47fde261524c399b3ec7871387e6da4b851d9fdb
+runtime_root=/home/llocphann/.config/quickshell/inir
+```
+
+This closes source/install parity for the production shader and QML path at that
+tested revision. Subsequent source-only guard/doc commits do not alter the
+validated shader blob; before final sign-off, the runtime should be synced to the
+current `dev` head and the preflight re-run if any production surface source
+changed.
+
+The only remaining acceptance category is live production behavior/visuals:
+real ii popups must be inspected for center and tangent-clamped joins, pure
+slide/reverse-retract, hover transfer, outside-click behavior and keyboard focus.

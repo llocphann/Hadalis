@@ -70,7 +70,7 @@ if len(checks) != 3 or not all(item.get("passed") is True for item in checks):
 
 if "Milestone 2I — guarded literal Apply enabled" not in phase2:
     fail("Phase 2 status must document literal Apply enablement")
-if "direct binding transforms remain disabled" not in phase2:
+if "Direct binding transforms remain disabled." not in phase2:
     fail("Phase 2 status must keep broader transforms disabled")
 
 print("ok - Code Workflow guarded literal Apply enablement contract")

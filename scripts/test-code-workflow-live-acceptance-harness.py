@@ -174,7 +174,7 @@ if len(checks) != 3 or not all(check.get("passed") is True for check in checks):
 for token in (
     "Gate 2H — qualified live acceptance",
     "Milestone 2I — guarded literal Apply enabled",
-    "apply-lifecycle-report.json",
+    "docs/evidence/code-workflow/phase2h-apply-lifecycle-c991631a.json",
 ):
     if token not in phase2:
         fail("Phase 2 status must record qualified acceptance and enablement")

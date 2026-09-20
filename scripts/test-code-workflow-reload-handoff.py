@@ -34,8 +34,6 @@ for token in (
     "if (!root.preApplyReady || !command)",
     'reloadState.pendingApplyPhase = "prepared"',
     "function clearApplyHandoff(): void",
-    "onLoaded: root._restoreReloadState()",
-    "onReloaded: root._restoreReloadState()",
 ):
     if token not in service:
         fail("reload-stable transaction handoff missing " + token)
@@ -47,6 +45,8 @@ for token in (
     'property string stateJson: ""',
     "CodeWorkflowTransaction.restoreReloadStateJson(encoded)",
     "persisted.stateJson = CodeWorkflowTransaction.reloadStateJson",
+    "onLoaded: bridge.restorePersistedState()",
+    "function restorePersistedState(): void",
     "function onReloadStateJsonChanged(): void",
 ):
     if token not in bridge:

@@ -143,6 +143,10 @@ def main() -> None:
             fail(f"{key}: input policy mismatch")
         if data.get("keyboardFocus") != "none":
             fail(f"{key}: keyboard focus was captured")
+        if data.get("shaderCompiled") is not True:
+            fail(f"{key}: iRiS shader was not compiled: {data.get('shaderLog')!r}")
+        if data.get("shaderLog") not in ("", None):
+            fail(f"{key}: iRiS shader log is not empty: {data.get('shaderLog')!r}")
         if data.get("geometryStable") is not True:
             fail(f"{key}: geometry not stable")
         if int(data.get("readinessStableTicks", 0)) < 3:

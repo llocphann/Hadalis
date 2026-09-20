@@ -547,6 +547,7 @@ QtObject {
     }
 
     readonly property bool outputGeometryReady: root.targetScreen !== null
+        && splitField.shaderCompiled
         && ownerWindow.width > 0 && ownerWindow.height > 0
         && popupWindow.width > 0 && popupWindow.height > 0
         && Math.abs(ownerWindow.width - root.outputWidth) <= 0.5
@@ -615,6 +616,9 @@ QtObject {
             popupLayer: "overlay",
             inputPolicy: "visible-body-only",
             keyboardFocus: "none",
+            shaderCompiled: splitField.shaderCompiled,
+            shaderStatus: Number(splitField.shaderStatus),
+            shaderLog: String(splitField.shaderLog || ""),
             geometryStable: root.outputGeometryReady,
             readinessStableTicks: root.readinessStableTicks
         }

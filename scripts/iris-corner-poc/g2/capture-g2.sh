@@ -44,7 +44,7 @@ out_dir="$(cd -- "$out_dir" && pwd)"
 scope=(
     "scripts/iris-corner-poc/g2"
     "scripts/iris-corner-poc/IrisField.frag"
-    "scripts/iris-corner-poc/IrisField.frag.qsb"
+    "scripts/iris-corner-poc/g2/IrisField.frag.qsb"
     "scripts/test-iris-g2-contract.py"
 )
 if ! git -C "$repo_root" diff --quiet -- "${scope[@]}" \
@@ -64,7 +64,7 @@ python3 "$repo_root/scripts/test-iris-g2-contract.py"
 repo_head="$(git -C "$repo_root" rev-parse HEAD)"
 g2_tree_sha="$(git -C "$repo_root" rev-parse 'HEAD:scripts/iris-corner-poc/g2')"
 shader_blob_sha="$(git -C "$repo_root" rev-parse 'HEAD:scripts/iris-corner-poc/IrisField.frag')"
-qsb_blob_sha="$(git -C "$repo_root" rev-parse 'HEAD:scripts/iris-corner-poc/IrisField.frag.qsb')"
+qsb_blob_sha="$(git -C "$repo_root" rev-parse 'HEAD:scripts/iris-corner-poc/g2/IrisField.frag.qsb')"
 contract_blob_sha="$(git -C "$repo_root" rev-parse 'HEAD:scripts/test-iris-g2-contract.py')"
 
 cat > "$out_dir/g2-run.txt" <<EOF

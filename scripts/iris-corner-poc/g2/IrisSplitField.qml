@@ -13,6 +13,9 @@ Item {
     property color tint: "#f4c542"
     property real smoothing: 30
     readonly property int capacity: 20
+    readonly property bool shaderCompiled: pass.status === ShaderEffect.Compiled
+    readonly property string shaderLog: pass.log
+    readonly property int shaderStatus: pass.status
 
     readonly property rect effectivePaintBounds: {
         const left = Math.max(0, Math.floor(root.paintBounds.x))
@@ -43,7 +46,7 @@ Item {
         y: root.effectivePaintBounds.y
         width: root.effectivePaintBounds.width
         height: root.effectivePaintBounds.height
-        fragmentShader: Qt.resolvedUrl("../IrisField.frag.qsb")
+        fragmentShader: Qt.resolvedUrl("IrisField.frag.qsb")
         blending: true
 
         function shapeAt(i) {

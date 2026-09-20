@@ -22,7 +22,11 @@ assert "/scripts/iris-corner-poc/g2/captures/" in gitignore, (
 )
 assert 'out_dir="${HADALIS_IRIS_G2_CAPTURE_DIR:-$here/captures/g2-$stamp}"' in capture
 assert (BASE / "IrisField.frag.qsb").stat().st_size == 16765
-assert "fragmentShader: Qt.resolvedUrl(\"../IrisField.frag.qsb\")" in field
+assert (G2 / "IrisField.frag.qsb").stat().st_size == 16765
+assert (G2 / "IrisField.frag.qsb").read_bytes() == (BASE / "IrisField.frag.qsb").read_bytes()
+assert "fragmentShader: Qt.resolvedUrl(\"IrisField.frag.qsb\")" in field
+assert "shaderCompiled: pass.status === ShaderEffect.Compiled" in field
+assert "shaderLog: pass.log" in field
 assert "required property rect paintBounds" in field
 assert "root.effectivePaintBounds" in field
 assert "readonly property vector4d viewport:" in field
@@ -60,6 +64,9 @@ for token in (
     "WlrKeyboardFocus.None",
     "RectangularShadow",
     "root.readinessStableTicks < 3",
+    "&& splitField.shaderCompiled",
+    "shaderCompiled: splitField.shaderCompiled",
+    "shaderLog: String(splitField.shaderLog || \"\")",
 ):
     assert token in scenario, f"G2 scenario contract missing: {token}"
 
@@ -96,6 +103,8 @@ for token in (
     "visible-body-only",
     "animationOffset",
     "attached-side shadow is enabled",
+    "iRiS shader was not compiled",
+    "iRiS shader log is not empty",
 ):
     assert token in verify, f"G2 verifier missing: {token}"
 

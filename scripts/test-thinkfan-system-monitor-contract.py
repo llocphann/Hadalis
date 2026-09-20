@@ -17,6 +17,7 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
+    dashboard_system = read("modules/dashboard/DashSystem.qml")
     styled_popup = read("modules/bar/StyledPopup.qml")
     config_schema = read("modules/common/Config.qml")
     default_config = read("defaults/config.json")
@@ -39,7 +40,7 @@ def main() -> None:
         "ThinkFanService.refresh()",
         "ThinkFanService.applyProfile(",
         'Translation.tr("Fan")',
-        'Translation.tr("Speed:")',
+        'Translation.tr("RPM:")',
         'Translation.tr("Level:")',
         "thinkFanCanApply",
         "font.pixelSize: Appearance.font.pixelSize.small",
@@ -47,6 +48,19 @@ def main() -> None:
     ):
         check(token in resources_popup,
               f"System Monitor popup must own ThinkFan runtime UI: {token}")
+
+    for token in (
+        "ThinkFanService.refresh()",
+        "ThinkFanService.applyProfile(",
+        'Translation.tr("Fan")',
+        'Translation.tr("RPM:")',
+        'Translation.tr("Level:")',
+        "ThinkFanService.fanRpm",
+        "ThinkFanService.fanLevel",
+        "root.thinkFanCanApply",
+    ):
+        check(token in dashboard_system,
+              f"Dashboard System module must reuse ThinkFan runtime state/control: {token}")
 
     for forbidden in (
         "ThinkFanConnectedSurface",
@@ -75,7 +89,7 @@ def main() -> None:
               f"System Monitor popup must keep the compact metrics contract: {forbidden}")
 
     fan_pos = resources_popup.index('Translation.tr("Fan")')
-    speed_pos = resources_popup.index('Translation.tr("Speed:")')
+    speed_pos = resources_popup.index('Translation.tr("RPM:")')
     level_pos = resources_popup.index('Translation.tr("Level:")')
     notice_pos = resources_popup.index("NoticeBox {", level_pos)
     check(fan_pos < speed_pos < level_pos < notice_pos,

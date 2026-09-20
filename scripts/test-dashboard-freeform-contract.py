@@ -33,6 +33,7 @@ def main() -> None:
     media = read("modules/dashboard/DashMedia.qml")
     dash_card = read("modules/dashboard/DashCard.qml")
     config = read("modules/common/Config.qml")
+    defaults = read("defaults/config.json")
     settings = read("modules/settings/DashboardConfig.qml")
 
     require(content, "DashboardCanvas {", "DashboardContent.qml")
@@ -73,7 +74,7 @@ def main() -> None:
         'function _layoutHasOverlap(',
         'function _persistPreviewLayout(',
         'A restored widget must join the same collision contract as drag/resize.',
-        'case "system": return { width: 200, height: 130 }',
+        'case "system": return { width: 260, height: 180 }',
         'baselineRects: root._snapshotVisibleRects()',
         'root._applyPreviewRects(resolved)',
         'A dragged module is temporarily lifted out of the packed layout.',
@@ -88,6 +89,11 @@ def main() -> None:
         'Config.options?.dashboard?.canvas?.gridSize',
         'Config.options?.dashboard?.canvas?.gridStyle',
         'Config.options?.dashboard?.canvas?.snap',
+        'Config.options?.dashboard?.canvas?.autoAdjustSize',
+        'readonly property bool autoAdjustSizeEnabled:',
+        'state.kind === "resize"',
+        '&& root.autoAdjustSizeEnabled',
+        'allowResize',
     ):
         require(canvas, token, "DashboardCanvas.qml")
 
@@ -115,12 +121,29 @@ def main() -> None:
     require(move_block, "root._setPreview(state.id, {", "DashboardCanvas move block")
     forbid(move_block, "root._resolveFeasibleLayout(", "DashboardCanvas move block")
     forbid(move_block, "root._snap(", "DashboardCanvas move block")
+    # Drag/drop may move neighbours but must never resize them; size adaptation
+    # is exclusive to resize interactions and controlled by autoAdjustSize.
+    resolve_start = canvas.index("function _candidateInRegion(")
+    resolve_end = canvas.index("function _applyPreviewRects(", resolve_start)
+    resolve_block = canvas[resolve_start:resolve_end]
+    require(resolve_block, "allowResize", "DashboardCanvas collision resolver")
+    require(resolve_block,
+        "const width = allowResize", "DashboardCanvas collision resolver")
+    require(resolve_block,
+        "const heights = allowResize ?", "DashboardCanvas collision resolver")
+
     finish_start = canvas.index("function finishInteraction(commit)")
     finish_end = canvas.index("function _cycleGridSize()", finish_start)
     finish_block = canvas[finish_start:finish_end]
     require(finish_block, "root._resolveFeasibleLayout(", "DashboardCanvas drop block")
     require(finish_block, "root._persistPreviewLayout()", "DashboardCanvas drop block")
     require(finish_block, "root._snapRectForCommit(", "DashboardCanvas drop block")
+    require(finish_block,
+        'const allowResize = state.kind === "resize"',
+        "DashboardCanvas drop block")
+    require(finish_block,
+        "&& root.autoAdjustSizeEnabled",
+        "DashboardCanvas drop block")
     require(finish_block, "root._interaction = null", "DashboardCanvas drop block")
     require(finish_block, "Qt.callLater(() => {", "DashboardCanvas drop block")
 
@@ -140,6 +163,11 @@ def main() -> None:
         "bottomLeftRadius: 0",
         "bottomRightRadius: 0",
         'Translation.tr("Edit widgets")',
+        "id: editActions",
+        "Layout.alignment: Qt.AlignHCenter",
+        "focusPolicy: Qt.StrongFocus",
+        'Config.setNestedValue(\n                    "dashboard.canvas.autoAdjustSize"',
+        "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",
     ):
         require(toolbar, token, "DashboardEditToolbar.qml")
     for source, text in (
@@ -176,6 +204,16 @@ def main() -> None:
         "anchors.centerIn: parent",
         "width: Math.min(parent.width, 220)",
         "height: Math.min(parent.height, 104)",
+    ):
+        require(system, token, "DashSystem.qml")
+    for token in (
+        "ThinkFanService.refresh()",
+        "ThinkFanService.applyProfile(",
+        'Translation.tr("Fan")',
+        'Translation.tr("RPM:")',
+        'Translation.tr("Level:")',
+        "ThinkFanService.fanRpm",
+        "ThinkFanService.fanLevel",
     ):
         require(system, token, "DashSystem.qml")
     require(calendar_widget,
@@ -225,14 +263,18 @@ def main() -> None:
         "property JsonObject canvas: JsonObject {",
         "property int gridSize: 24",
         "property bool snap: true",
+        "property bool autoAdjustSize: true",
         'property string gridStyle: "dots"',
         "property list<var> widgets:",
     ):
         require(config, token, "Config.qml")
 
+    require(defaults, '"autoAdjustSize": true', "defaults/config.json")
+
     for token in (
         'title: Translation.tr("Canvas & grid")',
         'Config.setNestedValue("dashboard.canvas.snap", checked)',
+        'Config.setNestedValue(\n                        "dashboard.canvas.autoAdjustSize", checked)',
         'Config.setNestedValue("dashboard.canvas.gridStyle", value)',
         'Config.setNestedValue("dashboard.canvas.gridSize", value)',
     ):

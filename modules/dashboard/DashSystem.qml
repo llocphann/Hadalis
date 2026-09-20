@@ -15,12 +15,26 @@ DashCard {
     title: Translation.tr("System")
     icon: "monitor_heart"
 
+    readonly property bool thinkFanManaged:
+        ThinkFanService.stateKnown && ThinkFanService.profile === "managed"
+    readonly property bool thinkFanCanApply:
+        ThinkFanService.stateKnown
+        && ThinkFanService.serviceInstalled
+        && !ThinkFanService.busy
+        && (root.thinkFanManaged || ThinkFanService.available)
+
     // keepAlive while shown so values keep updating past the 15s auto-stop;
     // always released on hide/destroy. _holding guards against double counts.
     property bool _holding: false
     function _syncPolling() {
-        if (visible && !_holding) { _holding = true; ResourceUsage.keepAlive() }
-        else if (!visible && _holding) { _holding = false; ResourceUsage.releaseKeepAlive() }
+        if (visible && !_holding) {
+            _holding = true
+            ResourceUsage.keepAlive()
+            ThinkFanService.refresh()
+        } else if (!visible && _holding) {
+            _holding = false
+            ResourceUsage.releaseKeepAlive()
+        }
     }
     onVisibleChanged: _syncPolling()
     Component.onCompleted: _syncPolling()
@@ -124,6 +138,109 @@ DashCard {
             VerticalBar { icon: "memory"; value: ResourceUsage.cpuUsage }
             VerticalBar { icon: "developer_board"; value: ResourceUsage.memoryUsedPercentage }
             VerticalBar { visible: ResourceUsage.gpuUsage > 0; icon: "videogame_asset"; value: ResourceUsage.gpuUsage }
+        }
+    }
+
+    Rectangle {
+        visible: !root.zzzEverywhere
+        Layout.fillWidth: true
+        implicitHeight: 1
+        color: Appearance.colors.colOutlineVariant
+        opacity: 0.55
+    }
+
+    RowLayout {
+        id: thinkFanRow
+        visible: !root.zzzEverywhere
+        Layout.fillWidth: true
+        spacing: 6
+
+        Item {
+            Layout.fillWidth: true
+            implicitHeight: fanControl.implicitHeight
+
+            RowLayout {
+                id: fanControl
+                anchors.centerIn: parent
+                spacing: 4
+
+                MaterialSymbol {
+                    text: "mode_fan"
+                    fill: root.thinkFanManaged ? 1 : 0
+                    iconSize: Appearance.font.pixelSize.normal
+                    color: root.thinkFanManaged
+                        ? Appearance.colors.colPrimary
+                        : root.colSubtext
+                }
+
+                StyledText {
+                    text: Translation.tr("Fan")
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                }
+
+                StyledSwitch {
+                    checked: root.thinkFanManaged
+                    enabled: root.thinkFanCanApply
+                    activeFocusOnTab: true
+                    Accessible.name:
+                        Translation.tr("Use ThinkFan managed fan control")
+
+                    onToggled: {
+                        ThinkFanService.applyProfile(
+                            checked ? "managed" : "firmware")
+                        checked = Qt.binding(() => root.thinkFanManaged)
+                    }
+                }
+            }
+        }
+
+        Item {
+            Layout.fillWidth: true
+            implicitHeight: rpmMetrics.implicitHeight
+
+            RowLayout {
+                id: rpmMetrics
+                anchors.centerIn: parent
+                spacing: 3
+
+                StyledText {
+                    text: Translation.tr("RPM:")
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                }
+                StyledText {
+                    text: ThinkFanService.fanRpm >= 0
+                        ? String(ThinkFanService.fanRpm) : "—"
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    color: root.colText
+                }
+            }
+        }
+
+        Item {
+            Layout.fillWidth: true
+            implicitHeight: levelMetrics.implicitHeight
+
+            RowLayout {
+                id: levelMetrics
+                anchors.centerIn: parent
+                spacing: 3
+
+                StyledText {
+                    text: Translation.tr("Level:")
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
+                }
+                StyledText {
+                    text: ThinkFanService.fanLevel.length > 0
+                        ? ThinkFanService.fanLevel : "—"
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    color: root.colText
+                }
+            }
         }
     }
 }

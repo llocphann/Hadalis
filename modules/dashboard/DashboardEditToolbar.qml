@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 
 Rectangle {
     id: root
@@ -29,22 +30,24 @@ Rectangle {
         anchors.margins: 7
         spacing: 5
 
-        RowLayout {
+        StyledText {
             Layout.fillWidth: true
-            spacing: 5
+            horizontalAlignment: Text.AlignHCenter
+            text: root.canvasController?.selectedId?.length > 0
+                ? Translation.tr("Editing %1").arg(
+                    root.canvasController._label(
+                        root.canvasController.selectedId))
+                : Translation.tr("Edit widgets")
+            font.pixelSize: Appearance.font.pixelSize.small
+            font.weight: Font.DemiBold
+            color: Appearance.colors.colOnLayer0
+            elide: Text.ElideRight
+        }
 
-            StyledText {
-                Layout.fillWidth: true
-                text: root.canvasController?.selectedId?.length > 0
-                    ? Translation.tr("Editing %1").arg(
-                        root.canvasController._label(
-                            root.canvasController.selectedId))
-                    : Translation.tr("Edit widgets")
-                font.pixelSize: Appearance.font.pixelSize.small
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colOnLayer0
-                elide: Text.ElideRight
-            }
+        RowLayout {
+            id: editActions
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 6
 
             EditToolButton {
                 iconName: root.canvasController?.snapEnabled
@@ -57,6 +60,19 @@ Rectangle {
                     "dashboard.canvas.snap",
                     !(root.canvasController?.snapEnabled ?? true))
             }
+
+            EditToolButton {
+                iconName: "fit_screen"
+                tooltipText: root.canvasController?.autoAdjustSizeEnabled
+                    ? Translation.tr("Auto-adjust affected module sizes: on")
+                    : Translation.tr("Auto-adjust affected module sizes: off")
+                toggled:
+                    root.canvasController?.autoAdjustSizeEnabled ?? true
+                onClicked: Config.setNestedValue(
+                    "dashboard.canvas.autoAdjustSize",
+                    !(root.canvasController?.autoAdjustSizeEnabled ?? true))
+            }
+
             EditToolButton {
                 iconName: root.canvasController?.gridStyle === "lines"
                     ? "grid_4x4"
@@ -69,6 +85,7 @@ Rectangle {
                         root.canvasController._cycleGridStyle()
                 }
             }
+
             EditToolButton {
                 iconName: "grid_view"
                 tooltipText: Translation.tr("Grid size: %1px — click to cycle")
@@ -78,6 +95,7 @@ Rectangle {
                         root.canvasController._cycleGridSize()
                 }
             }
+
             EditToolButton {
                 iconName: "restart_alt"
                 tooltipText: Translation.tr("Reset dashboard layout")
@@ -101,6 +119,7 @@ Rectangle {
                     implicitWidth: addRow.implicitWidth + 14
                     buttonRadius: Appearance.rounding.full
                     colBackground: Appearance.colors.colLayer1
+                    focusPolicy: Qt.StrongFocus
                     onClicked: {
                         if (root.canvasController)
                             root.canvasController.setWidgetVisible(
@@ -138,20 +157,41 @@ Rectangle {
         id: tool
         property alias iconName: toolIcon.text
         property string tooltipText: ""
-        implicitWidth: 32
-        implicitHeight: 32
+
+        implicitWidth: 34
+        implicitHeight: 34
+        focusPolicy: Qt.StrongFocus
+        buttonText: tool.tooltipText
         buttonRadius: Appearance.rounding.full
-        colBackground: toggled
-            ? Appearance.colors.colPrimaryContainer
-            : Appearance.colors.colLayer1
-        contentItem: MaterialSymbol {
-            id: toolIcon
-            anchors.centerIn: parent
-            iconSize: Appearance.font.pixelSize.normal
-            color: tool.toggled
-                ? Appearance.colors.colOnPrimaryContainer
-                : Appearance.colors.colOnLayer1
+        colBackground: Appearance.colors.colLayer1
+        colBackgroundHover: Appearance.colors.colLayer2
+        colBackgroundToggled: Appearance.colors.colPrimaryContainer
+        colBackgroundToggledHover: Appearance.colors.colPrimaryContainer
+        colRippleToggled: Appearance.colors.colPrimary
+
+        contentItem: Item {
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Appearance.rounding.full
+                color: "transparent"
+                border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)
+                border.color: tool.visualFocus
+                    ? Appearance.colors.colPrimary
+                    : ColorUtils.applyAlpha(
+                        Appearance.colors.colPrimary, 0.72)
+            }
+
+            MaterialSymbol {
+                id: toolIcon
+                anchors.centerIn: parent
+                iconSize: Appearance.font.pixelSize.normal
+                color: tool.toggled
+                    ? Appearance.colors.colOnPrimaryContainer
+                    : Appearance.colors.colOnLayer1
+            }
         }
+
         StyledToolTip { text: tool.tooltipText }
     }
 }

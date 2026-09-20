@@ -49,6 +49,9 @@ ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButt
 GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
 SELECTION_GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "SelectionGroupButton.qml"
 STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTipContent.qml"
+WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
+ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
+ANGEL_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "AngelBackground.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -159,6 +162,7 @@ def main() -> None:
     group_button = GROUP_BUTTON.read_text(encoding="utf-8")
     selection_group_button = SELECTION_GROUP_BUTTON.read_text(encoding="utf-8")
     styled_tooltip_content = STYLED_TOOLTIP_CONTENT.read_text(encoding="utf-8")
+    widgets_qmldir = WIDGETS_QMLDIR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -507,6 +511,16 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # Angel-only wrapper components had no consumers outside their qmldir exports.
+    # Keep them retired instead of carrying unreachable wallpaper/effect renderers.
+    for retired_path in (ANGEL_ACCENT_BAR, ANGEL_BACKGROUND):
+        if retired_path.exists():
+            raise AssertionError(
+                f"{retired_path.relative_to(ROOT)} must stay retired under Material-only v1.0"
+            )
+    forbid(widgets_qmldir, "AngelAccentBar 1.0 AngelAccentBar.qml", "widgets/qmldir")
+    forbid(widgets_qmldir, "AngelBackground 1.0 AngelBackground.qml", "widgets/qmldir")
 
     # Grouped controls and tooltip content are shared runtime primitives.
     # Preserve interaction/reveal behavior while keeping only Material chrome.

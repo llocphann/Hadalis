@@ -11,6 +11,7 @@ field = (POC / "IrisField.frag").read_text(encoding="utf-8")
 wrapper = (POC / "IrisCornerField.qml").read_text(encoding="utf-8")
 window = (POC / "IrisCornerPocWindow.qml").read_text(encoding="utf-8")
 readme = (POC / "README.md").read_text(encoding="utf-8")
+capture = (POC / "capture-matrix.sh").read_text(encoding="utf-8")
 exclusions = json.loads((ROOT / "sdata" / "runtime-exclusions.json").read_text(encoding="utf-8"))
 
 assert "scripts/iris-corner-poc" in exclusions["excludedPaths"]
@@ -128,5 +129,28 @@ for previous, current in zip(extensions, extensions[1:]):
     assert current <= previous + 0.15, extensions
 assert 8.0 <= extensions[2] <= 16.0, extensions
 assert extensions[-1] <= 0.6, extensions
+
+
+
+# The live visual matrix must cover every edge and both clamp extremes without
+# touching/restarting the production shell.
+for token in (
+    "for edge in top bottom left right",
+    "for source_t in 0.02 0.50 0.98",
+    "HADALIS_IRIS_POC_MODE",
+    "HADALIS_IRIS_POC",
+    "grim",
+    "manifest.tsv",
+    "contact-sheet-",
+):
+    assert token in capture, f"live matrix harness missing: {token}"
+
+for forbidden in (
+    "inir restart",
+    "inir reload",
+    "ipc call",
+    "modules/waffle",
+):
+    assert forbidden not in capture, f"live matrix may affect production: {forbidden}"
 
 print("iRiS corner PoC contract: PASS")

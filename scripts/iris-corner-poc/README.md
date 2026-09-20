@@ -91,6 +91,46 @@ scripts/iris-corner-poc/run.sh
 
 Set `HADALIS_IRIS_POC_OUTPUT=<output-name>` on a multi-output desktop.
 
+
+
+## Capture the full live visual matrix
+
+To avoid accepting a center-only case, capture all 12 mandatory combinations:
+
+```text
+top / bottom / left / right
+×
+sourceT 0.02 / 0.50 / 0.98
+```
+
+Run inside the real Wayland session:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+The output defaults to `scripts/iris-corner-poc/captures/` and contains:
+
+- 12 PNG screenshots;
+- one Quickshell log per case;
+- `manifest.tsv`;
+- `contact-sheet-card-owner.png` when ImageMagick is available.
+
+The harness launches only this developer PoC, waits for its
+`HADALIS_IRIS_POC` readiness marker, captures with `grim`, then terminates
+that exact PoC process before moving to the next case. It does **not** restart,
+reload or IPC-call the running Hadalis shell.
+
+For the first acceptance pass, leave the default:
+
+```sh
+HADALIS_IRIS_POC_MODE=card-owner
+```
+
+Use `edge-reach` only as a diagnostic comparison after the card-owner matrix
+has been reviewed.
+
 ## Acceptance before production work
 
 The first gate is visual, not architectural:

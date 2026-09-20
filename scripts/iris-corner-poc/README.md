@@ -20,12 +20,20 @@ uses iRiS's actual field math rather than a reimplementation.
 
 ## What is being tested
 
-The PoC has exactly two field bodies:
+The PoC uses ordinary iRiS field bodies only:
 
 ```text
-owner
-popup -> joins: "owner"
+primary owner
+tangent Screen Edge start
+tangent Screen Edge end
+popup -> joins: ["owner"] at center
+      -> joins: ["owner", "frame-start|frame-end"] at a clamp extreme
 ```
+
+The tangent owners are important: Hadalis popups can meet both their Bar/owner
+edge and a perpendicular physical Screen Edge near an output corner. The
+upstream QSB already exposes two explicit join slots, so this case must be
+tested as one field instead of reintroducing a separately drawn corner.
 
 The upstream shader evaluates rounded-box SDFs, keeps the plain union, then adds
 a polynomial smooth-union fillet only for explicit joins.
@@ -40,7 +48,9 @@ It follows the settled iRiS Control Center/Card pattern:
 
 - popup semantic/body rect stays intact;
 - placement overlaps the owner by a small `weld`;
-- popup declares `joins: "owner"`;
+- popup declares an explicit join to the primary owner;
+- when tangent-clamped, the same popup declares the QSB's second join to that
+  physical Screen Edge owner;
 - popup supplies a deep `fuse`;
 - no corner helper, flare, sink or contact-plane offset exists.
 
@@ -87,6 +97,7 @@ HADALIS_IRIS_POC_POPUP_HEIGHT=300 \
 HADALIS_IRIS_POC_POPUP_RADIUS=48 \
 HADALIS_IRIS_POC_FUSE=56 \
 HADALIS_IRIS_POC_WELD=4 \
+HADALIS_IRIS_POC_FRAME_THICKNESS=10 \
 HADALIS_IRIS_POC_GUIDES=1 \
 scripts/iris-corner-poc/run.sh
 ```
@@ -110,6 +121,7 @@ popup           380 x 300
 radius          48
 fuse            56
 weld            4
+screen edge      10
 ```
 
 `upstream-relative` follows the default iRiS v2.31 scale much more closely:
@@ -120,6 +132,7 @@ popup           360 x 300
 radius          30
 fuseDeep        30
 weld            3
+screen edge      10
 ```
 
 The upstream values come from `IrisStyle.qml` at density/melt defaults:
@@ -188,9 +201,11 @@ The first gate is visual, not architectural:
 
 1. the two junction corners must read as part of the popup/owner silhouette;
 2. they must not look like blobs underneath the popup;
-3. source positions near 0.02 / 0.5 / 0.98 must remain coherent;
-4. all four edges must produce the same topology;
-5. `card-owner` must be judged independently from `edge-reach`.
+3. source position 0.50 must show only the primary owner join;
+4. source positions 0.02 / 0.98 must remain one coherent silhouette while
+   joining both the primary owner and the perpendicular Screen Edge;
+5. all four edges must produce the same topology;
+6. `card-owner` must be judged independently from `edge-reach`.
 
 If this is not visually correct, discard/rework this PoC. Do not patch
 `StyledPopup`, `ConnectedSurfaceJoinFlares`, Bar or ScreenEdges.

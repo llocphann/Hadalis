@@ -52,6 +52,9 @@ PanelWindow {
         Math.max(0, root.envReal("HADALIS_IRIS_POC_WELD", root.profileWeld))
     readonly property real fuse:
         Math.max(0, root.envReal("HADALIS_IRIS_POC_FUSE", root.profileFuse))
+    readonly property real frameThickness:
+        Math.max(1, root.envReal("HADALIS_IRIS_POC_FRAME_THICKNESS", 10))
+    readonly property real tangentInset: Math.max(0, root.frameThickness - root.weld)
     readonly property bool showGuides:
         String(Quickshell.env("HADALIS_IRIS_POC_GUIDES") || "1") !== "0"
 
@@ -61,7 +64,8 @@ PanelWindow {
         if (root.edgeName === "right")
             return root.width - root.ownerThickness - root.popupWidth + root.weld
         const raw = root.sourceT * root.width - root.popupWidth / 2
-        return Math.max(8, Math.min(root.width - root.popupWidth - 8, raw))
+        return Math.max(root.tangentInset,
+            Math.min(root.width - root.popupWidth - root.tangentInset, raw))
     }
     readonly property real semanticY: {
         if (root.edgeName === "top")
@@ -69,7 +73,8 @@ PanelWindow {
         if (root.edgeName === "bottom")
             return root.height - root.ownerThickness - root.popupHeight + root.weld
         const raw = root.sourceT * root.height - root.popupHeight / 2
-        return Math.max(8, Math.min(root.height - root.popupHeight - 8, raw))
+        return Math.max(root.tangentInset,
+            Math.min(root.height - root.popupHeight - root.tangentInset, raw))
     }
     readonly property rect semanticPopup:
         Qt.rect(root.semanticX, root.semanticY, root.popupWidth, root.popupHeight)
@@ -116,6 +121,48 @@ PanelWindow {
             radius: 0, fuse: 0, id: "owner" }
     }
 
+    // The two tangent owners model Hadalis' physical Screen Edge at the clamp
+    // extremes. They are ordinary field bodies, not corner helpers. A centered
+    // popup joins only the primary owner; a clamped popup joins the primary
+    // owner plus exactly one tangent Screen Edge through the QSB's second join.
+    readonly property var frameStartShape: {
+        const pad = root.fuse * 2
+        return root.horizontal
+            ? { x: 0, y: -pad, width: root.frameThickness,
+                height: root.height + 2 * pad, radius: 0, fuse: 0,
+                id: "frame-start" }
+            : { x: -pad, y: 0, width: root.width + 2 * pad,
+                height: root.frameThickness, radius: 0, fuse: 0,
+                id: "frame-start" }
+    }
+    readonly property var frameEndShape: {
+        const pad = root.fuse * 2
+        return root.horizontal
+            ? { x: root.width - root.frameThickness, y: -pad,
+                width: root.frameThickness, height: root.height + 2 * pad,
+                radius: 0, fuse: 0, id: "frame-end" }
+            : { x: -pad, y: root.height - root.frameThickness,
+                width: root.width + 2 * pad, height: root.frameThickness,
+                radius: 0, fuse: 0, id: "frame-end" }
+    }
+    readonly property real joinEpsilon: 0.01
+    readonly property bool atTangentStart: root.horizontal
+        ? Math.abs(root.semanticPopup.x - root.tangentInset) <= root.joinEpsilon
+        : Math.abs(root.semanticPopup.y - root.tangentInset) <= root.joinEpsilon
+    readonly property bool atTangentEnd: root.horizontal
+        ? Math.abs(root.semanticPopup.x + root.semanticPopup.width
+            - (root.width - root.tangentInset)) <= root.joinEpsilon
+        : Math.abs(root.semanticPopup.y + root.semanticPopup.height
+            - (root.height - root.tangentInset)) <= root.joinEpsilon
+    readonly property var popupJoins: {
+        const joins = ["owner"]
+        if (root.atTangentStart)
+            joins.push("frame-start")
+        else if (root.atTangentEnd)
+            joins.push("frame-end")
+        return joins
+    }
+
     readonly property var popupShape: ({
         x: root.fieldPopup.x,
         y: root.fieldPopup.y,
@@ -124,7 +171,7 @@ PanelWindow {
         radius: root.popupRadius,
         fuse: root.fuse,
         id: "popup",
-        joins: "owner"
+        joins: root.popupJoins
     })
 
     screen: modelData
@@ -154,7 +201,12 @@ PanelWindow {
 
     IrisCornerField {
         anchors.fill: parent
-        shapes: [root.ownerShape, root.popupShape]
+        shapes: [
+            root.ownerShape,
+            root.frameStartShape,
+            root.frameEndShape,
+            root.popupShape
+        ]
         tint: "#f4c542"
         smoothing: root.fuse
     }
@@ -184,6 +236,27 @@ PanelWindow {
             : root.edgeName === "top" ? root.ownerThickness - 1 : 0
         width: root.horizontal ? root.width : 1
         height: root.horizontal ? 1 : root.height
+    }
+
+    // Tangent Screen Edge seams. At sourceT 0.02/0.98 one of these becomes
+    // the popup's second explicit join; at sourceT 0.50 both remain plain owners.
+    Rectangle {
+        visible: root.showGuides
+        color: "#ff4fd8"
+        z: 11
+        x: root.horizontal ? root.frameThickness - 1 : 0
+        y: root.horizontal ? 0 : root.frameThickness - 1
+        width: root.horizontal ? 1 : root.width
+        height: root.horizontal ? root.height : 1
+    }
+    Rectangle {
+        visible: root.showGuides
+        color: "#ff4fd8"
+        z: 11
+        x: root.horizontal ? root.width - root.frameThickness : 0
+        y: root.horizontal ? 0 : root.height - root.frameThickness
+        width: root.horizontal ? 1 : root.width
+        height: root.horizontal ? root.height : 1
     }
 
     Text {
@@ -221,6 +294,10 @@ PanelWindow {
             popupWidth: Number(root.semanticPopup.width),
             popupHeight: Number(root.semanticPopup.height),
             ownerThickness: Number(root.ownerThickness),
+            frameThickness: Number(root.frameThickness),
+            joins: root.popupJoins,
+            atTangentStart: root.atTangentStart,
+            atTangentEnd: root.atTangentEnd,
             radius: Number(root.popupRadius),
             fuse: Number(root.fuse),
             weld: Number(root.weld),

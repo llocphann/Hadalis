@@ -30,7 +30,12 @@ for token in (
 for token in (
     'id: "owner"',
     'id: "popup"',
-    'joins: "owner"',
+    'id: "frame-start"',
+    'id: "frame-end"',
+    'joins: root.popupJoins',
+    'const joins = ["owner"]',
+    'joins.push("frame-start")',
+    'joins.push("frame-end")',
     'root.geometryMode !== "edge-reach"',
     "Math.min(root.popupWidth, root.popupHeight) / 2 + 1",
     "root.ownerThickness - root.weld",
@@ -97,6 +102,7 @@ for token in (
     'root.upstreamRelative ? 30 : 48',
     'root.upstreamRelative ? 3 : 4',
     'root.upstreamRelative ? 30 : 56',
+    'HADALIS_IRIS_POC_FRAME_THICKNESS',
 ):
     assert token in window, f"profile morphology drifted: {token}"
 
@@ -113,6 +119,10 @@ for token in (
     "popupX: Number(root.semanticPopup.x)",
     "popupY: Number(root.semanticPopup.y)",
     "ownerThickness: Number(root.ownerThickness)",
+    "frameThickness: Number(root.frameThickness)",
+    "joins: root.popupJoins",
+    "atTangentStart: root.atTangentStart",
+    "atTangentEnd: root.atTangentEnd",
 ):
     assert token in window, f"capture metadata drifted: {token}"
 
@@ -188,7 +198,15 @@ assert upstream[-1] <= 0.6, upstream
 
 
 # The live visual matrix must cover every edge and both clamp extremes without
-# touching/restarting the production shell.
+# touching/restarting the production shell. The extremes are specifically the
+# two-owner case: primary owner plus perpendicular physical Screen Edge.
+assert 'shapes: [' in window
+assert "root.frameStartShape" in window
+assert "root.frameEndShape" in window
+assert "root.popupShape" in window
+assert "root.atTangentStart" in window
+assert "root.atTangentEnd" in window
+
 for token in (
     "for edge in top bottom left right",
     "for source_t in 0.02 0.50 0.98",

@@ -193,8 +193,10 @@ Item {
             obstacles.push(root._rectPixels(otherId))
         }
         const base = root._rectPixelsForGeometry(id, root._entryFor(id))
+        // Restored modules adapt themselves to the free region. Existing
+        // visible modules stay fixed; only the module being added may shrink.
         const resolved = root._resolveNeighbour(
-            base, id, obstacles, false)
+            base, id, obstacles, true)
         let blocked = false
         for (let i = 0; i < obstacles.length; ++i) {
             if (root._rectsOverlap(resolved, obstacles[i],
@@ -930,7 +932,7 @@ Item {
     }
 
     function _resolveLayout(activeId, activeRect, baselineRects,
-            allowResize) {
+            allowResize, localResizeOnly) {
         const result = ({})
         const activeMin = root._minimumSizeForCanvas(activeId)
         const fixedActive = root._fitRectToCanvas(activeRect, activeMin)
@@ -940,15 +942,30 @@ Item {
         const activeCenterX = activeBase.x + activeBase.width / 2
         const activeCenterY = activeBase.y + activeBase.height / 2
         const others = []
+        const directlyAffected = ({})
         for (let i = 0; i < root.visibleIds.length; ++i) {
             const id = String(root.visibleIds[i])
             if (id === activeId)
                 continue
+            const base = baselineRects[id] ?? root._rectPixels(id)
+            const affected = localResizeOnly === true
+                && root._rectsOverlap(
+                    fixedActive, base, root.collisionGap)
+            directlyAffected[id] = affected
+
+            // During resize, never propagate adjustment through the whole
+            // dashboard. Unaffected neighbours remain bit-for-bit at their
+            // immutable baseline. With auto-adjust disabled, every neighbour
+            // stays fixed and the active resize is clamped instead.
+            if (localResizeOnly === true
+                    && (!allowResize || !affected)) {
+                result[id] = root._cloneRect(base)
+                continue
+            }
             others.push(id)
         }
-        // Resolve closest neighbours first, then propagate outward. Combined
-        // with the immutable baseline this behaves like an elastic local pack:
-        // nearby widgets give way first and all recover as the pointer retreats.
+        // Resolve closest affected neighbours first. Move/drop keeps the
+        // existing insertion solver; resize is deliberately local.
         others.sort((a, b) => {
             const ar = baselineRects[a]
             const br = baselineRects[b]
@@ -960,6 +977,18 @@ Item {
         })
 
         const obstacles = [fixedActive]
+        if (localResizeOnly === true) {
+            // Fixed neighbours are obstacles, not participants. This prevents
+            // a resize from cascading through second- and third-order modules.
+            for (let i = 0; i < root.visibleIds.length; ++i) {
+                const id = String(root.visibleIds[i])
+                if (id === activeId || directlyAffected[id])
+                    continue
+                obstacles.push(result[id]
+                    ?? baselineRects[id] ?? root._rectPixels(id))
+            }
+        }
+
         for (let i = 0; i < others.length; ++i) {
             const id = others[i]
             const base = baselineRects[id] ?? root._rectPixels(id)
@@ -998,16 +1027,18 @@ Item {
     }
 
     function _resolveFeasibleLayout(activeId, startRect, desiredRect,
-            baselineRects, allowResize) {
+            baselineRects, allowResize, localResizeOnly) {
         const desired = root._resolveLayout(
-            activeId, desiredRect, baselineRects, allowResize)
+            activeId, desiredRect, baselineRects, allowResize,
+            localResizeOnly)
         if (!root._layoutHasOverlap(desired))
             return desired
 
         // If neighbours have reached their minimums/bounds, clamp the active
         // interaction to the last feasible point rather than allowing overlap.
         let best = root._resolveLayout(
-            activeId, startRect, baselineRects, allowResize)
+            activeId, startRect, baselineRects, allowResize,
+            localResizeOnly)
         let low = 0
         let high = 1
         for (let i = 0; i < 8; ++i) {
@@ -1015,7 +1046,8 @@ Item {
             const probeRect = root._interpolateRect(
                 startRect, desiredRect, mid)
             const probe = root._resolveLayout(
-                activeId, probeRect, baselineRects, allowResize)
+                activeId, probeRect, baselineRects, allowResize,
+                localResizeOnly)
             if (root._layoutHasOverlap(probe)) {
                 high = mid
             } else {
@@ -1162,7 +1194,7 @@ Item {
         }, edge, state.baselineRects)
         const resolved = root._resolveFeasibleLayout(
             state.id, start, desired, state.baselineRects,
-            root.autoAdjustSizeEnabled)
+            root.autoAdjustSizeEnabled, true)
         root._applyPreviewRects(resolved)
     }
 
@@ -1201,7 +1233,8 @@ Item {
                 && root.autoAdjustSizeEnabled
             const resolved = root._resolveFeasibleLayout(
                 state.id, state.startRect, snappedRect,
-                state.baselineRects, allowResize)
+                state.baselineRects, allowResize,
+                state.kind === "resize")
 
             // Pointer tracking ends before the final target is published. The
             // selected module and any displaced neighbours therefore settle into

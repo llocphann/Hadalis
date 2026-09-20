@@ -58,7 +58,10 @@ DashCard {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
-                layer.enabled: (GlobalStates.dashboardOpen || GlobalStates.overviewOpen) && root.visible && status === Image.Ready
+                // Dashboard/Overview semantic state flips before the exit slide
+                // finishes. Gate the mask by actual item visibility so the avatar
+                // stays circular until its last painted frame, then sleeps closed.
+                layer.enabled: root.visible && status === Image.Ready
                 layer.effect: GE.OpacityMask { maskSource: avatarMask }
             }
 

@@ -18,6 +18,9 @@ DashCard {
     TodoWidget {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        Layout.minimumHeight: 180
+        // DashboardCanvas owns the module minimum. Do not keep an internal
+        // 180px floor: it makes the empty-state center drift when the card is
+        // resized below that height.
+        Layout.minimumHeight: 0
     }
 }

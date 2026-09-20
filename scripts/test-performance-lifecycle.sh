@@ -142,7 +142,7 @@ require "$sidebar_right_media" 'GlobalStates.sidebarRightOpen && root.visible &&
 require "$control_panel_wallpaper" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel wallpaper mask must sleep while closed'
 require "$control_panel_wallpaper" 'mipmap: false' 'Control Panel wallpaper preview must not generate unused mipmaps'
 require "$dash_media" 'GlobalStates.dashboardOpen && root.visible && status === Image.Ready' 'Dashboard media mask must sleep while closed'
-require "$dash_welcome" 'GlobalStates.dashboardOpen && root.visible && status === Image.Ready' 'Dashboard avatar mask must sleep while closed'
+require "$dash_welcome" 'layer.enabled: root.visible && status === Image.Ready' 'Dashboard avatar mask must stay circular through the visible exit slide and sleep once hidden'
 require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'
 
 printf 'performance lifecycle guards: ok\n'

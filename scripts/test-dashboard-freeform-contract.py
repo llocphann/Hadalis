@@ -32,6 +32,8 @@ def main() -> None:
     calendar = read("modules/dashboard/DashCalendar.qml")
     month = read("modules/common/widgets/ObsidianMonthCalendar.qml")
     media = read("modules/dashboard/DashMedia.qml")
+    welcome = read("modules/dashboard/DashWelcome.qml")
+    todo = read("modules/dashboard/DashTodo.qml")
     dash_card = read("modules/dashboard/DashCard.qml")
     config = read("modules/common/Config.qml")
     defaults = read("defaults/config.json")
@@ -72,6 +74,10 @@ def main() -> None:
         'function _resolveLayout(',
         'function _resolveNeighbour(',
         'function _resolveFeasibleLayout(',
+        'localResizeOnly',
+        'const directlyAffected = ({})',
+        '&& root._rectsOverlap(',
+        'state.kind === "resize"',
         'function _layoutHasOverlap(',
         'function _persistPreviewLayout(',
         'function _smartAlignMove(',
@@ -81,6 +87,7 @@ def main() -> None:
         'readonly property real smartGuideThreshold:',
         'DashboardAlignmentGuides {',
         'A restored widget must join the same collision contract as drag/resize.',
+        'Existing visible modules stay fixed; only the module being added may shrink.',
         'case "system": return { width: 260, height: 180 }',
         'baselineRects: root._snapshotVisibleRects()',
         'root._applyPreviewRects(resolved)',
@@ -229,6 +236,14 @@ def main() -> None:
     require(standalone, "y: 0", "Dashboard.qml")
     forbid(overview, "width: Math.min(440,", "OverviewDashboard.qml")
     forbid(standalone, "width: Math.min(440,", "Dashboard.qml")
+
+    require(welcome,
+        "layer.enabled: root.visible && status === Image.Ready",
+        "DashWelcome.qml")
+    forbid(welcome,
+        "GlobalStates.dashboardOpen || GlobalStates.overviewOpen",
+        "DashWelcome avatar mask lifecycle")
+    require(todo, "Layout.minimumHeight: 0", "DashTodo.qml")
 
     require(canvas, "cursorShape: root.editMode", "DashboardCanvas.qml")
     require(canvas, ": Qt.ArrowCursor", "DashboardCanvas.qml")

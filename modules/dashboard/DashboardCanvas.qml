@@ -129,10 +129,13 @@ Item {
         return preview ?? root._entryFor(id)
     }
 
+    // Visibility is persisted state, not interaction-preview state. Keeping
+    // these lists independent from _preview prevents Repeater/model churn on
+    // every pointer frame while a module is moving or resizing.
     readonly property var visibleIds: root._allIds.filter(id =>
-        root.geometryFor(id).visible !== false)
+        root._entryFor(id).visible !== false)
     readonly property var hiddenIds: root._allIds.filter(id =>
-        root.geometryFor(id).visible === false)
+        root._entryFor(id).visible === false)
 
     function _entriesForWrite() {
         const stored = root._storedEntries()
@@ -897,12 +900,16 @@ Item {
         }
 
         Repeater {
-            model: root.visibleIds
+            // Keep delegate identity stable for the whole Dashboard lifetime.
+            // A JS-array model derived from _preview would recreate delegates
+            // during pointer updates and look like cards were blinking/chopping.
+            model: root._allIds
 
             delegate: Item {
                 id: cardWrap
                 required property var modelData
                 readonly property var px: root._rectPixels(String(modelData))
+                visible: root.geometryFor(String(modelData)).visible !== false
                 readonly property bool selected:
                     root.editMode && root.selectedId === String(modelData)
                 readonly property bool directlyManipulated:
@@ -976,6 +983,7 @@ Item {
                     Loader {
                         anchors.fill: parent
                         sourceComponent: root._widgetMap[String(cardWrap.modelData)] ?? null
+                        active: cardWrap.visible
                         enabled: !root.editMode
                         opacity: root.editMode ? 0.92 : 1
                         Behavior on opacity {

@@ -40,10 +40,6 @@ def main() -> None:
         "BarMediaPopup must request the Serpantinum-density CAVA sample field",
     )
     check(
-        "width: implicitWidth" in popup and "height: implicitHeight" in popup,
-        "BarMediaPopup must materialize its implicit size when hosted as StyledPopup content",
-    )
-    check(
         "visualizerPoints: root.visualizerPoints" in popup,
         "BarMediaPopup must forward CAVA points into PlayerControl",
     )

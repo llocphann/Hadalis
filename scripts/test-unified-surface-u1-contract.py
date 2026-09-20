@@ -16,6 +16,7 @@ REQUIRED_TEXT = [
     U1 / "build-shader.sh",
     U1 / "verify-shader-package.sh",
     U1 / "smoke-headless-sway.py",
+    U1 / "validate-live-niri.py",
     U1 / "run-u1.sh",
     U1 / "README.md",
 ]
@@ -28,6 +29,7 @@ frag = (U1 / "U1Surface.frag").read_text()
 build = (U1 / "build-shader.sh").read_text()
 verify = (U1 / "verify-shader-package.sh").read_text()
 smoke = (U1 / "smoke-headless-sway.py").read_text()
+live = (U1 / "validate-live-niri.py").read_text()
 combined = qml + "\n" + frag
 
 for forbidden in (
@@ -69,11 +71,14 @@ assert "Math.floor(value * dpr) / dpr" in qml
 assert "Math.ceil(value * dpr) / dpr" in qml
 assert "FrameAnimation" in qml
 assert "HADALIS_U1_BENCHMARK" in qml
+assert "HADALIS_U1_SOURCE_T" in qml
+assert "HADALIS_U1_GEOMETRY" in qml
 
 for network_tool in ("curl ", "wget "):
     assert network_tool not in build, "shader baker must not download at build/runtime"
     assert network_tool not in verify, "shader verifier must not download at build/runtime"
     assert network_tool not in smoke, "headless smoke must not download at runtime"
+    assert network_tool not in live, "live Niri validator must not download at runtime"
 
 for extracted in ("reflect", "spirv,100", "glsl,300es", "glsl,330"):
     assert extracted in verify, f"semantic QSB verifier missing extraction: {extracted}"
@@ -97,3 +102,17 @@ qsb = U1 / "U1Surface.qsb"
 assert qsb.is_file() and qsb.stat().st_size > 0, "committed U1Surface.qsb is required"
 
 print("unified-surface U1 static contract: PASS")
+
+
+for live_invariant in (
+    '"niri", "-c"',
+    '"msg", "output"',
+    '"scale"',
+    '"bounded"',
+    '"full"',
+    "component_sizes",
+    "crop_iou",
+    "HADALIS_U1_SOURCE_T",
+    "HADALIS_U1_GEOMETRY",
+):
+    assert live_invariant in live, f"live Niri validator lost invariant: {live_invariant}"

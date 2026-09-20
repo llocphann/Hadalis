@@ -152,3 +152,44 @@ This smoke **does not** validate the SDF shader, topology, AA, GPU performance o
 Niri stacking. QSB semantic equivalence is checked separately in CI. Actual
 pixels are reserved for the live-Niri GPU validator so a missing CI GPU cannot
 produce a false renderer failure.
+
+
+## Live nested-Niri GPU validation
+
+Pixel/topology validation must run where a real DRM/GPU render path exists.
+`validate-live-niri.py` starts a **new nested Niri instance** inside the current
+Wayland session. It never edits or reloads the host Niri configuration.
+
+Quick iteration:
+
+```sh
+python3 scripts/unified-surface/validate-live-niri.py
+```
+
+Required fractional-scale matrix before U1 can be considered topology-complete:
+
+```sh
+python3 scripts/unified-surface/validate-live-niri.py \
+  --scales 1 1.25 1.5 1.75 2 \
+  --benchmark
+```
+
+For each scale the validator tests top/bottom/left/right with synthetic source
+positions `0.02`, `0.5`, and `0.98`. The extremes force normal placement
+clamping without introducing a topology flag. Every case renders both bounded
+and full-output variants, captures the nested output with `grim`, and checks:
+
+- the strong material mask has one dominant connected component;
+- bounded and full renderings agree in the bounded material region;
+- clamped popup geometry is produced by ordinary placement;
+- the renderer receives only generic `sourceT`/rectangle data;
+- QML/RHI/shader load errors are absent.
+
+The report records both Niri's fractional output scale and Quickshell's reported
+DPR. They are intentionally not assumed to be identical. If they differ, the
+bounded-vs-full comparison determines whether the clipping strategy is still
+correct rather than adding a one-pixel compensation patch.
+
+`--benchmark` additionally compares control, bounded and full modes using the
+existing FrameAnimation instrumentation. Evidence is kept in a fresh
+`/tmp/hadalis-u1-live-*` directory unless `--work-dir` is supplied.

@@ -108,7 +108,7 @@ PanelWindow {
 
     // Fake module anchor. Moving it changes only popup placement data; the shader
     // has no module identity, edge-contact flag, or corner-selection state.
-    property real sourceT: 0.5
+    property real sourceT: clamp(envReal("HADALIS_U1_SOURCE_T", 0.5), 0, 1)
     property real reveal: 1.0
     readonly property real tangentCenter: horizontal
         ? width * sourceT
@@ -227,6 +227,34 @@ PanelWindow {
         PauseAnimation { duration: 350 }
     }
 
+    function rectObject(value) {
+        return {
+            x: value.x,
+            y: value.y,
+            width: value.width,
+            height: value.height
+        }
+    }
+
+    function geometryReport() {
+        return {
+            version: 1,
+            output: String(modelData?.name ?? ""),
+            edge: edge,
+            layer: layerMode,
+            mode: renderMode,
+            dpr: dpr,
+            width: width,
+            height: height,
+            sourceT: sourceT,
+            smoothK: smoothK,
+            frameOuter: rectObject(frameOuter),
+            frameInner: rectObject(frameInner),
+            popupRect: rectObject(popupRect),
+            effectRect: rectObject(effectRect)
+        }
+    }
+
     property var benchmarkSamples: []
     property int benchmarkSeen: 0
     property bool benchmarkReported: false
@@ -282,6 +310,18 @@ PanelWindow {
     FrameAnimation {
         running: root.benchmarkEnabled && !root.benchmarkReported
         onTriggered: root.recordFrame(frameTime)
+    }
+
+    Timer {
+        interval: 50
+        repeat: true
+        running: true
+        onTriggered: {
+            if (root.width <= 0 || root.height <= 0)
+                return
+            console.log("HADALIS_U1_GEOMETRY " + JSON.stringify(root.geometryReport()))
+            stop()
+        }
     }
 
     Component.onCompleted: {

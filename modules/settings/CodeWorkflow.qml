@@ -184,6 +184,16 @@ Item {
                     === CodeWorkflowSession.selectedConnectTargetId
                 && String(command.sourcePath ?? "") === root.sourcePath
         }
+        if (String(command.kind ?? "") === "disconnect-binding") {
+            return root.selectedIrEdge !== null
+                && String(command.targetId ?? "")
+                    === CodeWorkflowSession.subflowTargetId
+                && String(command.reviewedEdgeId ?? "")
+                    === String(root.selectedIrEdge?.id ?? "")
+                && String(command.sourcePath ?? "") === root.sourcePath
+                && String(command.semanticAnchor ?? "")
+                    === root.storedSemanticAnchor
+        }
         return CodeWorkflowTransaction.sourcePath === root.sourcePath
             && CodeWorkflowTransaction.semanticAnchor
                 === root.storedSemanticAnchor
@@ -215,6 +225,39 @@ Item {
         case "connect-rollback-conflict":
             return "ROLLBACK CONFLICT"
         case "connect-rollback-failed":
+            return "ROLLBACK FAILED"
+        default:
+            return phase.toUpperCase()
+        }
+    }
+
+    readonly property string disconnectLifecyclePhaseText: {
+        const phase = String(
+            CodeWorkflowTransaction.pendingDisconnectPhase ?? "idle")
+        switch (phase) {
+        case "write-issued":
+            return "WRITING SOURCE"
+        case "waiting-reload":
+            return "WAITING FOR RELOAD"
+        case "candidate-verify-issued":
+            return "VERIFYING CANDIDATE"
+        case "postcondition-checking":
+            return "VERIFYING BINDING ABSENCE"
+        case "rollback-pending":
+            return "ROLLBACK PENDING"
+        case "rollback-issued":
+            return "RESTORING SNAPSHOT"
+        case "rollback-waiting-reload":
+            return "WAITING FOR ROLLBACK RELOAD"
+        case "rollback-verify-issued":
+            return "VERIFYING ROLLBACK"
+        case "disconnect-commit-conflict":
+            return "COMMIT CONFLICT"
+        case "disconnect-commit-failed":
+            return "COMMIT FAILED"
+        case "disconnect-rollback-conflict":
+            return "ROLLBACK CONFLICT"
+        case "disconnect-rollback-failed":
             return "ROLLBACK FAILED"
         default:
             return phase.toUpperCase()
@@ -378,7 +421,9 @@ Item {
             root.sourcePath,
             baseSha,
             root.storedSemanticAnchor,
-            expected)
+            expected,
+            CodeWorkflowSession.subflowTargetId,
+            String(root.selectedIrEdge?.id ?? ""))
     }
 
     function evaluatePreApplyGate(): void {
@@ -934,7 +979,10 @@ Item {
                         text: root.selectedConnectTarget !== null
                             ? "Phase 2 Connect · preview + guarded artifact preparation"
                             : root.selectedIrEdge !== null
-                                ? "Phase 2 edge retarget · preview only"
+                                ? String(root.selectedIrEdge?.id ?? "")
+                                        === "clock.data.time"
+                                    ? "Phase 2 Disconnect · reviewed transactional Apply"
+                                    : "Phase 2 edge retarget · preview only"
                                 : root.bindingPreviewEligible
                                     ? "Phase 2 direct binding · preview only"
                                     : "Phase 2 literal edit · guarded Apply"
@@ -1021,7 +1069,7 @@ Item {
                     Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Literal-property Apply remains independently qualified. Direct bindings and Disconnect are preview-only. Connect Apply requires one exact prepared + authorized handoff and uses the qualified transactional reload/rebind/rollback lifecycle."
+                        text: "Literal-property Apply remains independently qualified. Direct bindings remain preview-only. Connect Apply requires its exact prepared + authorized handoff. Disconnect Apply is restricted to reviewed clock.data.time and requires exact deletion artifacts + explicit authorization."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -1034,7 +1082,12 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: CodeWorkflowTransaction.dirty
                 ? (CodeWorkflowTransaction.activeCommand?.kind
-                        === "connect-binding" ? 316 : 118)
+                        === "connect-binding"
+                    ? 316
+                    : CodeWorkflowTransaction.activeCommand?.kind
+                            === "disconnect-binding"
+                        ? 300
+                        : 118)
                 : 0
             visible: CodeWorkflowTransaction.dirty
             radius: Appearance.rounding.normal
@@ -1106,13 +1159,30 @@ Item {
                                                     : CodeWorkflowTransaction.connectPreparationBusy
                                                         ? "CONNECT CHECKING"
                                                         : "PREVIEW ONLY"
-                            : [
-                                "direct-binding",
-                                "disconnect-binding"
-                            ].includes(
-                                    CodeWorkflowTransaction.activeCommand?.kind)
-                                ? "PREVIEW ONLY"
-                                : CodeWorkflowTransaction.applyEnabled
+                            : CodeWorkflowTransaction.activeCommand?.kind
+                                    === "disconnect-binding"
+                                ? CodeWorkflowTransaction.disconnectLifecycleBusy
+                                    ? "DISCONNECT APPLY · "
+                                        + root.disconnectLifecyclePhaseText
+                                    : CodeWorkflowTransaction.status
+                                            === "disconnect-applied"
+                                        ? "DISCONNECT APPLIED"
+                                        : CodeWorkflowTransaction.status
+                                                === "disconnect-rollback-complete"
+                                            ? "DISCONNECT ROLLED BACK"
+                                            : CodeWorkflowTransaction.disconnectApplyEnabled
+                                                ? "DISCONNECT APPLY READY"
+                                                : CodeWorkflowTransaction.disconnectAuthorizationReady
+                                                    ? "DISCONNECT AUTHORIZED"
+                                                    : CodeWorkflowTransaction.disconnectArtifactsReady
+                                                        ? "DISCONNECT READY · AUTHORIZATION REQUIRED"
+                                                        : CodeWorkflowTransaction.disconnectPreparationBusy
+                                                            ? "DISCONNECT PREPARING"
+                                                            : "PREVIEW ONLY"
+                                : CodeWorkflowTransaction.activeCommand?.kind
+                                        === "direct-binding"
+                                    ? "PREVIEW ONLY"
+                                    : CodeWorkflowTransaction.applyEnabled
                                     && root.transactionMatchesSelection
                                 ? "APPLY READY"
                                 : CodeWorkflowTransaction.applyArtifactsReady
@@ -1125,6 +1195,12 @@ Item {
                                 && (CodeWorkflowTransaction.connectArtifactsReady
                                     || CodeWorkflowTransaction
                                         .connectAuthorizationReady)
+                            ? Appearance.colors.colPrimary
+                            : CodeWorkflowTransaction.activeCommand?.kind
+                                    === "disconnect-binding"
+                                && (CodeWorkflowTransaction.disconnectArtifactsReady
+                                    || CodeWorkflowTransaction
+                                        .disconnectAuthorizationReady)
                             ? Appearance.colors.colPrimary
                             : [
                                 "direct-binding",
@@ -1195,6 +1271,58 @@ Item {
                                 "user-revoked")
                     }
                     RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "disconnect-binding"
+                            && root.transactionMatchesSelection
+                        materialIcon: "inventory_2"
+                        mainText: CodeWorkflowTransaction.disconnectArtifactsReady
+                            ? "Disconnect artifacts prepared"
+                            : "Prepare Disconnect artifacts"
+                        enabled: CodeWorkflowTransaction.disconnectPrepareEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.prepareDisconnectArtifacts()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "disconnect-binding"
+                            && CodeWorkflowTransaction.disconnectArtifactsReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "verified_user"
+                        mainText: CodeWorkflowTransaction.disconnectAuthorizationReady
+                            ? "Disconnect write authorized"
+                            : "Authorize Disconnect write"
+                        enabled: CodeWorkflowTransaction.disconnectAuthorizeEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.authorizeDisconnectWrite()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "disconnect-binding"
+                            && CodeWorkflowTransaction.disconnectAuthorizationReady
+                            && !CodeWorkflowTransaction.disconnectLifecycleBusy
+                            && root.transactionMatchesSelection
+                        materialIcon: "link_off"
+                        mainText: "Apply Disconnect"
+                        enabled: CodeWorkflowTransaction.disconnectApplyEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.beginAuthorizedDisconnectApply()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "disconnect-binding"
+                            && CodeWorkflowTransaction.disconnectAuthorizationReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "gpp_bad"
+                        mainText: "Revoke Disconnect authorization"
+                        enabled: !CodeWorkflowTransaction.disconnectLifecycleBusy
+                        onClicked:
+                            CodeWorkflowTransaction.revokeDisconnectAuthorization(
+                                "user-revoked")
+                    }
+                    RippleButtonWithIcon {
                         visible: CodeWorkflowTransaction.preApplyReady
                             && !CodeWorkflowTransaction.applyArtifactsReady
                         materialIcon: "inventory_2"
@@ -1232,8 +1360,14 @@ Item {
                         enabled: root.transactionMatchesSelection
                             && !CodeWorkflowTransaction.connectPreparationBusy
                             && !CodeWorkflowTransaction.connectLifecycleBusy
+                            && !CodeWorkflowTransaction.disconnectPreparationBusy
+                            && !CodeWorkflowTransaction.disconnectLifecycleBusy
+                            && !CodeWorkflowTransaction.disconnectPreparationBusy
+                            && !CodeWorkflowTransaction.disconnectLifecycleBusy
                             && (CodeWorkflowTransaction.activeCommand?.kind
                                     === "connect-binding"
+                                || CodeWorkflowTransaction.activeCommand?.kind
+                                        === "disconnect-binding"
                                 || CodeWorkflowAnalyzer.status === "ready")
                         onClicked: root.regenerateTransaction()
                     }
@@ -1406,6 +1540,106 @@ Item {
                         .length > 0
                     text: "Prepare Connect artifacts: "
                         + CodeWorkflowTransaction.connectPreparationError
+                    color: Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.disconnectArtifactsReady
+                    text: "Disconnect artifacts prepared · exact rollback snapshot + deletion candidate + manifest are stored in shell state · tracked source QML is unchanged"
+                    color: Appearance.colors.colPrimary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.disconnectArtifactsReady
+                    text: "Disconnect identity · "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.reviewedEdgeId ?? "")
+                        + " · text ← "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.expectedCurrent ?? "")
+                        + " · postcondition OLD ANCHOR MISSING"
+                    color: Appearance.colors.colOnLayer1
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.disconnectArtifactsReady
+                    text: "Deletion safety · exact binding/property/expression identity + exact candidate SHA + semantic-anchor-missing · no TYPE/CYCLE proof is used for Disconnect"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.disconnectArtifactsReady
+                    text: CodeWorkflowTransaction.disconnectAuthorizationReady
+                        ? "Disconnect authorization ACTIVE · bound to this exact manifest SHA/history command · Apply Disconnect may consume it once · exact-snapshot rollback is qualified"
+                        : "Disconnect authorization REQUIRED · source/history drift expires it · Apply Disconnect stays disabled until explicit authorization"
+                    color: CodeWorkflowTransaction.disconnectAuthorizationReady
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colTertiary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "disconnect-binding"
+                        && (CodeWorkflowTransaction.disconnectLifecycleBusy
+                            || CodeWorkflowTransaction.disconnectLifecycleError
+                                .length > 0
+                            || Object.keys(
+                                CodeWorkflowTransaction
+                                    .disconnectLifecycleResult ?? {}
+                            ).length > 0)
+                    text: CodeWorkflowTransaction.disconnectLifecycleBusy
+                        ? "Disconnect Apply lifecycle · "
+                            + root.disconnectLifecyclePhaseText
+                            + " · mutation/history/preparation controls are locked"
+                        : CodeWorkflowTransaction.status === "disconnect-applied"
+                            ? "Disconnect Apply complete · candidate verified and old semantic anchor is absent · authorization consumed · regenerate before another write"
+                            : CodeWorkflowTransaction.status
+                                    === "disconnect-rollback-complete"
+                                ? "Disconnect Apply rolled back · exact base snapshot verified · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .disconnectLifecycleError ?? "")
+                                : "Disconnect Apply stopped · "
+                                    + root.disconnectLifecyclePhaseText
+                                    + " · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .disconnectLifecycleError ?? "")
+                    color: CodeWorkflowTransaction.status
+                            === "disconnect-applied"
+                        ? Appearance.colors.colPrimary
+                        : CodeWorkflowTransaction.disconnectLifecycleBusy
+                            ? Appearance.colors.colTertiary
+                            : Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.disconnectPreparationError
+                        .length > 0
+                    text: "Prepare Disconnect artifacts: "
+                        + CodeWorkflowTransaction.disconnectPreparationError
                     color: Appearance.colors.colError
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     wrapMode: Text.WordWrap

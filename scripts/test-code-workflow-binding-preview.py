@@ -108,7 +108,7 @@ for token in (
     '"Preview binding patch"',
     '"PREVIEW ONLY"',
     "Literal-property Apply remains independently qualified.",
-    "Direct bindings and Disconnect are preview-only.",
+    "Direct bindings remain preview-only.",
 ):
     if token not in page:
         fail("binding preview UI missing " + token)

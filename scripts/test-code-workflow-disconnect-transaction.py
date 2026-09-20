@@ -268,10 +268,11 @@ for helper in (
     "scripts/code-workflow/disconnect_prepare.py",
     "scripts/code-workflow/disconnect_commit.py",
 ):
-    if helper not in EXCLUSIONS.get("excludedPaths", []):
-        fail("2K-T-A helper must remain outside runtime payload: " + helper)
-    if helper in SERVICE or helper in PAGE:
-        fail("2K-T-A helper must not be production-wired yet: " + helper)
+    if helper in PAGE:
+        fail("Settings must never invoke Disconnect helper directly: " + helper)
+
+# 2K-T-A proves the engine semantics independently of the later T-B runtime
+# promotion. Runtime inclusion/wiring is owned by the T-B contract.
 
 if "Milestone 2K-T-A — isolated reviewed Disconnect transaction proof" not in PHASE2:
     fail("Phase 2 status must document 2K-T-A")

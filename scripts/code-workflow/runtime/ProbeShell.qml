@@ -178,7 +178,33 @@ ShellRoot {
                 activeConnectSafety:
                     CodeWorkflowTransaction.activeConnectSafety,
                 activeConnectPreparation:
-                    CodeWorkflowTransaction.activeConnectPreparation
+                    CodeWorkflowTransaction.activeConnectPreparation,
+                disconnectPreparationBusy:
+                    CodeWorkflowTransaction.disconnectPreparationBusy,
+                disconnectArtifactsReady:
+                    CodeWorkflowTransaction.disconnectArtifactsReady,
+                disconnectPreparationError:
+                    CodeWorkflowTransaction.disconnectPreparationError,
+                disconnectLifecycleBusy:
+                    CodeWorkflowTransaction.disconnectLifecycleBusy,
+                pendingDisconnectPhase:
+                    CodeWorkflowTransaction.pendingDisconnectPhase,
+                disconnectLifecycleError:
+                    CodeWorkflowTransaction.disconnectLifecycleError,
+                disconnectLifecycleResult:
+                    CodeWorkflowTransaction.disconnectLifecycleResult,
+                disconnectAuthorizationReady:
+                    CodeWorkflowTransaction.disconnectAuthorizationReady,
+                disconnectAuthorizeEnabled:
+                    CodeWorkflowTransaction.disconnectAuthorizeEnabled,
+                disconnectApplyEnabled:
+                    CodeWorkflowTransaction.disconnectApplyEnabled,
+                disconnectAuthorizationDiagnostics:
+                    CodeWorkflowTransaction.disconnectAuthorizationDiagnostics,
+                activeDisconnectAuthorization:
+                    CodeWorkflowTransaction.activeDisconnectAuthorization,
+                activeDisconnectPreparation:
+                    CodeWorkflowTransaction.activeDisconnectPreparation
             }
             report.mediaActions = RuntimeRegistry.mediaActions
             report.mediaPopupsOpen = Object.values(RuntimeRegistry.entries).some(p =>
@@ -263,6 +289,75 @@ ShellRoot {
         function workflowBeginLifecycle(): bool {
             return CodeWorkflowTransaction.beginApplyLifecycle()
         }
+        function workflowDisconnectAnalyze(): void {
+            CodeWorkflowAnalyzer.request(
+                "modules/bar/ClockWidget.qml",
+                "text: DateTime.timeDisplay",
+                "",
+                true)
+        }
+        function workflowDisconnectAnalyzeDate(): void {
+            CodeWorkflowAnalyzer.request(
+                "modules/bar/ClockWidget.qml",
+                "text: DateTime.date",
+                "",
+                true)
+        }
+        function workflowDisconnectPreview(): bool {
+            const anchor = String(
+                CodeWorkflowAnalyzer.reviewedAnchor
+                    ?.semanticAnchor ?? "")
+            const sha = String(
+                CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+            if (anchor.length === 0 || sha.length === 0)
+                return false
+            return CodeWorkflowTransaction.previewDisconnectBinding(
+                "modules/bar/ClockWidget.qml",
+                sha,
+                anchor,
+                "DateTime.timeDisplay",
+                "bar/clock",
+                "clock.data.time")
+        }
+        function workflowDisconnectPrepare(): bool {
+            return CodeWorkflowTransaction.prepareDisconnectArtifacts()
+        }
+        function workflowDisconnectAuthorize(): bool {
+            return CodeWorkflowTransaction.authorizeDisconnectWrite()
+        }
+        function workflowDisconnectRevoke(): bool {
+            return CodeWorkflowTransaction.revokeDisconnectAuthorization(
+                "probe-user-revoked")
+        }
+        function workflowDisconnectApply(): bool {
+            return CodeWorkflowTransaction.beginAuthorizedDisconnectApply()
+        }
+        function workflowDisconnectOverridePreparedAnchor(
+            anchor: string,
+            manifestSha256: string
+        ): bool {
+            const index = CodeWorkflowTransaction.historyIndex
+            const command = CodeWorkflowTransaction.activeCommand
+            if (index < 0
+                    || !command
+                    || !command.disconnectPreparation)
+                return false
+            const next = CodeWorkflowTransaction.history.slice()
+            next[index] = Object.assign({}, command, {
+                semanticAnchor: String(anchor ?? ""),
+                disconnectPreparation: Object.assign(
+                    {},
+                    command.disconnectPreparation,
+                    {
+                        semanticAnchor: String(anchor ?? ""),
+                        manifestSha256:
+                            String(manifestSha256 ?? "")
+                    })
+            })
+            CodeWorkflowTransaction.history = next
+            return true
+        }
+
         function workflowConnectPreview(): bool {
             return CodeWorkflowTransaction.previewConnectBinding(
                 "bar/clock",

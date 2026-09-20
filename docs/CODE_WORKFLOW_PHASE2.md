@@ -1006,13 +1006,62 @@ Implemented the first non-production Disconnect transaction boundary:
   binding to prove preparation, exact artifacts, commit, verify, rollback,
   manifest-drift rejection and source-conflict preservation.
 
+## Milestone 2K-T-B — reviewed Disconnect production lifecycle
+
+Implemented production write boundary for the first reviewed Disconnect edge:
+
+- Disconnect preview commands now retain `graphTargetId + reviewedEdgeId`.
+  Settings binds the command to the currently selected edge, so a preview from
+  one edge cannot be applied while another edge is selected.
+- Production preparation is enabled only for
+  `bar/clock → clock.data.time`, source
+  `modules/bar/ClockWidget.qml`, binding `text`, expression
+  `DateTime.timeDisplay`. Other Disconnect previews remain non-writing.
+- `disconnect_prepare.py` and `disconnect_commit.py` are promoted into the
+  runtime payload. Preparation remains non-writing and returns exact mode-0600
+  snapshot/candidate/manifest artifacts plus a manifest SHA-256 handoff.
+- `disconnectPreparation` is retained on the exact history command. Source
+  drift marks the preparation stale and expires any authorization.
+- Explicit authorization uses
+  `explicit-disconnect-write-authorization-v1`. It binds graph/edge IDs,
+  source/base/candidate SHA, old semantic anchor, property/expression identity,
+  resulting unbound/default state, `semantic-anchor-missing` postcondition,
+  transaction ID, manifest path/SHA and exact-snapshot rollback guarantee.
+- Disconnect authorization deliberately contains no Connect qualification,
+  TYPE or CYCLE proof fields. Deletion safety remains exact identity + exact
+  candidate + post-delete absence.
+- Settings exposes `Prepare Disconnect artifacts` →
+  `Authorize Disconnect write` → `Apply Disconnect` only for the reviewed
+  edge and selected matching transaction. Apply consumes the existing
+  authorization exactly once; it never reparses, reprepares or reauthorizes
+  implicitly.
+- The lifecycle has its own persisted `pendingDisconnect*` state:
+  atomic source commit, watcher reload, candidate SHA verification,
+  `semantic-anchor-missing` Analyzer postcondition, automatic exact rollback,
+  rollback reload and rollback verification.
+- Candidate success is accepted only when Analyzer is READY on the candidate
+  SHA with zero diagnostics and the old semantic anchor resolves as
+  `missing`. A surviving old anchor is a lifecycle failure and triggers
+  rollback.
+- Authorization is preserved across only the shell generations owned by an
+  active Disconnect lifecycle. Ordinary cross-generation restore, history
+  selection change, source drift, terminal failure, success or rollback
+  expires authorization.
+- Live isolated acceptance uses the real Clock source. It proves an authorized
+  Disconnect starts exactly once and reaches `disconnect-applied`; a
+  probe-only exact-manifest fixture redirects the postcondition to a surviving
+  Date binding so production lifecycle detection triggers
+  `disconnect-rolled-back` and restores the exact snapshot.
+- The production source-writing subset is now: qualified literal-property
+  Apply, the first reviewed prepared+authorized Connect command, and the single
+  reviewed `clock.data.time` Disconnect deletion.
+
 ## Not implemented yet
 
-- applying direct binding transforms;
-- production Disconnect preparation/authorization/lifecycle/Apply;
-- dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
+- applying direct binding replacement transforms;
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond `clock.data.time`;
+- dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -1020,18 +1069,15 @@ Implemented the first non-production Disconnect transaction boundary:
 
 ## Next gate
 
-2K-T-A proves the Disconnect-specific artifact and atomic mutation contract
-without production wiring. The next stage, 2K-T-B, should promote that exact
-reviewed target into `CodeWorkflowTransaction` while preserving the same
-separation that qualified Connect: preparation first, then a distinct explicit
-authorization snapshot, then an exactly-once user Apply lifecycle.
+2K-T-B completes the first end-to-end deletion lifecycle. The next mutation
+gate should qualify direct-binding replacement independently rather than
+generalizing the Disconnect allowlist by assumption.
 
-2K-T-B must bind authorization to the exact manifest SHA/history command and
-must expose no TYPE/CYCLE language. After candidate reload it must verify the
-candidate SHA and prove the old semantic anchor is still `missing`; failure of
-reload, candidate verification or absence postcondition must invoke exact
-rollback. History/source drift, capability loss or manifest drift must expire
-authorization before write.
+A direct-binding replacement gate must prove exact current expression identity,
+exact candidate SHA, parser-clean replacement, explicit authorization and
+reload/rebind/rollback behavior. It must not inherit Connect TYPE/CYCLE proof
+tokens unless a separately reviewed replacement requires and qualifies those
+proofs. Existing non-reviewed Disconnect edges remain preview-only until each is
+explicitly promoted.
 
-Direct-binding replacement remains preview-only until its own proof and
-authorization gate is qualified. Multi-file writes remain out of scope.
+Multi-file writes remain out of scope.

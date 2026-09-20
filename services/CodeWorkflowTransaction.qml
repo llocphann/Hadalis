@@ -33,6 +33,8 @@ Singleton {
     property string _pendingExpectedCurrent: ""
     property string _pendingConnectGraphTargetId: ""
     property string _pendingConnectTargetId: ""
+    property string _pendingDisconnectGraphTargetId: ""
+    property string _pendingDisconnectEdgeId: ""
     property int _pendingConnectSafetyIndex: -1
     property string _pendingConnectSafetyCandidateSha: ""
     property int _pendingConnectPreparationIndex: -1
@@ -48,6 +50,14 @@ Singleton {
     property string connectPreparationError: ""
     property var connectLifecycleResult: ({})
     property string connectLifecycleError: ""
+    property string disconnectPreparationError: ""
+    property var disconnectLifecycleResult: ({})
+    property string disconnectLifecycleError: ""
+    property var disconnectAuthorizationDiagnostics: ({
+        status: "not-authorized",
+        ready: false,
+        reason: "not-authorized"
+    })
     property var connectAuthorizationDiagnostics: ({
         status: "not-authorized",
         ready: false,
@@ -104,6 +114,7 @@ Singleton {
         && Quickshell.watchFiles
         && !root.applyLifecycleBusy
         && !root.connectLifecycleBusy
+        && !root.disconnectLifecycleBusy
         && reloadState.pendingApplyManifestPath.length > 0
     readonly property bool previewBusy:
         previewProcess.running || connectPreviewProcess.running
@@ -111,6 +122,82 @@ Singleton {
         connectSafetyProcess.running
     readonly property bool connectPreparationBusy:
         connectCapabilityProcess.running || connectPrepareProcess.running
+    readonly property bool disconnectPreparationBusy:
+        disconnectPrepareProcess.running
+    readonly property bool disconnectLifecycleBusy:
+        [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "postcondition-checking",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ].includes(reloadState.pendingDisconnectPhase)
+        || disconnectCommitProcess.running
+        || disconnectVerifyProcess.running
+        || disconnectRollbackProcess.running
+    readonly property string pendingDisconnectPhase:
+        reloadState.pendingDisconnectPhase
+    readonly property var activeDisconnectPreparation:
+        root._disconnectPreparationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.disconnectPreparation
+            : null
+    readonly property bool disconnectArtifactsReady:
+        root.activeDisconnectPreparation !== null
+    readonly property var activeDisconnectAuthorization:
+        root._disconnectAuthorizationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.disconnectAuthorization
+            : null
+    readonly property bool disconnectAuthorizationReady:
+        root.activeDisconnectAuthorization !== null
+        && root.disconnectArtifactsReady
+        && root.activeCommand?.stale !== true
+    readonly property bool disconnectPrepareEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "disconnect-binding"
+        && String(root.activeCommand?.targetId ?? "") === "bar/clock"
+        && String(root.activeCommand?.reviewedEdgeId ?? "")
+            === "clock.data.time"
+        && String(root.activeCommand?.sourcePath ?? "")
+            === "modules/bar/ClockWidget.qml"
+        && root.activeCommand?.sourceWritable === true
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.applyLifecycleBusy
+        && !root.disconnectArtifactsReady
+    readonly property bool disconnectAuthorizeEnabled:
+        root.disconnectArtifactsReady
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.applyLifecycleBusy
+        && !root.disconnectAuthorizationReady
+    readonly property bool disconnectApplyEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "disconnect-binding"
+        && root.disconnectAuthorizationReady
+        && root.disconnectArtifactsReady
+        && root.status === "preview"
+        && Quickshell.watchFiles
+        && reloadState.pendingDisconnectPhase === "idle"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.applyLifecycleBusy
     readonly property bool connectLifecycleBusy:
         [
             "write-issued",
@@ -158,6 +245,8 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
         && !root.applyLifecycleBusy
         && !root.connectAuthorizationReady
     readonly property bool connectApplyEnabled:
@@ -173,6 +262,8 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
         && !root.applyLifecycleBusy
     readonly property bool connectPrepareEnabled:
         !!root.activeCommand
@@ -184,6 +275,8 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && !root.connectArtifactsReady
@@ -192,6 +285,8 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex >= 0
@@ -200,6 +295,8 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex + 1 < root.history.length
@@ -223,6 +320,8 @@ Singleton {
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && !root.connectLifecycleBusy
+        && !root.disconnectLifecycleBusy
+        && !root.disconnectPreparationBusy
 
     readonly property string reloadStateJson: JSON.stringify({
         version: 1,
@@ -284,7 +383,37 @@ Singleton {
         pendingConnectRollbackRecovery:
             reloadState.pendingConnectRollbackRecovery,
         pendingConnectError:
-            reloadState.pendingConnectError
+            reloadState.pendingConnectError,
+        pendingDisconnectPhase:
+            reloadState.pendingDisconnectPhase,
+        pendingDisconnectGraphTargetId:
+            reloadState.pendingDisconnectGraphTargetId,
+        pendingDisconnectEdgeId:
+            reloadState.pendingDisconnectEdgeId,
+        pendingDisconnectSourcePath:
+            reloadState.pendingDisconnectSourcePath,
+        pendingDisconnectBaseSha256:
+            reloadState.pendingDisconnectBaseSha256,
+        pendingDisconnectCandidateSha256:
+            reloadState.pendingDisconnectCandidateSha256,
+        pendingDisconnectSemanticAnchor:
+            reloadState.pendingDisconnectSemanticAnchor,
+        pendingDisconnectHistoryIndex:
+            reloadState.pendingDisconnectHistoryIndex,
+        pendingDisconnectManifestPath:
+            reloadState.pendingDisconnectManifestPath,
+        pendingDisconnectManifestSha256:
+            reloadState.pendingDisconnectManifestSha256,
+        pendingDisconnectAuthorizationToken:
+            reloadState.pendingDisconnectAuthorizationToken,
+        pendingDisconnectReloadOutcome:
+            reloadState.pendingDisconnectReloadOutcome,
+        pendingDisconnectVerifyState:
+            reloadState.pendingDisconnectVerifyState,
+        pendingDisconnectRollbackRecovery:
+            reloadState.pendingDisconnectRollbackRecovery,
+        pendingDisconnectError:
+            reloadState.pendingDisconnectError
     })
 
     function _syncReloadState(): void {
@@ -312,6 +441,18 @@ Singleton {
             "waiting-reload",
             "candidate-verify-issued",
             "rebinding",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ]
+        const disconnectPhase = String(
+            reloadState.pendingDisconnectPhase ?? "idle")
+        const activeDisconnectPhases = [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "postcondition-checking",
             "rollback-pending",
             "rollback-issued",
             "rollback-waiting-reload",
@@ -358,6 +499,35 @@ Singleton {
                         })
                 })
             }
+
+            const disconnectAuthorization =
+                command?.disconnectAuthorization
+            const preserveDisconnectAuthorization =
+                !!disconnectAuthorization
+                && activeDisconnectPhases.includes(disconnectPhase)
+                && index === Number(
+                    reloadState.pendingDisconnectHistoryIndex ?? -1)
+                && String(command?.candidateSha256 ?? "")
+                    === String(
+                        reloadState.pendingDisconnectCandidateSha256 ?? "")
+                && String(
+                    disconnectAuthorization?.authorizationToken ?? "")
+                    === String(
+                        reloadState.pendingDisconnectAuthorizationToken ?? "")
+            if (disconnectAuthorization
+                    && !preserveDisconnectAuthorization) {
+                next = Object.assign({}, next, {
+                    disconnectAuthorization: Object.assign(
+                        {},
+                        disconnectAuthorization,
+                        {
+                            status: "expired",
+                            authorized: false,
+                            reason:
+                                "cross-generation-reauthorization-required"
+                        })
+                })
+            }
             return next
         })
         root.historyIndex = Math.max(
@@ -370,6 +540,7 @@ Singleton {
         root._showCommand(root.activeCommand)
         Qt.callLater(root._recoverApplyLifecycle)
         Qt.callLater(root._recoverConnectLifecycle)
+        Qt.callLater(root._recoverDisconnectLifecycle)
         Qt.callLater(root.reverifyActiveConnectSafety)
         Qt.callLater(root.probeActiveConnectPreparationCapability)
     }
@@ -455,10 +626,959 @@ Singleton {
             snapshot.pendingConnectRollbackRecovery ?? "none")
         reloadState.pendingConnectError = String(
             snapshot.pendingConnectError ?? "")
+        reloadState.pendingDisconnectPhase = String(
+            snapshot.pendingDisconnectPhase ?? "idle")
+        reloadState.pendingDisconnectGraphTargetId = String(
+            snapshot.pendingDisconnectGraphTargetId ?? "")
+        reloadState.pendingDisconnectEdgeId = String(
+            snapshot.pendingDisconnectEdgeId ?? "")
+        reloadState.pendingDisconnectSourcePath = String(
+            snapshot.pendingDisconnectSourcePath ?? "")
+        reloadState.pendingDisconnectBaseSha256 = String(
+            snapshot.pendingDisconnectBaseSha256 ?? "")
+        reloadState.pendingDisconnectCandidateSha256 = String(
+            snapshot.pendingDisconnectCandidateSha256 ?? "")
+        reloadState.pendingDisconnectSemanticAnchor = String(
+            snapshot.pendingDisconnectSemanticAnchor ?? "")
+        reloadState.pendingDisconnectHistoryIndex = Number(
+            snapshot.pendingDisconnectHistoryIndex ?? -1)
+        reloadState.pendingDisconnectManifestPath = String(
+            snapshot.pendingDisconnectManifestPath ?? "")
+        reloadState.pendingDisconnectManifestSha256 = String(
+            snapshot.pendingDisconnectManifestSha256 ?? "")
+        reloadState.pendingDisconnectAuthorizationToken = String(
+            snapshot.pendingDisconnectAuthorizationToken ?? "")
+        reloadState.pendingDisconnectReloadOutcome = String(
+            snapshot.pendingDisconnectReloadOutcome ?? "none")
+        reloadState.pendingDisconnectVerifyState = String(
+            snapshot.pendingDisconnectVerifyState ?? "unknown")
+        reloadState.pendingDisconnectRollbackRecovery = String(
+            snapshot.pendingDisconnectRollbackRecovery ?? "none")
+        reloadState.pendingDisconnectError = String(
+            snapshot.pendingDisconnectError ?? "")
         root._restoringReloadState = false
 
         root._restoreReloadState()
         return true
+    }
+
+    function _disconnectPreparationMatchesCommand(command): bool {
+        if (!command
+                || command.stale === true
+                || String(command.kind ?? "") !== "disconnect-binding"
+                || String(command.targetId ?? "") !== "bar/clock"
+                || String(command.reviewedEdgeId ?? "")
+                    !== "clock.data.time"
+                || String(command.sourcePath ?? "")
+                    !== "modules/bar/ClockWidget.qml"
+                || String(command.expectedCurrent ?? "")
+                    !== "DateTime.timeDisplay")
+            return false
+
+        const prepared = command.disconnectPreparation
+        if (!prepared || Number(prepared.version ?? 0) !== 1)
+            return false
+
+        return String(prepared.status ?? "") === "prepared"
+            && prepared.stale !== true
+            && String(prepared.artifactProof ?? "")
+                === "prepared-reviewed-disconnect-artifacts-v1"
+            && String(prepared.graphTargetId ?? "")
+                === String(command.targetId ?? "")
+            && String(prepared.reviewedEdgeId ?? "")
+                === String(command.reviewedEdgeId ?? "")
+            && String(prepared.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(prepared.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(prepared.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(prepared.semanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(prepared.propertyName ?? "") === "text"
+            && String(prepared.expectedCurrent ?? "")
+                === String(command.expectedCurrent ?? "")
+            && String(prepared.resultingState ?? "")
+                === "unbound/default"
+            && String(prepared.postcondition ?? "")
+                === "semantic-anchor-missing"
+            && String(prepared.candidatePostconditionStatus ?? "")
+                === "missing"
+            && String(prepared.manifestPath ?? "").length > 0
+            && root._sha256LooksValid(prepared.manifestSha256)
+            && prepared.writeAuthorized === false
+            && prepared.applyEnabled === false
+            && prepared.artifactsStaged === true
+            && prepared.productionIntegrated === false
+    }
+
+    function _sanitizeDisconnectPreparation(payload): var {
+        return {
+            version: 1,
+            status: "prepared",
+            stale: false,
+            staleReason: "",
+            artifactProof: String(payload?.artifactProof ?? ""),
+            graphTargetId: String(payload?.graphTargetId ?? ""),
+            reviewedEdgeId: String(payload?.reviewedEdgeId ?? ""),
+            transactionId: String(payload?.transactionId ?? ""),
+            sourcePath: String(payload?.sourcePath ?? ""),
+            baseSha256: String(payload?.baseSha256 ?? ""),
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            semanticAnchor: String(payload?.semanticAnchor ?? ""),
+            propertyName: String(payload?.propertyName ?? ""),
+            expectedCurrent: String(payload?.expectedCurrent ?? ""),
+            resultingState: String(payload?.resultingState ?? ""),
+            postcondition: String(payload?.postcondition ?? ""),
+            candidatePostconditionStatus: String(
+                payload?.candidatePostcondition?.status ?? ""),
+            snapshotPath: String(payload?.snapshotPath ?? ""),
+            candidatePath: String(payload?.candidatePath ?? ""),
+            manifestPath: String(payload?.manifestPath ?? ""),
+            manifestSha256: String(payload?.manifestSha256 ?? ""),
+            writeAuthorized: false,
+            applyEnabled: false,
+            artifactsStaged: true,
+            productionIntegrated: false
+        }
+    }
+
+    function prepareDisconnectArtifacts(): bool {
+        const command = root.activeCommand
+        if (!root.disconnectPrepareEnabled || !command)
+            return false
+
+        root.disconnectPreparationError = ""
+        disconnectPrepareProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/disconnect_prepare.py"),
+            "--edge-id", String(command.reviewedEdgeId ?? ""),
+            "--base-sha256", String(command.baseSha256 ?? ""),
+            "--expected-candidate-sha256",
+                String(command.candidateSha256 ?? ""),
+            "--semantic-anchor", String(command.semanticAnchor ?? ""),
+            "--state-dir",
+                Quickshell.statePath(
+                    "code-workflow/disconnect-transactions")
+        ]
+        disconnectPrepareProcess.running = true
+        return true
+    }
+
+    function finishDisconnectPreparation(exitCode: int): void {
+        const payload = root._parseProcessPayload(
+            disconnectPrepareStdout)
+        const command = root.activeCommand
+        const exact = payload?.protocol === 1
+            && String(payload?.status ?? "")
+                === "prepared-disconnect-artifacts"
+            && !!command
+            && String(command.kind ?? "") === "disconnect-binding"
+            && String(payload?.graphTargetId ?? "")
+                === String(command.targetId ?? "")
+            && String(payload?.reviewedEdgeId ?? "")
+                === String(command.reviewedEdgeId ?? "")
+            && String(payload?.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(payload?.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(payload?.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(payload?.semanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(payload?.expectedCurrent ?? "")
+                === String(command.expectedCurrent ?? "")
+            && String(payload?.propertyName ?? "") === "text"
+            && String(payload?.postcondition ?? "")
+                === "semantic-anchor-missing"
+            && String(payload?.candidatePostcondition?.status ?? "")
+                === "missing"
+            && payload?.writeAuthorized === false
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === true
+            && payload?.productionIntegrated === false
+
+        if (exact) {
+            const prepared =
+                root._sanitizeDisconnectPreparation(payload)
+            const promoted = Object.assign({}, command, {
+                disconnectPreparation: prepared
+            })
+            if (root._disconnectPreparationMatchesCommand(promoted)) {
+                const index = root.historyIndex
+                const next = root.history.slice()
+                next[index] = promoted
+                root.history = next
+                root.disconnectPreparationError = ""
+                root.status = "preview"
+                return
+            }
+        }
+
+        const stderrText = String(
+            disconnectPrepareStderr.text ?? "").trim()
+        root.disconnectPreparationError = String(
+            payload?.detail
+            ?? payload?.reason
+            ?? stderrText
+            ?? ("Disconnect preparation exited " + exitCode))
+        root.status = payload?.status === "conflict"
+            ? "conflict"
+            : "error"
+        root.error = root.disconnectPreparationError
+    }
+
+    function _disconnectAuthorizationIdentityMatchesCommand(
+        command
+    ): bool {
+        if (!command
+                || String(command.kind ?? "") !== "disconnect-binding"
+                || !root._disconnectPreparationMatchesCommand(command))
+            return false
+        const authorization = command.disconnectAuthorization
+        const prepared = command.disconnectPreparation
+        if (!authorization
+                || Number(authorization.version ?? 0) !== 1)
+            return false
+
+        return String(authorization.status ?? "") === "authorized"
+            && authorization.authorized === true
+            && String(authorization.authorizationProof ?? "")
+                === "explicit-disconnect-write-authorization-v1"
+            && String(authorization.authorizationToken ?? "")
+                === "disconnect-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? "")
+            && String(authorization.graphTargetId ?? "")
+                === String(command.targetId ?? "")
+            && String(authorization.reviewedEdgeId ?? "")
+                === String(command.reviewedEdgeId ?? "")
+            && String(authorization.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(authorization.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(authorization.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(authorization.semanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(authorization.propertyName ?? "") === "text"
+            && String(authorization.expectedCurrent ?? "")
+                === String(command.expectedCurrent ?? "")
+            && String(authorization.resultingState ?? "")
+                === "unbound/default"
+            && String(authorization.postcondition ?? "")
+                === "semantic-anchor-missing"
+            && String(authorization.manifestPath ?? "")
+                === String(prepared.manifestPath ?? "")
+            && String(authorization.manifestSha256 ?? "")
+                === String(prepared.manifestSha256 ?? "")
+            && root._sha256LooksValid(authorization.manifestSha256)
+            && String(authorization.transactionId ?? "")
+                === String(prepared.transactionId ?? "")
+            && String(authorization.rollbackGuarantee ?? "")
+                === "exact-snapshot-auto-rollback-v1"
+    }
+
+    function _disconnectAuthorizationMatchesCommand(command): bool {
+        return !!command
+            && command.stale !== true
+            && root._disconnectPreparationMatchesCommand(command)
+            && root._disconnectAuthorizationIdentityMatchesCommand(command)
+    }
+
+    function _expireDisconnectAuthorization(
+        command,
+        reason: string
+    ): var {
+        const authorization = command?.disconnectAuthorization
+        if (!authorization
+                || authorization.authorized !== true
+                || String(authorization.status ?? "")
+                    !== "authorized")
+            return command
+        return Object.assign({}, command, {
+            disconnectAuthorization: Object.assign({}, authorization, {
+                status: "expired",
+                authorized: false,
+                reason: String(reason ?? "authorization-expired")
+            })
+        })
+    }
+
+    function _expireAllDisconnectAuthorizations(
+        reason: string
+    ): void {
+        let changed = false
+        const next = root.history.map(command => {
+            const expired = root._expireDisconnectAuthorization(
+                command, reason)
+            if (expired !== command)
+                changed = true
+            return expired
+        })
+        if (changed)
+            root.history = next
+        root.disconnectAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "authorization-expired")
+        })
+    }
+
+    function authorizeDisconnectWrite(): bool {
+        if (!root.disconnectAuthorizeEnabled)
+            return false
+        const command = root.activeCommand
+        const prepared = root.activeDisconnectPreparation
+        if (!command || !prepared)
+            return false
+
+        const authorization = {
+            version: 1,
+            status: "authorized",
+            authorized: true,
+            reason: "explicit-user-authorization",
+            authorizationProof:
+                "explicit-disconnect-write-authorization-v1",
+            authorizationToken:
+                "disconnect-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? ""),
+            graphTargetId: String(command.targetId ?? ""),
+            reviewedEdgeId: String(command.reviewedEdgeId ?? ""),
+            sourcePath: String(command.sourcePath ?? ""),
+            baseSha256: String(command.baseSha256 ?? ""),
+            candidateSha256: String(command.candidateSha256 ?? ""),
+            semanticAnchor: String(command.semanticAnchor ?? ""),
+            propertyName: "text",
+            expectedCurrent: String(command.expectedCurrent ?? ""),
+            resultingState: "unbound/default",
+            postcondition: "semantic-anchor-missing",
+            manifestPath: String(prepared.manifestPath ?? ""),
+            manifestSha256: String(prepared.manifestSha256 ?? ""),
+            transactionId: String(prepared.transactionId ?? ""),
+            rollbackGuarantee:
+                "exact-snapshot-auto-rollback-v1"
+        }
+        const promoted = Object.assign({}, command, {
+            disconnectAuthorization: authorization
+        })
+        if (!root._disconnectAuthorizationMatchesCommand(promoted))
+            return false
+
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+        const next = root.history.slice()
+        next[index] = promoted
+        root.history = next
+        root.disconnectAuthorizationDiagnostics = ({
+            status: "authorized",
+            ready: true,
+            reason: "explicit-user-authorization",
+            authorizationToken:
+                authorization.authorizationToken
+        })
+        return true
+    }
+
+    function revokeDisconnectAuthorization(
+        reason: string
+    ): bool {
+        if (root.disconnectLifecycleBusy)
+            return false
+        const command = root.activeCommand
+        if (!command?.disconnectAuthorization)
+            return false
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+
+        const next = root.history.slice()
+        next[index] = root._expireDisconnectAuthorization(
+            command,
+            String(reason ?? "user-revoked"))
+        root.history = next
+        root.disconnectAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "user-revoked")
+        })
+        return true
+    }
+
+    function _disconnectLifecycleCommandMatchesHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = command?.disconnectPreparation
+        return !!command
+            && String(command.kind ?? "") === "disconnect-binding"
+            && root.historyIndex
+                === reloadState.pendingDisconnectHistoryIndex
+            && String(command.targetId ?? "")
+                === reloadState.pendingDisconnectGraphTargetId
+            && String(command.reviewedEdgeId ?? "")
+                === reloadState.pendingDisconnectEdgeId
+            && String(command.sourcePath ?? "")
+                === reloadState.pendingDisconnectSourcePath
+            && String(command.baseSha256 ?? "")
+                === reloadState.pendingDisconnectBaseSha256
+            && String(command.candidateSha256 ?? "")
+                === reloadState.pendingDisconnectCandidateSha256
+            && String(command.semanticAnchor ?? "")
+                === reloadState.pendingDisconnectSemanticAnchor
+            && String(prepared?.manifestPath ?? "")
+                === reloadState.pendingDisconnectManifestPath
+            && String(prepared?.manifestSha256 ?? "")
+                === reloadState.pendingDisconnectManifestSha256
+            && root._disconnectAuthorizationIdentityMatchesCommand(
+                command)
+            && String(
+                command?.disconnectAuthorization?.authorizationToken
+                    ?? "")
+                === reloadState.pendingDisconnectAuthorizationToken
+    }
+
+    function stageDisconnectLifecycleHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = root.activeDisconnectPreparation
+        if (!root.disconnectAuthorizationReady
+                || !root.disconnectArtifactsReady
+                || !command
+                || !prepared
+                || command.stale === true
+                || String(command.kind ?? "") !== "disconnect-binding"
+                || !Quickshell.watchFiles
+                || root.applyLifecycleBusy
+                || root.connectLifecycleBusy
+                || root.disconnectLifecycleBusy)
+            return false
+
+        reloadState.pendingDisconnectPhase = "prepared"
+        reloadState.pendingDisconnectGraphTargetId = String(
+            command.targetId ?? "")
+        reloadState.pendingDisconnectEdgeId = String(
+            command.reviewedEdgeId ?? "")
+        reloadState.pendingDisconnectSourcePath = String(
+            command.sourcePath ?? "")
+        reloadState.pendingDisconnectBaseSha256 = String(
+            command.baseSha256 ?? "")
+        reloadState.pendingDisconnectCandidateSha256 = String(
+            command.candidateSha256 ?? "")
+        reloadState.pendingDisconnectSemanticAnchor = String(
+            command.semanticAnchor ?? "")
+        reloadState.pendingDisconnectHistoryIndex = root.historyIndex
+        reloadState.pendingDisconnectManifestPath = String(
+            prepared.manifestPath ?? "")
+        reloadState.pendingDisconnectManifestSha256 = String(
+            prepared.manifestSha256 ?? "")
+        reloadState.pendingDisconnectAuthorizationToken = String(
+            command.disconnectAuthorization?.authorizationToken ?? "")
+        reloadState.pendingDisconnectReloadOutcome = "none"
+        reloadState.pendingDisconnectVerifyState = "unknown"
+        reloadState.pendingDisconnectRollbackRecovery = "none"
+        reloadState.pendingDisconnectError = ""
+        return root._disconnectLifecycleCommandMatchesHandoff()
+    }
+
+    function clearDisconnectLifecycleHandoff(): void {
+        disconnectRollbackReloadFallbackTimer.stop()
+        reloadState.pendingDisconnectPhase = "idle"
+        reloadState.pendingDisconnectGraphTargetId = ""
+        reloadState.pendingDisconnectEdgeId = ""
+        reloadState.pendingDisconnectSourcePath = ""
+        reloadState.pendingDisconnectBaseSha256 = ""
+        reloadState.pendingDisconnectCandidateSha256 = ""
+        reloadState.pendingDisconnectSemanticAnchor = ""
+        reloadState.pendingDisconnectHistoryIndex = -1
+        reloadState.pendingDisconnectManifestPath = ""
+        reloadState.pendingDisconnectManifestSha256 = ""
+        reloadState.pendingDisconnectAuthorizationToken = ""
+        reloadState.pendingDisconnectReloadOutcome = "none"
+        reloadState.pendingDisconnectVerifyState = "unknown"
+        reloadState.pendingDisconnectRollbackRecovery = "none"
+        reloadState.pendingDisconnectError = ""
+    }
+
+    function _disconnectPayloadMatchesPending(payload): bool {
+        return String(payload?.graphTargetId ?? "")
+                === reloadState.pendingDisconnectGraphTargetId
+            && String(payload?.reviewedEdgeId ?? "")
+                === reloadState.pendingDisconnectEdgeId
+            && String(payload?.sourcePath ?? "")
+                === reloadState.pendingDisconnectSourcePath
+            && String(payload?.baseSha256 ?? "")
+                === reloadState.pendingDisconnectBaseSha256
+            && String(payload?.candidateSha256 ?? "")
+                === reloadState.pendingDisconnectCandidateSha256
+            && String(payload?.semanticAnchor ?? "")
+                === reloadState.pendingDisconnectSemanticAnchor
+            && String(payload?.propertyName ?? "") === "text"
+            && String(payload?.expectedCurrent ?? "")
+                === "DateTime.timeDisplay"
+            && String(payload?.postcondition ?? "")
+                === "semantic-anchor-missing"
+            && String(payload?.manifestPath ?? "")
+                === reloadState.pendingDisconnectManifestPath
+            && String(payload?.manifestSha256 ?? "")
+                === reloadState.pendingDisconnectManifestSha256
+    }
+
+    function _setDisconnectLifecycleFailure(
+        phase: string,
+        message: string,
+        payload
+    ): void {
+        reloadState.pendingDisconnectPhase = phase
+        reloadState.pendingDisconnectError = String(message ?? "")
+        root.disconnectLifecycleResult = payload ?? ({})
+        root.disconnectLifecycleError = String(message ?? "")
+        if (root.activeCommand?.disconnectAuthorization)
+            root.revokeDisconnectAuthorization(
+                "disconnect-lifecycle-failed")
+        root.status = phase.includes("conflict")
+            ? "conflict"
+            : "error"
+        root.error = String(message ?? "")
+    }
+
+    function beginAuthorizedDisconnectApply(): bool {
+        if (!root.disconnectApplyEnabled)
+            return false
+        const authorizationToken = String(
+            root.activeDisconnectAuthorization?.authorizationToken
+                ?? "")
+        if (authorizationToken.length === 0)
+            return false
+        if (!root.beginDisconnectLifecycle())
+            return false
+
+        root.disconnectAuthorizationDiagnostics = ({
+            status: "consumed",
+            ready: false,
+            reason: "disconnect-apply-started",
+            authorizationToken: authorizationToken
+        })
+        return true
+    }
+
+    function beginDisconnectLifecycle(): bool {
+        if (!root.stageDisconnectLifecycleHandoff())
+            return false
+
+        reloadState.pendingDisconnectPhase = "write-issued"
+        reloadState.pendingDisconnectReloadOutcome = "none"
+        reloadState.pendingDisconnectVerifyState = "unknown"
+        reloadState.pendingDisconnectRollbackRecovery = "none"
+        reloadState.pendingDisconnectError = ""
+        root.disconnectLifecycleResult = ({})
+        root.disconnectLifecycleError = ""
+        root.status = "disconnect-writing"
+
+        disconnectCommitProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/disconnect_commit.py"),
+            "commit",
+            "--manifest",
+            reloadState.pendingDisconnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingDisconnectManifestSha256
+        ]
+        disconnectCommitProcess.running = true
+        return true
+    }
+
+    function finishDisconnectCommit(exitCode: int): void {
+        if (reloadState.pendingDisconnectPhase
+                === "rollback-pending") {
+            root._startDisconnectRollback(
+                reloadState.pendingDisconnectError)
+            return
+        }
+
+        const payload = root._parseProcessPayload(
+            disconnectCommitStdout)
+        if (payload?.status === "written"
+                && root._disconnectPayloadMatchesPending(payload)
+                && payload?.sourceWritten === true
+                && payload?.rollbackRequired === false) {
+            root.disconnectLifecycleResult = payload
+            root.disconnectLifecycleError = ""
+            reloadState.pendingDisconnectPhase = "waiting-reload"
+            root.status = "disconnect-waiting-reload"
+            if (reloadState.pendingDisconnectReloadOutcome
+                    === "completed")
+                Qt.callLater(root._startDisconnectCandidateVerify)
+            return
+        }
+
+        const sourceWritten = payload?.sourceWritten === true
+        const stderrText = String(
+            disconnectCommitStderr.text ?? "").trim()
+        const message = String(
+            payload?.reason
+            ?? payload?.detail
+            ?? stderrText
+            ?? ("Disconnect commit exited " + exitCode))
+        if (sourceWritten) {
+            root._startDisconnectRollback(message)
+            return
+        }
+
+        root._setDisconnectLifecycleFailure(
+            payload?.status === "conflict"
+                ? "disconnect-commit-conflict"
+                : "disconnect-commit-failed",
+            message,
+            payload)
+    }
+
+    function _startDisconnectCandidateVerify(): void {
+        if (disconnectVerifyProcess.running
+                || reloadState.pendingDisconnectManifestPath.length === 0)
+            return
+        reloadState.pendingDisconnectPhase =
+            "candidate-verify-issued"
+        root.status = "disconnect-verifying"
+        disconnectVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/disconnect_commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingDisconnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingDisconnectManifestSha256
+        ]
+        disconnectVerifyProcess.running = true
+    }
+
+    function _startDisconnectRollbackVerify(): void {
+        if (disconnectVerifyProcess.running
+                || reloadState.pendingDisconnectManifestPath.length === 0)
+            return
+        disconnectRollbackReloadFallbackTimer.stop()
+        reloadState.pendingDisconnectPhase =
+            "rollback-verify-issued"
+        root.status = "disconnect-rollback-verifying"
+        disconnectVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/disconnect_commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingDisconnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingDisconnectManifestSha256
+        ]
+        disconnectVerifyProcess.running = true
+    }
+
+    function finishDisconnectVerify(exitCode: int): void {
+        const phase = reloadState.pendingDisconnectPhase
+        const payload = root._parseProcessPayload(
+            disconnectVerifyStdout)
+        if (payload?.status !== "verified"
+                || !root._disconnectPayloadMatchesPending(payload)) {
+            const stderrText = String(
+                disconnectVerifyStderr.text ?? "").trim()
+            const message = String(
+                payload?.reason
+                ?? payload?.detail
+                ?? stderrText
+                ?? ("Disconnect verify exited " + exitCode))
+            if (phase === "rollback-verify-issued") {
+                root._setDisconnectLifecycleFailure(
+                    "disconnect-rollback-conflict",
+                    message,
+                    payload)
+            } else {
+                root._startDisconnectRollback(message)
+            }
+            return
+        }
+
+        const state = String(payload?.sourceState ?? "")
+        reloadState.pendingDisconnectVerifyState = state
+        if (phase === "candidate-verify-issued") {
+            if (state !== "candidate-present") {
+                if (state === "base-present") {
+                    root._setDisconnectLifecycleFailure(
+                        "disconnect-commit-failed",
+                        "Disconnect source returned to base before candidate verification.",
+                        payload)
+                } else {
+                    root._startDisconnectRollback(
+                        "Disconnect candidate verification reported "
+                            + state + ".")
+                }
+                return
+            }
+            root._beginDisconnectPostconditionCheck()
+            return
+        }
+
+        if (phase === "rollback-verify-issued") {
+            if (state !== "base-present") {
+                root._setDisconnectLifecycleFailure(
+                    "disconnect-rollback-conflict",
+                    "Expected Disconnect rollback base after recovery reload; "
+                        + "verify reported " + state,
+                    payload)
+                return
+            }
+            root._finalizeDisconnectRollback(payload)
+        }
+    }
+
+    function _beginDisconnectPostconditionCheck(): void {
+        reloadState.pendingDisconnectPhase =
+            "postcondition-checking"
+        root.status = "disconnect-postcondition"
+        CodeWorkflowAnalyzer.request(
+            reloadState.pendingDisconnectSourcePath,
+            "",
+            reloadState.pendingDisconnectSemanticAnchor,
+            true)
+    }
+
+    function _finishDisconnectPostconditionIfReady(): void {
+        if (reloadState.pendingDisconnectPhase
+                !== "postcondition-checking")
+            return
+        if (CodeWorkflowAnalyzer.status === "analyzing"
+                || CodeWorkflowAnalyzer.status === "idle")
+            return
+
+        const matches = CodeWorkflowAnalyzer.status === "ready"
+            && CodeWorkflowAnalyzer.sourcePath
+                === reloadState.pendingDisconnectSourcePath
+            && CodeWorkflowAnalyzer.semanticAnchor
+                === reloadState.pendingDisconnectSemanticAnchor
+            && String(CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+                === reloadState.pendingDisconnectCandidateSha256
+            && CodeWorkflowAnalyzer.semanticRebind?.status === "missing"
+            && String(
+                CodeWorkflowAnalyzer.semanticRebind?.anchor ?? "")
+                === reloadState.pendingDisconnectSemanticAnchor
+            && CodeWorkflowAnalyzer.diagnostics.length === 0
+        if (!matches) {
+            root._startDisconnectRollback(
+                "Committed Disconnect candidate reloaded, but old "
+                    + "semantic anchor did not remain absent.")
+            return
+        }
+        root._finalizeDisconnectSuccess()
+    }
+
+    function _markHistoryDisconnectLifecycleResult(
+        applied: bool,
+        reason: string
+    ): void {
+        const index = Number(
+            reloadState.pendingDisconnectHistoryIndex ?? -1)
+        if (index < 0 || index >= root.history.length)
+            return
+        const next = root.history.slice()
+        next[index] = Object.assign({}, next[index], {
+            disconnectApplied: applied,
+            disconnectAppliedSha256: applied
+                ? reloadState.pendingDisconnectCandidateSha256
+                : "",
+            disconnectRolledBack: !applied,
+            stale: true,
+            staleReason: reason,
+            disconnectPreparation:
+                next[index]?.disconnectPreparation
+                ? Object.assign(
+                    {},
+                    next[index].disconnectPreparation,
+                    {
+                        status: "stale",
+                        stale: true,
+                        staleReason: reason
+                    })
+                : next[index]?.disconnectPreparation,
+            disconnectAuthorization:
+                next[index]?.disconnectAuthorization
+                ? Object.assign(
+                    {},
+                    next[index].disconnectAuthorization,
+                    {
+                        status: "expired",
+                        authorized: false,
+                        reason: reason
+                    })
+                : next[index]?.disconnectAuthorization
+        })
+        root.history = next
+        root.historyIndex = index
+    }
+
+    function _finalizeDisconnectSuccess(): void {
+        const payload = {
+            status: "disconnect-applied",
+            sourcePath: reloadState.pendingDisconnectSourcePath,
+            sourceSha256:
+                reloadState.pendingDisconnectCandidateSha256,
+            semanticAnchor:
+                reloadState.pendingDisconnectSemanticAnchor,
+            postcondition: "semantic-anchor-missing"
+        }
+        root._markHistoryDisconnectLifecycleResult(
+            true,
+            "Disconnect candidate applied and old anchor is absent; "
+                + "regenerate before editing again.")
+        root.clearDisconnectLifecycleHandoff()
+        root.disconnectLifecycleResult = payload
+        root.disconnectLifecycleError = ""
+        root.status = "disconnect-applied"
+        root.error = ""
+    }
+
+    function _startDisconnectRollback(reason: string): void {
+        if (disconnectRollbackProcess.running)
+            return
+        if (reloadState.pendingDisconnectManifestPath.length === 0) {
+            root._setDisconnectLifecycleFailure(
+                "disconnect-rollback-failed",
+                "Disconnect lifecycle has no prepared manifest for rollback.",
+                null)
+            return
+        }
+
+        reloadState.pendingDisconnectPhase = "rollback-issued"
+        reloadState.pendingDisconnectReloadOutcome = "none"
+        reloadState.pendingDisconnectVerifyState = "unknown"
+        if (String(reason ?? "").length > 0)
+            reloadState.pendingDisconnectError = String(reason)
+        root.status = "disconnect-rollback-writing"
+
+        disconnectRollbackProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/disconnect_commit.py"),
+            "rollback",
+            "--manifest",
+            reloadState.pendingDisconnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingDisconnectManifestSha256
+        ]
+        disconnectRollbackProcess.running = true
+    }
+
+    function finishDisconnectRollback(exitCode: int): void {
+        const payload = root._parseProcessPayload(
+            disconnectRollbackStdout)
+        if (payload?.status === "rolled-back"
+                && root._disconnectPayloadMatchesPending(payload)) {
+            root.disconnectLifecycleResult = payload
+            root.disconnectLifecycleError = ""
+            reloadState.pendingDisconnectPhase =
+                "rollback-waiting-reload"
+            reloadState.pendingDisconnectReloadOutcome = "none"
+            root.status = "disconnect-rollback-waiting-reload"
+            disconnectRollbackReloadFallbackTimer.restart()
+            return
+        }
+
+        const stderrText = String(
+            disconnectRollbackStderr.text ?? "").trim()
+        root._setDisconnectLifecycleFailure(
+            payload?.status === "conflict"
+                ? "disconnect-rollback-conflict"
+                : "disconnect-rollback-failed",
+            String(
+                payload?.reason
+                ?? payload?.detail
+                ?? stderrText
+                ?? ("Disconnect rollback exited " + exitCode)),
+            payload)
+    }
+
+    function _finalizeDisconnectRollback(payload): void {
+        const failure = String(
+            reloadState.pendingDisconnectError
+            ?? "Disconnect lifecycle failed.")
+        const recovery = String(
+            reloadState.pendingDisconnectRollbackRecovery
+            ?? "none")
+        const result = {
+            status: "disconnect-rolled-back",
+            sourcePath: reloadState.pendingDisconnectSourcePath,
+            sourceSha256:
+                reloadState.pendingDisconnectBaseSha256,
+            semanticAnchor:
+                reloadState.pendingDisconnectSemanticAnchor,
+            lifecycleError: failure,
+            recoveryMode: recovery,
+            verify: payload
+        }
+        root._markHistoryDisconnectLifecycleResult(
+            false,
+            "Disconnect lifecycle failed and exact rollback restored "
+                + "the base; regenerate before retrying.")
+        root.clearDisconnectLifecycleHandoff()
+        root.disconnectLifecycleResult = result
+        root.disconnectLifecycleError = failure
+        root.status = "disconnect-rollback-complete"
+        root.error = failure
+    }
+
+    function _recoverDisconnectLifecycle(): void {
+        const phase = reloadState.pendingDisconnectPhase
+        if (phase === "write-issued"
+                || phase === "waiting-reload") {
+            root.status = "disconnect-waiting-reload"
+            if (reloadState.pendingDisconnectReloadOutcome
+                    === "completed")
+                root._startDisconnectCandidateVerify()
+            return
+        }
+        if (phase === "candidate-verify-issued") {
+            root._startDisconnectCandidateVerify()
+            return
+        }
+        if (phase === "postcondition-checking") {
+            root._beginDisconnectPostconditionCheck()
+            return
+        }
+        if (phase === "rollback-pending") {
+            root.status = "disconnect-rollback-pending"
+            if (!disconnectCommitProcess.running)
+                root._startDisconnectRollback(
+                    reloadState.pendingDisconnectError)
+            return
+        }
+        if (phase === "rollback-issued"
+                || phase === "rollback-waiting-reload") {
+            root.status = "disconnect-rollback-waiting-reload"
+            if (reloadState.pendingDisconnectReloadOutcome
+                    === "completed") {
+                root._startDisconnectRollbackVerify()
+            } else if (phase === "rollback-waiting-reload") {
+                disconnectRollbackReloadFallbackTimer.restart()
+            }
+            return
+        }
+        if (phase === "rollback-verify-issued") {
+            root._startDisconnectRollbackVerify()
+            return
+        }
+        if ([
+                "disconnect-commit-conflict",
+                "disconnect-commit-failed",
+                "disconnect-rollback-conflict",
+                "disconnect-rollback-failed"
+            ].includes(phase)) {
+            root.disconnectLifecycleError =
+                reloadState.pendingDisconnectError
+            root.error = reloadState.pendingDisconnectError
+            root.status = phase.includes("conflict")
+                ? "conflict"
+                : "error"
+        }
     }
 
     function _connectLifecycleCommandMatchesHandoff(): bool {
@@ -1838,6 +2958,27 @@ Singleton {
             reloadState.pendingConnectReloadOutcome = "completed"
             connectRollbackReloadFallbackTimer.stop()
             root._startConnectRollbackVerify()
+            return
+        }
+
+        const disconnectPhase = reloadState.pendingDisconnectPhase
+        if (disconnectPhase === "write-issued"
+                || disconnectPhase === "waiting-reload"
+                || disconnectPhase === "candidate-verify-issued") {
+            reloadState.pendingDisconnectReloadOutcome = "completed"
+            root._startDisconnectCandidateVerify()
+            return
+        }
+        if (disconnectPhase === "rollback-issued"
+                || disconnectPhase === "rollback-waiting-reload"
+                || disconnectPhase === "rollback-verify-issued") {
+            if (reloadState.pendingDisconnectRollbackRecovery
+                    === "none")
+                reloadState.pendingDisconnectRollbackRecovery =
+                    "watcher"
+            reloadState.pendingDisconnectReloadOutcome = "completed"
+            disconnectRollbackReloadFallbackTimer.stop()
+            root._startDisconnectRollbackVerify()
         }
     }
 
@@ -1895,6 +3036,33 @@ Singleton {
                 "Connect rollback source was restored but reload "
                     + "also failed: " + message,
                 null)
+            return
+        }
+
+        const disconnectPhase = reloadState.pendingDisconnectPhase
+        if (disconnectPhase === "write-issued"
+                || disconnectPhase === "waiting-reload"
+                || disconnectPhase === "candidate-verify-issued"
+                || disconnectPhase === "postcondition-checking") {
+            reloadState.pendingDisconnectReloadOutcome = "failed"
+            reloadState.pendingDisconnectError = message
+            if (disconnectCommitProcess.running) {
+                reloadState.pendingDisconnectPhase =
+                    "rollback-pending"
+                root.status = "disconnect-rollback-pending"
+            } else {
+                root._startDisconnectRollback(message)
+            }
+            return
+        }
+        if (disconnectPhase === "rollback-issued"
+                || disconnectPhase === "rollback-waiting-reload"
+                || disconnectPhase === "rollback-verify-issued") {
+            root._setDisconnectLifecycleFailure(
+                "disconnect-rollback-failed",
+                "Disconnect rollback source was restored but reload "
+                    + "also failed: " + message,
+                null)
         }
     }
 
@@ -1931,6 +3099,14 @@ Singleton {
         root.connectLifecycleResult = ({})
         root.connectLifecycleError = ""
         root.connectAuthorizationDiagnostics = ({
+            status: "not-authorized",
+            ready: false,
+            reason: "no-active-authorization"
+        })
+        root.disconnectPreparationError = ""
+        root.disconnectLifecycleResult = ({})
+        root.disconnectLifecycleError = ""
+        root.disconnectAuthorizationDiagnostics = ({
             status: "not-authorized",
             ready: false,
             reason: "no-active-authorization"
@@ -2187,6 +3363,8 @@ Singleton {
         if (root.previewBusy
                 || root.connectSafetyBusy
                 || root.connectPreparationBusy
+                || root.disconnectPreparationBusy
+                || root.disconnectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -2827,12 +4005,16 @@ Singleton {
                 || root.connectSafetyBusy
                 || root.connectPreparationBusy
                 || root.connectLifecycleBusy
+                || root.disconnectPreparationBusy
+                || root.disconnectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return
         root._invalidateApplyHandoff()
         if (reloadState.pendingConnectPhase !== "idle")
             root.clearConnectLifecycleHandoff()
+        if (reloadState.pendingDisconnectPhase !== "idle")
+            root.clearDisconnectLifecycleHandoff()
         root.history = []
         root.historyIndex = -1
         root._pendingReplaceIndex = -1
@@ -2885,6 +4067,7 @@ Singleton {
 
         const phase = reloadState.pendingApplyPhase
         const connectPhase = reloadState.pendingConnectPhase
+        const disconnectPhase = reloadState.pendingDisconnectPhase
         const lifecycleOwnsSource = changedPath
                 === reloadState.pendingApplySourcePath
             && [
@@ -2929,6 +4112,26 @@ Singleton {
             return
         }
 
+        const disconnectLifecycleOwnsSource = changedPath
+                === reloadState.pendingDisconnectSourcePath
+            && [
+                "write-issued",
+                "waiting-reload",
+                "candidate-verify-issued",
+                "postcondition-checking",
+                "rollback-pending",
+                "rollback-issued",
+                "rollback-waiting-reload",
+                "rollback-verify-issued"
+            ].includes(disconnectPhase)
+        if (disconnectLifecycleOwnsSource) {
+            if (disconnectPhase.startsWith("rollback"))
+                root.status = "disconnect-rollback-waiting-reload"
+            else
+                root.status = "disconnect-waiting-reload"
+            return
+        }
+
         if (connectPhase !== "idle"
                 && changedPath
                     === reloadState.pendingConnectExternalSourcePath) {
@@ -2938,6 +4141,7 @@ Singleton {
 
         root._markHistoryStale(changedPath)
         root._markConnectSafetyStale(changedPath)
+        root._markDisconnectArtifactsStale(changedPath)
         if (phase !== "idle"
                 && changedPath
                     === reloadState.pendingApplySourcePath) {
@@ -2958,6 +4162,39 @@ Singleton {
         }
     }
 
+    function _markDisconnectArtifactsStale(path: string): void {
+        const changedPath = String(path ?? "")
+        if (changedPath.length === 0)
+            return
+        let changed = false
+        const next = root.history.map(command => {
+            const prepared = command?.disconnectPreparation
+            if (!prepared
+                    || String(command.sourcePath ?? "") !== changedPath)
+                return command
+            changed = true
+            return Object.assign({}, command, {
+                disconnectPreparation: Object.assign({}, prepared, {
+                    status: "stale",
+                    stale: true,
+                    staleReason:
+                        "Disconnect source changed; reprepare before write."
+                }),
+                disconnectAuthorization:
+                    command?.disconnectAuthorization
+                    ? Object.assign({}, command.disconnectAuthorization, {
+                        status: "expired",
+                        authorized: false,
+                        reason:
+                            "Disconnect source changed; reprepare before write."
+                    })
+                    : command?.disconnectAuthorization
+            })
+        })
+        if (changed)
+            root.history = next
+    }
+
     function _startPreview(
         path: string,
         baseSha: string,
@@ -2970,6 +4207,10 @@ Singleton {
     ): bool {
         if (root.previewBusy
                 || root.connectSafetyBusy
+                || root.connectPreparationBusy
+                || root.connectLifecycleBusy
+                || root.disconnectPreparationBusy
+                || root.disconnectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -2996,6 +4237,10 @@ Singleton {
         root._pendingExpectedCurrent = nextExpectedCurrent
         root._pendingConnectGraphTargetId = ""
         root._pendingConnectTargetId = ""
+        if (nextMode !== "disconnect") {
+            root._pendingDisconnectGraphTargetId = ""
+            root._pendingDisconnectEdgeId = ""
+        }
         if (!["literal-property", "direct-binding", "disconnect-binding"]
                 .includes(root._pendingCommandKind)
                 || !["literal", "binding", "disconnect"]
@@ -3059,21 +4304,53 @@ Singleton {
             "")
     }
 
-    function previewDisconnectBinding(
+    function _startDisconnectPreview(
         path: string,
         baseSha: string,
         anchor: string,
-        expectedCurrent: string
+        expectedCurrent: string,
+        targetId: string,
+        edgeId: string,
+        replaceIndex: int
     ): bool {
-        return root._startPreview(
+        root._pendingDisconnectGraphTargetId =
+            String(targetId ?? "")
+        root._pendingDisconnectEdgeId = String(edgeId ?? "")
+        if (root._pendingDisconnectGraphTargetId.length === 0
+                || root._pendingDisconnectEdgeId.length === 0)
+            return false
+        const started = root._startPreview(
             path,
             baseSha,
             anchor,
             "",
-            -1,
+            replaceIndex,
             "disconnect-binding",
             "disconnect",
             expectedCurrent)
+        if (!started) {
+            root._pendingDisconnectGraphTargetId = ""
+            root._pendingDisconnectEdgeId = ""
+        }
+        return started
+    }
+
+    function previewDisconnectBinding(
+        path: string,
+        baseSha: string,
+        anchor: string,
+        expectedCurrent: string,
+        targetId: string,
+        edgeId: string
+    ): bool {
+        return root._startDisconnectPreview(
+            path,
+            baseSha,
+            anchor,
+            expectedCurrent,
+            targetId,
+            edgeId,
+            -1)
     }
 
     function _startConnectPreview(
@@ -3139,11 +4416,19 @@ Singleton {
                 String(command.connectTargetId ?? ""),
                 root.historyIndex)
         }
-        const previewMode = commandKind === "disconnect-binding"
-            ? "disconnect"
-            : commandKind === "direct-binding"
-                ? "binding"
-                : "literal"
+        if (commandKind === "disconnect-binding") {
+            return root._startDisconnectPreview(
+                String(command.sourcePath ?? ""),
+                String(baseSha ?? ""),
+                String(command.semanticAnchor ?? ""),
+                String(command.expectedCurrent ?? ""),
+                String(command.targetId ?? ""),
+                String(command.reviewedEdgeId ?? ""),
+                root.historyIndex)
+        }
+        const previewMode = commandKind === "direct-binding"
+            ? "binding"
+            : "literal"
         return root._startPreview(
             String(command.sourcePath ?? ""),
             String(baseSha ?? ""),
@@ -3182,6 +4467,13 @@ Singleton {
             semanticAnchor: root.semanticAnchor,
             replacement: root.replacement,
             expectedCurrent: root._pendingExpectedCurrent,
+            targetId: root._pendingCommandKind === "disconnect-binding"
+                ? root._pendingDisconnectGraphTargetId
+                : "",
+            reviewedEdgeId:
+                root._pendingCommandKind === "disconnect-binding"
+                    ? root._pendingDisconnectEdgeId
+                    : "",
             result: payload,
             patch: payload?.patch ?? ({}),
             previewText: String(payload?.preview ?? ""),
@@ -3330,9 +4622,12 @@ Singleton {
     onHistoryChanged: root._syncReloadState()
     onHistoryIndexChanged: {
         root._syncReloadState()
-        if (!root._restoringReloadState)
+        if (!root._restoringReloadState) {
             root._expireAllConnectAuthorizations(
                 "history-selection-changed")
+            root._expireAllDisconnectAuthorizations(
+                "history-selection-changed")
+        }
     }
 
     QtObject {
@@ -3374,6 +4669,21 @@ Singleton {
         property string pendingConnectVerifyState: "unknown"
         property string pendingConnectRollbackRecovery: "none"
         property string pendingConnectError: ""
+        property string pendingDisconnectPhase: "idle"
+        property string pendingDisconnectGraphTargetId: ""
+        property string pendingDisconnectEdgeId: ""
+        property string pendingDisconnectSourcePath: ""
+        property string pendingDisconnectBaseSha256: ""
+        property string pendingDisconnectCandidateSha256: ""
+        property string pendingDisconnectSemanticAnchor: ""
+        property int pendingDisconnectHistoryIndex: -1
+        property string pendingDisconnectManifestPath: ""
+        property string pendingDisconnectManifestSha256: ""
+        property string pendingDisconnectAuthorizationToken: ""
+        property string pendingDisconnectReloadOutcome: "none"
+        property string pendingDisconnectVerifyState: "unknown"
+        property string pendingDisconnectRollbackRecovery: "none"
+        property string pendingDisconnectError: ""
     }
 
     Component.onCompleted: root._restoreReloadState()
@@ -3396,6 +4706,23 @@ Singleton {
         function onStatusChanged(): void {
             root._finishSemanticRebindIfReady()
             root._finishConnectSemanticRebindIfReady()
+            root._finishDisconnectPostconditionIfReady()
+        }
+    }
+
+    Timer {
+        id: disconnectRollbackReloadFallbackTimer
+        interval: 1800
+        repeat: false
+        onTriggered: {
+            if (reloadState.pendingDisconnectPhase
+                    !== "rollback-waiting-reload"
+                    || reloadState.pendingDisconnectReloadOutcome
+                        !== "none")
+                return
+            reloadState.pendingDisconnectRollbackRecovery =
+                "explicit-recovery"
+            Quickshell.reload(false)
         }
     }
 
@@ -3413,6 +4740,42 @@ Singleton {
                 "explicit-recovery"
             Quickshell.reload(false)
         }
+    }
+
+    Process {
+        id: disconnectPrepareProcess
+        running: false
+        stdout: StdioCollector { id: disconnectPrepareStdout }
+        stderr: StdioCollector { id: disconnectPrepareStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishDisconnectPreparation(exitCode)
+    }
+
+    Process {
+        id: disconnectCommitProcess
+        running: false
+        stdout: StdioCollector { id: disconnectCommitStdout }
+        stderr: StdioCollector { id: disconnectCommitStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishDisconnectCommit(exitCode)
+    }
+
+    Process {
+        id: disconnectVerifyProcess
+        running: false
+        stdout: StdioCollector { id: disconnectVerifyStdout }
+        stderr: StdioCollector { id: disconnectVerifyStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishDisconnectVerify(exitCode)
+    }
+
+    Process {
+        id: disconnectRollbackProcess
+        running: false
+        stdout: StdioCollector { id: disconnectRollbackStdout }
+        stderr: StdioCollector { id: disconnectRollbackStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishDisconnectRollback(exitCode)
     }
 
     Process {

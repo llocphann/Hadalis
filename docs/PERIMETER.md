@@ -7,8 +7,10 @@ The authoritative connected-popup path is:
 ```text
 modules/bar/StyledPopup.qml
   -> modules/common/perimeter/ConnectedSurfaceGeometry.qml
+  -> modules/common/perimeter/ConnectedSurfaceRevealClip.qml
   -> modules/common/perimeter/ConnectedSurfaceIrisFrame.qml
-  -> modules/common/perimeter/ConnectedSurfaceConnector.qml
+       -> modules/common/perimeter/ConnectedSurfaceIrisField.qml
+       -> modules/common/perimeter/IrisField.frag.qsb
   -> modules/common/perimeter/ConnectedSurfaceContentHost.qml
   -> modules/common/perimeter/ConnectedSurfaceBodyMask.qml
   -> modules/common/perimeter/PerimeterTokens.qml

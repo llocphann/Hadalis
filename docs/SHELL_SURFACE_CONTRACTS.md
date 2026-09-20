@@ -9,9 +9,9 @@ This document records the stabilization contracts that should be checked during 
 - Attachment works from top, bottom, left, and right bars.
 - The visible ii popup is not a detached rounded card or Bézier shoulder patch. Exact iRiS SDF smooth-union math treats popup and Bar/Screen Edge owner records as one silhouette while split-composition scissoring prevents Overlay from repainting Top-layer owners.
 - The popup body uses the active Classic Bar surface family rather than the old generic popup-card material.
-- Opening morphs outward from the real rendered anchor; closing reverses the same geometry and retracts into the bar before the loader is released.
-- Hover popouts stay resident during the short retract tail so the pointer can cross the connected shoulder from the bar into the body without collapsing the surface.
-- Body and connector overlap by a device-pixel-aware amount so fractional scale cannot expose a transparent seam.
+- Opening and closing are pure attachment-axis slides under the fixed owner seam; no scale/fade/morph stage is introduced before the loader is released.
+- Hover popouts stay resident during the short retract tail so the pointer can cross the Bar↔popup seam into the body without collapsing the surface.
+- The iRiS body welds under joined owners by `irisWeldDepth = 3`; field/shadow/input scissoring still begins at the actual owner boundary, so the weld cannot repaint or steal input from Bar/Screen Edge pixels.
 - ii popup input is body-only through `ConnectedSurfaceBodyMask`; shader fillets and transparent full-output regions do not steal pointer input. The connector-strip mask is no longer part of the ii path.
 - Transparent regions outside the visible popup shape remain click-through.
 - Focused connected popouts preserve Niri layer-shell focus and the existing Hyprland compositor focus grab.

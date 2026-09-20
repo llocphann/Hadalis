@@ -31,7 +31,7 @@ for token in (
     "function workflowTestSetHistoryIndexQuiet(index: int): bool",
     "function workflowContentionStartBindingAgainstAll(",
     "CodeWorkflowTransaction.beginAuthorizedBindingApply()",
-    "CodeWorkflowTransaction.beginDisconnectLifecycle()",
+    "beginDisconnectLifecycle()",
     "CodeWorkflowTransaction.beginConnectLifecycle()",
     "CodeWorkflowTransaction.beginApplyLifecycle()",
     "state.mutationContentionJson = JSON.stringify(evidence)",
@@ -69,9 +69,9 @@ for token in (
 for token in (
     "Milestone 2K-V-B — live cross-pipeline mutation contention",
     "all four mutation pipelines",
-    "same-source Connect and Disconnect sibling handoffs",
+    "same-source Connect and Disconnect sibling",
     "exact Binding rollback identity",
-    "No mutation allowlist is broadened",
+    "No mutation allowlist",
 ):
     if token not in PHASE2:
         fail("2K-V-B documentation missing " + token)

@@ -1736,6 +1736,20 @@ bytes with SHA-256
 `a06771d24e1e135103343adc0fe7a7002b2d7556c7f3e5f1cc99f2a85f71579a`.
 That artifact is now the canonical U1 package for this corrected field model.
 
+### 27.1 Production-faithful tangent clamp
+
+A second U1 fidelity audit found that the synthetic placement controller still
+clamped tangent geometry to the output outer rectangle (`0..width/height`).
+Production `StyledPopup` does not do that: it passes
+`screenMargin = screenEdgeThickness` to `ConnectedSurfaceGeometry`, so the
+body stops at the physical Screen Edge's inner boundary.
+
+U1 now clamps tangent placement and maximum popup extent to `frameInner`.
+The live validator's extreme-source assertion uses the same inner bounds.
+This is important because a popup at x=0 is a different SDF topology from a
+production popup at x=screenEdgeThickness; keeping the former would make corner
+validation near the display edge misleading.
+
 Next acceptance remains live nested-Niri GPU validation. If the enlarged
 diagnostic morphology still places the shoulder on the wrong side of the popup,
 do not add offsets or resurrect `ConnectedSurfaceJoinFlares`; revert the U1

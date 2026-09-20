@@ -114,11 +114,15 @@ PanelWindow {
         : height * sourceT
 
     readonly property rect popupRect: {
-        const pw = Math.min(popupWidth, Math.max(1, width))
-        const ph = Math.min(popupHeight, Math.max(1, height))
+        // Match ConnectedSurfaceGeometry: the physical Screen Edge is not
+        // available popup content space. Tangent clamp and maximum popup extent
+        // are bounded by the inverted frame's inner workspace, not output 0..W/H.
+        const pw = Math.min(popupWidth, Math.max(1, frameInner.width))
+        const ph = Math.min(popupHeight, Math.max(1, frameInner.height))
 
         if (edge === "top") {
-            const x = clamp(tangentCenter - pw / 2, 0, Math.max(0, width - pw))
+            const x = clamp(tangentCenter - pw / 2,
+                innerLeft, Math.max(innerLeft, innerRight - pw))
             // At rest the popup begins exactly at the inner owner seam. Reveal
             // translates the full rect underneath the owner; no permanent
             // penetration/contact offset is part of semantic geometry.
@@ -127,19 +131,22 @@ PanelWindow {
             return Qt.rect(x, mix(hiddenY, restingY, reveal), pw, ph)
         }
         if (edge === "bottom") {
-            const x = clamp(tangentCenter - pw / 2, 0, Math.max(0, width - pw))
+            const x = clamp(tangentCenter - pw / 2,
+                innerLeft, Math.max(innerLeft, innerRight - pw))
             const restingY = innerBottom - ph
             const hiddenY = innerBottom
             return Qt.rect(x, mix(hiddenY, restingY, reveal), pw, ph)
         }
         if (edge === "left") {
-            const y = clamp(tangentCenter - ph / 2, 0, Math.max(0, height - ph))
+            const y = clamp(tangentCenter - ph / 2,
+                innerTop, Math.max(innerTop, innerBottom - ph))
             const restingX = innerLeft
             const hiddenX = innerLeft - pw
             return Qt.rect(mix(hiddenX, restingX, reveal), y, pw, ph)
         }
 
-        const y = clamp(tangentCenter - ph / 2, 0, Math.max(0, height - ph))
+        const y = clamp(tangentCenter - ph / 2,
+            innerTop, Math.max(innerTop, innerBottom - ph))
         const restingX = innerRight - pw
         const hiddenX = innerRight
         return Qt.rect(mix(hiddenX, restingX, reveal), y, pw, ph)

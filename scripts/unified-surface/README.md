@@ -256,3 +256,16 @@ contact shoulder is still produced only by the same SDF field and corner-fill
 math. No contact object, semantic offset, join flag or module-specific branch is
 introduced. Override either environment variable to compare smaller/larger
 morphology with the same shader.
+
+
+## Production-faithful screen-edge clamp
+
+U1 tangent placement is clamped to `frameInner`, not to the outer output
+rectangle. This mirrors production `StyledPopup`, where
+`screenMargin = screenEdgeThickness` keeps the popup at the physical Screen
+Edge's inner boundary.
+
+The popup's maximum width/height is likewise bounded by the inner workspace.
+This matters for the extreme `sourceT=0.02/0.98` cases: those cases now test an
+actual adjacent-Screen-Edge junction rather than letting the synthetic popup
+underlap all the way to output coordinate zero.

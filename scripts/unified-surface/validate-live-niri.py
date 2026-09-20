@@ -408,19 +408,24 @@ def run_u1_case(
 
 def clamp_expected(geometry: dict, source_t: float, edge: str) -> bool:
     popup = geometry["popupRect"]
-    width = float(geometry["width"])
-    height = float(geometry["height"])
+    inner = geometry["frameInner"]
     tolerance = 0.01
+
+    inner_left = float(inner["x"])
+    inner_top = float(inner["y"])
+    inner_right = inner_left + float(inner["width"])
+    inner_bottom = inner_top + float(inner["height"])
 
     if source_t <= 0.05:
         value = float(popup["x"] if edge in ("top", "bottom") else popup["y"])
-        return abs(value) <= tolerance
+        expected = inner_left if edge in ("top", "bottom") else inner_top
+        return abs(value - expected) <= tolerance
     if source_t >= 0.95:
         if edge in ("top", "bottom"):
             value = float(popup["x"]) + float(popup["width"])
-            return abs(value - width) <= tolerance
+            return abs(value - inner_right) <= tolerance
         value = float(popup["y"]) + float(popup["height"])
-        return abs(value - height) <= tolerance
+        return abs(value - inner_bottom) <= tolerance
     return True
 
 

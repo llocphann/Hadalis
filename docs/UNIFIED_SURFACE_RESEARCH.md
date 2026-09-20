@@ -2101,3 +2101,99 @@ geometry.
 If it passes, the final production commit can be prepared as one atomic renderer
 replacement for ii + Waffle Bar popup material, with a clean rollback to the
 current legacy `ConnectedSurfaceFrame` path.
+
+
+### 28.8 First production cutover must be ii-only
+
+A palette audit invalidated the earlier assumption that ii and Waffle should be
+migrated in the same first production commit.
+
+Current material ownership is intentionally different:
+
+```text
+ii Screen Edge / Bar owner:
+  Appearance.colors.colLayer0
+
+ii StyledPopup:
+  Appearance.colors.colLayer0
+
+Waffle Screen Edge / Bar owner:
+  Looks.colors.bg0
+
+Waffle BarPopup:
+  Looks.colors.bg1Base
+```
+
+Current Caelestia `BlobGroup` has one `color` property and each BlobShape
+material uses `m_group->color()`. In other words, its one-silhouette group is
+also one material colour.
+
+Therefore:
+
+- ii has the correct material contract for the first unified-field cutover;
+- Waffle has a deliberate elevated popup palette and must not be silently
+  recolored merely to share the first renderer migration;
+- Waffle remains a supported family on the existing connected-surface renderer
+  until its material policy is explicitly designed/tested;
+- do not classify the Waffle path as legacy/retired merely because ii advances
+  first.
+
+The eventual geometry/SDF implementation may still be reusable by Waffle, but a
+future Waffle migration must choose one of these deliberately:
+
+1. retain two visual material roles while sharing only topology math;
+2. redefine Waffle owner/popup palette to one material as an explicit product
+   change;
+3. use separate composition groups where the visual design calls for elevation.
+
+None of those choices belong in the ii corner-fix commit.
+
+### 28.9 Exact first production cutover scope
+
+If and only if the live nested-Niri U1 matrix passes, prepare one atomic ii
+migration with this scope:
+
+```text
+ADD:
+  modules/common/perimeter/ConnectedSurfaceField.qml
+  modules/common/perimeter/ConnectedSurfaceField.frag
+  modules/common/perimeter/ConnectedSurfaceField.qsb
+
+MODIFY:
+  modules/common/perimeter/qmldir
+  modules/bar/StyledPopup.qml
+  relevant ii connected-popup behavior/contract tests
+  packaging/runtime shader-source contracts as required
+
+DO NOT MODIFY:
+  modules/screenCorners/ScreenEdges.qml
+  modules/bar/Bar.qml
+  modules/waffle/bar/BarPopup.qml
+  Waffle palette/tokens
+  Sidebar/Dashboard/Settings
+```
+
+The ii `StyledPopup` structure should become:
+
+```text
+full-output Overlay PanelWindow
+├── ConnectedSurfaceField
+│   ├── full virtual inverted frame evaluation
+│   ├── animatedBodyRect
+│   └── workspace projection
+├── ConnectedSurfaceRevealClip
+│   └── popup content / transparent geometry proxy
+└── ConnectedSurfaceMask
+```
+
+For ii only, the material color should remain
+`Appearance.colors.colLayer0`; this is already the popup and physical
+perimeter contract.
+
+The current `ConnectedSurfaceFrame` must stay available for Waffle during this
+first migration. Do not delete `ConnectedSurfaceJoinFlares.qml` globally in
+the same commit merely because ii no longer consumes it.
+
+This is a deliberate staged replacement, not patch stacking: ii switches from
+the old renderer to the new field renderer atomically, while the separate Waffle
+family remains unchanged.

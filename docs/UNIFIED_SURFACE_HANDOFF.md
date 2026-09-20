@@ -447,3 +447,41 @@ python3 scripts/unified-surface/validate-live-niri.py \
 
 Do not write the production cutover commit until that run passes. If it fails,
 fix/revert isolated U1 rather than adding production offsets or flares.
+
+
+### First production attempt is ii-only
+
+A material audit after the projection PoC found that ii and Waffle cannot safely
+share the same first cutover:
+
+- ii owner + popup both use Material `colLayer0`;
+- Waffle owner uses `bg0`, while its popup intentionally uses `bg1Base`;
+- Caelestia BlobGroup itself is one-colour-per-group.
+
+Therefore, after the live U1 matrix passes, migrate **ii StyledPopup only**.
+Keep Waffle on the existing connected-surface renderer and preserve its palette.
+Waffle is still supported and must not be labelled legacy.
+
+Expected first production file scope:
+
+```text
+ADD:
+  modules/common/perimeter/ConnectedSurfaceField.qml
+  modules/common/perimeter/ConnectedSurfaceField.frag
+  modules/common/perimeter/ConnectedSurfaceField.qsb
+
+MODIFY:
+  modules/common/perimeter/qmldir
+  modules/bar/StyledPopup.qml
+  focused ii popup/contracts/packaging tests
+
+UNCHANGED:
+  ScreenEdges.qml
+  Bar.qml
+  Waffle BarPopup.qml
+  Sidebar/Dashboard/Settings
+```
+
+Do not globally delete `ConnectedSurfaceFrame` or
+`ConnectedSurfaceJoinFlares` in that commit because Waffle still consumes that
+presentation.

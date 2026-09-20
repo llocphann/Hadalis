@@ -9,6 +9,7 @@ layout(std140, binding = 0) uniform buf {
     float smoothK;
     float frameRadius;
     float popupRadius;
+    float workspaceOnly;
     vec4 effectRect;
     vec4 frameOuter;
     vec4 frameInner;
@@ -192,7 +193,11 @@ void main() {
 
     float k = max(ubuf.smoothK, 0.001);
     float dOuter = sdBoxRect(pixel, ubuf.frameOuter) - 1.0;
-    float dInner = sdRoundedRect(pixel, ubuf.frameInner, ubuf.frameRadius);
+    // Preserve the physical owner/workspace boundary separately from the
+    // sink-modified frame field. Production Overlay composition may evaluate
+    // the complete union while owning only workspace-side output pixels.
+    float dWorkspace = sdRoundedRect(pixel, ubuf.frameInner, ubuf.frameRadius);
+    float dInner = dWorkspace;
 
     dInner -= frameSink(pixel, ubuf.frameInner, ubuf.popupRect, k);
 
@@ -215,6 +220,14 @@ void main() {
 
     float aa = max(fwidth(merged), 0.0001);
     float alpha = 1.0 - smoothstep(-aa, aa, merged);
+
+    if (ubuf.workspaceOnly > 0.5) {
+        float workspaceAa = max(fwidth(dWorkspace), 0.0001);
+        float workspaceAlpha =
+            1.0 - smoothstep(-workspaceAa, workspaceAa, dWorkspace);
+        alpha *= workspaceAlpha;
+    }
+
     vec4 color = ubuf.materialColor;
     fragColor = vec4(color.rgb * alpha, color.a * alpha) * ubuf.qt_Opacity;
 }

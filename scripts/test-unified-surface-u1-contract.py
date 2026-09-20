@@ -12,6 +12,7 @@ REQUIRED_TEXT = [
     U1 / "shell.qml",
     U1 / "U1Shell.qml",
     U1 / "U1Surface.qml",
+    U1 / "U1OwnerProbe.qml",
     U1 / "U1Surface.frag",
     U1 / "build-shader.sh",
     U1 / "verify-shader-package.sh",
@@ -63,6 +64,8 @@ for required in (
     "frameOuter",
     "frameInner",
     "popupRect",
+    "workspaceOnly",
+    "dWorkspace",
 ):
     assert required in frag, f"missing U1 shader invariant: {required}"
 
@@ -77,6 +80,10 @@ assert "Math.ceil(value * dpr) / dpr" in qml
 assert "FrameAnimation" in qml
 assert "HADALIS_U1_BENCHMARK" in qml
 assert "HADALIS_U1_SOURCE_T" in qml
+assert "HADALIS_U1_PROJECTION" in qml
+assert 'projectionMode === "workspace"' in qml
+assert "HADALIS_U1_OWNER_PROBE" in shell
+assert "U1OwnerProbe" in shell
 assert "HADALIS_U1_OUTER_PADDING" in qml
 assert "-outerPadding" in qml
 assert "width + outerPadding * 2" in qml
@@ -132,6 +139,9 @@ for live_invariant in (
     "WAYLAND_DEBUG",
     "get_layer_surface",
     "layer_surface_creation_count",
+    "run_owner_projection_case",
+    "count_owner_probe_pixels",
+    "workspace_iou",
     "run_motion_lifecycle_case",
     "run_reveal_lifecycle_case",
     "run_fullscreen_lifecycle_case",

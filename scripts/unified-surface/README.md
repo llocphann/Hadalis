@@ -54,6 +54,7 @@ HADALIS_U1_OUTPUT=<output-name>
 HADALIS_U1_EDGE=top|bottom|left|right
 HADALIS_U1_LAYER=top|overlay
 HADALIS_U1_MODE=control|bounded|full
+HADALIS_U1_PROJECTION=full|workspace
 HADALIS_U1_ANIMATE=0|1
 HADALIS_U1_REVEAL_CYCLE=0|1
 HADALIS_U1_TRACE_GEOMETRY=0|1
@@ -323,3 +324,32 @@ acceptance source.
 
 This gate directly rejects the old failure mode where a decorative corner sits
 below/behind the popup even though the total mask remains connected.
+
+
+## Workspace projection / owner-foreground gate
+
+Production `StyledPopup` is Overlay while the physical owner Bar/Screen Edge
+and Bar modules live below it. An Overlay material pass must therefore not paint
+opaque owner-band pixels over Bar foreground.
+
+U1 supports:
+
+```text
+HADALIS_U1_PROJECTION=full       # complete mathematical field/reference
+HADALIS_U1_PROJECTION=workspace  # same field, output only inside base frameInner
+```
+
+The workspace projection uses the **base** rounded inner-frame SDF, before
+dynamic border-sink modification. It changes output ownership only; it does not
+change popup geometry, smoothing, corner fill or union topology.
+
+The live validator creates a test-only `U1OwnerProbe` Top layer with a bright
+green marker under the affected owner region. For each edge:
+
+- full Overlay projection must occlude the marker, proving the test is sensitive;
+- workspace projection must leave the Top marker visible;
+- magenta material inside the workspace must match the full-field reference;
+- the shoulder-position/taper morphology gate must still pass.
+
+This is the production-domain prerequisite for moving SDF material into
+`StyledPopup` without covering Bar modules.

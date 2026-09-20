@@ -11,6 +11,10 @@ ShellRoot {
         const value = String(Quickshell.env("HADALIS_U1_FULLSCREEN_PROBE") || "").toLowerCase()
         return value === "1" || value === "true" || value === "yes"
     }
+    readonly property bool ownerProbeEnabled: {
+        const value = String(Quickshell.env("HADALIS_U1_OWNER_PROBE") || "").toLowerCase()
+        return value === "1" || value === "true" || value === "yes"
+    }
     readonly property var selectedScreens: {
         if (requestedOutput.length === 0)
             return Quickshell.screens.length > 0 ? [Quickshell.screens[0]] : []
@@ -25,6 +29,11 @@ ShellRoot {
     Variants {
         model: root.selectedScreens
         U1Surface {}
+    }
+
+    Variants {
+        model: root.ownerProbeEnabled ? root.selectedScreens : []
+        U1OwnerProbe {}
     }
 
     // Test-only normal xdg-toplevel. Nested-Niri validation fullscreens this

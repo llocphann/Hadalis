@@ -42,6 +42,9 @@ PanelWindow {
         const candidate = (Quickshell.env("HADALIS_U1_MODE") || "bounded").toLowerCase()
         return ["control", "bounded", "full"].includes(candidate) ? candidate : "bounded"
     }
+    readonly property string projectionMode:
+        (Quickshell.env("HADALIS_U1_PROJECTION") || "full").toLowerCase() === "workspace"
+            ? "workspace" : "full"
     readonly property bool horizontal: edge === "top" || edge === "bottom"
     readonly property real dpr: Math.max(1, modelData?.devicePixelRatio ?? 1)
     readonly property real edgeThickness: Math.max(1, envReal("HADALIS_U1_EDGE_THICKNESS", 10))
@@ -217,6 +220,7 @@ PanelWindow {
         property real smoothK: root.smoothK
         property real frameRadius: root.frameRadius
         property real popupRadius: root.popupRadius
+        property real workspaceOnly: root.projectionMode === "workspace" ? 1 : 0
         property rect effectRect: root.effectRect
         property rect frameOuter: root.frameOuter
         property rect frameInner: root.frameInner
@@ -258,6 +262,7 @@ PanelWindow {
             edge: edge,
             layer: layerMode,
             mode: renderMode,
+            projection: projectionMode,
             dpr: dpr,
             width: width,
             height: height,
@@ -347,6 +352,7 @@ PanelWindow {
             + " edge=" + edge
             + " layer=" + layerMode
             + " mode=" + renderMode
+            + " projection=" + projectionMode
             + " dpr=" + dpr)
     }
 }

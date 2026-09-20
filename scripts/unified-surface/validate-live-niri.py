@@ -385,6 +385,43 @@ def parse_markers(path: Path, marker: str) -> list[dict]:
     return values
 
 
+def count_owner_probe_pixels(path: Path) -> int:
+    width, height, pixels = ppm_payload(path)
+    del width, height
+    count = 0
+    for offset in range(0, len(pixels), 3):
+        red, green, blue = pixels[offset:offset + 3]
+        if red <= 90 and green >= 170 and blue <= 110:
+            count += 1
+    return count
+
+
+def mask_iou_rect(
+    first: bytearray,
+    second: bytearray,
+    width: int,
+    height: int,
+    rect: tuple[int, int, int, int],
+) -> float:
+    x0, y0, x1, y1 = rect
+    x0 = max(0, min(width - 1, x0))
+    y0 = max(0, min(height - 1, y0))
+    x1 = max(x0, min(width - 1, x1))
+    y1 = max(y0, min(height - 1, y1))
+
+    intersection = 0
+    union = 0
+    for y in range(y0, y1 + 1):
+        start = y * width + x0
+        stop = y * width + x1 + 1
+        for a, b in zip(first[start:stop], second[start:stop]):
+            if a or b:
+                union += 1
+                if a and b:
+                    intersection += 1
+    return intersection / union if union else 1.0
+
+
 def count_strong_material_pixels(path: Path) -> int:
     width, height, pixels = ppm_payload(path)
     del width, height
@@ -486,8 +523,13 @@ def run_u1_case(
     source_t: float,
     mode: str,
     layer: str,
+    projection: str = "full",
+    owner_probe: bool = false,
 ) -> tuple[dict, Path, str]:
-    token = f"s{scale:g}-{layer}-{edge}-t{source_t:g}-{mode}".replace(".", "_")
+    token = (
+        f"s{scale:g}-{layer}-{edge}-t{source_t:g}-{mode}-{projection}"
+        + ("-ownerprobe" if owner_probe else "")
+    ).replace(".", "_")
     log_path = work / f"{token}.log"
     shot_path = work / f"{token}.ppm"
 
@@ -497,6 +539,8 @@ def run_u1_case(
         HADALIS_U1_EDGE=edge,
         HADALIS_U1_LAYER=layer,
         HADALIS_U1_MODE=mode,
+        HADALIS_U1_PROJECTION=projection,
+        HADALIS_U1_OWNER_PROBE="1" if owner_probe else "0",
         HADALIS_U1_SOURCE_T=f"{source_t:.6f}",
         HADALIS_U1_ANIMATE="0",
         HADALIS_U1_REVEAL_CYCLE="0",
@@ -586,6 +630,164 @@ def clamp_expected(geometry: dict, source_t: float, edge: str) -> bool:
         value = float(popup["y"]) + float(popup["height"])
         return abs(value - inner_bottom) <= tolerance
     return True
+
+
+def run_owner_projection_case(
+    *,
+    work: Path,
+    quickshell: str,
+    grim: str,
+    env: dict[str, str],
+    output: str,
+    scale: float,
+    edge: str,
+    layer: str,
+) -> dict:
+    source_t = 0.5
+    full_geometry, full_path, full_log = run_u1_case(
+        work=work,
+        quickshell=quickshell,
+        grim=grim,
+        env=env,
+        output=output,
+        scale=scale,
+        edge=edge,
+        source_t=source_t,
+        mode="bounded",
+        layer=layer,
+        projection="full",
+        owner_probe=True,
+    )
+    workspace_geometry, workspace_path, workspace_log = run_u1_case(
+        work=work,
+        quickshell=quickshell,
+        grim=grim,
+        env=env,
+        output=output,
+        scale=scale,
+        edge=edge,
+        source_t=source_t,
+        mode="bounded",
+        layer=layer,
+        projection="workspace",
+        owner_probe=True,
+    )
+
+    fw, fh, full_mask, _, _ = material_mask(full_path)
+    ww, wh, workspace_mask, _, _ = material_mask(workspace_path)
+    if (fw, fh) != (ww, wh):
+        raise RuntimeError(
+            f"owner projection capture mismatch: {fw}x{fh} vs {ww}x{wh}"
+        )
+
+    morphology = junction_morphology(
+        workspace_mask,
+        ww,
+        wh,
+        workspace_geometry,
+    )
+
+    logical_width = float(workspace_geometry["width"])
+    logical_height = float(workspace_geometry["height"])
+    sx = ww / logical_width
+    sy = wh / logical_height
+    popup = workspace_geometry["popupRect"]
+    inner = workspace_geometry["frameInner"]
+    k = float(workspace_geometry["smoothK"])
+
+    px = float(popup["x"])
+    py = float(popup["y"])
+    pw = float(popup["width"])
+    ph = float(popup["height"])
+    il = float(inner["x"])
+    it = float(inner["y"])
+    ir = il + float(inner["width"])
+    ib = it + float(inner["height"])
+
+    # Compare only the workspace-side affected region, deliberately inset 2
+    # logical pixels from the owner boundary to exclude the ownership AA seam.
+    if edge == "top":
+        logical_roi = (
+            max(il, px - 2 * k),
+            it + 2,
+            min(ir, px + pw + 2 * k),
+            min(ib, py + ph + 2 * k),
+        )
+    elif edge == "bottom":
+        logical_roi = (
+            max(il, px - 2 * k),
+            max(it, py - 2 * k),
+            min(ir, px + pw + 2 * k),
+            ib - 2,
+        )
+    elif edge == "left":
+        logical_roi = (
+            il + 2,
+            max(it, py - 2 * k),
+            min(ir, px + pw + 2 * k),
+            min(ib, py + ph + 2 * k),
+        )
+    else:
+        logical_roi = (
+            max(il, px - 2 * k),
+            max(it, py - 2 * k),
+            ir - 2,
+            min(ib, py + ph + 2 * k),
+        )
+
+    x0, y0, x1, y1 = logical_roi
+    roi = (
+        int(math.floor(x0 * sx)),
+        int(math.floor(y0 * sy)),
+        int(math.ceil(x1 * sx)) - 1,
+        int(math.ceil(y1 * sy)) - 1,
+    )
+    workspace_iou = mask_iou_rect(
+        full_mask,
+        workspace_mask,
+        ww,
+        wh,
+        roi,
+    )
+
+    full_probe = count_owner_probe_pixels(full_path)
+    workspace_probe = count_owner_probe_pixels(workspace_path)
+
+    owner_thickness = (
+        it if edge == "top"
+        else logical_height - ib if edge == "bottom"
+        else il if edge == "left"
+        else logical_width - ir
+    )
+    marker_extent = min(120.0, logical_width if edge in ("top", "bottom") else logical_height)
+    expected_probe = marker_extent * owner_thickness * sx * sy
+
+    probe_visible = workspace_probe >= expected_probe * 0.60
+    full_occludes_probe = full_probe <= max(8, workspace_probe * 0.10)
+    passed = (
+        morphology["passed"]
+        and workspace_iou >= 0.995
+        and probe_visible
+        and full_occludes_probe
+    )
+
+    return {
+        "scale": scale,
+        "edge": edge,
+        "layer": layer,
+        "workspace_iou": workspace_iou,
+        "full_probe_pixels": full_probe,
+        "workspace_probe_pixels": workspace_probe,
+        "expected_probe_pixels": expected_probe,
+        "probe_visible": probe_visible,
+        "full_occludes_probe": full_occludes_probe,
+        "junction_morphology": morphology,
+        "full_capture": full_path.name,
+        "workspace_capture": workspace_path.name,
+        "full_log": full_log,
+        "workspace_log": workspace_log,
+        "passed": passed,
+    }
 
 
 def run_motion_lifecycle_case(
@@ -1089,6 +1291,7 @@ def main() -> int:
         "source_ts": args.source_ts,
         "layer": args.layer,
         "cases": [],
+        "owner_projection": [],
         "motion_lifecycle": {},
         "reveal_lifecycle": {},
         "fullscreen_lifecycle": {},
@@ -1228,6 +1431,31 @@ def main() -> int:
                     )
                     if not passed:
                         raise RuntimeError(f"U1 topology case failed: {case}")
+
+        projection_scale = float(args.scales[0])
+        set_output_scale(niri, child_env, output_name, projection_scale)
+        for projection_edge in ("top", "bottom", "left", "right"):
+            projection_case = run_owner_projection_case(
+                work=work,
+                quickshell=quickshell,
+                grim=grim,
+                env=child_env,
+                output=output_name,
+                scale=projection_scale,
+                edge=projection_edge,
+                layer="overlay",
+            )
+            report["owner_projection"].append(projection_case)
+            print(
+                f"U1 projection edge={projection_edge} "
+                f"iou={projection_case['workspace_iou']:.5f} "
+                f"probe={projection_case['workspace_probe_pixels']} "
+                f"{'PASS' if projection_case['passed'] else 'FAIL'}"
+            )
+            if not projection_case["passed"]:
+                raise RuntimeError(
+                    f"U1 owner projection failed: {projection_case}"
+                )
 
         if not args.skip_lifecycle:
             lifecycle_scale = float(args.scales[0])

@@ -1716,3 +1716,112 @@ If the PoC looks wrong, revise or discard only `scripts/iris-corner-poc/`.
 If the `card-owner` silhouette is accepted, the next production experiment is
 an **ii-only** field-backed popup background that reuses existing anchor/content
 lifecycle while feeding generic owner/popup body records to an iRiS-style field.
+
+
+### 26.8 Calibrated profiles, matrix harness and ABI lock
+
+Additional PoC commits:
+
+- `ff54e4b47578e271271bd023d9a39e4793213c62` —
+  `test(surface): add live iRiS corner matrix capture`
+- `b50f93f8eed288c42faf9b6c90296a6ef93b7c32` —
+  `research(surface): add calibrated iRiS corner profiles`
+- `204ece1d96d117d49371a0ed6a2399635dfa757d` —
+  `test(surface): lock iRiS field shader ABI`
+
+The default **diagnostic** profile is deliberately enlarged for visual review:
+
+```text
+owner thickness 56
+popup           380 x 300
+radius          48
+fuse            56
+weld            4
+```
+
+The **upstream-relative** profile follows iRiS v2.31 defaults more closely:
+
+```text
+owner thickness 42
+popup           360 x 300
+radius          30
+fuseDeep        30
+weld            3
+```
+
+Those upstream-relative values are grounded in
+`modules/iris/style/IrisStyle.qml`:
+
+- `radiusPanel = corner(30)`;
+- `fuseDeep = 30 * density * meltDepth` at default factors;
+- `weld = 3 * density`;
+- default Bar height is 42.
+
+The source contract recomputes the polynomial smooth-union contour for both
+profiles. The diagnostic profile must have a large, monotonic shoulder that
+converges to the popup side; the upstream-relative profile must preserve the
+same topology at the smaller upstream-scale values.
+
+The live matrix harness:
+
+```text
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+captures all twelve required cases:
+
+```text
+top / bottom / left / right
+x
+sourceT 0.02 / 0.50 / 0.98
+```
+
+Each case launches only the isolated PoC, waits for the
+`HADALIS_IRIS_POC` readiness marker, captures with `grim`, and terminates that
+exact PoC process. It does not restart/reload/IPC-call the running Hadalis shell.
+
+The exact upstream v2.31 `IrisField.frag.qsb` ABI is now guarded. The wrapper
+must provide all twenty shape uniforms, five blocks each for radii/fuse/join/
+also/paints/glass, plus viewport/screen/field/material and backdrop uniforms.
+
+The PoC intentionally keeps `paintsA..E = 0`: in iRiS v2.31 the shader comments
+and implementation state that paints flags no longer alter union topology/fill;
+they are retained for QML-side shadow ownership. The PoC has no shadow/material
+migration, so this is deliberate.
+
+### 26.9 Current live acceptance gate
+
+Do not begin production integration before the live matrix is visually reviewed.
+
+First capture the enlarged topology:
+
+```sh
+HADALIS_IRIS_POC_PROFILE=diagnostic \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+On a multi-output session, select the target explicitly:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=diagnostic \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+Then capture the upstream-scale comparison:
+
+```sh
+HADALIS_IRIS_POC_PROFILE=upstream-relative \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+PASS requires the contact sheet to show, for every edge and clamp extreme:
+
+1. the junction curve reads as part of one owner/popup silhouette;
+2. no separate-looking blob sits under/behind the popup;
+3. the two shoulders taper into the popup sides rather than floating away;
+4. clamping near output corners does not require a corner-specific branch;
+5. the smaller upstream-relative profile preserves the same topology.
+
+If any case fails, revise/revert only `scripts/iris-corner-poc/`. Do not patch
+production `StyledPopup`, Bar, ScreenEdges or Waffle.

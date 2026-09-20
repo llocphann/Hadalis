@@ -303,3 +303,48 @@ Guides:
 - preserve immutable slide-only `SurfaceMotion`;
 - if the visual is wrong, modify/revert the isolated PoC rather than layering
   geometry patches onto production.
+
+
+### Latest gate — live iRiS contact sheet
+
+The isolated iRiS PoC is now source-side complete enough for visual acceptance.
+
+Additional commits:
+
+- `ff54e4b47578e271271bd023d9a39e4793213c62` — live 12-case matrix capture;
+- `b50f93f8eed288c42faf9b6c90296a6ef93b7c32` — diagnostic and upstream-relative profiles;
+- `204ece1d96d117d49371a0ed6a2399635dfa757d` — exact iRiS QSB ABI guard.
+
+The two profiles are:
+
+```text
+diagnostic:
+  owner 56, popup 380x300, radius 48, fuse 56, weld 4
+
+upstream-relative:
+  owner 42, popup 360x300, radius 30, fuse 30, weld 3
+```
+
+Run the diagnostic matrix first:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=diagnostic \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+Then compare with:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=upstream-relative \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+The harness captures four edges x three source positions and, when ImageMagick
+is installed, writes one contact sheet per profile.
+
+This is the current hard gate. Do not integrate `StyledPopup` until these live
+captures are accepted. If they are wrong, only the isolated PoC may change.
+
+Waffle remains completely out of scope.

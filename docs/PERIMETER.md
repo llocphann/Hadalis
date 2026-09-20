@@ -21,13 +21,14 @@ Existing feature-owned bodies that attach directly to Screen Edge use
 `ConnectedSurfaceIrisEdgeSurface.qml`. It adapts an already-laid-out body into
 the same iRiS field, welds only the SDF record under the owner with
 `irisWeldDepth`, and clips field/shadow pixels at the real owner boundary.
-Sidebar, Dashboard and Settings use this adapter.
+Sidebar, Dashboard, Settings and Dock use this adapter.
 
-ii Bar popup shadows share the public Screen Edge shadow controls
-(`appearance.screenEdge.physicalShadow`) and raw Material `m3shadow` ink.
-This keeps popup depth visually aligned with the physical perimeter while the
-existing owner clip prevents shadow from painting across Bar/Screen Edge pixels.
-Sidebar/Dashboard/Settings/OSK keep their older connected-body shadow owner.
+ii Bar popup, Dock, Sidebar and Dashboard shadows share the public Screen Edge
+shadow controls (`appearance.screenEdge.physicalShadow`) and raw Material
+`m3shadow` ink. This keeps connected-edge depth visually aligned with the
+physical perimeter while the existing owner clip prevents shadow from painting
+across Bar/Screen Edge pixels. Settings/OSK keep their older connected-body
+shadow owner.
 
 The old standalone corner/wedge painters are retired and must remain absent:
 

@@ -35,6 +35,7 @@ same iRiS field without introducing a second popup framework.
 Current consumers:
 
 - Sidebar Left/Right;
+- Dock (top/bottom/left/right);
 - Dashboard;
 - Dashboard-owned Applications Search through the Dashboard field;
 - Settings Overlay;
@@ -76,12 +77,11 @@ create an independent edge/contact renderer in `SearchWidget`.
 
 ### 6. Shadow ownership
 
-- Physical Screen Edge and ii Bar `StyledPopup` use
+- Physical Screen Edge, ii Bar `StyledPopup`, Dock, Sidebar and Dashboard use
   `appearance.screenEdge.physicalShadow` and Material `m3shadow` ink.
-- Owner clipping must prevent popup shadow from painting over Bar/Screen Edge
-  pixels.
-- Sidebar/Dashboard/Settings/OSK currently retain their connected-body shadow
-  owner unless explicitly migrated later.
+- Owner clipping must prevent connected-surface shadow from painting over
+  Bar/Screen Edge pixels.
+- Settings/OSK currently retain their older connected-body shadow owner.
 
 ### 7. Retired geometry
 

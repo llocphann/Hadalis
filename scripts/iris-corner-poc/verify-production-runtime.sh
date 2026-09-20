@@ -29,6 +29,7 @@ assets=(
     # Extended production callers. These are deliberately checked here rather
     # than relying on shader parity alone: a stale installed Sidebar/Dashboard
     # file can reproduce old geometry even while the QSB itself is current.
+    modules/dock/Dock.qml
     modules/sidebar/SidebarHost.qml
     modules/sidebarLeft/SidebarLeftContent.qml
     modules/sidebarRight/SidebarRightContent.qml

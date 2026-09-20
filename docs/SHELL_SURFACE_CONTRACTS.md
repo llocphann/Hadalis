@@ -35,6 +35,7 @@ This document records the stabilization contracts that should be checked during 
 - Dock, Sidebar and Dashboard use the same `appearance.screenEdge.physicalShadow` size/opacity and Material `m3shadow` ink as the physical Screen Edge.
 - Dock reveal/retract remains slide-only through `SurfaceMotion`; the iRiS body follows that translation rather than introducing a second animation stage.
 - Legacy persisted values such as Pill, macOS, Island, or M3 normalize to `panel` during startup.
+- Retired Pill/macOS renderer components are absent from the live Dock module; Panel behavior must not be hidden behind constant-false style branches.
 - The settings UI must not expose the legacy style matrix again.
 - Waffle remains a separate panel family and is not a value of `dock.style`.
 

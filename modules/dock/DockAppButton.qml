@@ -15,7 +15,6 @@ DockButton {
     id: root
     property var appToplevel
     property var appListRoot
-    property int listIndex: -1       // set by the DockApps delegate (required property int index)
     property int lastFocused: -1
     property real iconSize: Config.options?.dock?.iconSize ?? 35
     property real countDotWidth: 10
@@ -92,9 +91,7 @@ DockButton {
     }
     property bool hasWindows: toplevels.length > 0
     surfaceDialect: Appearance.surfaceDialectFor("")
-    property bool pillStyle: false
     property bool islandStyle: root.surfaceDialect === "island"
-    property bool macosStyle: false
 
     readonly property int notificationCount: {
         if (root.isSeparator || (Config.options?.dock?.notificationBadge ?? true) === false)
@@ -135,18 +132,20 @@ DockButton {
         return 0;
     }
 
-    // Subtle highlight for active app (disabled in macOS and pill modes —
-    // macOS uses magnify, pill uses its own background highlight)
-    scale: (!macosStyle && !pillStyle && appIsActive)
-        ? (root.regaliaStyle ? 1.0 : root.zzzStyle ? 1.02 : 1.05) : 1.0
+    // Panel-only Dock: active apps use one small emphasis scale. The delegate
+    // may temporarily override it while dragging, but there is no alternate
+    // macOS/Pill renderer competing for ownership.
+    readonly property real activeScale:
+        root.regaliaStyle ? 1.0 : root.zzzStyle ? 1.02 : 1.05
+    scale: root.appIsActive ? root.activeScale : 1.0
     Behavior on scale {
         enabled: Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
     }
 
     transform: Translate {
-        y: (root.zzzStyle || root.islandStyle) && !root.macosStyle && !root.pillStyle && root.buttonHovered && !root.vertical ? -3 : 0
-        x: (root.zzzStyle || root.islandStyle) && !root.macosStyle && !root.pillStyle && root.buttonHovered && root.vertical ? -3 : 0
+        y: (root.zzzStyle || root.islandStyle) && root.buttonHovered && !root.vertical ? -3 : 0
+        x: (root.zzzStyle || root.islandStyle) && root.buttonHovered && root.vertical ? -3 : 0
         Behavior on y {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
@@ -199,21 +198,18 @@ DockButton {
     implicitWidth: isSeparator ? (vertical ? separatorSize : 8) : (vertical ? 50 : (implicitHeight - topInset - bottomInset))
     implicitHeight: isSeparator ? (vertical ? 8 : separatorSize) : 50
 
-    // In pill mode, hide the default RippleButton hover background — DockPillItem provides its own.
-    // In macOS mode, also hide it — DockMacItem provides visual feedback via magnify.
-    background.visible: !isSeparator && !pillStyle && !macosStyle
+    background.visible: !isSeparator
 
-    // Suppress ripple/hover bg in macOS mode so no colored rect appears under icon
     // Island mode hovers like a Ricelin row: a faint cream frame fill with a
     // vermilion-tinted press, instead of the global style's hover chain.
-    colBackgroundHover: macosStyle ? "transparent" : root.islandStyle ? PillTheme.frameBg
+    colBackgroundHover: root.islandStyle ? PillTheme.frameBg
         : (root.regaliaStyle ? Appearance.regalia.hoverPlate
         : root.zzzStyle ? "transparent"
         : root.angelStyle ? Appearance.angel.colGlassCard
         : root.inirStyle ? Appearance.inir.colLayer1Hover
         : root.auroraStyle ? Appearance.aurora.colSubSurface
         : Appearance.colors.colLayer0Hover)
-    colRipple: macosStyle ? "transparent" : root.islandStyle ? Qt.alpha(PillTheme.vermLit, 0.18)
+    colRipple: root.islandStyle ? Qt.alpha(PillTheme.vermLit, 0.18)
         : (root.regaliaStyle ? Appearance.regalia.pressPlate
         : root.zzzStyle ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.22)
         : root.angelStyle ? Appearance.angel.colGlassCardActive
@@ -234,44 +230,10 @@ DockButton {
         : root.appIsActive ? ColorUtils.applyAlpha(Appearance.zzz.sticker, 0.65)
         : "transparent"
 
-    // Pill background (replaces shared panel for this item)
-    DockPillItem {
-        id: pillBackground
-        anchors.fill: parent
-        visible: pillStyle && !isSeparator && !Appearance.gameModeMinimal
-        surfaceDialect: root.surfaceDialect
-        appIsActive: root.appIsActive
-        hasWindows: root.hasWindows
-        windowCount: toplevels.length
-        focusedWindowIndex: root.focusedWindowIndex
-        vertical: root.vertical
-        countDotWidth: root.countDotWidth
-        countDotHeight: root.countDotHeight
-    }
-
-    // macOS-style icon wrapper: magnify effect + multi-window indicator dots
-    DockMacItem {
-        id: macItem
-        anchors.fill: parent
-        visible: macosStyle && !isSeparator && !Appearance.gameModeMinimal
-        surfaceDialect: root.surfaceDialect
-        appIsActive: root.appIsActive
-        hasWindows: root.hasWindows
-        buttonHovered: root.buttonHovered
-        previewVisible: root.appListRoot?.previewAnchorItem === root
-        vertical: root.vertical
-        neighborDistance: {
-            const hi = root.appListRoot?.macHoveredIndex ?? -1
-            return (hi < 0 || root.listIndex < 0) ? 99 : Math.abs(root.listIndex - hi)
-        }
-        windowCount: toplevels.length
-        focusedWindowIndex: root.focusedWindowIndex
-    }
-
     // Hover shadow (disabled for angel — whole dock already has escalonado)
     StyledRectangularShadow {
-        target: root.pillStyle ? pillBackground : root.background
-        visible: !root.angelStyle && !root.zzzStyle && !root.macosStyle
+        target: root.background
+        visible: !root.angelStyle && !root.zzzStyle
         opacity: root.buttonHovered && !root.isSeparator
             ? (Appearance.m3colors.darkmode ? 0.18 : 0.35) : 0
         spread: 0
@@ -388,9 +350,7 @@ DockButton {
                 root.desktopEntry?.name
             ])
         }
-        // macOS click micro-pulse
-        if (macosStyle) macItem.clickPulse()
-        // Sin ventanas abiertas: lanzar nueva instancia desde desktop entry o fallbacks
+        // No open windows: launch a new instance from the desktop entry or fallbacks.
         if (toplevels.length === 0) {
             launchFromDesktopEntry();
             return;
@@ -594,18 +554,8 @@ DockButton {
               id: contentRoot
               anchors.centerIn: parent
 
-              // Cache the item into an FBO layer if shaders are present AND animating.
-              // This completely eliminates the horrific 100% CPU/GPU spike when macOS
-              // hover magnify continually rescales the Desaturate and ColorOverlay shaders.
-              layer.enabled: root.macosStyle && (Config.options?.dock?.monochromeIcons ?? false)
-              layer.smooth: true
-
-              // macOS magnify: scale around the bottom centre so icons grow upward.
-              // Animation is driven by DockMacItem's own Behavior on _magnifyScale —
-              // no extra Behavior needed here.
-              scale:           root.macosStyle ? macItem.iconScale : 1.0
-              transformOrigin: root.vertical ? Item.Right : Item.Bottom
-
+              // Panel is the sole Dock renderer; icon tinting does not need a
+              // second FBO cache/magnification stage.
             Loader {
                 id: iconImageLoader
                 anchors {
@@ -746,10 +696,9 @@ DockButton {
                   }
               }
 
-              // Smart indicator: shows window count and which is focused
-              // Hidden in macOS and pill modes — those render their own indicators
+              // Smart indicator: shows window count and which is focused.
               Loader {
-                  active: root.hasWindows && !root.isSeparator && !root.macosStyle && !root.pillStyle
+                  active: root.hasWindows && !root.isSeparator
                 anchors {
                     top: iconImageLoader.bottom
                     topMargin: 2

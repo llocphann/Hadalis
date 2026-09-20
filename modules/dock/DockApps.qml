@@ -35,8 +35,6 @@ Item {
     property bool contextMenuOpen: false
     property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
 
-    readonly property Item previewAnchorItem: dockPreviewPopup.visible ? dockPreviewPopup.anchorItem : null
-
     signal closeAllContextMenus()
 
     property bool _suppressNextClick: false
@@ -587,7 +585,6 @@ Item {
             required property int index
             appToplevel: modelData
             appListRoot: root
-            listIndex: index
             vertical: root.vertical
             dockPosition: root.dockPosition
 

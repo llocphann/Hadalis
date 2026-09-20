@@ -884,6 +884,28 @@ def main() -> None:
     check("Dock uses the Panel surface style." in dock_config,
           "Dock settings must describe Panel as the canonical surface style")
 
+    dock_app_button = read("modules/dock/DockAppButton.qml")
+    dock_apps = read("modules/dock/DockApps.qml")
+    dock_qmldir = read("modules/dock/qmldir")
+    for retired_component in (
+        "DockMacBackground.qml",
+        "DockMacItem.qml",
+        "DockPillItem.qml",
+        "DockSeparator.qml",
+    ):
+        check(not (ROOT / "modules/dock" / retired_component).exists(),
+              f"Retired Dock renderer must stay deleted: {retired_component}")
+        check(retired_component not in dock_qmldir,
+              f"Retired Dock renderer must stay out of qmldir: {retired_component}")
+    for retired_token in ("pillStyle", "macosStyle", "DockPillItem", "DockMacItem",
+                          "macHoveredIndex", "previewAnchorItem"):
+        check(retired_token not in dock_app_button
+              and retired_token not in dock_apps,
+              f"Panel-only Dock runtime must not retain dormant renderer token: {retired_token}")
+    check("readonly property real activeScale:" in dock_app_button
+          and "scale: root.appIsActive ? root.activeScale : 1.0" in dock_app_button,
+          "Panel Dock must own one active-app emphasis scale")
+
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,
           "Legacy Dock styles must normalize to Panel")

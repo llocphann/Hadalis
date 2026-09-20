@@ -1265,8 +1265,9 @@ a production write path:
   for base SHA, candidate SHA, parent semantic anchor, existing-action semantic
   anchor and inserted-handler semantic anchor. Preview drift fails closed.
 - Mode-0600 `snapshot.qml`, `candidate.qml` and `manifest.json` artifacts
-  are written outside the runtime source tree. The manifest binds all reviewed
-  semantic identity plus postcondition
+  are written outside the runtime source tree under artifact proof
+  `prepared-reviewed-signal-action-artifacts-v1`. The manifest binds all
+  reviewed semantic identity plus postcondition
   `inserted-handler-rebound-exact-action`.
 - The manifest remains non-authorizing:
   `writeAuthorized=false`, `applyEnabled=false`,

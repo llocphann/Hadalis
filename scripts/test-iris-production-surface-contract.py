@@ -71,8 +71,8 @@ for token in (
     "readonly property rect paintBounds:",
     "readonly property rect visibleBodyRect:",
     "readonly property var ownerShape:",
-    "readonly property var frameStartShape:",
-    "readonly property var frameEndShape:",
+    "readonly property var frameStartShape: !root.tangentStartJoined",
+    "readonly property var frameEndShape: !root.tangentEndJoined",
     "readonly property var popupShape:",
     "readonly property bool needsEndJoinAux:",
     'joins: ["frame-end"]',
@@ -163,6 +163,10 @@ for token in (
     "SearchWidget {",
     "embeddedSurface: true",
     "directBottomAttachment: false",
+    "id: dashboardSurfaceLayer",
+    "z: 2",
+    "id: dashboardIrisSurface",
+    "z: 1",
 ):
     require(dashboard, token, "Dashboard/Search iRiS edge cutover")
 forbid(dashboard, "ConnectedSurfaceJoinFlares {", "Dashboard legacy edge renderer")

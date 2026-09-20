@@ -83,6 +83,7 @@ Item {
 
     Item {
         id: dashboardSurfaceLayer
+        z: 2
         anchors.fill: parent
         transform: Translate { y: (1 - root.revealProgress) * dashContainer.height }
     }
@@ -101,6 +102,9 @@ Item {
         joinBottom: root.directBottomAttachment
     }
 
+    // The iRiS field supplies only the connected plate/shadow. Dashboard
+    // content must remain above it; otherwise the opaque field covers every
+    // widget and the launcher appears as one blank background rectangle.
     ConnectedSurfaceIrisEdgeSurface {
         id: dashboardIrisSurface
         z: 1

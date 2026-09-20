@@ -130,45 +130,61 @@ Item {
         id: "owner"
     })
 
-    readonly property var frameStartShape: root.horizontal
+    // Tangent owner records must not exist as painted field shapes unless the
+    // popup/body actually reaches that tangent edge. StyledPopup's full-output
+    // viewport hid these dormant records outside its paint bounds, but the
+    // content-sized Sidebar adapter exposed them as stray horizontal bars.
+    // Zero-size dormant records preserve stable shader indices without adding
+    // material to the union.
+    readonly property var frameStartShape: !root.tangentStartJoined
         ? ({
-            x: root.output.x,
-            y: root.output.y - root.fuse * 2,
-            width: root.frameThickness,
-            height: root.output.height + root.fuse * 4,
-            radius: 0,
-            fuse: 0,
-            id: "frame-start"
+            x: 0, y: 0, width: 0, height: 0,
+            radius: 0, fuse: 0, id: "frame-start"
         })
-        : ({
-            x: root.output.x - root.fuse * 2,
-            y: root.output.y,
-            width: root.output.width + root.fuse * 4,
-            height: root.frameThickness,
-            radius: 0,
-            fuse: 0,
-            id: "frame-start"
-        })
+        : root.horizontal
+            ? ({
+                x: root.output.x,
+                y: root.output.y - root.fuse * 2,
+                width: root.frameThickness,
+                height: root.output.height + root.fuse * 4,
+                radius: 0,
+                fuse: 0,
+                id: "frame-start"
+            })
+            : ({
+                x: root.output.x - root.fuse * 2,
+                y: root.output.y,
+                width: root.output.width + root.fuse * 4,
+                height: root.frameThickness,
+                radius: 0,
+                fuse: 0,
+                id: "frame-start"
+            })
 
-    readonly property var frameEndShape: root.horizontal
+    readonly property var frameEndShape: !root.tangentEndJoined
         ? ({
-            x: root.output.x + root.output.width - root.frameThickness,
-            y: root.output.y - root.fuse * 2,
-            width: root.frameThickness,
-            height: root.output.height + root.fuse * 4,
-            radius: 0,
-            fuse: 0,
-            id: "frame-end"
+            x: 0, y: 0, width: 0, height: 0,
+            radius: 0, fuse: 0, id: "frame-end"
         })
-        : ({
-            x: root.output.x - root.fuse * 2,
-            y: root.output.y + root.output.height - root.frameThickness,
-            width: root.output.width + root.fuse * 4,
-            height: root.frameThickness,
-            radius: 0,
-            fuse: 0,
-            id: "frame-end"
-        })
+        : root.horizontal
+            ? ({
+                x: root.output.x + root.output.width - root.frameThickness,
+                y: root.output.y - root.fuse * 2,
+                width: root.frameThickness,
+                height: root.output.height + root.fuse * 4,
+                radius: 0,
+                fuse: 0,
+                id: "frame-end"
+            })
+            : ({
+                x: root.output.x - root.fuse * 2,
+                y: root.output.y + root.output.height - root.frameThickness,
+                width: root.output.width + root.fuse * 4,
+                height: root.frameThickness,
+                radius: 0,
+                fuse: 0,
+                id: "frame-end"
+            })
 
     readonly property var popupPrimaryJoins: {
         const joins = ["owner"]

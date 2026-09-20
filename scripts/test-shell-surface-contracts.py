@@ -521,8 +521,10 @@ def main() -> None:
           and "id: dashboardIrisSurface" in dashboard
           and "ownerThickness: root.attachmentThickness" in dashboard
           and "PerimeterTokens.irisFuseDepth" in dashboard
+          and "id: dashboardSurfaceLayer" in dashboard
+          and "z: 2" in dashboard
           and "ConnectedSurfaceJoinFlares" not in dashboard,
-          "Dashboard bottom attachment must use iRiS without legacy wedge geometry")
+          "Dashboard bottom attachment must keep content above the iRiS plate without legacy wedge geometry")
     dashboard_content = read("modules/dashboard/DashboardContent.qml")
     dashboard_canvas = read("modules/dashboard/DashboardCanvas.qml")
     dashboard_grid = read("modules/dashboard/DashboardEditGrid.qml")
@@ -606,8 +608,8 @@ def main() -> None:
         "function clipExternalOwners(raw)",
         "readonly property rect visibleBodyRect:",
         "readonly property var ownerShape:",
-        "readonly property var frameStartShape:",
-        "readonly property var frameEndShape:",
+        "readonly property var frameStartShape: !root.tangentStartJoined",
+        "readonly property var frameEndShape: !root.tangentEndJoined",
         "readonly property var popupShape:",
         "readonly property bool needsEndJoinAux:",
         "ShaderEffectSource {",

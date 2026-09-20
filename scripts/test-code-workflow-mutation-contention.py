@@ -51,6 +51,9 @@ for token in (
     '"disconnectPreparationStatus"',
     '"connectSafetyFreshness"',
     '"connectPreparationStatus"',
+    '"sourceBeforeSha256"',
+    '"sourceBeforeBytes"',
+    'prepared_report.pop("sourceBefore", None)',
     "mutation-contention-report.json",
 ):
     if token not in HARNESS:

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Live cross-pipeline mutation contention acceptance for 2K-V-B.
 
-The runtime production service is not modified for this gate. Probe-only IPC
-keeps four already-qualified commands simultaneously available so one Binding
+Probe-only IPC keeps four already-qualified commands simultaneously available
+so one Binding
 owner can prove that Disconnect, Connect and Literal lifecycle starts fail
 closed while the owner is in flight. The Binding candidate then intentionally
 fails its exact semantic postcondition, proving that same-source sibling
@@ -450,8 +450,15 @@ def run_contention(
         },
     )
 
+    prepared_report = dict(prepared)
+    prepared_report["sourceBeforeSha256"] = sha256(
+        source_before
+    ).hexdigest()
+    prepared_report["sourceBeforeBytes"] = len(source_before)
+    prepared_report.pop("sourceBefore", None)
+
     report["contention"] = {
-        "prepared": prepared,
+        "prepared": prepared_report,
         "forcedBinding": forced,
         "authorized": authorized,
         "evidence": evidence,

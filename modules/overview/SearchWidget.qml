@@ -18,6 +18,8 @@ Item { // Wrapper
     readonly property string xdgConfigHome: Directories.config
     property string searchingText: ""
     property bool showResults: searchingText != ""
+    // Embedded Dashboard owns the crossfade. Standalone search keeps 1.0.
+    property real resultsOpacity: 1
     property bool panelVisible: true
     property bool applicationDragActive: false
     property bool embeddedSurface: false
@@ -154,7 +156,10 @@ Item { // Wrapper
         const text = root.debouncedSearchText;
         
         if (text === "") {
-            root.cachedResults = [];
+            // Keep the last application model while the embedded Dashboard
+            // crossfades back in; clear only after the result layer is gone.
+            if (!root.embeddedSurface || root.resultsOpacity <= 0.001)
+                root.cachedResults = [];
             return;
         }
 
@@ -357,6 +362,12 @@ Item { // Wrapper
         root.mathResult = ""
         searchDebounceTimer.restart();
     }
+    onResultsOpacityChanged: {
+        if (root.embeddedSurface && !root.showResults
+                && root.resultsOpacity <= 0.001
+                && root.debouncedSearchText === "")
+            root.cachedResults = []
+    }
 
     Timer {
         id: nonAppResultsTimer
@@ -543,6 +554,7 @@ Item { // Wrapper
                 id: actionModeView
                 Layout.fillWidth: true
                 visible: root.actionMode && root.showResults
+                opacity: root.resultsOpacity
                 query: root.actionQuery
                 availableHeight: root.resultsAvailableHeight
                 onActionExecuted: GlobalStates.overviewOpen = false
@@ -551,7 +563,9 @@ Item { // Wrapper
 
             ListView { // App results
                 id: appResults
-                visible: root.showResults && !root.actionMode
+                visible: (root.showResults || (root.embeddedSurface && root.resultsOpacity > 0.001))
+                    && !root.actionMode
+                opacity: root.resultsOpacity
                 Layout.fillWidth: true
                 implicitHeight: Math.min(root.resultsAvailableHeight, appResults.contentHeight + topMargin + bottomMargin)
                 clip: true
@@ -644,7 +658,9 @@ Item { // Wrapper
 
             Rectangle {
                 // Separator
-                visible: root.showResults && !root.actionMode
+                visible: (root.showResults || (root.embeddedSurface && root.resultsOpacity > 0.001))
+                    && !root.actionMode
+                opacity: root.resultsOpacity
                 Layout.fillWidth: true
                 height: 1
                 color: Appearance.colors.colOutlineVariant

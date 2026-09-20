@@ -152,7 +152,7 @@ Item {
             height: root.dashboardContentHeight
             clip: true
             visible: root.dashboardProgress > 0.001
-            transform: Translate { y: (1 - root.dashboardProgress) * dashboardViewport.height }
+            opacity: root.dashboardProgress
 
             DashboardContent {
                 id: dashboardContent
@@ -175,6 +175,7 @@ Item {
             panelVisible: root.panelVisible
             directBottomAttachment: false
             searchingText: root.searchingText
+            resultsOpacity: 1 - root.dashboardProgress
             availableHeight: Math.max(220, root.configuredHeight - 24)
             onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
         }

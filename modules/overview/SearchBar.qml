@@ -146,29 +146,15 @@ RowLayout {
         text: "music_cast"
         buttonText: Translation.tr("Recognize music")
 
-        // Use the shared Material toolbar background. The previous local
-        // MaterialShape background outlived its intended patch and could paint
-        // an extra face over the neighbouring SongRec/Lens controls.
-        colBackgroundToggled: Appearance.colors.colPrimaryContainer
-        colBackgroundToggledHover: Appearance.colors.colPrimaryContainer
+        // SongRec must remain a plain toolbar icon. The old custom rotating
+        // MaterialShape/content renderer introduced an extra transformed scene
+        // node that could survive as a crescent/face beside the icon. Running
+        // state is communicated by ink only; hover/ripple stay shared chrome.
+        colBackgroundToggled: "transparent"
+        colBackgroundToggledHover: Appearance.colors.colLayer1Hover
         colText: toggled
-            ? Appearance.colors.colOnPrimaryContainer
+            ? Appearance.colors.colPrimary
             : Appearance.colors.colOnSurfaceVariant
-
-        contentItem: MaterialSymbol {
-            anchors.centerIn: parent
-            text: "music_cast"
-            iconSize: 22
-            color: songRecButton.colText
-            RotationAnimation on rotation {
-                running: songRecButton.toggled
-                duration: 12000
-                easing.type: Easing.Linear
-                loops: Animation.Infinite
-                from: 0
-                to: 360
-            }
-        }
 
         StyledToolTip {
             position: "top"

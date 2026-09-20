@@ -29,6 +29,7 @@ Item {
     property var panelScreen: null
     property real panelScreenY: Appearance.sizes.hyprlandGapsOut
     readonly property color connectedSurfaceColor: sidebarLeftBackground.color
+    readonly property Item connectedSurfaceItem: sidebarLeftBackground
     property bool panelVisible: false
     property bool geometryPreviewActive: false
     property string outerSizeMode: "full"

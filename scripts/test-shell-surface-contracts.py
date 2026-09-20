@@ -487,9 +487,15 @@ def main() -> None:
         ):
             check(token in settings_surface,
                   f"{settings_path} must remain a square bottom-connected popup below Polkit: {token}")
-        check("ConnectedSurfaceJoinFlares {" not in settings_surface
-              and "PerimeterTokens.joinFlareRadius" not in settings_surface,
-              f"{settings_path} must not paint full-overlay endpoint flares that float beside the centered Settings card")
+        for token in (
+            "import qs.modules.common.perimeter",
+            "ConnectedSurfaceJoinFlares {",
+            "flareRadius: PerimeterTokens.joinFlareRadius",
+            "bottomContactPlane: settingsPanel.bottomContactPlane",
+            "joinBottom: true",
+        ):
+            check(token in settings_surface,
+                  f"{settings_path} must render shared bottom contact corners at the owner seam: {token}")
 
     settings_overlay = read("modules/settings/SettingsOverlay.qml")
     settings_focus = read("modules/settings/SettingsFocus.qml")
@@ -502,15 +508,16 @@ def main() -> None:
           and "settingsPanel.height * 0.92" in settings_focus,
           "Focus Settings overlay must use the enlarged bottom-connected footprint")
     for settings_surface in (settings_overlay, settings_focus):
-        check("Appearance.animation.elementMove.duration" in settings_surface
-              and "Appearance.animation.elementMove.bezierCurve" in settings_surface,
-              "Connected Settings overlays must use the Caelestia-style default-spatial slide")
+        check("Appearance.animationCurves.standardDecel" in settings_surface
+              and "Appearance.animationCurves.standardAccel" in settings_surface,
+              "Connected Settings overlays must use the same non-overshooting slide as shared popups")
         check("Appearance.colors.colShadow" in settings_surface
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface,
               "Connected Settings overlays must share the Screen Edge shadow contract")
-        check("ConnectedSurfaceJoinFlares {" not in settings_surface,
-              "Settings must not reintroduce floating endpoint shoulder geometry inside the full-screen overlay")
+        check("readonly property real bottomContactPlane:" in settings_surface
+              and "PerimeterTokens.seamOverlap" in settings_surface,
+              "Settings contact corners must use the real bottom owner seam with a raster overlap")
 
     search_widget = read("modules/overview/SearchWidget.qml")
     check("property bool directBottomAttachment: false" in search_widget
@@ -531,9 +538,9 @@ def main() -> None:
           and "bottomLeftRadius: root.directBottomAttachment ? 0 : radius" in dashboard
           and "bottomRightRadius: root.directBottomAttachment ? 0 : radius" in dashboard,
           "Dashboard attached body edge must stay square; outward flare owns the Bar/Screen Edge shoulder")
-    check("Appearance.animation.elementMove.duration" in dashboard
-          and "Appearance.animation.elementMove.bezierCurve" in dashboard,
-          "Dashboard connected slide must use the default-spatial motion token")
+    check("Appearance.animationCurves.standardDecel" in dashboard
+          and "Appearance.animationCurves.standardAccel" in dashboard,
+          "Dashboard connected slide must remain monotonic and non-overshooting")
     check("Appearance.colors.colShadow" in dashboard
           and "Appearance.m3colors.m3shadow" not in dashboard,
           "Dashboard connected shadow must use the same themed shadow ink as Screen Edge and Bar")
@@ -908,6 +915,22 @@ def main() -> None:
           and 'Translation.tr("Island")' not in sidebars_config
           and 'Config.setNestedValue("sidebar.style"' not in sidebars_config,
           "Sidebar General settings must not expose Island or Card surface choices")
+    check('Translation.tr("Sidebar animation")' not in sidebars_config
+          and 'sidebar.animationType' not in sidebars_config,
+          "Sidebar Settings must not expose a separate animation-style selector")
+    sidebar_host = read("modules/sidebar/SidebarHost.qml")
+    check('readonly property string animationType: "slide"' in sidebar_host
+          and "Appearance.animationCurves.standardDecel" in sidebar_host
+          and "Appearance.animationCurves.standardAccel" in sidebar_host,
+          "Sidebar runtime must use the shared slide-only connected motion contract")
+    for sidebar_surface_path in (
+        "modules/sidebarLeft/SidebarLeftContent.qml",
+        "modules/sidebarRight/SidebarRightContent.qml",
+        "modules/sidebarRight/CompactSidebarRightContent.qml",
+    ):
+        sidebar_surface = read(sidebar_surface_path)
+        check("readonly property Item connectedSurfaceItem:" in sidebar_surface,
+              f"{sidebar_surface_path} must expose its exact visible surface for flare tangent alignment")
 
     shell = read("shell.qml")
     check("DevNavigation.registerSettingsPages(SettingsPageRegistry.pages)" in shell,

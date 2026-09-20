@@ -61,8 +61,7 @@ grep -Fq 'width: Math.max(0, root.effectiveSidebarWidth' "$root/modules/sidebar/
     || fail 'SidebarHost must keep its visible body width tied to the host edge surface'
 grep -Fq -- '- Appearance.sizes.elevationMargin)' "$root/modules/sidebar/SidebarHost.qml" \
     || fail 'Sidebar body must reserve margin only on its free inward side'
-if grep -Fq 'directEdgeInset' "$root/modules/sidebar/SidebarHost.qml" \
-        || grep -Fq 'screenEdgeThickness' "$root/modules/sidebar/SidebarHost.qml"; then
+if grep -Fq 'directEdgeInset' "$root/modules/sidebar/SidebarHost.qml"; then
     fail 'Sidebar body must extend through the full Screen Edge band to the physical edge'
 fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$root/modules/sidebar/SidebarHost.qml"; then
@@ -74,13 +73,15 @@ fi
 
 for token in \
     'readonly property real edgeDecorationMargin:' \
-    'readonly property real edgeContactPlane:' \
+    'readonly property real edgeOwnerThickness:' \
+    'readonly property real edgeContactInset:' \
+    'PerimeterTokens.seamOverlap' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
-    'bodyItem: sidebarContentLoader' \
+    'bodyItem: sidebarContentLoader.item?.connectedSurfaceItem' \
     'fillColor: sidebarContentLoader.item?.connectedSurfaceColor' \
-    'leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1' \
-    'sidebarRoot.width - root.edgeContactPlane' \
+    'leftContactPlane: root.isLeftEdge ? root.edgeContactInset : -1' \
+    'sidebarRoot.width - root.edgeContactInset' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
@@ -90,6 +91,17 @@ done
 grep -Fq 'root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0' \
     "$root/modules/sidebar/SidebarHost.qml" \
     || fail 'SidebarHost must reserve native endpoint room for the configured Screen Edge shadow'
+
+for token in \
+    'readonly property string animationType: "slide"' \
+    'Appearance.animationCurves.standardDecel' \
+    'Appearance.animationCurves.standardAccel'; do
+    grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
+        || fail "Sidebar runtime must use the shared non-bounce slide motion: $token"
+done
+if grep -Fq 'sidebar.animationType' "$root/modules/settings/SidebarsConfig.qml"; then
+    fail 'Sidebar Settings must not expose a separate animation style selector'
+fi
 
 for sidebar_surface in \
     "$root/modules/sidebarLeft/SidebarLeftContent.qml" \
@@ -107,6 +119,8 @@ for sidebar_surface in \
         || fail "${sidebar_surface#$root/} must share Screen Edge shadow enable state"
     grep -Fq 'readonly property color connectedSurfaceColor:' "$sidebar_surface" \
         || fail "${sidebar_surface#"$root/"} must expose its real surface color to host-owned flares"
+    grep -Fq 'readonly property Item connectedSurfaceItem:' "$sidebar_surface" \
+        || fail "${sidebar_surface#"$root/"} must expose its exact visible surface to host-owned flares"
 done
 
 grep -Fq 'property JsonObject screenEdge: JsonObject {' "$root/modules/common/Config.qml" \

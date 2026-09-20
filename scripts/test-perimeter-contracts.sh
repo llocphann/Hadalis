@@ -86,8 +86,7 @@ for token in \
     grep -Fq -- "$token" "$sidebar" \
         || fail "SidebarHost must underlap the full attached Screen Edge band: $token"
 done
-if grep -Fq 'directEdgeInset' "$sidebar" \
-        || grep -Fq 'screenEdgeThickness' "$sidebar"; then
+if grep -Fq 'directEdgeInset' "$sidebar"; then
     fail 'SidebarHost must not stop the body at the inner Screen Edge boundary'
 fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$sidebar" \
@@ -98,16 +97,26 @@ fi
 for token in \
     'import qs.modules.common.perimeter' \
     'readonly property real edgeDecorationMargin:' \
-    'readonly property real edgeContactPlane:' \
+    'readonly property real edgeOwnerThickness:' \
+    'readonly property real edgeContactInset:' \
+    'PerimeterTokens.seamOverlap' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
-    'bodyItem: sidebarContentLoader' \
-    'leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1' \
-    'sidebarRoot.width - root.edgeContactPlane' \
+    'bodyItem: sidebarContentLoader.item?.connectedSurfaceItem' \
+    'leftContactPlane: root.isLeftEdge ? root.edgeContactInset : -1' \
+    'sidebarRoot.width - root.edgeContactInset' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$sidebar" \
         || fail "SidebarHost must render Caelestia-style Screen Edge endpoint flares: $token"
+done
+
+for token in \
+    'readonly property string animationType: "slide"' \
+    'Appearance.animationCurves.standardDecel' \
+    'Appearance.animationCurves.standardAccel'; do
+    grep -Fq "$token" "$sidebar" \
+        || fail "Sidebar must use one shared non-bounce slide motion: $token"
 done
 
 for token in \

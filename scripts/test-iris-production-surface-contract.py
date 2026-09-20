@@ -188,6 +188,8 @@ for token in (
     "edge: root.position",
     "ownerThickness: dockRoot.screenEdgeThickness",
     "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
+    "dockHeight + dockRoot.edgeDecorationMargin",
+    "model: root.targetScreens",
     "fillColor: dockVisualBackground.surfaceColor",
     'color: "transparent"',
     "border.width: 0",
@@ -205,6 +207,7 @@ forbid(dock, "StyledRectangularShadow {", "Dock detached legacy shadow")
 forbid(dock, "fillColor: dockVisualBackground.color", "Dock duplicate body paint")
 forbid(dock, "Config.options?.bar?.bottom !== undefined", "Dock stale Bar orientation probe")
 forbid(dock, "exclusiveZone: root.pinned", "Dock visual surface displaced by Screen Edge reservation")
+forbid(dock, "Appearance.sizes.elevationMargin))", "Dock reservation detached from Screen Edge width")
 
 for source, label in (
     (sidebar, "Sidebar"),

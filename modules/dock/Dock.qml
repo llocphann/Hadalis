@@ -25,19 +25,20 @@ Scope {
     // schema boolean, so switching horizontal/vertical Bar never changed key.
     readonly property bool barIsVertical: Config.options?.bar?.vertical ?? false
     property string _positionKey: `${root.position}_${barIsVertical}`
+    readonly property var targetScreens: {
+        const screens = Quickshell.screens
+        const list = Config.options?.dock?.screenList ?? []
+        if (!list || list.length === 0)
+            return screens
+        const matchedScreens = screens.filter(screen => {
+            const screenName = screen?.name ?? ""
+            return screenName.length > 0 && list.includes(screenName)
+        })
+        return matchedScreens.length > 0 ? matchedScreens : screens
+    }
 
     Variants {
-        model: {
-            const screens = Quickshell.screens;
-            const list = Config.options?.dock?.screenList ?? [];
-            if (!list || list.length === 0)
-                return screens;
-            const matchedScreens = screens.filter(screen => {
-                const screenName = screen?.name ?? "";
-                return screenName.length > 0 && list.includes(screenName);
-            });
-            return matchedScreens.length > 0 ? matchedScreens : screens;
-        }
+        model: root.targetScreens
 
         Loader {
             id: panelLoader
@@ -151,15 +152,18 @@ Scope {
                 // Dock is an edge-attached iRiS surface. The native window
                 // retains transparent room for the SDF shoulder/shadow, while
                 // the visible body stops at the real Screen Edge inner boundary.
+                // Keep transparent room for the complete free-edge shadow.
+                // Increasing this room must not move the visible body: the
+                // matching free-side body margin below grows by the same amount.
                 implicitWidth: root.isVertical
-                    ? (dockHeight + Appearance.sizes.elevationMargin
+                    ? (dockHeight + dockRoot.edgeDecorationMargin
                         + dockRoot.screenEdgeThickness)
                     : (dockBackground.implicitWidth
                         + dockRoot.edgeDecorationMargin * 2)
                 implicitHeight: root.isVertical
                     ? (dockBackground.implicitHeight
                         + dockRoot.edgeDecorationMargin * 2)
-                    : (dockHeight + Appearance.sizes.elevationMargin
+                    : (dockHeight + dockRoot.edgeDecorationMargin
                         + dockRoot.screenEdgeThickness)
 
                 WlrLayershell.namespace: "quickshell:dock"
@@ -321,16 +325,16 @@ Scope {
                                 anchors.fill: parent
                                 anchors.topMargin: root.isTop
                                     ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
+                                    : (root.isVertical ? 0 : dockRoot.edgeDecorationMargin)
                                 anchors.bottomMargin: root.position === "bottom"
                                     ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
+                                    : (root.isVertical ? 0 : dockRoot.edgeDecorationMargin)
                                 anchors.leftMargin: root.isLeft
                                     ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
+                                    : (root.isVertical ? dockRoot.edgeDecorationMargin : 0)
                                 anchors.rightMargin: root.position === "right"
                                     ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
+                                    : (root.isVertical ? dockRoot.edgeDecorationMargin : 0)
 
                                 visible: (Config.options?.dock?.showBackground ?? true)
                                     && !gameModeMinimal
@@ -519,17 +523,7 @@ Scope {
     // nothing; separating it from the visual Dock lets the iRiS surface ignore
     // other exclusive zones without losing the historical workspace strut.
     Variants {
-        model: {
-            const screens = Quickshell.screens;
-            const list = Config.options?.dock?.screenList ?? [];
-            if (!list || list.length === 0)
-                return screens;
-            const matchedScreens = screens.filter(screen => {
-                const screenName = screen?.name ?? "";
-                return screenName.length > 0 && list.includes(screenName);
-            });
-            return matchedScreens.length > 0 ? matchedScreens : screens;
-        }
+        model: root.targetScreens
 
         PanelWindow {
             id: dockReservation
@@ -541,9 +535,13 @@ Scope {
                 && !GlobalStates.screenLocked
                 && !GlobalStates.widgetEditMode
             color: "transparent"
+            // Reserve through the visible body's inward edge. This tracks the
+            // configurable Screen Edge width; elevationMargin is only transparent
+            // free-side render room and must not define workspace geometry.
             exclusiveZone: visible
                 ? Math.max(0, Math.round((Config.options?.dock?.height ?? 70)
-                    + Appearance.sizes.elevationMargin))
+                    + Math.max(1, Math.min(32,
+                        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))))
                 : 0
 
             implicitWidth: root.isVertical ? 1 : 0

@@ -347,6 +347,8 @@ def main() -> None:
         "ownerThickness: dockRoot.screenEdgeThickness",
         "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
         "dockRoot.edgeDecorationMargin * 2",
+        "dockHeight + dockRoot.edgeDecorationMargin",
+        "model: root.targetScreens",
         "readonly property bool barIsVertical: Config.options?.bar?.vertical ?? false",
         "fillColor: dockVisualBackground.surfaceColor",
         'color: "transparent"',
@@ -369,6 +371,8 @@ def main() -> None:
           "Dock reload key must track Bar orientation rather than existence of the bottom key")
     check("exclusiveZone: root.pinned" not in dock,
           "Painted Dock must not participate in normal exclusion or Screen Edge will displace its iRiS seam")
+    check("Appearance.sizes.elevationMargin))" not in dock,
+          "Pinned Dock reservation must track Screen Edge width rather than decorative elevation margin")
     check("fillColor: dockVisualBackground.color" not in dock
           and "borderColor: dockVisualBackground.border.color" not in dock,
           "Dock iRiS field must be the sole body painter; duplicate Rectangle paint changes alpha")

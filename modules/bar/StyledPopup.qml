@@ -66,7 +66,8 @@ LazyLoader {
     // Caelestia clamps panel tangent placement to the physical border's inner
     // boundary. The old -seamOverlap inset made corner-attached popups sit 2 px
     // inside the frame and changed the apparent fillet geometry.
-    readonly property real _popupScreenMargin: root._screenEdgeThickness
+    readonly property real _popupScreenMargin: Math.max(0,
+        root._screenEdgeThickness - PerimeterTokens.irisWeldDepth)
     readonly property bool _edgeShadowEnabled:
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,
@@ -329,11 +330,10 @@ LazyLoader {
             // Caelestia composes popouts directly into the edge surface. Keep
             // the shared geometry, but remove the detached neck/gap entirely.
             connectorLength: 0
-            // G2 proved that separate Top/Overlay surfaces can share exact iRiS
-            // SDF joins without repainting the owner. Keep the body resting on
-            // the real attachment boundary; the renderer carries owner records
-            // for distance math and scissors their pixels out of Overlay.
-            seamOverlap: 0
+            // Match the accepted G2 morphology: the SDF body overlaps its
+            // primary owner by the locked weld depth, while reveal/paint/input
+            // clipping still starts at the real Bar/Screen Edge boundary.
+            seamOverlap: PerimeterTokens.irisWeldDepth
             progress: root.revealProgress
             devicePixelRatio: popupWindow.devicePixelRatio
         }
@@ -420,6 +420,7 @@ LazyLoader {
             id: connectedMask
             geometry: geometry
             bodyItem: frame.bodyItem
+            visibleBodyRect: frame.visibleBodyRect
             inputEnabled: root.requestedVisible
                 || (root.hoverActivates && root._lingerVisible)
         }

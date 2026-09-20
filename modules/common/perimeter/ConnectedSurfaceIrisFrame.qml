@@ -105,6 +105,10 @@ Item {
 
     readonly property rect paintBounds:
         root.clipExternalOwners(root.rawPaintBounds)
+    // Use the same owner exclusion for compositor input. At tangent clamps the
+    // SDF body deliberately welds underneath the physical Screen Edge.
+    readonly property rect visibleBodyRect:
+        root.clipExternalOwners(root.body)
 
     readonly property rect ownerShapeRect: {
         const a = root.geometry?.anchorRect ?? Qt.rect(0, 0, 0, 0)
@@ -261,7 +265,7 @@ Item {
         hideSource: true
         live: true
         recursive: false
-        smooth: false
+        smooth: true
     }
 
     ConnectedSurfaceIrisField {

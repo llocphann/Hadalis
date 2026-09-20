@@ -20,6 +20,10 @@ QtObject {
     // by the real G1/G2 matrices. Keep its fuse depth independent of the legacy
     // Canvas flare tokens still consumed by Waffle/non-StyledPopup surfaces.
     readonly property real irisFuseDepth: 30
+    // G2 upstream-relative morphology overlaps every joined owner by 3 logical
+    // px for SDF continuity, while Overlay paint/input still starts at the
+    // actual owner boundary.
+    readonly property real irisWeldDepth: 3
 
     // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (legacy shared consumers only):
     // Sidebar/Dashboard/OSK/Waffle surfaces that have not cut over to iRiS keep

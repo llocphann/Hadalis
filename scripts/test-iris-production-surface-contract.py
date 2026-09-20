@@ -48,6 +48,8 @@ for token in (
     "ConnectedSurfaceBodyMask {",
     "fuseDepth: PerimeterTokens.irisFuseDepth",
     "externalFrameThickness: root._screenEdgeThickness",
+    "seamOverlap: PerimeterTokens.irisWeldDepth",
+    "visibleBodyRect: frame.visibleBodyRect",
     "progress: root.revealProgress",
     "mask: connectedMask",
 ):
@@ -60,6 +62,7 @@ for token in (
     "function clipExternalOwners(raw)",
     "readonly property rect rawPaintBounds:",
     "readonly property rect paintBounds:",
+    "readonly property rect visibleBodyRect:",
     "readonly property var ownerShape:",
     "readonly property var frameStartShape:",
     "readonly property var frameEndShape:",
@@ -70,7 +73,7 @@ for token in (
     "sourceItem: shadowTextureSource",
     "sourceRect: Qt.rect(",
     "hideSource: true",
-    "smooth: false",
+    "smooth: true",
     "ConnectedSurfaceIrisField {",
     "readonly property bool bodyHovered: bodyHover.hovered",
 ):
@@ -95,6 +98,7 @@ for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorItem"):
     forbid(mask, token, "body-only compositor mask")
 require(mask, "visibleBodyRect", "body-only compositor mask")
 require(tokens, "readonly property real irisFuseDepth: 30", "validated G2 fuse token")
+require(tokens, "readonly property real irisWeldDepth: 3", "validated G2 weld token")
 
 for export in (
     "ConnectedSurfaceIrisField 1.0 ConnectedSurfaceIrisField.qml",

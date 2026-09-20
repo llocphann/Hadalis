@@ -257,8 +257,12 @@ grep -Fq 'readonly property real motionProgress:' "$connected_geometry" \
     || fail 'connected geometry must preserve an unclamped spatial motion scalar'
 grep -Fq '(1 - motionProgress) * crossBodyExtent' "$connected_geometry" \
     || fail 'connected geometry must preserve expressive spatial overshoot during translation'
-grep -Fq 'readonly property real _popupScreenMargin: root._screenEdgeThickness' "$styled_popup" \
-    || fail 'StyledPopup Screen Edge clamping must follow the real physical frame thickness'
+grep -Fq 'root._screenEdgeThickness - PerimeterTokens.irisWeldDepth' "$styled_popup" \
+    || fail 'StyledPopup tangent clamp must preserve the G2 weld under the physical frame'
+grep -Fq 'seamOverlap: PerimeterTokens.irisWeldDepth' "$styled_popup" \
+    || fail 'StyledPopup primary owner join must preserve the G2 weld depth'
+grep -Fq 'visibleBodyRect: frame.visibleBodyRect' "$styled_popup" \
+    || fail 'StyledPopup input must use the same external-owner clip as iRiS paint'
 if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \
     | grep -Fq 'connectAdjacentScreenEdge'; then
     fail 'StyledPopup direct-edge detection must not be gated by a module opt-in'
@@ -274,6 +278,7 @@ grep -Fq '|| directEdgeAttachment.atTop' "$styled_popup" \
 
 for token in \
     'function clipExternalOwners(raw)' \
+    'readonly property rect visibleBodyRect:' \
     'readonly property var ownerShape:' \
     'readonly property var frameStartShape:' \
     'readonly property var frameEndShape:' \
@@ -281,7 +286,7 @@ for token in \
     'readonly property bool needsEndJoinAux:' \
     'sourceItem: shadowTextureSource' \
     'hideSource: true' \
-    'smooth: false' \
+    'smooth: true' \
     'ConnectedSurfaceIrisField {' \
     'readonly property bool bodyHovered: bodyHover.hovered'; do
     grep -Fq "$token" "$iris_frame" \

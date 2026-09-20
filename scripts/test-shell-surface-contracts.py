@@ -68,6 +68,7 @@ def main() -> None:
         "Config.options?.appearance?.screenEdge?.radius ?? 25",
         "Math.max(0, Math.min(96",
         "readonly property real irisFuseDepth: 30",
+        "readonly property real irisWeldDepth: 3",
         "readonly property real popupRadius: 28",
         "readonly property real joinFlareRadius: frameRadius",
         "readonly property real joinFlareCrossScale: 0.55",
@@ -596,6 +597,7 @@ def main() -> None:
     iris_mask = read("modules/common/perimeter/ConnectedSurfaceBodyMask.qml")
     for token in (
         "function clipExternalOwners(raw)",
+        "readonly property rect visibleBodyRect:",
         "readonly property var ownerShape:",
         "readonly property var frameStartShape:",
         "readonly property var frameEndShape:",
@@ -604,7 +606,7 @@ def main() -> None:
         "ShaderEffectSource {",
         "sourceItem: shadowTextureSource",
         "hideSource: true",
-        "smooth: false",
+        "smooth: true",
         "ConnectedSurfaceIrisField {",
         "readonly property bool bodyHovered: bodyHover.hovered",
     ):

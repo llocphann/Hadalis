@@ -16,7 +16,7 @@ Region {
     readonly property bool active: root.inputEnabled
         && root.geometry?.valid === true
         && Number(root.geometry?.revealProgress ?? root.geometry?.progress ?? 0) > 0
-    readonly property rect visibleBodyRect: root.geometry?.visibleBodyRect
+    property rect visibleBodyRect: root.geometry?.visibleBodyRect
         ?? Qt.rect(0, 0, 0, 0)
     readonly property real bodyRadius: Math.min(
         Number(root.geometry?.outerRadius ?? 0),

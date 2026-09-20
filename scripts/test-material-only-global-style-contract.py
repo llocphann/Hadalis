@@ -46,6 +46,9 @@ MATERIAL_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialSymbol.qml"
 TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarButton.qml"
 TOOLBAR_TAB_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarTabButton.qml"
 ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButton.qml"
+GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
+SELECTION_GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "SelectionGroupButton.qml"
+STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTipContent.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -153,6 +156,9 @@ def main() -> None:
     toolbar_button = TOOLBAR_BUTTON.read_text(encoding="utf-8")
     toolbar_tab_button = TOOLBAR_TAB_BUTTON.read_text(encoding="utf-8")
     icon_toolbar_button = ICON_TOOLBAR_BUTTON.read_text(encoding="utf-8")
+    group_button = GROUP_BUTTON.read_text(encoding="utf-8")
+    selection_group_button = SELECTION_GROUP_BUTTON.read_text(encoding="utf-8")
+    styled_tooltip_content = STYLED_TOOLTIP_CONTENT.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -501,6 +507,46 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # Grouped controls and tooltip content are shared runtime primitives.
+    # Preserve interaction/reveal behavior while keeping only Material chrome.
+    for source, content in (
+        ("GroupButton.qml", group_button),
+        ("SelectionGroupButton.qml", selection_group_button),
+        ("StyledToolTipContent.qml", styled_tooltip_content),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+    for token in (
+        "property bool bounce: true",
+        "property bool cookieMorphing: false",
+        "property color colBackgroundToggled: Appearance.colors.colPrimary",
+        "border.width: root.visualFocus ? 1 : 0",
+        "onLongPressed:",
+    ):
+        require(group_button, token, "GroupButton.qml")
+    for token in (
+        "property string buttonPreviewKind:",
+        "Accessible.checkable: true",
+        "Accessible.checked: root.toggled",
+        "horizontalPadding: 11",
+        "verticalPadding: 6",
+        "colBackground: Appearance.colors.colSecondaryContainer",
+    ):
+        require(selection_group_button, token, "SelectionGroupButton.qml")
+    forbid(selection_group_button, "ZzzCornerPreview", "SelectionGroupButton.qml")
+    for token in (
+        "property bool shown: false",
+        "property string position:",
+        "color: Appearance.colors.colLayer3",
+        "radius: Appearance.rounding.verysmall",
+        "border.width: 1",
+        "border.color: Appearance.colors.colLayer3Hover",
+        "color: Appearance.colors.colOnLayer3",
+    ):
+        require(styled_tooltip_content, token, "StyledToolTipContent.qml")
+    forbid(styled_tooltip_content, "RegaliaPlate {", "StyledToolTipContent.qml")
+    forbid(styled_tooltip_content, "AngelPartialBorder {", "StyledToolTipContent.qml")
 
     # Toolbar controls and MaterialSymbol are shell-wide Material primitives.
     # Preserve accessibility, fill animation and label reveal without style dispatch.

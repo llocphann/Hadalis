@@ -263,7 +263,7 @@ Sidebar / Dashboard / Settings
   -> modules/common/perimeter/ConnectedSurfaceIrisFrame.qml
 
 direct square-seam compatibility:
-Waffle -> ConnectedSurfaceFrame.qml + ConnectedSurfaceMask.qml
+Waffle -> ConnectedSurfaceFrame.qml + ConnectedSurfaceBodyMask.qml
 Dock / Search / OSK -> feature-owned body geometry, no auxiliary wedge painter
 ```
 
@@ -295,7 +295,7 @@ Rules:
 
 ## 6. v1.0 hardening tasks — P1
 
-- [ ] Audit every `StyledPopup` consumer for connector, anchor, focus and mask consistency.
+- [ ] Audit every `StyledPopup` consumer for attachment, anchor, focus and body-mask consistency.
 - [ ] Test bottom-right and vertical-bar anchors explicitly; these expose clipping/placement errors easily.
 - [ ] Remove fractional-scale seams and one-pixel antialiasing gaps without per-popup magic numbers.
 - [ ] Confirm Settings remains responsive while visiting all heavy pages repeatedly.
@@ -338,7 +338,7 @@ Hadalis can be called **1.0** only when:
 - connected surfaces visually read as one coherent bar/edge continuation, not detached cards;
 - no required behavior depends on a dead/half-enabled renderer or undocumented migration path;
 - **Material is the only active Global Theme**, with non-Material values removed from normal runtime/UI and legacy values safely normalized;
-- the broad `iiPerimeter` runtime is either removed or retained only for a clearly documented active responsibility;
+- the retired broad `iiPerimeter` runtime remains absent from the active tree;
 - media visualization, Thinkfan and weather dependencies are packaged/documented correctly;
 - supported panel families, the Material theme and compositor targets pass the release smoke matrix;
 - release notes / `CHANGELOG.md` describe user-visible 1.0 behavior after the implementation stabilizes.

@@ -13,7 +13,7 @@ This document records the stabilization contracts that should be checked during 
 - Hover popouts stay resident during the short retract tail so the pointer can cross the Bar↔popup seam into the body without collapsing the surface.
 - The iRiS body welds under joined owners by `irisWeldDepth = 3`; field/shadow/input scissoring still begins at the actual owner boundary, so the weld cannot repaint or steal input from Bar/Screen Edge pixels.
 - Bar popup shadows use the same public Screen Edge shadow controls and Material `m3shadow` ink as the physical frame; owner-side clipping still suppresses shadow across joined Bar/Screen Edge pixels.
-- ii popup input is body-only through `ConnectedSurfaceBodyMask`; shader fillets and transparent full-output regions do not steal pointer input. The connector-strip mask is no longer part of the ii path.
+- Popup input is body-only through `ConnectedSurfaceBodyMask`; shader fillets and transparent full-output regions do not steal pointer input. The old connector Canvas and connector-strip mask are retired entirely, including from Waffle.
 - Transparent regions outside the visible popup shape remain click-through.
 - Focused connected popouts preserve Niri layer-shell focus and the existing Hyprland compositor focus grab.
 - Media volume HUD, expanded bar Media controls, tray overflow, taskbar window previews, and the existing battery/resources/weather/clock/timer/update popouts all use the shared connected path. Context menus remain context menus rather than being forced into this presentation contract.

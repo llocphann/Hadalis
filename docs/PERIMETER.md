@@ -38,8 +38,9 @@ The old standalone corner/wedge painters are retired and must remain absent:
 - the `joinFlareRadius` / `joinFlareCrossScale` token family;
 - fake screen-rounding paint in `ScreenCorners.qml`.
 
-Waffle/non-cutover surfaces may still use `ConnectedSurfaceFrame` and
-`ConnectedSurfaceMask`, but that frame no longer paints endpoint wedges.
+Waffle keeps its own non-iRiS `ConnectedSurfaceFrame` body/shadow renderer,
+but direct-seam input is body-only through `ConnectedSurfaceBodyMask`.
+The connector-only Canvas renderer and connector-strip mask are retired.
 Search and OSK likewise keep direct square joined edges until explicitly moved to
 an iRiS adapter.
 

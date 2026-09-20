@@ -31,6 +31,7 @@ def main() -> None:
     calendar = read("modules/dashboard/DashCalendar.qml")
     month = read("modules/common/widgets/ObsidianMonthCalendar.qml")
     media = read("modules/dashboard/DashMedia.qml")
+    dash_card = read("modules/dashboard/DashCard.qml")
     config = read("modules/common/Config.qml")
     settings = read("modules/settings/DashboardConfig.qml")
 
@@ -75,6 +76,9 @@ def main() -> None:
         'case "system": return { width: 200, height: 130 }',
         'baselineRects: root._snapshotVisibleRects()',
         'root._applyPreviewRects(resolved)',
+        'A dragged module is temporarily lifted out of the packed layout.',
+        'Drop is the insertion point: resolve neighbours exactly',
+        'readonly property real collisionGap: Math.max(8,',
         'enabled: root.editMode',
         'enabled: !root.editMode',
         'DashboardEditGrid {',
@@ -86,6 +90,17 @@ def main() -> None:
 
     for edge in ("n", "s", "e", "w", "nw", "ne", "sw", "se"):
         require(canvas, f'edge: "{edge}"', "DashboardCanvas.qml")
+
+    move_start = canvas.index('if (state.kind === "move") {')
+    move_end = canvas.index('const edge = String(state.edge ?? "")', move_start)
+    move_block = canvas[move_start:move_end]
+    require(move_block, "root._setPreview(state.id, {", "DashboardCanvas move block")
+    forbid(move_block, "root._resolveFeasibleLayout(", "DashboardCanvas move block")
+    finish_start = canvas.index("function finishInteraction(commit)")
+    finish_end = canvas.index("function _cycleGridSize()", finish_start)
+    finish_block = canvas[finish_start:finish_end]
+    require(finish_block, "root._resolveFeasibleLayout(", "DashboardCanvas drop block")
+    require(finish_block, "root._persistPreviewLayout()", "DashboardCanvas drop block")
 
     for token in (
         'property string gridStyle: "dots"',
@@ -110,9 +125,13 @@ def main() -> None:
         ("OverviewDashboard.qml", overview),
     ):
         require(text, "DashboardEditToolbar {", source)
-        require(text, "anchors.bottomMargin: -1", source)
-    require(overview, "anchors.bottom: dashContainer.top", "OverviewDashboard.qml")
-    require(standalone, "anchors.bottom: standaloneContent.top", "Dashboard.qml")
+    require(overview,
+        "x: Math.round(dashContainer.x", "OverviewDashboard.qml")
+    require(overview,
+        "y: Math.round(dashContainer.y - height + 1)", "OverviewDashboard.qml")
+    require(standalone,
+        "x: Math.round((parent.width - width) / 2)", "Dashboard.qml")
+    require(standalone, "y: 0", "Dashboard.qml")
 
     require(canvas, "cursorShape: root.editMode", "DashboardCanvas.qml")
     require(canvas, ": Qt.ArrowCursor", "DashboardCanvas.qml")
@@ -132,6 +151,20 @@ def main() -> None:
     require(month,
         "? Math.max(root.implicitWidth, root.width)",
         "ObsidianMonthCalendar.qml")
+
+    for token in (
+        "radius: Appearance.rounding.small",
+        "Appearance.colors.colSurfaceContainerHigh",
+        "border.width: 0",
+        'border.color: "transparent"',
+    ):
+        require(dash_card, token, "DashCard.qml")
+    for token in (
+        "AngelPartialBorder {",
+        "ZzzGraphicPlate {",
+        "gradient: Gradient {",
+    ):
+        forbid(dash_card, token, "DashCard.qml")
 
     require(weather, "OrbitalWeather {", "DashWeather.qml")
     for token in (

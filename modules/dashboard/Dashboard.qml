@@ -182,7 +182,7 @@ Scope {
                     id: standaloneContent
                     x: 0
                     y: standaloneEditToolbar.visible
-                        ? Math.max(0, standaloneEditToolbar.implicitHeight - 1)
+                        ? Math.max(0, standaloneEditToolbar.height - 1)
                         : 0
                     width: parent.width
                     height: Math.max(0, parent.height - y)
@@ -194,11 +194,10 @@ Scope {
                     id: standaloneEditToolbar
                     z: 8
                     canvasController: standaloneContent.canvasController
-                    anchors.horizontalCenter: standaloneContent.horizontalCenter
-                    anchors.bottom: standaloneContent.top
-                    anchors.bottomMargin: -1
-                    width: Math.min(Math.max(280, standaloneContent.width - 32),
-                        implicitWidth)
+                    width: Math.min(440,
+                        Math.max(280, standaloneContent.width - 32))
+                    x: Math.round((parent.width - width) / 2)
+                    y: 0
                 }
             }
         }

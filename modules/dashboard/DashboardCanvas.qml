@@ -277,8 +277,9 @@ Item {
         return Math.round(value / root.gridSize) * root.gridSize
     }
 
-    readonly property real collisionGap: Math.max(4,
-        Math.min(10, Math.round(root.gridSize / 4)))
+    // Material cards always keep a visible gutter even on fine grids.
+    readonly property real collisionGap: Math.max(8,
+        Math.min(16, Math.round(root.gridSize / 3)))
 
     function _cloneRect(rect) {
         return {
@@ -678,13 +679,14 @@ Item {
             top = root._snap(start.y + dy)
             left = Math.max(0, Math.min(canvas.width - start.width, left))
             top = Math.max(0, Math.min(canvas.height - start.height, top))
-            const desired = {
+
+            // A dragged module is temporarily lifted out of the packed layout.
+            // Only the selected module follows the pointer; neighbours stay
+            // completely stable until drop, when the insertion is resolved once.
+            root._setPreview(state.id, {
                 x: left, y: top,
                 width: start.width, height: start.height
-            }
-            const resolved = root._resolveFeasibleLayout(
-                state.id, start, desired, state.baselineRects)
-            root._applyPreviewRects(resolved)
+            })
             return
         }
 
@@ -732,10 +734,27 @@ Item {
     }
 
     function finishInteraction(commit) {
-        if (!root._interaction)
+        const state = root._interaction
+        if (!state)
             return
-        if (commit && Object.keys(root._preview).length > 0)
+
+        if (commit && Object.keys(root._preview).length > 0) {
+            if (state.kind === "move") {
+                const floatingGeometry = root._preview[state.id]
+                if (floatingGeometry !== undefined) {
+                    const desired = root._rectPixelsForGeometry(
+                        state.id, floatingGeometry)
+                    // Drop is the insertion point: resolve neighbours exactly
+                    // once here, rather than making them chase the pointer.
+                    const resolved = root._resolveFeasibleLayout(
+                        state.id, state.startRect, desired,
+                        state.baselineRects)
+                    root._applyPreviewRects(resolved)
+                }
+            }
             root._persistPreviewLayout()
+        }
+
         root._preview = ({})
         root._interaction = null
     }
@@ -818,12 +837,22 @@ Item {
                 readonly property var px: root._rectPixels(String(modelData))
                 readonly property bool selected:
                     root.editMode && root.selectedId === String(modelData)
+                readonly property bool floating:
+                    selected && root._interaction?.kind === "move"
 
                 x: px.x
                 y: px.y
                 width: px.width
                 height: px.height
-                z: selected ? 30 : 1
+                z: floating ? 50 : (selected ? 30 : 1)
+                scale: floating ? 1.012 : 1
+                transformOrigin: Item.Center
+                Behavior on scale {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
+                    }
+                }
 
                 Item {
                     id: cardViewport

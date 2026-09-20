@@ -112,10 +112,11 @@ Item {
         parent: dashboardSurfaceLayer
         z: 8
         canvasController: dashboardContent.canvasController
-        anchors.horizontalCenter: dashContainer.horizontalCenter
-        anchors.bottom: dashContainer.top
-        anchors.bottomMargin: -1
-        width: Math.min(Math.max(280, dashContainer.width - 32), implicitWidth)
+        width: Math.min(440,
+            Math.max(280, dashContainer.width - 32))
+        x: Math.round(dashContainer.x
+            + (dashContainer.width - width) / 2)
+        y: Math.round(dashContainer.y - height + 1)
     }
 
     Rectangle {

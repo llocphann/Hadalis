@@ -58,16 +58,20 @@ def main() -> None:
           "Normal Weather UX must not depend on retired broad perimeter routing")
 
     for token in (
-        "ConnectedSurfaceConnector",
-        "id: sidebarBridgeGeometry",
-        "geometry: sidebarBridgeGeometry",
-        "PerimeterTokens.seamOverlap",
-        "Config.options?.appearance?.screenEdge?.width ?? 10",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        "ownerThickness: root.screenEdgeHoverWidth",
+        "readonly property real hiddenTranslateDistance:",
     ):
         check(token in sidebar,
               f"Sidebar connected route contract missing: {token}")
-    check("SidebarEdgeConnectors.qml" not in sidebar,
-          "Sidebar lifecycle must not depend on the retired standalone bridge window")
+    for retired in (
+        "ConnectedSurfaceConnector",
+        "id: sidebarBridgeGeometry",
+        "geometry: sidebarBridgeGeometry",
+        "SidebarEdgeConnectors.qml",
+    ):
+        check(retired not in sidebar,
+              f"Sidebar lifecycle must not revive retired connector geometry: {retired}")
 
     if failures:
         print("Connected presentation lifecycle regression(s):")

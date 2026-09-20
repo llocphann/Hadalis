@@ -76,6 +76,8 @@ grep -Fq 'GlobalStates.toggleSidebarLeft' "$screen_corners" || fail 'ScreenCorne
 grep -Fq 'GlobalStates.openOrbit(' "$screen_corners" || fail 'ScreenCorners lost Orbit interaction'
 
 grep -Fq 'ConnectedSurfaceFrame {' "$waffle" || fail 'Waffle lost shared non-iRiS frame'
-grep -Fq 'connectorVisible: false' "$waffle" || fail 'Waffle connector painter must stay disabled'
+grep -Fq 'ConnectedSurfaceBodyMask {' "$waffle" || fail 'Waffle direct seam lost body-only input mask'
+! grep -Fq 'ConnectedSurfaceMask {' "$waffle" || fail 'Waffle restored retired connector-strip mask'
+! grep -Fq 'connectorItem:' "$waffle" || fail 'Waffle restored invisible connector input ownership'
 
 printf 'PASS: runtime QML is free of retired round-wedge geometry; current iRiS/direct-seam routes are authoritative\n'

@@ -83,6 +83,16 @@ radius      -> PerimeterTokens.frameRadius
 5. Update `scripts/test-shell-surface-contracts.py` whenever ownership or geometry contracts change intentionally.
 6. Do not claim runtime success until the maintainer has run `inir update` / `inir restart` and visually validated the result.
 
+### 1.2 iRiS integration phase status
+
+The iRiS migration is complete and is now the production baseline. Before any
+future perimeter/connected-surface optimization, read
+`docs/IRIS_INTEGRATION_COMPLETE.md`. New work should focus on optimization,
+bug fixing and refinement rather than reopening the migration.
+
+A ready-to-use fresh-chat prompt for that phase is stored at
+`docs/NEXT_CHAT_OPTIMIZATION_PROMPT.md`.
+
 **Fullscreen Bar lifecycle lock (maintainer-approved 2026-09-19):**
 
 - Horizontal and vertical ii Bar `PanelWindow` surfaces must remain **mapped and updating while a client is fullscreen**. Do not gate Bar `visible`, `updatesEnabled`, Loader lifetime or content visibility on `GameMode.hasFullscreenOnOutput()`.

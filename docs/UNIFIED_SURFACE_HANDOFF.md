@@ -2,6 +2,12 @@
 
 Use this file only as an execution handoff for continuing Hadalis surface work in a new chat. Historical iRiS experiments live in `docs/UNIFIED_SURFACE_RESEARCH.md`; the active contracts are this file, `README.md`, `docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`.
 
+## Phase status — iRiS integration complete
+
+The migration itself is closed. Use `docs/IRIS_INTEGRATION_COMPLETE.md` as the
+compact production baseline. Future work belongs to optimization, bug fixing and
+refinement unless new runtime evidence disproves an architectural invariant.
+
 ## First actions
 
 1. Refetch current `dev` before editing anything. Concurrent Code Workflow / Dashboard / media work may land between turns.

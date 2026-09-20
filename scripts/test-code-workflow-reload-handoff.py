@@ -8,12 +8,15 @@ def fail(message: str) -> None:
     raise SystemExit("FAIL: " + message)
 
 service = (ROOT / "services/CodeWorkflowTransaction.qml").read_text(encoding="utf-8")
+bridge = (ROOT / "services/CodeWorkflowReloadBridge.qml").read_text(encoding="utf-8")
+shell = (ROOT / "shell.qml").read_text(encoding="utf-8")
+probe = (ROOT / "scripts/code-workflow/runtime/ProbeShell.qml").read_text(encoding="utf-8")
+qmldir = (ROOT / "services/qmldir").read_text(encoding="utf-8")
 phase2 = (ROOT / "docs/CODE_WORKFLOW_PHASE2.md").read_text(encoding="utf-8")
 
 for token in (
-    'reloadableId: "code-workflow-transaction"',
-    "PersistentProperties {",
-    'reloadableId: "code-workflow-transaction-state"',
+    'readonly property string reloadStateJson: JSON.stringify({',
+    'function restoreReloadStateJson(encoded: string): bool',
     'property string historyJson: "[]"',
     "property int historyIndex: -1",
     'property string pendingApplyPhase: "idle"',
@@ -37,26 +40,43 @@ for token in (
     if token not in service:
         fail("reload-stable transaction handoff missing " + token)
 
-persistent_block = service.split("PersistentProperties {", 1)[1].split(
-    "    Connections {", 1
-)[0]
+for token in (
+    'reloadableId: "code-workflow-reload-bridge"',
+    "PersistentProperties {",
+    'reloadableId: "code-workflow-transaction-state"',
+    'property string stateJson: ""',
+    "CodeWorkflowTransaction.restoreReloadStateJson(encoded)",
+    "persisted.stateJson = CodeWorkflowTransaction.reloadStateJson",
+    "function onReloadStateJsonChanged(): void",
+):
+    if token not in bridge:
+        fail("root-owned reload bridge missing " + token)
 
+if "CodeWorkflowReloadBridge 1.0 CodeWorkflowReloadBridge.qml" not in qmldir:
+    fail("services/qmldir must export the root-owned reload bridge")
+if "CodeWorkflowReloadBridge {}" not in shell:
+    fail("production ShellRoot must own the Workflow reload bridge")
+if "CodeWorkflowReloadBridge {}" not in probe:
+    fail("acceptance ProbeShell must exercise the production reload bridge")
+
+if "PersistentProperties {" in service:
+    fail("transaction singleton must not own cross-generation PersistentProperties")
+
+persistent_block = bridge.split("PersistentProperties {", 1)[1].split(
+    "    function restorePersistedState", 1
+)[0]
 for line in persistent_block.splitlines():
-    match = re.match(
-        r"\s*property\s+(\w+)\s+(historyJson|historyIndex|pendingApply\w+)\s*:",
-        line,
-    )
+    match = re.match(r"\s*property\s+(\w+)\s+(\w+)\s*:", line)
     if match and match.group(1) not in {"string", "int", "bool", "real"}:
         fail(
-            "reload handoff property must stay primitive: "
+            "root reload bridge property must stay primitive: "
             + match.group(2)
             + " uses "
             + match.group(1)
         )
-
 for forbidden in ("byteRange", "valueRange"):
     if forbidden in persistent_block:
-        fail("reload handoff must not persist transient parser ranges: " + forbidden)
+        fail("root reload bridge must not persist transient ranges: " + forbidden)
 
 if "readonly property bool applyEnabled: false" not in service:
     fail("Apply must remain disabled through lifecycle wiring")

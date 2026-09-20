@@ -11,6 +11,9 @@ driver = (ROOT / "scripts/code-workflow/run-apply-lifecycle.py").read_text(
     encoding="utf-8")
 probe = (ROOT / "scripts/code-workflow/runtime/ProbeShell.qml").read_text(
     encoding="utf-8")
+bridge = (ROOT / "services/CodeWorkflowReloadBridge.qml").read_text(
+    encoding="utf-8")
+shell = (ROOT / "shell.qml").read_text(encoding="utf-8")
 fixture = (ROOT / "scripts/code-workflow/runtime/ApplyTarget.qml").read_text(
     encoding="utf-8")
 prepare = (ROOT / "scripts/code-workflow/prepare-runtime.py").read_text(
@@ -44,6 +47,7 @@ for token in (
 
 for token in (
     "import qs.services",
+    "CodeWorkflowReloadBridge {}",
     "ApplyTarget { id: applyTarget }",
     "CodeWorkflowAnalyzer.request(",
     "CodeWorkflowTransaction.previewLiteral(",
@@ -54,6 +58,16 @@ for token in (
 ):
     if token not in probe:
         fail("probe must control production Workflow services: " + token)
+
+for token in (
+    'reloadableId: "code-workflow-reload-bridge"',
+    "PersistentProperties {",
+    "CodeWorkflowTransaction.restoreReloadStateJson(encoded)",
+):
+    if token not in bridge:
+        fail("production reload bridge missing " + token)
+if "CodeWorkflowReloadBridge {}" not in shell:
+    fail("production ShellRoot must instantiate Workflow reload bridge")
 
 for token in (
     'parser.add_argument("--sway", type=Path, required=True)',

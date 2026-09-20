@@ -11,6 +11,9 @@ import qs.services
 
 ShellRoot {
     id: shell
+
+    CodeWorkflowReloadBridge {}
+
     readonly property int sourceRevision: 1 // Mutated only in the temporary runtime copy.
     property bool initialized: false
     property bool persistenceReady: false

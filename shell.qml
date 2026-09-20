@@ -23,6 +23,10 @@ import qs.services
 ShellRoot {
     id: root
 
+    // Cross-generation Code Workflow transaction state must live in the root
+    // reload tree; QML singletons are outside that matching scope.
+    CodeWorkflowReloadBridge {}
+
     readonly property bool disableHotReload: Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "1"
         || Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "true"
 

@@ -7,8 +7,6 @@ import qs.services
 Singleton {
     id: root
 
-    reloadableId: "code-workflow-transaction"
-
     property bool _restoringReloadState: false
     property bool _reloadStateReady: false
     property string status: "clean"
@@ -89,6 +87,34 @@ Singleton {
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
 
+    readonly property string reloadStateJson: JSON.stringify({
+        version: 1,
+        historyJson: JSON.stringify(root.history ?? []),
+        historyIndex: root.historyIndex,
+        pendingApplyPhase: reloadState.pendingApplyPhase,
+        pendingApplySourcePath: reloadState.pendingApplySourcePath,
+        pendingApplyBaseSha256: reloadState.pendingApplyBaseSha256,
+        pendingApplyCandidateSha256:
+            reloadState.pendingApplyCandidateSha256,
+        pendingApplySemanticAnchor:
+            reloadState.pendingApplySemanticAnchor,
+        pendingApplyReplacement:
+            reloadState.pendingApplyReplacement,
+        pendingApplyHistoryIndex:
+            reloadState.pendingApplyHistoryIndex,
+        pendingApplySnapshotPath:
+            reloadState.pendingApplySnapshotPath,
+        pendingApplyCandidatePath:
+            reloadState.pendingApplyCandidatePath,
+        pendingApplyManifestPath:
+            reloadState.pendingApplyManifestPath,
+        pendingApplyReloadOutcome:
+            reloadState.pendingApplyReloadOutcome,
+        pendingApplyVerifyState:
+            reloadState.pendingApplyVerifyState,
+        pendingApplyError: reloadState.pendingApplyError
+    })
+
     function _syncReloadState(): void {
         if (!root._reloadStateReady || root._restoringReloadState)
             return
@@ -117,6 +143,57 @@ Singleton {
         root._reloadStateReady = true
         root._showCommand(root.activeCommand)
         Qt.callLater(root._recoverApplyLifecycle)
+    }
+
+    function restoreReloadStateJson(encoded: string): bool {
+        const raw = String(encoded ?? "").trim()
+        if (raw.length === 0)
+            return false
+
+        let snapshot = null
+        try {
+            snapshot = JSON.parse(raw)
+        } catch (e) {
+            return false
+        }
+        if (!snapshot || Number(snapshot.version ?? 0) !== 1)
+            return false
+
+        root._restoringReloadState = true
+        reloadState.historyJson = String(
+            snapshot.historyJson ?? "[]")
+        reloadState.historyIndex = Number(
+            snapshot.historyIndex ?? -1)
+        reloadState.pendingApplyPhase = String(
+            snapshot.pendingApplyPhase ?? "idle")
+        reloadState.pendingApplySourcePath = String(
+            snapshot.pendingApplySourcePath ?? "")
+        reloadState.pendingApplyBaseSha256 = String(
+            snapshot.pendingApplyBaseSha256 ?? "")
+        reloadState.pendingApplyCandidateSha256 = String(
+            snapshot.pendingApplyCandidateSha256 ?? "")
+        reloadState.pendingApplySemanticAnchor = String(
+            snapshot.pendingApplySemanticAnchor ?? "")
+        reloadState.pendingApplyReplacement = String(
+            snapshot.pendingApplyReplacement ?? "")
+        reloadState.pendingApplyHistoryIndex = Number(
+            snapshot.pendingApplyHistoryIndex ?? -1)
+        reloadState.pendingApplySnapshotPath = String(
+            snapshot.pendingApplySnapshotPath ?? "")
+        reloadState.pendingApplyCandidatePath = String(
+            snapshot.pendingApplyCandidatePath ?? "")
+        reloadState.pendingApplyManifestPath = String(
+            snapshot.pendingApplyManifestPath ?? "")
+        reloadState.pendingApplyReloadOutcome = String(
+            snapshot.pendingApplyReloadOutcome ?? "none")
+        reloadState.pendingApplyVerifyState = String(
+            snapshot.pendingApplyVerifyState ?? "unknown")
+        reloadState.pendingApplyError = String(
+            snapshot.pendingApplyError ?? "")
+        root._restoringReloadState = false
+
+        root._restoreReloadState()
+        return true
     }
 
     function _invalidateApplyHandoff(): void {
@@ -1048,12 +1125,12 @@ Singleton {
     onHistoryChanged: root._syncReloadState()
     onHistoryIndexChanged: root._syncReloadState()
 
-    PersistentProperties {
+    QtObject {
         id: reloadState
-        reloadableId: "code-workflow-transaction-state"
 
-        // Keep reload handoff primitive/JSON-only. Runtime QObject identities
-        // and transient parser byte ranges are never persisted here.
+        // In-generation mirror only. Cross-generation persistence is owned by
+        // CodeWorkflowReloadBridge under ShellRoot, where Quickshell's reload
+        // matcher can pair old/new PersistentProperties instances.
         property string historyJson: "[]"
         property int historyIndex: -1
         property string pendingApplyPhase: "idle"
@@ -1069,11 +1146,9 @@ Singleton {
         property string pendingApplyReloadOutcome: "none"
         property string pendingApplyVerifyState: "unknown"
         property string pendingApplyError: ""
-
-        onLoaded: root._restoreReloadState()
-        onReloaded: root._restoreReloadState()
     }
 
+    Component.onCompleted: root._restoreReloadState()
 
     Connections {
         target: Quickshell

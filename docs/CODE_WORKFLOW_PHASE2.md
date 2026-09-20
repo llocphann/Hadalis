@@ -218,6 +218,13 @@ Implemented, but **not yet qualified as passing evidence**:
   introduced.
 - Hosted acceptance forces QT_QUICK_BACKEND=software because Gate 2H validates
   parser/write/watcher/reload semantics, not GPU/OpenGL availability.
+- The watcher-qualified run then proved the candidate source reloads, but exposed
+  a second lifecycle boundary: PersistentProperties nested in the transaction
+  singleton is outside the ShellRoot old/new reload matching tree, so its state
+  returned to defaults after generation replacement. Cross-generation state now
+  lives in CodeWorkflowReloadBridge, instantiated directly under ShellRoot. The
+  bridge persists one primitive JSON string and imports/exports it through the
+  transaction singleton; the acceptance ProbeShell uses the same bridge.
 - No claim of live acceptance is made until a retained
   apply-lifecycle-report.json records all checks passing.
 

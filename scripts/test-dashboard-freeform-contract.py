@@ -94,6 +94,21 @@ def main() -> None:
     for edge in ("n", "s", "e", "w", "nw", "ne", "sw", "se"):
         require(canvas, f'edge: "{edge}"', "DashboardCanvas.qml")
 
+    for token in (
+        "model: root._allIds",
+        "root._entryFor(id).visible !== false",
+        "root._entryFor(id).visible === false",
+        "active: cardWrap.visible",
+        "prevents Repeater/model churn",
+    ):
+        require(canvas, token, "DashboardCanvas.qml")
+    forbid(canvas,
+        "root.geometryFor(id).visible !== false",
+        "DashboardCanvas visibility model")
+    forbid(canvas,
+        "model: root.visibleIds",
+        "DashboardCanvas repeater model")
+
     move_start = canvas.index('if (state.kind === "move") {')
     move_end = canvas.index('const edge = String(state.edge ?? "")', move_start)
     move_block = canvas[move_start:move_end]

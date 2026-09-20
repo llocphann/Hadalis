@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -81,6 +82,20 @@ Scope {
                 readonly property real dockHeight: editThicknessPreview >= 0
                     ? editThicknessPreview
                     : (Config.options?.dock?.height ?? 70)
+                readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+                    Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+                readonly property bool screenEdgeShadowEnabled:
+                    Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+                    Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+                readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
+                    Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
+                readonly property color screenEdgeShadowColor:
+                    Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)
+                readonly property real edgeDecorationMargin: Math.max(
+                    Appearance.sizes.elevationMargin,
+                    PerimeterTokens.irisFuseDepth,
+                    dockRoot.screenEdgeShadowEnabled ? dockRoot.screenEdgeShadowSize + 2 : 0)
 
                 function beginDockResize(): void {
                     const baseline = Config.options?.dock?.height ?? 70
@@ -134,16 +149,21 @@ Scope {
                 }
 
                 exclusiveZone: root.pinned ? (dockHeight + Appearance.sizes.elevationMargin) : 0
-                // Dock is an edge-attached surface, not a floating island.
-                // Reserve only the inward shadow margin; the attached side
-                // reaches the physical output edge and covers the Screen Edge
-                // band beneath it as one continuous block.
+                // Dock is an edge-attached iRiS surface. The native window
+                // retains transparent room for the SDF shoulder/shadow, while
+                // the visible body stops at the real Screen Edge inner boundary.
+                // The Dock exclusive zone remains unchanged; Screen Edge keeps
+                // owning its own physical reservation.
                 implicitWidth: root.isVertical
-                    ? (dockHeight + Appearance.sizes.elevationMargin)
-                    : dockBackground.implicitWidth
+                    ? (dockHeight + Appearance.sizes.elevationMargin
+                        + dockRoot.screenEdgeThickness)
+                    : (dockBackground.implicitWidth
+                        + dockRoot.edgeDecorationMargin * 2)
                 implicitHeight: root.isVertical
-                    ? dockBackground.implicitHeight
-                    : (dockHeight + Appearance.sizes.elevationMargin)
+                    ? (dockBackground.implicitHeight
+                        + dockRoot.edgeDecorationMargin * 2)
+                    : (dockHeight + Appearance.sizes.elevationMargin
+                        + dockRoot.screenEdgeThickness)
 
                 WlrLayershell.namespace: "quickshell:dock"
                 color: "transparent"
@@ -169,8 +189,35 @@ Scope {
                     item: dockMouseArea
                 }
 
+                ConnectedSurfaceIrisEdgeSurface {
+                    id: dockIrisSurface
+                    z: 0
+                    anchors.fill: parent
+                    visible: dockVisualBackground.visible
+                    edge: root.position
+                    ownerThickness: dockRoot.screenEdgeThickness
+                    outputRect: Qt.rect(0, 0, dockRoot.width, dockRoot.height)
+                    bodyRect: {
+                        const p = dockVisualBackground.mapToItem(dockRoot, 0, 0)
+                        return Qt.rect(p.x, p.y,
+                            dockVisualBackground.width,
+                            dockVisualBackground.height)
+                    }
+                    bodyRadius: dockVisualBackground.radius
+                    fillColor: dockVisualBackground.color
+                    borderColor: dockVisualBackground.border.color
+                    borderWidth: dockVisualBackground.border.width
+                    progress: 1
+                    shadowEnabled: dockRoot.screenEdgeShadowEnabled
+                        && dockRoot.screenEdgeShadowSize > 0
+                        && dockRoot.screenEdgeShadowOpacity > 0
+                    shadowExtent: dockRoot.screenEdgeShadowSize
+                    shadowColor: dockRoot.screenEdgeShadowColor
+                }
+
                 MouseArea {
                     id: dockMouseArea
+                    z: 1
                     hoverEnabled: true
                     acceptedButtons: Qt.NoButton
 
@@ -241,6 +288,7 @@ Scope {
 
                         Item {
                             id: dockBackground
+                            z: 2
 
                             layer.enabled: Appearance.shouldDesaturate("dock") && dockBackground.visible
                             layer.effect: ShellDesaturationEffect {}
@@ -262,13 +310,6 @@ Scope {
                                 : (dockRoot.height - Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut)
                             width: implicitWidth
                             height: implicitHeight
-
-                            StyledRectangularShadow {
-                                target: dockVisualBackground
-                                visible: (Config.options?.dock?.showBackground ?? true)
-                                    && !Appearance.gameModeMinimal
-                                    && !root.zzzEverywhere
-                            }
 
                             Rectangle {
                                 id: dockVisualBackground
@@ -311,16 +352,16 @@ Scope {
 
                                 anchors.fill: parent
                                 anchors.topMargin: root.isTop
-                                    ? 0
+                                    ? dockRoot.screenEdgeThickness
                                     : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
                                 anchors.bottomMargin: root.position === "bottom"
-                                    ? 0
+                                    ? dockRoot.screenEdgeThickness
                                     : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
                                 anchors.leftMargin: root.isLeft
-                                    ? 0
+                                    ? dockRoot.screenEdgeThickness
                                     : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
                                 anchors.rightMargin: root.position === "right"
-                                    ? 0
+                                    ? dockRoot.screenEdgeThickness
                                     : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
 
                                 visible: (Config.options?.dock?.showBackground ?? true)

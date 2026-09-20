@@ -55,9 +55,12 @@ Item {
     readonly property real searchOnlyHeight: Math.min(root.configuredHeight, Math.max(searchWidget.collapsedHeight + 24, searchWidget.implicitHeight + 24))
     readonly property real dashboardContentHeight: Math.max(240, root.configuredHeight - searchWidget.collapsedHeight - 36)
 
-    readonly property bool screenEdgeShadowEnabled: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
-    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32, Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0, Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+    readonly property bool screenEdgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
     readonly property real connectedDecorationMargin: root.directBottomAttachment
         ? Math.max(Appearance.sizes.elevationMargin,
             PerimeterTokens.irisFuseDepth, root.screenEdgeShadowSize + 2)
@@ -173,7 +176,7 @@ Item {
         blur: root.screenEdgeShadowSize
         spread: 0
         offset: Qt.vector2d(0, 0)
-        color: ColorUtils.applyAlpha(Appearance.colors.colShadow, root.screenEdgeShadowOpacity)
+        color: Qt.alpha(Appearance.m3colors.m3shadow, root.screenEdgeShadowOpacity)
         joinBottom: root.directBottomAttachment
     }
 
@@ -201,8 +204,8 @@ Item {
             && root.screenEdgeShadowSize > 0
             && root.screenEdgeShadowOpacity > 0
         shadowExtent: root.screenEdgeShadowSize
-        shadowColor: ColorUtils.applyAlpha(
-            Appearance.colors.colShadow, root.screenEdgeShadowOpacity)
+        shadowColor: Qt.alpha(
+            Appearance.m3colors.m3shadow, root.screenEdgeShadowOpacity)
     }
 
     DashboardEditToolbar {

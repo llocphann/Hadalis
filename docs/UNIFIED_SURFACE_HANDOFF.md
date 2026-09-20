@@ -219,3 +219,87 @@ work may have advanced the branch.
 The reverted pre-contact-corner baseline remains authoritative. Do not resurrect
 Canvas flares, contact-plane offsets, \`contactInset\`, or per-consumer seam
 patches.
+
+
+---
+
+## Current direction — iRiS v2.31.0, not Caelestia/U1
+
+The maintainer has explicitly selected upstream **iRiS v2.31.0** as the primary
+reference for connected popup corners.
+
+Reference:
+
+- `snowarch/iNiR@9574fa424c0d1008e927454e933a7fbe292f9fb2`
+- `modules/iris/field/IrisField.qml`
+- `modules/iris/field/IrisField.frag`
+- `modules/iris/stage/IrisStage.qml`
+- `modules/iris/control/IrisControlCenter.qml`
+
+Caelestia remains historical research only. Do not restart the old U1
+border-sink/cornerFill path.
+
+### Isolated PoC now exists
+
+Commits:
+
+- `c2a15b9b87e5d8cb144405fc5ef8dec01126716a`
+- `0a39ba386849c96248393b52ea4fd10552c57856`
+
+Files live under:
+
+```text
+scripts/iris-corner-poc/
+```
+
+The exact upstream iRiS shader source and QSB are committed there. The directory
+is developer-only and runtime-excluded.
+
+Default mode:
+
+```text
+HADALIS_IRIS_POC_MODE=card-owner
+```
+
+This is the relevant `StyledPopup` analogue:
+
+- small weld overlap;
+- explicit `joins: "owner"`;
+- deep fuse;
+- no manually drawn corner.
+
+`edge-reach` is only a diagnostic reproduction of `IrisStage.meltInto()` and
+must not be confused with card/popup geometry.
+
+Run:
+
+```sh
+scripts/iris-corner-poc/run.sh
+```
+
+Useful visual matrix:
+
+```sh
+HADALIS_IRIS_POC_EDGE=top    HADALIS_IRIS_POC_SOURCE_T=0.02 scripts/iris-corner-poc/run.sh
+HADALIS_IRIS_POC_EDGE=top    HADALIS_IRIS_POC_SOURCE_T=0.50 scripts/iris-corner-poc/run.sh
+HADALIS_IRIS_POC_EDGE=top    HADALIS_IRIS_POC_SOURCE_T=0.98 scripts/iris-corner-poc/run.sh
+HADALIS_IRIS_POC_EDGE=bottom HADALIS_IRIS_POC_SOURCE_T=0.50 scripts/iris-corner-poc/run.sh
+HADALIS_IRIS_POC_EDGE=left   HADALIS_IRIS_POC_SOURCE_T=0.50 scripts/iris-corner-poc/run.sh
+HADALIS_IRIS_POC_EDGE=right  HADALIS_IRIS_POC_SOURCE_T=0.50 scripts/iris-corner-poc/run.sh
+```
+
+Guides:
+
+- yellow = actual iRiS field;
+- cyan = semantic popup rect;
+- magenta = owner seam.
+
+### Hard rules
+
+- ii only;
+- Waffle untouched;
+- no production cutover before visual acceptance;
+- no Canvas/JoinFlares/contactInset/cornerFill/borderSink patches in the PoC;
+- preserve immutable slide-only `SurfaceMotion`;
+- if the visual is wrong, modify/revert the isolated PoC rather than layering
+  geometry patches onto production.

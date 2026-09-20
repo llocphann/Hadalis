@@ -1541,3 +1541,178 @@ Only U3 may choose the production renderer.
 
 Production cutover still requires explicit maintainer approval and remains
 separate from this research/documentation work.
+
+
+---
+
+## 26. Direction change: iRiS v2.31.0 is now the primary reference
+
+The maintainer explicitly changed the implementation reference from Caelestia to
+upstream iNiR **iRiS v2.31.0**.
+
+Primary upstream baseline:
+
+- repository: `snowarch/iNiR`
+- release: `v2.31.0`
+- commit: `9574fa424c0d1008e927454e933a7fbe292f9fb2`
+- field source: `modules/iris/field/IrisField.qml`
+- shader: `modules/iris/field/IrisField.frag`
+- compiled shader: `modules/iris/field/IrisField.frag.qsb`
+- shape attachment reference: `modules/iris/stage/IrisStage.qml`
+- card reference: `modules/iris/control/IrisControlCenter.qml`
+- morph/body reference: `modules/iris/components/IrisMorphSurface.qml`
+
+Caelestia research remains useful historical context for the general "one field,
+one silhouette" idea, but it is no longer the implementation template.
+
+### 26.1 Why iRiS is a better Hadalis reference
+
+iRiS and Hadalis already share the relevant runtime architecture:
+
+- Quickshell;
+- Qt Quick/QML;
+- Wayland layer-shell;
+- Niri;
+- ShaderEffect/QSB assets;
+- full-output per-screen visual windows.
+
+Therefore the surface field can be studied and ported without translating a
+native C++/QSG Blob implementation first.
+
+### 26.2 Exact iRiS field rule
+
+iRiS stores ordinary rounded-box bodies and combines them in one shader pass.
+
+The shader always keeps the plain union:
+
+```text
+united = min(united, body)
+```
+
+Then, only for an explicitly declared relationship, it adds:
+
+```text
+smoothUnion(owner, child, child.fuse)
+```
+
+A body therefore melts only into the body named by its `joins` relation. It
+does not automatically fuse into every nearby surface.
+
+The polynomial smooth minimum is the upstream iRiS implementation, not a new
+Hadalis formula.
+
+### 26.3 Do not conflate iRiS edge pieces with iRiS cards
+
+Two upstream mechanisms must remain distinct.
+
+**Edge piece attachment** — `IrisStage.meltInto()`:
+
+```text
+reach = min(width, height) / 2 + 1
+field shape grows into screen/frame owner
+joins = pieceEdge:<side> or frame
+```
+
+This is appropriate for a piece directly attached to a screen/frame edge.
+
+**Card/popup attachment** — e.g. `IrisControlCenter`:
+
+```text
+bodyRect remains the card body
+placement overlaps owner by a small weld
+joins = island / origin field id
+fuse = fuseDeep
+```
+
+This second model is the closer analogue for Hadalis `StyledPopup`.
+
+Do not apply the large edge-piece `reach` to production Bar popups merely
+because it makes a visible corner.
+
+### 26.4 Current isolated PoC
+
+Implementation commits:
+
+- `c2a15b9b87e5d8cb144405fc5ef8dec01126716a` —
+  `research(surface): add iRiS-faithful corner PoC`
+- `0a39ba386849c96248393b52ea4fd10552c57856` —
+  `test(surface): lock iRiS corner morphology`
+
+Location:
+
+```text
+scripts/iris-corner-poc/
+```
+
+It is excluded by `sdata/runtime-exclusions.json`; no production QML imports it.
+
+The PoC carries the **exact upstream v2.31.0** `IrisField.frag` and
+`IrisField.frag.qsb`. The Hadalis wrapper only supplies a two-body field:
+
+```text
+owner
+popup -> joins: "owner"
+```
+
+It supports two explicit modes:
+
+- `card-owner` — default and relevant to `StyledPopup`;
+- `edge-reach` — diagnostic reproduction of `IrisStage.meltInto()`.
+
+No production Bar, ScreenEdges, StyledPopup, Sidebar, Dashboard, Settings or
+Waffle file is changed by the PoC.
+
+### 26.5 Current morphology gate
+
+The intentionally enlarged `card-owner` default uses:
+
+```text
+owner thickness = 56
+popup = 380 x 300
+popup radius = 48
+weld = 4
+fuse = 56
+```
+
+A source-level regression test recomputes the same rounded-box and polynomial
+smooth-union field. The left shoulder must:
+
+- extend roughly 31 px immediately below the owner seam;
+- taper monotonically;
+- be roughly 8–16 px wide at depth 8;
+- converge to <= 0.6 px by depth 56.
+
+This is designed to reject the previous failure mode where a separate-looking
+blob/corner sits underneath the popup.
+
+### 26.6 Validation status
+
+For `c2a15b...`, the canonical CI count changed from the immediate pre-PoC
+baseline:
+
+```text
+before: 107 PASS / 24 FAIL / 2 SKIP
+after:  108 PASS / 24 FAIL / 2 SKIP
+```
+
+The new iRiS PoC contract passed. The existing 24 failures were not introduced
+by the PoC. Nix package validation also passed.
+
+Live desktop/GPU appearance is still required before any production cutover.
+
+### 26.7 Production boundary remains strict
+
+Until live inspection accepts the PoC:
+
+- do not modify `StyledPopup.qml`;
+- do not modify Bar/ScreenEdges geometry;
+- do not restore U1 border-sink/cornerFill/contact-plane experiments;
+- do not add Canvas/flare correction geometry;
+- do not touch Waffle;
+- keep the immutable ii `SurfaceMotion` slide-only contract.
+
+If the PoC looks wrong, revise or discard only `scripts/iris-corner-poc/`.
+
+If the `card-owner` silhouette is accepted, the next production experiment is
+an **ii-only** field-backed popup background that reuses existing anchor/content
+lifecycle while feeding generic owner/popup body records to an iRiS-style field.

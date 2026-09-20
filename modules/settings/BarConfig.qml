@@ -40,10 +40,7 @@ ContentPage {
         return true
     }
 
-    readonly property bool isHugStyle: (Config.options?.bar?.cornerStyle ?? 1) === 0
     readonly property bool isVertical: Config.options?.bar?.vertical ?? false
-    readonly property bool isAngel: (Config.options?.appearance?.globalStyle ?? "material") === "angel"
-    readonly property bool showBackground: Config.options?.bar?.showBackground ?? true
     readonly property bool spectrumEnabled: Config.options?.bar?.visualizer?.enable ?? false
     readonly property color workspaceThemeIndicatorColor: Appearance.zzzEverywhere ? Appearance.zzz.accentSoft
         : Appearance.angelEverywhere ? Appearance.angel.colPrimary : Appearance.colors.colPrimary
@@ -102,7 +99,7 @@ ContentPage {
         SettingsGroup {
             SettingsNote {
                 icon: "toolbar"
-                text: Translation.tr("Classic is the only bar appearance. Position and corner style change its geometry without switching renderer families.")
+                text: Translation.tr("Classic Bar uses the Hug surface. Position only changes which screen edge it hugs.")
             }
 
             ContentSubsection {
@@ -121,34 +118,6 @@ ContentPage {
                         { displayName: Translation.tr("Left"), icon: "arrow_back", value: 2 },
                         { displayName: Translation.tr("Right"), icon: "arrow_forward", value: 3 }
                     ]
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Corner style")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options?.bar?.cornerStyle ?? 1
-                    onSelected: newValue => {
-                        if (newValue === 0 && root.isAngel) {
-                            Config.setNestedValue("bar.cornerStyle", 1)
-                            return
-                        }
-                        Config.setNestedValue("bar.cornerStyle", newValue)
-                    }
-                    options: [
-                        { displayName: Translation.tr("Hug"), icon: "line_curve", previewKind: "hug", value: 0 },
-                        { displayName: Translation.tr("Float"), icon: "page_header", previewKind: "float", value: 1 },
-                        { displayName: Translation.tr("Rectangle"), icon: "toolbar", previewKind: "rect", value: 2 },
-                        { displayName: Translation.tr("Card"), icon: "branding_watermark", previewKind: "card", value: 3 }
-                    ]
-                }
-
-                SettingsNote {
-                    visible: root.isAngel && root.isHugStyle
-                    warning: true
-                    icon: "sync_problem"
-                    text: Translation.tr("Hug mode is incompatible with the Angel global style; Float is used instead.")
                 }
             }
 
@@ -182,13 +151,6 @@ ContentPage {
             ConfigRow {
                 uniform: true
 
-                SettingsSwitch {
-                    buttonIcon: "format_paint"
-                    text: Translation.tr("Show background")
-                    checked: Config.options?.bar?.showBackground ?? true
-                    onCheckedChanged: Config.setNestedValue("bar.showBackground", checked)
-                }
-
                 ConfigSpinBox {
                     icon: "opacity"
                     text: Translation.tr("Background opacity (%)")
@@ -196,8 +158,6 @@ ContentPage {
                     from: 20
                     to: 100
                     stepSize: 5
-                    enabled: root.showBackground
-                    opacity: enabled ? 1 : 0.5
                     onValueChanged: Config.setNestedValue("bar.opacity", value / 100)
                 }
             }
@@ -209,7 +169,7 @@ ContentPage {
                     buttonIcon: "blur_on"
                     text: Translation.tr("Blur background")
                     checked: Config.options?.bar?.blurBackground?.enabled ?? false
-                    enabled: root.showBackground && (Config.options?.performance?.compositorBlur ?? true)
+                    enabled: Config.options?.performance?.compositorBlur ?? true
                     opacity: enabled ? 1 : 0.5
                     onCheckedChanged: Config.setNestedValue("bar.blurBackground.enabled", checked)
                 }
@@ -237,15 +197,90 @@ ContentPage {
                     onCheckedChanged: Config.setNestedValue("bar.borderless", checked)
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "shadow"
-                    text: Translation.tr("Float shadow")
-                    checked: Config.options?.bar?.floatStyleShadow ?? true
-                    onCheckedChanged: Config.setNestedValue("bar.floatStyleShadow", checked)
-                }
             }
         }
     }
+
+    SettingsCardSection {
+        settingsTaskSection: "appearance"
+        visible: root.isIiActive && root.activeSection === "appearance"
+        expanded: true
+        icon: "border_outer"
+        title: Translation.tr("Screen Edge")
+
+        SettingsGroup {
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "width"
+                    text: Translation.tr("Screen edge width (px)")
+                    value: Config.options?.appearance?.screenEdge?.width ?? 10
+                    from: 1
+                    to: 32
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.width", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "rounded_corner"
+                    text: Translation.tr("Corner radius (px)")
+                    value: Config.options?.appearance?.screenEdge?.radius ?? 25
+                    from: 0
+                    to: 96
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.radius", value)
+                }
+            }
+
+            SettingsSwitch {
+                buttonIcon: "shadow"
+                text: Translation.tr("Screen edge shadow")
+                checked: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                onCheckedChanged: Config.setNestedValue(
+                    "appearance.screenEdge.physicalShadow.enabled", checked)
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "blur_on"
+                    text: Translation.tr("Shadow size (px)")
+                    value: Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15
+                    from: 0
+                    to: 32
+                    stepSize: 1
+                    enabled: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.physicalShadow.size", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "opacity"
+                    text: Translation.tr("Shadow opacity (%)")
+                    value: Math.round(
+                        (Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70) * 100)
+                    from: 0
+                    to: 100
+                    stepSize: 2
+                    enabled: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.physicalShadow.opacity", value / 100)
+                }
+            }
+
+            SettingsNote {
+                icon: "info"
+                text: Translation.tr("These shadow controls apply to the Screen Edge, Bar popups, Dock, Sidebar and Dashboard. The screen edge stays visible on the desktop and maximized windows; true fullscreen and lock screen hide it.")
+            }
+        }
+    }
+}
 
     SettingsCardSection {
         settingsTaskSection: "spectrum"

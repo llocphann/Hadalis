@@ -619,13 +619,43 @@ Implemented research/proof:
 - Native acceptance now replays the real Clock/Config closure twice and requires
   deterministic source hashes, semantic terminal identity and dependency path.
 
+## Milestone 2K-K — composed Connect research qualification
+
+Implemented research/proof:
+
+- `scripts/code-workflow/connect_qualify.py` composes the already qualified
+  2K-H type proof and 2K-J cross-file acyclic proof. It is research-only,
+  excluded from the runtime payload and never referenced by
+  `CodeWorkflowTransaction`.
+- Composition requires exact equality for reviewed target ID, Connect target ID,
+  source path, same Clock source SHA, parent semantic anchor, target property and
+  source expression. A mismatch in any field fails closed.
+- The cycle evidence must be the 2K-J
+  `acyclic-source-backed-cross-file-closure` proof and must retain the Config
+  source SHA, dependency path and terminal semantic anchor. The type evidence
+  must be the 2K-H `compatible-qmllint-proof`.
+- After both proof requests finish, the coordinator re-reads the Clock source and
+  the external Config source from the runtime root. Either source hash changing
+  after proof generation invalidates the qualification, so stale evidence cannot
+  be reused across requests.
+- Successful composition reports
+  `qualificationProof=qualified-reviewed-connect-research-v1` plus primitive
+  semantic/hash evidence only. No parser node, byte range or QObject identity is
+  promoted into the qualification contract.
+- Qualification is still not source-write authority. `writeAuthorized=false`,
+  `applyEnabled=false`, `artifactsStaged=false`,
+  `productionIntegrated=false`, and production TYPE and CYCLE remain UNKNOWN.
+- Focused tests lock proof identity mismatch, production-blocker drift and
+  post-proof external source mutation. Native acceptance repeats the composed
+  proof twice and then reruns the existing literal Apply lifecycle unchanged.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - promotion/integration of the 2K-H type proof into production Connect authorization;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- composition/promotion of the isolated type and cycle proofs into one production qualification contract;
+- production promotion of the 2K-K research qualification into a Connect write-safety contract;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -633,17 +663,17 @@ Implemented research/proof:
 
 ## Next gate
 
-2K-J closes the real Clock dependency through source-backed local singleton
-metadata and a literal Config terminal. The first reviewed Connect fixture now
-has an isolated qmllint type proof and an isolated cross-file acyclic proof, but
-those proofs were produced by separate research requests.
+2K-K proves that the first reviewed Connect candidate can produce one coherent,
+fresh research qualification whose type and cycle evidence refer to the same
+Clock source snapshot and retained Config dependency snapshot.
 
-The next gate must compose them into one deterministic qualification request:
-same reviewed Connect identity, same Clock source SHA, retained external Config
-source SHA, explicit primitive evidence only, and no stale proof reuse. That
-composition is still research-only and must not open Apply or artifact staging.
+The next gate is not another broader resolver. It must define the production
+promotion boundary: which proof fields may be copied into transaction state,
+how proof freshness survives preview history/regenerate, how external Config
+changes invalidate a prepared Connect operation, and which independent checks
+must still run before any artifact can be staged. Promotion must remain a
+separate explicit gate from proof generation.
 
-Until a separate production-promotion gate exists, do not translate either
-`compatible-qmllint-proof` or
-`acyclic-source-backed-cross-file-closure` into production SAFE status.
-Production TYPE and CYCLE remain UNKNOWN.
+Until that promotion gate is qualified, do not map
+`qualified-reviewed-connect-research-v1` to TYPE SAFE, CYCLE SAFE, Apply
+enablement or artifact staging. Production TYPE and CYCLE remain UNKNOWN.

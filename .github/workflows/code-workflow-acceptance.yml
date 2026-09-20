@@ -60,6 +60,9 @@ jobs:
       - name: Prove Connect cycle coverage boundary
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-cycle.py'
 
+      - name: Compose Connect research qualification
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-qualify.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply

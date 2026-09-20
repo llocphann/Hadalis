@@ -58,6 +58,24 @@ PanelWindow {
     readonly property bool showGuides:
         String(Quickshell.env("HADALIS_IRIS_POC_GUIDES") || "1") !== "0"
 
+    // Component.onCompleted can fire before a layer-shell PanelWindow has its
+    // final output geometry. G1 metadata must describe the pixels that grim
+    // captures, so publish readiness only after full-output geometry has been
+    // stable for several probes.
+    property int readinessStableTicks: 0
+    property real readinessLastWidth: -1
+    property real readinessLastHeight: -1
+    property bool readinessEmitted: false
+    readonly property real readinessTolerance: 0.5
+    readonly property bool outputGeometryReady: {
+        const screenWidth = Number(root.screen?.width ?? 0)
+        const screenHeight = Number(root.screen?.height ?? 0)
+        return screenWidth > 0 && screenHeight > 0
+            && root.width > 0 && root.height > 0
+            && Math.abs(root.width - screenWidth) <= root.readinessTolerance
+            && Math.abs(root.height - screenHeight) <= root.readinessTolerance
+    }
+
     readonly property real semanticX: {
         if (root.edgeName === "left")
             return root.ownerThickness - root.weld
@@ -276,14 +294,15 @@ PanelWindow {
     // Keep the readiness payload plain-number JSON. The live capture harness
     // persists it beside each PNG and uses output-local geometry to make a
     // high-magnification junction crop without guessing compositor scale.
-    Component.onCompleted: console.info(
-        "HADALIS_IRIS_POC",
-        JSON.stringify({
+    function readinessPayload() {
+        return {
             output: root.screen?.name ?? "",
             outputX: Number(root.screen?.x ?? 0),
             outputY: Number(root.screen?.y ?? 0),
             outputWidth: Number(root.width),
             outputHeight: Number(root.height),
+            screenWidth: Number(root.screen?.width ?? 0),
+            screenHeight: Number(root.screen?.height ?? 0),
             devicePixelRatio: Number(root.devicePixelRatio),
             mode: root.geometryMode,
             profile: root.profileName,
@@ -301,7 +320,46 @@ PanelWindow {
             radius: Number(root.popupRadius),
             fuse: Number(root.fuse),
             weld: Number(root.weld),
-            reach: Number(root.edgeReach)
-        })
-    )
+            reach: Number(root.edgeReach),
+            geometryStable: root.outputGeometryReady,
+            readinessStableTicks: root.readinessStableTicks
+        }
+    }
+
+    function probeReadiness() {
+        if (root.readinessEmitted)
+            return
+
+        const widthNow = Number(root.width)
+        const heightNow = Number(root.height)
+        if (!root.outputGeometryReady) {
+            root.readinessStableTicks = 0
+            root.readinessLastWidth = widthNow
+            root.readinessLastHeight = heightNow
+            return
+        }
+
+        const unchanged = Math.abs(widthNow - root.readinessLastWidth)
+                <= root.readinessTolerance
+            && Math.abs(heightNow - root.readinessLastHeight)
+                <= root.readinessTolerance
+        root.readinessStableTicks = unchanged ? root.readinessStableTicks + 1 : 1
+        root.readinessLastWidth = widthNow
+        root.readinessLastHeight = heightNow
+
+        if (root.readinessStableTicks < 3)
+            return
+
+        root.readinessEmitted = true
+        console.info("HADALIS_IRIS_POC", JSON.stringify(root.readinessPayload()))
+        readinessTimer.stop()
+    }
+
+    Timer {
+        id: readinessTimer
+        interval: 50
+        repeat: true
+        running: true
+        onTriggered: root.probeReadiness()
+    }
 }

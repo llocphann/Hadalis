@@ -2248,3 +2248,37 @@ non-empty requested output is the one actually rendered.
 
 This is still harness hardening only. It does not change production geometry,
 does not touch Waffle, and does not unlock G2 without a live visual PASS.
+
+
+### 26.17 Live G1 exposed a pre-layout readiness race
+
+The maintainer's first actual Wayland/Niri/GPU run produced all 24 captures but
+failed the structural verifier at `top / 0.50 / diagnostic`: the saved metadata
+contained `joins=["owner","frame-start"]` instead of the center-case
+`["owner"]`.
+
+The failure path is deterministic from the PoC lifecycle. The old readiness
+payload was emitted directly in `Component.onCompleted`. A layer-shell
+`PanelWindow` can complete QML construction before its anchored full-output
+geometry has settled. During that transient state the source-position formula
+can clamp `semanticPopup.x/y` to `tangentInset`, which makes
+`atTangentStart` true. The capture harness then waited for that early marker,
+slept for its warmup, and captured pixels later. Therefore the persisted
+metadata—and the focused `grim -g` crop derived from it—could describe a
+different geometry state from the actual screenshot.
+
+This attempt cannot be used to decide morphology in either direction.
+
+The fix changes readiness semantics, not field geometry:
+
+- no readiness marker is emitted from `Component.onCompleted`;
+- a 50 ms repeating probe waits until the PoC window dimensions match the
+  selected `ShellScreen` dimensions;
+- the dimensions must remain unchanged for at least three consecutive probes;
+- the one-shot readiness payload then records `screenWidth`, `screenHeight`,
+  `geometryStable` and `readinessStableTicks`;
+- structural verification requires stable geometry and equality between the
+  captured output dimensions and the screen dimensions.
+
+No shader, fuse, weld, radius, join policy or production surface changed. G1
+therefore remains pending a fresh complete live run.

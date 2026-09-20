@@ -139,6 +139,18 @@ def verify_profile(evidence_dir: Path, profile: str, requested_output: str) -> s
             fail(f"{metadata_path.name}: profile mismatch")
         if metadata.get("edge") != edge:
             fail(f"{metadata_path.name}: edge mismatch")
+        if metadata.get("geometryStable") is not True:
+            fail(f"{metadata_path.name}: readiness geometry was not stable")
+        try:
+            stable_ticks = int(metadata.get("readinessStableTicks"))
+        except (TypeError, ValueError):
+            fail(f"{metadata_path.name}: readinessStableTicks is not an integer")
+        if stable_ticks < 3:
+            fail(f"{metadata_path.name}: readinessStableTicks={stable_ticks} expected >= 3")
+        close_enough(metadata.get("outputWidth"), metadata.get("screenWidth"),
+                     f"{metadata_path.name}: outputWidth/screenWidth")
+        close_enough(metadata.get("outputHeight"), metadata.get("screenHeight"),
+                     f"{metadata_path.name}: outputHeight/screenHeight")
         close_enough(metadata.get("sourceT"), source_t, f"{metadata_path.name}: sourceT")
         close_enough(metadata.get("radius"), expected_profile["radius"], f"{metadata_path.name}: radius")
         close_enough(metadata.get("fuse"), expected_profile["fuse"], f"{metadata_path.name}: fuse")

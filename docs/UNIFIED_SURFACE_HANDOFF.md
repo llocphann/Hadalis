@@ -630,3 +630,24 @@ The G1 wrapper now closes two provenance gaps before any live capture:
 exclusion blob SHAs, and the structural verifier requires those provenance
 fields and requested-output consistency. This still does not auto-approve
 morphology; the live focused images remain the hard G1 gate.
+
+
+### Live G1 attempt: readiness race found
+
+The first real desktop G1 run (`g1-20260920T144651Z`) completed both 12-case
+matrices but failed structural verification at the diagnostic top/0.50 case:
+metadata reported `["owner", "frame-start"]` where the center case requires
+`["owner"]`.
+
+Source audit identified a capture-readiness race rather than evidence of a
+center-field topology failure: the PoC emitted its metadata from
+`Component.onCompleted`, before the full-output layer-shell window was
+guaranteed to have its final dimensions. The screenshots were taken only after
+the later warmup, so the metadata/crop source and rendered pixels could refer to
+different geometry states.
+
+The PoC now emits readiness only after its window width/height match the target
+`ShellScreen` for three consecutive 50 ms probes. Metadata records the screen
+dimensions, `geometryStable=true` and the stable-probe count; the verifier
+requires all of them. The failed evidence directory is not a G1 PASS and must
+not unlock G2. Rerun the complete G1 wrapper after updating `dev`.

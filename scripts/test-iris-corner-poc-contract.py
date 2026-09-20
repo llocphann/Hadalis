@@ -125,8 +125,20 @@ for token in (
     "joins: root.popupJoins",
     "atTangentStart: root.atTangentStart",
     "atTangentEnd: root.atTangentEnd",
+    "screenWidth: Number(root.screen?.width ?? 0)",
+    "screenHeight: Number(root.screen?.height ?? 0)",
+    "geometryStable: root.outputGeometryReady",
+    "readinessStableTicks: root.readinessStableTicks",
+    "readonly property bool outputGeometryReady:",
+    "function probeReadiness()",
+    "root.readinessStableTicks < 3",
+    "Timer {",
 ):
     assert token in window, f"capture metadata drifted: {token}"
+
+assert "Component.onCompleted: console.info(" not in window, (
+    "G1 readiness must not snapshot pre-layout PanelWindow geometry"
+)
 
 
 def rounded_box(x, y, cx, cy, half_w, half_h, radius):
@@ -282,6 +294,10 @@ for token in (
     '"source_scope_clean"',
     '"evidence_dir_was_empty"',
     '"requestedOutput"',
+    '"geometryStable"',
+    '"readinessStableTicks"',
+    '"screenWidth"',
+    '"screenHeight"',
 ):
     assert token in g1_verify, f"G1 evidence verifier contract missing: {token}"
 

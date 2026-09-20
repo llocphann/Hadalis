@@ -176,11 +176,14 @@ The output defaults to `scripts/iris-corner-poc/captures/` and contains:
 - `contact-sheet-<mode>-<profile>.png` when ImageMagick is available;
 - `detail-sheet-<mode>-<profile>.png` when ImageMagick is available.
 
-The harness launches only this developer PoC, waits for its
-`HADALIS_IRIS_POC` readiness marker, persists the reported output-local
-geometry, captures with `grim`, then terminates that exact PoC process before
-moving to the next case. It does **not** restart, reload or IPC-call the running
-Hadalis shell.
+The harness launches only this developer PoC and waits for its
+`HADALIS_IRIS_POC` readiness marker. That marker is emitted only after the
+full-output layer-shell window matches the selected `ShellScreen` dimensions
+for at least three consecutive geometry probes; it is deliberately **not**
+emitted from `Component.onCompleted`. The harness then persists that stable
+output-local geometry, captures with `grim`, and terminates that exact PoC
+process before moving to the next case. It does **not** restart, reload or
+IPC-call the running Hadalis shell.
 
 The focused crop is computed from the semantic popup/owner geometry and
 `ShellScreen.x/y`, then passed to `grim -g` in compositor layout coordinates.
@@ -237,3 +240,13 @@ The first gate is visual, not architectural:
 
 If this is not visually correct, discard/rework this PoC. Do not patch
 `StyledPopup`, `ConnectedSurfaceJoinFlares`, Bar or ScreenEdges.
+
+
+### Invalid evidence from pre-layout metadata
+
+A live G1 attempt can contain all 24 screenshots and still be rejected if its
+metadata was emitted before the layer-shell window reached full-output size.
+Such an attempt must not be used for G1 morphology acceptance because the
+focused crop and join labels may describe the transient pre-layout geometry.
+After updating this harness, rerun `capture-g1.sh` into a fresh evidence
+directory.

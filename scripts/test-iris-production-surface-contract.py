@@ -28,6 +28,7 @@ sidebar = read("modules/sidebar/SidebarHost.qml")
 settings_overlay = read("modules/settings/SettingsOverlay.qml")
 settings_focus = read("modules/settings/SettingsFocus.qml")
 dashboard = read("modules/overview/OverviewDashboard.qml")
+dock = read("modules/dock/Dock.qml")
 search_widget = read("modules/overview/SearchWidget.qml")
 search_bar = read("modules/overview/SearchBar.qml")
 tokens = read("modules/common/perimeter/PerimeterTokens.qml")
@@ -180,6 +181,33 @@ for token in (
 ):
     require(dashboard, token, "Dashboard/Search iRiS edge cutover")
 forbid(dashboard, "ConnectedSurfaceJoinFlares {", "Dashboard legacy edge renderer")
+
+for token in (
+    "ConnectedSurfaceIrisEdgeSurface {",
+    "id: dockIrisSurface",
+    "edge: root.position",
+    "ownerThickness: dockRoot.screenEdgeThickness",
+    "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
+    "screenEdge?.physicalShadow?.enabled ?? true",
+    "screenEdge?.physicalShadow?.size ?? 15",
+    "screenEdge?.physicalShadow?.opacity ?? 0.70",
+    "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
+):
+    require(dock, token, "Dock iRiS edge cutover")
+forbid(dock, "StyledRectangularShadow {", "Dock detached legacy shadow")
+
+for source, label in (
+    (sidebar, "Sidebar"),
+    (dashboard, "Dashboard"),
+    (dock, "Dock"),
+):
+    for token in (
+        "screenEdge?.physicalShadow?.enabled ?? true",
+        "screenEdge?.physicalShadow?.size ?? 15",
+        "screenEdge?.physicalShadow?.opacity ?? 0.70",
+        "Appearance.m3colors.m3shadow",
+    ):
+        require(source, token, f"{label} shared Screen Edge shadow")
 for token in ("ConnectedSurfaceIrisEdgeSurface", "ConnectedSurfaceJoinFlares", "joinFlareRadius"):
     forbid(search_widget, token, "Embedded SearchWidget must not double-paint Dashboard edge ownership")
 for source_path in (

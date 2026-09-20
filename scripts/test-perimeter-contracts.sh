@@ -8,6 +8,7 @@ sidebar="$root/modules/sidebar/SidebarHost.qml"
 screen_edge="$root/modules/screenCorners/ScreenEdges.qml"
 overview="$root/modules/overview/Overview.qml"
 dashboard="$root/modules/overview/OverviewDashboard.qml"
+dock="$root/modules/dock/Dock.qml"
 
 fail() {
     printf 'FAIL: perimeter shared contract: %s\n' "$1" >&2
@@ -140,6 +141,31 @@ if grep -Fq 'ConnectedSurfaceJoinFlares {' "$dashboard" \
         || grep -Fq 'joinFlareRadius' "$dashboard"; then
     fail 'OverviewDashboard must not retain the legacy flare renderer/tokens'
 fi
+
+for token in \
+    'import qs.modules.common.perimeter' \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'id: dockIrisSurface' \
+    'edge: root.position' \
+    'ownerThickness: dockRoot.screenEdgeThickness' \
+    'dockMouseArea.x + dockBackground.x + dockVisualBackground.x' \
+    'screenEdge?.physicalShadow?.enabled ?? true' \
+    'screenEdge?.physicalShadow?.size ?? 15' \
+    'screenEdge?.physicalShadow?.opacity ?? 0.70' \
+    'Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)'; do
+    grep -Fq "$token" "$dock" \
+        || fail "Dock must use the shared iRiS/Screen Edge shadow contract: $token"
+done
+if grep -Fq 'StyledRectangularShadow {' "$dock"; then
+    fail 'Dock must not retain a detached local shadow beside the shared iRiS field'
+fi
+
+for shared_shadow_surface in "$sidebar" "$dashboard" "$dock"; do
+    grep -Fq 'screenEdge?.physicalShadow?.enabled ?? true' "$shared_shadow_surface" \
+        || fail "${shared_shadow_surface#$root/} lost shared Screen Edge shadow ownership"
+    grep -Fq 'Appearance.m3colors.m3shadow' "$shared_shadow_surface" \
+        || fail "${shared_shadow_surface#$root/} lost Material Screen Edge shadow ink"
+done
 for file in "$root/modules/overview/SearchWidget.qml" "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" "$common/ConnectedSurfaceFrame.qml"; do
     if grep -Fq 'ConnectedSurfaceJoinFlares' "$file" || grep -Fq 'joinFlareRadius' "$file"; then
         fail "${file#$root/} retained legacy round-wedge geometry"

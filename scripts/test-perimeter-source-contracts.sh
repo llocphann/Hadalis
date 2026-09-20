@@ -6,6 +6,7 @@ common="$root/modules/common/perimeter"
 widgets="$root/modules/common/widgets"
 sidebar="$root/modules/sidebar/SidebarHost.qml"
 dashboard="$root/modules/overview/OverviewDashboard.qml"
+dock="$root/modules/dock/Dock.qml"
 search="$root/modules/overview/SearchWidget.qml"
 osk="$root/modules/onScreenKeyboard/OnScreenKeyboard.qml"
 screen_corners="$root/modules/screenCorners/ScreenCorners.qml"
@@ -52,6 +53,15 @@ for token in \
     'id: dashboardIrisSurface' \
     'ownerThickness: root.attachmentThickness'; do
     grep -Fq "$token" "$dashboard" || fail "Dashboard iRiS edge contract missing: $token"
+done
+
+for token in \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'id: dockIrisSurface' \
+    'ownerThickness: dockRoot.screenEdgeThickness' \
+    'screenEdge?.physicalShadow?.enabled ?? true' \
+    'Appearance.m3colors.m3shadow'; do
+    grep -Fq "$token" "$dock" || fail "Dock iRiS edge contract missing: $token"
 done
 
 for file in "$search" "$osk" "$common/ConnectedSurfaceFrame.qml"; do

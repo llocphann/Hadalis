@@ -41,9 +41,9 @@ Scope {
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property real rounding: PerimeterTokens.frameRadius
 
-    // Physical Screen Edge shadow has its own config owner. Do not reuse
-    // appearance.screenEdge.shadow: that key belongs to connected popup/sidebar
-    // body shadows and must never change the physical perimeter effect.
+    // Public Screen Edge shadow controls also drive ii Bar StyledPopup depth.
+    // Do not reuse appearance.screenEdge.shadow here: that older key remains
+    // for Sidebar/Dashboard/Settings/OSK connected-body shadows.
     readonly property bool physicalShadowEnabled:
         Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
     readonly property int physicalShadowSize: Math.max(0, Math.min(32,

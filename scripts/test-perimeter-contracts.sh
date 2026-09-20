@@ -58,11 +58,20 @@ for token in \
     'readonly property real _barSurfaceThickness:' \
     'Appearance.sizes.verticalBarWidth' \
     'Appearance.sizes.barHeight' \
-    'return Qt.rect(barX, mapped.y, thickness, target.height)' \
-    'return Qt.rect(mapped.x, barY, target.width, thickness)'; do
+    'const tangentY = root.centerOnOutput' \
+    'return Qt.rect(barX, tangentY, thickness, localHeight)' \
+    'const tangentX = root.centerOnOutput' \
+    'return Qt.rect(tangentX, barY, localWidth, thickness)' \
+    'readonly property real _popupScreenMargin: root._screenEdgeThickness' \
+    'screenEdge?.physicalShadow?.enabled ?? true' \
+    'Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)'; do
     grep -Fq "$token" "$styled" \
         || fail "StyledPopup must keep control-centered tangent placement while attaching to the physical Bar edge: $token"
 done
+grep -Fq 'readonly property rect sdfBodyRect:' "$common/ConnectedSurfaceIrisFrame.qml" \
+    || fail 'iRiS tangent joins must weld only the SDF body record'
+grep -Fq 'x: root.sdfBodyRect.x' "$common/ConnectedSurfaceIrisFrame.qml" \
+    || fail 'iRiS popup shape must consume the tangent-welded SDF rect'
 grep -Fq 'property real connectorWidth: PerimeterTokens.connectorWidth' "$common/ConnectedSurfaceGeometry.qml" \
     || fail 'connected geometry must source neck width from PerimeterTokens'
 grep -Fq 'readonly property real connectorWidth: 40' "$common/PerimeterTokens.qml" \
@@ -75,6 +84,7 @@ for token in \
     ': Appearance.sizes.elevationMargin' \
     'ConnectedSurfaceIrisEdgeSurface {' \
     'ownerThickness: root.screenEdgeHoverWidth' \
+    'exclusionMode: ExclusionMode.Ignore' \
     'sidebarContentLoader.x + sidebarContentLoader.animTranslateX' \
     'progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0' \
     'readonly property real hiddenTranslateDistance:' \

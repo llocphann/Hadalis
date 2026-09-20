@@ -13,6 +13,7 @@ window = (POC / "IrisCornerPocWindow.qml").read_text(encoding="utf-8")
 readme = (POC / "README.md").read_text(encoding="utf-8")
 capture = (POC / "capture-matrix.sh").read_text(encoding="utf-8")
 g1_capture = (POC / "capture-g1.sh").read_text(encoding="utf-8")
+g1_verify = (POC / "verify-g1-evidence.py").read_text(encoding="utf-8")
 exclusions = json.loads((ROOT / "sdata" / "runtime-exclusions.json").read_text(encoding="utf-8"))
 
 assert "scripts/iris-corner-poc" in exclusions["excludedPaths"]
@@ -245,6 +246,7 @@ for token in (
     "HADALIS_IRIS_POC_MODE=card-owner",
     "detail-sheet-card-owner-diagnostic.png",
     "detail-sheet-card-owner-upstream-relative.png",
+    'python3 "$here/verify-g1-evidence.py" "$out_dir"',
 ):
     assert token in g1_capture, f"G1 wrapper contract missing: {token}"
 
@@ -255,5 +257,17 @@ for forbidden in (
     "modules/waffle",
 ):
     assert forbidden not in g1_capture, f"G1 wrapper may change acceptance scope: {forbidden}"
+
+for token in (
+    "G1 evidence structure: PASS",
+    "Visual morphology is NOT auto-approved",
+    "manifest-card-owner-{profile}.tsv",
+    "session-card-owner-{profile}.json",
+    '["owner", "frame-start"]',
+    '["owner", "frame-end"]',
+    '"compositor-layout-logical"',
+    '"repo_head"',
+):
+    assert token in g1_verify, f"G1 evidence verifier contract missing: {token}"
 
 print("iRiS corner PoC contract: PASS")

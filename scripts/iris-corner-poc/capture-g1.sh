@@ -34,6 +34,9 @@ for profile in diagnostic upstream-relative; do
         "$here/capture-matrix.sh"
 done
 
+printf '\nG1 structural evidence verification\n'
+python3 "$here/verify-g1-evidence.py" "$out_dir"
+
 printf '\nG1 evidence directory: %s\n' "$out_dir"
 printf 'Review:\n'
 printf '  %s\n' "$out_dir/detail-sheet-card-owner-diagnostic.png"

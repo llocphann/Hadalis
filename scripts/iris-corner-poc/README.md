@@ -211,9 +211,13 @@ scripts/iris-corner-poc/capture-g1.sh
 ```
 
 It forces `card-owner`, captures `diagnostic` then `upstream-relative`,
-and writes `g1-run.txt` with the repository HEAD plus the paired profile
-artifacts. Set `HADALIS_IRIS_POC_CAPTURE_DIR` only when you intentionally want
-a specific evidence directory.
+writes `g1-run.txt` with the repository HEAD plus the paired profile artifacts,
+then runs `verify-g1-evidence.py`. The verifier checks structural completeness,
+labels, output consistency and expected center/start/end join metadata only; it
+does **not** approve visual morphology.
+
+Set `HADALIS_IRIS_POC_CAPTURE_DIR` only when you intentionally want a specific
+evidence directory.
 
 ## Acceptance before production work
 

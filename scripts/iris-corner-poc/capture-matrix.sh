@@ -48,6 +48,7 @@ else
 fi
 
 mkdir -p "$out_dir"
+out_dir="$(cd -- "$out_dir" && pwd)"
 manifest="$out_dir/manifest-${mode}-${profile}.tsv"
 session_metadata="$out_dir/session-${mode}-${profile}.json"
 printf 'edge\tsource_t\tmode\tprofile\tpng\tdetail_png\tmetadata_json\tlog\n' > "$manifest"

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "gate": "Phase 2H",
+  "status": "passed",
+  "sourceRevision": "c991631a3e7b1e8756d42d1c0656d7026a593035",
+  "workflowRunId": 35495115101,
+  "artifact": {
+    "id": 10600428092,
+    "name": "code-workflow-apply-lifecycle-c991631a3e7b1e8756d42d1c0656d7026a593035",
+    "digest": "sha256:c3f87979068ac60bd759db44fd1db8e81eff1971c36faa6fd381d6b71a4a7f03",
+    "retentionDays": 14
+  },
+  "environment": "headless Sway, isolated XDG/private DBus, production CodeWorkflowAnalyzer/CodeWorkflowTransaction, dev-only fixture",
+  "checks": [
+    {
+      "name": "2H success uses watcher reload and semantic rebind",
+      "passed": true,
+      "semanticAnchor": "db72d85c23ddbfa36f8c0ba8",
+      "beforeSha256": "d29d1120c6c413541958bde39163d04027fd254260e52b197e4e72f6a5227fce",
+      "afterSha256": "d40b092d7f9eef4730a9cee472b915fd25015c850a4a86e58d9443931d4ecb6b",
+      "finalStatus": "applied"
+    },
+    {
+      "name": "2H reload failure rolls back exact snapshot",
+      "passed": true,
+      "semanticAnchor": "7c3896dccfefeb3a7f161648",
+      "snapshotSha256": "d40b092d7f9eef4730a9cee472b915fd25015c850a4a86e58d9443931d4ecb6b",
+      "restoredSha256": "d40b092d7f9eef4730a9cee472b915fd25015c850a4a86e58d9443931d4ecb6b",
+      "verifyState": "base-present",
+      "finalStatus": "rollback-complete"
+    },
+    {
+      "name": "2H external edit invalidates prepared Apply and is preserved",
+      "passed": true,
+      "semanticAnchor": "b725881a64c8e0352a648050",
+      "beginApplyResult": false,
+      "finalStatus": "conflict"
+    }
+  ],
+  "limitations": [
+    "Acceptance exercises the literal-property subset in an isolated staged runtime.",
+    "Package-managed/read-only source remains blocked by source writability diagnostics.",
+    "No direct binding, signal/action, Connections, component/lifecycle or multi-file transform is authorized by this evidence."
+  ]
+}

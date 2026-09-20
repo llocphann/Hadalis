@@ -78,8 +78,8 @@ for forbidden in ("byteRange", "valueRange"):
     if forbidden in persistent_block:
         fail("root reload bridge must not persist transient ranges: " + forbidden)
 
-if "readonly property bool applyEnabled: false" not in service:
-    fail("Apply must remain disabled through lifecycle wiring")
+if "readonly property bool applyCommandMatchesHandoff:" not in service:
+    fail("Apply enablement must preserve reload-stable semantic handoff identity")
 
 if "Milestone 2G" not in phase2 or "PersistentProperties" not in phase2:
     fail("Phase 2 status must document full reload-stable lifecycle handoff")

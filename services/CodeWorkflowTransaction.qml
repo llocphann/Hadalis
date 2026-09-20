@@ -37,7 +37,22 @@ Singleton {
     readonly property bool dirty: root.status !== "clean"
     readonly property bool preApplyReady:
         root.preApplyDiagnostics?.ready === true
-    readonly property bool applyEnabled: false
+    readonly property bool applyCommandMatchesHandoff:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "literal-property"
+        && root.historyIndex === reloadState.pendingApplyHistoryIndex
+        && String(root.activeCommand?.sourcePath ?? "")
+            === reloadState.pendingApplySourcePath
+        && String(root.activeCommand?.baseSha256 ?? "")
+            === reloadState.pendingApplyBaseSha256
+        && String(root.activeCommand?.candidateSha256 ?? "")
+            === reloadState.pendingApplyCandidateSha256
+        && String(root.activeCommand?.semanticAnchor ?? "")
+            === reloadState.pendingApplySemanticAnchor
+        && String(root.activeCommand?.replacement ?? "")
+            === reloadState.pendingApplyReplacement
+    readonly property bool applyEnabled:
+        root.applyLifecycleReady
     readonly property bool applyLifecycleBusy:
         [
             "write-issued",
@@ -54,6 +69,7 @@ Singleton {
         || rollbackProcess.running
     readonly property bool applyLifecycleReady:
         root.applyArtifactsReady
+        && root.applyCommandMatchesHandoff
         && Quickshell.watchFiles
         && !root.applyLifecycleBusy
         && reloadState.pendingApplyManifestPath.length > 0
@@ -365,7 +381,7 @@ Singleton {
     }
 
     function beginApplyLifecycle(): bool {
-        if (!root.applyLifecycleReady)
+        if (!root.applyEnabled)
             return false
 
         // Persist write-issued before commit.py can touch tracked source. The

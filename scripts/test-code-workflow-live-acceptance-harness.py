@@ -22,6 +22,12 @@ page = (ROOT / "modules/settings/CodeWorkflow.qml").read_text(
     encoding="utf-8")
 phase2 = (ROOT / "docs/CODE_WORKFLOW_PHASE2.md").read_text(
     encoding="utf-8")
+evidence = json.loads(
+    (
+        ROOT
+        / "docs/evidence/code-workflow/phase2h-apply-lifecycle-c991631a.json"
+    ).read_text(encoding="utf-8")
+)
 flake = (ROOT / "flake.nix").read_text(encoding="utf-8")
 nix_package = (ROOT / "nix/package.nix").read_text(encoding="utf-8")
 workflow = (
@@ -148,15 +154,29 @@ for token in (
     if token not in workflow:
         fail("automated Workflow acceptance job missing " + token)
 
-if "beginApplyLifecycle()" in page or 'mainText: "Apply"' in page:
-    fail("harness readiness must not enable user-triggered Apply")
+for token in (
+    'mainText: "Apply"',
+    "enabled: CodeWorkflowTransaction.applyEnabled",
+    "root.transactionMatchesSelection",
+    "CodeWorkflowTransaction.beginApplyLifecycle()",
+):
+    if token not in page:
+        fail("qualified Gate 2H must enable only the guarded literal Apply UI: " + token)
+
+if evidence.get("status") != "passed":
+    fail("retained Gate 2H evidence must be marked passed")
+if evidence.get("sourceRevision") != "c991631a3e7b1e8756d42d1c0656d7026a593035":
+    fail("retained Gate 2H evidence revision drifted")
+checks = evidence.get("checks", [])
+if len(checks) != 3 or not all(check.get("passed") is True for check in checks):
+    fail("retained Gate 2H evidence must contain all three passing checks")
 
 for token in (
-    "not yet qualified as passing evidence",
+    "Gate 2H — qualified live acceptance",
+    "Milestone 2I — guarded literal Apply enabled",
     "apply-lifecycle-report.json",
-    "No claim of live acceptance",
 ):
     if token not in phase2:
-        fail("Phase 2 status must not confuse harness existence with acceptance")
+        fail("Phase 2 status must record qualified acceptance and enablement")
 
 print("ok - Code Workflow isolated live acceptance harness contract")

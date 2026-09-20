@@ -61,12 +61,22 @@ for token in (
     if token not in service:
         fail("own source watcher event must preserve lifecycle handoff: " + token)
 
-if "readonly property bool applyEnabled: false" not in service:
-    fail("Apply must remain disabled until live lifecycle acceptance")
-if "beginApplyLifecycle()" in page:
-    fail("Settings must not invoke the write lifecycle yet")
-if 'mainText: "Apply"' in page:
-    fail("Settings must not expose an Apply button yet")
+for token in (
+    "readonly property bool applyCommandMatchesHandoff:",
+    "readonly property bool applyEnabled:",
+    "root.applyLifecycleReady",
+    "if (!root.applyEnabled)",
+):
+    if token not in service:
+        fail("qualified Apply lifecycle gate missing " + token)
+for token in (
+    'mainText: "Apply"',
+    "enabled: CodeWorkflowTransaction.applyEnabled",
+    "root.transactionMatchesSelection",
+    "CodeWorkflowTransaction.beginApplyLifecycle()",
+):
+    if token not in page:
+        fail("qualified literal Apply UI missing " + token)
 
 for forbidden in (
     "FileView {",
@@ -79,7 +89,7 @@ for forbidden in (
 
 if "watcher-driven commit/reload/rollback lifecycle" not in phase2:
     fail("Phase 2 status must document Milestone 2G")
-if "live acceptance" not in phase2:
-    fail("Phase 2 status must keep live acceptance as the enablement gate")
+if "Gate 2H — qualified live acceptance" not in phase2:
+    fail("Phase 2 status must record the qualified lifecycle evidence")
 
 print("ok - Code Workflow watcher-driven Apply lifecycle wiring contract")

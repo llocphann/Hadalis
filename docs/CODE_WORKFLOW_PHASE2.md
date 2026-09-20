@@ -2,9 +2,10 @@
 
 Updated 2026-09-20.
 
-Phase 2 now includes a contract-tested atomic writer and production lifecycle
-controller, but user-triggered Apply remains disabled. The Settings UI can only
-preview and prepare artifacts; applyEnabled is still false.
+Phase 2 now includes a qualified literal-property write path. User-triggered
+Apply is enabled only after the same semantic command passes preview, current
+pre-Apply diagnostics and exact artifact preparation. Direct bindings and every
+broader transform remain disabled.
 
 ## Milestone 2A — literal property dry-run preview
 
@@ -59,8 +60,9 @@ Implemented:
 
 Implemented:
 
-- CodeWorkflowTransaction exposes preApplyDiagnostics and preApplyReady while
-  keeping applyEnabled=false.
+- CodeWorkflowTransaction exposes preApplyDiagnostics and preApplyReady.
+  Pre-Apply READY alone does not enable Apply; exact artifacts and the qualified
+  lifecycle gate are still required.
 - The gate evaluates the active semantic preview command against the analyzer's
   current source identity, never against saved byte ranges.
 - READY requires an active non-stale preview, analyzer readiness, matching source
@@ -70,9 +72,9 @@ Implemented:
 - Package-managed/read-only source is an explicit source-read-only blocker.
 - External source change immediately invalidates readiness with preview-stale.
 - Undo/Redo restore semantic commands but force a fresh readiness evaluation.
-- Settings surfaces PRE-APPLY READY/BLOCKED plus blocker names. READY means the
-  evidence is sufficient for a future write controller; it does not enable or
-  expose Apply.
+- Settings surfaces PRE-APPLY READY/BLOCKED plus blocker names. READY advances
+  the transaction to exact artifact preparation; it is not direct write
+  authorization.
 - scripts/test-code-workflow-preapply-gate.py guards the diagnostic criteria and
   the no-write invariant.
 
@@ -116,9 +118,8 @@ Implemented:
   path/base SHA/candidate SHA/semantic anchor.
 - Source change, Clear, Undo, Redo or a new preview invalidates any prepared
   handoff/artifact state before another command can be staged.
-- Settings exposes Prepare Apply and ARTIFACTS READY, while explicitly stating
-  that source QML remains unchanged. applyEnabled is still false and there is no
-  Apply action.
+- Settings exposes Prepare Apply and ARTIFACTS READY. Source QML remains
+  unchanged until the separate Apply action introduced by Milestone 2I.
 - scripts/test-code-workflow-apply-preparation.py verifies exact artifact bytes,
   private permissions, source immutability, runtime packaging and no-write UI
   boundaries.
@@ -141,10 +142,9 @@ Implemented:
   blocks rollback instead of being overwritten.
 - verify distinguishes candidate-present, base-present and diverged without
   modifying the source.
-- Milestone 2G wires the engine to CodeWorkflowTransaction internally while
-  keeping Settings unable to invoke the write lifecycle; applyEnabled remains
-  false. Contract tests still exercise commit/verify/rollback against temporary
-  fixture files in addition to static lifecycle wiring guards.
+- Milestone 2G wires the engine to CodeWorkflowTransaction internally.
+  Milestone 2I exposes that already-qualified lifecycle only for an exact,
+  identity-matched literal-property transaction.
 - scripts/test-code-workflow-atomic-commit-engine.py guards source mode
   preservation, commit/rollback hash checks, external-edit conflict behavior,
   runtime packaging and the production no-Apply boundary.
@@ -170,15 +170,18 @@ Implemented:
 - Rollback never overwrites a post-Apply external edit because commit.py permits
   rollback only while the live source still equals candidateSha256.
 - Undo/Redo/Clear/new preview are blocked while the write lifecycle is active.
-- The lifecycle is intentionally not exposed by Settings yet:
-  applyEnabled remains false and no Apply button calls beginApplyLifecycle().
 - scripts/test-code-workflow-apply-lifecycle.py guards phase persistence,
   watcher-only reload behavior, semantic rebind, rollback wiring and the
-  no-user-Apply boundary.
+  qualified UI gate.
 
-## Gate 2H — automated live acceptance harness ready
+## Gate 2H — qualified live acceptance
 
-Implemented, but **not yet qualified as passing evidence**:
+**PASS on c991631a3e7b1e8756d42d1c0656d7026a593035.**
+
+Retained evidence:
+docs/evidence/code-workflow/phase2h-apply-lifecycle-c991631a.json
+
+Qualified coverage:
 
 - scripts/code-workflow/run-apply-lifecycle.py stages a committed tree into a
   fresh work directory and launches it under headless Sway with isolated XDG
@@ -228,16 +231,37 @@ Implemented, but **not yet qualified as passing evidence**:
 - A later automated run proved the production success path and exact rollback
   path. The rollback initially appeared red only because the dev probe counted
   reloadFailed in a generation-local field; transaction evidence already showed
-  rollback-complete, a non-empty reload error and verify => base-present. Gate
-  2H now judges rollback from persisted transaction/result evidence rather than
-  the non-persistent probe counter.
-- No claim of full live acceptance is made until the same retained
-  apply-lifecycle-report.json also records the external-edit preservation check
-  passing.
+  rollback-complete, a non-empty reload error and verify => base-present.
+- The qualifying run then passed all three checks in one retained report:
+  successful Apply/reload/rebind, reload-failure exact rollback, and external-edit
+  preservation with beginApplyLifecycle() rejected after invalidation.
+
+## Milestone 2I — guarded literal Apply enabled
+
+Implemented:
+
+- CodeWorkflowTransaction.applyEnabled now derives from applyLifecycleReady; it
+  is not a generic editor flag.
+- applyLifecycleReady requires exact prepared artifacts, Quickshell file
+  watching, an idle lifecycle and an active literal-property semantic command
+  whose source/base SHA/candidate SHA/anchor/replacement/history index all match
+  the persisted Apply handoff.
+- beginApplyLifecycle() checks applyEnabled again before spawning commit.py.
+- Settings keeps the explicit two-step flow: Prepare Apply first, then Apply.
+- The Apply button is visible only for an artifacts-prepared transaction that
+  still matches the currently selected semantic node.
+- External edits, Undo/Redo/Clear/new preview and selection mismatch cannot
+  silently retarget the prepared write. Existing hash/semantic verification and
+  exact rollback behavior remain unchanged.
+- The prepared artifact manifest still carries applyEnabled=false because an
+  artifact file is evidence, not authorization; authorization belongs to the
+  live transaction controller.
+- scripts/test-code-workflow-apply-enablement.py guards the retained Gate 2H
+  evidence, literal-only subset, semantic handoff identity and two-step UI.
+- Direct binding transforms remain disabled.
 
 ## Not implemented yet
 
-- retained passing Gate 2H live acceptance evidence and user-triggered Apply UI;
 - direct binding transforms;
 - connect/disconnect data dependencies;
 - signal/action transforms;
@@ -247,8 +271,7 @@ Implemented, but **not yet qualified as passing evidence**:
 
 ## Next gate
 
-The next gate is live acceptance of the wired lifecycle against an expendable
-literal property: successful watcher reload, semantic rebind, forced reload
-failure with exact rollback, and conflict preservation under an external edit.
-Only after that lifecycle evidence is captured should applyEnabled become true
-and an Apply button be exposed.
+The next gate is a conservative direct-property-binding preview subset. It must
+first classify safe expression kinds and remain dry-run only; literal Apply is
+the only production source-writing transform until separate binding acceptance
+evidence exists.

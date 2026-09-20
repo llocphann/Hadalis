@@ -98,21 +98,18 @@ for token in (
     'mainText: "Prepare Apply"',
     "CodeWorkflowTransaction.prepareApplyArtifacts()",
     '"ARTIFACTS READY"',
-    '"source QML is still unchanged"',
+    '"source QML is still unchanged until Apply"',
 ):
     if token not in page:
         fail("Apply preparation UI missing " + token)
 
-for forbidden in (
-    "Apply workflow",
-    "onClicked: CodeWorkflowTransaction.apply",
-    "CodeWorkflowTransaction.applyEnabled",
+for token in (
+    "readonly property bool applyCommandMatchesHandoff:",
+    "readonly property bool applyEnabled:",
+    "root.applyLifecycleReady",
 ):
-    if forbidden in page:
-        fail("Apply preparation milestone must not expose source commit: " + forbidden)
-
-if "readonly property bool applyEnabled: false" not in service:
-    fail("Apply must remain disabled after artifact preparation")
+    if token not in service:
+        fail("Apply enablement must remain downstream of exact artifact preparation: " + token)
 
 payload = subprocess.run(
     [

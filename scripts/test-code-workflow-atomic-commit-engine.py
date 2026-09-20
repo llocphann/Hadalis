@@ -112,10 +112,20 @@ for token in (
 ):
     if token not in service:
         fail("atomic commit engine production wiring missing " + token)
-if "readonly property bool applyEnabled: false" not in service:
-    fail("Apply must remain disabled pending live lifecycle acceptance")
-if "beginApplyLifecycle()" in page or "Apply workflow" in page:
-    fail("Settings must not expose Apply before live lifecycle acceptance")
+for token in (
+    "readonly property bool applyCommandMatchesHandoff:",
+    "readonly property bool applyEnabled:",
+    "root.applyLifecycleReady",
+):
+    if token not in service:
+        fail("Apply must be gated by prepared semantic identity: " + token)
+for token in (
+    'mainText: "Apply"',
+    "enabled: CodeWorkflowTransaction.applyEnabled",
+    "CodeWorkflowTransaction.beginApplyLifecycle()",
+):
+    if token not in page:
+        fail("Settings literal Apply wiring missing " + token)
 
 payload = subprocess.run(
     [

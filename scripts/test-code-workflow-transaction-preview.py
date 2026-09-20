@@ -84,7 +84,8 @@ if "singleton CodeWorkflowTransaction 1.0 CodeWorkflowTransaction.qml" not in qm
 
 for token in (
     'property string status: "clean"',
-    "readonly property bool applyEnabled: false",
+    "readonly property bool applyEnabled:",
+    "readonly property bool applyCommandMatchesHandoff:",
     "function previewLiteral(",
     'Quickshell.shellPath("scripts/code-workflow/transaction.py")',
     "function markSourceChanged(path: string): void",
@@ -100,16 +101,10 @@ for token in (
     "root.literalPreviewEligible",
     "CodeWorkflowTransaction.previewLiteral(",
     "CodeWorkflowTransaction.markSourceChanged(root.sourcePath)",
-    '"Patch Preview · DRY RUN · "',
-    "CodeWorkflowTransaction.applyEnabled",
+    '"Literal Transaction · "',
 ):
-    if token == "CodeWorkflowTransaction.applyEnabled":
-        # Apply is deliberately absent from the UI; service false is the gate.
-        if token in page:
-            fail("Code Workflow page must not expose Apply in dry-run milestone")
-        continue
     if token not in page:
-        fail("Code Workflow dry-run preview UI missing " + token)
+        fail("Code Workflow literal preview UI missing " + token)
 
 payload = subprocess.run(
     [sys.executable, str(ROOT / "sdata/lib/runtime-payload.py"),

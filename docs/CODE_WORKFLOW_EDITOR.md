@@ -8,13 +8,13 @@ now form the production read-only foundation. Selected reviewed anchors gain
 transient CST byte-range evidence when native parser capability is present;
 missing/ambiguous anchors fail closed and no ranges are persisted into the IR
 manifest. Generic semantic extraction and stable Arch parser promotion remain unfinished.
-The first literal-property transform now has dry-run preview, semantic identity,
-exact artifacts, an atomic commit/rollback engine and watcher-driven lifecycle
-wiring; user-triggered Apply remains disabled pending live lifecycle acceptance. The on-demand
+The first literal-property transform now has preview, semantic identity, exact
+artifacts, a qualified atomic commit/rollback lifecycle and guarded user-triggered
+Apply. Direct bindings and broader transforms remain disabled. The on-demand
 parser boundary still degrades to reviewed IR when native capability is absent.
-Curve sustained-memory acceptance remains HOLD. Phase 2 has an internal
-production source-write controller, but Settings cannot trigger it:
-applyEnabled=false until live reload/rebind/rollback acceptance is complete.
+Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the
+qualified literal-property subset; package-managed/read-only source and every
+unsupported semantic construct remain fail-closed.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
 [Phase 1 status](CODE_WORKFLOW_PHASE1.md),
 [Phase 2 status](CODE_WORKFLOW_PHASE2.md) and

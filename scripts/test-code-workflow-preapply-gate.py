@@ -13,7 +13,8 @@ phase2 = (ROOT / "docs/CODE_WORKFLOW_PHASE2.md").read_text(encoding="utf-8")
 for token in (
     "property var preApplyDiagnostics:",
     "readonly property bool preApplyReady:",
-    "readonly property bool applyEnabled: false",
+    "readonly property bool applyEnabled:",
+    "root.applyLifecycleReady",
     "function evaluatePreApply(",
     'blockers.push("no-active-command")',
     'blockers.push("transaction-not-preview")',
@@ -40,24 +41,19 @@ for token in (
     '"PRE-APPLY READY"',
     '"PRE-APPLY BLOCKED"',
     '"Pre-Apply blockers: "',
-    '"write path still disabled"',
+    '"prepare exact artifacts before Apply is enabled"',
 ):
     if token not in page:
         fail("Code Workflow pre-Apply diagnostics UI missing " + token)
 
-for forbidden in (
-    "Apply workflow",
-    "onClicked: CodeWorkflowTransaction.apply",
-    "CodeWorkflowTransaction.applyEnabled",
-):
-    if forbidden in page:
-        fail("pre-Apply milestone must not expose a write action: " + forbidden)
+if "CodeWorkflowTransaction.applyEnabled" not in page:
+    fail("Apply UI must consume the later artifact/lifecycle gate, not preApplyReady directly")
 
 for forbidden in ("FileView {", "setText(", "writeAdapter(", "atomicWrites"):
     if forbidden in service:
         fail("pre-Apply service must remain non-writing: " + forbidden)
 
-if "READY means the" not in phase2 or "does not enable" not in phase2:
-    fail("Phase 2 status must distinguish readiness from Apply authorization")
+if "Pre-Apply READY alone does not enable Apply" not in phase2:
+    fail("Phase 2 status must distinguish diagnostics readiness from Apply authorization")
 
 print("ok - Code Workflow pre-Apply diagnostics gate contract")

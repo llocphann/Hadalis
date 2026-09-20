@@ -698,7 +698,7 @@ Item {
                     StyledText {
                         visible: root.literalPreviewEligible
                             || root.transactionMatchesSelection
-                        text: "Phase 2 dry-run"
+                        text: "Phase 2 literal edit"
                         color: Appearance.colors.colSubtext
                     }
                     ToolbarTextField {
@@ -787,7 +787,7 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Patch Preview · DRY RUN · "
+                        text: "Literal Transaction · "
                             + String(CodeWorkflowTransaction.status).toUpperCase()
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -798,16 +798,22 @@ Item {
                         accent: Appearance.colors.colSubtext
                     }
                     Pill {
-                        label: CodeWorkflowTransaction.applyArtifactsReady
-                            ? "ARTIFACTS READY"
-                            : CodeWorkflowTransaction.preApplyReady
-                                ? "PRE-APPLY READY"
-                                : "PRE-APPLY BLOCKED"
-                        accent: CodeWorkflowTransaction.applyArtifactsReady
+                        label: CodeWorkflowTransaction.applyEnabled
+                                && root.transactionMatchesSelection
+                            ? "APPLY READY"
+                            : CodeWorkflowTransaction.applyArtifactsReady
+                                ? "ARTIFACTS READY"
+                                : CodeWorkflowTransaction.preApplyReady
+                                    ? "PRE-APPLY READY"
+                                    : "PRE-APPLY BLOCKED"
+                        accent: CodeWorkflowTransaction.applyEnabled
+                                && root.transactionMatchesSelection
                             ? Appearance.colors.colPrimary
-                            : CodeWorkflowTransaction.preApplyReady
+                            : CodeWorkflowTransaction.applyArtifactsReady
                                 ? Appearance.colors.colPrimary
-                                : Appearance.colors.colTertiary
+                                : CodeWorkflowTransaction.preApplyReady
+                                    ? Appearance.colors.colPrimary
+                                    : Appearance.colors.colTertiary
                     }
                     RippleButtonWithIcon {
                         visible: CodeWorkflowTransaction.preApplyReady
@@ -817,6 +823,16 @@ Item {
                         enabled: CodeWorkflowTransaction.prepareApplyEnabled
                         onClicked:
                             CodeWorkflowTransaction.prepareApplyArtifacts()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.applyArtifactsReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "save"
+                        mainText: "Apply"
+                        enabled: CodeWorkflowTransaction.applyEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.beginApplyLifecycle()
                     }
                     RippleButtonWithIcon {
                         materialIcon: "undo"
@@ -842,6 +858,7 @@ Item {
                         materialIcon: "close"
                         mainText: "Clear"
                         enabled: CodeWorkflowTransaction.status !== "previewing"
+                            && !CodeWorkflowTransaction.applyLifecycleBusy
                         onClicked: CodeWorkflowTransaction.clear()
                     }
                 }
@@ -851,7 +868,7 @@ Item {
                     visible: CodeWorkflowTransaction.applyArtifactsReady
                     text: "Apply artifacts ready · rollback snapshot + "
                         + "candidate + manifest are stored in shell state · "
-                        + "source QML is still unchanged"
+                        + "source QML is still unchanged until Apply"
                     color: Appearance.colors.colPrimary
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     wrapMode: Text.WordWrap
@@ -870,12 +887,13 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    visible: CodeWorkflowTransaction.preApplyDiagnostics
-                        ?.status !== "not-evaluated"
+                    visible: !CodeWorkflowTransaction.applyArtifactsReady
+                        && CodeWorkflowTransaction.preApplyDiagnostics
+                            ?.status !== "not-evaluated"
                     text: CodeWorkflowTransaction.preApplyReady
                         ? "Pre-Apply diagnostics: READY · source writable · "
                             + "current/candidate parser evidence valid · "
-                            + "write path still disabled"
+                            + "prepare exact artifacts before Apply is enabled"
                         : "Pre-Apply blockers: "
                             + (CodeWorkflowTransaction.preApplyDiagnostics
                                 ?.blockers ?? []).join(", ")

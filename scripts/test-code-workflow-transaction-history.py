@@ -61,9 +61,7 @@ for forbidden in (
     if forbidden in transaction:
         fail("transaction helper must remain dry-run: " + forbidden)
 
-if "readonly property bool applyEnabled: false" not in service:
-    fail("Apply must remain disabled after history/regenerate milestone")
-if "Apply workflow" in page:
-    fail("Code Workflow page must not expose Apply yet")
+if "readonly property bool applyCommandMatchesHandoff:" not in service:
+    fail("later Apply enablement must remain identity-gated")
 
 print("ok - Code Workflow semantic preview history/regenerate contract")

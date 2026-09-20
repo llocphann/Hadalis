@@ -1875,6 +1875,7 @@ Singleton {
                 property JsonObject canvas: JsonObject {
                     property int gridSize: 24
                     property bool snap: true
+                    property bool autoAdjustSize: true
                     property string gridStyle: "dots"
                     property list<var> widgets: [
                         { id: "welcome", x: 0.00, y: 0.00, w: 0.30, h: 0.18, visible: true },

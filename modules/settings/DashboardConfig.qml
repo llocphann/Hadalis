@@ -206,6 +206,16 @@ ContentPage {
                     Config.setNestedValue("dashboard.canvas.snap", checked)
             }
 
+            ConfigSwitch {
+                text: Translation.tr("Auto-adjust affected module sizes")
+                description: Translation.tr("Only while resizing: allow affected modules to shrink or grow to preserve spacing. Drag and drop never changes other module sizes.")
+                checked:
+                    Config.options?.dashboard?.canvas?.autoAdjustSize ?? true
+                onCheckedChanged:
+                    Config.setNestedValue(
+                        "dashboard.canvas.autoAdjustSize", checked)
+            }
+
             ContentSubsection {
                 title: Translation.tr("Grid style")
                 ConfigSelectionArray {

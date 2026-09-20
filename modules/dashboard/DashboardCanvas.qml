@@ -20,6 +20,8 @@ Item {
         Number(Config.options?.dashboard?.canvas?.gridSize ?? 24))
     readonly property bool snapEnabled:
         Config.options?.dashboard?.canvas?.snap ?? true
+    readonly property bool autoAdjustSizeEnabled:
+        Config.options?.dashboard?.canvas?.autoAdjustSize ?? true
     readonly property string gridStyle:
         Config.options?.dashboard?.canvas?.gridStyle ?? "dots"
 
@@ -189,7 +191,8 @@ Item {
             obstacles.push(root._rectPixels(otherId))
         }
         const base = root._rectPixelsForGeometry(id, root._entryFor(id))
-        const resolved = root._resolveNeighbour(base, id, obstacles)
+        const resolved = root._resolveNeighbour(
+            base, id, obstacles, false)
         let blocked = false
         for (let i = 0; i < obstacles.length; ++i) {
             if (root._rectsOverlap(resolved, obstacles[i],
@@ -223,7 +226,7 @@ Item {
         case "notifications": return { width: 260, height: 130 }
         case "notes": return { width: 240, height: 160 }
         case "agenda": return { width: 240, height: 75 }
-        case "system": return { width: 200, height: 130 }
+        case "system": return { width: 260, height: 180 }
         default: return { width: 200, height: 80 }
         }
     }
@@ -378,24 +381,31 @@ Item {
             && a.y + a.height + g > b.y
     }
 
-    function _candidateInRegion(base, min, x0, y0, x1, y1) {
+    function _candidateInRegion(base, min, x0, y0, x1, y1,
+            allowResize) {
         const left = Math.max(0, Number(x0))
         const top = Math.max(0, Number(y0))
         const right = Math.min(canvas.width, Number(x1))
         const bottom = Math.min(canvas.height, Number(y1))
         const availableWidth = Math.max(0, right - left)
         const availableHeight = Math.max(0, bottom - top)
-        if (availableWidth + 0.001 < min.width
-                || availableHeight + 0.001 < min.height)
+        const baseWidth = Math.min(canvas.width, Number(base.width))
+        const baseHeight = Math.min(canvas.height, Number(base.height))
+        const requiredWidth = allowResize ? min.width : baseWidth
+        const requiredHeight = allowResize ? min.height : baseHeight
+        if (availableWidth + 0.001 < requiredWidth
+                || availableHeight + 0.001 < requiredHeight)
             return null
 
-        // Preserve the neighbour's baseline size whenever the remaining region
-        // permits it; otherwise shrink only as far as needed, never below its
-        // module-specific minimum.
-        const width = Math.max(min.width,
-            Math.min(Number(base.width), availableWidth))
-        const height = Math.max(min.height,
-            Math.min(Number(base.height), availableHeight))
+        // Drag/drop and resize-with-auto-adjust-off preserve neighbour sizes.
+        // Shrinking is available only during an explicit resize interaction
+        // while Auto-adjust size is enabled.
+        const width = allowResize
+            ? Math.max(min.width, Math.min(baseWidth, availableWidth))
+            : baseWidth
+        const height = allowResize
+            ? Math.max(min.height, Math.min(baseHeight, availableHeight))
+            : baseHeight
         return {
             x: Math.max(left,
                 Math.min(right - width, Number(base.x))),
@@ -426,19 +436,20 @@ Item {
             + (dw * dw + dh * dh) * 0.35
     }
 
-    function _bestSideCandidate(base, min, obstacle, obstacles) {
+    function _bestSideCandidate(base, min, obstacle, obstacles,
+            allowResize) {
         const gap = root.collisionGap
         const right = obstacle.x + obstacle.width
         const bottom = obstacle.y + obstacle.height
         const candidates = [
             root._candidateInRegion(base, min,
-                0, 0, obstacle.x - gap, canvas.height),
+                0, 0, obstacle.x - gap, canvas.height, allowResize),
             root._candidateInRegion(base, min,
-                right + gap, 0, canvas.width, canvas.height),
+                right + gap, 0, canvas.width, canvas.height, allowResize),
             root._candidateInRegion(base, min,
-                0, 0, canvas.width, obstacle.y - gap),
+                0, 0, canvas.width, obstacle.y - gap, allowResize),
             root._candidateInRegion(base, min,
-                0, bottom + gap, canvas.width, canvas.height)
+                0, bottom + gap, canvas.width, canvas.height, allowResize)
         ]
         let best = null
         let bestScore = Number.POSITIVE_INFINITY
@@ -453,20 +464,20 @@ Item {
         return best
     }
 
-    function _fallbackPlacement(base, min, obstacles) {
+    function _fallbackPlacement(base, min, obstacles, allowResize) {
         const gap = root.collisionGap
-        const widths = [
+        const widths = allowResize ? [
             Math.min(canvas.width, base.width),
             Math.max(min.width, Math.min(base.width, base.width * 0.82)),
             Math.max(min.width, Math.min(base.width, base.width * 0.66)),
             min.width
-        ]
-        const heights = [
+        ] : [Math.min(canvas.width, base.width)]
+        const heights = allowResize ? [
             Math.min(canvas.height, base.height),
             Math.max(min.height, Math.min(base.height, base.height * 0.82)),
             Math.max(min.height, Math.min(base.height, base.height * 0.66)),
             min.height
-        ]
+        ] : [Math.min(canvas.height, base.height)]
         let best = null
         let bestScore = Number.POSITIVE_INFINITY
 
@@ -512,7 +523,7 @@ Item {
         return best
     }
 
-    function _resolveNeighbour(baseRect, id, obstacles) {
+    function _resolveNeighbour(baseRect, id, obstacles, allowResize) {
         const min = root._minimumSizeForCanvas(id)
         const base = root._fitRectToCanvas(baseRect, min)
         let current = root._cloneRect(base)
@@ -531,7 +542,7 @@ Item {
                 return current
 
             const next = root._bestSideCandidate(
-                base, min, blocker, obstacles)
+                base, min, blocker, obstacles, allowResize)
             if (!next)
                 break
 
@@ -547,10 +558,12 @@ Item {
         // Complex chains can exhaust the simple side solver. Search the finite
         // set of obstacle edges before conceding; this keeps ordinary dashboard
         // layouts overlap-free without running a full grid packer every frame.
-        return root._fallbackPlacement(base, min, obstacles) ?? current
+        return root._fallbackPlacement(
+            base, min, obstacles, allowResize) ?? current
     }
 
-    function _resolveLayout(activeId, activeRect, baselineRects) {
+    function _resolveLayout(activeId, activeRect, baselineRects,
+            allowResize) {
         const result = ({})
         const activeMin = root._minimumSizeForCanvas(activeId)
         const fixedActive = root._fitRectToCanvas(activeRect, activeMin)
@@ -583,7 +596,8 @@ Item {
         for (let i = 0; i < others.length; ++i) {
             const id = others[i]
             const base = baselineRects[id] ?? root._rectPixels(id)
-            const resolved = root._resolveNeighbour(base, id, obstacles)
+            const resolved = root._resolveNeighbour(
+                base, id, obstacles, allowResize)
             result[id] = resolved
             obstacles.push(resolved)
         }
@@ -617,16 +631,16 @@ Item {
     }
 
     function _resolveFeasibleLayout(activeId, startRect, desiredRect,
-            baselineRects) {
+            baselineRects, allowResize) {
         const desired = root._resolveLayout(
-            activeId, desiredRect, baselineRects)
+            activeId, desiredRect, baselineRects, allowResize)
         if (!root._layoutHasOverlap(desired))
             return desired
 
         // If neighbours have reached their minimums/bounds, clamp the active
         // interaction to the last feasible point rather than allowing overlap.
         let best = root._resolveLayout(
-            activeId, startRect, baselineRects)
+            activeId, startRect, baselineRects, allowResize)
         let low = 0
         let high = 1
         for (let i = 0; i < 8; ++i) {
@@ -634,7 +648,7 @@ Item {
             const probeRect = root._interpolateRect(
                 startRect, desiredRect, mid)
             const probe = root._resolveLayout(
-                activeId, probeRect, baselineRects)
+                activeId, probeRect, baselineRects, allowResize)
             if (root._layoutHasOverlap(probe)) {
                 high = mid
             } else {
@@ -775,7 +789,8 @@ Item {
             height: Math.max(1, bottom - top)
         }
         const resolved = root._resolveFeasibleLayout(
-            state.id, start, desired, state.baselineRects)
+            state.id, start, desired, state.baselineRects,
+            root.autoAdjustSizeEnabled)
         root._applyPreviewRects(resolved)
     }
 
@@ -805,9 +820,11 @@ Item {
                 state.id, currentRect, state.kind, state.edge)
             // Drop is the insertion point: resolve neighbours exactly once
             // after continuous pointer tracking has ended.
+            const allowResize = state.kind === "resize"
+                && root.autoAdjustSizeEnabled
             const resolved = root._resolveFeasibleLayout(
                 state.id, state.startRect, snappedRect,
-                state.baselineRects)
+                state.baselineRects, allowResize)
 
             // Pointer tracking ends before the final target is published. The
             // selected module and any displaced neighbours therefore settle into

@@ -2341,3 +2341,42 @@ Structural verification checks layer ownership, join labels, pure slide
 translation, local paint-area ratio, primary/tangent owner exclusion, body-only
 input, shadow suppression and provenance. Visual acceptance still remains
 mandatory before production cutover.
+
+
+### 26.19 G2 live finding: RectangularShadow needs texture isolation
+
+The first 24-case G2 live run structurally passed but exposed a visual failure:
+direct `RectangularShadow` clipping is not a sufficient ownership boundary for
+split composition. A narrow black blur tongue remained visible over Top-layer
+external-owner strips.
+
+This is consistent with the renderer model: RectangularShadow's effective
+material extends outside its nominal Item by blur/spread reach. Tracking only
+the nominal parent clip rectangle can therefore prove the intended bounds
+without proving that the effect's final pixels respect them.
+
+The revised G2 path makes the ownership boundary explicit in the rendered
+artifact:
+
+```text
+complete rounded shadow
+  -> bounded private texture
+  -> external-owner-clipped sourceRect
+  -> Overlay scene
+```
+
+The same `clipExternalOwners(rect)` function now governs three independent
+Overlay domains:
+
+- iRiS field raster bounds;
+- pointer input body bounds;
+- displayed shadow texture bounds.
+
+This removes duplicated half-plane logic and prevents future divergence between
+visual paint, hit testing and shadow ownership. It is a composition fix, not a
+new corner/flare geometry path.
+
+The new verifier requires `shadowIsolation=texture-source-rect`, records the
+displayed shadow rect, and checks that it cannot enter either the primary owner
+or a joined perpendicular Screen Edge. Live visual revalidation remains the
+gate.

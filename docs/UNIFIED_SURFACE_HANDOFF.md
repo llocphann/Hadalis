@@ -736,3 +736,39 @@ It captures 24 cases: four edges x three source positions x open/mid-slide
 (progress 1.00 and 0.55), then runs the structural verifier.
 
 Production remains unchanged until G2 receives both structural and visual PASS.
+
+
+### G2 first live matrix — structural PASS, visual FAIL
+
+The first real Niri G2 run on `eDP-1` completed all 24 cases and reported:
+
+```text
+G2 evidence structure: PASS (eDP-1)
+```
+
+The field composition itself passed visual review:
+
+- fake owner modules remain visible;
+- popup field does not repaint the yellow primary owner;
+- tangent-clamped field joins remain coherent;
+- progress 0.55 is still a pure slide-under translation.
+
+G2 is **not** accepted yet because the supplied sheets expose a narrow black
+shadow tongue over external-owner strips. It is easiest to see on the left/right
+cases and on tangent-clamped physical-edge strips. Structural flags were
+insufficient because they described the intended clip rectangle, while
+`RectangularShadow` internally renders a material larger than its nominal Item.
+
+Commit `fb3a1b9b8e5123106ccd2be14695f164f7ed6475` replaces that direct shadow
+subtree with texture isolation:
+
+1. render the complete radius-aware shadow into a bounded private source;
+2. apply the same generic external-owner half-plane clip used by field/input;
+3. display only the clipped `ShaderEffectSource.sourceRect`.
+
+The exact iRiS field geometry/QSB is unchanged. The verifier now records and
+checks the actual shadow display rectangle against both the primary owner and
+the perpendicular tangent owner.
+
+Re-run the same one-command G2 matrix. Production cutover remains blocked until
+the new sheets show no black intrusion while retaining free-side shadow.

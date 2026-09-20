@@ -14,7 +14,6 @@ Item {
 
     property bool editMode: false
     property bool presentationActive: true
-    property bool showStandaloneEditButton: false
     signal requestEventsDialog(var event)
 
     readonly property int gridSize: Math.max(8,
@@ -169,9 +168,40 @@ Item {
     }
 
     function setWidgetVisible(id, visible) {
-        root._persistPatch(id, { visible: visible })
-        if (!visible && root.selectedId === id)
-            root.selectedId = ""
+        if (!visible) {
+            root._persistPatch(id, { visible: false })
+            if (root.selectedId === id)
+                root.selectedId = ""
+            return
+        }
+
+        // A restored widget must join the same collision contract as drag/resize.
+        // Find the nearest free placement before making it visible so "Add"
+        // cannot reintroduce an overlap from stale saved geometry.
+        const obstacles = []
+        for (let i = 0; i < root.visibleIds.length; ++i) {
+            const otherId = String(root.visibleIds[i])
+            if (otherId === id)
+                continue
+            obstacles.push(root._rectPixels(otherId))
+        }
+        const base = root._rectPixelsForGeometry(id, root._entryFor(id))
+        const resolved = root._resolveNeighbour(base, id, obstacles)
+        let blocked = false
+        for (let i = 0; i < obstacles.length; ++i) {
+            if (root._rectsOverlap(resolved, obstacles[i],
+                    root.collisionGap)) {
+                blocked = true
+                break
+            }
+        }
+        if (blocked)
+            return
+
+        const g = root._normalizedRect(resolved, true)
+        root._persistPatch(id, {
+            x: g.x, y: g.y, w: g.w, h: g.h, visible: true
+        })
     }
 
     function resetLayout() {
@@ -190,12 +220,12 @@ Item {
         case "notifications": return { width: 260, height: 130 }
         case "notes": return { width: 240, height: 160 }
         case "agenda": return { width: 240, height: 75 }
+        case "system": return { width: 200, height: 130 }
         default: return { width: 200, height: 80 }
         }
     }
 
-    function _rectPixels(id) {
-        const g = root.geometryFor(id)
+    function _rectPixelsForGeometry(id, g) {
         const min = root._minimumSize(id)
         const minW = Math.min(canvas.width, min.width)
         const minH = Math.min(canvas.height, min.height)
@@ -208,6 +238,10 @@ Item {
         const y = Math.max(0, Math.min(canvas.height - h,
             Number(g.y) * canvas.height))
         return { x: x, y: y, width: w, height: h }
+    }
+
+    function _rectPixels(id) {
+        return root._rectPixelsForGeometry(id, root.geometryFor(id))
     }
 
     function _normalizedRect(px, visible) {
@@ -243,24 +277,385 @@ Item {
         return Math.round(value / root.gridSize) * root.gridSize
     }
 
+    readonly property real collisionGap: Math.max(4,
+        Math.min(10, Math.round(root.gridSize / 4)))
+
+    function _cloneRect(rect) {
+        return {
+            x: Number(rect?.x ?? 0),
+            y: Number(rect?.y ?? 0),
+            width: Number(rect?.width ?? 1),
+            height: Number(rect?.height ?? 1)
+        }
+    }
+
+    function _minimumSizeForCanvas(id) {
+        const requested = root._minimumSize(id)
+        return {
+            width: Math.min(canvas.width, requested.width),
+            height: Math.min(canvas.height, requested.height)
+        }
+    }
+
+    function _fitRectToCanvas(rect, min) {
+        const width = Math.max(min.width,
+            Math.min(canvas.width, Number(rect.width)))
+        const height = Math.max(min.height,
+            Math.min(canvas.height, Number(rect.height)))
+        return {
+            x: Math.max(0, Math.min(canvas.width - width, Number(rect.x))),
+            y: Math.max(0, Math.min(canvas.height - height, Number(rect.y))),
+            width: width,
+            height: height
+        }
+    }
+
+    function _snapshotVisibleRects() {
+        const result = ({})
+        // Always snapshot persisted geometry. Every pointer frame resolves from
+        // this immutable baseline so neighbours expand back immediately when the
+        // user reverses a resize while still holding the mouse button.
+        for (let i = 0; i < root.visibleIds.length; ++i) {
+            const id = String(root.visibleIds[i])
+            result[id] = root._cloneRect(
+                root._rectPixelsForGeometry(id, root._entryFor(id)))
+        }
+        return result
+    }
+
+    function _rectsOverlap(a, b, gap) {
+        const g = Number(gap ?? 0)
+        return a.x < b.x + b.width + g
+            && a.x + a.width + g > b.x
+            && a.y < b.y + b.height + g
+            && a.y + a.height + g > b.y
+    }
+
+    function _candidateInRegion(base, min, x0, y0, x1, y1) {
+        const left = Math.max(0, Number(x0))
+        const top = Math.max(0, Number(y0))
+        const right = Math.min(canvas.width, Number(x1))
+        const bottom = Math.min(canvas.height, Number(y1))
+        const availableWidth = Math.max(0, right - left)
+        const availableHeight = Math.max(0, bottom - top)
+        if (availableWidth + 0.001 < min.width
+                || availableHeight + 0.001 < min.height)
+            return null
+
+        // Preserve the neighbour's baseline size whenever the remaining region
+        // permits it; otherwise shrink only as far as needed, never below its
+        // module-specific minimum.
+        const width = Math.max(min.width,
+            Math.min(Number(base.width), availableWidth))
+        const height = Math.max(min.height,
+            Math.min(Number(base.height), availableHeight))
+        return {
+            x: Math.max(left,
+                Math.min(right - width, Number(base.x))),
+            y: Math.max(top,
+                Math.min(bottom - height, Number(base.y))),
+            width: width,
+            height: height
+        }
+    }
+
+    function _candidateScore(candidate, base, obstacles) {
+        if (!candidate)
+            return Number.POSITIVE_INFINITY
+        let overlaps = 0
+        for (let i = 0; i < obstacles.length; ++i) {
+            if (root._rectsOverlap(candidate, obstacles[i],
+                    root.collisionGap))
+                overlaps++
+        }
+        const dx = candidate.x - base.x
+        const dy = candidate.y - base.y
+        const dw = Math.max(0, base.width - candidate.width)
+        const dh = Math.max(0, base.height - candidate.height)
+        // A local elastic shrink is cheaper than teleporting a widget across
+        // the canvas, while any remaining overlap is effectively forbidden.
+        return overlaps * 1000000000
+            + dx * dx + dy * dy
+            + (dw * dw + dh * dh) * 0.35
+    }
+
+    function _bestSideCandidate(base, min, obstacle, obstacles) {
+        const gap = root.collisionGap
+        const right = obstacle.x + obstacle.width
+        const bottom = obstacle.y + obstacle.height
+        const candidates = [
+            root._candidateInRegion(base, min,
+                0, 0, obstacle.x - gap, canvas.height),
+            root._candidateInRegion(base, min,
+                right + gap, 0, canvas.width, canvas.height),
+            root._candidateInRegion(base, min,
+                0, 0, canvas.width, obstacle.y - gap),
+            root._candidateInRegion(base, min,
+                0, bottom + gap, canvas.width, canvas.height)
+        ]
+        let best = null
+        let bestScore = Number.POSITIVE_INFINITY
+        for (let i = 0; i < candidates.length; ++i) {
+            const score = root._candidateScore(
+                candidates[i], base, obstacles)
+            if (score < bestScore) {
+                bestScore = score
+                best = candidates[i]
+            }
+        }
+        return best
+    }
+
+    function _fallbackPlacement(base, min, obstacles) {
+        const gap = root.collisionGap
+        const widths = [
+            Math.min(canvas.width, base.width),
+            Math.max(min.width, Math.min(base.width, base.width * 0.82)),
+            Math.max(min.width, Math.min(base.width, base.width * 0.66)),
+            min.width
+        ]
+        const heights = [
+            Math.min(canvas.height, base.height),
+            Math.max(min.height, Math.min(base.height, base.height * 0.82)),
+            Math.max(min.height, Math.min(base.height, base.height * 0.66)),
+            min.height
+        ]
+        let best = null
+        let bestScore = Number.POSITIVE_INFINITY
+
+        for (let wi = 0; wi < widths.length; ++wi) {
+            for (let hi = 0; hi < heights.length; ++hi) {
+                const width = Math.min(canvas.width, widths[wi])
+                const height = Math.min(canvas.height, heights[hi])
+                const xs = [base.x, 0, canvas.width - width]
+                const ys = [base.y, 0, canvas.height - height]
+                for (let oi = 0; oi < obstacles.length; ++oi) {
+                    const obstacle = obstacles[oi]
+                    xs.push(obstacle.x - gap - width)
+                    xs.push(obstacle.x + obstacle.width + gap)
+                    ys.push(obstacle.y - gap - height)
+                    ys.push(obstacle.y + obstacle.height + gap)
+                }
+
+                for (let xi = 0; xi < xs.length; ++xi) {
+                    for (let yi = 0; yi < ys.length; ++yi) {
+                        const candidate = root._fitRectToCanvas({
+                            x: xs[xi], y: ys[yi],
+                            width: width, height: height
+                        }, min)
+                        let blocked = false
+                        for (let oi = 0; oi < obstacles.length; ++oi) {
+                            if (root._rectsOverlap(candidate, obstacles[oi], gap)) {
+                                blocked = true
+                                break
+                            }
+                        }
+                        if (blocked)
+                            continue
+                        const score = root._candidateScore(
+                            candidate, base, obstacles)
+                        if (score < bestScore) {
+                            bestScore = score
+                            best = candidate
+                        }
+                    }
+                }
+            }
+        }
+        return best
+    }
+
+    function _resolveNeighbour(baseRect, id, obstacles) {
+        const min = root._minimumSizeForCanvas(id)
+        const base = root._fitRectToCanvas(baseRect, min)
+        let current = root._cloneRect(base)
+
+        const maxPasses = Math.max(8, obstacles.length * 4)
+        for (let pass = 0; pass < maxPasses; ++pass) {
+            let blocker = null
+            for (let i = 0; i < obstacles.length; ++i) {
+                if (root._rectsOverlap(current, obstacles[i],
+                        root.collisionGap)) {
+                    blocker = obstacles[i]
+                    break
+                }
+            }
+            if (!blocker)
+                return current
+
+            const next = root._bestSideCandidate(
+                base, min, blocker, obstacles)
+            if (!next)
+                break
+
+            const unchanged = Math.abs(next.x - current.x) < 0.01
+                && Math.abs(next.y - current.y) < 0.01
+                && Math.abs(next.width - current.width) < 0.01
+                && Math.abs(next.height - current.height) < 0.01
+            current = next
+            if (unchanged)
+                break
+        }
+
+        // Complex chains can exhaust the simple side solver. Search the finite
+        // set of obstacle edges before conceding; this keeps ordinary dashboard
+        // layouts overlap-free without running a full grid packer every frame.
+        return root._fallbackPlacement(base, min, obstacles) ?? current
+    }
+
+    function _resolveLayout(activeId, activeRect, baselineRects) {
+        const result = ({})
+        const activeMin = root._minimumSizeForCanvas(activeId)
+        const fixedActive = root._fitRectToCanvas(activeRect, activeMin)
+        result[activeId] = fixedActive
+
+        const activeBase = baselineRects[activeId] ?? fixedActive
+        const activeCenterX = activeBase.x + activeBase.width / 2
+        const activeCenterY = activeBase.y + activeBase.height / 2
+        const others = []
+        for (let i = 0; i < root.visibleIds.length; ++i) {
+            const id = String(root.visibleIds[i])
+            if (id === activeId)
+                continue
+            others.push(id)
+        }
+        // Resolve closest neighbours first, then propagate outward. Combined
+        // with the immutable baseline this behaves like an elastic local pack:
+        // nearby widgets give way first and all recover as the pointer retreats.
+        others.sort((a, b) => {
+            const ar = baselineRects[a]
+            const br = baselineRects[b]
+            const adx = (ar.x + ar.width / 2) - activeCenterX
+            const ady = (ar.y + ar.height / 2) - activeCenterY
+            const bdx = (br.x + br.width / 2) - activeCenterX
+            const bdy = (br.y + br.height / 2) - activeCenterY
+            return (adx * adx + ady * ady) - (bdx * bdx + bdy * bdy)
+        })
+
+        const obstacles = [fixedActive]
+        for (let i = 0; i < others.length; ++i) {
+            const id = others[i]
+            const base = baselineRects[id] ?? root._rectPixels(id)
+            const resolved = root._resolveNeighbour(base, id, obstacles)
+            result[id] = resolved
+            obstacles.push(resolved)
+        }
+        return result
+    }
+
+    function _layoutHasOverlap(rects) {
+        const ids = []
+        for (let i = 0; i < root.visibleIds.length; ++i) {
+            const id = String(root.visibleIds[i])
+            if (rects[id])
+                ids.push(id)
+        }
+        for (let i = 0; i < ids.length; ++i) {
+            for (let j = i + 1; j < ids.length; ++j) {
+                if (root._rectsOverlap(rects[ids[i]], rects[ids[j]],
+                        root.collisionGap))
+                    return true
+            }
+        }
+        return false
+    }
+
+    function _interpolateRect(from, to, t) {
+        return {
+            x: from.x + (to.x - from.x) * t,
+            y: from.y + (to.y - from.y) * t,
+            width: from.width + (to.width - from.width) * t,
+            height: from.height + (to.height - from.height) * t
+        }
+    }
+
+    function _resolveFeasibleLayout(activeId, startRect, desiredRect,
+            baselineRects) {
+        const desired = root._resolveLayout(
+            activeId, desiredRect, baselineRects)
+        if (!root._layoutHasOverlap(desired))
+            return desired
+
+        // If neighbours have reached their minimums/bounds, clamp the active
+        // interaction to the last feasible point rather than allowing overlap.
+        let best = root._resolveLayout(
+            activeId, startRect, baselineRects)
+        let low = 0
+        let high = 1
+        for (let i = 0; i < 8; ++i) {
+            const mid = (low + high) / 2
+            const probeRect = root._interpolateRect(
+                startRect, desiredRect, mid)
+            const probe = root._resolveLayout(
+                activeId, probeRect, baselineRects)
+            if (root._layoutHasOverlap(probe)) {
+                high = mid
+            } else {
+                low = mid
+                best = probe
+            }
+        }
+        return best
+    }
+
+    function _applyPreviewRects(rects) {
+        const next = ({})
+        for (let i = 0; i < root.visibleIds.length; ++i) {
+            const id = String(root.visibleIds[i])
+            const px = rects[id]
+            if (!px)
+                continue
+            next[id] = root._normalizedRect(
+                px, root._entryFor(id).visible)
+        }
+        root._preview = next
+    }
+
+    function _persistPreviewLayout() {
+        const entries = root._entriesForWrite()
+        const indexById = ({})
+        for (let i = 0; i < entries.length; ++i)
+            indexById[entries[i].id] = i
+
+        for (let i = 0; i < root._allIds.length; ++i) {
+            const id = String(root._allIds[i])
+            const g = root._preview[id]
+            if (g === undefined)
+                continue
+            const patch = { x: g.x, y: g.y, w: g.w, h: g.h }
+            const index = indexById[id]
+            if (index === undefined) {
+                indexById[id] = entries.length
+                entries.push(Object.assign({}, root._defaultEntry(id), patch))
+            } else {
+                entries[index] = Object.assign({}, entries[index], patch)
+            }
+        }
+        Config.setNestedValue("dashboard.canvas.widgets", entries)
+    }
+
     function beginMove(id, point) {
+        root._preview = ({})
         root.selectedId = id
         root._interaction = {
             id: id,
             kind: "move",
             startPoint: point,
-            startRect: root._rectPixels(id)
+            startRect: root._rectPixels(id),
+            baselineRects: root._snapshotVisibleRects()
         }
     }
 
     function beginResize(id, edge, point) {
+        root._preview = ({})
         root.selectedId = id
         root._interaction = {
             id: id,
             kind: "resize",
             edge: edge,
             startPoint: point,
-            startRect: root._rectPixels(id)
+            startRect: root._rectPixels(id),
+            baselineRects: root._snapshotVisibleRects()
         }
     }
 
@@ -272,11 +667,7 @@ Item {
         const dx = point.x - state.startPoint.x
         const dy = point.y - state.startPoint.y
         const start = state.startRect
-        const requestedMin = root._minimumSize(state.id)
-        const min = {
-            width: Math.min(canvas.width, requestedMin.width),
-            height: Math.min(canvas.height, requestedMin.height)
-        }
+        const min = root._minimumSizeForCanvas(state.id)
         let left = start.x
         let top = start.y
         let right = start.x + start.width
@@ -287,10 +678,13 @@ Item {
             top = root._snap(start.y + dy)
             left = Math.max(0, Math.min(canvas.width - start.width, left))
             top = Math.max(0, Math.min(canvas.height - start.height, top))
-            root._setPreview(state.id, {
+            const desired = {
                 x: left, y: top,
                 width: start.width, height: start.height
-            })
+            }
+            const resolved = root._resolveFeasibleLayout(
+                state.id, start, desired, state.baselineRects)
+            root._applyPreviewRects(resolved)
             return
         }
 
@@ -327,25 +721,22 @@ Item {
         right = Math.min(canvas.width, right)
         bottom = Math.min(canvas.height, bottom)
 
-        root._setPreview(state.id, {
+        const desired = {
             x: left, y: top,
             width: Math.max(1, right - left),
             height: Math.max(1, bottom - top)
-        })
+        }
+        const resolved = root._resolveFeasibleLayout(
+            state.id, start, desired, state.baselineRects)
+        root._applyPreviewRects(resolved)
     }
 
     function finishInteraction(commit) {
-        const state = root._interaction
-        if (!state)
+        if (!root._interaction)
             return
-        const id = state.id
-        if (commit && root._preview[id] !== undefined) {
-            const g = root._preview[id]
-            root._persistPatch(id, {
-                x: g.x, y: g.y, w: g.w, h: g.h
-            })
-        }
-        root._clearPreview(id)
+        if (commit && Object.keys(root._preview).length > 0)
+            root._persistPreviewLayout()
+        root._preview = ({})
         root._interaction = null
     }
 
@@ -471,10 +862,12 @@ Item {
                     id: moveArea
                     anchors.fill: parent
                     enabled: root.editMode
-                    hoverEnabled: true
+                    hoverEnabled: root.editMode
                     preventStealing: true
                     z: 20
-                    cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                    cursorShape: root.editMode
+                        ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                        : Qt.ArrowCursor
                     onPressed: mouse => {
                         const p = moveArea.mapToItem(canvas, mouse.x, mouse.y)
                         root.beginMove(String(cardWrap.modelData), p)
@@ -539,165 +932,6 @@ Item {
             }
         }
 
-        Rectangle {
-            id: editToolbar
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 10
-            visible: root.editMode
-            z: 100
-            width: Math.min(parent.width - 20,
-                Math.max(360, toolbarColumn.implicitWidth + 20))
-            height: toolbarColumn.implicitHeight + 16
-            radius: Appearance.rounding.large
-            color: Appearance.colors.colLayer1
-            border.width: 1
-            border.color: Appearance.colors.colOutlineVariant
-
-            StyledRectangularShadow { target: editToolbar }
-
-            ColumnLayout {
-                id: toolbarColumn
-                anchors.fill: parent
-                anchors.margins: 8
-                spacing: 6
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: root.selectedId.length > 0
-                            ? Translation.tr("Editing %1").arg(root._label(root.selectedId))
-                            : Translation.tr("Edit widgets")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnLayer1
-                        elide: Text.ElideRight
-                    }
-
-                    EditToolButton {
-                        iconName: root.snapEnabled ? "grid_on" : "grid_off"
-                        tooltipText: root.snapEnabled
-                            ? Translation.tr("Snap to grid: on")
-                            : Translation.tr("Snap to grid: off")
-                        toggled: root.snapEnabled
-                        onClicked: Config.setNestedValue(
-                            "dashboard.canvas.snap", !root.snapEnabled)
-                    }
-                    EditToolButton {
-                        iconName: root.gridStyle === "lines"
-                            ? "grid_4x4"
-                            : (root.gridStyle === "cross"
-                                ? "add" : "drag_indicator")
-                        tooltipText: Translation.tr("Grid style: %1 — click to cycle")
-                            .arg(root.gridStyle)
-                        onClicked: root._cycleGridStyle()
-                    }
-                    EditToolButton {
-                        iconName: "grid_view"
-                        tooltipText: Translation.tr("Grid size: %1px — click to cycle")
-                            .arg(root.gridSize)
-                        onClicked: root._cycleGridSize()
-                    }
-                    EditToolButton {
-                        iconName: "restart_alt"
-                        tooltipText: Translation.tr("Reset dashboard layout")
-                        onClicked: root.resetLayout()
-                    }
-                }
-
-                Flow {
-                    Layout.fillWidth: true
-                    visible: root.hiddenIds.length > 0
-                    spacing: 6
-
-                    Repeater {
-                        model: root.hiddenIds
-                        delegate: RippleButton {
-                            required property var modelData
-                            implicitHeight: 30
-                            implicitWidth: addRow.implicitWidth + 16
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: Appearance.colors.colLayer2
-                            onClicked: root.setWidgetVisible(String(modelData), true)
-
-                            RowLayout {
-                                id: addRow
-                                anchors.centerIn: parent
-                                spacing: 5
-                                MaterialSymbol {
-                                    text: root._icon(String(modelData))
-                                    iconSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colOnLayer2
-                                }
-                                StyledText {
-                                    text: root._label(String(modelData))
-                                    font.pixelSize: Appearance.font.pixelSize.smallest
-                                    color: Appearance.colors.colOnLayer2
-                                }
-                                MaterialSymbol {
-                                    text: "add"
-                                    iconSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colPrimary
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        RippleButton {
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: 12
-            visible: root.showStandaloneEditButton
-            z: 110
-            implicitWidth: 40
-            implicitHeight: 40
-            buttonRadius: root.editMode
-                ? Appearance.rounding.normal : Appearance.rounding.full
-            colBackground: root.editMode
-                ? Appearance.colors.colPrimaryContainer
-                : Appearance.colors.colLayer2
-            onClicked: root.editMode = !root.editMode
-            contentItem: MaterialSymbol {
-                anchors.centerIn: parent
-                text: root.editMode ? "done" : "edit"
-                iconSize: Appearance.font.pixelSize.larger
-                color: root.editMode
-                    ? Appearance.colors.colOnPrimaryContainer
-                    : Appearance.colors.colOnLayer2
-            }
-            StyledToolTip {
-                text: root.editMode
-                    ? Translation.tr("Done")
-                    : Translation.tr("Edit widgets")
-            }
-        }
-    }
-
-    component EditToolButton: RippleButton {
-        id: tool
-        property alias iconName: toolIcon.text
-        property string tooltipText: ""
-        implicitWidth: 34
-        implicitHeight: 34
-        buttonRadius: Appearance.rounding.full
-        colBackground: toggled
-            ? Appearance.colors.colPrimaryContainer
-            : Appearance.colors.colLayer2
-        contentItem: MaterialSymbol {
-            id: toolIcon
-            anchors.centerIn: parent
-            iconSize: Appearance.font.pixelSize.normal
-            color: tool.toggled
-                ? Appearance.colors.colOnPrimaryContainer
-                : Appearance.colors.colOnLayer2
-        }
-        StyledToolTip { text: tool.tooltipText }
     }
 
     component ResizeHandle: Rectangle {
@@ -714,12 +948,12 @@ Item {
 
         visible: root.editMode && root.selectedId === widgetId
         z: 60
-        width: corner ? 12 : (horizontal ? 34 : 10)
-        height: corner ? 12 : (vertical ? 34 : 10)
-        radius: corner ? 3 : Appearance.rounding.full
+        width: corner ? 8 : (horizontal ? 24 : 6)
+        height: corner ? 8 : (vertical ? 24 : 6)
+        radius: corner ? 2 : Appearance.rounding.full
         color: Appearance.colors.colPrimary
-        border.width: 1
-        border.color: Appearance.colors.colOnPrimary
+        border.width: 0
+        border.color: "transparent"
 
         x: {
             if (edge.indexOf("w") >= 0)
@@ -739,8 +973,12 @@ Item {
         MouseArea {
             id: resizeMouse
             anchors.fill: parent
+            anchors.margins: -4
+            enabled: handle.visible
             preventStealing: true
             cursorShape: {
+                if (!handle.visible)
+                    return Qt.ArrowCursor
                 if (handle.edge === "n" || handle.edge === "s")
                     return Qt.SizeVerCursor
                 if (handle.edge === "e" || handle.edge === "w")

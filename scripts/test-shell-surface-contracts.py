@@ -564,6 +564,15 @@ def main() -> None:
     check("Flickable {" not in dashboard_content
           and "Flickable {" not in dashboard_canvas,
           "Dashboard canvas must not restore Dashboard-level scrolling")
+    dashboard_toolbar = read("modules/dashboard/DashboardEditToolbar.qml")
+    check("id: editToolbar" not in dashboard_canvas
+          and "DashboardEditToolbar {" in dashboard
+          and "anchors.bottom: dashContainer.top" in dashboard
+          and "anchors.bottomMargin: -1" in dashboard,
+          "Dashboard edit toolbar must live above and outside the Dashboard canvas")
+    check("bottomLeftRadius: 0" in dashboard_toolbar
+          and "bottomRightRadius: 0" in dashboard_toolbar,
+          "Dashboard edit toolbar must visually join the Dashboard top edge")
     overview_runtime = read("modules/overview/Overview.qml")
     check("readonly property bool applicationsPresentationMode:" in overview_runtime
           and "dashboardPanel.item.connectedSurfaceRect" in overview_runtime

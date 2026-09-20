@@ -153,7 +153,12 @@ Scope {
             anchors.verticalCenterOffset: Math.round((root.topReservedSpace - root.bottomReservedSpace) / 2)
 
             width: root.panelWidth
-            height: root.panelHeight
+            readonly property real editToolbarReserve:
+                (item?.editMode ?? false)
+                    ? Math.max(0, Number(item?.editToolbarHeight ?? 0) - 1)
+                    : 0
+            height: Math.min(root.availablePanelHeight,
+                root.panelHeight + contentLoader.editToolbarReserve)
 
             opacity: 1
             scale: 1
@@ -166,9 +171,35 @@ Scope {
                 }
             }
 
-            sourceComponent: DashboardContent {
-                screenWidth: panelRoot.screen?.width ?? 1920
-                screenHeight: panelRoot.screen?.height ?? 1080
+            sourceComponent: Item {
+                id: standaloneDashboardHost
+
+                property alias editMode: standaloneContent.editMode
+                readonly property real editToolbarHeight:
+                    standaloneEditToolbar.implicitHeight
+
+                DashboardContent {
+                    id: standaloneContent
+                    x: 0
+                    y: standaloneEditToolbar.visible
+                        ? Math.max(0, standaloneEditToolbar.implicitHeight - 1)
+                        : 0
+                    width: parent.width
+                    height: Math.max(0, parent.height - y)
+                    screenWidth: panelRoot.screen?.width ?? 1920
+                    screenHeight: panelRoot.screen?.height ?? 1080
+                }
+
+                DashboardEditToolbar {
+                    id: standaloneEditToolbar
+                    z: 8
+                    canvasController: standaloneContent.canvasController
+                    anchors.horizontalCenter: standaloneContent.horizontalCenter
+                    anchors.bottom: standaloneContent.top
+                    anchors.bottomMargin: -1
+                    width: Math.min(Math.max(280, standaloneContent.width - 32),
+                        implicitWidth)
+                }
             }
         }
     }

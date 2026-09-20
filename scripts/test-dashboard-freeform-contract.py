@@ -21,6 +21,11 @@ def main() -> None:
     canvas = read("modules/dashboard/DashboardCanvas.qml")
     grid = read("modules/dashboard/DashboardEditGrid.qml")
     header = read("modules/dashboard/DashboardHeader.qml")
+    toolbar = read("modules/dashboard/DashboardEditToolbar.qml")
+    standalone = read("modules/dashboard/Dashboard.qml")
+    overview = read("modules/overview/OverviewDashboard.qml")
+    system = read("modules/dashboard/DashSystem.qml")
+    calendar_widget = read("modules/sidebarRight/calendar/CalendarWidget.qml")
     weather = read("modules/dashboard/DashWeather.qml")
     orbital = read("modules/bar/weather/OrbitalWeather.qml")
     calendar = read("modules/dashboard/DashCalendar.qml")
@@ -31,6 +36,8 @@ def main() -> None:
 
     require(content, "DashboardCanvas {", "DashboardContent.qml")
     require(canvas, "import qs.modules.common.functions", "DashboardCanvas.qml")
+    forbid(canvas, "id: editToolbar", "DashboardCanvas.qml")
+    forbid(canvas, "showStandaloneEditButton", "DashboardCanvas.qml")
     forbid(content, "component WidgetColumn:", "DashboardContent.qml")
     forbid(content, "dashboard.layout.", "DashboardContent.qml")
 
@@ -58,6 +65,16 @@ def main() -> None:
         'function beginResize(',
         'function updateInteraction(',
         'function finishInteraction(',
+        'function _snapshotVisibleRects(',
+        'function _resolveLayout(',
+        'function _resolveNeighbour(',
+        'function _resolveFeasibleLayout(',
+        'function _layoutHasOverlap(',
+        'function _persistPreviewLayout(',
+        'A restored widget must join the same collision contract as drag/resize.',
+        'case "system": return { width: 200, height: 130 }',
+        'baselineRects: root._snapshotVisibleRects()',
+        'root._applyPreviewRects(resolved)',
         'enabled: root.editMode',
         'enabled: !root.editMode',
         'DashboardEditGrid {',
@@ -79,6 +96,42 @@ def main() -> None:
 
     require(header, 'root.editMode ? "done" : "edit"', "DashboardHeader.qml")
     require(header, "onClicked: root.editModeRequested()", "DashboardHeader.qml")
+
+    for token in (
+        "required property var canvasController",
+        "visible: root.editing",
+        "bottomLeftRadius: 0",
+        "bottomRightRadius: 0",
+        'Translation.tr("Edit widgets")',
+    ):
+        require(toolbar, token, "DashboardEditToolbar.qml")
+    for source, text in (
+        ("Dashboard.qml", standalone),
+        ("OverviewDashboard.qml", overview),
+    ):
+        require(text, "DashboardEditToolbar {", source)
+        require(text, "anchors.bottomMargin: -1", source)
+    require(overview, "anchors.bottom: dashContainer.top", "OverviewDashboard.qml")
+    require(standalone, "anchors.bottom: standaloneContent.top", "Dashboard.qml")
+
+    require(canvas, "cursorShape: root.editMode", "DashboardCanvas.qml")
+    require(canvas, ": Qt.ArrowCursor", "DashboardCanvas.qml")
+    require(canvas, "width: corner ? 8 : (horizontal ? 24 : 6)", "DashboardCanvas.qml")
+    require(canvas, "height: corner ? 8 : (vertical ? 24 : 6)", "DashboardCanvas.qml")
+    require(canvas, "anchors.margins: -4", "DashboardCanvas.qml")
+
+    for token in (
+        "anchors.centerIn: parent",
+        "width: Math.min(parent.width, 220)",
+        "height: Math.min(parent.height, 104)",
+    ):
+        require(system, token, "DashSystem.qml")
+    require(calendar_widget,
+        "anchors.verticalCenter: root.dashboardAdaptive",
+        "CalendarWidget.qml")
+    require(month,
+        "? Math.max(root.implicitWidth, root.width)",
+        "ObsidianMonthCalendar.qml")
 
     require(weather, "OrbitalWeather {", "DashWeather.qml")
     for token in (

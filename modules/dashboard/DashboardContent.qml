@@ -17,6 +17,9 @@ Item {
     property bool embeddedSurface: false
     property bool presentationActive: GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
+    property alias editMode: dashboardCanvas.editMode
+    readonly property var canvasController: dashboardCanvas
+
     readonly property bool showHeader: Config.options?.dashboard?.showHeader ?? true
 
     property var _agendaEditEvent: null
@@ -93,7 +96,6 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 presentationActive: root.presentationActive
-                showStandaloneEditButton: !root.showHeader
                 onRequestEventsDialog: event => root.openAgendaDialog(event)
             }
         }

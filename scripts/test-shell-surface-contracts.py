@@ -955,6 +955,12 @@ def main() -> None:
           and dock.count("dockThicknessOverride: dockRoot.dockHeight") == 2
           and "dockThicknessOverride: root.dockThickness" in dock_apps,
           "Dock edit-resize preview must resize all Panel controls/separators with the iRiS body")
+    check("Math.max(40, Math.min(100," in dock
+          and "Math.max(40, Math.min(100, numeric))" in shell_layout
+          and 'text: Translation.tr("Dock height (px)")' in dock_config
+          and "from: 40" in dock_config
+          and "to: 100" in dock_config,
+          "Dock Settings, shell-edit preview and persisted layout mutation must share the 40-100px range")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in shell_layout
           and "(Config.options?.dock?.height ?? 60)" in shell_layout
           and "Appearance.sizes.elevationMargin\n                    + Appearance.sizes.hyprlandGapsOut" not in shell_layout,

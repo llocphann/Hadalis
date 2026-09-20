@@ -534,7 +534,7 @@ Singleton {
             const numeric = Number(value)
             if (!Number.isFinite(numeric))
                 return root._failure("invalid-value", "Invalid dock size")
-            const clamped = Math.round(Math.max(40, Math.min(200, numeric)))
+            const clamped = Math.round(Math.max(40, Math.min(100, numeric)))
             Config.setNestedValue("dock.height", clamped)
             Config.flushWrites()
             return {

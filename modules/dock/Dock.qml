@@ -107,7 +107,10 @@ Scope {
                     const towardScreen = root.position === "bottom" ? -deltaY
                         : root.isTop ? deltaY
                         : root.isLeft ? deltaX : -deltaX
-                    dockRoot.editThicknessPreview = Math.max(40, Math.min(200,
+                    // Keep shell-edit resize inside the same public range as
+                    // Settings. Persisting >100 made the Settings spinbox clamp
+                    // visually while runtime kept a much thicker Dock.
+                    dockRoot.editThicknessPreview = Math.max(40, Math.min(100,
                         dockRoot._editResizeBaseline + towardScreen))
                 }
 

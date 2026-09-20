@@ -28,6 +28,7 @@ sidebar = read("modules/sidebar/SidebarHost.qml")
 settings_overlay = read("modules/settings/SettingsOverlay.qml")
 settings_focus = read("modules/settings/SettingsFocus.qml")
 dashboard = read("modules/overview/OverviewDashboard.qml")
+search_widget = read("modules/overview/SearchWidget.qml")
 search_bar = read("modules/overview/SearchBar.qml")
 tokens = read("modules/common/perimeter/PerimeterTokens.qml")
 qmldir = read("modules/common/perimeter/qmldir")
@@ -137,6 +138,9 @@ for token in (
     "ownerThickness: root.screenEdgeHoverWidth",
     "sidebarContentLoader.x + sidebarContentLoader.animTranslateX",
     "progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0",
+    "readonly property real hiddenTranslateDistance:",
+    "? -root.hiddenTranslateDistance",
+    ": root.hiddenTranslateDistance",
 ):
     require(sidebar, token, "Sidebar iRiS edge cutover")
 for token in ("ConnectedSurfaceJoinFlares {", "ConnectedSurfaceConnector {"):
@@ -156,9 +160,14 @@ for token in (
     'edge: "bottom"',
     "ownerThickness: root.attachmentThickness",
     "root.height + root.attachmentThickness",
+    "SearchWidget {",
+    "embeddedSurface: true",
+    "directBottomAttachment: false",
 ):
     require(dashboard, token, "Dashboard/Search iRiS edge cutover")
 forbid(dashboard, "ConnectedSurfaceJoinFlares {", "Dashboard legacy edge renderer")
+for token in ("ConnectedSurfaceIrisEdgeSurface", "ConnectedSurfaceJoinFlares", "joinFlareRadius"):
+    forbid(search_widget, token, "Embedded SearchWidget must not double-paint Dashboard edge ownership")
 for source_path in (
     "modules/overview/SearchWidget.qml",
     "modules/onScreenKeyboard/OnScreenKeyboard.qml",

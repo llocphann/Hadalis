@@ -1684,17 +1684,18 @@ def main() -> None:
         forbid(overview_search_bar, token, "overview/SearchBar.qml")
     forbid(overview_search_bar, "RegaliaControlFace {", "overview/SearchBar.qml")
     for token in (
-        "? Appearance.colors.colOnPrimary",
+        "? Appearance.colors.colOnPrimaryContainer",
         ": Appearance.colors.colOnSurfaceVariant",
-        "MaterialShape {",
-        "Appearance.colors.colPrimaryHover",
-        "Appearance.colors.colPrimary",
-        "Appearance.colors.colSurfaceContainerHigh",
-        "ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh)",
+        "colBackgroundToggled: Appearance.colors.colPrimaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colPrimaryContainer",
+        "position: \"top\"",
         "onClicked: SongRec.toggleRunning()",
         'text: "music_cast"',
+        "RotationAnimation on rotation",
     ):
         require(overview_search_bar, token, "overview/SearchBar.qml")
+    forbid(overview_search_bar, "background: Item {", "overview/SearchBar.qml")
+    forbid(overview_search_bar, "MaterialShape {", "overview/SearchBar.qml")
 
     # Search result delegates are active for both compositor paths. Preserve
     # execution/keyboard/drag semantics while locking their row chrome to Material.

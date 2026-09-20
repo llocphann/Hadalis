@@ -73,6 +73,8 @@ Item {
     property string selectedId: ""
     property var _preview: ({})
     property var _interaction: null
+    property var _smartGuides: []
+    property var _smartSnapAxes: ({ x: false, y: false })
 
     function _icon(id) {
         return root._catalog[id]?.icon ?? "widgets"
@@ -283,7 +285,7 @@ Item {
         return Math.round(value / root.gridSize) * root.gridSize
     }
 
-    function _snapRectForCommit(id, rect, kind, edge) {
+    function _snapRectForCommit(id, rect, kind, edge, lockX, lockY) {
         if (!root.snapEnabled)
             return root._fitRectToCanvas(
                 rect, root._minimumSizeForCanvas(id))
@@ -291,8 +293,8 @@ Item {
         const min = root._minimumSizeForCanvas(id)
         if (kind === "move") {
             return root._fitRectToCanvas({
-                x: root._snap(rect.x),
-                y: root._snap(rect.y),
+                x: lockX ? rect.x : root._snap(rect.x),
+                y: lockY ? rect.y : root._snap(rect.y),
                 width: rect.width,
                 height: rect.height
             }, min)
@@ -304,13 +306,13 @@ Item {
         let bottom = rect.y + rect.height
         const resizeEdge = String(edge ?? "")
 
-        if (resizeEdge.indexOf("w") >= 0)
+        if (resizeEdge.indexOf("w") >= 0 && !lockX)
             left = root._snap(left)
-        if (resizeEdge.indexOf("e") >= 0)
+        if (resizeEdge.indexOf("e") >= 0 && !lockX)
             right = root._snap(right)
-        if (resizeEdge.indexOf("n") >= 0)
+        if (resizeEdge.indexOf("n") >= 0 && !lockY)
             top = root._snap(top)
-        if (resizeEdge.indexOf("s") >= 0)
+        if (resizeEdge.indexOf("s") >= 0 && !lockY)
             bottom = root._snap(bottom)
 
         left = Math.max(0, Math.min(left, right - min.width))
@@ -329,6 +331,8 @@ Item {
     // Material cards always keep a visible gutter even on fine grids.
     readonly property real collisionGap: Math.max(8,
         Math.min(16, Math.round(root.gridSize / 3)))
+    readonly property real smartGuideThreshold: Math.max(5,
+        Math.min(9, root.gridSize / 4))
 
     function _cloneRect(rect) {
         return {
@@ -358,6 +362,369 @@ Item {
             width: width,
             height: height
         }
+    }
+
+    function _otherRects(activeId, baselineRects) {
+        const result = []
+        for (let i = 0; i < root.visibleIds.length; ++i) {
+            const id = String(root.visibleIds[i])
+            if (id === activeId)
+                continue
+            const rect = baselineRects[id] ?? root._rectPixels(id)
+            result.push({ id: id, rect: rect })
+        }
+        return result
+    }
+
+    function _smartAlignMove(activeId, sourceRect, baselineRects) {
+        const rect = root._cloneRect(sourceRect)
+        const threshold = root.smartGuideThreshold
+        const others = root._otherRects(activeId, baselineRects)
+        const guides = []
+
+        let bestX = null
+        let bestY = null
+        const activeXs = [
+            rect.x,
+            rect.x + rect.width / 2,
+            rect.x + rect.width
+        ]
+        const activeYs = [
+            rect.y,
+            rect.y + rect.height / 2,
+            rect.y + rect.height
+        ]
+
+        for (let i = 0; i < others.length; ++i) {
+            const other = others[i].rect
+            const otherXs = [
+                other.x,
+                other.x + other.width / 2,
+                other.x + other.width
+            ]
+            const otherYs = [
+                other.y,
+                other.y + other.height / 2,
+                other.y + other.height
+            ]
+
+            for (let ai = 0; ai < activeXs.length; ++ai) {
+                for (let oi = 0; oi < otherXs.length; ++oi) {
+                    const delta = otherXs[oi] - activeXs[ai]
+                    const distance = Math.abs(delta)
+                    if (distance <= threshold
+                            && (!bestX || distance < bestX.distance)) {
+                        bestX = {
+                            distance: distance,
+                            delta: delta,
+                            pos: otherXs[oi],
+                            other: other
+                        }
+                    }
+                }
+            }
+
+            for (let ai = 0; ai < activeYs.length; ++ai) {
+                for (let oi = 0; oi < otherYs.length; ++oi) {
+                    const delta = otherYs[oi] - activeYs[ai]
+                    const distance = Math.abs(delta)
+                    if (distance <= threshold
+                            && (!bestY || distance < bestY.distance)) {
+                        bestY = {
+                            distance: distance,
+                            delta: delta,
+                            pos: otherYs[oi],
+                            other: other
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestX)
+            rect.x += bestX.delta
+        if (bestY)
+            rect.y += bestY.delta
+
+        const fitted = root._fitRectToCanvas(
+            rect, root._minimumSizeForCanvas(activeId))
+
+        if (bestX) {
+            guides.push({
+                kind: "vertical",
+                x: bestX.pos,
+                y1: Math.min(fitted.y, bestX.other.y) - 8,
+                y2: Math.max(
+                    fitted.y + fitted.height,
+                    bestX.other.y + bestX.other.height) + 8
+            })
+        }
+        if (bestY) {
+            guides.push({
+                kind: "horizontal",
+                y: bestY.pos,
+                x1: Math.min(fitted.x, bestY.other.x) - 8,
+                x2: Math.max(
+                    fitted.x + fitted.width,
+                    bestY.other.x + bestY.other.width) + 8
+            })
+        }
+
+        // PowerPoint-style equal-spacing assistance. When the moving card sits
+        // between two neighbours with nearly equal gaps, magnetize the final
+        // few pixels and show double-ended distance arrows.
+        let left = null
+        let right = null
+        let above = null
+        let below = null
+        let equalSpacingX = false
+        let equalSpacingY = false
+        for (let i = 0; i < others.length; ++i) {
+            const other = others[i].rect
+            const verticalOverlap = Math.min(
+                fitted.y + fitted.height,
+                other.y + other.height) - Math.max(fitted.y, other.y)
+            const horizontalOverlap = Math.min(
+                fitted.x + fitted.width,
+                other.x + other.width) - Math.max(fitted.x, other.x)
+
+            if (verticalOverlap > 0) {
+                const otherRight = other.x + other.width
+                if (otherRight <= fitted.x) {
+                    const gap = fitted.x - otherRight
+                    if (!left || gap < left.gap)
+                        left = { rect: other, gap: gap }
+                }
+                if (other.x >= fitted.x + fitted.width) {
+                    const gap = other.x - (fitted.x + fitted.width)
+                    if (!right || gap < right.gap)
+                        right = { rect: other, gap: gap }
+                }
+            }
+
+            if (horizontalOverlap > 0) {
+                const otherBottom = other.y + other.height
+                if (otherBottom <= fitted.y) {
+                    const gap = fitted.y - otherBottom
+                    if (!above || gap < above.gap)
+                        above = { rect: other, gap: gap }
+                }
+                if (other.y >= fitted.y + fitted.height) {
+                    const gap = other.y - (fitted.y + fitted.height)
+                    if (!below || gap < below.gap)
+                        below = { rect: other, gap: gap }
+                }
+            }
+        }
+
+        if (left && right
+                && left.gap >= root.collisionGap
+                && right.gap >= root.collisionGap
+                && Math.abs(left.gap - right.gap) <= threshold * 2) {
+            equalSpacingX = true
+            if (!bestX) {
+                const delta = (right.gap - left.gap) / 2
+                if (Math.abs(delta) <= threshold)
+                    fitted.x = Math.max(0,
+                        Math.min(canvas.width - fitted.width,
+                            fitted.x + delta))
+            }
+            const leftGap = fitted.x
+                - (left.rect.x + left.rect.width)
+            const rightGap = right.rect.x
+                - (fitted.x + fitted.width)
+            const y = fitted.y + fitted.height / 2
+            guides.push({
+                kind: "spacingH",
+                x1: left.rect.x + left.rect.width,
+                x2: fitted.x,
+                y: y,
+                distance: leftGap
+            })
+            guides.push({
+                kind: "spacingH",
+                x1: fitted.x + fitted.width,
+                x2: right.rect.x,
+                y: y,
+                distance: rightGap
+            })
+        }
+
+        if (above && below
+                && above.gap >= root.collisionGap
+                && below.gap >= root.collisionGap
+                && Math.abs(above.gap - below.gap) <= threshold * 2) {
+            equalSpacingY = true
+            if (!bestY) {
+                const delta = (below.gap - above.gap) / 2
+                if (Math.abs(delta) <= threshold)
+                    fitted.y = Math.max(0,
+                        Math.min(canvas.height - fitted.height,
+                            fitted.y + delta))
+            }
+            const aboveGap = fitted.y
+                - (above.rect.y + above.rect.height)
+            const belowGap = below.rect.y
+                - (fitted.y + fitted.height)
+            const x = fitted.x + fitted.width / 2
+            guides.push({
+                kind: "spacingV",
+                x: x,
+                y1: above.rect.y + above.rect.height,
+                y2: fitted.y,
+                distance: aboveGap
+            })
+            guides.push({
+                kind: "spacingV",
+                x: x,
+                y1: fitted.y + fitted.height,
+                y2: below.rect.y,
+                distance: belowGap
+            })
+        }
+
+        // Diagonal center guide: visual only. It helps keep diagonal module
+        // relationships obvious without constraining freeform placement.
+        const cx = fitted.x + fitted.width / 2
+        const cy = fitted.y + fitted.height / 2
+        let diagonal = null
+        for (let i = 0; i < others.length; ++i) {
+            const other = others[i].rect
+            const ox = other.x + other.width / 2
+            const oy = other.y + other.height / 2
+            const dx = ox - cx
+            const dy = oy - cy
+            const diagonalError = Math.abs(Math.abs(dx) - Math.abs(dy))
+            const length = Math.sqrt(dx * dx + dy * dy)
+            if (Math.min(Math.abs(dx), Math.abs(dy)) > 20
+                    && diagonalError <= threshold
+                    && (!diagonal || length < diagonal.length)) {
+                diagonal = {
+                    length: length,
+                    x1: cx, y1: cy,
+                    x2: ox, y2: oy
+                }
+            }
+        }
+        if (diagonal)
+            guides.push(Object.assign({ kind: "diagonal" }, diagonal))
+
+        root._smartGuides = guides
+        root._smartSnapAxes = {
+            x: bestX !== null || equalSpacingX,
+            y: bestY !== null || equalSpacingY
+        }
+        return fitted
+    }
+
+    function _smartAlignResize(activeId, sourceRect, edge,
+            baselineRects) {
+        const rect = root._cloneRect(sourceRect)
+        const threshold = root.smartGuideThreshold
+        const others = root._otherRects(activeId, baselineRects)
+        const min = root._minimumSizeForCanvas(activeId)
+        const resizeEdge = String(edge ?? "")
+        const guides = []
+        let bestVertical = null
+        let bestHorizontal = null
+
+        if (resizeEdge.indexOf("w") >= 0
+                || resizeEdge.indexOf("e") >= 0) {
+            const activeX = resizeEdge.indexOf("w") >= 0
+                ? rect.x : rect.x + rect.width
+            for (let i = 0; i < others.length; ++i) {
+                const other = others[i].rect
+                const targets = [other.x, other.x + other.width]
+                for (let t = 0; t < targets.length; ++t) {
+                    const delta = targets[t] - activeX
+                    const distance = Math.abs(delta)
+                    if (distance <= threshold
+                            && (!bestVertical
+                                || distance < bestVertical.distance)) {
+                        bestVertical = {
+                            distance: distance,
+                            delta: delta,
+                            pos: targets[t],
+                            other: other
+                        }
+                    }
+                }
+            }
+        }
+
+        if (resizeEdge.indexOf("n") >= 0
+                || resizeEdge.indexOf("s") >= 0) {
+            const activeY = resizeEdge.indexOf("n") >= 0
+                ? rect.y : rect.y + rect.height
+            for (let i = 0; i < others.length; ++i) {
+                const other = others[i].rect
+                const targets = [other.y, other.y + other.height]
+                for (let t = 0; t < targets.length; ++t) {
+                    const delta = targets[t] - activeY
+                    const distance = Math.abs(delta)
+                    if (distance <= threshold
+                            && (!bestHorizontal
+                                || distance < bestHorizontal.distance)) {
+                        bestHorizontal = {
+                            distance: distance,
+                            delta: delta,
+                            pos: targets[t],
+                            other: other
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestVertical) {
+            if (resizeEdge.indexOf("w") >= 0) {
+                const right = rect.x + rect.width
+                const left = Math.min(
+                    right - min.width, rect.x + bestVertical.delta)
+                rect.x = left
+                rect.width = right - left
+            } else {
+                rect.width = Math.max(
+                    min.width, rect.width + bestVertical.delta)
+            }
+            guides.push({
+                kind: "vertical",
+                x: bestVertical.pos,
+                y1: Math.min(rect.y, bestVertical.other.y) - 8,
+                y2: Math.max(
+                    rect.y + rect.height,
+                    bestVertical.other.y + bestVertical.other.height) + 8
+            })
+        }
+
+        if (bestHorizontal) {
+            if (resizeEdge.indexOf("n") >= 0) {
+                const bottom = rect.y + rect.height
+                const top = Math.min(
+                    bottom - min.height, rect.y + bestHorizontal.delta)
+                rect.y = top
+                rect.height = bottom - top
+            } else {
+                rect.height = Math.max(
+                    min.height, rect.height + bestHorizontal.delta)
+            }
+            guides.push({
+                kind: "horizontal",
+                y: bestHorizontal.pos,
+                x1: Math.min(rect.x, bestHorizontal.other.x) - 8,
+                x2: Math.max(
+                    rect.x + rect.width,
+                    bestHorizontal.other.x + bestHorizontal.other.width) + 8
+            })
+        }
+
+        const fitted = root._fitRectToCanvas(rect, min)
+        root._smartGuides = guides
+        root._smartSnapAxes = {
+            x: bestVertical !== null,
+            y: bestHorizontal !== null
+        }
+        return fitted
     }
 
     function _snapshotVisibleRects() {
@@ -697,6 +1064,8 @@ Item {
 
     function beginMove(id, point) {
         root._preview = ({})
+        root._smartGuides = []
+        root._smartSnapAxes = ({ x: false, y: false })
         root.selectedId = id
         root._interaction = {
             id: id,
@@ -709,6 +1078,8 @@ Item {
 
     function beginResize(id, edge, point) {
         root._preview = ({})
+        root._smartGuides = []
+        root._smartSnapAxes = ({ x: false, y: false })
         root.selectedId = id
         root._interaction = {
             id: id,
@@ -743,10 +1114,11 @@ Item {
             // A dragged module is temporarily lifted out of the packed layout.
             // Only the selected module follows the pointer; neighbours stay
             // completely stable until drop, when the insertion is resolved once.
-            root._setPreview(state.id, {
+            const guided = root._smartAlignMove(state.id, {
                 x: left, y: top,
                 width: start.width, height: start.height
-            })
+            }, state.baselineRects)
+            root._setPreview(state.id, guided)
             return
         }
 
@@ -783,11 +1155,11 @@ Item {
         right = Math.min(canvas.width, right)
         bottom = Math.min(canvas.height, bottom)
 
-        const desired = {
+        const desired = root._smartAlignResize(state.id, {
             x: left, y: top,
             width: Math.max(1, right - left),
             height: Math.max(1, bottom - top)
-        }
+        }, edge, state.baselineRects)
         const resolved = root._resolveFeasibleLayout(
             state.id, start, desired, state.baselineRects,
             root.autoAdjustSizeEnabled)
@@ -804,11 +1176,15 @@ Item {
             // selected module smoothly back to its persisted rect.
             root._interaction = null
             root._preview = ({})
+            root._smartGuides = []
+            root._smartSnapAxes = ({ x: false, y: false })
             return
         }
 
         if (Object.keys(root._preview).length === 0) {
             root._interaction = null
+            root._smartGuides = []
+            root._smartSnapAxes = ({ x: false, y: false })
             return
         }
 
@@ -817,7 +1193,8 @@ Item {
             const currentRect = root._rectPixelsForGeometry(
                 state.id, activeGeometry)
             const snappedRect = root._snapRectForCommit(
-                state.id, currentRect, state.kind, state.edge)
+                state.id, currentRect, state.kind, state.edge,
+                root._smartSnapAxes.x, root._smartSnapAxes.y)
             // Drop is the insertion point: resolve neighbours exactly once
             // after continuous pointer tracking has ended.
             const allowResize = state.kind === "resize"
@@ -830,6 +1207,8 @@ Item {
             // selected module and any displaced neighbours therefore settle into
             // their snapped positions with the same spatial animation.
             root._interaction = null
+            root._smartGuides = []
+            root._smartSnapAxes = ({ x: false, y: false })
             root._applyPreviewRects(resolved)
             root._persistPreviewLayout()
 
@@ -844,6 +1223,8 @@ Item {
         } else {
             root._interaction = null
             root._preview = ({})
+            root._smartGuides = []
+            root._smartSnapAxes = ({ x: false, y: false })
         }
     }
 
@@ -865,6 +1246,8 @@ Item {
     onEditModeChanged: {
         if (!editMode) {
             root.finishInteraction(false)
+            root._smartGuides = []
+            root._smartSnapAxes = ({ x: false, y: false })
             root.selectedId = ""
         }
     }
@@ -914,6 +1297,13 @@ Item {
                     duration: Appearance.animation.elementMoveFast.duration
                 }
             }
+        }
+
+        DashboardAlignmentGuides {
+            anchors.fill: parent
+            z: 70
+            visible: root.editMode && root._smartGuides.length > 0
+            guides: root._smartGuides
         }
 
         Repeater {

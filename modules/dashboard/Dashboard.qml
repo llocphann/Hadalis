@@ -194,8 +194,9 @@ Scope {
                     id: standaloneEditToolbar
                     z: 8
                     canvasController: standaloneContent.canvasController
-                    width: Math.min(440,
-                        Math.max(280, standaloneContent.width - 32))
+                    width: Math.min(
+                        standaloneEditToolbar.implicitWidth,
+                        Math.max(1, standaloneContent.width - 32))
                     x: Math.round((parent.width - width) / 2)
                     y: 0
                 }

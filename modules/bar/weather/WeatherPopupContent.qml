@@ -12,6 +12,9 @@ Item {
     readonly property real compactBreakpoint: 900
     readonly property real panelHeight: 270
     readonly property real panelWidth: root.compact ? 360 : 430
+    // Keep the orbital cards inside the clipped tab viewport. This padding is
+    // part of the popup geometry contract; do not use negative top margins.
+    readonly property real orbitalPadding: 14
     readonly property int tabCount: 2
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
@@ -84,9 +87,7 @@ Item {
         OrbitalWeather {
             id: orbitalTimeline
             anchors.fill: parent
-            anchors.margins: 8
-            anchors.topMargin: -12
-            anchors.bottomMargin: 0
+            anchors.margins: root.orbitalPadding
             now: root.now
         }
     }

@@ -13,6 +13,7 @@ DashTodo 1.0 DashTodo.qml
 DashWeather 1.0 DashWeather.qml
 DashWelcome 1.0 DashWelcome.qml
 Dashboard 1.0 Dashboard.qml
+DashboardAlignmentGuides 1.0 DashboardAlignmentGuides.qml
 DashboardCanvas 1.0 DashboardCanvas.qml
 DashboardContent 1.0 DashboardContent.qml
 DashboardEditGrid 1.0 DashboardEditGrid.qml

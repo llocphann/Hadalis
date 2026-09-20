@@ -131,6 +131,7 @@ RowLayout {
         }
         text: "image_search"
         StyledToolTip {
+            position: "top"
             text: Translation.tr("Google Lens")
         }
     }
@@ -143,48 +144,35 @@ RowLayout {
         toggled: SongRec.running
         onClicked: SongRec.toggleRunning()
         text: "music_cast"
+        buttonText: Translation.tr("Recognize music")
 
-        StyledToolTip {
-            text: Translation.tr("Recognize music")
+        // Use the shared Material toolbar background. The previous local
+        // MaterialShape background outlived its intended patch and could paint
+        // an extra face over the neighbouring SongRec/Lens controls.
+        colBackgroundToggled: Appearance.colors.colPrimaryContainer
+        colBackgroundToggledHover: Appearance.colors.colPrimaryContainer
+        colText: toggled
+            ? Appearance.colors.colOnPrimaryContainer
+            : Appearance.colors.colOnSurfaceVariant
+
+        contentItem: MaterialSymbol {
+            anchors.centerIn: parent
+            text: "music_cast"
+            iconSize: 22
+            color: songRecButton.colText
+            RotationAnimation on rotation {
+                running: songRecButton.toggled
+                duration: 12000
+                easing.type: Easing.Linear
+                loops: Animation.Infinite
+                from: 0
+                to: 360
+            }
         }
 
-        colText: toggled
-            ? Appearance.colors.colOnPrimary
-            : Appearance.colors.colOnSurfaceVariant
-        background: Item {
-            MaterialShape {
-                anchors.fill: parent
-                RotationAnimation on rotation {
-                    running: songRecButton.toggled
-                    duration: 12000
-                    easing.type: Easing.Linear
-                    loops: Animation.Infinite
-                    from: 0
-                    to: 360
-                }
-                shape: {
-                    if (songRecButton.down) {
-                        return songRecButton.toggled ? MaterialShape.Shape.Circle : MaterialShape.Shape.Square
-                    } else {
-                        return songRecButton.toggled ? MaterialShape.Shape.SoftBurst : MaterialShape.Shape.Circle
-                    }
-                }
-                color: {
-                    if (songRecButton.toggled) {
-                        return songRecButton.hovered
-                            ? Appearance.colors.colPrimaryHover
-                            : Appearance.colors.colPrimary
-                    } else {
-                        return songRecButton.hovered
-                            ? Appearance.colors.colSurfaceContainerHigh
-                            : ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh)
-                    }
-                }
-                Behavior on color {
-                    enabled: Appearance.animationsEnabled
-                    animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-            }
+        StyledToolTip {
+            position: "top"
+            text: Translation.tr("Recognize music")
         }
     }
 }

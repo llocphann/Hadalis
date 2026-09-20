@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Research-only artifact preparation for one qualified Connect candidate.
+"""Capability-gated preparation for one qualified Connect candidate.
 
-This gate still does not write tracked QML source or authorize Apply. It
-regenerates the full 2K-K qualification against current source, reconstructs the
-Connect candidate from the current parser tree, requires exact candidate-hash
-identity, reparses the complete candidate, rechecks the retained external
-dependency immediately before staging, and writes only rollback/candidate/
-manifest artifacts to an external state directory.
+This production coordinator never writes tracked QML source and never authorizes
+Apply. It can first report whether the native QML parser, qmllint oracle and
+writable reviewed source are available. On an explicit preparation request it
+regenerates the full qualified proof from current source, reconstructs the exact
+Connect candidate, reparses it, closes source/dependency TOCTOU windows, and
+writes only rollback/candidate/manifest artifacts to an external state
+directory.
 
-The helper is intentionally excluded from the production runtime payload.
+Low-level type/cycle/qualification modules are implementation support for this
+single coordinator; QML/UI code must not invoke those helpers directly.
 """
 
 from __future__ import annotations
@@ -37,7 +39,12 @@ from connect_qualify import (
     QUALIFICATION_PROOF,
     qualify_reviewed_connect,
 )
-from connect_type import TYPE_PROOF
+from connect_type import (
+    TYPE_PROOF,
+    _find_qmllint,
+    _qmllint_import_paths,
+    _qmllint_version,
+)
 from native import Parser, verify_ranges
 from semantics import extract
 
@@ -112,6 +119,181 @@ def _state_root_outside_runtime(root: Path, state_dir: Path) -> Path:
         raise ValueError(
             "Connect artifact state directory must not be inside runtime root")
     return state
+
+
+def probe_connect_preparation_capability(
+    root: Path,
+    target_id: str,
+    connect_target_id: str,
+    grammar: str = "",
+    library: str = "",
+    qmllint: str = "",
+) -> dict:
+    root = root.expanduser().resolve()
+    common = {
+        "status": "capability",
+        "targetId": target_id,
+        "connectTargetId": connect_target_id,
+        "ready": False,
+        "parserAvailable": False,
+        "qmllintAvailable": False,
+        "sourceWritable": False,
+        "writeAuthorized": False,
+        "applyEnabled": False,
+        "artifactsStaged": False,
+    }
+    if not root.is_dir():
+        return {**common, "reason": "runtime-root-missing"}
+
+    try:
+        descriptor = load_reviewed_connect_target(
+            root, target_id, connect_target_id)
+        source_path = _runtime_file(root, descriptor["sourcePath"])
+        source = source_path.read_bytes()
+        source.decode("utf-8")
+    except (ValueError, OSError, UnicodeError) as exc:
+        return {**common, "reason": str(exc)}
+
+    source_writable = os.access(source_path, os.W_OK)
+    grammar_path = resolve_grammar(root, grammar)
+    if grammar_path is None:
+        return {
+            **common,
+            "reason": "grammar-missing",
+            "sourceWritable": source_writable,
+            "sourcePath": descriptor["sourcePath"],
+        }
+
+    native_parser = None
+    try:
+        native_parser = Parser(grammar_path, library or None)
+        with native_parser.parse(source) as (_, nodes):
+            verify_ranges(source, nodes)
+            semantic = extract(descriptor["sourcePath"], source, nodes)
+    except OSError as exc:
+        return {
+            **common,
+            "reason": "tree-sitter-library-missing",
+            "detail": str(exc),
+            "sourceWritable": source_writable,
+            "sourcePath": descriptor["sourcePath"],
+        }
+    except (RuntimeError, AssertionError, UnicodeError) as exc:
+        return {
+            **common,
+            "reason": "parser-capability-check-failed",
+            "detail": str(exc),
+            "sourceWritable": source_writable,
+            "sourcePath": descriptor["sourcePath"],
+        }
+    finally:
+        if native_parser is not None:
+            native_parser.close()
+
+    if semantic["diagnostics"]:
+        return {
+            **common,
+            "reason": "current-source-has-parser-diagnostics",
+            "parserAvailable": True,
+            "sourceWritable": source_writable,
+            "sourcePath": descriptor["sourcePath"],
+            "parserGrammar": str(grammar_path),
+        }
+
+    tool = _find_qmllint(qmllint)
+    if tool is None:
+        return {
+            **common,
+            "reason": "qmllint-unavailable",
+            "parserAvailable": True,
+            "sourceWritable": source_writable,
+            "sourcePath": descriptor["sourcePath"],
+            "parserGrammar": str(grammar_path),
+        }
+
+    version_text, version = _qmllint_version(tool)
+    if version is None or version[0] != 6 or version < (6, 8):
+        return {
+            **common,
+            "reason": "qmllint-version-unqualified",
+            "parserAvailable": True,
+            "qmllintAvailable": True,
+            "sourceWritable": source_writable,
+            "sourcePath": descriptor["sourcePath"],
+            "parserGrammar": str(grammar_path),
+            "qmllintTool": tool,
+            "qmllintVersion": version_text,
+            "qmllintImportPaths": _qmllint_import_paths(),
+        }
+
+    if not source_writable:
+        return {
+            **common,
+            "reason": "source-read-only",
+            "parserAvailable": True,
+            "qmllintAvailable": True,
+            "sourceWritable": False,
+            "sourcePath": descriptor["sourcePath"],
+            "parserGrammar": str(grammar_path),
+            "qmllintTool": tool,
+            "qmllintVersion": version_text,
+            "qmllintImportPaths": _qmllint_import_paths(),
+        }
+
+    return {
+        **common,
+        "reason": "ready",
+        "ready": True,
+        "parserAvailable": True,
+        "qmllintAvailable": True,
+        "sourceWritable": True,
+        "sourcePath": descriptor["sourcePath"],
+        "parserGrammar": str(grammar_path),
+        "treeSitterLibrary": library or "system",
+        "qmllintTool": tool,
+        "qmllintVersion": version_text,
+        "qmllintImportPaths": _qmllint_import_paths(),
+    }
+
+
+def _qualification_snapshot(qualification: dict) -> dict:
+    keys = (
+        "qualificationProof",
+        "targetId",
+        "connectTargetId",
+        "sourcePath",
+        "baseSha256",
+        "candidateSha256",
+        "parentSemanticAnchor",
+        "targetProperty",
+        "sourceExpression",
+        "sourcePropertySemanticAnchor",
+        "sourceDeclaredType",
+        "typeCompatibilityProof",
+        "cycleSafetyProof",
+        "dependencyPath",
+        "externalModuleUri",
+        "externalSourcePath",
+        "externalSourceSha256",
+        "aliasTargetId",
+        "terminalPropertySemanticAnchor",
+        "terminalDeclaredType",
+        "terminalValueKind",
+        "terminalValueText",
+        "fallbackLiteral",
+        "oracleTool",
+        "oracleVersion",
+        "proofsComposed",
+        "sourceReverified",
+        "externalSourceReverified",
+        "typeCompatibility",
+        "cycleStatus",
+        "writeAuthorized",
+        "applyEnabled",
+        "artifactsStaged",
+        "productionIntegrated",
+    )
+    return {key: qualification.get(key) for key in keys}
 
 
 def _qualification_identity_is_safe(
@@ -571,6 +753,7 @@ def prepare_qualified_connect_artifacts(
             "targetId": target_id,
             "connectTargetId": connect_target_id,
             **artifacts,
+            "qualificationSnapshot": _qualification_snapshot(qualification),
             "sourceWritable": True,
             "sourceUnchanged": True,
             "externalSourceReverifiedAtStage": True,
@@ -608,20 +791,50 @@ def main() -> int:
     )
     parser.add_argument("--target-id", required=True)
     parser.add_argument("--connect-target-id", required=True)
-    parser.add_argument("--state-dir", required=True)
+    parser.add_argument("--probe", action="store_true")
+    parser.add_argument("--state-dir", default="")
     parser.add_argument("--grammar", default="")
     parser.add_argument("--library", default="")
     parser.add_argument("--qmllint", default="")
     args = parser.parse_args()
+
+    grammar = args.grammar or os.environ.get(
+        "HADALIS_WORKFLOW_GRAMMAR", "")
+    library = args.library or os.environ.get(
+        "HADALIS_TREE_SITTER_LIBRARY", "")
+    qmllint = args.qmllint or os.environ.get(
+        "HADALIS_WORKFLOW_QMLLINT", "")
+
+    if args.probe:
+        result = probe_connect_preparation_capability(
+            Path(args.root),
+            args.target_id,
+            args.connect_target_id,
+            grammar,
+            library,
+            qmllint,
+        )
+        return emit(result, 0 if result.get("ready") is True else 7)
+
+    if not str(args.state_dir).strip():
+        return emit({
+            "status": "invalid-request",
+            "reason": "state-dir-required",
+            "targetId": args.target_id,
+            "connectTargetId": args.connect_target_id,
+            "writeAuthorized": False,
+            "applyEnabled": False,
+            "artifactsStaged": False,
+        }, 4)
 
     result = prepare_qualified_connect_artifacts(
         Path(args.root),
         args.target_id,
         args.connect_target_id,
         Path(args.state_dir),
-        args.grammar or os.environ.get("HADALIS_WORKFLOW_GRAMMAR", ""),
-        args.library or os.environ.get("HADALIS_TREE_SITTER_LIBRARY", ""),
-        args.qmllint or os.environ.get("HADALIS_WORKFLOW_QMLLINT", ""),
+        grammar,
+        library,
+        qmllint,
     )
     return emit(
         result,

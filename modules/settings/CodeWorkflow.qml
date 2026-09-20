@@ -899,7 +899,7 @@ Item {
                             || root.connectPreviewEligible
                             || root.transactionMatchesSelection
                         text: root.selectedConnectTarget !== null
-                            ? "Phase 2 Connect · preview only"
+                            ? "Phase 2 Connect · preview + guarded artifact preparation"
                             : root.selectedIrEdge !== null
                                 ? "Phase 2 edge retarget · preview only"
                                 : root.bindingPreviewEligible
@@ -988,7 +988,7 @@ Item {
                     Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Only qualified literal-property commands may Apply. Direct bindings are preview-only. Disconnect and Connect are preview-only."
+                        text: "Only qualified literal-property commands may Apply. Direct bindings and Disconnect are preview-only. Connect may prepare qualified state artifacts, but source Apply remains blocked."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -999,7 +999,10 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: CodeWorkflowTransaction.dirty ? 118 : 0
+            Layout.preferredHeight: CodeWorkflowTransaction.dirty
+                ? (CodeWorkflowTransaction.activeCommand?.kind
+                        === "connect-binding" ? 184 : 118)
+                : 0
             visible: CodeWorkflowTransaction.dirty
             radius: Appearance.rounding.normal
             color: Appearance.colors.colLayer1
@@ -1050,36 +1053,59 @@ Item {
                         accent: Appearance.colors.colSubtext
                     }
                     Pill {
-                        label: [
-                            "direct-binding",
-                            "disconnect-binding",
-                            "connect-binding"
-                        ].includes(
+                        label: CodeWorkflowTransaction.activeCommand?.kind
+                                === "connect-binding"
+                            ? CodeWorkflowTransaction.connectArtifactsReady
+                                ? "CONNECT ARTIFACTS READY · APPLY BLOCKED"
+                                : CodeWorkflowTransaction.connectPreparationBusy
+                                    ? "CONNECT CHECKING"
+                                    : "PREVIEW ONLY"
+                            : [
+                                "direct-binding",
+                                "disconnect-binding"
+                            ].includes(
                                     CodeWorkflowTransaction.activeCommand?.kind)
-                            ? "PREVIEW ONLY"
-                            : CodeWorkflowTransaction.applyEnabled
-                                && root.transactionMatchesSelection
-                            ? "APPLY READY"
-                            : CodeWorkflowTransaction.applyArtifactsReady
-                                ? "ARTIFACTS READY"
-                                : CodeWorkflowTransaction.preApplyReady
-                                    ? "PRE-APPLY READY"
-                                    : "PRE-APPLY BLOCKED"
-                        accent: [
-                            "direct-binding",
-                            "disconnect-binding",
-                            "connect-binding"
-                        ].includes(
-                                    CodeWorkflowTransaction.activeCommand?.kind)
-                            ? Appearance.colors.colTertiary
-                            : CodeWorkflowTransaction.applyEnabled
-                                && root.transactionMatchesSelection
+                                ? "PREVIEW ONLY"
+                                : CodeWorkflowTransaction.applyEnabled
+                                    && root.transactionMatchesSelection
+                                ? "APPLY READY"
+                                : CodeWorkflowTransaction.applyArtifactsReady
+                                    ? "ARTIFACTS READY"
+                                    : CodeWorkflowTransaction.preApplyReady
+                                        ? "PRE-APPLY READY"
+                                        : "PRE-APPLY BLOCKED"
+                        accent: CodeWorkflowTransaction.activeCommand?.kind
+                                === "connect-binding"
+                                && CodeWorkflowTransaction.connectArtifactsReady
                             ? Appearance.colors.colPrimary
-                            : CodeWorkflowTransaction.applyArtifactsReady
+                            : [
+                                "direct-binding",
+                                "disconnect-binding",
+                                "connect-binding"
+                            ].includes(
+                                    CodeWorkflowTransaction.activeCommand?.kind)
+                                ? Appearance.colors.colTertiary
+                                : CodeWorkflowTransaction.applyEnabled
+                                    && root.transactionMatchesSelection
                                 ? Appearance.colors.colPrimary
-                                : CodeWorkflowTransaction.preApplyReady
+                                : CodeWorkflowTransaction.applyArtifactsReady
                                     ? Appearance.colors.colPrimary
-                                    : Appearance.colors.colTertiary
+                                    : CodeWorkflowTransaction.preApplyReady
+                                        ? Appearance.colors.colPrimary
+                                        : Appearance.colors.colTertiary
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "connect-binding"
+                            && root.transactionMatchesSelection
+                        materialIcon: "inventory_2"
+                        mainText: CodeWorkflowTransaction.connectArtifactsReady
+                            ? "Connect artifacts prepared"
+                            : "Prepare Connect artifacts"
+                        enabled: CodeWorkflowTransaction.connectPrepareEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.prepareConnectArtifacts()
                     }
                     RippleButtonWithIcon {
                         visible: CodeWorkflowTransaction.preApplyReady
@@ -1117,6 +1143,7 @@ Item {
                         materialIcon: "refresh"
                         mainText: "Regenerate"
                         enabled: root.transactionMatchesSelection
+                            && !CodeWorkflowTransaction.connectPreparationBusy
                             && (CodeWorkflowTransaction.activeCommand?.kind
                                     === "connect-binding"
                                 || CodeWorkflowAnalyzer.status === "ready")
@@ -1127,8 +1154,49 @@ Item {
                         mainText: "Clear"
                         enabled: CodeWorkflowTransaction.status !== "previewing"
                             && !CodeWorkflowTransaction.applyLifecycleBusy
+                            && !CodeWorkflowTransaction.connectPreparationBusy
                         onClicked: CodeWorkflowTransaction.clear()
                     }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.activeCommand?.kind
+                        === "connect-binding"
+                    text: CodeWorkflowTransaction.connectPreparationCapability
+                            ?.ready === true
+                        ? "Connect preparation capability: READY · native parser + qmllint + writable source available"
+                        : "Connect preparation capability: "
+                            + String(
+                                CodeWorkflowTransaction
+                                    .connectPreparationCapability
+                                    ?.reason ?? "checking")
+                    color: CodeWorkflowTransaction.connectPreparationCapability
+                            ?.ready === true
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.connectArtifactsReady
+                    text: "Connect artifacts prepared · exact rollback snapshot + candidate + manifest are stored in shell state · tracked source QML is unchanged · Apply remains blocked"
+                    color: Appearance.colors.colPrimary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.connectPreparationError
+                        .length > 0
+                    text: "Prepare Connect artifacts: "
+                        + CodeWorkflowTransaction.connectPreparationError
+                    color: Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
                 }
 
                 StyledText {

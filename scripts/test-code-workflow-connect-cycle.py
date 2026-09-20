@@ -374,9 +374,9 @@ if 'function promoteConnectQualification(payload): bool' not in transaction:
 if 'blockers.push("write-subset-not-authorized")' not in transaction:
     fail("cycle proof promotion must not authorize Connect writes")
 
-if "scripts/code-workflow/connect_cycle.py" not in exclusions.get(
+if "scripts/code-workflow/connect_cycle.py" in exclusions.get(
         "excludedPaths", []):
-    fail("research-only cycle helper must stay outside runtime payload")
+    fail("2K-N audited cycle support must ship behind connect_prepare")
 
 payload = subprocess.run(
     [sys.executable, str(ROOT / "sdata/lib/runtime-payload.py"),
@@ -387,8 +387,8 @@ payload = subprocess.run(
     stderr=subprocess.PIPE,
     check=True,
 ).stdout.splitlines()
-if "scripts/code-workflow/connect_cycle.py" in set(payload):
-    fail("research-only cycle helper leaked into runtime payload")
+if "scripts/code-workflow/connect_cycle.py" not in set(payload):
+    fail("2K-N audited cycle support missing from runtime payload")
 
 for token in (
     "Milestone 2K-I — parser-closed Connect cycle proof",

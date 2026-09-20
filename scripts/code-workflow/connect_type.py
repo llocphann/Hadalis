@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Research-only Connect type-compatibility proof.
+"""Read-only Connect type-compatibility proof support.
 
-This helper never changes Hadalis source and is not part of the production
-runtime payload. It composes the reviewed Connect preview with two independent
-forms of type evidence:
+This module never changes Hadalis source. As of 2K-N it ships only as audited
+support behind the single production connect_prepare.py coordinator; QML/UI code
+must not invoke it directly. It composes the reviewed Connect preview with two
+independent forms of type evidence:
 
 1. source-backed resolution of one simple parent-id member expression to an
    explicitly typed QML property declaration; and

@@ -35,6 +35,17 @@ Singleton {
     property string _pendingConnectTargetId: ""
     property int _pendingConnectSafetyIndex: -1
     property string _pendingConnectSafetyCandidateSha: ""
+    property int _pendingConnectPreparationIndex: -1
+    property string _pendingConnectPreparationCandidateSha: ""
+    property var connectPreparationCapability: ({
+        status: "not-evaluated",
+        ready: false,
+        reason: "not-evaluated",
+        writeAuthorized: false,
+        applyEnabled: false,
+        artifactsStaged: false
+    })
+    property string connectPreparationError: ""
     property var connectSafetyDiagnostics: ({
         status: "not-evaluated",
         ready: false,
@@ -90,21 +101,44 @@ Singleton {
         previewProcess.running || connectPreviewProcess.running
     readonly property bool connectSafetyBusy:
         connectSafetyProcess.running
+    readonly property bool connectPreparationBusy:
+        connectCapabilityProcess.running || connectPrepareProcess.running
     readonly property var activeConnectSafety:
         root._connectSafetyMatchesCommand(root.activeCommand, false)
             ? root.activeCommand.connectSafety
             : null
     readonly property bool connectSafetySnapshotReady:
         root._connectSafetyMatchesCommand(root.activeCommand, true)
+    readonly property var activeConnectPreparation:
+        root._connectPreparationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.connectPreparation
+            : null
+    readonly property bool connectArtifactsReady:
+        root.activeConnectPreparation !== null
+        && root.connectSafetySnapshotReady
+    readonly property bool connectPrepareEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "connect-binding"
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && root.connectPreparationCapability?.ready === true
+        && !root.previewBusy
+        && !root.connectSafetyBusy
+        && !root.connectPreparationBusy
+        && !applyPrepareProcess.running
+        && !root.applyLifecycleBusy
+        && !root.connectArtifactsReady
     readonly property bool canUndo:
         !root.previewBusy
         && !root.connectSafetyBusy
+        && !root.connectPreparationBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex >= 0
     readonly property bool canRedo:
         !root.previewBusy
         && !root.connectSafetyBusy
+        && !root.connectPreparationBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex + 1 < root.history.length
@@ -174,7 +208,17 @@ Singleton {
             parsed = []
         }
 
-        root.history = parsed
+        root.history = parsed.map(command => {
+            if (!command?.connectSafety)
+                return command
+            return Object.assign({}, command, {
+                connectSafety: Object.assign({}, command.connectSafety, {
+                    freshness: "pending",
+                    stale: false,
+                    staleReason: "cross-generation-reverification-required"
+                })
+            })
+        })
         root.historyIndex = Math.max(
             -1,
             Math.min(
@@ -185,6 +229,7 @@ Singleton {
         root._showCommand(root.activeCommand)
         Qt.callLater(root._recoverApplyLifecycle)
         Qt.callLater(root.reverifyActiveConnectSafety)
+        Qt.callLater(root.probeActiveConnectPreparationCapability)
     }
 
     function restoreReloadStateJson(encoded: string): bool {
@@ -837,6 +882,15 @@ Singleton {
             reason: "no-active-connect-safety",
             writeAuthorized: false
         })
+        root.connectPreparationCapability = ({
+            status: "not-evaluated",
+            ready: false,
+            reason: "no-active-connect-preview",
+            writeAuthorized: false,
+            applyEnabled: false,
+            artifactsStaged: false
+        })
+        root.connectPreparationError = ""
     }
 
     function _sha256LooksValid(value): bool {
@@ -940,6 +994,90 @@ Singleton {
         return true
     }
 
+    function _connectPreparationMatchesCommand(command): bool {
+        if (!command || String(command.kind ?? "") !== "connect-binding")
+            return false
+
+        const prepared = command.connectPreparation
+        if (!prepared || Number(prepared.version ?? 0) !== 1)
+            return false
+
+        const preview = command.result ?? ({})
+        return String(prepared.status ?? "") === "prepared"
+            && prepared.stale !== true
+            && String(prepared.artifactProof ?? "")
+                === "prepared-qualified-connect-artifacts-v1"
+            && String(prepared.targetId ?? "")
+                === String(command.targetId ?? "")
+            && String(prepared.connectTargetId ?? "")
+                === String(command.connectTargetId ?? "")
+            && String(prepared.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(prepared.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(prepared.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(prepared.parentSemanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(prepared.bindingName ?? "")
+                === String(preview.bindingName ?? "")
+            && String(prepared.expression ?? "")
+                === String(command.replacement ?? "")
+            && String(prepared.insertedSemanticAnchor ?? "").length > 0
+            && String(prepared.externalSourcePath ?? "").length > 0
+            && root._sha256LooksValid(prepared.externalSourceSha256)
+            && String(prepared.snapshotPath ?? "").length > 0
+            && String(prepared.candidatePath ?? "").length > 0
+            && String(prepared.manifestPath ?? "").length > 0
+            && prepared.writeAuthorized === false
+            && prepared.applyEnabled === false
+            && prepared.artifactsStaged === true
+            && prepared.productionIntegrated === false
+    }
+
+    function _sanitizeConnectPreparation(payload): var {
+        return {
+            version: 1,
+            status: "prepared",
+            stale: false,
+            staleReason: "",
+            artifactProof: String(payload?.artifactProof ?? ""),
+            targetId: String(payload?.targetId ?? ""),
+            connectTargetId: String(payload?.connectTargetId ?? ""),
+            transactionId: String(payload?.transactionId ?? ""),
+            sourcePath: String(payload?.sourcePath ?? ""),
+            baseSha256: String(payload?.baseSha256 ?? ""),
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            parentSemanticAnchor: String(
+                payload?.parentSemanticAnchor ?? ""),
+            insertedSemanticAnchor: String(
+                payload?.insertedSemanticAnchor ?? ""),
+            bindingName: String(payload?.bindingName ?? ""),
+            expression: String(payload?.expression ?? ""),
+            externalSourcePath: String(
+                payload?.externalSourcePath ?? ""),
+            externalSourceSha256: String(
+                payload?.externalSourceSha256 ?? ""),
+            snapshotPath: String(payload?.snapshotPath ?? ""),
+            candidatePath: String(payload?.candidatePath ?? ""),
+            manifestPath: String(payload?.manifestPath ?? ""),
+            writeAuthorized: false,
+            applyEnabled: false,
+            artifactsStaged: true,
+            productionIntegrated: false
+        }
+    }
+
+    function _qualificationPayloadFromPreparation(payload): var {
+        const qualification = payload?.qualificationSnapshot
+        if (!qualification)
+            return null
+        return Object.assign({}, qualification, {
+            protocol: 1,
+            status: "proof"
+        })
+    }
+
     function _sanitizeConnectQualification(payload): var {
         const dependencyPath = Array.isArray(payload?.dependencyPath)
             ? payload.dependencyPath.map(item => String(item ?? ""))
@@ -1001,6 +1139,7 @@ Singleton {
     function promoteConnectQualification(payload): bool {
         if (root.previewBusy
                 || root.connectSafetyBusy
+                || root.connectPreparationBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -1135,13 +1274,22 @@ Singleton {
                 return command
 
             changed = true
+            const reason =
+                "Qualified Connect dependency changed; reprepare before any future write gate."
+            const preparation = command?.connectPreparation
             return Object.assign({}, command, {
                 connectSafety: Object.assign({}, safety, {
                     freshness: "stale",
                     stale: true,
-                    staleReason:
-                        "Qualified Connect dependency changed; requalify before any future write gate."
-                })
+                    staleReason: reason
+                }),
+                connectPreparation: preparation
+                    ? Object.assign({}, preparation, {
+                        status: "stale",
+                        stale: true,
+                        staleReason: reason
+                    })
+                    : preparation
             })
         })
         if (changed)
@@ -1276,6 +1424,246 @@ Singleton {
                 ?? ("connect safety freshness exited " + exitCode)))
     }
 
+    function probeActiveConnectPreparationCapability(): bool {
+        if (root.connectPreparationBusy
+                || root.previewBusy
+                || root.connectSafetyBusy
+                || applyPrepareProcess.running
+                || root.applyLifecycleBusy)
+            return false
+
+        const command = root.activeCommand
+        if (!command
+                || command.stale === true
+                || String(command.kind ?? "") !== "connect-binding") {
+            root.connectPreparationCapability = ({
+                status: "not-evaluated",
+                ready: false,
+                reason: "no-active-connect-preview",
+                writeAuthorized: false,
+                applyEnabled: false,
+                artifactsStaged: false
+            })
+            return false
+        }
+
+        root._pendingConnectPreparationIndex = root.historyIndex
+        root._pendingConnectPreparationCandidateSha = String(
+            command.candidateSha256 ?? "")
+        root.connectPreparationCapability = ({
+            status: "checking",
+            ready: false,
+            reason: "capability-check-running",
+            writeAuthorized: false,
+            applyEnabled: false,
+            artifactsStaged: false
+        })
+        connectCapabilityProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/connect_prepare.py"),
+            "--probe",
+            "--target-id", String(command.targetId ?? ""),
+            "--connect-target-id",
+                String(command.connectTargetId ?? "")
+        ]
+        connectCapabilityProcess.running = true
+        return true
+    }
+
+    function finishConnectPreparationCapability(exitCode: int): void {
+        const raw = String(connectCapabilityStdout.text ?? "").trim()
+        let payload = null
+        try {
+            payload = raw.length > 0 ? JSON.parse(raw) : null
+        } catch (e) {
+            payload = null
+        }
+
+        const index = root._pendingConnectPreparationIndex
+        const pendingCandidate =
+            root._pendingConnectPreparationCandidateSha
+        root._pendingConnectPreparationIndex = -1
+        root._pendingConnectPreparationCandidateSha = ""
+
+        if (index < 0 || index >= root.history.length) {
+            root.connectPreparationCapability = ({
+                status: "blocked",
+                ready: false,
+                reason: "connect-preview-history-drifted",
+                writeAuthorized: false,
+                applyEnabled: false,
+                artifactsStaged: false
+            })
+            return
+        }
+
+        const command = root.history[index]
+        const identityMatches = payload?.protocol === 1
+            && String(payload?.status ?? "") === "capability"
+            && String(payload?.targetId ?? "")
+                === String(command?.targetId ?? "")
+            && String(payload?.connectTargetId ?? "")
+                === String(command?.connectTargetId ?? "")
+            && String(command?.candidateSha256 ?? "")
+                === pendingCandidate
+            && payload?.writeAuthorized === false
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === false
+
+        if (!identityMatches) {
+            const stderrText = String(
+                connectCapabilityStderr.text ?? "").trim()
+            root.connectPreparationCapability = ({
+                status: "blocked",
+                ready: false,
+                reason: String(
+                    payload?.reason
+                    ?? stderrText
+                    ?? ("capability probe exited " + exitCode)),
+                writeAuthorized: false,
+                applyEnabled: false,
+                artifactsStaged: false
+            })
+            return
+        }
+
+        root.connectPreparationCapability = payload
+    }
+
+    function prepareConnectArtifacts(): bool {
+        if (!root.connectPrepareEnabled)
+            return false
+
+        const command = root.activeCommand
+        root._pendingConnectPreparationIndex = root.historyIndex
+        root._pendingConnectPreparationCandidateSha = String(
+            command.candidateSha256 ?? "")
+        root.connectPreparationError = ""
+        root.status = "preparing-connect"
+
+        connectPrepareProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/connect_prepare.py"),
+            "--target-id", String(command.targetId ?? ""),
+            "--connect-target-id",
+                String(command.connectTargetId ?? ""),
+            "--state-dir",
+                Quickshell.statePath(
+                    "code-workflow/connect-transactions")
+        ]
+        connectPrepareProcess.running = true
+        return true
+    }
+
+    function finishConnectPreparation(exitCode: int): void {
+        const raw = String(connectPrepareStdout.text ?? "").trim()
+        let payload = null
+        try {
+            payload = raw.length > 0 ? JSON.parse(raw) : null
+        } catch (e) {
+            payload = null
+        }
+
+        const index = root._pendingConnectPreparationIndex
+        const pendingCandidate =
+            root._pendingConnectPreparationCandidateSha
+        root._pendingConnectPreparationIndex = -1
+        root._pendingConnectPreparationCandidateSha = ""
+
+        if (index < 0 || index >= root.history.length) {
+            root.connectPreparationError =
+                "Connect preview history changed during preparation."
+            root._showCommand(root.activeCommand)
+            return
+        }
+
+        const command = root.history[index]
+        const preview = command?.result ?? ({})
+        const identityMatches = payload?.protocol === 1
+            && String(payload?.status ?? "")
+                === "prepared-connect-artifacts"
+            && String(payload?.artifactProof ?? "")
+                === "prepared-qualified-connect-artifacts-v1"
+            && String(payload?.targetId ?? "")
+                === String(command?.targetId ?? "")
+            && String(payload?.connectTargetId ?? "")
+                === String(command?.connectTargetId ?? "")
+            && String(payload?.sourcePath ?? "")
+                === String(command?.sourcePath ?? "")
+            && String(payload?.baseSha256 ?? "")
+                === String(command?.baseSha256 ?? "")
+            && String(payload?.candidateSha256 ?? "")
+                === String(command?.candidateSha256 ?? "")
+            && String(command?.candidateSha256 ?? "")
+                === pendingCandidate
+            && String(payload?.parentSemanticAnchor ?? "")
+                === String(command?.semanticAnchor ?? "")
+            && String(payload?.bindingName ?? "")
+                === String(preview.bindingName ?? "")
+            && String(payload?.expression ?? "")
+                === String(command?.replacement ?? "")
+            && payload?.sourceUnchanged === true
+            && payload?.externalSourceReverifiedAtStage === true
+            && payload?.writeAuthorized === false
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === true
+            && payload?.productionIntegrated === false
+
+        const qualificationPayload =
+            root._qualificationPayloadFromPreparation(payload)
+        if (identityMatches && qualificationPayload) {
+            const safety = Object.assign(
+                {},
+                root._sanitizeConnectQualification(
+                    qualificationPayload),
+                {
+                    freshness: "fresh",
+                    stale: false,
+                    staleReason: ""
+                })
+            const preparation =
+                root._sanitizeConnectPreparation(payload)
+            const promoted = Object.assign({}, command, {
+                connectSafety: safety,
+                connectPreparation: preparation
+            })
+            if (root._connectSafetyMatchesCommand(promoted, true)
+                    && root._connectPreparationMatchesCommand(promoted)) {
+                const next = root.history.slice()
+                next[index] = promoted
+                root.history = next
+                root.historyIndex = index
+                root.connectPreparationError = ""
+                root.connectSafetyDiagnostics = ({
+                    status: "fresh",
+                    ready: true,
+                    reason:
+                        "qualified-sources-match-prepared-artifacts",
+                    sourcePath: String(safety.sourcePath ?? ""),
+                    candidateSha256: String(
+                        safety.candidateSha256 ?? ""),
+                    externalSourcePath: String(
+                        safety.externalSourcePath ?? ""),
+                    writeAuthorized: false
+                })
+                root._showCommand(root.activeCommand)
+                return
+            }
+        }
+
+        const stderrText = String(
+            connectPrepareStderr.text ?? "").trim()
+        root.connectPreparationError = String(
+            payload?.detail
+            ?? payload?.reason
+            ?? stderrText
+            ?? ("Connect preparation exited " + exitCode))
+        root._showCommand(root.activeCommand)
+        Qt.callLater(root.probeActiveConnectPreparationCapability)
+    }
+
     function evaluatePreApply(
         currentPath: string,
         currentSha: string,
@@ -1375,6 +1763,7 @@ Singleton {
     function clear(): void {
         if (root.previewBusy
                 || root.connectSafetyBusy
+                || root.connectPreparationBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return
@@ -1392,6 +1781,7 @@ Singleton {
         root.historyIndex--
         root._showCommand(root.activeCommand)
         Qt.callLater(root.reverifyActiveConnectSafety)
+        Qt.callLater(root.probeActiveConnectPreparationCapability)
         return true
     }
 
@@ -1402,6 +1792,7 @@ Singleton {
         root.historyIndex++
         root._showCommand(root.activeCommand)
         Qt.callLater(root.reverifyActiveConnectSafety)
+        Qt.callLater(root.probeActiveConnectPreparationCapability)
         return true
     }
 
@@ -1599,6 +1990,7 @@ Singleton {
     ): bool {
         if (root.previewBusy
                 || root.connectSafetyBusy
+                || root.connectPreparationBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -1810,6 +2202,7 @@ Singleton {
             root._commitConnectPreviewCommand(payload)
             root._pendingConnectGraphTargetId = ""
             root._pendingConnectTargetId = ""
+            Qt.callLater(root.probeActiveConnectPreparationCapability)
             return
         }
 
@@ -1970,6 +2363,24 @@ Singleton {
         stderr: StdioCollector { id: connectSafetyStderr }
         onExited: (exitCode, _exitStatus) =>
             root.finishConnectSafetyFreshness(exitCode)
+    }
+
+    Process {
+        id: connectCapabilityProcess
+        running: false
+        stdout: StdioCollector { id: connectCapabilityStdout }
+        stderr: StdioCollector { id: connectCapabilityStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishConnectPreparationCapability(exitCode)
+    }
+
+    Process {
+        id: connectPrepareProcess
+        running: false
+        stdout: StdioCollector { id: connectPrepareStdout }
+        stderr: StdioCollector { id: connectPrepareStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishConnectPreparation(exitCode)
     }
 
     Process {

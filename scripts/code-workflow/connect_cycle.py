@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Research-only Connect dependency/cycle coverage proof.
+"""Read-only Connect dependency/cycle coverage proof support.
 
-This helper deliberately does not authorize production Connect. It proves only a
+As of 2K-N this module ships only behind the single production
+connect_prepare.py coordinator. It deliberately does not authorize Connect
+source writes and proves only a
 small parser-resolved local dependency subset:
 
 - the reviewed source expression is one explicit parent-id member reference;

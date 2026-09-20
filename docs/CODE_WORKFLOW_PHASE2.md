@@ -684,9 +684,10 @@ Implemented contract:
 - Qualified source paths are watched while their history entry is active.
   Changes to either the primary source or retained external dependency mark the
   safety snapshot STALE. Inactive history entries are revalidated on activation.
-- The research proof generators remain excluded from the runtime payload.
-  `connect_snapshot.py` is the only new runtime helper and it cannot generate
-  proofs, reconstruct candidates, stage artifacts or write source.
+- At 2K-L the research proof generators remain excluded from the runtime
+  payload. 2K-N later promotes their audited, non-writing proof logic behind the
+  single production `connect_prepare.py` coordinator; QML never invokes the
+  low-level helpers directly.
 - 2K-L still does not expose a Qualify/Prepare-Connect control. The existing
   literal-only `evaluatePreApply()`, `stageApplyHandoff()`,
   `applyCommandMatchesHandoff` and Apply lifecycle remain unchanged.
@@ -695,9 +696,10 @@ Implemented contract:
 
 Implemented research/proof:
 
-- `scripts/code-workflow/connect_prepare.py` is research-only and excluded
-  from the runtime payload. It is not referenced by Settings or
-  `CodeWorkflowTransaction`.
+- 2K-M introduces `scripts/code-workflow/connect_prepare.py` as a
+  research-only proof and keeps it outside the runtime payload at that
+  milestone. 2K-N later promotes the same coordinator after adding an explicit
+  runtime capability gate and transaction/UI integration.
 - Preparation re-runs the complete 2K-K qualification against the current
   Clock and Config sources; a stored 2K-L FRESH safety snapshot is not accepted
   as a substitute for fresh proof generation.
@@ -729,13 +731,51 @@ Implemented research/proof:
   state directory, verifies exact bytes/modes/manifest identity, then proves a
   mismatched qualified candidate SHA cannot stage any artifact.
 
+## Milestone 2K-N — production Connect preparation integration
+
+Implemented production boundary:
+
+- `connect_prepare.py` is now the only production-facing Connect proof/
+  preparation coordinator. `connect_type.py`, `connect_cycle.py` and
+  `connect_qualify.py` ship as audited implementation support, but
+  `CodeWorkflowTransaction` and Settings never invoke those low-level helpers
+  directly.
+- A read-only capability probe resolves the reviewed source, native QML parser
+  grammar/library, qmllint executable/version/import paths and source
+  writability. Missing parser capability, unsupported qmllint, parser
+  diagnostics or read-only source report READY=false and never stage artifacts.
+- The Connect preview remains TYPE UNKNOWN / CYCLE UNKNOWN. Capability readiness
+  is shown separately and is not presented as semantic safety or write
+  authorization.
+- `Prepare Connect artifacts` is an explicit user action. The transaction
+  invokes only `connect_prepare.py`, which re-runs the fresh 2K-K
+  qualification and full 2K-M candidate/artifact proof; an earlier stored safety
+  snapshot is never trusted as a substitute.
+- Successful preparation returns a primitive-only qualification snapshot plus
+  exact manifest/snapshot/candidate identities. The transaction binds those
+  results to the exact history index, target IDs, source/base SHA, candidate SHA,
+  parent semantic anchor, binding name and expression.
+- The prepared history command records a FRESH Connect safety snapshot and a
+  separate `prepared-qualified-connect-artifacts-v1` handoff. The drawer shows
+  `CONNECT ARTIFACTS READY · APPLY BLOCKED`; source QML remains unchanged.
+- Cross-generation restore downgrades retained Connect safety freshness to
+  PENDING before revalidation. Undo/redo also revalidate. Clock or retained
+  Config changes mark both safety and artifact handoff STALE; regenerated
+  Connect previews do not inherit prior preparation.
+- The runtime payload now includes the coordinator and its audited proof support,
+  while still excluding Phase-0/build harnesses. Missing optional
+  `inir-workflow-parser` capability degrades Connect back to preview-only.
+- Existing literal Apply gates are unchanged. `evaluatePreApply()`,
+  `stageApplyHandoff()`, `applyCommandMatchesHandoff` and the atomic
+  commit/rollback lifecycle still accept only `literal-property`.
+- No Connect source-write action, atomic replacement, watcher reload or rollback
+  lifecycle is exposed by 2K-N. Apply remains blocked.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
-- runtime/UI generation of the 2K-K qualification payload;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- production integration of qualified Connect artifact preparation;
 - Connect source-write authorization/commit/rollback lifecycle;
 - signal/action transforms;
 - Connections creation/removal;
@@ -744,20 +784,19 @@ Implemented research/proof:
 
 ## Next gate
 
-2K-M proves that exact Connect artifacts can be prepared safely in isolated
-state without mutating tracked QML. The next gate is still not a source write.
-It must define how production can obtain a fresh qualification and invoke the
-qualified preparation path without shipping or silently trusting development-
-only proof machinery.
+2K-N moves fresh qualification and exact artifact preparation into production
+without granting source-write authority. The next gate must qualify a dedicated
+Connect commit/verify/rollback lifecycle in isolation before any user-facing
+Connect Apply can exist.
 
-That integration gate must resolve runtime capability explicitly (native parser,
-Qt type oracle/import paths and writable source), keep qualification/preparation
-user-triggered, bind transaction history to the newly prepared manifest, and
-invalidate the handoff on any Clock/Config change. It must preserve an explicit
-separation between PREPARED artifacts and source-write authorization.
+That lifecycle must consume only the exact prepared manifest bound to the active
+history command, perform a final Clock and Config freshness check immediately
+before replacement, atomically replace only the reviewed Clock source, rely on
+one watcher-driven reload, rebind the inserted semantic anchor after reload and
+rollback exact snapshot bytes on reload/verify/rebind failure. Config is
+dependency evidence only and must never be part of a multi-file write.
 
-Until that production preparation integration is independently qualified, do
-not expose Connect Apply, do not atomically replace source from 2K-M artifacts,
-and do not map research proof tokens to production TYPE/CYCLE SAFE. Production
-TYPE and CYCLE remain UNKNOWN and literal-property remains the only
-source-writing command.
+Until that lifecycle has independent live acceptance evidence, Connect source
+Apply stays unavailable. A prepared manifest is not write authorization,
+production TYPE/CYCLE labels remain UNKNOWN, and literal-property remains the
+only source-writing command.

@@ -162,8 +162,8 @@ for path in (
     "scripts/code-workflow/connect_cycle.py",
     "scripts/code-workflow/connect_qualify.py",
 ):
-    if path not in exclusions.get("excludedPaths", []):
-        fail("research proof generator must remain excluded: " + path)
+    if path in exclusions.get("excludedPaths", []):
+        fail("2K-N audited proof support must ship behind connect_prepare: " + path)
 
 if "scripts/code-workflow/connect_snapshot.py" in exclusions.get(
         "excludedPaths", []):
@@ -186,8 +186,8 @@ for path in (
     "scripts/code-workflow/connect_cycle.py",
     "scripts/code-workflow/connect_qualify.py",
 ):
-    if path in runtime_set:
-        fail("research proof generator leaked into runtime payload: " + path)
+    if path not in runtime_set:
+        fail("2K-N audited proof support missing from runtime payload: " + path)
 
 for token in (
     "Milestone 2K-L — Connect safety snapshot promotion boundary",

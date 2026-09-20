@@ -78,14 +78,22 @@ for token in (
     if token not in transaction:
         fail("2K-M must preserve literal-only Apply isolation: " + token)
 
-if 'Quickshell.shellPath("scripts/code-workflow/connect_prepare.py")' in transaction:
-    fail("2K-M research artifact helper must not be wired into production transaction")
-if "prepareQualifiedConnectArtifacts" in page or "Prepare Connect Apply" in page:
-    fail("2K-M must not expose production Connect preparation controls")
+if 'Quickshell.shellPath(' not in transaction or (
+        '"scripts/code-workflow/connect_prepare.py"' not in transaction):
+    fail("2K-N must wire the single production Connect preparation coordinator")
+for forbidden_path in (
+    "scripts/code-workflow/connect_type.py",
+    "scripts/code-workflow/connect_cycle.py",
+    "scripts/code-workflow/connect_qualify.py",
+):
+    if ('Quickshell.shellPath("' + forbidden_path + '")') in transaction:
+        fail("transaction must not invoke low-level Connect proof support directly")
+if "Prepare Connect Apply" in page:
+    fail("Connect source Apply must remain unavailable")
 
-if "scripts/code-workflow/connect_prepare.py" not in exclusions.get(
+if "scripts/code-workflow/connect_prepare.py" in exclusions.get(
         "excludedPaths", []):
-    fail("research Connect artifact helper must stay outside runtime payload")
+    fail("2K-N production Connect preparation coordinator must ship")
 
 runtime_payload = subprocess.run(
     [sys.executable, str(ROOT / "sdata/lib/runtime-payload.py"),
@@ -96,8 +104,8 @@ runtime_payload = subprocess.run(
     stderr=subprocess.PIPE,
     check=True,
 ).stdout.splitlines()
-if "scripts/code-workflow/connect_prepare.py" in set(runtime_payload):
-    fail("research Connect artifact helper leaked into runtime payload")
+if "scripts/code-workflow/connect_prepare.py" not in set(runtime_payload):
+    fail("production Connect preparation coordinator missing from runtime payload")
 
 try:
     connect_prepare._state_root_outside_runtime(

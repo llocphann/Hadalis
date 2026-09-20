@@ -366,9 +366,9 @@ if 'function promoteConnectQualification(payload): bool' not in transaction:
 if 'payload?.writeAuthorized !== false' not in transaction:
     fail("promoted qualification must retain writeAuthorized=false")
 
-if "scripts/code-workflow/connect_qualify.py" not in exclusions.get(
+if "scripts/code-workflow/connect_qualify.py" in exclusions.get(
         "excludedPaths", []):
-    fail("research-only qualification helper must stay outside runtime payload")
+    fail("2K-N audited qualification support must ship behind connect_prepare")
 
 runtime_payload = subprocess.run(
     [sys.executable, str(ROOT / "sdata/lib/runtime-payload.py"),
@@ -379,8 +379,8 @@ runtime_payload = subprocess.run(
     stderr=subprocess.PIPE,
     check=True,
 ).stdout.splitlines()
-if "scripts/code-workflow/connect_qualify.py" in set(runtime_payload):
-    fail("research-only qualification helper leaked into runtime payload")
+if "scripts/code-workflow/connect_qualify.py" not in set(runtime_payload):
+    fail("2K-N audited qualification support missing from runtime payload")
 
 for token in (
     "Milestone 2K-K — composed Connect research qualification",

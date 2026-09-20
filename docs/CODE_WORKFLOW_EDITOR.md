@@ -28,12 +28,14 @@ same Clock SHA and exact Connect candidate SHA, then reverify both Clock and
 Config hashes after proof generation. The transaction now defines a
 non-authorizing promotion boundary that can retain only an allowlisted primitive
 safety snapshot and re-hash its Clock/Config dependencies across history/reload.
-Research proof generators remain outside the runtime payload, no promotion UI is
-exposed, and TYPE/CYCLE UNKNOWN continue to block Connect writes. A research-only
-2K-M preparation helper can now re-run that qualification, reconstruct the exact
-candidate from current parser state and stage mode-0600 rollback/candidate/
-manifest files outside the runtime tree without changing source or authorizing
-Apply.
+TYPE/CYCLE UNKNOWN continue to block Connect source writes. The 2K-M exact
+preparation proof is now promoted through a single production coordinator:
+runtime capability is probed explicitly, and the user may prepare qualified
+mode-0600 rollback/candidate/manifest artifacts from Settings when native parser,
+qmllint and source writability are available. Low-level proof modules are runtime
+implementation support only; QML invokes just `connect_prepare.py`. Prepared
+artifacts are bound to transaction history and invalidated by Clock/Config drift,
+but Apply remains blocked and source QML is unchanged.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

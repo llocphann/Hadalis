@@ -154,9 +154,9 @@ if 'function promoteConnectQualification(payload): bool' not in transaction:
 if 'String(root.activeCommand?.kind ?? "") === "literal-property"' not in transaction:
     fail("type proof promotion must not broaden literal-only Apply")
 
-if "scripts/code-workflow/connect_type.py" not in exclusions.get(
+if "scripts/code-workflow/connect_type.py" in exclusions.get(
         "excludedPaths", []):
-    fail("research-only type helper must stay outside runtime payload")
+    fail("2K-N audited type support must ship behind connect_prepare")
 
 payload = subprocess.run(
     [sys.executable, str(ROOT / "sdata/lib/runtime-payload.py"),
@@ -167,8 +167,8 @@ payload = subprocess.run(
     stderr=subprocess.PIPE,
     check=True,
 ).stdout.splitlines()
-if "scripts/code-workflow/connect_type.py" in set(payload):
-    fail("research-only type helper leaked into runtime payload")
+if "scripts/code-workflow/connect_type.py" not in set(payload):
+    fail("2K-N audited type support missing from runtime payload")
 
 for token in (
     "Milestone 2K-H — qmllint-backed Connect type proof",

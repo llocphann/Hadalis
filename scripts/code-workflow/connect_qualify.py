@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Compose isolated Connect type + cycle proofs without production authorization.
+"""Compose Connect type + cycle proofs without source-write authorization.
 
-2K-K is a research-only qualification coordinator. It composes the already
-qualified 2K-H qmllint type proof with the 2K-J source-backed cross-file cycle
-proof, requires both to describe the exact same reviewed Connect identity and
-Clock source snapshot, then re-reads every source file used by the evidence.
+2K-K introduced this coordinator as research-only. As of 2K-N it ships as an
+audited implementation module used only by the production connect_prepare.py
+coordinator; QML/UI code must not invoke it directly. It composes the qmllint
+type proof with the source-backed cross-file cycle proof, requires both to
+describe the exact same reviewed Connect identity and candidate snapshot, then
+re-reads every source file used by the evidence.
 
-A successful result is still not production permission. TYPE/CYCLE production
-status remain UNKNOWN, Apply stays disabled, artifacts are not staged, and this
-helper is excluded from the runtime payload.
+A successful result is still not source-write permission. TYPE/CYCLE production
+status remain UNKNOWN, Apply stays disabled, and the qualification alone never
+stages artifacts.
 """
 
 from __future__ import annotations

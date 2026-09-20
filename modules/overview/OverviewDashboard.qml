@@ -112,8 +112,9 @@ Item {
         parent: dashboardSurfaceLayer
         z: 8
         canvasController: dashboardContent.canvasController
-        width: Math.min(440,
-            Math.max(280, dashContainer.width - 32))
+        width: Math.min(
+            dashboardEditToolbar.implicitWidth,
+            Math.max(1, dashContainer.width - 32))
         x: Math.round(dashContainer.x
             + (dashContainer.width - width) / 2)
         y: Math.round(dashContainer.y - height + 1)

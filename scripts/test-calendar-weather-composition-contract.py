@@ -119,6 +119,8 @@ def main() -> None:
         "id: timeWeatherPanel",
         "OrbitalWeather {",
         "id: orbitalTimeline",
+        "readonly property real orbitalPadding: 14",
+        "anchors.margins: root.orbitalPadding",
         "id: detailPanel",
         "id: detailSummary",
         "id: primaryMetrics",
@@ -138,6 +140,7 @@ def main() -> None:
     require(dash_calendar, "dashboardAdaptive: true", "DashCalendar.qml")
     for token in ("id: calendarPanel", "function calendarDay(index)", "columns: root.compact ? 1 : 2", "columns: root.compact ? 1 : 3"):
         forbid(weather, token, "WeatherPopupContent.qml")
+    forbid(weather, "anchors.topMargin: -12", "WeatherPopupContent.qml")
 
     for token in ("component VerticalClockModule: Item", "Bar.ClockCalendarPopup {", "hoverTarget: clockHoverArea"):
         require(vertical, token, "VerticalBarContent.qml")

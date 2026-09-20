@@ -22,6 +22,8 @@ def main() -> None:
         "readonly property real compactBreakpoint: 900",
         "readonly property real panelHeight: 270",
         "readonly property real panelWidth: root.compact ? 360 : 430",
+        "readonly property real orbitalPadding: 14",
+        "anchors.margins: root.orbitalPadding",
         "readonly property int tabCount: 2",
         "property int currentTab: 0",
         "function selectTab(index): void",
@@ -102,6 +104,7 @@ def main() -> None:
         "implicitHeight: 300",
         "width: 58",
         "height: 72",
+        "anchors.topMargin: -12",
     ):
         if forbidden in source or forbidden in orbital:
             raise AssertionError(

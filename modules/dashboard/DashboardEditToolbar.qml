@@ -11,7 +11,9 @@ Rectangle {
     readonly property bool editing: root.canvasController?.editMode ?? false
     readonly property var hiddenIds: root.canvasController?.hiddenIds ?? []
 
-    implicitWidth: 440
+    readonly property real horizontalPadding: 7
+    implicitWidth: Math.ceil(editActions.implicitWidth
+        + root.horizontalPadding * 2)
     implicitHeight: toolbarColumn.implicitHeight + 14
     visible: root.editing
     radius: Appearance.rounding.large
@@ -27,7 +29,7 @@ Rectangle {
     ColumnLayout {
         id: toolbarColumn
         anchors.fill: parent
-        anchors.margins: 7
+        anchors.margins: root.horizontalPadding
         spacing: 5
 
         StyledText {

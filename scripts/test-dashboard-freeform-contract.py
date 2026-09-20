@@ -20,6 +20,7 @@ def main() -> None:
     content = read("modules/dashboard/DashboardContent.qml")
     canvas = read("modules/dashboard/DashboardCanvas.qml")
     grid = read("modules/dashboard/DashboardEditGrid.qml")
+    guides = read("modules/dashboard/DashboardAlignmentGuides.qml")
     header = read("modules/dashboard/DashboardHeader.qml")
     toolbar = read("modules/dashboard/DashboardEditToolbar.qml")
     standalone = read("modules/dashboard/Dashboard.qml")
@@ -73,6 +74,12 @@ def main() -> None:
         'function _resolveFeasibleLayout(',
         'function _layoutHasOverlap(',
         'function _persistPreviewLayout(',
+        'function _smartAlignMove(',
+        'function _smartAlignResize(',
+        'property var _smartGuides: []',
+        'property var _smartSnapAxes: ({ x: false, y: false })',
+        'readonly property real smartGuideThreshold:',
+        'DashboardAlignmentGuides {',
         'A restored widget must join the same collision contract as drag/resize.',
         'case "system": return { width: 260, height: 180 }',
         'baselineRects: root._snapshotVisibleRects()',
@@ -118,7 +125,12 @@ def main() -> None:
     move_start = canvas.index('if (state.kind === "move") {')
     move_end = canvas.index('const edge = String(state.edge ?? "")', move_start)
     move_block = canvas[move_start:move_end]
-    require(move_block, "root._setPreview(state.id, {", "DashboardCanvas move block")
+    require(move_block,
+        "root._smartAlignMove(state.id, {",
+        "DashboardCanvas move block")
+    require(move_block,
+        "root._setPreview(state.id, guided)",
+        "DashboardCanvas move block")
     forbid(move_block, "root._resolveFeasibleLayout(", "DashboardCanvas move block")
     forbid(move_block, "root._snap(", "DashboardCanvas move block")
     # Drag/drop may move neighbours but must never resize them; size adaptation
@@ -139,6 +151,9 @@ def main() -> None:
     require(finish_block, "root._persistPreviewLayout()", "DashboardCanvas drop block")
     require(finish_block, "root._snapRectForCommit(", "DashboardCanvas drop block")
     require(finish_block,
+        "root._smartSnapAxes.x, root._smartSnapAxes.y",
+        "DashboardCanvas smart-guide commit block")
+    require(finish_block,
         'const allowResize = state.kind === "resize"',
         "DashboardCanvas drop block")
     require(finish_block,
@@ -154,6 +169,17 @@ def main() -> None:
     ):
         require(grid, token, "DashboardEditGrid.qml")
 
+    for token in (
+        'kind === "vertical"',
+        'kind === "horizontal"',
+        'kind === "diagonal"',
+        'kind === "spacingH"',
+        'kind === "spacingV"',
+        'String(Math.max(0, Math.round(Number(value ?? 0)))) + " px"',
+        "root.arrowHead(ctx",
+    ):
+        require(guides, token, "DashboardAlignmentGuides.qml")
+
     require(header, 'root.editMode ? "done" : "edit"', "DashboardHeader.qml")
     require(header, "onClicked: root.editModeRequested()", "DashboardHeader.qml")
 
@@ -168,6 +194,8 @@ def main() -> None:
         "focusPolicy: Qt.StrongFocus",
         'Config.setNestedValue(\n                    "dashboard.canvas.autoAdjustSize"',
         "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",
+        "implicitWidth: Math.ceil(editActions.implicitWidth",
+        "readonly property real horizontalPadding: 7",
     ):
         require(toolbar, token, "DashboardEditToolbar.qml")
     for source, text in (
@@ -179,9 +207,15 @@ def main() -> None:
         "x: Math.round(dashContainer.x", "OverviewDashboard.qml")
     require(overview,
         "y: Math.round(dashContainer.y - height + 1)", "OverviewDashboard.qml")
+    require(overview,
+        "dashboardEditToolbar.implicitWidth", "OverviewDashboard.qml")
     require(standalone,
         "x: Math.round((parent.width - width) / 2)", "Dashboard.qml")
+    require(standalone,
+        "standaloneEditToolbar.implicitWidth", "Dashboard.qml")
     require(standalone, "y: 0", "Dashboard.qml")
+    forbid(overview, "width: Math.min(440,", "OverviewDashboard.qml")
+    forbid(standalone, "width: Math.min(440,", "Dashboard.qml")
 
     require(canvas, "cursorShape: root.editMode", "DashboardCanvas.qml")
     require(canvas, ": Qt.ArrowCursor", "DashboardCanvas.qml")

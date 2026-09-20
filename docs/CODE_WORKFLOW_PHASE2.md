@@ -506,11 +506,47 @@ Implemented:
   history/regenerate identity, UI diagnostics, runtime payload inclusion and
   preservation of literal-only Apply authorization.
 
+## Milestone 2K-H — qmllint-backed Connect type proof
+
+Implemented research/proof:
+
+- The reviewed Connect descriptor now carries parent type identity
+  `reviewedParentTypeModule=QtQuick` and `reviewedParentTypeName=Item`.
+  This is source-review evidence for selecting the Qt oracle; it does not
+  hand-author the type of the absent `visible` property and grants no write
+  authority.
+- `scripts/code-workflow/connect_type.py` is a research-only helper and is
+  explicitly excluded from the runtime payload. It first runs the qualified
+  2K-F coordinator and requires the same source SHA and production
+  `typeCompatibility=unknown-unresolved`.
+- Source semantic evidence resolves the simple member expression
+  `root.showDate` through the reviewed parent QML id and same semantic scope to
+  the unique non-opaque declaration `property bool showDate`. Calls, deeper
+  member chains, a different base id, ambiguous declarations and properties
+  without an explicit declared type fail closed.
+- The target side is checked through Qt tooling rather than a Hadalis hard-coded
+  `visible: bool` fact. A qmllint >= 6.8 positive oracle imports the reviewed
+  parent module/type and verifies that a `bool` source can bind to
+  `QtQuick.Item.visible` with clean JSON diagnostics.
+- A negative control binds a `rect` source to the same target and must produce
+  qmllint's incompatible-type diagnostic. The proof therefore does not treat
+  mere absence of one diagnostic as sufficient type evidence.
+- A qualified result is reported separately as
+  `typeCompatibilityProof=compatible-qmllint-proof`. **The production Connect
+  still reports TYPE UNKNOWN**: the proof is not wired into
+  `CodeWorkflowTransaction`, the production coordinator does not consume it,
+  cycle safety remains UNKNOWN, and no Connect Apply/artifact path is opened.
+- Every proof result keeps `applyEnabled=false`,
+  `artifactsStaged=false` and `productionIntegrated=false`.
+- Code Workflow acceptance runs the native parser/coordinator path and the
+  qmllint positive oracle plus negative control before re-running the existing
+  Gate 2H literal Apply lifecycle.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
-- QML type-compatibility qualification for Connect;
+- promotion/integration of the 2K-H type proof into production Connect authorization;
 - dependency coverage sufficient to qualify Connect cycle safety;
 - signal/action transforms;
 - Connections creation/removal;
@@ -519,13 +555,15 @@ Implemented:
 
 ## Next gate
 
-2K-G completes the first production-facing Connect preview path without source
-write authority. The next research gate must address semantic safety rather than
-adding more UI: qualify a QML type-compatibility resolver and dependency coverage
-strong enough to distinguish a proven cycle from UNKNOWN.
+2K-H establishes an isolated type-compatibility proof for the first reviewed
+Connect fixture, but deliberately does not promote it into production
+authorization. The next research gate is dependency/cycle coverage strong
+enough to distinguish a proven cycle, a proven acyclic dependency closure and
+UNKNOWN without assuming the reviewed presentation graph is complete.
 
-Until those gates exist, do not open Connect Apply, stage Connect artifacts,
-mark reviewed connect targets editable/previewable as mutation authority, or
-infer compatibility/cycle safety from labels, runtime values or the incomplete
-reviewed graph. Absence of a reviewed dependency path remains UNKNOWN, never
+Until that gate and a separate promotion decision exist, do not open Connect
+Apply, stage Connect artifacts, mark reviewed connect targets
+editable/previewable as mutation authority, or translate
+`compatible-qmllint-proof` into production TYPE SAFE. Production TYPE and CYCLE
+remain UNKNOWN. Absence of a reviewed dependency path remains UNKNOWN, never
 SAFE.

@@ -17,8 +17,10 @@ that semantic binding subset; visual propagation edges are not mutation targets.
 Disconnect now has verified preview-only deletion semantics. Connect uses an
 explicit reviewed-target selection plus coordinator-backed preview history in
 Settings: identity is parent semantic anchor + absent binding name + source
-expression, the two parser requests use a same-SHA primitive handoff, and the UI
-keeps TYPE/CYCLE UNKNOWN visibly blocking write authorization.
+expression, and the two parser requests use a same-SHA primitive handoff. An
+isolated qmllint-backed research proof can establish bool compatibility for the
+first reviewed fixture, but it is not production authorization: the UI and
+transaction path keep TYPE/CYCLE UNKNOWN visibly blocking Connect writes.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

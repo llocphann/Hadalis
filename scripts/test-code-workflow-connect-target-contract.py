@@ -32,6 +32,8 @@ expected = {
     "bindingName": "visible",
     "sourceExpression": "root.showDate",
     "reviewedParentSemanticKind": "object",
+    "reviewedParentTypeModule": "QtQuick",
+    "reviewedParentTypeName": "Item",
     "reviewedValueKind": "member_expression",
     "typeCompatibility": "unknown-unresolved",
     "cycleStatus": "unknown-incomplete-projection",

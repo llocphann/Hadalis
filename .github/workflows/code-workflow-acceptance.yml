@@ -54,6 +54,9 @@ jobs:
       - name: Prove deterministic Connect preview coordinator
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-preview-coordinator.py'
 
+      - name: Prove Connect type compatibility oracle
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-type.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply

@@ -203,6 +203,36 @@ def wait_reload(
     )
 
 
+def recover_after_rollback(
+    probe: Probe,
+    previous_epoch: str,
+    description: str,
+) -> tuple[dict, str]:
+    try:
+        return (
+            wait_reload(
+                probe,
+                previous_epoch,
+                description + " watcher reload",
+            ),
+            "watcher",
+        )
+    except AssertionError:
+        # Live 2K-P evidence shows Quickshell can suppress the second
+        # generation when an atomically replaced QML file returns to the
+        # generation's original baseline bytes. Recovery must therefore have
+        # an explicit shell reload fallback after exact source rollback.
+        probe.ipc("reload")
+        return (
+            wait_reload(
+                probe,
+                previous_epoch,
+                description + " explicit recovery reload",
+            ),
+            "explicit-recovery",
+        )
+
+
 def run_success(
     probe: Probe,
     work_dir: Path,
@@ -276,20 +306,24 @@ def run_success(
             "2K-P success cleanup rollback failed: "
             + json.dumps(rolled_back, sort_keys=True)
         )
-    restored = wait_reload(
+    if clock_path.read_bytes() != source_before:
+        raise AssertionError("Connect rollback did not restore exact Clock bytes")
+    restored, recovery_mode = recover_after_rollback(
         probe,
         rollback_epoch,
-        "Connect rollback watcher-driven reload",
+        "Connect rollback",
     )
 
     probe.record(
-        "2K-P rollback restores exact Clock bytes without touching Config",
+        "2K-P rollback restores exact Clock bytes and runtime generation",
         clock_path.read_bytes() == source_before
         and config_path.read_bytes() == config_before
         and rolled_back.get("dependencyState") == "fresh"
-        and restored["reloadCompletions"] == 1,
+        and restored["reloadCompletions"] == 1
+        and recovery_mode in ("watcher", "explicit-recovery"),
         {
             "rollback": rolled_back,
+            "recoveryMode": recovery_mode,
             "sourceSha256": file_sha(clock_path),
             "configSha256": file_sha(config_path),
         },
@@ -351,10 +385,13 @@ def run_rebind_failure(
         raise AssertionError(
             "failed semantic rebind did not permit exact rollback"
         )
-    restored = wait_reload(
+    if clock_path.read_bytes() != source_before:
+        raise AssertionError(
+            "failed-rebind rollback did not restore exact Clock bytes")
+    restored, recovery_mode = recover_after_rollback(
         probe,
         failed_rebind["epoch"],
-        "failed-rebind rollback reload",
+        "failed-rebind rollback",
     )
 
     probe.record(
@@ -363,11 +400,13 @@ def run_rebind_failure(
             .get("status") != "resolved"
         and clock_path.read_bytes() == source_before
         and config_path.read_bytes() == config_before
-        and restored["reloadCompletions"] == 1,
+        and restored["reloadCompletions"] == 1
+        and recovery_mode in ("watcher", "explicit-recovery"),
         {
             "candidateReload": reloaded["reloadCompletions"],
             "failedRebind": failed_rebind["workflowAnalyzer"],
             "rollback": rolled_back,
+            "recoveryMode": recovery_mode,
         },
     )
 

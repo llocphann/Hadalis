@@ -822,8 +822,11 @@ Implemented live proof:
   watcher-driven reload, independently verifies `candidate-present`, and
   rebinds the prepared inserted semantic anchor with zero parser diagnostics.
 - The same live case then rolls the candidate back through the exact prepared
-  snapshot, observes one watcher-driven reload for rollback, and proves Config
-  bytes were never changed by the Connect lifecycle.
+  snapshot. Live evidence shows Quickshell may suppress a second watcher
+  generation when the file returns to baseline bytes, so the harness requires a
+  bounded watcher attempt followed by explicit `Quickshell.reload(false)`
+  recovery. The restored runtime generation must still load exact base bytes,
+  and Config must remain unchanged.
 - A second live case deliberately requests a non-existent semantic anchor after
   a valid candidate reload. The failed rebind is treated as lifecycle failure
   and the harness proves exact Clock rollback while preserving Config.
@@ -864,9 +867,11 @@ That production-integration gate must bind the exact prepared Connect manifest
 to the active history command, perform one final source + Config freshness check,
 invoke the one-file commit engine, survive the watcher-driven reload through the
 reload bridge, verify candidate identity, rebind the inserted semantic anchor,
-and automatically rollback on reload/verify/rebind/dependency failure. It must
-also make interrupted lifecycle recovery deterministic across shell generation
-changes.
+and automatically rollback on reload/verify/rebind/dependency failure. After a
+rollback source replace it must use watcher reload when available and an explicit
+reload fallback when returning to baseline does not emit a new generation. It
+must also make interrupted lifecycle recovery deterministic across shell
+generation changes.
 
 Until that production lifecycle integration is independently qualified,
 `connect_commit.py` remains non-production, Connect source Apply stays

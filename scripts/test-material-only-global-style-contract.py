@@ -49,6 +49,8 @@ ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButt
 GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
 SELECTION_GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "SelectionGroupButton.qml"
 STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTipContent.qml"
+MATERIAL_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "MaterialTextField.qml"
+MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
 TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
 WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
 ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
@@ -163,6 +165,8 @@ def main() -> None:
     group_button = GROUP_BUTTON.read_text(encoding="utf-8")
     selection_group_button = SELECTION_GROUP_BUTTON.read_text(encoding="utf-8")
     styled_tooltip_content = STYLED_TOOLTIP_CONTENT.read_text(encoding="utf-8")
+    material_text_field = MATERIAL_TEXT_FIELD.read_text(encoding="utf-8")
+    material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
     toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
     widgets_qmldir = WIDGETS_QMLDIR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
@@ -523,6 +527,28 @@ def main() -> None:
             )
     forbid(widgets_qmldir, "AngelAccentBar 1.0 AngelAccentBar.qml", "widgets/qmldir")
     forbid(widgets_qmldir, "AngelBackground 1.0 AngelBackground.qml", "widgets/qmldir")
+
+    # Material text inputs keep Settings-search registration, focus expansion and
+    # context-menu behavior while dropping the unreachable Regalia face.
+    for source, content in (
+        ("MaterialTextField.qml", material_text_field),
+        ("MaterialTextArea.qml", material_text_area),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+        forbid(content, "RegaliaControlFace {", source)
+        for token in (
+            "SettingsSearchRegistry.registerOption",
+            "SettingsSearchRegistry.unregisterControl(root)",
+            "function focusFromSettingsSearch()",
+            "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+            "selectionColor: Appearance.colors.colSecondaryContainer",
+            "placeholderTextColor: Appearance.colors.colOnLayer1",
+            "TextInputContextMenu {",
+        ):
+            require(content, token, source)
+    require(material_text_field, "Material.containerStyle: Material.Outlined", "MaterialTextField.qml")
+    require(material_text_area, "Material.containerStyle: Material.Filled", "MaterialTextArea.qml")
 
     # ToolbarTabBar keeps its animated index bounds, wheel selection and reorder
     # mechanics while the track/indicator use the sole Material chrome.

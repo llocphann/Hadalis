@@ -1118,10 +1118,10 @@ subset.
   old/new expressions, manifest path/SHA, transaction ID and
   `exact-snapshot-auto-rollback-v1`. It contains no Connect
   qualification/TYPE/CYCLE proof vocabulary.
-- Settings invokes only the user-facing
-  `beginAuthorizedBindingApply()` wrapper. Authorization is consumed when the
-  lifecycle starts and ordinary history/source/cross-generation drift expires
-  it.
+- Settings exposes the reviewed action as `Apply Binding replacement` and
+  invokes only the user-facing `beginAuthorizedBindingApply()` wrapper.
+  Authorization is consumed when the lifecycle starts and ordinary
+  history/source/cross-generation drift expires it.
 - Binding replacement owns a separate persisted lifecycle and primitive-only
   reload handoff. It does not reuse Literal Apply or Disconnect write state.
   Phases cover source write, watcher reload, candidate verify, exact semantic

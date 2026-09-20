@@ -126,6 +126,8 @@ for token in (
     '"QML_IMPORT_PATH", "QML2_IMPORT_PATH"',
     'import_args += ["-I", path]',
     '"importPaths": _qmllint_import_paths()',
+    "def _negative_control_source(",
+    "workflowIncompatibleControl: 42",
     '"incompatible-type"',
     '"typeCompatibilityProof": TYPE_PROOF',
     '"typeCompatibility": TYPE_UNKNOWN',

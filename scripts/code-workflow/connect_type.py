@@ -10,9 +10,11 @@ forms of type evidence:
 2. a Qt qmllint oracle fixture using the reviewed parent QML module/type and
    target property.
 
-The positive oracle must accept the resolved source type, while a negative
-control must produce qmllint's incompatible-type diagnostic. Even a successful
-proof does not change production Connect authorization: TYPE remains UNKNOWN,
+The positive oracle must accept the resolved source type. A separate negative
+control in the same Qt module/type fixture must prove that qmllint's
+incompatible-type diagnostics are actually active; it does not assume every QML
+target type rejects JavaScript coercion. Even a successful proof does not change
+production Connect authorization: TYPE remains UNKNOWN,
 CYCLE remains UNKNOWN, and Apply/artifact staging stay disabled.
 """
 
@@ -360,6 +362,23 @@ def _type_probe_source(
     )
 
 
+def _negative_control_source(
+    module: str,
+    parent_type: str,
+    binding_name: str,
+    source_type: str,
+    initializer: str,
+) -> str:
+    return (
+        f"import {module}\n\n"
+        f"{parent_type} {{\n"
+        f"    property {source_type} workflowSource: {initializer}\n"
+        f"    {binding_name}: workflowSource\n"
+        f"    property {parent_type} workflowIncompatibleControl: 42\n"
+        f"}}\n"
+    )
+
+
 def prove_connect_type_compatibility(
     root: Path,
     target_id: str,
@@ -593,12 +612,12 @@ def prove_connect_type_compatibility(
             positiveMarkers=positive_markers,
         )
 
-    negative_source = _type_probe_source(
+    negative_source = _negative_control_source(
         parent_module,
         parent_type,
         descriptor["bindingName"],
-        "rect",
-        "Qt.rect(0, 0, 1, 1)",
+        declared_type,
+        initializer,
     )
     negative = _run_qmllint_json(tool, negative_source)
     if negative.get("status") != "ok":

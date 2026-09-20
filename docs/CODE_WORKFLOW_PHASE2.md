@@ -528,9 +528,12 @@ Implemented research/proof:
   `visible: bool` fact. A qmllint >= 6.8 positive oracle imports the reviewed
   parent module/type and verifies that a `bool` source can bind to
   `QtQuick.Item.visible` with clean JSON diagnostics.
-- A negative control binds a `rect` source to the same target and must produce
-  qmllint's incompatible-type diagnostic. The proof therefore does not treat
-  mere absence of one diagnostic as sufficient type evidence.
+- A negative control stays in the same reviewed Qt module/type fixture, keeps
+  the positive `bool -> visible` binding, and deliberately assigns a numeric
+  literal to an object-typed control property. That control must produce
+  qmllint's incompatible-type diagnostic. This proves the oracle diagnostic
+  pipeline is active without falsely assuming that every QML bool binding rejects
+  JavaScript/value-type coercion.
 - A qualified result is reported separately as
   `typeCompatibilityProof=compatible-qmllint-proof`. The production Connect still reports TYPE UNKNOWN: the proof is not wired into
   `CodeWorkflowTransaction`, the production coordinator does not consume it,

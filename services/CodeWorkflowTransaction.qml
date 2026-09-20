@@ -579,6 +579,18 @@ Singleton {
             parsed = []
         }
 
+        const applyPhase = String(
+            reloadState.pendingApplyPhase ?? "idle")
+        const activeApplyPhases = [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "rebinding",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ]
         const connectPhase = String(
             reloadState.pendingConnectPhase ?? "idle")
         const activeConnectPhases = [
@@ -721,6 +733,46 @@ Singleton {
             Math.min(
                 Number(reloadState.historyIndex ?? -1),
                 parsed.length - 1))
+
+        // A source watcher can trigger shell reload before its FileView
+        // callback has time to persist sibling staleness. Re-derive the same
+        // owner-preserving invalidation from the primitive lifecycle handoff
+        // before recovery so cross-generation state cannot resurrect a
+        // prepared competing write.
+        let restoredOwnerKind = ""
+        let restoredOwnerPath = ""
+        let restoredOwnerIndex = -1
+        if (activeApplyPhases.includes(applyPhase)) {
+            restoredOwnerKind = "literal"
+            restoredOwnerPath =
+                String(reloadState.pendingApplySourcePath ?? "")
+            restoredOwnerIndex =
+                Number(reloadState.pendingApplyHistoryIndex ?? -1)
+        } else if (activeConnectPhases.includes(connectPhase)) {
+            restoredOwnerKind = "connect"
+            restoredOwnerPath =
+                String(reloadState.pendingConnectSourcePath ?? "")
+            restoredOwnerIndex =
+                Number(reloadState.pendingConnectHistoryIndex ?? -1)
+        } else if (activeBindingPhases.includes(bindingPhase)) {
+            restoredOwnerKind = "binding"
+            restoredOwnerPath =
+                String(reloadState.pendingBindingSourcePath ?? "")
+            restoredOwnerIndex =
+                Number(reloadState.pendingBindingHistoryIndex ?? -1)
+        } else if (activeDisconnectPhases.includes(disconnectPhase)) {
+            restoredOwnerKind = "disconnect"
+            restoredOwnerPath =
+                String(reloadState.pendingDisconnectSourcePath ?? "")
+            restoredOwnerIndex =
+                Number(reloadState.pendingDisconnectHistoryIndex ?? -1)
+        }
+        if (restoredOwnerPath.length > 0)
+            root._invalidateCompetingHandoffsForOwnedSource(
+                restoredOwnerPath,
+                restoredOwnerKind,
+                restoredOwnerIndex)
+
         root._restoringReloadState = false
         root._reloadStateReady = true
         root._showCommand(root.activeCommand)

@@ -100,6 +100,25 @@ for owner_marker, next_marker, label in (
     if call not in block or block.find(call) > block.find("return"):
         fail(label + " owner invalidation must run before watcher return")
 
+restore = region(
+    "function _restoreReloadState(): void",
+    "function restoreReloadStateJson(",
+)
+for token in (
+    "const activeApplyPhases = [",
+    'restoredOwnerKind = "literal"',
+    "reloadState.pendingApplyHistoryIndex",
+    'restoredOwnerKind = "connect"',
+    "reloadState.pendingConnectHistoryIndex",
+    'restoredOwnerKind = "binding"',
+    "reloadState.pendingBindingHistoryIndex",
+    'restoredOwnerKind = "disconnect"',
+    "reloadState.pendingDisconnectHistoryIndex",
+    "root._invalidateCompetingHandoffsForOwnedSource(",
+):
+    if token not in restore:
+        fail("cross-generation owner invalidation missing " + token)
+
 for token in (
     "Milestone 2K-V-A — cross-pipeline mutation serialization hardening",
     "stageConnectLifecycleHandoff",

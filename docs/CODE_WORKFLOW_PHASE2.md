@@ -1182,7 +1182,8 @@ reviewed direct-binding replacement each own an independent lifecycle:
 ## Milestone 2K-V-B — live cross-pipeline mutation contention
 
 Added live headless acceptance for the production serialization contract across
-all four mutation pipelines without changing the production transaction service:
+all four mutation pipelines and closed the cross-generation persistence race it
+exposed:
 
 - The isolated runtime prepares four independent commands in one history:
   reviewed Disconnect, reviewed Binding replacement, reviewed Connect and the
@@ -1200,6 +1201,11 @@ all four mutation pipelines without changing the production transaction service:
   watcher invalidation must stale the same-source Connect and Disconnect sibling
   handoffs, including Connect safety/preparation/authorization and Disconnect
   preparation/authorization.
+- Because Quickshell may begin reload before the old generation's FileView
+  callback persists those sibling mutations, reload restoration now re-derives
+  owner-preserving invalidation from the primitive active lifecycle handoff.
+  A competing prepared command therefore cannot be resurrected by an older
+  cross-generation history snapshot.
 - The Binding postcondition is intentionally redirected to the surviving bullet
   binding so the production lifecycle must restore the exact snapshot. A final
   `base-present` verify bound to the exact prepared manifest SHA proves the

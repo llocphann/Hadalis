@@ -176,9 +176,8 @@ DockButton {
         menu: root.appTrayItem?.menu ?? null
     }
 
-    readonly property real dockHeight: Config.options?.dock?.height ?? 60
     readonly property real separatorSize:
-        Math.max(8, dockHeight - root.controlSize)
+        Math.max(8, root.dockThickness - root.controlSize)
 
     implicitWidth: isSeparator
         ? (vertical ? separatorSize : 8)

@@ -10,11 +10,15 @@ RippleButton {
     Layout.fillHeight: !vertical
     Layout.fillWidth: vertical
 
-    // Keep the default 50px Panel control, but shrink when a thin Dock cannot
-    // contain it and grow only when a larger requested icon needs the room.
-    // This makes the full Settings range (height 40..100, icon 20..60) safe.
-    readonly property real dockThickness:
-        Math.max(40, Number(Config.options?.dock?.height ?? 60))
+    // Shell-layout resize previews are authoritative while a gesture is active;
+    // normal runtime falls back to the persisted Dock height. Keeping this input
+    // on the shared button makes icons, separators and the Overview button resize
+    // in the same frame as the iRiS body instead of snapping after commit.
+    property real dockThicknessOverride: -1
+    readonly property real dockThickness: Math.max(40, Number(
+        root.dockThicknessOverride > 0
+            ? root.dockThicknessOverride
+            : (Config.options?.dock?.height ?? 60)))
     readonly property real requestedIconSize:
         Math.max(20, Number(Config.options?.dock?.iconSize ?? 35))
     readonly property real controlSize: Math.max(30, Math.min(

@@ -379,6 +379,7 @@ Scope {
                                     id: dockApps
                                     enabled: !root.isVertical
                                     buttonPadding: dockRow.padding
+                                    dockThickness: dockRoot.dockHeight
                                     vertical: false
                                     dockPosition: root.position
                                     parentWindow: dockRoot
@@ -386,6 +387,7 @@ Scope {
                                 DockButton {
                                     vertical: false
                                     dockPosition: root.position
+                                    dockThicknessOverride: dockRoot.dockHeight
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
                                     contentItem: MaterialSymbol {
@@ -416,6 +418,7 @@ Scope {
                                     id: dockAppsVertical
                                     enabled: root.isVertical
                                     buttonPadding: dockColumn.padding
+                                    dockThickness: dockRoot.dockHeight
                                     vertical: true
                                     dockPosition: root.position
                                     parentWindow: dockRoot
@@ -423,6 +426,7 @@ Scope {
                                 DockButton {
                                     vertical: true
                                     dockPosition: root.position
+                                    dockThicknessOverride: dockRoot.dockHeight
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
                                     contentItem: MaterialSymbol {

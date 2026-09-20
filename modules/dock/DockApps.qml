@@ -21,6 +21,7 @@ Item {
     property real maxWindowPreviewWidth: 300
     property real windowControlsHeight: 30
     property real buttonPadding: 5
+    property real dockThickness: Config.options?.dock?.height ?? 60
     property bool vertical: false
     property string dockPosition: "bottom"
     property var parentWindow: null
@@ -581,6 +582,7 @@ Item {
             appListRoot: root
             vertical: root.vertical
             dockPosition: root.dockPosition
+            dockThicknessOverride: root.dockThickness
 
             anchors.verticalCenter: !root.vertical ? parent?.verticalCenter : undefined
             anchors.horizontalCenter: root.vertical ? parent?.horizontalCenter : undefined

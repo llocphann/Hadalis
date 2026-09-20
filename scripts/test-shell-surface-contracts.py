@@ -933,7 +933,9 @@ def main() -> None:
               and retired_token not in dock_apps,
               f"Panel-only Dock runtime must not retain dormant renderer token: {retired_token}")
     for token in (
+        "property real dockThicknessOverride: -1",
         "readonly property real dockThickness:",
+        "root.dockThicknessOverride > 0",
         "readonly property real requestedIconSize:",
         "readonly property real controlSize:",
         "dockThickness - 10",
@@ -944,11 +946,19 @@ def main() -> None:
         check(token in dock_button,
               f"Panel Dock control sizing contract missing: {token}")
     check("root.controlSize - 10" in dock_app_button
-          and "Math.max(8, dockHeight - root.controlSize)" in dock_app_button
+          and "Math.max(8, root.dockThickness - root.controlSize)" in dock_app_button
           and "Config.options?.dock?.height ?? 70" not in dock
           and "Config.options?.dock?.height ?? 70" not in dock_app_button
           and "Config.options?.dock?.hoverRegionHeight ?? 5" not in dock,
           "Dock runtime must honor the full Settings size/reveal range without stale fallbacks or overflow")
+    check(dock.count("dockThickness: dockRoot.dockHeight") == 2
+          and dock.count("dockThicknessOverride: dockRoot.dockHeight") == 2
+          and "dockThicknessOverride: root.dockThickness" in dock_apps,
+          "Dock edit-resize preview must resize all Panel controls/separators with the iRiS body")
+    check("Config.options?.appearance?.screenEdge?.width ?? 10" in shell_layout
+          and "(Config.options?.dock?.height ?? 60)" in shell_layout
+          and "Appearance.sizes.elevationMargin\n                    + Appearance.sizes.hyprlandGapsOut" not in shell_layout,
+          "Dock desktop-zone inset must match Dock height plus physical Screen Edge width")
 
     check("readonly property real activeScale: 1.05" in dock_app_button
           and "property bool dragEmphasis: false" in dock_app_button

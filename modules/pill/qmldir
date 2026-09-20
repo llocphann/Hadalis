@@ -1,3 +1,2 @@
 module qs.modules.pill
 IslandPanel 1.0 IslandPanel.qml
-singleton PillTheme 1.0 PillTheme.qml

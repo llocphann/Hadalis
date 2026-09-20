@@ -34,15 +34,15 @@ mkdir -p "$retired_module_dir" "$live_pill_dir" "$runtime/scripts"
 # Build the expected installed manifest from the same canonical payload policy
 # used by setup, then add files representing an older mixed runtime tree. Use a
 # deliberately nonexistent module name for the retired fixture: modules/pill is
-# a live theme-only module and must survive cleanup when its canonical files are
-# present in the installed tree.
+# a live compatibility-alias module and must survive cleanup when its canonical
+# files are present in the installed tree.
 generate_manifest "$repo_root" "$manifest" \
     || fail 'could not generate runtime manifest fixture'
 printf '%s\n' 'import QtQuick' > "$runtime/RetiredRoot.qml"
 printf '%s\n' 'import QtQuick' > "$retired_module_dir/Stale.qml"
 printf '%s\n' '# retired source-only contract' > "$runtime/scripts/test-packaging-contract.sh"
 printf '%s\n' '# private excluded artifact' > "$runtime/scripts/test-local-private.sh"
-cp "$repo_root/modules/pill/PillTheme.qml" "$live_pill_dir/PillTheme.qml"
+cp "$repo_root/modules/pill/IslandPanel.qml" "$live_pill_dir/IslandPanel.qml"
 cp "$repo_root/modules/pill/qmldir" "$live_pill_dir/qmldir"
 
 cleanup_orphans "$runtime" "$manifest" \
@@ -61,8 +61,8 @@ done
     || fail 'runtime orphan cleanup deleted an excluded private/test artifact'
 [[ ! -d "$retired_module_dir" ]] \
     || fail 'runtime orphan cleanup left the retired empty module directory'
-cmp -s "$repo_root/modules/pill/PillTheme.qml" "$live_pill_dir/PillTheme.qml" \
-    || fail 'runtime orphan cleanup changed or removed the live PillTheme module'
+cmp -s "$repo_root/modules/pill/IslandPanel.qml" "$live_pill_dir/IslandPanel.qml" \
+    || fail 'runtime orphan cleanup changed or removed the live IslandPanel compatibility alias'
 cmp -s "$repo_root/modules/pill/qmldir" "$live_pill_dir/qmldir" \
     || fail 'runtime orphan cleanup changed or removed the live pill qmldir'
 

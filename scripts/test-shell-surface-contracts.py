@@ -900,6 +900,7 @@ def main() -> None:
     dock_app_button = read("modules/dock/DockAppButton.qml")
     dock_apps = read("modules/dock/DockApps.qml")
     dock_qmldir = read("modules/dock/qmldir")
+    pill_qmldir = read("modules/pill/qmldir")
     for retired_component in (
         "DockMacBackground.qml",
         "DockMacItem.qml",
@@ -910,6 +911,10 @@ def main() -> None:
               f"Retired Dock renderer must stay deleted: {retired_component}")
         check(retired_component not in dock_qmldir,
               f"Retired Dock renderer must stay out of qmldir: {retired_component}")
+    check(not (ROOT / "modules/pill/PillTheme.qml").exists()
+          and "PillTheme" not in pill_qmldir,
+          "Retired Dock-only PillTheme compatibility tokens must stay deleted")
+
     for retired_token in ("pillStyle", "macosStyle", "DockPillItem", "DockMacItem",
                           "macHoveredIndex", "previewAnchorItem"):
         check(retired_token not in dock_app_button
@@ -946,6 +951,7 @@ def main() -> None:
         "ZzzPlate",
         "RegaliaPlate",
         "RegaliaControlFace",
+        "zzzOvershoot",
     ):
         check(all(retired_dock_style_token not in source
                   for source in dock_runtime_sources),

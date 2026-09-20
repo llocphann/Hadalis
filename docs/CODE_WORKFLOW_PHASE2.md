@@ -544,12 +544,51 @@ Implemented research/proof:
   qmllint positive oracle plus negative control before re-running the existing
   Gate 2H literal Apply lifecycle.
 
+
+## Milestone 2K-I — parser-closed Connect cycle proof
+
+Implemented research/proof:
+
+- `scripts/code-workflow/connect_cycle.py` is research-only and excluded from
+  the runtime payload. It starts from the reviewed 2K-F Connect coordinator so
+  source path, source SHA and parent semantic anchor are fresh before dependency
+  analysis; production `cycleStatus` must still be
+  `unknown-incomplete-projection`.
+- The first closed dependency subset accepts only an explicit reviewed parent-id
+  member reference such as `root.a`. Every traversed dependency must resolve to
+  exactly one same-scope, non-opaque semantic `property` or `binding`.
+- A dependency may terminate only in a parser-classified direct literal, or
+  continue through another explicit `root.member` expression. Unqualified
+  identifiers, external bases, calls, optional/dynamic chains, binary/conditional
+  expressions, missing members and ambiguous members remain UNKNOWN.
+- If the closed dependency chain reaches the absent Connect target property, the
+  helper reports `cycle-proven-local-closure`. An already-cyclic source
+  dependency chain is also reported unsafe rather than being hidden by the
+  proposed Connect operation.
+- If every dependency is covered by the local subset and the chain terminates in
+  direct literals without reaching the target, the helper reports
+  `acyclic-closed-local-closure`. This is a proof about that closed parser
+  subset only; it is not inferred from absence of an edge in the reviewed
+  presentation graph.
+- Any incomplete dependency path reports
+  `unknown-incomplete-local-closure`. UNKNOWN is a first-class result, not a
+  failed attempt that may be promoted to SAFE.
+- Native acceptance includes one closed acyclic chain and one target-reaching
+  cycle. The real reviewed Clock candidate `visible <- root.showDate` remains
+  UNKNOWN in this first subset because `showDate` is initialized through the
+  compound/external `Config.options?.bar?.verbose ?? true` expression.
+- The helper returns separate research evidence only. The production CYCLE remains UNKNOWN,
+  TYPE remains UNKNOWN, `applyEnabled=false`, `artifactsStaged=false` and
+  `productionIntegrated=false`; no transaction/UI authorization consumes the
+  research result.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - promotion/integration of the 2K-H type proof into production Connect authorization;
-- dependency coverage sufficient to qualify Connect cycle safety;
+- dependency coverage beyond the 2K-I same-object closed-chain subset, including the real Clock source dependency;
+- promotion/integration of any cycle proof into production Connect authorization;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -557,15 +596,17 @@ Implemented research/proof:
 
 ## Next gate
 
-2K-H establishes an isolated type-compatibility proof for the first reviewed
-Connect fixture, but deliberately does not promote it into production
-authorization. The next research gate is dependency/cycle coverage strong
-enough to distinguish a proven cycle, a proven acyclic dependency closure and
-UNKNOWN without assuming the reviewed presentation graph is complete.
+2K-I proves that cycle analysis can distinguish CYCLE, ACYCLIC and UNKNOWN when
+the parser can close the complete local dependency chain. It deliberately does
+not claim the first real Clock fixture is acyclic: `root.showDate` leaves the
+closed subset through a compound Config dependency.
 
-Until that gate and a separate promotion decision exist, do not open Connect
-Apply, stage Connect artifacts, mark reviewed connect targets
-editable/previewable as mutation authority, or translate
-`compatible-qmllint-proof` into production TYPE SAFE. Production TYPE and CYCLE
-remain UNKNOWN. Absence of a reviewed dependency path remains UNKNOWN, never
-SAFE.
+The next research gate must extend source-backed dependency resolution without
+falling back to presentation edges or runtime-value guesses. Promotion remains a
+separate decision even after a real candidate has both a qualified type proof
+and a closed cycle proof.
+
+Until then, do not open Connect Apply, stage Connect artifacts, mark reviewed
+connect targets editable/previewable as mutation authority, or translate either
+`compatible-qmllint-proof` or `acyclic-closed-local-closure` into production
+SAFE status. Production TYPE and CYCLE remain UNKNOWN.

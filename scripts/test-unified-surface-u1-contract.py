@@ -51,6 +51,9 @@ for module_name in ("battery", "clock", "weather", "media", "resources"):
 
 for required in (
     "sdRoundedRect",
+    "sdRoundedRect4",
+    "cornerFillFactor",
+    "popupCornerRadii",
     "circularSmin",
     "circularSmaxSharpA",
     "frameSink",
@@ -73,6 +76,11 @@ assert "Math.ceil(value * dpr) / dpr" in qml
 assert "FrameAnimation" in qml
 assert "HADALIS_U1_BENCHMARK" in qml
 assert "HADALIS_U1_SOURCE_T" in qml
+assert "HADALIS_U1_ATTACHMENT_DEPTH" not in qml
+assert "attachmentDepth" not in qml
+assert "const restingY = innerTop" in qml
+assert "const restingX = innerLeft" in qml
+assert "const restingX = innerRight - pw" in qml
 assert "HADALIS_U1_GEOMETRY" in qml
 assert "HADALIS_U1_TRACE_GEOMETRY" in qml
 assert "reveal: reveal" in qml

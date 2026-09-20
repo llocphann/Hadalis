@@ -50,12 +50,10 @@ PanelWindow {
         envReal("HADALIS_U1_OWNER_THICKNESS", horizontal ? 40 : 46)
     )
     readonly property real frameRadius: Math.max(0, envReal("HADALIS_U1_FRAME_RADIUS", 25))
-    readonly property real popupRadius: Math.max(0, envReal("HADALIS_U1_POPUP_RADIUS", 20))
-    readonly property real smoothK: Math.max(1, envReal("HADALIS_U1_SMOOTH_K", 14))
+    readonly property real popupRadius: Math.max(0, envReal("HADALIS_U1_POPUP_RADIUS", 28))
+    readonly property real smoothK: Math.max(1, envReal("HADALIS_U1_SMOOTH_K", 20))
     readonly property real popupWidth: Math.max(40, envReal("HADALIS_U1_POPUP_WIDTH", horizontal ? 320 : 260))
     readonly property real popupHeight: Math.max(40, envReal("HADALIS_U1_POPUP_HEIGHT", horizontal ? 220 : 340))
-    readonly property real attachmentDepth:
-        clamp(envReal("HADALIS_U1_ATTACHMENT_DEPTH", 18), 1, ownerThickness)
     readonly property color materialColor: Quickshell.env("HADALIS_U1_COLOR") || "#e6e0e9"
     readonly property bool animateSource: envBool("HADALIS_U1_ANIMATE", true)
     readonly property bool cycleReveal: envBool("HADALIS_U1_REVEAL_CYCLE", false)
@@ -121,26 +119,29 @@ PanelWindow {
 
         if (edge === "top") {
             const x = clamp(tangentCenter - pw / 2, 0, Math.max(0, width - pw))
-            const restingY = innerTop - attachmentDepth
-            const hiddenY = -ph + ownerThickness * 0.5
+            // At rest the popup begins exactly at the inner owner seam. Reveal
+            // translates the full rect underneath the owner; no permanent
+            // penetration/contact offset is part of semantic geometry.
+            const restingY = innerTop
+            const hiddenY = innerTop - ph
             return Qt.rect(x, mix(hiddenY, restingY, reveal), pw, ph)
         }
         if (edge === "bottom") {
             const x = clamp(tangentCenter - pw / 2, 0, Math.max(0, width - pw))
-            const restingY = innerBottom + attachmentDepth - ph
-            const hiddenY = height - ownerThickness * 0.5
+            const restingY = innerBottom - ph
+            const hiddenY = innerBottom
             return Qt.rect(x, mix(hiddenY, restingY, reveal), pw, ph)
         }
         if (edge === "left") {
             const y = clamp(tangentCenter - ph / 2, 0, Math.max(0, height - ph))
-            const restingX = innerLeft - attachmentDepth
-            const hiddenX = -pw + ownerThickness * 0.5
+            const restingX = innerLeft
+            const hiddenX = innerLeft - pw
             return Qt.rect(mix(hiddenX, restingX, reveal), y, pw, ph)
         }
 
         const y = clamp(tangentCenter - ph / 2, 0, Math.max(0, height - ph))
-        const restingX = innerRight + attachmentDepth - pw
-        const hiddenX = width - ownerThickness * 0.5
+        const restingX = innerRight - pw
+        const hiddenX = innerRight
         return Qt.rect(mix(hiddenX, restingX, reveal), y, pw, ph)
     }
 

@@ -19,7 +19,10 @@ The shader knows only:
 - material color.
 
 It does not know which module produced the rectangle or which contact corner to
-draw.
+draw. The popup rests exactly on the inverted frame's inner boundary; there is
+no permanent attachment-depth/contact offset. Effective per-corner popup radii
+are derived continuously from each corner's signed distance to the inner frame,
+matching Caelestia's inverted-frame `cornerFill` semantics.
 
 ## Build
 
@@ -68,7 +71,6 @@ HADALIS_U1_POPUP_RADIUS
 HADALIS_U1_SMOOTH_K
 HADALIS_U1_POPUP_WIDTH
 HADALIS_U1_POPUP_HEIGHT
-HADALIS_U1_ATTACHMENT_DEPTH
 HADALIS_U1_COLOR
 ```
 
@@ -219,3 +221,21 @@ instance to fullscreen that window by IPC. It requires:
 These probes are isolated to U1 and never modify the production shell or host
 Niri configuration. Use `--skip-lifecycle` only for focused topology
 iteration; it is not a complete U1 acceptance run.
+
+
+## Junction morphology correction
+
+The original U1 draft permanently nested the popup into the owner band through
+`HADALIS_U1_ATTACHMENT_DEPTH` and used one radius for all four popup corners.
+That was not an accurate minimum model of Caelestia.
+
+The corrected model deliberately removes that depth. At rest, the popup edge is
+flush with the inverted frame's inner boundary. Reveal translates the complete
+rectangle underneath the owner.
+
+The shader now evaluates every popup corner against the same `frameInner` box.
+A corner near that boundary continuously reduces toward a 2px minimum radius;
+a corner deep inside the workspace keeps the full popup radius. Therefore the
+Bar-facing corners and any additional Screen-Edge-facing corners follow live
+geometry without `joinTop`, `joinLeft`, module identity or a separately
+positioned corner object.

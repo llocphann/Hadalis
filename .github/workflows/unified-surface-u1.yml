@@ -59,6 +59,7 @@ jobs:
           retention-days: 7
 
       - name: Upload freshly baked U1 QSB
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: hadalis-u1-qsb

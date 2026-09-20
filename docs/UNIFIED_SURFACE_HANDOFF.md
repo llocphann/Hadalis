@@ -317,3 +317,61 @@ inside U1 only. Do not patch production geometry.
 
 If it passes, the next phase is U2: renderer-neutral dynamic shape registry plus
 a real module-anchor feed, still before any broad production migration.
+
+
+---
+
+## Latest continuation update — corrected U1 morphology and production projection blocker
+
+Current research sequence after the initial U1 implementation:
+
+- `4b32d9b2396122e9af4e0a7752b245e930509e2c` —
+  corrected junction field/corner-fill model;
+- `6aea14f2b47a0bbf7f7b8528ff198fca175665ce` —
+  enlarged diagnostic morphology (`popupRadius=32`, `smoothK=28`);
+- `d23df5f4c30d828a9814b3c9fa7a4b9ee60be46c` —
+  clamped synthetic popup to `frameInner` like production;
+- `ab5c70206f9ce8af5bc23791ed11c499ca90709f` —
+  matched the 50px padded inverted-frame construction;
+- `88a5bf0d580477602b99d6a06b6971e2951e1eb3` +
+  `a665f1379923978cc3f56cca240da09a7dde789a` —
+  matched Caelestia border-facing SDF compression and canonical QSB;
+- `40d24a6eb5ff36984f2dd41133baae10c5b15f37` —
+  added explicit shoulder-position/taper acceptance.
+
+The dedicated U1 workflow for `40d24a6...` passed QSB semantics, the static
+architecture contract and headless Top/Overlay control lifecycle.
+
+### Do not restore attachmentDepth
+
+Current Caelestia really does extend an attached popout BlobRect beneath its Bar
+with `extraWidth=0.2`, primarily to survive deformation/movement. A direct
+scalar comparison showed that 0/18/44/60px of under-owner overlap produces the
+same visible workspace shoulder once the popup is fully open.
+
+Therefore the overlap is not a reason to resurrect Hadalis
+`attachmentDepth`, `contactInset` or a shifted contact plane. U1 remains
+flush to the physical `frameInner` seam.
+
+### New production blocker: Overlay must not paint over Bar foreground
+
+A complete SDF rendered in `StyledPopup`'s Overlay window would cover the real
+Top-layer Bar modules if it also outputs owner-band pixels.
+
+The next isolated research step is a **workspace projection** PoC:
+
+- mathematically evaluate the complete owner-frame + popup union;
+- in Overlay mode, output only pixels inside the base rounded
+  `frameInner`/workspace domain;
+- keep a test-only high-contrast Top owner probe visible underneath;
+- require the same enlarged shoulder-position/taper gate to pass;
+- compare workspace projection against the full-field reference inside the
+  workspace.
+
+Do not put the material shader inside `ConnectedSurfaceRevealClip`. The
+material field must evaluate the owner representation; only popup **content**
+should retain the fixed reveal clip.
+
+Production `StyledPopup`, `ConnectedSurfaceFrame`, Bar and ScreenEdges are
+still untouched by U1. Do not create the production cutover commit until both
+the live GPU matrix and the owner-projection gate are accepted.

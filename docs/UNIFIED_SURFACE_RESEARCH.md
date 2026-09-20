@@ -1817,3 +1817,95 @@ Next acceptance remains live nested-Niri GPU validation. If the enlarged
 diagnostic morphology still places the shoulder on the wrong side of the popup,
 do not add offsets or resurrect `ConnectedSurfaceJoinFlares`; revert the U1
 morphology experiment and continue field-model research.
+
+
+### 27.5 Caelestia popout overlap does not justify attachmentDepth
+
+The real Caelestia popout placement was traced from
+`modules/drawers/ContentWindow.qml` and `modules/bar/popouts/ClipWrapper.qml`.
+
+For the normal attached left-Bar popout, Caelestia's BlobRect is intentionally
+wider than the visible popout:
+
+```qml
+property real extraWidth: panels.popouts.isDetached ? 0 : 0.2
+x: ... + bar.implicitWidth - panels.popouts.width * extraWidth
+implicitWidth: panels.popouts.width * (1 + extraWidth)
+```
+
+So the visual BlobRect extends under the owner Bar. The code comment states why:
+the extra width prevents movement/deformation from partially detaching the panel
+from the Bar.
+
+That overlap is **not evidence that Hadalis U1 should restore the rejected
+`attachmentDepth`**.
+
+A scalar comparison using the exact current U1 field at the enlarged
+`smoothK=28` tested owner overlap depths of 0, 18, 44 and 60 logical pixels.
+Once the popup reaches the visible owner seam, all four produced the same
+workspace-side shoulder profile:
+
+- about 20.5px outward exposure 1px inside the seam;
+- about 9px at 7px depth;
+- about 3.5px at 14px depth;
+- approximately 0px by 24px depth.
+
+The under-owner extension matters for deformation/reveal retention, but not for
+the static visible shoulder in the minimal non-deformed U1 model. Therefore:
+
+- keep U1's semantic resting edge flush with `frameInner`;
+- do not reintroduce a magic penetration/contact offset;
+- if later production deformation needs hidden backing extent, model that as a
+  generic **visual field extent**, separate from content/input geometry and
+  separate from the owner seam.
+
+### 27.6 Production Overlay projection requirement
+
+A production-specific issue is now explicit.
+
+`StyledPopup` is a full-output **Overlay** layer-shell window. The real
+Screen Edge frame is **Top**, and Bar foreground/modules are also owned below the
+popup Overlay domain. If the eventual Overlay SDF renderer outputs the complete
+unified field, its opaque owner-band pixels would cover Bar icons/modules.
+
+The correct hybrid-domain rule is therefore:
+
+```text
+evaluate:
+  complete unified field
+  = virtual owner frame + animated popup rect
+
+Top domain:
+  real Screen Edge / Bar material + Bar foreground remain authoritative
+
+Overlay popup domain:
+  output only the unified field's workspace-side projection
+  (inside the base frameInner/workspace hole)
+  + popup content/input
+```
+
+This is **not** a flare/contact patch. The renderer still evaluates one generic
+frame/popup field with no module identity and no join flags. The projection only
+decides which pixels this composition domain is allowed to own.
+
+The workspace projection must use the base rounded `frameInner` SDF, before any
+dynamic border-sink modification. That preserves the physical owner boundary
+while allowing the popup/shoulder field to extend naturally into the workspace.
+
+This also explains why putting the SDF directly inside the existing
+`ConnectedSurfaceRevealClip` is wrong: that clip removes the owner-side field
+before composition and cannot represent the full mathematical union. Content may
+remain reveal-clipped, while the material field must evaluate outside that clip
+and then apply its renderer-domain projection.
+
+Before production cutover, add an isolated U1 owner-probe test:
+
+1. persistent Top probe paints high-contrast owner foreground;
+2. Overlay U1 evaluates the full field but uses workspace projection;
+3. the Top owner probe must remain visible;
+4. the workspace-side shoulder morphology gate must still pass;
+5. workspace-projected pixels must match the full-field reference inside the
+   workspace domain.
+
+Do not modify `StyledPopup` until this projection gate and the existing
+live-GPU matrix pass.

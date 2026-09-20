@@ -131,13 +131,6 @@ Item {
         id: dialog
         anchors.centerIn: parent
         backgroundWidth: 360
-        zzzLabel: "CLOSE"
-        zzzIndex: "APP"
-        zzzGhostText: "CLOSE"
-        zzzAccentColor: Appearance.zzz.tertiary
-        zzzShowBurst: false
-        zzzShowTicks: false
-        zzzDecorationsEnabled: false
         show: false
         Component.onCompleted: show = true
 

@@ -41,6 +41,7 @@ DIALOG_BUTTON = ROOT / "modules" / "common" / "widgets" / "DialogButton.qml"
 STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
 INPUT_CHIP = ROOT / "modules" / "common" / "widgets" / "InputChip.qml"
 FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
+WINDOW_DIALOG = ROOT / "modules" / "common" / "widgets" / "WindowDialog.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -143,6 +144,7 @@ def main() -> None:
     styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
     input_chip = INPUT_CHIP.read_text(encoding="utf-8")
     filter_chip = FILTER_CHIP.read_text(encoding="utf-8")
+    window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -487,6 +489,30 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # WindowDialog keeps measured-content, Escape/outside-click and pixel-aligned
+    # reveal behavior, without legacy decoration APIs or hidden style renderers.
+    for token in legacy_style_tokens:
+        forbid(window_dialog, token, "WindowDialog.qml")
+    for token in (
+        "zzzLabel", "zzzIndex", "zzzGhostText", "zzzAccentColor",
+        "zzzShowBurst", "zzzShowTicks", "zzzDecorationsEnabled",
+        "ZzzPanelBackdrop {", "RegaliaPlate {",
+    ):
+        forbid(window_dialog, token, "WindowDialog.qml")
+    for token in (
+        "property real backgroundHeight: -1",
+        "Keys.onPressed:",
+        "onPressed: root.dismiss()",
+        "radius: Appearance.rounding.large",
+        "fallbackColor: Appearance.colors.colSurfaceContainerHigh",
+        "wallpaperBackdropEnabled: true",
+        "border.width: 0",
+        'border.color: "transparent"',
+        "readonly property real measuredContentHeight:",
+        "Math.max(radius, Appearance.sizes.spacingLarge)",
+    ):
+        require(window_dialog, token, "WindowDialog.qml")
 
     # Shared Material chips keep interaction/accessibility behavior but no longer
     # instantiate or branch through retired Regalia/ZZZ Global Theme chrome.

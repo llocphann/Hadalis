@@ -16,14 +16,6 @@ Rectangle {
     property real backgroundHeight: -1
     property real backgroundWidth: 350
     property real backgroundAnimationMovementDistance: 60
-    property string zzzLabel: "DIALOG"
-    property string zzzIndex: "UI"
-    property string zzzGhostText: "DIALOG"
-    property color zzzAccentColor: Appearance.zzz.secondary
-    property bool zzzShowBurst: true
-    property bool zzzShowTicks: false
-    property bool zzzDecorationsEnabled: true
-    
     signal dismiss()
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Escape) {
@@ -58,48 +50,24 @@ Rectangle {
         // NativeRendering, which Qt documents as unsuitable under transforms;
         // centering on a half pixel makes the softened result persist after open.
         x: Math.round((root.width - implicitWidth) / 2)
-        radius: Appearance.regaliaEverywhere ? Appearance.regalia.panelRadius
-            : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
-            : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
-            : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-            : Appearance.rounding.large
+        radius: Appearance.rounding.large
         Behavior on radius {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
-        fallbackColor: Appearance.regaliaEverywhere ? "transparent"
-            : Appearance.zzzEverywhere ? Appearance.zzz.paper : Appearance.colors.colSurfaceContainerHigh
-        inirColor: Appearance.inir.colLayer2
-        auroraTransparency: Appearance.aurora.popupTransparentize * 0.85
-        // ZZZ owns its wallpaper wash through ZzzPanelBackdrop. Letting both
-        // layers blur the same wallpaper softens compact dialog text and chrome.
-        wallpaperBackdropEnabled: !Appearance.zzzEverywhere && !Appearance.regaliaEverywhere
-        border.width: Appearance.regaliaEverywhere ? 0
-            : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-            : (Appearance.angelEverywhere || Appearance.inirEverywhere || Appearance.auroraEverywhere) ? 1 : 0
+        fallbackColor: Appearance.colors.colSurfaceContainerHigh
+        wallpaperBackdropEnabled: true
+        border.width: 0
         Behavior on border.width {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
-        border.color: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-            : Appearance.angelEverywhere ? Appearance.angel.colBorder
-            : Appearance.inirEverywhere ? Appearance.inir.colBorder 
-            : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : "transparent"
+        border.color: "transparent"
         Behavior on border.color {
             enabled: Appearance.animationsEnabled
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
         
-        RegaliaPlate {
-            anchors.fill: parent
-            visible: Appearance.regaliaEverywhere
-            fillColor: Appearance.regalia.bg2
-            radius: dialogBackground.radius
-            inset: Appearance.regalia.surfaceInset
-            elevated: true
-            glassEnabled: true
-        }
-
         readonly property real measuredContentHeight: contentColumn.implicitHeight
             + dialogBackground.contentPad * 2
         readonly property real resolvedHeight: Math.round(root.backgroundHeight >= 0
@@ -107,12 +75,9 @@ Rectangle {
         property real targetY: Math.round(root.height / 2 - resolvedHeight / 2)
         y: root.show ? targetY : (targetY - root.backgroundAnimationMovementDistance)
         implicitWidth: Math.round(root.backgroundWidth)
-        // Corner radius is visual, not spacing. Zero-radius Angel and ZZZ
-        // presets still need a readable inset around dialog content.
-        readonly property real contentPad: Appearance.zzzEverywhere
-            ? Math.max(radius, Appearance.zzz.markerLength + Appearance.zzz.borderThick * 5)
-            : Appearance.cookieEverywhere ? Appearance.sizes.spacingLarge
-            : Math.max(radius, Appearance.sizes.spacingLarge)
+        // Keep content concentric with the Material dialog surface.
+        readonly property real contentPad:
+            Math.max(radius, Appearance.sizes.spacingLarge)
         implicitHeight: root.show ? resolvedHeight : 0
         Behavior on implicitHeight {
             NumberAnimation {
@@ -136,23 +101,7 @@ Rectangle {
             hoverEnabled: true
         }
 
-        Loader {
-            anchors.fill: parent
-            active: root.zzzDecorationsEnabled && Appearance.zzzEverywhere
-            sourceComponent: ZzzPanelBackdrop {
-                label: root.zzzLabel
-                index: root.zzzIndex
-                ghostText: root.zzzGhostText
-                accentColor: root.zzzAccentColor
-                showBurst: false
-                showTicks: false
-                showGrid: false
-                horizontalBias: 0.08
-                verticalBias: 0.06
-                ghostWidthFactor: 0.84
-                ghostStrength: 0.7
-            }
-        }
+
 
     }
 

@@ -5,6 +5,7 @@ import qs
 import qs.modules.bar
 import qs.modules.common
 import qs.modules.settings
+import qs.services
 // WORKFLOW_PROBE_IMPORT: prepare-runtime.py replaces this marker only in the
 // isolated exported runtime after creating config/workflowprobe/qmldir.
 
@@ -15,6 +16,8 @@ ShellRoot {
     property bool persistenceReady: false
     property int dormantCreations: 0
     property int reloadCompletions: 0
+    property int reloadFailures: 0
+    property string lastReloadError: ""
     property bool mediaEnabled: true
 
     PersistentProperties {
@@ -51,7 +54,26 @@ ShellRoot {
         GlobalStates.barOpen = true
     }
     Connections { target: Config; function onReadyChanged() { shell.initialize() } }
-    Connections { target: Quickshell; function onReloadCompleted() { shell.reloadCompletions++ } }
+    Connections {
+        target: Quickshell
+        function onReloadCompleted() { shell.reloadCompletions++ }
+        function onReloadFailed(errorString) {
+            shell.reloadFailures++
+            shell.lastReloadError = String(errorString ?? "")
+        }
+    }
+
+    ApplyTarget { id: applyTarget }
+
+    FileView {
+        path: Quickshell.shellPath("workflowprobe/ApplyTarget.qml")
+        watchChanges: true
+        printErrors: false
+        onFileChanged:
+            CodeWorkflowTransaction.markSourceChanged(
+                "workflowprobe/ApplyTarget.qml")
+    }
+
     Bar {}
     SettingsOverlay { id: settings }
     PickerProbe { id: picker; settings: settings }
@@ -74,6 +96,48 @@ ShellRoot {
             report.barOpen = GlobalStates.barOpen
             report.mediaControlsOpen = GlobalStates.mediaControlsOpen
             report.reloadCompletions = shell.reloadCompletions
+            report.reloadFailures = shell.reloadFailures
+            report.lastReloadError = shell.lastReloadError
+            report.applyTarget = {
+                applyFlag: applyTarget.applyFlag,
+                rollbackProbe: applyTarget.rollbackProbe,
+                conflictProbe: applyTarget.conflictProbe
+            }
+            report.workflowAnalyzer = {
+                status: CodeWorkflowAnalyzer.status,
+                sourcePath: CodeWorkflowAnalyzer.sourcePath,
+                sourceNeedle: CodeWorkflowAnalyzer.sourceNeedle,
+                semanticAnchor: CodeWorkflowAnalyzer.semanticAnchor,
+                sourceSha256: String(
+                    CodeWorkflowAnalyzer.result?.sourceSha256 ?? ""),
+                reviewedAnchor: CodeWorkflowAnalyzer.reviewedAnchor,
+                semanticRebind: CodeWorkflowAnalyzer.semanticRebind,
+                diagnostics: CodeWorkflowAnalyzer.diagnostics
+            }
+            report.workflowTransaction = {
+                status: CodeWorkflowTransaction.status,
+                error: CodeWorkflowTransaction.error,
+                historyIndex: CodeWorkflowTransaction.historyIndex,
+                historyLength: CodeWorkflowTransaction.history.length,
+                preApplyReady: CodeWorkflowTransaction.preApplyReady,
+                prepareApplyEnabled:
+                    CodeWorkflowTransaction.prepareApplyEnabled,
+                applyArtifactsReady:
+                    CodeWorkflowTransaction.applyArtifactsReady,
+                applyLifecycleReady:
+                    CodeWorkflowTransaction.applyLifecycleReady,
+                applyLifecycleBusy:
+                    CodeWorkflowTransaction.applyLifecycleBusy,
+                applyEnabled: CodeWorkflowTransaction.applyEnabled,
+                pendingApplyPhase:
+                    CodeWorkflowTransaction.pendingApplyPhase,
+                applyPreparationError:
+                    CodeWorkflowTransaction.applyPreparationError,
+                applyLifecycleError:
+                    CodeWorkflowTransaction.applyLifecycleError,
+                applyLifecycleResult:
+                    CodeWorkflowTransaction.applyLifecycleResult
+            }
             report.mediaActions = RuntimeRegistry.mediaActions
             report.mediaPopupsOpen = Object.values(RuntimeRegistry.entries).some(p =>
                 p.targetId === "bar/media" && p.runtimeObject?.barMediaPopupVisible === true)
@@ -108,6 +172,58 @@ ShellRoot {
         function pick(): bool { return picker.begin() }
         function cancel(): void { picker.finish("cancelled", "") }
         function lock(enabled: bool): void { GlobalStates.screenLocked = enabled }
+        function workflowAnalyze(needle: string, anchor: string): void {
+            CodeWorkflowAnalyzer.request(
+                "workflowprobe/ApplyTarget.qml",
+                needle,
+                anchor,
+                true)
+        }
+        function workflowPreview(replacement: string): bool {
+            const anchor = String(
+                CodeWorkflowAnalyzer.reviewedAnchor
+                    ?.semanticAnchor ?? "")
+            const sha = String(
+                CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+            if (anchor.length === 0 || sha.length === 0)
+                return false
+            return CodeWorkflowTransaction.previewLiteral(
+                "workflowprobe/ApplyTarget.qml",
+                sha,
+                anchor,
+                replacement)
+        }
+        function workflowEvaluate(): void {
+            const analyzerReady =
+                CodeWorkflowAnalyzer.status === "ready"
+                && CodeWorkflowAnalyzer.sourcePath
+                    === "workflowprobe/ApplyTarget.qml"
+            CodeWorkflowTransaction.evaluatePreApply(
+                "workflowprobe/ApplyTarget.qml",
+                analyzerReady
+                    ? String(
+                        CodeWorkflowAnalyzer.result?.sourceSha256
+                            ?? "")
+                    : "",
+                String(
+                    CodeWorkflowAnalyzer.semanticAnchor ?? ""),
+                analyzerReady,
+                analyzerReady
+                    && CodeWorkflowAnalyzer.semanticRebind
+                        ?.status === "resolved",
+                analyzerReady
+                    ? CodeWorkflowAnalyzer.diagnostics.length
+                    : -1)
+        }
+        function workflowPrepare(): bool {
+            return CodeWorkflowTransaction.prepareApplyArtifacts()
+        }
+        function workflowBeginLifecycle(): bool {
+            return CodeWorkflowTransaction.beginApplyLifecycle()
+        }
+        function workflowClear(): void {
+            CodeWorkflowTransaction.clear()
+        }
         function reload(): void { Quickshell.reload(false) }
     }
 }

@@ -176,9 +176,33 @@ Implemented:
   watcher-only reload behavior, semantic rebind, rollback wiring and the
   no-user-Apply boundary.
 
+## Gate 2H — automated live acceptance harness ready
+
+Implemented, but **not yet qualified as passing evidence**:
+
+- scripts/code-workflow/run-apply-lifecycle.py stages a committed tree into a
+  fresh work directory and launches it under headless Sway with isolated XDG
+  paths/private session bus.
+- The harness instantiates a dev-only ApplyTarget fixture and invokes the
+  production CodeWorkflowAnalyzer and CodeWorkflowTransaction through probe IPC;
+  the commit/reload/rollback state machine is not mocked.
+- Success case requires an atomic literal Apply, watcher-driven Quickshell reload,
+  candidate-present verification and stable semantic-anchor rebind.
+- Rollback case proposes a tree-sitter-valid but QML-type-invalid literal so the
+  watcher reload should fail; the exact snapshot must then be restored and a
+  second watcher reload must verify base-present.
+- External-edit case mutates the isolated source after exact artifacts are
+  prepared; production handoff must be invalidated and beginApplyLifecycle()
+  rejected while the external edit remains intact.
+- The driver refuses an existing work directory, requires an explicit grammar
+  and Sway executable, and confines its mutable fixture below the staged config.
+- The driver is excluded from the installed runtime payload.
+- No claim of live acceptance is made until a retained
+  apply-lifecycle-report.json records all checks passing.
+
 ## Not implemented yet
 
-- user-triggered Apply UI and live acceptance of the wired lifecycle;
+- retained passing Gate 2H live acceptance evidence and user-triggered Apply UI;
 - direct binding transforms;
 - connect/disconnect data dependencies;
 - signal/action transforms;

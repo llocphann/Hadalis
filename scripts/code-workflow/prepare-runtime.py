@@ -35,7 +35,13 @@ def prepare(destination, revision):
     probe.mkdir()
     for path in sorted((HERE / 'runtime').glob('*.qml')):
         shutil.copyfile(path, probe / path.name)
-    (probe / 'qmldir').write_text('module qs.workflowprobe\nsingleton RuntimeRegistry 1.0 RuntimeRegistry.qml\nRuntimeTarget 1.0 RuntimeTarget.qml\nPickerProbe 1.0 PickerProbe.qml\n')
+    (probe / 'qmldir').write_text(
+        'module qs.workflowprobe\n'
+        'singleton RuntimeRegistry 1.0 RuntimeRegistry.qml\n'
+        'RuntimeTarget 1.0 RuntimeTarget.qml\n'
+        'PickerProbe 1.0 PickerProbe.qml\n'
+        'ApplyTarget 1.0 ApplyTarget.qml\n'
+    )
     modifications = []
     modules = [('BarContent', 'bar'), ('Media', 'bar/media'), ('ClockWidget', 'bar/clock'), ('Resources', 'bar/resources')]
     for name, target in modules:

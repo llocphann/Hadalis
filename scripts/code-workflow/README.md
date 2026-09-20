@@ -251,6 +251,35 @@ The complete CDE matrix currently has 40 passing checks on Niri and 44 on Sway.
 These probes are opt-in; do not add them to unattended static CI or run them
 against the installed shell. The standard local module guard remains unchanged.
 
+## Phase 2H — production Apply lifecycle acceptance harness
+
+The production transaction lifecycle has an opt-in acceptance driver that uses
+the same isolated runtime staging rules as the Phase 0 compositor probes. It does
+not enable the Settings Apply button and it never mutates the checkout or the
+installed shell.
+
+Requirements: Quickshell, a headless-capable Sway binary and the pinned qmljs
+grammar built by `build-parser.sh`.
+
+```sh
+bash scripts/code-workflow/build-parser.sh /tmp/hadalis-workflow-parser
+python3 scripts/code-workflow/run-apply-lifecycle.py \
+  --work-dir /tmp/hadalis-workflow-apply-new \
+  --sway /usr/bin/sway \
+  --grammar /tmp/hadalis-workflow-parser/qmljs.so
+```
+
+The driver stages a committed tree, imports a dev-only ApplyTarget fixture and
+controls the production CodeWorkflowAnalyzer/CodeWorkflowTransaction through the
+probe IPC. It checks: successful literal Apply with watcher-driven reload and
+semantic rebind; a QML reload failure that must restore the exact snapshot; and
+an external edit after artifact preparation that must invalidate Apply while
+preserving the external edit.
+
+A committed harness is not acceptance evidence by itself. Only a retained
+apply-lifecycle-report.json with every check passing can close this gate and
+justify enabling user-triggered Apply.
+
 ## Final Phase 0 qualification
 
 The [final handoff](../../docs/CODE_WORKFLOW_HANDOFF.md) links all retained runs,

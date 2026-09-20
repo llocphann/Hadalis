@@ -2409,3 +2409,30 @@ This separates three independent G2 conditions that must all pass:
 3. the resulting live morphology is visually coherent.
 
 No production cutover is authorized until all three pass in one fresh matrix.
+
+
+### 26.21 G2 accepted and production StyledPopup cutover
+
+The final G2 matrix is accepted. Unlike the earlier structurally valid but
+shader-transparent attempts, the accepted evidence visibly renders the iRiS
+field while preserving split-composition ownership.
+
+Production reuses that architecture directly: full output-local owner records
+remain in SDF math; a local owner-clipped viewport controls Overlay paint; the
+popup shadow is isolated through a clipped private texture; input is body-only;
+and the existing reveal/content lifecycle remains slide-only.
+
+A post-cutover parity audit found one important morphology detail that the first
+production translation had omitted: accepted G2 used `fuse = 30` and
+`weld = 3`. Production now carries both as explicit perimeter tokens.
+`ConnectedSurfaceGeometry.seamOverlap` supplies the primary-owner weld and the
+tangent screen margin becomes `screenEdgeThickness - irisWeldDepth`; the iRiS
+frame still clips paint/shadow/input at the real owner boundary. This preserves
+the validated SDF relation without repainting or stealing input from the owner.
+
+The exact production shader/QSB remains byte-identical to the locked G1/G2
+asset. Canvas flare and connector-strip input geometry are intentionally absent
+from ii `StyledPopup`; those primitives remain only for Waffle/non-cutover
+surfaces.
+
+Production live acceptance is the only remaining gate.

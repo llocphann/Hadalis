@@ -7,10 +7,10 @@ The authoritative connected-popup path is:
 ```text
 modules/bar/StyledPopup.qml
   -> modules/common/perimeter/ConnectedSurfaceGeometry.qml
-  -> modules/common/perimeter/ConnectedSurfaceFrame.qml
+  -> modules/common/perimeter/ConnectedSurfaceIrisFrame.qml
   -> modules/common/perimeter/ConnectedSurfaceConnector.qml
   -> modules/common/perimeter/ConnectedSurfaceContentHost.qml
-  -> modules/common/perimeter/ConnectedSurfaceMask.qml
+  -> modules/common/perimeter/ConnectedSurfaceBodyMask.qml
   -> modules/common/perimeter/PerimeterTokens.qml
 ```
 
@@ -31,6 +31,22 @@ In particular:
 The legacy common host/config/cutover/route helper cluster has also been removed after caller auditing. `modules/common/perimeter/` now retains only the supported connected-surface primitives/tokens plus the small `PerimeterTopology.qml` edge utility still used by `ConnectedSurfaceGeometry.qml`.
 
 ## Connected popup contract
+
+### Production iRiS split-composition renderer
+
+ii `StyledPopup.qml` now uses the G1/G2-validated iRiS path. Full output-local
+Bar/Screen Edge owner records participate in the exact v2.31.0 SDF calculation,
+but the Overlay raster viewport is clipped at every external-owner boundary.
+The accepted G2 morphology is preserved with `irisFuseDepth = 30` and
+`irisWeldDepth = 3`: the SDF body may overlap an owner for join math while
+paint, shadow and input begin at the real owner boundary.
+
+`ConnectedSurfaceIrisFrame.qml` owns field/shadow clipping,
+`ConnectedSurfaceBodyMask.qml` owns body-only compositor input, and the
+existing `ConnectedSurfaceRevealClip.qml` / `SurfaceMotion` path remains
+slide-only. Legacy `ConnectedSurfaceFrame`, `ConnectedSurfaceJoinFlares` and
+`ConnectedSurfaceMask` remain for Waffle/non-cutover surfaces only.
+
 
 `StyledPopup.qml` remains the entry point for existing bar popouts. Consumers provide their content and real source control through `hoverTarget`; the shared shell owns the geometry and presentation window.
 

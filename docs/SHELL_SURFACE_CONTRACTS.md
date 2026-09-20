@@ -5,14 +5,14 @@ This document records the stabilization contracts that should be checked during 
 ## Connected bar popouts
 
 - Existing bar popouts continue through `modules/bar/StyledPopup.qml`; no parallel popup framework is introduced.
-- The outer shell composes `ConnectedSurfaceGeometry`, `ConnectedSurfaceFrame`, `ConnectedSurfaceConnector`, and `ConnectedSurfaceMask` from `modules/common/perimeter/`.
+- ii `StyledPopup` composes `ConnectedSurfaceGeometry`, `ConnectedSurfaceRevealClip`, `ConnectedSurfaceIrisFrame`, `ConnectedSurfaceContentHost`, and `ConnectedSurfaceBodyMask` from `modules/common/perimeter/`. Waffle retains its legacy shared-frame path.
 - Attachment works from top, bottom, left, and right bars.
-- The visible surface is not a detached rounded card with a thin stem. It starts at roughly the source control width, flares through curved Bézier shoulders, and grows into the popup body as one bar-owned surface.
+- The visible ii popup is not a detached rounded card or Bézier shoulder patch. Exact iRiS SDF smooth-union math treats popup and Bar/Screen Edge owner records as one silhouette while split-composition scissoring prevents Overlay from repainting Top-layer owners.
 - The popup body uses the active Classic Bar surface family rather than the old generic popup-card material.
 - Opening morphs outward from the real rendered anchor; closing reverses the same geometry and retracts into the bar before the loader is released.
 - Hover popouts stay resident during the short retract tail so the pointer can cross the connected shoulder from the bar into the body without collapsing the surface.
 - Body and connector overlap by a device-pixel-aware amount so fractional scale cannot expose a transparent seam.
-- The connector input mask follows the flare with a tighter union of rounded strips instead of making its transparent bounding rectangle interactive.
+- ii popup input is body-only through `ConnectedSurfaceBodyMask`; shader fillets and transparent full-output regions do not steal pointer input. The connector-strip mask is no longer part of the ii path.
 - Transparent regions outside the visible popup shape remain click-through.
 - Focused connected popouts preserve Niri layer-shell focus and the existing Hyprland compositor focus grab.
 - Media volume HUD, expanded bar Media controls, tray overflow, taskbar window previews, and the existing battery/resources/weather/clock/timer/update popouts all use the shared connected path. Context menus remain context menus rather than being forced into this presentation contract.

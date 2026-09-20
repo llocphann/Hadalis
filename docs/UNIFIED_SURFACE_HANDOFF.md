@@ -799,3 +799,44 @@ the shader or geometry:
 Earlier G2 structural PASS runs are not visual PASS because they did not render
 the iRiS field. G2 remains open until a fresh matrix visibly shows the yellow
 field while retaining split-owner isolation.
+
+
+### G2 CLOSED / PASS — split composition validated
+
+The final real Niri matrix on `eDP-1` passed structural verification and visual
+review. The accepted sheets visibly render the yellow iRiS field at
+`progress=1.00` and `progress=0.55` for all four attachment edges and all
+three tangent positions. Owner/module paint remains exclusive to the Top-layer
+surface, tangent clamps remain coherent, and mid-slide stays attachment-axis
+only. Shadow isolation, body-only input and keyboard-focus contracts remain
+intact.
+
+G2 is closed; production cutover is authorized.
+
+### Production cutover
+
+```text
+20c352446c28e265b3978fd466e59ace44df068f
+feat(surface): cut StyledPopup over to iRiS field
+
+2d0d0cae50a34ab6b575b95f2791530931b04721
+test(surface): guard production iRiS cutover
+
+f702264e916eaf26e6f2df15bf13bea7f4ee80e8
+fix(surface): preserve validated iRiS weld domains
+```
+
+Production embeds the exact locked `IrisField.frag(.qsb)` in the perimeter
+module and routes ii `StyledPopup` through
+`ConnectedSurfaceIrisField/ConnectedSurfaceIrisFrame/ConnectedSurfaceBodyMask`.
+The final morphology also restores the G2 `weld = 3` relation on both the
+primary owner and tangent Screen Edge clamp while clipping paint, shadow and
+input at the actual owner boundary.
+
+Legacy frame/flare/mask primitives remain for Waffle/non-cutover surfaces;
+`modules/waffle/**` was not modified.
+
+The remaining gate is a live production acceptance pass after reloading Hadalis:
+representative horizontal and vertical Bar popups, center and both corner clamps,
+open/reverse-retract, hover transfer, outside click, keyboard focus, and a
+fractional-scale output if available.

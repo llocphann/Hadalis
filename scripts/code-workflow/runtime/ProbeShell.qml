@@ -31,6 +31,9 @@ ShellRoot {
         // QJSValue objects belong to the old engine. Persist primitives only.
         property string viewportJson: '{"x":31,"y":-17,"zoom":1.25,"subflow":"bar"}'
         property bool mediaEnabled: true
+        // Probe-only persisted evidence for cross-pipeline contention. This
+        // survives the owner-triggered Quickshell reload in isolated acceptance.
+        property string mutationContentionJson: "{}"
         onLoaded: {
             RuntimeRegistry.selectedInstanceId = selectedInstanceId
             RuntimeRegistry.selectedTargetId = selectedTargetId
@@ -106,6 +109,12 @@ ShellRoot {
                 rollbackProbe: applyTarget.rollbackProbe,
                 conflictProbe: applyTarget.conflictProbe
             }
+            try {
+                report.mutationContention =
+                    JSON.parse(state.mutationContentionJson)
+            } catch (_error) {
+                report.mutationContention = ({})
+            }
             report.workflowAnalyzer = {
                 status: CodeWorkflowAnalyzer.status,
                 sourcePath: CodeWorkflowAnalyzer.sourcePath,
@@ -122,6 +131,36 @@ ShellRoot {
                 error: CodeWorkflowTransaction.error,
                 historyIndex: CodeWorkflowTransaction.historyIndex,
                 historyLength: CodeWorkflowTransaction.history.length,
+                historySummary: CodeWorkflowTransaction.history.map(
+                    (command, index) => ({
+                        index: index,
+                        kind: String(command?.kind ?? ""),
+                        sourcePath: String(command?.sourcePath ?? ""),
+                        stale: command?.stale === true,
+                        staleReason: String(command?.staleReason ?? ""),
+                        connectSafetyFreshness: String(
+                            command?.connectSafety?.freshness ?? ""),
+                        connectPreparationStatus: String(
+                            command?.connectPreparation?.status ?? ""),
+                        connectAuthorizationStatus: String(
+                            command?.connectAuthorization?.status ?? ""),
+                        connectAuthorizationAuthorized:
+                            command?.connectAuthorization?.authorized === true,
+                        bindingPreparationStatus: String(
+                            command?.bindingPreparation?.status ?? ""),
+                        bindingAuthorizationStatus: String(
+                            command?.bindingAuthorization?.status ?? ""),
+                        bindingAuthorizationAuthorized:
+                            command?.bindingAuthorization?.authorized === true,
+                        bindingRolledBack:
+                            command?.bindingRolledBack === true,
+                        disconnectPreparationStatus: String(
+                            command?.disconnectPreparation?.status ?? ""),
+                        disconnectAuthorizationStatus: String(
+                            command?.disconnectAuthorization?.status ?? ""),
+                        disconnectAuthorizationAuthorized:
+                            command?.disconnectAuthorization?.authorized === true
+                    })),
                 preApplyReady: CodeWorkflowTransaction.preApplyReady,
                 prepareApplyEnabled:
                     CodeWorkflowTransaction.prepareApplyEnabled,
@@ -473,6 +512,123 @@ ShellRoot {
         function workflowConnectApply(): bool {
             return CodeWorkflowTransaction.beginAuthorizedConnectApply()
         }
+        // Probe-only selector. Production history navigation intentionally
+        // expires write authorization; V-B needs to retain independently
+        // prepared commands so it can exercise the service's defense-in-depth
+        // lifecycle serialization guards in one deterministic runtime.
+        function workflowTestSelectHistoryIndex(index: int): bool {
+            const next = Number(index ?? -1)
+            if (next < 0 || next >= CodeWorkflowTransaction.history.length)
+                return false
+            const restoring =
+                CodeWorkflowTransaction._restoringReloadState
+            CodeWorkflowTransaction._restoringReloadState = true
+            CodeWorkflowTransaction.historyIndex = next
+            CodeWorkflowTransaction._showCommand(
+                CodeWorkflowTransaction.activeCommand)
+            CodeWorkflowTransaction._restoringReloadState = restoring
+            if (String(
+                    CodeWorkflowTransaction.activeCommand?.kind ?? "")
+                    === "connect-binding") {
+                Qt.callLater(
+                    CodeWorkflowTransaction.reverifyActiveConnectSafety)
+                Qt.callLater(
+                    CodeWorkflowTransaction
+                        .probeActiveConnectPreparationCapability)
+            }
+            return CodeWorkflowTransaction.historyIndex === next
+        }
+
+        function workflowTestSetHistoryIndexQuiet(index: int): bool {
+            const next = Number(index ?? -1)
+            if (next < 0 || next >= CodeWorkflowTransaction.history.length)
+                return false
+            const restoring =
+                CodeWorkflowTransaction._restoringReloadState
+            CodeWorkflowTransaction._restoringReloadState = true
+            CodeWorkflowTransaction.historyIndex = next
+            CodeWorkflowTransaction._restoringReloadState = restoring
+            return CodeWorkflowTransaction.historyIndex === next
+        }
+
+        function workflowContentionStartBindingAgainstAll(
+            bindingIndex: int,
+            disconnectIndex: int,
+            connectIndex: int,
+            literalIndex: int
+        ): bool {
+            if (!workflowTestSelectHistoryIndex(bindingIndex))
+                return false
+
+            const ownerReady =
+                CodeWorkflowTransaction.bindingAuthorizationReady
+                && CodeWorkflowTransaction.bindingArtifactsReady
+                && CodeWorkflowTransaction.bindingApplyEnabled
+            const ownerStarted =
+                CodeWorkflowTransaction.beginAuthorizedBindingApply()
+            const ownerBusy =
+                CodeWorkflowTransaction.bindingLifecycleBusy
+            const attempts = ({})
+
+            if (ownerStarted && ownerBusy) {
+                workflowTestSetHistoryIndexQuiet(disconnectIndex)
+                attempts.disconnect = {
+                    authorizationReady:
+                        CodeWorkflowTransaction
+                            .disconnectAuthorizationReady,
+                    artifactsReady:
+                        CodeWorkflowTransaction.disconnectArtifactsReady,
+                    started:
+                        CodeWorkflowTransaction
+                            .beginDisconnectLifecycle()
+                }
+
+                workflowTestSetHistoryIndexQuiet(connectIndex)
+                attempts.connect = {
+                    authorizationReady:
+                        CodeWorkflowTransaction.connectAuthorizationReady,
+                    artifactsReady:
+                        CodeWorkflowTransaction.connectArtifactsReady,
+                    started:
+                        CodeWorkflowTransaction.beginConnectLifecycle()
+                }
+
+                workflowTestSetHistoryIndexQuiet(literalIndex)
+                attempts.literal = {
+                    artifactsReady:
+                        CodeWorkflowTransaction.applyArtifactsReady,
+                    commandMatches:
+                        CodeWorkflowTransaction
+                            .applyCommandMatchesHandoff,
+                    started:
+                        CodeWorkflowTransaction.beginApplyLifecycle()
+                }
+
+                workflowTestSetHistoryIndexQuiet(bindingIndex)
+            }
+
+            const evidence = {
+                ownerReady: ownerReady,
+                ownerStarted: ownerStarted,
+                ownerBusyAfterStart: ownerBusy,
+                pendingBindingPhase:
+                    CodeWorkflowTransaction.pendingBindingPhase,
+                attempts: attempts
+            }
+            state.mutationContentionJson = JSON.stringify(evidence)
+            return ownerStarted
+                && ownerBusy
+                && attempts.disconnect?.authorizationReady === true
+                && attempts.disconnect?.artifactsReady === true
+                && attempts.disconnect?.started === false
+                && attempts.connect?.authorizationReady === true
+                && attempts.connect?.artifactsReady === true
+                && attempts.connect?.started === false
+                && attempts.literal?.artifactsReady === true
+                && attempts.literal?.commandMatches === true
+                && attempts.literal?.started === false
+        }
+
         function workflowUndo(): bool {
             return CodeWorkflowTransaction.undoPreview()
         }

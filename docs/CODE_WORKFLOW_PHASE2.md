@@ -1179,6 +1179,38 @@ reviewed direct-binding replacement each own an independent lifecycle:
 - `test-code-workflow-mutation-serialization.py` locks both lifecycle-start
   exclusion and owner-preserving cross-pipeline source-drift invalidation.
 
+## Milestone 2K-V-B — live cross-pipeline mutation contention
+
+Added live headless acceptance for the production serialization contract across
+all four mutation pipelines without changing the production transaction service:
+
+- The isolated runtime prepares four independent commands in one history:
+  reviewed Disconnect, reviewed Binding replacement, reviewed Connect and the
+  qualified Literal Apply fixture.
+- Probe-only history selection can preserve already-created authorization solely
+  for acceptance. Production history navigation remains unchanged and continues
+  to expire authorization.
+- A reviewed Binding replacement is the real lifecycle owner. In one
+  deterministic QML call it starts first, then attempts raw Disconnect and
+  Connect lifecycle starts plus Literal Apply while
+  `bindingLifecycleBusy` is true. Every competing start must return false
+  while its own artifacts/authorization or Literal handoff remain otherwise
+  ready.
+- The owner performs a real atomic Clock candidate write. The existing V-A
+  watcher invalidation must stale the same-source Connect and Disconnect sibling
+  handoffs, including Connect safety/preparation/authorization and Disconnect
+  preparation/authorization.
+- The Binding postcondition is intentionally redirected to the surviving bullet
+  binding so the production lifecycle must restore the exact snapshot. A final
+  `base-present` verify bound to the exact prepared manifest SHA proves the
+  exact Binding rollback identity survived the owner's candidate write,
+  watcher reload and sibling invalidation.
+- Literal uses the isolated `ApplyTarget.qml` source, so its role in this gate
+  is global lifecycle-start exclusion rather than same-source invalidation.
+- `run-mutation-contention.py` and all additional selection instrumentation
+  remain probe-only and excluded from the runtime payload. No mutation allowlist
+  is broadened.
+
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;
@@ -1191,15 +1223,16 @@ reviewed direct-binding replacement each own an independent lifecycle:
 
 ## Next gate
 
-2K-V-A hardens the production coordination contract statically. The next gate,
-2K-V-B, should add live contention acceptance around the same four mutation
-pipelines: attempt a competing lifecycle while one owner is in-flight, prove the
-second start is rejected, and prove a real owner source write stales sibling
-prepared handoffs without expiring the owner's rollback identity.
+2K-V-B closes the shared single-writer contention gate for the current four
+production mutation pipelines. The next mutation family should be qualified
+independently rather than widening an existing allowlist by analogy.
+
+A 2K-W-A gate should begin with a non-writing signal/action transform proof:
+identify one reviewed signal-to-existing-action fixture, define exact semantic
+identity and a parser-clean minimal candidate, and keep Apply unavailable until
+an isolated transaction/rollback proof exists. Do not infer signal safety from
+data-binding TYPE/CYCLE evidence.
 
 Do not broaden direct-binding Apply from the single reviewed
-`clock.text.time-to-date` fixture by assumption. Any additional replacement
-must receive its own exact old/new expression review, semantic-anchor
-postcondition and live rollback evidence before entering the allowlist.
-
-Multi-file writes remain out of scope.
+`clock.text.time-to-date` fixture by assumption. Multi-file writes remain out
+of scope.

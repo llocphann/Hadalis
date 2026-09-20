@@ -325,6 +325,32 @@ may block a proposed connection; absence of a reviewed path is not proof that no
 QML dependency cycle exists because the current projection is intentionally
 incomplete.
 
+## Milestone 2K-B — edge selection and retarget context
+
+Implemented:
+
+- CodeWorkflowSession persists a primitive `selectedEdgeId`; selecting an edge
+  resolves through `CodeWorkflowIr.edgeFor()` and selects the edge's reviewed
+  binding target node. The analyzer/transaction still use that node's semantic
+  anchor as source identity; edge ID remains UI/session identity only.
+- Canvas wire picking uses an editor-side distance test over the same cubic
+  geometry used for rendering. Twenty line segments approximate the cubic and
+  the hit tolerance is `9 / zoom`, keeping roughly constant screen-space
+  tolerance.
+- Node rectangles are excluded from edge hit testing so node TapHandlers retain
+  their normal selection behavior.
+- No wide invisible stroke, MouseArea or per-edge input item is added to the
+  Shape delegate.
+- Only 2K-A previewable edges participate in wire hit testing. A selected edge is
+  visually emphasized without changing renderer ownership.
+- Keyboard users can select the same inbound previewable connection from the
+  Inspector after focusing its binding node; edge interaction is not pointer-only.
+- The existing 2J binding field then provides retarget candidate text while the
+  selected edge supplies graph context. Retarget remains preview-only and is
+  blocked by `write-subset-not-authorized`.
+- Selecting a normal node, changing target/subflow, or restoring an invalid edge
+  clears edge selection. Only primitive edge ID is persisted.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
@@ -336,9 +362,9 @@ incomplete.
 
 ## Next gate
 
-The next gate is edge selection plus source-backed retarget preview for the 2K-A
-allowlist. Disconnect requires a separate exact-member deletion candidate and
-must prove anchor disappearance without parser diagnostics. Cycle analysis may
-hard-block known reviewed cycles but must report unknown coverage rather than
-claiming global acyclicity. Literal Apply remains the only production
-source-writing transform.
+The next gate is a true Disconnect preview for the selected 2K edge. It must
+delete only a verified `ui_binding` member, reparse the full candidate, require
+the old semantic anchor to become missing, and show the resulting unbound/default
+property state. Connect of a previously absent property remains deferred because
+it requires a legal insertion point and stronger type/port compatibility.
+Literal Apply remains the only production source-writing transform.

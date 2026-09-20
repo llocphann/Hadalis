@@ -23,6 +23,102 @@ Item {
         return root.nodes.find(node => node.id === nodeId) ?? null
     }
 
+    function pointSegmentDistance(
+        px: real, py: real,
+        ax: real, ay: real,
+        bx: real, by: real
+    ): real {
+        const dx = bx - ax
+        const dy = by - ay
+        const lengthSquared = dx * dx + dy * dy
+        if (lengthSquared <= 0.0001) {
+            const sx = px - ax
+            const sy = py - ay
+            return Math.sqrt(sx * sx + sy * sy)
+        }
+        const t = Math.max(0, Math.min(1,
+            ((px - ax) * dx + (py - ay) * dy) / lengthSquared))
+        const qx = ax + t * dx
+        const qy = ay + t * dy
+        const sx = px - qx
+        const sy = py - qy
+        return Math.sqrt(sx * sx + sy * sy)
+    }
+
+    function cubicCoordinate(
+        p0: real, p1: real, p2: real, p3: real, t: real
+    ): real {
+        const inv = 1 - t
+        return inv * inv * inv * p0
+            + 3 * inv * inv * t * p1
+            + 3 * inv * t * t * p2
+            + t * t * t * p3
+    }
+
+    function edgeDistance(edge, px: real, py: real): real {
+        const fromNode = root.nodeById(edge?.from ?? "")
+        const toNode = root.nodeById(edge?.to ?? "")
+        if (!fromNode || !toNode)
+            return 1e9
+
+        const x0 = Number(fromNode.x ?? 0) + root.nodeWidth
+        const y0 = Number(fromNode.y ?? 0) + root.nodeHeight / 2
+        const x3 = Number(toNode.x ?? 0)
+        const y3 = Number(toNode.y ?? 0) + root.nodeHeight / 2
+        const bend = Math.max(48, Math.abs(
+            Number(toNode.x ?? 0) - Number(fromNode.x ?? 0)) / 2)
+        const x1 = x0 + bend
+        const y1 = y0
+        const x2 = x3 - bend
+        const y2 = y3
+
+        let best = 1e9
+        let previousX = x0
+        let previousY = y0
+        const steps = 20
+        for (let step = 1; step <= steps; ++step) {
+            const t = step / steps
+            const nextX = root.cubicCoordinate(x0, x1, x2, x3, t)
+            const nextY = root.cubicCoordinate(y0, y1, y2, y3, t)
+            best = Math.min(best, root.pointSegmentDistance(
+                px, py, previousX, previousY, nextX, nextY))
+            previousX = nextX
+            previousY = nextY
+        }
+        return best
+    }
+
+    function nodeAtWorld(px: real, py: real): bool {
+        return root.nodes.some(node => {
+            const x = Number(node.x ?? 0)
+            const y = Number(node.y ?? 0)
+            return px >= x && px <= x + root.nodeWidth
+                && py >= y && py <= y + root.nodeHeight
+        })
+    }
+
+    function previewableEdgeAt(screenX: real, screenY: real): string {
+        const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
+        const worldX = (screenX - CodeWorkflowSession.panX) / zoom
+        const worldY = (screenY - CodeWorkflowSession.panY) / zoom
+        if (root.nodeAtWorld(worldX, worldY))
+            return ""
+
+        const tolerance = 9 / zoom
+        let bestId = ""
+        let bestDistance = tolerance
+        for (const edge of root.edges) {
+            if (edge.previewable !== true)
+                continue
+            const distance = root.edgeDistance(edge, worldX, worldY)
+            if (distance <= bestDistance) {
+                bestDistance = distance
+                bestId = String(edge.id ?? "")
+            }
+        }
+        return bestId
+    }
+
     function accentForKind(kind: string): color {
         if (kind === "service")
             return Appearance.colors.colSecondary
@@ -87,6 +183,19 @@ Item {
         }
     }
 
+    TapHandler {
+        id: edgeTap
+        target: null
+        acceptedButtons: Qt.LeftButton
+
+        onTapped: (eventPoint, button) => {
+            const edgeId = root.previewableEdgeAt(
+                eventPoint.position.x, eventPoint.position.y)
+            if (edgeId.length > 0)
+                CodeWorkflowSession.selectEdge(edgeId)
+        }
+    }
+
     PinchHandler {
         id: pinch
         target: null
@@ -137,8 +246,11 @@ Item {
 
                 readonly property var fromNode: root.nodeById(modelData.from)
                 readonly property var toNode: root.nodeById(modelData.to)
+                readonly property bool selectedEdge:
+                    CodeWorkflowSession.selectedEdgeId === modelData.id
                 readonly property bool highlighted:
-                    CodeWorkflowSession.selectedNodeId === modelData.from
+                    selectedEdge
+                    || CodeWorkflowSession.selectedNodeId === modelData.from
                     || CodeWorkflowSession.selectedNodeId === modelData.to
 
                 anchors.fill: parent
@@ -163,7 +275,9 @@ Item {
                         ? root.edgeColor(edgeShape.modelData.kind)
                         : ColorUtils.transparentize(
                             root.edgeColor(edgeShape.modelData.kind), 0.28)
-                    strokeWidth: edgeShape.highlighted ? 2.6 : 1.6
+                    strokeWidth: edgeShape.selectedEdge
+                        ? 3.4
+                        : edgeShape.highlighted ? 2.6 : 1.6
                     fillColor: "transparent"
                     startX: startNodeX + root.nodeWidth
                     startY: startNodeY + root.nodeHeight / 2

@@ -12,6 +12,7 @@ Singleton {
     property string outputName: ""
     property string subflowTargetId: "bar"
     property string selectedNodeId: "bar.component"
+    property string selectedEdgeId: ""
     property string semanticAnchor: ""
     property string semanticAnchorNodeId: ""
     property real panX: 32
@@ -40,11 +41,20 @@ Singleton {
             state.codeWorkflowSubflowTargetId ?? "bar") || "bar"
         root.selectedNodeId = String(
             state.codeWorkflowNodeId ?? "bar.component") || "bar.component"
+        root.selectedEdgeId = String(state.codeWorkflowEdgeId ?? "")
         if (!CodeWorkflowIr.hasGraph(root.subflowTargetId))
             root.subflowTargetId = "bar"
         if (!CodeWorkflowIr.nodeFor(root.subflowTargetId, root.selectedNodeId))
             root.selectedNodeId = CodeWorkflowIr.graphFor(
                 root.subflowTargetId).rootNodeId ?? ""
+        const restoredEdge = CodeWorkflowIr.edgeFor(
+            root.subflowTargetId, root.selectedEdgeId)
+        if (!restoredEdge || restoredEdge.previewable !== true) {
+            root.selectedEdgeId = ""
+        } else if (CodeWorkflowIr.nodeFor(
+                root.subflowTargetId, restoredEdge.to)) {
+            root.selectedNodeId = restoredEdge.to
+        }
         root.semanticAnchor = String(
             state.codeWorkflowSemanticAnchor ?? "")
         root.semanticAnchorNodeId = String(
@@ -73,6 +83,7 @@ Singleton {
         state.codeWorkflowOutputName = root.outputName
         state.codeWorkflowSubflowTargetId = root.subflowTargetId
         state.codeWorkflowNodeId = root.selectedNodeId
+        state.codeWorkflowEdgeId = root.selectedEdgeId
         state.codeWorkflowSemanticAnchor = root.semanticAnchor
         state.codeWorkflowSemanticAnchorNodeId = root.semanticAnchorNodeId
         state.codeWorkflowPanX = root.panX
@@ -114,6 +125,7 @@ Singleton {
             const graph = CodeWorkflowIr.graphFor(targetId)
             root.selectedNodeId = graph.rootNodeId
                 ?? graph.nodes?.[0]?.id ?? ""
+            root.selectedEdgeId = ""
             root.clearSemanticAnchor()
             root.resetViewport()
         }
@@ -125,10 +137,31 @@ Singleton {
             return
         const changed = root.selectedNodeId !== nodeId
         root.selectedNodeId = nodeId
+        root.selectedEdgeId = ""
         if (changed)
             root.clearSemanticAnchor()
         else
             root.persist()
+    }
+
+    function selectEdge(edgeId: string): bool {
+        const edge = CodeWorkflowIr.edgeFor(
+            root.subflowTargetId, String(edgeId ?? ""))
+        if (!edge || edge.previewable !== true)
+            return false
+        const target = CodeWorkflowIr.nodeFor(
+            root.subflowTargetId, String(edge.to ?? ""))
+        if (!target || target.kind !== "binding")
+            return false
+
+        const changedNode = root.selectedNodeId !== target.id
+        root.selectedEdgeId = edge.id
+        root.selectedNodeId = target.id
+        if (changedNode)
+            root.clearSemanticAnchor()
+        else
+            root.persist()
+        return true
     }
 
     function openSubflow(targetId: string): bool {
@@ -139,6 +172,7 @@ Singleton {
         const graph = CodeWorkflowIr.graphFor(targetId)
         root.selectedNodeId = graph.rootNodeId
             ?? graph.nodes?.[0]?.id ?? ""
+        root.selectedEdgeId = ""
         root.clearSemanticAnchor()
 
         if (CodeWorkflowRuntime.descriptor(targetId)) {
@@ -176,6 +210,7 @@ Singleton {
     onOutputNameChanged: root.persist()
     onSubflowTargetIdChanged: root.persist()
     onSelectedNodeIdChanged: root.persist()
+    onSelectedEdgeIdChanged: root.persist()
     onSemanticAnchorChanged: root.persist()
     onSemanticAnchorNodeIdChanged: root.persist()
     onSourcePreviewVisibleChanged: root.persist()

@@ -32,6 +32,14 @@ Item {
         CodeWorkflowIr.nodeFor(
             CodeWorkflowSession.subflowTargetId,
             CodeWorkflowSession.selectedNodeId)
+    readonly property var selectedIrEdge:
+        CodeWorkflowIr.edgeFor(
+            CodeWorkflowSession.subflowTargetId,
+            CodeWorkflowSession.selectedEdgeId)
+    readonly property var previewableInboundEdge:
+        (root.graph?.edges ?? []).find(edge =>
+            edge.previewable === true
+            && edge.to === CodeWorkflowSession.selectedNodeId) ?? null
     readonly property string sourcePath:
         root.selectedIrNode?.sourcePath
             ?? root.descriptor?.sourcePath
@@ -659,6 +667,39 @@ Item {
                         color: Appearance.colors.colOnLayer1
                         elide: Text.ElideRight
                     }
+                    StyledText {
+                        visible: root.selectedIrEdge !== null
+                        text: "Connection"
+                        color: Appearance.colors.colSubtext
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedIrEdge !== null
+                        text: root.selectedIrEdge
+                            ? String(root.selectedIrEdge.label ?? root.selectedIrEdge.id)
+                                + " · "
+                                + String(root.selectedIrEdge.sourceExpression ?? "")
+                            : ""
+                        color: Appearance.colors.colPrimary
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WrapAnywhere
+                    }
+                    RippleButtonWithIcon {
+                        visible: root.selectedIrEdge === null
+                            && root.previewableInboundEdge !== null
+                        Layout.fillWidth: true
+                        materialIcon: "conversion_path"
+                        mainText: root.previewableInboundEdge
+                            ? "Select connection · "
+                                + String(root.previewableInboundEdge.label ?? "")
+                            : "Select connection"
+                        onClicked: {
+                            if (root.previewableInboundEdge)
+                                CodeWorkflowSession.selectEdge(
+                                    root.previewableInboundEdge.id)
+                        }
+                    }
                     StyledText { text: "Source"; color: Appearance.colors.colSubtext }
                     StyledText {
                         Layout.fillWidth: true
@@ -729,9 +770,11 @@ Item {
                         visible: root.literalPreviewEligible
                             || root.bindingPreviewEligible
                             || root.transactionMatchesSelection
-                        text: root.bindingPreviewEligible
-                            ? "Phase 2 direct binding · preview only"
-                            : "Phase 2 literal edit · guarded Apply"
+                        text: root.selectedIrEdge !== null
+                            ? "Phase 2 edge retarget · preview only"
+                            : root.bindingPreviewEligible
+                                ? "Phase 2 direct binding · preview only"
+                                : "Phase 2 literal edit · guarded Apply"
                         color: Appearance.colors.colSubtext
                     }
                     ToolbarTextField {

@@ -197,12 +197,11 @@ Scope {
                     edge: root.position
                     ownerThickness: dockRoot.screenEdgeThickness
                     outputRect: Qt.rect(0, 0, dockRoot.width, dockRoot.height)
-                    bodyRect: {
-                        const p = dockVisualBackground.mapToItem(dockRoot, 0, 0)
-                        return Qt.rect(p.x, p.y,
-                            dockVisualBackground.width,
-                            dockVisualBackground.height)
-                    }
+                    bodyRect: Qt.rect(
+                        dockMouseArea.x + dockBackground.x + dockVisualBackground.x,
+                        dockMouseArea.y + dockBackground.y + dockVisualBackground.y,
+                        dockVisualBackground.width,
+                        dockVisualBackground.height)
                     bodyRadius: dockVisualBackground.radius
                     fillColor: dockVisualBackground.color
                     borderColor: dockVisualBackground.border.color

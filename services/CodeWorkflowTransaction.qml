@@ -31,6 +31,8 @@ Singleton {
     property string _pendingCommandKind: "literal-property"
     property string _pendingPreviewMode: "literal"
     property string _pendingExpectedCurrent: ""
+    property string _pendingConnectGraphTargetId: ""
+    property string _pendingConnectTargetId: ""
     property var preApplyDiagnostics: ({
         status: "not-evaluated",
         ready: false,
@@ -76,13 +78,15 @@ Singleton {
         && Quickshell.watchFiles
         && !root.applyLifecycleBusy
         && reloadState.pendingApplyManifestPath.length > 0
+    readonly property bool previewBusy:
+        previewProcess.running || connectPreviewProcess.running
     readonly property bool canUndo:
-        !previewProcess.running
+        !root.previewBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex >= 0
     readonly property bool canRedo:
-        !previewProcess.running
+        !root.previewBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex + 1 < root.history.length
@@ -907,7 +911,7 @@ Singleton {
     }
 
     function clear(): void {
-        if (previewProcess.running
+        if (root.previewBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return
@@ -1014,7 +1018,7 @@ Singleton {
         previewMode: string,
         expectedCurrent: string
     ): bool {
-        if (previewProcess.running
+        if (root.previewBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -1039,6 +1043,8 @@ Singleton {
         root._pendingCommandKind = String(commandKind ?? "")
         root._pendingPreviewMode = nextMode
         root._pendingExpectedCurrent = nextExpectedCurrent
+        root._pendingConnectGraphTargetId = ""
+        root._pendingConnectTargetId = ""
         if (!["literal-property", "direct-binding", "disconnect-binding"]
                 .includes(root._pendingCommandKind)
                 || !["literal", "binding", "disconnect"]
@@ -1119,11 +1125,67 @@ Singleton {
             expectedCurrent)
     }
 
+    function _startConnectPreview(
+        targetId: string,
+        connectTargetId: string,
+        replaceIndex: int
+    ): bool {
+        if (root.previewBusy
+                || applyPrepareProcess.running
+                || root.applyLifecycleBusy)
+            return false
+
+        const nextTargetId = String(targetId ?? "")
+        const nextConnectTargetId = String(connectTargetId ?? "")
+        if (nextTargetId.length === 0 || nextConnectTargetId.length === 0)
+            return false
+
+        root._invalidateApplyHandoff()
+        root._pendingReplaceIndex = replaceIndex
+        root._pendingCommandKind = "connect-binding"
+        root._pendingPreviewMode = "connect"
+        root._pendingExpectedCurrent = ""
+        root._pendingConnectGraphTargetId = nextTargetId
+        root._pendingConnectTargetId = nextConnectTargetId
+        root.status = "previewing"
+        root.sourcePath = ""
+        root.baseSha256 = ""
+        root.semanticAnchor = ""
+        root.replacement = ""
+        root.result = ({})
+        root.patch = ({})
+        root.previewText = ""
+        root.error = ""
+
+        connectPreviewProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/connect_preview.py"),
+            "--target-id", nextTargetId,
+            "--connect-target-id", nextConnectTargetId
+        ]
+        connectPreviewProcess.running = true
+        return true
+    }
+
+    function previewConnectBinding(
+        targetId: string,
+        connectTargetId: string
+    ): bool {
+        return root._startConnectPreview(
+            targetId, connectTargetId, -1)
+    }
+
     function regenerate(baseSha: string): bool {
         const command = root.activeCommand
         if (!command)
             return false
         const commandKind = String(command.kind ?? "")
+        if (commandKind === "connect-binding") {
+            return root._startConnectPreview(
+                String(command.targetId ?? ""),
+                String(command.connectTargetId ?? ""),
+                root.historyIndex)
+        }
         const previewMode = commandKind === "disconnect-binding"
             ? "disconnect"
             : commandKind === "direct-binding"
@@ -1140,23 +1202,7 @@ Singleton {
             String(command.expectedCurrent ?? ""))
     }
 
-    function _commitPreviewCommand(payload): void {
-        const command = {
-            kind: root._pendingCommandKind,
-            sourcePath: root.sourcePath,
-            baseSha256: root.baseSha256,
-            candidateSha256: String(payload?.candidateSha256 ?? ""),
-            semanticAnchor: root.semanticAnchor,
-            replacement: root.replacement,
-            expectedCurrent: root._pendingExpectedCurrent,
-            result: payload,
-            patch: payload?.patch ?? ({}),
-            previewText: String(payload?.preview ?? ""),
-            sourceWritable: payload?.sourceWritable === true,
-            stale: false,
-            staleReason: ""
-        }
-
+    function _storeCommand(command): void {
         if (root._pendingReplaceIndex >= 0
                 && root._pendingReplaceIndex < root.history.length) {
             const next = root.history.slice()
@@ -1172,6 +1218,48 @@ Singleton {
         }
         root._pendingReplaceIndex = -1
         root._showCommand(root.activeCommand)
+    }
+
+    function _commitPreviewCommand(payload): void {
+        root._storeCommand({
+            kind: root._pendingCommandKind,
+            sourcePath: root.sourcePath,
+            baseSha256: root.baseSha256,
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            semanticAnchor: root.semanticAnchor,
+            replacement: root.replacement,
+            expectedCurrent: root._pendingExpectedCurrent,
+            result: payload,
+            patch: payload?.patch ?? ({}),
+            previewText: String(payload?.preview ?? ""),
+            sourceWritable: payload?.sourceWritable === true,
+            stale: false,
+            staleReason: ""
+        })
+    }
+
+    function _commitConnectPreviewCommand(payload): void {
+        root._storeCommand({
+            kind: "connect-binding",
+            targetId: root._pendingConnectGraphTargetId,
+            connectTargetId: root._pendingConnectTargetId,
+            sourcePath: String(payload?.sourcePath ?? ""),
+            baseSha256: String(payload?.baseSha256 ?? ""),
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            semanticAnchor: String(payload?.parentSemanticAnchor ?? ""),
+            replacement: String(payload?.expression ?? ""),
+            expectedCurrent: "",
+            typeCompatibility: String(
+                payload?.typeCompatibility ?? "unknown-unresolved"),
+            cycleStatus: String(
+                payload?.cycleStatus ?? "unknown-incomplete-projection"),
+            result: payload,
+            patch: payload?.patch ?? ({}),
+            previewText: String(payload?.preview ?? ""),
+            sourceWritable: false,
+            stale: false,
+            staleReason: ""
+        })
     }
 
     function finish(exitCode: int): void {
@@ -1219,6 +1307,70 @@ Singleton {
             ?? payload?.reason
             ?? stderrText
             ?? ("transaction preview exited " + exitCode))
+    }
+
+    function finishConnectPreview(exitCode: int): void {
+        const raw = String(connectPreviewStdout.text ?? "").trim()
+        let payload = null
+        try {
+            payload = raw.length > 0 ? JSON.parse(raw) : null
+        } catch (e) {
+            payload = null
+        }
+
+        const nextStatus = String(payload?.status ?? "error")
+        const identityMatches = payload?.protocol === 1
+            && String(payload?.targetId ?? "")
+                === root._pendingConnectGraphTargetId
+            && String(payload?.connectTargetId ?? "")
+                === root._pendingConnectTargetId
+        const previewSafe = nextStatus === "preview"
+            && String(payload?.commandKind ?? "") === "connect-binding"
+            && String(payload?.sourcePath ?? "").length > 0
+            && String(payload?.baseSha256 ?? "").length > 0
+            && String(payload?.candidateSha256 ?? "").length > 0
+            && String(payload?.parentSemanticAnchor ?? "").length > 0
+            && String(payload?.insertedSemanticAnchor ?? "").length > 0
+            && String(payload?.typeCompatibility ?? "")
+                === "unknown-unresolved"
+            && String(payload?.cycleStatus ?? "")
+                === "unknown-incomplete-projection"
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === false
+
+        if (identityMatches && previewSafe) {
+            root._commitConnectPreviewCommand(payload)
+            root._pendingConnectGraphTargetId = ""
+            root._pendingConnectTargetId = ""
+            return
+        }
+
+        root._pendingReplaceIndex = -1
+        root.result = payload ?? ({})
+        root.patch = payload?.patch ?? ({})
+        root.previewText = String(payload?.preview ?? "")
+        root._pendingConnectGraphTargetId = ""
+        root._pendingConnectTargetId = ""
+
+        if (payload?.protocol === 1
+                && ["blocked", "conflict", "unsupported", "unavailable",
+                    "invalid-request", "invalid-patch"].includes(nextStatus)) {
+            root.status = nextStatus
+            root.error = String(
+                payload?.detail
+                ?? payload?.reason
+                ?? nextStatus)
+            return
+        }
+
+        root.status = "error"
+        const stderrText = String(
+            connectPreviewStderr.text ?? "").trim()
+        root.error = String(
+            payload?.detail
+            ?? payload?.reason
+            ?? stderrText
+            ?? ("connect preview exited " + exitCode))
     }
 
     onHistoryChanged: root._syncReloadState()
@@ -1311,5 +1463,14 @@ Singleton {
         stdout: StdioCollector { id: previewStdout }
         stderr: StdioCollector { id: previewStderr }
         onExited: (exitCode, _exitStatus) => root.finish(exitCode)
+    }
+
+    Process {
+        id: connectPreviewProcess
+        running: false
+        stdout: StdioCollector { id: connectPreviewStdout }
+        stderr: StdioCollector { id: connectPreviewStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishConnectPreview(exitCode)
     }
 }

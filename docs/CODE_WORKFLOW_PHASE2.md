@@ -470,10 +470,48 @@ Implemented research/proof:
 - Code Workflow acceptance runs this focused native proof before the existing
   literal Apply lifecycle gate; this does not broaden Gate 2H authorization.
 
+## Milestone 2K-G — preview-only Connect history and UI
+
+Implemented:
+
+- `CodeWorkflowSession` persists only primitive `selectedConnectTargetId`
+  state. Restore revalidates the ID through `CodeWorkflowIr.connectTargetFor()`,
+  requires the reviewed descriptor to remain non-editable/non-previewable with
+  TYPE/CYCLE UNKNOWN, selects its reviewed parent node, and clears ordinary edge
+  and semantic-anchor selection.
+- Settings exposes only explicit reviewed Connect targets. Selecting one shows
+  the reviewed absent binding/expression plus the diagnostics
+  `TYPE UNKNOWN · CYCLE UNKNOWN · PREVIEW ONLY`; there is no inferred port or
+  geometry-derived target.
+- `CodeWorkflowTransaction.previewConnectBinding()` invokes only
+  `connect_preview.py`. Production QML never calls `connect.py` directly.
+  The coordinator remains responsible for fresh parent resolution, same-SHA
+  continuity, insertion proof and candidate semantic verification.
+- Successful Connect previews enter the existing semantic history with primitive
+  `targetId`, `connectTargetId`, source SHA, parent semantic anchor, binding
+  expression and candidate identity. Patch ranges remain evidence, not command
+  identity.
+- Undo/redo use the common history. Regenerate re-runs the coordinator from
+  `targetId + connectTargetId`; it does not reuse an initializer range or old
+  parser node.
+- Connect process output must retain
+  `typeCompatibility=unknown-unresolved`,
+  `cycleStatus=unknown-incomplete-projection`, `applyEnabled=false` and
+  `artifactsStaged=false` before the transaction accepts it into history.
+- `connect-binding` is PREVIEW ONLY. The literal-only
+  `applyCommandMatchesHandoff`, `stageApplyHandoff()` and
+  `write-subset-not-authorized` guards are unchanged, and Connect history
+  records report `sourceWritable=false`.
+- Focused contracts cover session persistence, coordinator-only invocation,
+  history/regenerate identity, UI diagnostics, runtime payload inclusion and
+  preservation of literal-only Apply authorization.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
-- production Connect UI/transaction integration;
+- applying Connect or Disconnect transforms;
+- QML type-compatibility qualification for Connect;
+- dependency coverage sufficient to qualify Connect cycle safety;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -481,13 +519,13 @@ Implemented research/proof:
 
 ## Next gate
 
-The coordinator proof is now the completed 2K-F research gate. The next gate may
-integrate `connect-binding` into transaction history as PREVIEW ONLY, add
-primitive selected-connect-target session state, and expose an explicit reviewed
-Connect Preview control with diagnostics that visibly retain TYPE UNKNOWN,
-CYCLE UNKNOWN and PREVIEW ONLY.
+2K-G completes the first production-facing Connect preview path without source
+write authority. The next research gate must address semantic safety rather than
+adding more UI: qualify a QML type-compatibility resolver and dependency coverage
+strong enough to distinguish a proven cycle from UNKNOWN.
 
-Do not open Connect Apply, stage Apply artifacts, mark reviewed connect targets
-editable/previewable as mutation authority, or infer compatibility/cycle safety
-from labels, runtime values or the incomplete reviewed graph. Connect write
-authorization still requires separate type/cycle acceptance gates.
+Until those gates exist, do not open Connect Apply, stage Connect artifacts,
+mark reviewed connect targets editable/previewable as mutation authority, or
+infer compatibility/cycle safety from labels, runtime values or the incomplete
+reviewed graph. Absence of a reviewed dependency path remains UNKNOWN, never
+SAFE.

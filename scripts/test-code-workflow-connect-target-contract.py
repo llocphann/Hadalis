@@ -68,9 +68,15 @@ for token in (
         fail("analyzer parent-object protocol missing " + token)
 
 if 'Quickshell.shellPath("scripts/code-workflow/connect.py")' in transaction_service:
-    fail("2K-E must not wire Connect into production transaction history yet")
-if '"connect-binding"' in transaction_service:
-    fail("2K-E must not authorize connect-binding commands in transaction service")
+    fail("production Connect preview must not bypass reviewed coordinator")
+for token in (
+    'Quickshell.shellPath("scripts/code-workflow/connect_preview.py")',
+    'function previewConnectBinding(',
+    '"connect-binding"',
+    'String(root.activeCommand?.kind ?? "") === "literal-property"',
+):
+    if token not in transaction_service:
+        fail("reviewed Connect integration missing " + token)
 
 for token in (
     "Milestone 2K-E — reviewed Connect target identity",

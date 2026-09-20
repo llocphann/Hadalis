@@ -14,11 +14,11 @@ Apply. Direct bindings now have a preview-only identifier/member-expression
 subset, while direct-binding Apply and broader writes remain disabled. The
 2K edge-editing gate is restricted to reviewed data edges that can re-resolve to
 that semantic binding subset; visual propagation edges are not mutation targets.
-Disconnect now has verified preview-only deletion semantics. Connect insertion and
-the reviewed-target coordinator are research-only: identity is parent semantic
-anchor + absent binding name + source expression, the two parser requests use a
-same-SHA primitive handoff, and type/cycle compatibility remain unresolved write
-blockers.
+Disconnect now has verified preview-only deletion semantics. Connect uses an
+explicit reviewed-target selection plus coordinator-backed preview history in
+Settings: identity is parent semantic anchor + absent binding name + source
+expression, the two parser requests use a same-SHA primitive handoff, and the UI
+keeps TYPE/CYCLE UNKNOWN visibly blocking write authorization.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

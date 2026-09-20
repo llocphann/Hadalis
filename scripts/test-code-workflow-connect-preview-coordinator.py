@@ -264,10 +264,18 @@ for forbidden in ("write_text(", "write_bytes(", "os.replace(", "setText("):
     if forbidden in coordinator_source:
         fail("Connect coordinator must never write source: " + forbidden)
 
-if 'Quickshell.shellPath("scripts/code-workflow/connect_preview.py")' in transaction_source:
-    fail("2K-F proof must not be wired into production transaction service")
-if '"connect-binding"' in transaction_source:
-    fail("2K-F proof must not authorize connect-binding in production history")
+if 'Quickshell.shellPath("scripts/code-workflow/connect.py")' in transaction_source:
+    fail("production transaction service must not bypass the coordinator")
+for token in (
+    'Quickshell.shellPath("scripts/code-workflow/connect_preview.py")',
+    'function previewConnectBinding(',
+    '"connect-binding"',
+    'String(root.activeCommand?.kind ?? "") === "literal-property"',
+    'if (String(command.kind ?? "") !== "literal-property")',
+    'blockers.push("write-subset-not-authorized")',
+):
+    if token not in transaction_source:
+        fail("2K-G integration lost coordinator/Apply isolation: " + token)
 
 for token in (
     "Milestone 2K-F — deterministic Connect preview coordinator",

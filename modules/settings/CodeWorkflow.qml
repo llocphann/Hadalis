@@ -36,21 +36,34 @@ Item {
         CodeWorkflowIr.edgeFor(
             CodeWorkflowSession.subflowTargetId,
             CodeWorkflowSession.selectedEdgeId)
+    readonly property var reviewedConnectTargetsForSelection:
+        CodeWorkflowIr.connectTargetsFor(
+            CodeWorkflowSession.subflowTargetId).filter(target =>
+                target.parentNodeId === CodeWorkflowSession.selectedNodeId)
+    readonly property var selectedConnectTarget:
+        CodeWorkflowIr.connectTargetFor(
+            CodeWorkflowSession.subflowTargetId,
+            CodeWorkflowSession.selectedConnectTargetId)
     readonly property var previewableInboundEdge:
         (root.graph?.edges ?? []).find(edge =>
             edge.previewable === true
             && edge.to === CodeWorkflowSession.selectedNodeId) ?? null
     readonly property string sourcePath:
-        root.selectedIrNode?.sourcePath
+        root.selectedConnectTarget?.sourcePath
+            ?? root.selectedIrNode?.sourcePath
             ?? root.descriptor?.sourcePath
             ?? ""
     readonly property string sourceNeedle:
-        root.selectedIrNode?.sourceNeedle ?? ""
+        root.selectedConnectTarget?.parentObjectNeedle
+            ?? root.selectedIrNode?.sourceNeedle
+            ?? ""
     readonly property string storedSemanticAnchor:
-        CodeWorkflowSession.semanticAnchorNodeId
-            === CodeWorkflowSession.selectedNodeId
-        ? CodeWorkflowSession.semanticAnchor
-        : ""
+        CodeWorkflowSession.selectedConnectTargetId.length > 0
+            ? ""
+            : CodeWorkflowSession.semanticAnchorNodeId
+                === CodeWorkflowSession.selectedNodeId
+                ? CodeWorkflowSession.semanticAnchor
+                : ""
     readonly property bool live:
         root.snapshot.records?.some(item => item.state === "resident") ?? false
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
@@ -142,6 +155,15 @@ Item {
         && root.directBindingValueKinds.includes(
             String(root.sourceAnchorEvidence?.semanticValueKind ?? ""))
         && root.storedSemanticAnchor.length > 0
+    readonly property bool connectPreviewEligible:
+        root.selectedConnectTarget !== null
+        && root.selectedConnectTarget?.previewable === false
+        && root.selectedConnectTarget?.editable === false
+        && root.selectedConnectTarget?.typeCompatibility
+            === "unknown-unresolved"
+        && root.selectedConnectTarget?.cycleStatus
+            === "unknown-incomplete-projection"
+        && String(root.selectedConnectTarget?.sourcePath ?? "").length > 0
     readonly property string currentLiteralText:
         root.literalPreviewEligible
             ? String(root.sourceAnchorEvidence?.semanticValueText ?? "")
@@ -150,9 +172,22 @@ Item {
         root.bindingPreviewEligible
             ? String(root.sourceAnchorEvidence?.semanticValueText ?? "")
             : ""
-    readonly property bool transactionMatchesSelection:
-        CodeWorkflowTransaction.sourcePath === root.sourcePath
-        && CodeWorkflowTransaction.semanticAnchor === root.storedSemanticAnchor
+    readonly property bool transactionMatchesSelection: {
+        const command = CodeWorkflowTransaction.activeCommand
+        if (!command)
+            return false
+        if (String(command.kind ?? "") === "connect-binding") {
+            return root.selectedConnectTarget !== null
+                && String(command.targetId ?? "")
+                    === CodeWorkflowSession.subflowTargetId
+                && String(command.connectTargetId ?? "")
+                    === CodeWorkflowSession.selectedConnectTargetId
+                && String(command.sourcePath ?? "") === root.sourcePath
+        }
+        return CodeWorkflowTransaction.sourcePath === root.sourcePath
+            && CodeWorkflowTransaction.semanticAnchor
+                === root.storedSemanticAnchor
+    }
     readonly property string analyzerStatusText: {
         if (!root.analyzerMatchesAnchor)
             return "IDLE"
@@ -238,6 +273,8 @@ Item {
     }
 
     function captureSemanticAnchor(): void {
+        if (CodeWorkflowSession.selectedConnectTargetId.length > 0)
+            return
         if (!root.analyzerMatchesAnchor
                 || CodeWorkflowAnalyzer.status !== "ready")
             return
@@ -279,6 +316,14 @@ Item {
             baseSha,
             root.storedSemanticAnchor,
             String(nextValue ?? ""))
+    }
+
+    function previewSelectedConnectTarget(): void {
+        if (!root.connectPreviewEligible)
+            return
+        CodeWorkflowTransaction.previewConnectBinding(
+            CodeWorkflowSession.subflowTargetId,
+            CodeWorkflowSession.selectedConnectTargetId)
     }
 
     function previewSelectedEdgeDisconnect(): void {
@@ -324,8 +369,14 @@ Item {
     }
 
     function regenerateTransaction(): void {
-        if (!root.transactionMatchesSelection
-                || CodeWorkflowAnalyzer.status !== "ready")
+        if (!root.transactionMatchesSelection)
+            return
+        if (CodeWorkflowTransaction.activeCommand?.kind
+                === "connect-binding") {
+            CodeWorkflowTransaction.regenerate("")
+            return
+        }
+        if (CodeWorkflowAnalyzer.status !== "ready")
             return
         const currentSha = String(
             CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
@@ -722,6 +773,60 @@ Item {
                                     root.previewableInboundEdge.id)
                         }
                     }
+                    Repeater {
+                        model: root.reviewedConnectTargetsForSelection
+
+                        delegate: RippleButtonWithIcon {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            materialIcon: "add_link"
+                            mainText: CodeWorkflowSession.selectedConnectTargetId
+                                    === String(modelData.id ?? "")
+                                ? "Connect target · "
+                                    + String(modelData.label ?? modelData.id)
+                                : "Select Connect target · "
+                                    + String(modelData.label ?? modelData.id)
+                            onClicked: CodeWorkflowSession.selectConnectTarget(
+                                String(modelData.id ?? ""))
+                        }
+                    }
+                    StyledText {
+                        visible: root.selectedConnectTarget !== null
+                        text: "Reviewed Connect"
+                        color: Appearance.colors.colSubtext
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedConnectTarget !== null
+                        text: root.selectedConnectTarget
+                            ? String(root.selectedConnectTarget.bindingName ?? "")
+                                + " ← "
+                                + String(root.selectedConnectTarget
+                                    .sourceExpression ?? "")
+                            : ""
+                        color: Appearance.colors.colPrimary
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedConnectTarget !== null
+                        text: "TYPE UNKNOWN · CYCLE UNKNOWN · PREVIEW ONLY"
+                        color: Appearance.colors.colTertiary
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: Font.Medium
+                        wrapMode: Text.WordWrap
+                    }
+                    RippleButtonWithIcon {
+                        visible: root.selectedConnectTarget !== null
+                        Layout.fillWidth: true
+                        materialIcon: "add_link"
+                        mainText: "Preview Connect"
+                        enabled: root.connectPreviewEligible
+                            && !CodeWorkflowTransaction.previewBusy
+                        onClicked: root.previewSelectedConnectTarget()
+                    }
                     StyledText { text: "Source"; color: Appearance.colors.colSubtext }
                     StyledText {
                         Layout.fillWidth: true
@@ -791,12 +896,15 @@ Item {
                     StyledText {
                         visible: root.literalPreviewEligible
                             || root.bindingPreviewEligible
+                            || root.connectPreviewEligible
                             || root.transactionMatchesSelection
-                        text: root.selectedIrEdge !== null
-                            ? "Phase 2 edge retarget · preview only"
-                            : root.bindingPreviewEligible
-                                ? "Phase 2 direct binding · preview only"
-                                : "Phase 2 literal edit · guarded Apply"
+                        text: root.selectedConnectTarget !== null
+                            ? "Phase 2 Connect · preview only"
+                            : root.selectedIrEdge !== null
+                                ? "Phase 2 edge retarget · preview only"
+                                : root.bindingPreviewEligible
+                                    ? "Phase 2 direct binding · preview only"
+                                    : "Phase 2 literal edit · guarded Apply"
                         color: Appearance.colors.colSubtext
                     }
                     ToolbarTextField {
@@ -880,7 +988,7 @@ Item {
                     Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Only qualified literal-property commands may Apply. Direct bindings are preview-only."
+                        text: "Only qualified literal-property commands may Apply. Direct bindings are preview-only. Disconnect and Connect are preview-only."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -916,13 +1024,23 @@ Item {
                     StyledText {
                         Layout.fillWidth: true
                         text: CodeWorkflowTransaction.activeCommand?.kind
-                                === "disconnect-binding"
-                            ? "Disconnect Preview · "
+                                === "connect-binding"
+                            ? "Connect Preview · "
+                                + String(CodeWorkflowTransaction.status)
+                                    .toUpperCase()
                             : CodeWorkflowTransaction.activeCommand?.kind
-                                === "direct-binding"
-                            ? "Binding Preview · "
-                            : "Literal Transaction · "
-                            + String(CodeWorkflowTransaction.status).toUpperCase()
+                                === "disconnect-binding"
+                                ? "Disconnect Preview · "
+                                    + String(CodeWorkflowTransaction.status)
+                                        .toUpperCase()
+                                : CodeWorkflowTransaction.activeCommand?.kind
+                                    === "direct-binding"
+                                    ? "Binding Preview · "
+                                        + String(CodeWorkflowTransaction.status)
+                                            .toUpperCase()
+                                    : "Literal Transaction · "
+                                        + String(CodeWorkflowTransaction.status)
+                                            .toUpperCase()
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
@@ -932,8 +1050,11 @@ Item {
                         accent: Appearance.colors.colSubtext
                     }
                     Pill {
-                        label: ["direct-binding", "disconnect-binding"]
-                                .includes(
+                        label: [
+                            "direct-binding",
+                            "disconnect-binding",
+                            "connect-binding"
+                        ].includes(
                                     CodeWorkflowTransaction.activeCommand?.kind)
                             ? "PREVIEW ONLY"
                             : CodeWorkflowTransaction.applyEnabled
@@ -944,8 +1065,11 @@ Item {
                                 : CodeWorkflowTransaction.preApplyReady
                                     ? "PRE-APPLY READY"
                                     : "PRE-APPLY BLOCKED"
-                        accent: ["direct-binding", "disconnect-binding"]
-                                .includes(
+                        accent: [
+                            "direct-binding",
+                            "disconnect-binding",
+                            "connect-binding"
+                        ].includes(
                                     CodeWorkflowTransaction.activeCommand?.kind)
                             ? Appearance.colors.colTertiary
                             : CodeWorkflowTransaction.applyEnabled
@@ -993,7 +1117,9 @@ Item {
                         materialIcon: "refresh"
                         mainText: "Regenerate"
                         enabled: root.transactionMatchesSelection
-                            && CodeWorkflowAnalyzer.status === "ready"
+                            && (CodeWorkflowTransaction.activeCommand?.kind
+                                    === "connect-binding"
+                                || CodeWorkflowAnalyzer.status === "ready")
                         onClicked: root.regenerateTransaction()
                     }
                     RippleButtonWithIcon {

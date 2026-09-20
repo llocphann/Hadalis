@@ -13,6 +13,7 @@ Singleton {
     property string subflowTargetId: "bar"
     property string selectedNodeId: "bar.component"
     property string selectedEdgeId: ""
+    property string selectedConnectTargetId: ""
     property string semanticAnchor: ""
     property string semanticAnchorNodeId: ""
     property real panX: 32
@@ -42,6 +43,8 @@ Singleton {
         root.selectedNodeId = String(
             state.codeWorkflowNodeId ?? "bar.component") || "bar.component"
         root.selectedEdgeId = String(state.codeWorkflowEdgeId ?? "")
+        root.selectedConnectTargetId = String(
+            state.codeWorkflowConnectTargetId ?? "")
         if (!CodeWorkflowIr.hasGraph(root.subflowTargetId))
             root.subflowTargetId = "bar"
         if (!CodeWorkflowIr.nodeFor(root.subflowTargetId, root.selectedNodeId))
@@ -55,11 +58,33 @@ Singleton {
                 root.subflowTargetId, restoredEdge.to)) {
             root.selectedNodeId = restoredEdge.to
         }
+        const restoredConnectTarget = CodeWorkflowIr.connectTargetFor(
+            root.subflowTargetId, root.selectedConnectTargetId)
+        if (!restoredConnectTarget
+                || restoredConnectTarget.previewable !== false
+                || restoredConnectTarget.editable !== false
+                || restoredConnectTarget.typeCompatibility
+                    !== "unknown-unresolved"
+                || restoredConnectTarget.cycleStatus
+                    !== "unknown-incomplete-projection") {
+            root.selectedConnectTargetId = ""
+        } else {
+            const parentNode = CodeWorkflowIr.nodeFor(
+                root.subflowTargetId,
+                String(restoredConnectTarget.parentNodeId ?? ""))
+            if (!parentNode) {
+                root.selectedConnectTargetId = ""
+            } else {
+                root.selectedEdgeId = ""
+                root.selectedNodeId = parentNode.id
+            }
+        }
         root.semanticAnchor = String(
             state.codeWorkflowSemanticAnchor ?? "")
         root.semanticAnchorNodeId = String(
             state.codeWorkflowSemanticAnchorNodeId ?? "")
-        if (root.semanticAnchorNodeId !== root.selectedNodeId) {
+        if (root.semanticAnchorNodeId !== root.selectedNodeId
+                || root.selectedConnectTargetId.length > 0) {
             root.semanticAnchor = ""
             root.semanticAnchorNodeId = ""
         }
@@ -84,6 +109,7 @@ Singleton {
         state.codeWorkflowSubflowTargetId = root.subflowTargetId
         state.codeWorkflowNodeId = root.selectedNodeId
         state.codeWorkflowEdgeId = root.selectedEdgeId
+        state.codeWorkflowConnectTargetId = root.selectedConnectTargetId
         state.codeWorkflowSemanticAnchor = root.semanticAnchor
         state.codeWorkflowSemanticAnchorNodeId = root.semanticAnchorNodeId
         state.codeWorkflowPanX = root.panX
@@ -126,6 +152,7 @@ Singleton {
             root.selectedNodeId = graph.rootNodeId
                 ?? graph.nodes?.[0]?.id ?? ""
             root.selectedEdgeId = ""
+            root.selectedConnectTargetId = ""
             root.clearSemanticAnchor()
             root.resetViewport()
         }
@@ -138,6 +165,7 @@ Singleton {
         const changed = root.selectedNodeId !== nodeId
         root.selectedNodeId = nodeId
         root.selectedEdgeId = ""
+        root.selectedConnectTargetId = ""
         if (changed)
             root.clearSemanticAnchor()
         else
@@ -156,11 +184,36 @@ Singleton {
 
         const changedNode = root.selectedNodeId !== target.id
         root.selectedEdgeId = edge.id
+        root.selectedConnectTargetId = ""
         root.selectedNodeId = target.id
         if (changedNode)
             root.clearSemanticAnchor()
         else
             root.persist()
+        return true
+    }
+
+    function selectConnectTarget(connectTargetId: string): bool {
+        const target = CodeWorkflowIr.connectTargetFor(
+            root.subflowTargetId, String(connectTargetId ?? ""))
+        if (!target
+                || target.previewable !== false
+                || target.editable !== false
+                || target.typeCompatibility !== "unknown-unresolved"
+                || target.cycleStatus !== "unknown-incomplete-projection")
+            return false
+
+        const parentNode = CodeWorkflowIr.nodeFor(
+            root.subflowTargetId,
+            String(target.parentNodeId ?? ""))
+        if (!parentNode)
+            return false
+
+        root.selectedConnectTargetId = String(target.id ?? "")
+        root.selectedEdgeId = ""
+        root.selectedNodeId = parentNode.id
+        root.clearSemanticAnchor()
+        root.persist()
         return true
     }
 
@@ -173,6 +226,7 @@ Singleton {
         root.selectedNodeId = graph.rootNodeId
             ?? graph.nodes?.[0]?.id ?? ""
         root.selectedEdgeId = ""
+        root.selectedConnectTargetId = ""
         root.clearSemanticAnchor()
 
         if (CodeWorkflowRuntime.descriptor(targetId)) {
@@ -211,6 +265,7 @@ Singleton {
     onSubflowTargetIdChanged: root.persist()
     onSelectedNodeIdChanged: root.persist()
     onSelectedEdgeIdChanged: root.persist()
+    onSelectedConnectTargetIdChanged: root.persist()
     onSemanticAnchorChanged: root.persist()
     onSemanticAnchorNodeIdChanged: root.persist()
     onSourcePreviewVisibleChanged: root.persist()

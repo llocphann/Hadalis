@@ -33,8 +33,32 @@ else
 fi
 
 mkdir -p "$out_dir"
-manifest="$out_dir/manifest.tsv"
+manifest="$out_dir/manifest-${mode}-${profile}.tsv"
+session_metadata="$out_dir/session-${mode}-${profile}.json"
 printf 'edge\tsource_t\tmode\tprofile\tpng\tdetail_png\tmetadata_json\tlog\n' > "$manifest"
+
+python3 - "$session_metadata" "$mode" "$profile" "$output" "$warmup" "$qs_bin" "$(command -v grim)" <<'PY'
+import datetime
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+mode, profile, requested_output, warmup, qs_bin, grim_bin = sys.argv[2:]
+payload = {
+    "capturedAtUtc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    "mode": mode,
+    "profile": profile,
+    "requestedOutput": requested_output,
+    "warmupSeconds": float(warmup),
+    "quickshellExecutable": qs_bin,
+    "grimExecutable": grim_bin,
+    "waylandDisplay": __import__("os").environ.get("WAYLAND_DISPLAY", ""),
+    "detailCropCoordinates": "compositor-layout-logical",
+    "devicePixelRatioAppliedToCrop": False,
+}
+path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
 
 current_pid=""
 cleanup() {
@@ -244,3 +268,4 @@ else
 fi
 
 printf 'manifest: %s\n' "$manifest"
+printf 'session:  %s\n' "$session_metadata"

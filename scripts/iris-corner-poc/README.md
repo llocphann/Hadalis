@@ -170,7 +170,9 @@ The output defaults to `scripts/iris-corner-poc/captures/` and contains:
 - 12 full-output PNG screenshots;
 - 12 focused junction PNGs (`*-detail.png`);
 - one machine-readable geometry JSON and one Quickshell log per case;
-- `manifest.tsv`;
+- profile-specific `manifest-<mode>-<profile>.tsv`;
+- profile-specific `session-<mode>-<profile>.json` with capture-tool and
+  coordinate-space provenance;
 - `contact-sheet-<mode>-<profile>.png` when ImageMagick is available;
 - `detail-sheet-<mode>-<profile>.png` when ImageMagick is available.
 

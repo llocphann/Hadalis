@@ -8,6 +8,9 @@ media="$root/modules/bar/Media.qml"
 weather="$root/modules/bar/weather/WeatherBar.qml"
 styled_popup="$root/modules/bar/StyledPopup.qml"
 connected_frame="$root/modules/common/perimeter/ConnectedSurfaceFrame.qml"
+iris_frame="$root/modules/common/perimeter/ConnectedSurfaceIrisFrame.qml"
+iris_field="$root/modules/common/perimeter/ConnectedSurfaceIrisField.qml"
+iris_mask="$root/modules/common/perimeter/ConnectedSurfaceBodyMask.qml"
 connected_geometry="$root/modules/common/perimeter/ConnectedSurfaceGeometry.qml"
 corner_shadow="$root/modules/common/perimeter/PerimeterCornerShadow.qml"
 join_flares="$root/modules/common/perimeter/ConnectedSurfaceJoinFlares.qml"
@@ -222,14 +225,20 @@ if grep -A8 -F 'id: barEdgeShadow' "$root/modules/verticalBar/VerticalBar.qml" |
     fail 'vertical Bar shadow must not blink behind a separate presentation-readiness gate'
 fi
 
-grep -Fq 'connectorVisible: false' "$styled_popup" \
-    || fail 'StyledPopup must not paint a connector stem'
+grep -Fq 'ConnectedSurfaceIrisFrame {' "$styled_popup" \
+    || fail 'StyledPopup must render its production silhouette through the iRiS split-composition frame'
+grep -Fq 'ConnectedSurfaceBodyMask {' "$styled_popup" \
+    || fail 'StyledPopup must use the body-only iRiS compositor mask'
+if grep -Fq 'ConnectedSurfaceFrame {' "$styled_popup" \
+        || grep -Fq 'ConnectedSurfaceMask {' "$styled_popup"; then
+    fail 'StyledPopup must not retain the legacy flare/connector-strip renderer after iRiS cutover'
+fi
 grep -Fq 'ConnectedSurfaceRevealClip {' "$styled_popup" \
     || fail 'StyledPopup must slide underneath the Bar/Screen Edge through a fixed reveal clip'
 grep -Fq 'hoverEnabled: root.active' "$styled_popup" \
-    || fail 'StyledPopup must route hover ownership through the full connected body'
-grep -Fq 'onBodyHoveredChanged: root.popupHovered = bodyHovered' "$styled_popup" \
-    || fail 'StyledPopup must keep popup hover state synchronized with the full body'
+    || fail 'StyledPopup must route hover ownership through the full iRiS body'
+grep -Fq 'onBodyHoveredChanged: root._bodyHovered = bodyHovered' "$styled_popup" \
+    || fail 'StyledPopup must keep popup hover state synchronized with the iRiS body'
 grep -Fq 'property QtObject _hoverTransferTimerObject: Timer {' "$styled_popup" \
     || fail 'StyledPopup must debounce cross-window hover transfer before retracting'
 grep -Fq 'property real offsetScale: 1' "$styled_popup" \
@@ -248,57 +257,50 @@ grep -Fq 'readonly property real motionProgress:' "$connected_geometry" \
     || fail 'connected geometry must preserve an unclamped spatial motion scalar'
 grep -Fq '(1 - motionProgress) * crossBodyExtent' "$connected_geometry" \
     || fail 'connected geometry must preserve expressive spatial overshoot during translation'
-grep -Fq 'readonly property real _popupScreenMargin: Math.max(0,' "$styled_popup" \
-    || fail 'StyledPopup Screen Edge clamping must be placement-driven for every Bar module'
+grep -Fq 'readonly property real _popupScreenMargin: root._screenEdgeThickness' "$styled_popup" \
+    || fail 'StyledPopup Screen Edge clamping must follow the real physical frame thickness'
 if grep -A28 -F 'id: directEdgeAttachment' "$styled_popup" \
     | grep -Fq 'connectAdjacentScreenEdge'; then
     fail 'StyledPopup direct-edge detection must not be gated by a module opt-in'
 fi
 grep -Fq 'joinLeft: root._attachmentEdge === "left"' "$styled_popup" \
-    || fail 'StyledPopup must square its Bar-facing left edge'
+    || fail 'StyledPopup must join its primary left owner'
 grep -Fq '|| directEdgeAttachment.atLeft' "$styled_popup" \
-    || fail 'StyledPopup must also square a touched left Screen Edge'
+    || fail 'StyledPopup must also join a touched left Screen Edge'
 grep -Fq 'joinTop: root._attachmentEdge === "top"' "$styled_popup" \
-    || fail 'StyledPopup must square its Bar-facing top edge'
+    || fail 'StyledPopup must join its primary top owner'
 grep -Fq '|| directEdgeAttachment.atTop' "$styled_popup" \
-    || fail 'StyledPopup must also square a touched top Screen Edge'
-grep -Fq 'shadowTop: !frame.joinTop' "$styled_popup" \
-    || fail 'StyledPopup shadow must stop at every joined top edge'
-grep -Fq 'shadowLeft: !frame.joinLeft' "$styled_popup" \
-    || fail 'StyledPopup shadow must stop at every joined left edge'
-grep -Fq 'property bool joinLeft: false' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must expose direct-edge join state'
-grep -Fq 'topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must remove radius from attached corners'
-grep -Fq 'id: shadowClip' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must clip radius-following shadow at attached edges'
-grep -Fq 'RectangularShadow {' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must use the stable radius-aware shell shadow renderer'
-grep -Fq 'cached: false' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame shadow must stay live while the connected body translates'
-grep -Fq 'id: shadowClip' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must retain explicit joined-edge shadow clipping'
-grep -Fq 'import QtQuick.Effects' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame RectangularShadow must import QtQuick.Effects'
-if grep -Fq 'import Qt5Compat.GraphicalEffects' "$connected_frame"; then
-    fail 'ConnectedSurfaceFrame must not import RectangularShadow from Qt5Compat.GraphicalEffects'
-fi
-if grep -Fq 'layer.effect: MultiEffect {' "$connected_frame"; then
-    fail 'ConnectedSurfaceFrame must not depend on the blank-prone MultiEffect popup shadow path'
-fi
-grep -Fq 'ConnectedSurfaceJoinFlares {' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must add concave shoulders at directly joined edge endpoints'
+    || fail 'StyledPopup must also join a touched top Screen Edge'
+
 for token in \
-    'shadowEnabled: root.shadowEnabled' \
-    'shadowExtent: root.shadowExtent' \
-    'shadowColor: root.shadowColor'; do
-    grep -Fq "$token" "$connected_frame" \
-        || fail "ConnectedSurfaceFrame must forward live Screen Edge shadow state into its shoulders: $token"
+    'function clipExternalOwners(raw)' \
+    'readonly property var ownerShape:' \
+    'readonly property var frameStartShape:' \
+    'readonly property var frameEndShape:' \
+    'readonly property var popupShape:' \
+    'readonly property bool needsEndJoinAux:' \
+    'sourceItem: shadowTextureSource' \
+    'hideSource: true' \
+    'smooth: false' \
+    'ConnectedSurfaceIrisField {' \
+    'readonly property bool bodyHovered: bodyHover.hovered'; do
+    grep -Fq "$token" "$iris_frame" \
+        || fail "production iRiS frame contract missing: $token"
 done
-grep -Fq 'readonly property bool bodyHovered: bodyHover.hovered' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must expose full-body hover ownership'
-grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \
-    || fail 'ConnectedSurfaceFrame must source join flare size from shared perimeter tokens'
+if grep -Fq 'ConnectedSurfaceJoinFlares' "$iris_frame" \
+        || grep -Fq 'ConnectedSurfaceConnector' "$iris_frame"; then
+    fail 'production iRiS frame must not recreate flare/connector patch geometry'
+fi
+grep -Fq 'fragmentShader: Qt.resolvedUrl("IrisField.frag.qsb")' "$iris_field" \
+    || fail 'production iRiS field must resolve its locked shader inside the runtime module'
+grep -Fq 'readonly property vector4d viewport:' "$iris_field" \
+    || fail 'production iRiS field must preserve output-local viewport coordinates'
+if grep -Fq '_sourceStrip' "$iris_mask" \
+        || grep -Fq '_middleStrip' "$iris_mask" \
+        || grep -Fq '_bodyStrip' "$iris_mask"; then
+    fail 'production iRiS input mask must not retain connector-strip approximation'
+fi
+
 grep -Fq 'No stem is' "$join_flares" \
     || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
 grep -Fq 'root.bodyItem.mapToItem(root, 0, 0)' "$join_flares" \

@@ -47,7 +47,10 @@ for export in \
     'ConnectedSurfaceConnector 1.0 ConnectedSurfaceConnector.qml' \
     'ConnectedSurfaceFrame 1.0 ConnectedSurfaceFrame.qml' \
     'ConnectedSurfaceContentHost 1.0 ConnectedSurfaceContentHost.qml' \
-    'ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml'; do
+    'ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml' \
+    'ConnectedSurfaceIrisField 1.0 ConnectedSurfaceIrisField.qml' \
+    'ConnectedSurfaceIrisFrame 1.0 ConnectedSurfaceIrisFrame.qml' \
+    'ConnectedSurfaceBodyMask 1.0 ConnectedSurfaceBodyMask.qml'; do
     grep -Fq "$export" "$qmldir" || fail "supported perimeter export missing: $export"
 done
 
@@ -56,7 +59,7 @@ grep -Fq 'PerimeterTopology.inwardDirectionForEdge(edge)' "$geometry" \
 grep -Fq 'property real connectorWidth: PerimeterTokens.connectorWidth' "$geometry" \
     || fail 'ConnectedSurfaceGeometry lost shared connector tokens'
 
-for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceContentHost ConnectedSurfaceMask; do
+for primitive in ConnectedSurfaceGeometry ConnectedSurfaceIrisFrame ConnectedSurfaceContentHost ConnectedSurfaceBodyMask; do
     grep -Fq "$primitive" "$styled" || fail "StyledPopup no longer uses supported primitive: $primitive"
 done
 

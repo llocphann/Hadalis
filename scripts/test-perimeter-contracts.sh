@@ -22,11 +22,16 @@ for file in \
     ConnectedSurfaceJoinFlares.qml \
     ConnectedSurfaceRevealClip.qml \
     ConnectedSurfaceContentHost.qml \
-    ConnectedSurfaceMask.qml; do
+    ConnectedSurfaceMask.qml \
+    ConnectedSurfaceIrisField.qml \
+    ConnectedSurfaceIrisFrame.qml \
+    ConnectedSurfaceBodyMask.qml \
+    IrisField.frag \
+    IrisField.frag.qsb; do
     [[ -f "$common/$file" ]] || fail "missing shared primitive $file"
 done
 
-for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceMask; do
+for primitive in ConnectedSurfaceGeometry ConnectedSurfaceIrisFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceBodyMask; do
     grep -Fq "$primitive" "$styled" \
         || fail "StyledPopup must keep using $primitive"
 done

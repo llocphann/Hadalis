@@ -26,10 +26,10 @@ def main() -> None:
     for token in (
         "qs.modules.common.perimeter",
         "ConnectedSurfaceGeometry",
-        "ConnectedSurfaceFrame",
+        "ConnectedSurfaceIrisFrame",
         "ConnectedSurfaceRevealClip",
         "ConnectedSurfaceContentHost",
-        "ConnectedSurfaceMask",
+        "ConnectedSurfaceBodyMask",
         "mask: connectedMask",
         "ExclusionMode.Ignore",
         "Appearance.colors.colLayer0",
@@ -68,6 +68,7 @@ def main() -> None:
         "Config.options?.appearance?.screenEdge?.radius ?? 25",
         "Math.max(0, Math.min(96",
         "readonly property real smoothUnionRadius: 20",
+        "readonly property real irisFuseDepth: 30",
         "readonly property real popupRadius: 28",
         "readonly property real joinFlareRadius: frameRadius",
         "readonly property real joinFlareCrossScale: 0.55",
@@ -590,6 +591,41 @@ def main() -> None:
           "ii critical shell must not recreate the retired standalone sidebar bridge window")
     check("PerimeterRuntime.qml" not in critical_panels,
           "Full iiPerimeter runtime must not be booted by the critical shell")
+
+    iris_frame = read("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
+    iris_field = read("modules/common/perimeter/ConnectedSurfaceIrisField.qml")
+    iris_mask = read("modules/common/perimeter/ConnectedSurfaceBodyMask.qml")
+    for token in (
+        "function clipExternalOwners(raw)",
+        "readonly property var ownerShape:",
+        "readonly property var frameStartShape:",
+        "readonly property var frameEndShape:",
+        "readonly property var popupShape:",
+        "readonly property bool needsEndJoinAux:",
+        "ShaderEffectSource {",
+        "sourceItem: shadowTextureSource",
+        "hideSource: true",
+        "smooth: false",
+        "ConnectedSurfaceIrisField {",
+        "readonly property bool bodyHovered: bodyHover.hovered",
+    ):
+        check(token in iris_frame,
+              f"Production iRiS frame contract missing: {token}")
+    check("ConnectedSurfaceJoinFlares" not in iris_frame
+          and "ConnectedSurfaceConnector" not in iris_frame,
+          "Production iRiS popup renderer must not retain flare/connector patch geometry")
+    check('fragmentShader: Qt.resolvedUrl("IrisField.frag.qsb")' in iris_field
+          and "readonly property vector4d viewport:" in iris_field
+          and "pass.x, pass.y" in iris_field,
+          "Production iRiS field must use the locked local QSB with output-local viewport coordinates")
+    check("_sourceStrip" not in iris_mask
+          and "_middleStrip" not in iris_mask
+          and "_bodyStrip" not in iris_mask
+          and "visibleBodyRect" in iris_mask,
+          "StyledPopup iRiS input must be body-only rather than the retired connector-strip approximation")
+    check("ConnectedSurfaceFrame {" not in styled_popup
+          and "ConnectedSurfaceMask {" not in styled_popup,
+          "ii StyledPopup must not silently retain the legacy flare/mask renderer after iRiS cutover")
 
     frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
     check("property real connectorBorderWidth: 0" in frame,

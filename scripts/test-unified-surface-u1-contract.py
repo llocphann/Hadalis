@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 U1 = ROOT / "scripts" / "unified-surface"
@@ -77,10 +75,6 @@ assert "scripts/unified-surface" in exclusions["excludedPaths"], (
 )
 
 qsb = U1 / "U1Surface.qsb"
-require_qsb = os.environ.get("HADALIS_REQUIRE_U1_QSB") == "1"
-if require_qsb:
-    assert qsb.is_file() and qsb.stat().st_size > 0, "CI requires a baked U1Surface.qsb"
-elif qsb.exists():
-    assert qsb.stat().st_size > 0, "present U1Surface.qsb is empty"
+assert qsb.is_file() and qsb.stat().st_size > 0, "committed U1Surface.qsb is required"
 
 print("unified-surface U1 static contract: PASS")

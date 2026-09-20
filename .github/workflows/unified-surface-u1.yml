@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   bake-and-verify:
@@ -24,25 +24,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qt6-shader-baker
 
-      - name: Bake U1 shader
-        run: scripts/unified-surface/build-shader.sh
+      - name: Re-bake canonical U1 shader
+        run: |
+          scripts/unified-surface/build-shader.sh
+          git diff --exit-code -- scripts/unified-surface/U1Surface.qsb
 
       - name: Verify isolated U1 contract
-        env:
-          HADALIS_REQUIRE_U1_QSB: "1"
         run: python3 scripts/test-unified-surface-u1-contract.py
-
-      - name: Persist canonical U1 QSB
-        run: |
-          if [[ -z "$(git status --porcelain -- scripts/unified-surface/U1Surface.qsb)" ]]; then
-            echo "U1Surface.qsb already matches the canonical bake"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/unified-surface/U1Surface.qsb
-          git commit -m "build(surface): update U1 shader artifact"
-          git push origin HEAD:dev
 
       - name: Upload canonical U1 QSB
         uses: actions/upload-artifact@v4

@@ -242,9 +242,9 @@ for token in (
     require(search_bar, token, "SongRec geometry cleanup")
 
 require(motion, 'readonly property string mode: "slide"', "immutable motion")
-require(waffle, "ConnectedSurfaceFrame {", "Waffle compatibility")
-require(waffle, "ConnectedSurfaceMask {", "Waffle compatibility")
-for token in ("ConnectedSurfaceIrisFrame {", "ConnectedSurfaceBodyMask {"):
-    forbid(waffle, token, "Waffle must remain unchanged by ii cutover")
+require(waffle, "ConnectedSurfaceFrame {", "Waffle direct-seam compatibility")
+require(waffle, "ConnectedSurfaceBodyMask {", "Waffle body-only input mask")
+for token in ("ConnectedSurfaceIrisFrame {", "ConnectedSurfaceMask {"):
+    forbid(waffle, token, "Waffle must stay on the non-iRiS direct-seam path")
 
 print("iRiS production surface contract: PASS")

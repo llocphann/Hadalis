@@ -225,8 +225,15 @@ Implemented, but **not yet qualified as passing evidence**:
   lives in CodeWorkflowReloadBridge, instantiated directly under ShellRoot. The
   bridge persists one primitive JSON string and imports/exports it through the
   transaction singleton; the acceptance ProbeShell uses the same bridge.
-- No claim of live acceptance is made until a retained
-  apply-lifecycle-report.json records all checks passing.
+- A later automated run proved the production success path and exact rollback
+  path. The rollback initially appeared red only because the dev probe counted
+  reloadFailed in a generation-local field; transaction evidence already showed
+  rollback-complete, a non-empty reload error and verify => base-present. Gate
+  2H now judges rollback from persisted transaction/result evidence rather than
+  the non-persistent probe counter.
+- No claim of full live acceptance is made until the same retained
+  apply-lifecycle-report.json also records the external-edit preservation check
+  passing.
 
 ## Not implemented yet
 

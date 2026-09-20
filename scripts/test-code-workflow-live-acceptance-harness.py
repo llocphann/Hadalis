@@ -77,12 +77,19 @@ for token in (
     'probe.env["QT_QUICK_BACKEND"] = "software"',
     "run_success(probe, target, report)",
     "run_rollback(probe, target, report)",
+    'lifecycle_result.get("status") == "rolled-back"',
+    'rollback_verify.get("state") == "base-present"',
+    'rollback_verify.get("currentSha256")',
+    'transactionReloadError',
     "run_external_edit(probe, target, report)",
     'target.resolve().relative_to((work_dir / "config").resolve())',
     "apply-lifecycle-report.json",
 ):
     if token not in driver:
         fail("acceptance driver missing " + token)
+
+if 'recovered["reloadFailures"] >= 1' in driver:
+    fail("rollback acceptance must not depend on non-persistent probe counters")
 
 for forbidden in (
     "Quickshell.reload(",

@@ -190,25 +190,43 @@ def run_rollback(probe: Probe, target: Path, report: dict):
     )
     after = target.read_bytes()
 
+    lifecycle = recovered["workflowTransaction"]
+    lifecycle_result = lifecycle.get("applyLifecycleResult") or {}
+    rollback_verify = lifecycle_result.get("verify") or {}
+    rollback_error = str(
+        lifecycle_result.get("reloadError")
+        or lifecycle.get("applyLifecycleError")
+        or ""
+    )
+
     probe.record(
         "2H reload failure rolls back exact snapshot",
         before == after
         and b"property int rollbackProbe: 1" in after
-        and recovered["reloadFailures"] >= 1
-        and recovered["workflowTransaction"]["pendingApplyPhase"] == "idle"
-        and recovered["workflowTransaction"]["applyEnabled"] is False,
+        and lifecycle_result.get("status") == "rolled-back"
+        and bool(rollback_error)
+        and rollback_verify.get("status") == "verified"
+        and rollback_verify.get("state") == "base-present"
+        and rollback_verify.get("currentSha256")
+            == rollback_verify.get("baseSha256")
+        and lifecycle["pendingApplyPhase"] == "idle"
+        and lifecycle["applyEnabled"] is False,
         {
             "anchor": anchor,
-            "reloadFailures": recovered["reloadFailures"],
-            "reloadError": recovered["lastReloadError"],
-            "lifecycle": recovered["workflowTransaction"],
+            "probeReloadFailures": recovered["reloadFailures"],
+            "probeReloadError": recovered["lastReloadError"],
+            "transactionReloadError": rollback_error,
+            "rollbackVerify": rollback_verify,
+            "lifecycle": lifecycle,
         },
     )
     report["rollback"] = {
         "anchor": anchor,
         "snapshotSha256": sha256(before).hexdigest(),
         "restoredSha256": sha256(after).hexdigest(),
-        "state": recovered["workflowTransaction"],
+        "transactionReloadError": rollback_error,
+        "rollbackVerify": rollback_verify,
+        "state": lifecycle,
     }
     reset_fixture(probe)
 

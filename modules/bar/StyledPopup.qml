@@ -63,9 +63,9 @@ LazyLoader {
     readonly property real _contentPadding: 14
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    // Caelestia clamps panel tangent placement to the physical border's inner
-    // boundary. The old -seamOverlap inset made corner-attached popups sit 2 px
-    // inside the frame and changed the apparent fillet geometry.
+    // Accepted G2 morphology welds the SDF body a few logical pixels under a
+    // tangent Screen Edge, then clips Overlay paint/input at the frame's actual
+    // inner boundary. Placement therefore uses frame thickness minus weld.
     readonly property real _popupScreenMargin: Math.max(0,
         root._screenEdgeThickness - PerimeterTokens.irisWeldDepth)
     readonly property bool _edgeShadowEnabled:

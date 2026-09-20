@@ -122,8 +122,8 @@ def main() -> None:
     check("tangentAnimationOffset" not in geometry
           and "tangentRevealDirection" not in geometry,
           "Connected popup slide must remain on the attachment axis like Caelestia wrappers")
-    check("seamOverlap: 0" in styled_popup,
-          "Bar popup must start exactly at the attachment boundary so the flat shoulder is fully visible")
+    check("seamOverlap: PerimeterTokens.irisWeldDepth" in styled_popup,
+          "Bar popup SDF must preserve the G2 owner weld while the reveal clip keeps owner pixels hidden")
     check("ConnectedSurfaceRevealClip {" in styled_popup
           and "opacity: 1" in styled_popup,
           "Connected popup must use pure slide-under clipping instead of staged fade/scale")

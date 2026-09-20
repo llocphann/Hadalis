@@ -134,12 +134,16 @@ Scope {
                 }
 
                 exclusiveZone: root.pinned ? (dockHeight + Appearance.sizes.elevationMargin) : 0
+                // Dock is an edge-attached surface, not a floating island.
+                // Reserve only the inward shadow margin; the attached side
+                // reaches the physical output edge and covers the Screen Edge
+                // band beneath it as one continuous block.
                 implicitWidth: root.isVertical
-                    ? (dockHeight + Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut)
+                    ? (dockHeight + Appearance.sizes.elevationMargin)
                     : dockBackground.implicitWidth
                 implicitHeight: root.isVertical
                     ? dockBackground.implicitHeight
-                    : (dockHeight + Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut)
+                    : (dockHeight + Appearance.sizes.elevationMargin)
 
                 WlrLayershell.namespace: "quickshell:dock"
                 color: "transparent"
@@ -205,33 +209,29 @@ Scope {
                     Behavior on anchors.topMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
                     Behavior on anchors.bottomMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
                     Behavior on anchors.leftMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
                     Behavior on anchors.rightMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
 
@@ -311,16 +311,16 @@ Scope {
 
                                 anchors.fill: parent
                                 anchors.topMargin: root.isTop
-                                    ? Appearance.sizes.hyprlandGapsOut
+                                    ? 0
                                     : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
                                 anchors.bottomMargin: root.position === "bottom"
-                                    ? Appearance.sizes.hyprlandGapsOut
+                                    ? 0
                                     : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
                                 anchors.leftMargin: root.isLeft
-                                    ? Appearance.sizes.hyprlandGapsOut
+                                    ? 0
                                     : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
                                 anchors.rightMargin: root.position === "right"
-                                    ? Appearance.sizes.hyprlandGapsOut
+                                    ? 0
                                     : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
 
                                 visible: (Config.options?.dock?.showBackground ?? true)
@@ -355,6 +355,12 @@ Scope {
                                             : inirEverywhere
                                                 ? Appearance.inir.roundingNormal
                                                 : Appearance.rounding.large
+                                // The edge-facing corners belong to the
+                                // shared Screen Edge seam and must stay square.
+                                topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius
+                                topRightRadius: (root.isTop || root.position === "right") ? 0 : radius
+                                bottomLeftRadius: (root.position === "bottom" || root.isLeft) ? 0 : radius
+                                bottomRightRadius: (root.position === "bottom" || root.position === "right") ? 0 : radius
 
                                 Behavior on color {
                                     enabled: Appearance.animationsEnabled

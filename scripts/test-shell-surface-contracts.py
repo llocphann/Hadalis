@@ -338,6 +338,25 @@ def main() -> None:
           and 'readonly property string animationType: SurfaceMotion.mode' in sidebar_host,
           "Sidebar presentation must use the immutable slide-only SurfaceMotion contract")
 
+    dock = read("modules/dock/Dock.qml")
+    for token in (
+        "duration: SurfaceMotion.duration",
+        "easing.type: SurfaceMotion.easingType",
+        "? (dockHeight + Appearance.sizes.elevationMargin)",
+        ": (dockHeight + Appearance.sizes.elevationMargin)",
+        "anchors.topMargin: root.isTop\n                                    ? 0",
+        'anchors.bottomMargin: root.position === "bottom"\n                                    ? 0',
+        "anchors.leftMargin: root.isLeft\n                                    ? 0",
+        'anchors.rightMargin: root.position === "right"\n                                    ? 0',
+        "topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius",
+        'bottomRightRadius: (root.position === "bottom" || root.position === "right") ? 0 : radius',
+    ):
+        check(token in dock,
+              f"Dock direct Screen Edge / slide contract missing: {token}")
+    check(dock.count("duration: SurfaceMotion.duration") >= 4
+          and "Appearance.animation.elementMoveEnter.duration" not in dock,
+          "Dock reveal/retract must use the same immutable slide motion as connected popups")
+
     osk = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     for token in (
         "targetY = 0",
@@ -356,9 +375,12 @@ def main() -> None:
           and 'bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius' in osk
           and "PerimeterTokens.attachedCornerRadius" not in osk,
           "OSK attached body edge must stay square without a legacy endpoint wedge")
-    check("Appearance.animation.elementMove.duration" in osk
-          and "Appearance.animation.elementMove.bezierCurve" in osk,
-          "OSK attached-edge slide must use the default-spatial motion token")
+    check("SurfaceMotion.duration" in osk
+          and "SurfaceMotion.easingType" in osk,
+          "OSK attached-edge slide must use the immutable connected-surface motion token")
+    check("property real initScale:" not in osk
+          and "Behavior on scale" not in osk,
+          "OSK enter/exit must stay slide-only without a second scale animation")
     for token in (
         "property bool _oskResident:",
         "property real _oskRevealProgress:",

@@ -50,7 +50,7 @@ This section is the **maintainer handoff for new chat sessions**. Read it before
 - **Physical Screen Edge geometry remains locked** to the single full-screen odd-even frame below.
 - ii Bar popups keep the production iRiS SDF union through `StyledPopup`.
 - Sidebar, Dashboard and Settings use `ConnectedSurfaceIrisEdgeSurface`, which adapts their real body rectangle to the same iRiS field without a standalone wedge/corner helper.
-- Dashboard-owned Applications Search inherits the Dashboard `ConnectedSurfaceIrisEdgeSurface`; the embedded `SearchWidget` must not paint a second field. Only standalone/non-cutover Search, OSK and current Waffle bodies use direct square joined edges without auxiliary endpoint wedges.
+- Dashboard-owned Applications Search inherits the Dashboard `ConnectedSurfaceIrisEdgeSurface`; the embedded `SearchWidget` must not paint a second field. Dock and OSK are direct edge-attached bodies with square owner seams and the same slide-only `SurfaceMotion`; standalone/non-cutover Search and current Waffle bodies also keep direct square joined edges without auxiliary endpoint wedges.
 - `ConnectedSurfaceJoinFlares`, `PerimeterCornerShadow`, common `RoundCorner`, fake screen-rounding paint and the `joinFlare*` token family are retired.
 - Sidebar close translation must clear the complete native left/right host plus iRiS/shadow overflow so no visible sliver survives at Screen Edge.
 - Runtime-sensitive geometry remains open until the maintainer validates left/right/top/bottom and fractional-scale behavior in the real Niri session.
@@ -254,7 +254,7 @@ Sidebar / Dashboard / Settings
 
 direct square-seam compatibility:
 Waffle -> ConnectedSurfaceFrame.qml + ConnectedSurfaceMask.qml
-Search / OSK -> feature-owned body geometry, no auxiliary wedge painter
+Dock / Search / OSK -> feature-owned body geometry, no auxiliary wedge painter
 ```
 
 Rules:
@@ -363,7 +363,7 @@ If the maintainer gives a newer explicit instruction, that instruction supersede
 This section contains **unfinished work only**. When an item is source-complete *and* its required local/runtime acceptance has passed, delete it from this section rather than leaving a checked task or a historical implementation narrative.
 
 1. **Boot integrity:** update/reload the maintainer runtime and confirm the Code Workflow Binding lifecycle fix eliminates the startup crash chain through `CodeWorkflowTransaction -> CodeWorkflowSession -> CodeWorkflowRuntime -> CodeWorkflowPicker`. Any new boot blocker takes precedence over visual polish.
-2. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact geometry across normal ii Popups, Left/Right Sidebar, Dashboard, Settings and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve the locked physical Screen Edge/Bar geometry.
+2. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact geometry across normal ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve the locked physical Screen Edge/Bar geometry.
 3. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank or stranded surfaces.
 4. **Music/media:** live-test Local Music Stop/resume after long idle, bulk selection actions, queue operations and the unified Shuffle/Repeat/CAVA surfaces. Validate the 10-band EasyEffects DSP and CAVA lifecycle through pause/resume, player switching and reopen.
 5. **Dashboard/Overview:** visually accept SongRec geometry cleanup, Dashboard <-> Search Applications crossfade, the redesigned System Monitor, and the horizontal Available Modules row including narrow-width overflow behavior.

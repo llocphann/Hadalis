@@ -25,15 +25,14 @@ Scope { // Scope
     Behavior on _oskRevealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 
     Timer {
         id: oskUnloadTimer
-        interval: Appearance.animation.elementMove.duration + 40
+        interval: SurfaceMotion.duration + 40
         repeat: false
         onTriggered: {
             if (!GlobalStates.oskOpen)
@@ -253,22 +252,9 @@ Scope { // Scope
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.width { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-                transformOrigin: Item.Center
-                property real initScale: 0.98
-                scale: initScale
-
-                Component.onCompleted: {
-                    initScale = 1.0
-                }
-
-                Behavior on scale {
-                    animation: NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                        easing.type: Appearance.animation.elementMoveFast.type
-                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                    }
-                }
-
+                // Enter/exit is slide-only, matching connected popups,
+                // Sidebar, Dashboard and Settings. No scale pulse is layered
+                // on top of the edge translation.
                 Behavior on x {
                     enabled: oskBackground.animatePosition
                     NumberAnimation {

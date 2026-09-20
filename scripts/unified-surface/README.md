@@ -114,3 +114,20 @@ U1 fails architecturally if it needs any of the following:
 - blur used to hide a topology defect.
 
 Blur and production shadow ownership are intentionally out of scope for U1.
+
+
+## QSB reproducibility
+
+Qt 6.4 QShader package serialization is not byte-deterministic across otherwise
+equivalent bakes, so raw `.qsb` SHA equality is deliberately **not** the
+correctness gate.
+
+`verify-shader-package.sh` preserves the committed package, performs a fresh
+bake, and compares extracted:
+
+- reflection metadata (JSON-normalized);
+- SPIR-V 1.0 payload;
+- GLSL ES 300 payload;
+- GLSL 330 payload.
+
+A package is accepted only when those semantic/executable payloads match.

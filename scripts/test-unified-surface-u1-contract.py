@@ -14,6 +14,7 @@ REQUIRED_TEXT = [
     U1 / "U1Surface.qml",
     U1 / "U1Surface.frag",
     U1 / "build-shader.sh",
+    U1 / "verify-shader-package.sh",
     U1 / "run-u1.sh",
     U1 / "README.md",
 ]
@@ -24,6 +25,7 @@ for path in REQUIRED_TEXT:
 qml = (U1 / "U1Surface.qml").read_text()
 frag = (U1 / "U1Surface.frag").read_text()
 build = (U1 / "build-shader.sh").read_text()
+verify = (U1 / "verify-shader-package.sh").read_text()
 combined = qml + "\n" + frag
 
 for forbidden in (
@@ -68,6 +70,10 @@ assert "HADALIS_U1_BENCHMARK" in qml
 
 for network_tool in ("curl ", "wget "):
     assert network_tool not in build, "shader baker must not download at build/runtime"
+    assert network_tool not in verify, "shader verifier must not download at build/runtime"
+
+for extracted in ("reflect", "spirv,100", "glsl,300es", "glsl,330"):
+    assert extracted in verify, f"semantic QSB verifier missing extraction: {extracted}"
 
 exclusions = json.loads((ROOT / "sdata" / "runtime-exclusions.json").read_text())
 assert "scripts/unified-surface" in exclusions["excludedPaths"], (

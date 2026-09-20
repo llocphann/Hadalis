@@ -24,15 +24,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qt6-shader-baker
 
-      - name: Re-bake canonical U1 shader
-        run: |
-          scripts/unified-surface/build-shader.sh
-          git diff --exit-code -- scripts/unified-surface/U1Surface.qsb
+      - name: Verify canonical U1 shader semantics
+        run: scripts/unified-surface/verify-shader-package.sh
 
       - name: Verify isolated U1 contract
         run: python3 scripts/test-unified-surface-u1-contract.py
 
-      - name: Upload canonical U1 QSB
+      - name: Upload freshly baked U1 QSB
         uses: actions/upload-artifact@v4
         with:
           name: hadalis-u1-qsb

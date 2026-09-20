@@ -1523,7 +1523,6 @@ ApplicationWindow {
                             screenHeight: Quickshell.screens[0]?.height ?? root.height
                             hovered: false
                             fallbackColor: Appearance.colors.colLayer1
-                            inirColor: Appearance.inir.colLayer2
                             auroraTransparency: Math.max(0.22, Appearance.aurora.popupTransparentize - 0.12)
                         }
 
@@ -1705,7 +1704,6 @@ ApplicationWindow {
                         screenHeight: Quickshell.screens[0]?.height ?? root.height
                         hovered: false
                         fallbackColor: Appearance.colors.colLayer1
-                        inirColor: Appearance.inir.colLayer2
                         auroraTransparency: Math.max(0.22, Appearance.aurora.popupTransparentize - 0.12)
                     }
 

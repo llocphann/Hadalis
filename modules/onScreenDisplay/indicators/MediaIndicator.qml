@@ -308,7 +308,6 @@ Item {
             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
             : Appearance.rounding.normal
         fallbackColor: Appearance.colors.colLayer0
-        inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: Appearance.zzzEverywhere ? Appearance.zzz.borderThick
             : auroraEverywhere || inirEverywhere ? 1 : 0

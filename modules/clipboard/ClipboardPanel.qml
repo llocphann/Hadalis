@@ -424,7 +424,6 @@ Scope {
             height: Math.min(contentColumn.implicitHeight, panelMaxHeight)
             fallbackColor: Appearance.zzzEverywhere ? Appearance.zzz.paper
                 : Appearance.regaliaEverywhere ? "transparent" : Appearance.colors.colLayer1
-            inirColor: Appearance.inir.colLayer1
             auroraTransparency: Appearance.angelEverywhere
                 ? Appearance.angel.panelTransparentize
                 : Math.max(0.12, Appearance.aurora.subSurfaceTransparentize - 0.14)

@@ -648,12 +648,12 @@ def main() -> None:
             forbid(content, token, source)
     for token in (
         "property bool bounce: true",
-        "property bool cookieMorphing: false",
         "property color colBackgroundToggled: Appearance.colors.colPrimary",
         "border.width: root.visualFocus ? 1 : 0",
         "onLongPressed:",
     ):
         require(group_button, token, "GroupButton.qml")
+    forbid(group_button, "cookieMorphing", "GroupButton.qml")
     for token in (
         "Accessible.checkable: true",
         "Accessible.checked: root.toggled",

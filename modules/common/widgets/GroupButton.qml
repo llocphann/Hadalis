@@ -24,10 +24,6 @@ Button {
     property bool altActionEnabled: true
     property var middleClickAction // When middle clicking
     property bool bounce: true
-    // Cookie Shapes: an organic face costs a Canvas, and a segmented group needs
-    // its members to share one continuous silhouette. Standalone semantic
-    // controls opt in; grouped ones stay rectangular on purpose.
-    property bool cookieMorphing: false
     property real baseWidth: contentItem.implicitWidth + horizontalPadding * 2
     property real baseHeight: contentItem.implicitHeight + verticalPadding * 2
     property bool enableImplicitWidthAnimation: true

@@ -26,6 +26,10 @@ Item {
     readonly property var meaningfulPlayers: MprisController.displayPlayers
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
+    // The connected Bar popup has a tighter horizontal budget than the global
+    // MediaControls surface. Keep compaction local to this owner so Sidebar,
+    // Dashboard and standalone media surfaces retain their existing density.
+    readonly property bool compactLayout: true
     property real popupRounding: Appearance.rounding.normal
     property real screenX: 0
     property real screenY: 0
@@ -150,7 +154,7 @@ Item {
     ColumnLayout {
         id: playerColumn
         anchors.fill: parent
-        spacing: 8
+        spacing: root.compactLayout ? 6 : 8
 
         Item {
             id: playerViewport
@@ -206,6 +210,7 @@ Item {
                         player: modelData
                         visualizerPoints: root.visualizerPoints
                         visualizerMaxValue: root.visualizerMaxValue
+                        compactLayout: root.compactLayout
                         radius: root.popupRounding
                         screenX: root.screenX + playerDelegate.x + playerControl.x
                         screenY: root.screenY + playerViewport.y
@@ -304,6 +309,7 @@ Item {
         EqualizerPanel {
             Layout.fillWidth: true
             implicitWidth: root.widgetWidth
+            compactLayout: root.compactLayout
             active: root.presentationActive && root.visible
         }
 

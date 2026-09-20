@@ -11,6 +11,7 @@ Item {
     id: root
 
     property bool active: false
+    property bool compactLayout: false
     property bool _registered: false
     // The DSP curve always carries a compact electric trace. Interaction only
     // raises luminance/contrast; stroke widths and jitter amplitude never grow.
@@ -19,7 +20,8 @@ Item {
     property int _editingBand: -1
     property var _lightningGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     readonly property color eqAccentColor: Appearance.colors.colPrimary
-    implicitHeight: 214
+    implicitHeight: root.compactLayout ? 190 : 214
+    clip: root.compactLayout
 
     function syncLightningGains(): void {
         const source = EqualizerService.dspBands ?? []
@@ -178,7 +180,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: root.compactLayout ? 6 : 8
 
         Rectangle {
             Layout.fillWidth: true
@@ -189,13 +191,15 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 8
-            Layout.rightMargin: 8
-            spacing: 8
+            Layout.leftMargin: root.compactLayout ? 6 : 8
+            Layout.rightMargin: root.compactLayout ? 6 : 8
+            spacing: root.compactLayout ? 6 : 8
 
             StyledText {
                 text: "Equalizer"
-                font.pixelSize: Appearance.font.pixelSize.normal
+                font.pixelSize: root.compactLayout
+                    ? Appearance.font.pixelSize.small
+                    : Appearance.font.pixelSize.normal
                 font.weight: Font.DemiBold
                 color: Appearance.colors.colPrimary
                 Layout.fillWidth: true
@@ -215,6 +219,8 @@ Item {
             StyledText {
                 text: root.statusText()
                 font.pixelSize: Appearance.font.pixelSize.smallest
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignRight
                 color: EqualizerService.dspControlAvailable
                     ? Appearance.colors.colSubtext
                     : Appearance.colors.colError
@@ -223,9 +229,9 @@ Item {
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 118
-            Layout.leftMargin: 4
-            Layout.rightMargin: 4
+            Layout.preferredHeight: root.compactLayout ? 100 : 118
+            Layout.leftMargin: root.compactLayout ? 3 : 4
+            Layout.rightMargin: root.compactLayout ? 3 : 4
 
             Canvas {
                 id: lightningCanvas
@@ -435,7 +441,7 @@ Item {
                                 snapMode: Slider.SnapAlways
                                 hoverEnabled: true
                                 enabled: EqualizerService.dspControlAvailable && !EqualizerService.busy
-                                implicitWidth: 26
+                                implicitWidth: root.compactLayout ? 22 : 26
                                 value: bandDelegate.backendGain
 
                                 onPressedChanged: {
@@ -467,7 +473,7 @@ Item {
                                     x: bandSlider.leftPadding
                                         + (bandSlider.availableWidth - width) / 2
                                     y: bandSlider.topPadding
-                                    width: 7
+                                    width: root.compactLayout ? 5 : 7
                                     height: bandSlider.availableHeight
                                     radius: width / 2
                                     color: Appearance.colors.colLayer2
@@ -490,8 +496,8 @@ Item {
                                     y: bandSlider.topPadding
                                         + bandSlider.visualPosition
                                             * (bandSlider.availableHeight - height)
-                                    implicitWidth: 13
-                                    implicitHeight: 13
+                                    implicitWidth: root.compactLayout ? 11 : 13
+                                    implicitHeight: implicitWidth
                                     radius: width / 2
                                     color: bandSlider.pressed
                                         ? Appearance.colors.colPrimary
@@ -536,13 +542,13 @@ Item {
 
         GridLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 6
-            Layout.rightMargin: 6
+            Layout.leftMargin: root.compactLayout ? 4 : 6
+            Layout.rightMargin: root.compactLayout ? 4 : 6
             Layout.topMargin: 1
             columns: 4
             uniformCellWidths: true
-            columnSpacing: 4
-            rowSpacing: 4
+            columnSpacing: root.compactLayout ? 3 : 4
+            rowSpacing: root.compactLayout ? 3 : 4
 
             Repeater {
                 model: ["Flat", "Bass", "Treble", "Vocal",
@@ -552,8 +558,8 @@ Item {
                     id: presetButton
                     required property string modelData
                     Layout.fillWidth: true
-                    implicitHeight: 24
-                    horizontalPadding: 4
+                    implicitHeight: root.compactLayout ? 22 : 24
+                    horizontalPadding: root.compactLayout ? 3 : 4
                     buttonText: modelData
                     buttonRadius: Appearance.rounding.small
                     enabled: EqualizerService.dspControlAvailable

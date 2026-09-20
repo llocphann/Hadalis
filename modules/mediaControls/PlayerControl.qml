@@ -26,6 +26,15 @@ Item {
     // pass the shared normalization ceiling so quiet-but-real audio stays visible.
     property real visualizerMaxValue: 1000
     property real radius: Appearance.rounding.large
+    property bool compactLayout: false
+    readonly property real contentMargin: root.compactLayout ? 9 : 12
+    readonly property real contentSpacing: root.compactLayout ? 8 : 12
+    readonly property real artworkExtent: root.compactLayout
+        ? Math.max(72, Math.min(96,
+            root.height - Appearance.sizes.elevationMargin
+                - root.contentMargin * 2))
+        : Math.max(0,
+            root.height - Appearance.sizes.elevationMargin - 24)
     // Track-change slide direction: +1 next/forward (new content enters from the
     // right), -1 previous (enters from the left). Set by the prev/next handlers
     // before the track advances so the cross-slide reads as directed.
@@ -317,14 +326,14 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 12
+            anchors.margins: root.contentMargin
+            spacing: root.contentSpacing
 
             // Cover art — direction-aware cross-slide (one leaves, one enters)
             MediaCrossSlideImage {
                 id: coverArtContainer
-                Layout.preferredWidth: card.height - 24
-                Layout.preferredHeight: card.height - 24
+                Layout.preferredWidth: root.artworkExtent
+                Layout.preferredHeight: root.artworkExtent
                 artRadius: Appearance.rounding.small
                 source: root.displayedArtFilePath
                 transitionKey: root.mediaTransitionKey
@@ -339,13 +348,16 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 4
+                Layout.minimumWidth: 0
+                spacing: root.compactLayout ? 3 : 4
 
                 // Title
                 StyledText {
                     Layout.fillWidth: true
                     text: StringUtils.cleanMusicTitle(root.effectiveTitle) || "—"
-                    font.pixelSize: Appearance.font.pixelSize.large
+                    font.pixelSize: root.compactLayout
+                        ? Appearance.font.pixelSize.normal
+                        : Appearance.font.pixelSize.large
                     font.weight: Font.Medium
                     font.italic: false
                     color: blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0
@@ -381,7 +393,7 @@ Item {
                 // Progress bar
                 Item {
                     Layout.fillWidth: true
-                    implicitHeight: 16
+                    implicitHeight: root.compactLayout ? 12 : 16
 
                     Loader {
                         id: seekLoader
@@ -422,7 +434,8 @@ Item {
                 // Time + controls
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 4
+                    Layout.minimumWidth: 0
+                    spacing: root.compactLayout ? 1 : 4
 
                     StyledText {
                         text: StringUtils.friendlyTimeForSeconds(root.effectivePosition)
@@ -438,7 +451,8 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     RippleButton {
-                        implicitWidth: 30; implicitHeight: 30
+                        implicitWidth: root.compactLayout ? 26 : 30
+                        implicitHeight: implicitWidth
                         buttonText: Translation.tr("Shuffle")
                         enabled: root.effectiveShuffleSupported
                         buttonRadius: Appearance.rounding.full
@@ -454,7 +468,7 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "shuffle"
-                                iconSize: 19
+                                iconSize: root.compactLayout ? 17 : 19
                                 fill: root.effectiveShuffleEnabled ? 1 : 0
                                 color: root.effectiveShuffleEnabled
                                     ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
@@ -464,7 +478,8 @@ Item {
                     }
 
                     RippleButton {
-                        implicitWidth: 32; implicitHeight: 32
+                        implicitWidth: root.compactLayout ? 28 : 32
+                        implicitHeight: implicitWidth
                         buttonText: Translation.tr("Previous")
                         enabled: root.effectiveCanGoPrevious
                         buttonRadius: Appearance.rounding.full
@@ -476,7 +491,9 @@ Item {
                         contentItem: Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
-                                text: "skip_previous"; iconSize: 22; fill: 1
+                                text: "skip_previous"
+                                iconSize: root.compactLayout ? 19 : 22
+                                fill: 1
                                 color: blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0
                                 Behavior on color {
                                     enabled: Appearance.animationsEnabled
@@ -488,7 +505,8 @@ Item {
 
                     RippleButton {
                         id: playPauseButton
-                        implicitWidth: 40; implicitHeight: 40
+                        implicitWidth: root.compactLayout ? 34 : 40
+                        implicitHeight: implicitWidth
                         buttonText: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
                         buttonRadius: Appearance.rounding.full
                         colBackground: "transparent"
@@ -500,7 +518,8 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: root.player?.isPlaying ? "pause" : "play_arrow"
-                                iconSize: 24; fill: 1
+                                iconSize: root.compactLayout ? 21 : 24
+                                fill: 1
                                 color: Appearance.colors.colOnLayer1
                                 Behavior on color {
                                     enabled: Appearance.animationsEnabled
@@ -511,7 +530,8 @@ Item {
                     }
 
                     RippleButton {
-                        implicitWidth: 32; implicitHeight: 32
+                        implicitWidth: root.compactLayout ? 28 : 32
+                        implicitHeight: implicitWidth
                         buttonText: Translation.tr("Next")
                         enabled: root.effectiveCanGoNext
                         buttonRadius: Appearance.rounding.full
@@ -523,7 +543,9 @@ Item {
                         contentItem: Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
-                                text: "skip_next"; iconSize: 22; fill: 1
+                                text: "skip_next"
+                                iconSize: root.compactLayout ? 19 : 22
+                                fill: 1
                                 color: blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0
                                 Behavior on color {
                                     enabled: Appearance.animationsEnabled
@@ -534,7 +556,8 @@ Item {
                     }
 
                     RippleButton {
-                        implicitWidth: 30; implicitHeight: 30
+                        implicitWidth: root.compactLayout ? 26 : 30
+                        implicitHeight: implicitWidth
                         buttonText: Translation.tr("Repeat")
                         enabled: root.effectiveRepeatSupported
                         buttonRadius: Appearance.rounding.full
@@ -550,7 +573,7 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: root.effectiveRepeatOne ? "repeat_one" : "repeat"
-                                iconSize: 19
+                                iconSize: root.compactLayout ? 17 : 19
                                 fill: root.effectiveRepeatActive ? 1 : 0
                                 color: root.effectiveRepeatActive
                                     ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)

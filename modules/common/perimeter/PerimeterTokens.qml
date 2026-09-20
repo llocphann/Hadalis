@@ -23,6 +23,9 @@ QtObject {
     // setting as Screen Edge/Bar; cross-axis compression preserves the broad,
     // flattened Caelestia-like transition.
     readonly property real smoothUnionRadius: 20
+    // Locked by the real G2 split-composition matrix. Keep this independent of
+    // the legacy Canvas flare tokens still consumed by non-StyledPopup surfaces.
+    readonly property real irisFuseDepth: 30
     readonly property real popupRadius: 28
     readonly property real joinFlareRadius: frameRadius
     readonly property real joinFlareCrossScale: 0.55

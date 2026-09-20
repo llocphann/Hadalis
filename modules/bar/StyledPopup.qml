@@ -329,11 +329,10 @@ LazyLoader {
             // Caelestia composes popouts directly into the edge surface. Keep
             // the shared geometry, but remove the detached neck/gap entirely.
             connectorLength: 0
-            // Separate layer-shell surfaces cannot reproduce Caelestia's SDF
-            // border sink by overlapping under the Bar: the reveal clip would
-            // cut that overlap away and leave a pinched shoulder. Start the
-            // popup exactly at the attachment boundary so the flattened flare
-            // owns the full visible contact width.
+            // G2 proved that separate Top/Overlay surfaces can share exact iRiS
+            // SDF joins without repainting the owner. Keep the body resting on
+            // the real attachment boundary; the renderer carries owner records
+            // for distance math and scissors their pixels out of Overlay.
             seamOverlap: 0
             progress: root.revealProgress
             devicePixelRatio: popupWindow.devicePixelRatio
@@ -367,15 +366,15 @@ LazyLoader {
             id: popupRevealClip
             geometry: geometry
 
-            ConnectedSurfaceFrame {
+            ConnectedSurfaceIrisFrame {
                 id: frame
                 anchors.fill: parent
                 geometry: geometry
                 fillColor: root._surfaceColor
                 borderColor: root._borderColor
                 borderWidth: root._borderWidth
-                connectorBorderWidth: 0
-                connectorVisible: false
+                fuseDepth: PerimeterTokens.irisFuseDepth
+                externalFrameThickness: root._screenEdgeThickness
                 // Own hover on the complete popup body, including its visual
                 // padding, but not on the reveal viewport's empty screen area.
                 // This closes the Bar→popup dead zone without turning the whole
@@ -395,10 +394,6 @@ LazyLoader {
                     || directEdgeAttachment.atLeft
                 joinRight: root._attachmentEdge === "right"
                     || directEdgeAttachment.atRight
-                shadowTop: !frame.joinTop
-                shadowBottom: !frame.joinBottom
-                shadowLeft: !frame.joinLeft
-                shadowRight: !frame.joinRight
             }
 
             ConnectedSurfaceContentHost {
@@ -412,7 +407,7 @@ LazyLoader {
                 // Track the actual content plane as well as the decorative body.
                 // Interactive children (notably StyledSwitch/MouseArea controls)
                 // sit above ConnectedSurfaceFrame and can otherwise make the
-                // frame's HoverHandler report a transient leave while the pointer
+                // iRiS body's HoverHandler report a transient leave while the pointer
                 // is still visibly inside the popup, causing retract/reopen jitter.
                 HoverHandler {
                     enabled: root.active
@@ -421,11 +416,10 @@ LazyLoader {
             }
         }
 
-        ConnectedSurfaceMask {
+        ConnectedSurfaceBodyMask {
             id: connectedMask
             geometry: geometry
             bodyItem: frame.bodyItem
-            connectorItem: frame.connectorItem
             inputEnabled: root.requestedVisible
                 || (root.hoverActivates && root._lingerVisible)
         }

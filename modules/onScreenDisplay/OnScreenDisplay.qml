@@ -442,8 +442,6 @@ Scope {
                         fillColor: Appearance.colors.colLayer0
                         borderColor: Appearance.colors.colLayer0Border
                         borderWidth: 0
-                        connectorBorderWidth: 0
-                        connectorVisible: false
                         shadowEnabled: root._edgeShadowEnabled
                             && root._edgeShadowExtent > 0
                             && root._edgeShadowOpacity > 0
@@ -547,11 +545,10 @@ Scope {
                     }
                 }
 
-                ConnectedSurfaceMask {
+                ConnectedSurfaceBodyMask {
                     id: connectedMask
                     geometry: connectedGeometry
                     bodyItem: statusFrame.bodyItem
-                    connectorItem: statusFrame.connectorItem
                     inputEnabled: root.connectedIndicator && root._visualOpen
                 }
 

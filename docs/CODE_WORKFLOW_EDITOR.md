@@ -57,13 +57,18 @@ target into production with explicit preparation, exact-manifest authorization
 and a persisted Apply lifecycle. Success requires candidate SHA verification
 plus old semantic anchor `missing`; reload/verify/postcondition failure rolls
 back the exact snapshot. Disconnect uses no Connect TYPE/CYCLE proof tokens.
-All other Disconnect edges and direct-binding replacement remain preview-only.
+All other Disconnect edges remain preview-only. 2K-U-A additionally proves
+one isolated exact direct-binding replacement transaction for
+`clock.text.time-to-date`: exact old/new expression identity, candidate SHA,
+semantic-anchor rebind and atomic commit/verify/rollback. The helper remains
+runtime-excluded and direct-binding Apply is still unavailable.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write the qualified
-literal-property subset and the first reviewed prepared+authorized Connect
-command; direct binding, Disconnect, package-managed/read-only source and every
-unsupported semantic construct remain fail-closed.
+literal-property subset, the first reviewed prepared+authorized Connect command,
+and the single reviewed `clock.data.time` Disconnect deletion. Direct-binding
+replacement remains non-production at 2K-U-A; package-managed/read-only source
+and every unsupported semantic construct remain fail-closed.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
 [Phase 1 status](CODE_WORKFLOW_PHASE1.md),
 [Phase 2 status](CODE_WORKFLOW_PHASE2.md) and

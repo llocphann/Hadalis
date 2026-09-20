@@ -1056,9 +1056,51 @@ Implemented production write boundary for the first reviewed Disconnect edge:
   Apply, the first reviewed prepared+authorized Connect command, and the single
   reviewed `clock.data.time` Disconnect deletion.
 
+## Milestone 2K-U-A — isolated reviewed direct-binding replacement
+
+Implemented the first non-production direct-binding replacement transaction
+boundary without widening the generic preview subset:
+
+- The reviewed fixture is
+  `clock.text.time-to-date` on `bar/clock`, source
+  `modules/bar/ClockWidget.qml`, property `text`.
+- Exact current expression is `DateTime.timeDisplay`; exact replacement is
+  `DateTime.date`. Both remain inside the already-preview-qualified
+  `member_expression` subset.
+- `binding_prepare.py` reparses current source, resolves the exact semantic
+  anchor, verifies binding/property/current-expression identity, reconstructs
+  the replacement candidate with the existing direct-binding transform and
+  requires exact preview candidate SHA equality.
+- The complete candidate must parse with zero diagnostics. The same semantic
+  anchor must remain uniquely `resolved`, still identify the same `text`
+  binding, and render exactly `DateTime.date`; this is the replacement
+  postcondition.
+- Snapshot, candidate and manifest are persisted mode-0600 outside the runtime
+  source tree. The manifest binds reviewed replacement ID, graph target,
+  source/base/candidate SHA, semantic anchor, property, exact old/new
+  expressions and value kinds, plus
+  `semantic-anchor-rebound-exact-expression`.
+- Preparation closes the source TOCTOU window after artifact persistence.
+  Source drift removes the just-created handoff and fails closed.
+- `binding_commit.py` validates only this direct-binding manifest and reuses
+  the qualified `atomic_replace_if_hash()` primitive for exact commit and
+  rollback. Verify reports candidate/base/diverged source state.
+- Manifest drift is rejected before source write; stale source is preserved
+  rather than overwritten.
+- The manifest is deliberately non-authorizing:
+  `writeAuthorized=false`, `applyEnabled=false`,
+  `productionIntegrated=false`. No Connect qualification, TYPE or CYCLE
+  proof token is inherited.
+- Both helpers remain excluded from the runtime payload and are referenced by
+  neither Settings nor `CodeWorkflowTransaction`.
+  Direct-binding Apply remains unavailable at 2K-U-A.
+- Native acceptance uses the real Clock source in a temporary runtime copy and
+  proves exact preparation, commit, verify, rollback, manifest-drift rejection
+  and external-source conflict preservation.
+
 ## Not implemented yet
 
-- applying direct binding replacement transforms;
+- production direct-binding replacement preparation/authorization/lifecycle/Apply;
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond `clock.data.time`;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
@@ -1069,15 +1111,18 @@ Implemented production write boundary for the first reviewed Disconnect edge:
 
 ## Next gate
 
-2K-T-B completes the first end-to-end deletion lifecycle. The next mutation
-gate should qualify direct-binding replacement independently rather than
-generalizing the Disconnect allowlist by assumption.
+2K-U-A proves the isolated exact replacement engine without production wiring.
+The next gate, 2K-U-B, should promote only
+`clock.text.time-to-date` into a prepared + explicitly authorized lifecycle.
 
-A direct-binding replacement gate must prove exact current expression identity,
-exact candidate SHA, parser-clean replacement, explicit authorization and
-reload/rebind/rollback behavior. It must not inherit Connect TYPE/CYCLE proof
-tokens unless a separately reviewed replacement requires and qualifies those
-proofs. Existing non-reviewed Disconnect edges remain preview-only until each is
-explicitly promoted.
+2K-U-B must bind authorization to the exact replacement manifest SHA/history
+command, consume authorization exactly once, atomically write the candidate,
+wait for watcher reload, verify candidate SHA, and require the same semantic
+anchor to rebind to the exact `DateTime.date` expression with zero diagnostics.
+Reload, verify or rebind failure must restore the exact snapshot and verify the
+base. Source/history/manifest drift must expire authorization before write.
 
-Multi-file writes remain out of scope.
+Do not generalize direct-binding Apply to arbitrary identifier/member
+expressions from this single reviewed fixture, and do not inherit Connect
+TYPE/CYCLE proof tokens unless separately qualified. Existing non-reviewed
+Disconnect edges remain preview-only. Multi-file writes remain out of scope.

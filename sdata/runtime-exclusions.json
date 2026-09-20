@@ -156,6 +156,8 @@
     "scripts/code-workflow/runtime",
     "scripts/code-workflow/summarize-profile.py",
     "scripts/code-workflow/virtual-pointer.c",
+    "scripts/code-workflow/binding_prepare.py",
+    "scripts/code-workflow/binding_commit.py",
     "scripts/code-workflow/run-apply-lifecycle.py",
     "scripts/code-workflow/run-connect-lifecycle.py",
     "scripts/code-workflow/run-connect-production-lifecycle.py",

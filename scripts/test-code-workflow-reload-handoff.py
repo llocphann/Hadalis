@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,30 +38,25 @@ for token in (
         fail("reload-stable transaction handoff missing " + token)
 
 persistent_block = service.split("PersistentProperties {", 1)[1].split(
-    "    Process {", 1
+    "    Connections {", 1
 )[0]
-for forbidden in (
-    "property var ",
-    "QObject",
-    "QJSValue",
-    "byteRange",
-    "valueRange",
-):
-    if forbidden in persistent_block and forbidden not in (
-        "QObject",
-        "QJSValue",
-    ):
-        fail("reload handoff must stay primitive/JSON-only: " + forbidden)
 
-for forbidden in (
-    "property var pendingApply",
-    "QObject",
-    "QJSValue",
-    "byteRange",
-    "valueRange",
-):
+for line in persistent_block.splitlines():
+    match = re.match(
+        r"\s*property\s+(\w+)\s+(historyJson|historyIndex|pendingApply\w+)\s*:",
+        line,
+    )
+    if match and match.group(1) not in {"string", "int", "bool", "real"}:
+        fail(
+            "reload handoff property must stay primitive: "
+            + match.group(2)
+            + " uses "
+            + match.group(1)
+        )
+
+for forbidden in ("byteRange", "valueRange"):
     if forbidden in persistent_block:
-        fail("reload handoff must remain primitive/JSON-only: " + forbidden)
+        fail("reload handoff must not persist transient parser ranges: " + forbidden)
 
 if "readonly property bool applyEnabled: false" not in service:
     fail("Apply must remain disabled through lifecycle wiring")

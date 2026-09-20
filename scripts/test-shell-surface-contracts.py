@@ -919,10 +919,11 @@ def main() -> None:
           and 'sidebar.animationType' not in sidebars_config,
           "Sidebar Settings must not expose a separate animation-style selector")
     sidebar_host = read("modules/sidebar/SidebarHost.qml")
-    check('readonly property string animationType: "slide"' in sidebar_host
+    check("root.animationType" not in sidebar_host
+          and 'animationType: "slide"' in sidebar_host
           and "Appearance.animationCurves.standardDecel" in sidebar_host
           and "Appearance.animationCurves.standardAccel" in sidebar_host,
-          "Sidebar runtime must use the shared slide-only connected motion contract")
+          "Sidebar runtime must contain only the shared slide-only connected motion contract")
     for sidebar_surface_path in (
         "modules/sidebarLeft/SidebarLeftContent.qml",
         "modules/sidebarRight/SidebarRightContent.qml",

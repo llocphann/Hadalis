@@ -147,8 +147,6 @@ Scope {
         return Math.max(minHeight, Math.min(maxHeight, requested))
     }
     readonly property bool instantOpen: Config.options?.sidebar?.instantOpen ?? false
-    // Sidebar motion is a shell contract, not a presentation preference.
-    readonly property string animationType: "slide"
 
     property bool pluginViewActive: false
     property real widthPreview: -1
@@ -293,8 +291,8 @@ Scope {
             animationType: "slide",
             animationRunning: sidebarContentLoader.animating,
             animationTranslateX: Math.round(sidebarContentLoader.animTranslateX),
-            animationOpacity: Number(sidebarContentLoader.animOpacity.toFixed(3)),
-            animationScale: Number(sidebarContentLoader.animScale.toFixed(3)),
+            animationOpacity: 1,
+            animationScale: 1,
             sizeMode: root.sizeMode,
             preferredHeight: Math.round(root.reportedPreferredHeight),
             minimumHeight: Math.round(root.reportedMinimumHeight),
@@ -801,12 +799,6 @@ Scope {
             property real animTranslateX: root.isLeftEdge
                 ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
                 : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut
-            property real animOpacity: 1
-            property real animScale: 1
-            property bool useClip: root.animationType === "reveal"
-            property real clipWidth: Math.max(0, width)
-            property real animTranslateY: 0
-            property real animScaleX: 1
             property bool animating: false
             onAnimatingChanged: root.reportRuntime()
 
@@ -868,19 +860,9 @@ Scope {
                 }
             }
 
-            transform: [
-                Translate {
-                    x: sidebarContentLoader.animTranslateX
-                    y: sidebarContentLoader.animTranslateY
-                },
-                Scale {
-                    xScale: sidebarContentLoader.animScaleX
-                    origin.x: root.isLeftEdge ? 0 : sidebarContentLoader.width
-                    origin.y: sidebarContentLoader.height / 2
-                }
-            ]
-            opacity: sidebarContentLoader.animOpacity
-            scale: sidebarContentLoader.animScale
+            transform: Translate {
+                x: sidebarContentLoader.animTranslateX
+            }
 
             states: [
                 State {
@@ -889,11 +871,6 @@ Scope {
                     PropertyChanges {
                         target: sidebarContentLoader
                         animTranslateX: 0
-                        animOpacity: 1
-                        animScale: 1
-                        animTranslateY: 0
-                        animScaleX: 1
-                        clipWidth: sidebarContentLoader.width
                     }
                 },
                 State {
@@ -902,11 +879,6 @@ Scope {
                     PropertyChanges {
                         target: sidebarContentLoader
                         animTranslateX: 0
-                        animOpacity: 1
-                        animScale: 1
-                        animTranslateY: 0
-                        animScaleX: 1
-                        clipWidth: sidebarContentLoader.width
                     }
                 },
                 State {
@@ -915,26 +887,9 @@ Scope {
                         && (!root.roleOpen || !root._sidebarShown)
                     PropertyChanges {
                         target: sidebarContentLoader
-                        animTranslateX:
-                            root.animationType === "slide"
-                            ? (root.isLeftEdge
-                                ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
-                                : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
-                            : 0
-                        animOpacity:
-                            root.animationType === "slide" || root.animationType === "reveal"
-                            ? 1 : 0
-                        animScale:
-                            root.animationType === "elastic" ? 0.88
-                            : root.animationType === "pop" ? 0.94 : 1
-                        animTranslateY:
-                            root.animationType === "drop"
-                            ? -(sidebarContentLoader.height
-                                + Appearance.sizes.hyprlandGapsOut * 2)
-                            : 0
-                        animScaleX: root.animationType === "swing" ? 0 : 1
-                        clipWidth: root.animationType === "reveal"
-                            ? 0 : sidebarContentLoader.width
+                        animTranslateX: root.isLeftEdge
+                            ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
+                            : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut
                     }
                 }
             ]
@@ -1010,9 +965,8 @@ Scope {
                         left: root.isLeftEdge ? parent.left : undefined
                         right: root.isLeftEdge ? undefined : parent.right
                     }
-                    width: sidebarContentLoader.useClip
-                        ? sidebarContentLoader.clipWidth : parent.width
-                    clip: sidebarContentLoader.useClip
+                    width: parent.width
+                    clip: false
 
                     Loader {
                         id: roleContentLoader

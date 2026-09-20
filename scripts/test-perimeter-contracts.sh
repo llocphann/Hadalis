@@ -112,12 +112,15 @@ for token in \
 done
 
 for token in \
-    'readonly property string animationType: "slide"' \
+    'animationType: "slide"' \
     'Appearance.animationCurves.standardDecel' \
     'Appearance.animationCurves.standardAccel'; do
     grep -Fq "$token" "$sidebar" \
         || fail "Sidebar must use one shared non-bounce slide motion: $token"
 done
+if grep -Fq 'root.animationType' "$sidebar"; then
+    fail 'SidebarHost must not keep retired fade/pop/reveal/swing/drop animation branches'
+fi
 
 for token in \
     'topContactPlane: root._attachmentEdge === "top"' \

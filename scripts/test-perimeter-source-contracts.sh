@@ -93,12 +93,15 @@ grep -Fq 'root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0' \
     || fail 'SidebarHost must reserve native endpoint room for the configured Screen Edge shadow'
 
 for token in \
-    'readonly property string animationType: "slide"' \
+    'animationType: "slide"' \
     'Appearance.animationCurves.standardDecel' \
     'Appearance.animationCurves.standardAccel'; do
     grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
         || fail "Sidebar runtime must use the shared non-bounce slide motion: $token"
 done
+if grep -Fq 'root.animationType' "$root/modules/sidebar/SidebarHost.qml"; then
+    fail 'SidebarHost must not keep retired fade/pop/reveal/swing/drop animation branches'
+fi
 if grep -Fq 'sidebar.animationType' "$root/modules/settings/SidebarsConfig.qml"; then
     fail 'Sidebar Settings must not expose a separate animation style selector'
 fi

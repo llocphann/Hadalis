@@ -419,11 +419,10 @@ def _write_connect_artifacts(
 
     atomic_state_write(snapshot_path, source)
     atomic_state_write(candidate_path, candidate)
-    atomic_state_write(
-        manifest_path,
-        (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode(
-            "utf-8"),
-    )
+    manifest_bytes = (
+        json.dumps(metadata, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    atomic_state_write(manifest_path, manifest_bytes)
 
     if snapshot_path.read_bytes() != source:
         raise RuntimeError("prepared Connect rollback snapshot bytes drifted")
@@ -431,10 +430,14 @@ def _write_connect_artifacts(
         raise RuntimeError("prepared Connect candidate bytes drifted")
     if sha256(candidate_path.read_bytes()).hexdigest() != candidate_sha:
         raise RuntimeError("prepared Connect candidate hash drifted")
+    if manifest_path.read_bytes() != manifest_bytes:
+        raise RuntimeError("prepared Connect manifest bytes drifted")
+    manifest_sha = sha256(manifest_bytes).hexdigest()
 
     return {
         **metadata,
         "manifestPath": str(manifest_path),
+        "manifestSha256": manifest_sha,
     }
 
 

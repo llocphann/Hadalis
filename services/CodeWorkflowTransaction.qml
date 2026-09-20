@@ -48,6 +48,11 @@ Singleton {
     property string connectPreparationError: ""
     property var connectLifecycleResult: ({})
     property string connectLifecycleError: ""
+    property var connectAuthorizationDiagnostics: ({
+        status: "not-authorized",
+        ready: false,
+        reason: "not-authorized"
+    })
     property var connectSafetyDiagnostics: ({
         status: "not-evaluated",
         ready: false,
@@ -135,6 +140,26 @@ Singleton {
     readonly property bool connectArtifactsReady:
         root.activeConnectPreparation !== null
         && root.connectSafetySnapshotReady
+    readonly property var activeConnectAuthorization:
+        root._connectAuthorizationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.connectAuthorization
+            : null
+    readonly property bool connectAuthorizationReady:
+        root.activeConnectAuthorization !== null
+        && root.connectArtifactsReady
+        && root.connectPreparationCapability?.ready === true
+        && root.activeCommand?.stale !== true
+    readonly property bool connectAuthorizeEnabled:
+        root.connectArtifactsReady
+        && root.connectPreparationCapability?.ready === true
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.connectSafetyBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.applyLifecycleBusy
+        && !root.connectAuthorizationReady
     readonly property bool connectPrepareEnabled:
         !!root.activeCommand
         && String(root.activeCommand?.kind ?? "") === "connect-binding"
@@ -230,10 +255,14 @@ Singleton {
             reloadState.pendingConnectHistoryIndex,
         pendingConnectManifestPath:
             reloadState.pendingConnectManifestPath,
+        pendingConnectManifestSha256:
+            reloadState.pendingConnectManifestSha256,
         pendingConnectExternalSourcePath:
             reloadState.pendingConnectExternalSourcePath,
         pendingConnectExternalSourceSha256:
             reloadState.pendingConnectExternalSourceSha256,
+        pendingConnectAuthorizationToken:
+            reloadState.pendingConnectAuthorizationToken,
         pendingConnectReloadOutcome:
             reloadState.pendingConnectReloadOutcome,
         pendingConnectVerifyState:
@@ -262,16 +291,60 @@ Singleton {
             parsed = []
         }
 
-        root.history = parsed.map(command => {
-            if (!command?.connectSafety)
-                return command
-            return Object.assign({}, command, {
-                connectSafety: Object.assign({}, command.connectSafety, {
-                    freshness: "pending",
-                    stale: false,
-                    staleReason: "cross-generation-reverification-required"
+        const connectPhase = String(
+            reloadState.pendingConnectPhase ?? "idle")
+        const activeConnectPhases = [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "rebinding",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ]
+        root.history = parsed.map((command, index) => {
+            let next = command
+            if (command?.connectSafety) {
+                next = Object.assign({}, next, {
+                    connectSafety: Object.assign(
+                        {},
+                        command.connectSafety,
+                        {
+                            freshness: "pending",
+                            stale: false,
+                            staleReason:
+                                "cross-generation-reverification-required"
+                        })
                 })
-            })
+            }
+
+            const authorization = command?.connectAuthorization
+            const preserveAuthorization =
+                !!authorization
+                && activeConnectPhases.includes(connectPhase)
+                && index === Number(
+                    reloadState.pendingConnectHistoryIndex ?? -1)
+                && String(command?.candidateSha256 ?? "")
+                    === String(
+                        reloadState.pendingConnectCandidateSha256 ?? "")
+                && String(authorization?.authorizationToken ?? "")
+                    === String(
+                        reloadState.pendingConnectAuthorizationToken ?? "")
+            if (authorization && !preserveAuthorization) {
+                next = Object.assign({}, next, {
+                    connectAuthorization: Object.assign(
+                        {},
+                        authorization,
+                        {
+                            status: "expired",
+                            authorized: false,
+                            reason:
+                                "cross-generation-reauthorization-required"
+                        })
+                })
+            }
+            return next
         })
         root.historyIndex = Math.max(
             -1,
@@ -352,10 +425,14 @@ Singleton {
             snapshot.pendingConnectHistoryIndex ?? -1)
         reloadState.pendingConnectManifestPath = String(
             snapshot.pendingConnectManifestPath ?? "")
+        reloadState.pendingConnectManifestSha256 = String(
+            snapshot.pendingConnectManifestSha256 ?? "")
         reloadState.pendingConnectExternalSourcePath = String(
             snapshot.pendingConnectExternalSourcePath ?? "")
         reloadState.pendingConnectExternalSourceSha256 = String(
             snapshot.pendingConnectExternalSourceSha256 ?? "")
+        reloadState.pendingConnectAuthorizationToken = String(
+            snapshot.pendingConnectAuthorizationToken ?? "")
         reloadState.pendingConnectReloadOutcome = String(
             snapshot.pendingConnectReloadOutcome ?? "none")
         reloadState.pendingConnectVerifyState = String(
@@ -392,16 +469,238 @@ Singleton {
                 === reloadState.pendingConnectInsertedSemanticAnchor
             && String(prepared?.manifestPath ?? "")
                 === reloadState.pendingConnectManifestPath
+            && String(prepared?.manifestSha256 ?? "")
+                === reloadState.pendingConnectManifestSha256
             && String(prepared?.externalSourcePath ?? "")
                 === reloadState.pendingConnectExternalSourcePath
             && String(prepared?.externalSourceSha256 ?? "")
                 === reloadState.pendingConnectExternalSourceSha256
+            && root._connectAuthorizationIdentityMatchesCommand(command)
+            && String(
+                command?.connectAuthorization?.authorizationToken
+                    ?? "")
+                === reloadState.pendingConnectAuthorizationToken
+    }
+
+    function _connectAuthorizationIdentityMatchesCommand(command): bool {
+        if (!command
+                || String(command.kind ?? "") !== "connect-binding"
+                || !root._connectSafetyMatchesCommand(command, false)
+                || !root._connectPreparationMatchesCommand(command))
+            return false
+
+        const authorization = command.connectAuthorization
+        const safety = command.connectSafety
+        const prepared = command.connectPreparation
+        const preview = command.result ?? ({})
+        if (!authorization
+                || Number(authorization.version ?? 0) !== 1)
+            return false
+
+        return String(authorization.status ?? "") === "authorized"
+            && authorization.authorized === true
+            && String(authorization.authorizationProof ?? "")
+                === "explicit-connect-write-authorization-v1"
+            && String(authorization.authorizationToken ?? "")
+                === "connect-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? "")
+            && String(authorization.targetId ?? "")
+                === String(command.targetId ?? "")
+            && String(authorization.connectTargetId ?? "")
+                === String(command.connectTargetId ?? "")
+            && String(authorization.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(authorization.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(authorization.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(authorization.parentSemanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(authorization.insertedSemanticAnchor ?? "")
+                === String(prepared.insertedSemanticAnchor ?? "")
+            && String(authorization.targetProperty ?? "")
+                === String(preview.bindingName ?? "")
+            && String(authorization.sourceExpression ?? "")
+                === String(command.replacement ?? "")
+            && String(authorization.manifestPath ?? "")
+                === String(prepared.manifestPath ?? "")
+            && String(authorization.manifestSha256 ?? "")
+                === String(prepared.manifestSha256 ?? "")
+            && root._sha256LooksValid(authorization.manifestSha256)
+            && String(authorization.transactionId ?? "")
+                === String(prepared.transactionId ?? "")
+            && String(authorization.externalSourcePath ?? "")
+                === String(prepared.externalSourcePath ?? "")
+            && String(authorization.externalSourceSha256 ?? "")
+                === String(prepared.externalSourceSha256 ?? "")
+            && String(authorization.qualificationProof ?? "")
+                === String(safety.qualificationProof ?? "")
+            && String(authorization.typeCompatibilityProof ?? "")
+                === String(safety.typeCompatibilityProof ?? "")
+            && String(authorization.cycleSafetyProof ?? "")
+                === String(safety.cycleSafetyProof ?? "")
+            && String(authorization.proofFreshness ?? "") === "fresh"
+            && String(authorization.typeCompatibility ?? "")
+                === "unknown-unresolved"
+            && String(authorization.cycleStatus ?? "")
+                === "unknown-incomplete-projection"
+            && String(authorization.rollbackGuarantee ?? "")
+                === "exact-snapshot-auto-rollback-v1"
+    }
+
+    function _connectAuthorizationMatchesCommand(command): bool {
+        return !!command
+            && command.stale !== true
+            && root._connectSafetyMatchesCommand(command, true)
+            && root._connectPreparationMatchesCommand(command)
+            && root._connectAuthorizationIdentityMatchesCommand(command)
+    }
+
+    function _expireConnectAuthorization(
+        command,
+        reason: string
+    ): var {
+        const authorization = command?.connectAuthorization
+        if (!authorization
+                || authorization.authorized !== true
+                || String(authorization.status ?? "")
+                    !== "authorized")
+            return command
+        return Object.assign({}, command, {
+            connectAuthorization: Object.assign({}, authorization, {
+                status: "expired",
+                authorized: false,
+                reason: String(reason ?? "authorization-expired")
+            })
+        })
+    }
+
+    function _expireAllConnectAuthorizations(
+        reason: string
+    ): void {
+        let changed = false
+        const next = root.history.map(command => {
+            const expired = root._expireConnectAuthorization(
+                command, reason)
+            if (expired !== command)
+                changed = true
+            return expired
+        })
+        if (changed)
+            root.history = next
+        root.connectAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "authorization-expired")
+        })
+    }
+
+    function authorizeConnectWrite(): bool {
+        if (!root.connectAuthorizeEnabled)
+            return false
+
+        const command = root.activeCommand
+        const safety = root.activeConnectSafety
+        const prepared = root.activeConnectPreparation
+        const preview = command?.result ?? ({})
+        if (!command || !safety || !prepared)
+            return false
+
+        const authorization = {
+            version: 1,
+            status: "authorized",
+            authorized: true,
+            reason: "explicit-user-authorization",
+            authorizationProof:
+                "explicit-connect-write-authorization-v1",
+            authorizationToken:
+                "connect-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? ""),
+            targetId: String(command.targetId ?? ""),
+            connectTargetId: String(command.connectTargetId ?? ""),
+            sourcePath: String(command.sourcePath ?? ""),
+            baseSha256: String(command.baseSha256 ?? ""),
+            candidateSha256: String(command.candidateSha256 ?? ""),
+            parentSemanticAnchor: String(
+                command.semanticAnchor ?? ""),
+            insertedSemanticAnchor: String(
+                prepared.insertedSemanticAnchor ?? ""),
+            targetProperty: String(preview.bindingName ?? ""),
+            sourceExpression: String(command.replacement ?? ""),
+            manifestPath: String(prepared.manifestPath ?? ""),
+            manifestSha256: String(prepared.manifestSha256 ?? ""),
+            transactionId: String(prepared.transactionId ?? ""),
+            externalSourcePath: String(
+                prepared.externalSourcePath ?? ""),
+            externalSourceSha256: String(
+                prepared.externalSourceSha256 ?? ""),
+            qualificationProof: String(
+                safety.qualificationProof ?? ""),
+            typeCompatibilityProof: String(
+                safety.typeCompatibilityProof ?? ""),
+            cycleSafetyProof: String(
+                safety.cycleSafetyProof ?? ""),
+            proofFreshness: "fresh",
+            typeCompatibility: "unknown-unresolved",
+            cycleStatus: "unknown-incomplete-projection",
+            rollbackGuarantee:
+                "exact-snapshot-auto-rollback-v1"
+        }
+
+        const promoted = Object.assign({}, command, {
+            connectAuthorization: authorization
+        })
+        if (!root._connectAuthorizationMatchesCommand(promoted))
+            return false
+
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+        const next = root.history.slice()
+        next[index] = promoted
+        root.history = next
+        root.connectAuthorizationDiagnostics = ({
+            status: "authorized",
+            ready: true,
+            reason: "explicit-user-authorization",
+            authorizationToken:
+                authorization.authorizationToken
+        })
+        return true
+    }
+
+    function revokeConnectAuthorization(
+        reason: string
+    ): bool {
+        if (root.connectLifecycleBusy)
+            return false
+        const command = root.activeCommand
+        if (!command?.connectAuthorization)
+            return false
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+
+        const next = root.history.slice()
+        next[index] = root._expireConnectAuthorization(
+            command,
+            String(reason ?? "user-revoked"))
+        root.history = next
+        root.connectAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "user-revoked")
+        })
+        return true
     }
 
     function stageConnectLifecycleHandoff(): bool {
         const command = root.activeCommand
         const prepared = root.activeConnectPreparation
-        if (!root.connectArtifactsReady
+        if (!root.connectAuthorizationReady
+                || !root.connectArtifactsReady
                 || !command
                 || !prepared
                 || command.stale === true
@@ -429,10 +728,14 @@ Singleton {
         reloadState.pendingConnectHistoryIndex = root.historyIndex
         reloadState.pendingConnectManifestPath = String(
             prepared.manifestPath ?? "")
+        reloadState.pendingConnectManifestSha256 = String(
+            prepared.manifestSha256 ?? "")
         reloadState.pendingConnectExternalSourcePath = String(
             prepared.externalSourcePath ?? "")
         reloadState.pendingConnectExternalSourceSha256 = String(
             prepared.externalSourceSha256 ?? "")
+        reloadState.pendingConnectAuthorizationToken = String(
+            command.connectAuthorization?.authorizationToken ?? "")
         reloadState.pendingConnectReloadOutcome = "none"
         reloadState.pendingConnectVerifyState = "unknown"
         reloadState.pendingConnectRollbackRecovery = "none"
@@ -452,8 +755,10 @@ Singleton {
         reloadState.pendingConnectInsertedSemanticAnchor = ""
         reloadState.pendingConnectHistoryIndex = -1
         reloadState.pendingConnectManifestPath = ""
+        reloadState.pendingConnectManifestSha256 = ""
         reloadState.pendingConnectExternalSourcePath = ""
         reloadState.pendingConnectExternalSourceSha256 = ""
+        reloadState.pendingConnectAuthorizationToken = ""
         reloadState.pendingConnectReloadOutcome = "none"
         reloadState.pendingConnectVerifyState = "unknown"
         reloadState.pendingConnectRollbackRecovery = "none"
@@ -473,6 +778,8 @@ Singleton {
                 === reloadState.pendingConnectInsertedSemanticAnchor
             && String(payload?.manifestPath ?? "")
                 === reloadState.pendingConnectManifestPath
+            && String(payload?.manifestSha256 ?? "")
+                === reloadState.pendingConnectManifestSha256
             && String(payload?.externalSourcePath ?? "")
                 === reloadState.pendingConnectExternalSourcePath
             && String(payload?.externalSourceSha256 ?? "")
@@ -488,6 +795,9 @@ Singleton {
         reloadState.pendingConnectError = String(message ?? "")
         root.connectLifecycleResult = payload ?? ({})
         root.connectLifecycleError = String(message ?? "")
+        if (root.activeCommand?.connectAuthorization)
+            root.revokeConnectAuthorization(
+                "connect-lifecycle-failed")
         root.status = phase.includes("conflict")
             ? "conflict"
             : "error"
@@ -512,7 +822,9 @@ Singleton {
             Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
             "commit",
             "--manifest",
-            reloadState.pendingConnectManifestPath
+            reloadState.pendingConnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingConnectManifestSha256
         ]
         connectCommitProcess.running = true
         return true
@@ -576,7 +888,9 @@ Singleton {
             Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
             "verify",
             "--manifest",
-            reloadState.pendingConnectManifestPath
+            reloadState.pendingConnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingConnectManifestSha256
         ]
         connectVerifyProcess.running = true
     }
@@ -593,7 +907,9 @@ Singleton {
             Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
             "verify",
             "--manifest",
-            reloadState.pendingConnectManifestPath
+            reloadState.pendingConnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingConnectManifestSha256
         ]
         connectVerifyProcess.running = true
     }
@@ -733,7 +1049,14 @@ Singleton {
                     stale: true,
                     staleReason: reason
                 })
-                : next[index]?.connectPreparation
+                : next[index]?.connectPreparation,
+            connectAuthorization: next[index]?.connectAuthorization
+                ? Object.assign({}, next[index].connectAuthorization, {
+                    status: "expired",
+                    authorized: false,
+                    reason: reason
+                })
+                : next[index]?.connectAuthorization
         })
         root.history = next
         root.historyIndex = index
@@ -784,7 +1107,9 @@ Singleton {
             Quickshell.shellPath("scripts/code-workflow/connect_commit.py"),
             "rollback",
             "--manifest",
-            reloadState.pendingConnectManifestPath
+            reloadState.pendingConnectManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingConnectManifestSha256
         ]
         connectRollbackProcess.running = true
     }
@@ -1562,6 +1887,11 @@ Singleton {
         root.connectPreparationError = ""
         root.connectLifecycleResult = ({})
         root.connectLifecycleError = ""
+        root.connectAuthorizationDiagnostics = ({
+            status: "not-authorized",
+            ready: false,
+            reason: "no-active-authorization"
+        })
     }
 
     function _sha256LooksValid(value): bool {
@@ -1695,11 +2025,13 @@ Singleton {
             && String(prepared.expression ?? "")
                 === String(command.replacement ?? "")
             && String(prepared.insertedSemanticAnchor ?? "").length > 0
+            && String(prepared.transactionId ?? "").length > 0
             && String(prepared.externalSourcePath ?? "").length > 0
             && root._sha256LooksValid(prepared.externalSourceSha256)
             && String(prepared.snapshotPath ?? "").length > 0
             && String(prepared.candidatePath ?? "").length > 0
             && String(prepared.manifestPath ?? "").length > 0
+            && root._sha256LooksValid(prepared.manifestSha256)
             && prepared.writeAuthorized === false
             && prepared.applyEnabled === false
             && prepared.artifactsStaged === true
@@ -1732,6 +2064,7 @@ Singleton {
             snapshotPath: String(payload?.snapshotPath ?? ""),
             candidatePath: String(payload?.candidatePath ?? ""),
             manifestPath: String(payload?.manifestPath ?? ""),
+            manifestSha256: String(payload?.manifestSha256 ?? ""),
             writeAuthorized: false,
             applyEnabled: false,
             artifactsStaged: true,
@@ -1948,6 +2281,7 @@ Singleton {
             const reason =
                 "Qualified Connect dependency changed; reprepare before any future write gate."
             const preparation = command?.connectPreparation
+            const authorization = command?.connectAuthorization
             return Object.assign({}, command, {
                 connectSafety: Object.assign({}, safety, {
                     freshness: "stale",
@@ -1960,7 +2294,14 @@ Singleton {
                         stale: true,
                         staleReason: reason
                     })
-                    : preparation
+                    : preparation,
+                connectAuthorization: authorization
+                    ? Object.assign({}, authorization, {
+                        status: "expired",
+                        authorized: false,
+                        reason: reason
+                    })
+                    : authorization
             })
         })
         if (changed)
@@ -2201,6 +2542,12 @@ Singleton {
         }
 
         root.connectPreparationCapability = payload
+        if (payload?.ready !== true
+                && !root.connectLifecycleBusy
+                && root.activeCommand?.connectAuthorization) {
+            root.revokeConnectAuthorization(
+                "preparation-capability-unavailable")
+        }
     }
 
     function prepareConnectArtifacts(): bool {
@@ -2441,6 +2788,8 @@ Singleton {
                 || root.applyLifecycleBusy)
             return
         root._invalidateApplyHandoff()
+        if (reloadState.pendingConnectPhase !== "idle")
+            root.clearConnectLifecycleHandoff()
         root.history = []
         root.historyIndex = -1
         root._pendingReplaceIndex = -1
@@ -2936,7 +3285,12 @@ Singleton {
     }
 
     onHistoryChanged: root._syncReloadState()
-    onHistoryIndexChanged: root._syncReloadState()
+    onHistoryIndexChanged: {
+        root._syncReloadState()
+        if (!root._restoringReloadState)
+            root._expireAllConnectAuthorizations(
+                "history-selection-changed")
+    }
 
     QtObject {
         id: reloadState
@@ -2969,8 +3323,10 @@ Singleton {
         property string pendingConnectInsertedSemanticAnchor: ""
         property int pendingConnectHistoryIndex: -1
         property string pendingConnectManifestPath: ""
+        property string pendingConnectManifestSha256: ""
         property string pendingConnectExternalSourcePath: ""
         property string pendingConnectExternalSourceSha256: ""
+        property string pendingConnectAuthorizationToken: ""
         property string pendingConnectReloadOutcome: "none"
         property string pendingConnectVerifyState: "unknown"
         property string pendingConnectRollbackRecovery: "none"

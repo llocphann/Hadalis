@@ -39,9 +39,13 @@ The 2K-O engine and 2K-P live evidence are now promoted into an internal
 production transaction lifecycle: exact manifest commit, watcher reload,
 candidate/dependency verify, inserted-anchor rebind and automatic rollback all
 survive shell generations. A bounded explicit reload fallback handles rollback
-to baseline when Quickshell suppresses the watcher generation. Settings still
-exposes no Connect Apply control; the next gate is explicit user authorization,
-not another write engine.
+to baseline when Quickshell suppresses the watcher generation. 2K-R adds a
+separate explicit user-authorization snapshot bound to the exact prepared
+manifest SHA, source/dependency identities and history command. Settings exposes
+Authorize/Revoke plus complete evidence while keeping production TYPE/CYCLE
+UNKNOWN; authorization never writes source and expires on dependency, history,
+capability or lifecycle invalidation. User-facing Connect Apply remains
+unavailable until the separate 2K-S gate.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

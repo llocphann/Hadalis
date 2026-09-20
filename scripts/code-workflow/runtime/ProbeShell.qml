@@ -165,6 +165,14 @@ ShellRoot {
                     CodeWorkflowTransaction.connectLifecycleError,
                 connectLifecycleResult:
                     CodeWorkflowTransaction.connectLifecycleResult,
+                connectAuthorizationReady:
+                    CodeWorkflowTransaction.connectAuthorizationReady,
+                connectAuthorizeEnabled:
+                    CodeWorkflowTransaction.connectAuthorizeEnabled,
+                connectAuthorizationDiagnostics:
+                    CodeWorkflowTransaction.connectAuthorizationDiagnostics,
+                activeConnectAuthorization:
+                    CodeWorkflowTransaction.activeConnectAuthorization,
                 activeConnectSafety:
                     CodeWorkflowTransaction.activeConnectSafety,
                 activeConnectPreparation:
@@ -261,8 +269,21 @@ ShellRoot {
         function workflowConnectPrepare(): bool {
             return CodeWorkflowTransaction.prepareConnectArtifacts()
         }
+        function workflowConnectAuthorize(): bool {
+            return CodeWorkflowTransaction.authorizeConnectWrite()
+        }
+        function workflowConnectRevoke(): bool {
+            return CodeWorkflowTransaction.revokeConnectAuthorization(
+                "probe-user-revoked")
+        }
         function workflowConnectBeginLifecycle(): bool {
             return CodeWorkflowTransaction.beginConnectLifecycle()
+        }
+        function workflowUndo(): bool {
+            return CodeWorkflowTransaction.undoPreview()
+        }
+        function workflowRedo(): bool {
+            return CodeWorkflowTransaction.redoPreview()
         }
         function workflowConnectOverridePreparedAnchor(
             anchor: string
@@ -279,6 +300,25 @@ ShellRoot {
                     {},
                     command.connectPreparation,
                     { insertedSemanticAnchor: String(anchor ?? "") })
+            })
+            CodeWorkflowTransaction.history = next
+            return true
+        }
+        function workflowConnectOverridePreparedManifestSha(
+            manifestSha256: string
+        ): bool {
+            const index = CodeWorkflowTransaction.historyIndex
+            const command = CodeWorkflowTransaction.activeCommand
+            if (index < 0
+                    || !command
+                    || !command.connectPreparation)
+                return false
+            const next = CodeWorkflowTransaction.history.slice()
+            next[index] = Object.assign({}, command, {
+                connectPreparation: Object.assign(
+                    {},
+                    command.connectPreparation,
+                    { manifestSha256: String(manifestSha256 ?? "") })
             })
             CodeWorkflowTransaction.history = next
             return true

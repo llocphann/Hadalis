@@ -40,6 +40,24 @@ def file_sha(path: Path) -> str:
     return sha256(path.read_bytes()).hexdigest()
 
 
+def authorize_connect(probe: Probe) -> dict:
+    if probe.ipc("workflowConnectAuthorize") != "true":
+        raise AssertionError(
+            "explicit Connect authorization did not succeed")
+    return wait_snapshot(
+        probe,
+        lambda s: (
+            s["workflowTransaction"]["connectAuthorizationReady"] is True
+            and (
+                s["workflowTransaction"].get(
+                    "activeConnectAuthorization") or {}
+            ).get("status") == "authorized"
+        ),
+        "explicit Connect write authorization",
+        timeout=30,
+    )
+
+
 def cleanup_success(
     probe: Probe,
     work_dir: Path,
@@ -84,6 +102,7 @@ def run_success(
     inserted_anchor = str(prepared["insertedSemanticAnchor"])
     candidate_sha = str(transaction["activeCommandCandidateSha256"])
     config_before = config_path.read_bytes()
+    authorized = authorize_connect(probe)
     before = probe.snapshot()
 
     if probe.ipc("workflowConnectBeginLifecycle") != "true":
@@ -148,6 +167,7 @@ def run_success(
 
     report["success"] = {
         "prepared": prepared_state,
+        "authorized": authorized["workflowTransaction"],
         "completed": completed["workflowTransaction"],
         "analyzer": completed["workflowAnalyzer"],
         "cleanup": cleanup,
@@ -183,6 +203,14 @@ def run_automatic_rebind_rollback(
     ) != "true":
         raise AssertionError(
             "ProbeShell could not align temporary preparation anchor")
+    manifest_sha = file_sha(manifest_path)
+    if probe.ipc(
+        "workflowConnectOverridePreparedManifestSha",
+        manifest_sha,
+    ) != "true":
+        raise AssertionError(
+            "ProbeShell could not align temporary manifest SHA")
+    authorized = authorize_connect(probe)
 
     before = probe.snapshot()
     if probe.ipc("workflowConnectBeginLifecycle") != "true":
@@ -232,6 +260,8 @@ def run_automatic_rebind_rollback(
 
     report["automaticRollback"] = {
         "prepared": prepared_state,
+        "authorized": authorized["workflowTransaction"],
+        "manifestSha256": manifest_sha,
         "recovered": recovered["workflowTransaction"],
     }
     reset_connect(probe)

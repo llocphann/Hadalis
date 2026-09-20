@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Isolated Connect commit/verify/rollback proof engine.
+"""Qualified Connect commit/verify/rollback engine.
 
-This helper is not production-wired. It consumes only a 2K-M/N prepared Connect
-manifest, atomically replaces the single reviewed source file, verifies the
-retained external dependency before and after replacement, and can restore the
-exact rollback snapshot.
+The production transaction invokes this helper only after exact Connect
+preparation and explicit authorization gates. It atomically replaces one
+reviewed source file, verifies the retained external dependency before and after
+replacement, and can restore the exact rollback snapshot.
 
-The external dependency is evidence only. It is never written. A dependency
-change after the source replacement is reported explicitly so a lifecycle
-controller can rollback the source candidate. No Settings/QML path invokes this
-helper at 2K-O.
+The external dependency is evidence only and is never written. When an expected
+manifest SHA-256 is supplied, manifest drift is rejected before any source
+replacement.
 """
 
 from __future__ import annotations
@@ -56,9 +55,15 @@ def _runtime_qml(root: Path, relative: str) -> Path:
 
 def load_connect_manifest(
     manifest_path: Path,
-) -> tuple[dict, bytes, bytes]:
+    expected_manifest_sha256: str = "",
+) -> tuple[dict, bytes, bytes, str]:
     path = manifest_path.expanduser().resolve()
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    manifest_bytes = path.read_bytes()
+    manifest_sha256 = digest(manifest_bytes)
+    expected = str(expected_manifest_sha256 or "")
+    if expected and manifest_sha256 != expected:
+        raise ValueError("prepared Connect manifest hash mismatch")
+    payload = json.loads(manifest_bytes.decode("utf-8"))
 
     if payload.get("version") != 1:
         raise ValueError("unsupported Connect manifest version")
@@ -115,7 +120,7 @@ def load_connect_manifest(
     if digest(candidate) != payload["candidateSha256"]:
         raise ValueError("prepared Connect candidate hash mismatch")
 
-    return payload, snapshot, candidate
+    return payload, snapshot, candidate, manifest_sha256
 
 
 def _dependency_state(root: Path, manifest: dict) -> dict:
@@ -136,9 +141,13 @@ def commit_connect_prepared(
     root: Path,
     manifest_path: Path,
     post_write_hook: PostWriteHook | None = None,
+    expected_manifest_sha256: str = "",
 ) -> dict:
     root = root.expanduser().resolve()
-    manifest, _snapshot, candidate = load_connect_manifest(manifest_path)
+    manifest, _snapshot, candidate, manifest_sha256 = load_connect_manifest(
+        manifest_path,
+        expected_manifest_sha256,
+    )
     source_path = resolve_source(root, manifest["sourcePath"])
 
     dependency_before = _dependency_state(root, manifest)
@@ -176,6 +185,7 @@ def commit_connect_prepared(
         "bindingName": manifest["bindingName"],
         "expression": manifest["expression"],
         "manifestPath": str(manifest_path.expanduser().resolve()),
+        "manifestSha256": manifest_sha256,
     }
     if dependency_after["dependencyState"] != "fresh":
         return {
@@ -198,9 +208,16 @@ def commit_connect_prepared(
     }
 
 
-def verify_connect_prepared(root: Path, manifest_path: Path) -> dict:
+def verify_connect_prepared(
+    root: Path,
+    manifest_path: Path,
+    expected_manifest_sha256: str = "",
+) -> dict:
     root = root.expanduser().resolve()
-    manifest, _snapshot, _candidate = load_connect_manifest(manifest_path)
+    manifest, _snapshot, _candidate, manifest_sha256 = load_connect_manifest(
+        manifest_path,
+        expected_manifest_sha256,
+    )
     source_path = resolve_source(root, manifest["sourcePath"])
     current_sha = digest(source_path.read_bytes())
     if current_sha == manifest["candidateSha256"]:
@@ -221,13 +238,21 @@ def verify_connect_prepared(root: Path, manifest_path: Path) -> dict:
         "parentSemanticAnchor": manifest["parentSemanticAnchor"],
         "insertedSemanticAnchor": manifest["insertedSemanticAnchor"],
         "manifestPath": str(manifest_path.expanduser().resolve()),
+        "manifestSha256": manifest_sha256,
         **dependency,
     }
 
 
-def rollback_connect_prepared(root: Path, manifest_path: Path) -> dict:
+def rollback_connect_prepared(
+    root: Path,
+    manifest_path: Path,
+    expected_manifest_sha256: str = "",
+) -> dict:
     root = root.expanduser().resolve()
-    manifest, snapshot, _candidate = load_connect_manifest(manifest_path)
+    manifest, snapshot, _candidate, manifest_sha256 = load_connect_manifest(
+        manifest_path,
+        expected_manifest_sha256,
+    )
     source_path = resolve_source(root, manifest["sourcePath"])
 
     result = atomic_replace_if_hash(
@@ -247,6 +272,7 @@ def rollback_connect_prepared(root: Path, manifest_path: Path) -> dict:
             "parentSemanticAnchor": manifest["parentSemanticAnchor"],
             "insertedSemanticAnchor": manifest["insertedSemanticAnchor"],
             "manifestPath": str(manifest_path.expanduser().resolve()),
+            "manifestSha256": manifest_sha256,
             **dependency,
         }
     return {
@@ -263,6 +289,7 @@ def main() -> int:
         default=str(Path(__file__).resolve().parents[2]),
     )
     parser.add_argument("--manifest", required=True)
+    parser.add_argument("--manifest-sha256", default="")
     args = parser.parse_args()
 
     root = Path(args.root).expanduser().resolve()
@@ -275,13 +302,22 @@ def main() -> int:
     try:
         if args.operation == "commit":
             result = commit_connect_prepared(
-                root, Path(args.manifest))
+                root,
+                Path(args.manifest),
+                expected_manifest_sha256=args.manifest_sha256,
+            )
         elif args.operation == "rollback":
             result = rollback_connect_prepared(
-                root, Path(args.manifest))
+                root,
+                Path(args.manifest),
+                expected_manifest_sha256=args.manifest_sha256,
+            )
         else:
             result = verify_connect_prepared(
-                root, Path(args.manifest))
+                root,
+                Path(args.manifest),
+                expected_manifest_sha256=args.manifest_sha256,
+            )
     except (OSError, ValueError, UnicodeError, json.JSONDecodeError) as exc:
         return emit({
             "status": "invalid-request",

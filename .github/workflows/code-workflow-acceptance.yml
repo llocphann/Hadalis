@@ -78,6 +78,9 @@ jobs:
       - name: Validate production internal Connect lifecycle
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-production-lifecycle.py'
 
+      - name: Validate explicit Connect authorization boundary
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-authorization.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply
@@ -108,6 +111,16 @@ jobs:
             python3 scripts/code-workflow/run-connect-production-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
           '
 
+      - name: Run isolated Connect authorization acceptance
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-connect-authorization
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-connect-authorization.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
+          '
+
       - name: Upload lifecycle evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -124,5 +137,8 @@ jobs:
             ${{ runner.temp }}/hadalis-workflow-connect-production/connect-production-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-connect-production/*.log
             ${{ runner.temp }}/hadalis-workflow-connect-production/xdg-state/**
+            ${{ runner.temp }}/hadalis-workflow-connect-authorization/connect-authorization-report.json
+            ${{ runner.temp }}/hadalis-workflow-connect-authorization/*.log
+            ${{ runner.temp }}/hadalis-workflow-connect-authorization/xdg-state/**
           if-no-files-found: warn
           retention-days: 14

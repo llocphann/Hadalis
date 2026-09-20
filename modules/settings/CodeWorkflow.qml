@@ -988,7 +988,7 @@ Item {
                     Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Only qualified literal-property commands may Apply. Direct bindings and Disconnect are preview-only. Connect may prepare qualified state artifacts, but source Apply remains blocked."
+                        text: "Only qualified literal-property commands may Apply. Direct bindings and Disconnect are preview-only. Connect may prepare and explicitly authorize one exact state-artifact handoff, but user-facing source Apply remains unavailable."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -1001,7 +1001,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: CodeWorkflowTransaction.dirty
                 ? (CodeWorkflowTransaction.activeCommand?.kind
-                        === "connect-binding" ? 184 : 118)
+                        === "connect-binding" ? 316 : 118)
                 : 0
             visible: CodeWorkflowTransaction.dirty
             radius: Appearance.rounding.normal
@@ -1055,11 +1055,13 @@ Item {
                     Pill {
                         label: CodeWorkflowTransaction.activeCommand?.kind
                                 === "connect-binding"
-                            ? CodeWorkflowTransaction.connectArtifactsReady
-                                ? "CONNECT ARTIFACTS READY · APPLY BLOCKED"
-                                : CodeWorkflowTransaction.connectPreparationBusy
-                                    ? "CONNECT CHECKING"
-                                    : "PREVIEW ONLY"
+                            ? CodeWorkflowTransaction.connectAuthorizationReady
+                                ? "CONNECT AUTHORIZED · APPLY BLOCKED"
+                                : CodeWorkflowTransaction.connectArtifactsReady
+                                    ? "CONNECT READY · AUTHORIZATION REQUIRED"
+                                    : CodeWorkflowTransaction.connectPreparationBusy
+                                        ? "CONNECT CHECKING"
+                                        : "PREVIEW ONLY"
                             : [
                                 "direct-binding",
                                 "disconnect-binding"
@@ -1076,7 +1078,9 @@ Item {
                                         : "PRE-APPLY BLOCKED"
                         accent: CodeWorkflowTransaction.activeCommand?.kind
                                 === "connect-binding"
-                                && CodeWorkflowTransaction.connectArtifactsReady
+                                && (CodeWorkflowTransaction.connectArtifactsReady
+                                    || CodeWorkflowTransaction
+                                        .connectAuthorizationReady)
                             ? Appearance.colors.colPrimary
                             : [
                                 "direct-binding",
@@ -1106,6 +1110,32 @@ Item {
                             && root.transactionMatchesSelection
                         onClicked:
                             CodeWorkflowTransaction.prepareConnectArtifacts()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "connect-binding"
+                            && CodeWorkflowTransaction.connectArtifactsReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "verified_user"
+                        mainText: CodeWorkflowTransaction.connectAuthorizationReady
+                            ? "Connect write authorized"
+                            : "Authorize Connect write"
+                        enabled: CodeWorkflowTransaction.connectAuthorizeEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.authorizeConnectWrite()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "connect-binding"
+                            && CodeWorkflowTransaction.connectAuthorizationReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "gpp_bad"
+                        mainText: "Revoke authorization"
+                        enabled: !CodeWorkflowTransaction.connectLifecycleBusy
+                        onClicked:
+                            CodeWorkflowTransaction.revokeConnectAuthorization(
+                                "user-revoked")
                     }
                     RippleButtonWithIcon {
                         visible: CodeWorkflowTransaction.preApplyReady
@@ -1182,9 +1212,93 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     visible: CodeWorkflowTransaction.connectArtifactsReady
-                    text: "Connect artifacts prepared · exact rollback snapshot + candidate + manifest are stored in shell state · tracked source QML is unchanged · Apply remains blocked"
+                    text: "Connect artifacts prepared · exact rollback snapshot + candidate + manifest are stored in shell state · tracked source QML is unchanged · authorization is separate from source Apply"
                     color: Appearance.colors.colPrimary
                     font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.connectArtifactsReady
+                    text: "Authorization target · "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.connectTargetId ?? "")
+                        + " · "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.result?.bindingName ?? "")
+                        + " ← "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.replacement ?? "")
+                    color: Appearance.colors.colOnLayer1
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.connectArtifactsReady
+                    text: "Proof evidence · freshness "
+                        + String(
+                            CodeWorkflowTransaction.activeConnectSafety
+                                ?.freshness ?? "unknown")
+                            .toUpperCase()
+                        + " · qmllint type proof retained · source-backed cycle proof retained · production TYPE/CYCLE remain UNKNOWN"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.connectArtifactsReady
+                    text: "Source identity · "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.sourcePath ?? "")
+                        + " · base "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.baseSha256 ?? "")
+                        + " → candidate "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.candidateSha256 ?? "")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WrapAnywhere
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.connectArtifactsReady
+                    text: "Dependency identity · "
+                        + String(
+                            CodeWorkflowTransaction.activeConnectPreparation
+                                ?.externalSourcePath ?? "")
+                        + " · "
+                        + String(
+                            CodeWorkflowTransaction.activeConnectPreparation
+                                ?.externalSourceSha256 ?? "")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WrapAnywhere
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.connectArtifactsReady
+                    text: CodeWorkflowTransaction.connectAuthorizationReady
+                        ? "Authorization ACTIVE · bound to this exact prepared manifest/history command · automatic exact-snapshot rollback is qualified · source Apply control is still unavailable"
+                        : "Authorization REQUIRED · deliberate authorization will bind only this exact prepared manifest/history command · any Clock/Config/history change expires it · source Apply control is still unavailable"
+                    color: CodeWorkflowTransaction.connectAuthorizationReady
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colTertiary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
                     wrapMode: Text.WordWrap
                 }
 

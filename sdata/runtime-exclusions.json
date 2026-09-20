@@ -159,6 +159,7 @@
     "scripts/code-workflow/run-apply-lifecycle.py",
     "scripts/code-workflow/run-connect-lifecycle.py",
     "scripts/code-workflow/run-connect-production-lifecycle.py",
+    "scripts/code-workflow/run-connect-authorization.py",
     "scripts/iris-corner-poc"
   ],
   "excludedDirectorySuffixes": {}

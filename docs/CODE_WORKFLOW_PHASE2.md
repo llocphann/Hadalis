@@ -883,12 +883,55 @@ Implemented production lifecycle boundary:
 - The historical literal Apply pipeline remains unchanged and independently
   literal-only. User-facing Connect Apply remains unavailable.
 
+## Milestone 2K-R — explicit Connect write authorization boundary
+
+Implemented authorization boundary:
+
+- Connect preparation remains non-authorizing. A prepared command exposes a
+  separate `Authorize Connect write` action only while parser/qmllint/source
+  capability is READY, the promoted safety snapshot is FRESH, the exact
+  preparation is non-stale and no lifecycle is running.
+- Authorization is a primitive-only snapshot stored on the exact history
+  command. `explicit-connect-write-authorization-v1` binds graph/target IDs,
+  target property + reviewed expression, Clock source/base/candidate identity,
+  parent + inserted semantic anchors, Config dependency identity, preparation
+  transaction ID, exact manifest path and manifest SHA-256.
+- The authorization snapshot retains the research proof tokens but explicitly
+  records production TYPE/CYCLE as UNKNOWN. Settings describes qmllint and
+  source-backed cycle evidence without presenting either as generic SAFE.
+- The prepared manifest now has a separately retained SHA-256. Production
+  `connect_commit.py` receives that expected hash for commit, verify and
+  rollback. Manifest drift is rejected before source replacement with
+  `prepared Connect manifest hash mismatch`.
+- `beginConnectLifecycle()` now fails closed unless a matching authorization
+  snapshot is active. Internal lifecycle recovery may preserve that exact token
+  across the reload it owns, but ordinary cross-generation restore expires
+  authorization and requires a new deliberate action.
+- Authorization expires on Clock/Config invalidation, preparation capability
+  loss, history selection change, terminal lifecycle failure and completed
+  lifecycle success/rollback. Regenerated Connect previews do not inherit it.
+- Settings shows exact authorization evidence: target/property/expression,
+  proof freshness, full Clock base→candidate SHA identity, Config path/hash and
+  the exact-snapshot automatic rollback guarantee. `Revoke authorization` is
+  always available while authorization is active.
+- The UI still exposes no source-write action for Connect. Authorization itself
+  never calls the lifecycle; user-facing Connect Apply remains unavailable.
+- Live 2K-R acceptance proves preparation alone cannot start the lifecycle,
+  explicit authorization binds the exact manifest/history command, revoke
+  blocks lifecycle start, undo/redo expires authorization, Config changes
+  invalidate it, and post-authorization manifest drift fails before any source
+  write.
+- Historical 2K-Q live lifecycle acceptance now authorizes before starting the
+  internal lifecycle. Its forced-rebind fixture updates only ProbeShell test
+  evidence (prepared anchor + manifest SHA) before authorization so automatic
+  semantic-failure rollback remains independently covered.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- user-facing Connect source Apply/authorization control;
+- user-facing Connect source Apply control;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -896,18 +939,24 @@ Implemented production lifecycle boundary:
 
 ## Next gate
 
-2K-Q promotes the qualified Connect lifecycle into the production transaction
-while deliberately leaving it unreachable from Settings. The next gate is the
-explicit user-authorization boundary, not another mutation engine.
+2K-R qualifies deliberate authorization without making authorization itself a
+write action. The next gate, 2K-S, is the user-facing Connect source Apply
+control over the already-qualified internal lifecycle.
 
-Before a Connect source-write control can appear, the product must present the
-exact prepared target/expression, proof freshness, source/dependency identities
-and rollback guarantee; require a deliberate user action; refuse authorization
-when preparation is stale or capability disappears; and bind that authorization
-to one exact prepared manifest/history command. The UI must not relabel research
-TYPE/CYCLE evidence as generic SAFE, and authorization must expire on any
-Clock/Config/history change.
+That control must appear or enable only while the exact 2K-R authorization is
+active and the selected transaction still matches. Clicking it must consume the
+existing authorization and call the 2K-Q lifecycle exactly once; it must never
+silently reprepare or reauthorize. While the lifecycle is running, mutation,
+history and preparation controls must remain disabled and the UI must expose
+write/reload/verify/rebind/rollback phase state. Any authorization expiry before
+the click must disable the control immediately.
 
-Until that authorization gate is independently qualified, user-facing Connect
-Apply stays unavailable even though the internal lifecycle is production-wired.
-The historical literal Apply control remains unchanged and literal-only.
+After success or rollback, authorization and prepared evidence remain stale and
+the user must regenerate/reprepare/reauthorize before another source write.
+Rollback/conflict diagnostics must remain visible and no automatic retry is
+allowed. The literal-property Apply control stays independently literal-only and
+must not be merged with the Connect authorization or lifecycle state.
+
+Until 2K-S is independently qualified, user-facing Connect Apply remains
+unavailable even though the internal lifecycle and authorization boundary are
+production-wired.

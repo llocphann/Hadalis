@@ -170,7 +170,7 @@ for token in (
     "Milestone 2K-Q — production internal Connect lifecycle integration",
     "beginConnectLifecycle()",
     "watcher-driven reload",
-    "automatic rollback",
+    "automatically invokes exact rollback",
     "explicit reload fallback",
     "user-facing Connect Apply remains unavailable",
 ):

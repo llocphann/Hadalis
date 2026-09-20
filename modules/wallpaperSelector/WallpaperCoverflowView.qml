@@ -452,7 +452,6 @@ Item {
                     screenY: { const m = headerChip.mapToGlobal(0, 0); return m.y }
                     radius: Appearance.rounding.full
                     fallbackColor: root.surfaceColor
-                    inirColor: Appearance.inir.colLayer1
                     auroraTransparency: Appearance.aurora.popupTransparentize
                     border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
                     border.color: root.borderColor
@@ -918,7 +917,6 @@ Item {
             screenY: { const m = infoOverlay.mapToGlobal(0, 0); return m.y }
             radius: root.panelRadius
             fallbackColor: root.surfaceColor
-            inirColor: Appearance.inir.colLayer1
             auroraTransparency: Appearance.aurora.popupTransparentize
             border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
             border.color: root.borderColor
@@ -1018,7 +1016,6 @@ Item {
             screenY: { const m = actionsOverlay.mapToGlobal(0, 0); return m.y }
             radius: root.panelRadius
             fallbackColor: root.surfaceColor
-            inirColor: Appearance.inir.colLayer1
             auroraTransparency: Appearance.aurora.popupTransparentize
             border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
             border.color: root.borderColor
@@ -1125,7 +1122,6 @@ Item {
             screenY: { const m = guideOverlay.mapToGlobal(0, 0); return m.y }
             radius: root.panelRadius
             fallbackColor: root.surfaceColor
-            inirColor: Appearance.inir.colLayer1
             auroraTransparency: Appearance.aurora.popupTransparentize
             border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
             border.color: root.borderColor
@@ -1166,7 +1162,6 @@ Item {
             screenY: { const m = statusOverlay.mapToGlobal(0, 0); return m.y }
             radius: root.panelRadius
             fallbackColor: root.surfaceColor
-            inirColor: Appearance.inir.colLayer1
             auroraTransparency: Appearance.aurora.popupTransparentize
             border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
             border.color: root.borderColor

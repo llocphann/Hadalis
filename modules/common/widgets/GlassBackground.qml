@@ -12,7 +12,6 @@ Rectangle {
     id: root
     
     property color fallbackColor: Appearance.colors.colLayer1
-    property color inirColor: Appearance.inir.colLayer1
     property real auroraTransparency: Appearance.aurora.popupTransparentize
     property bool wallpaperBackdropEnabled: true
     property string wallpaperUrl: WallpaperListener.wallpaperUrlForScreen(root.QsWindow?.window?.screen ?? null)
@@ -28,7 +27,6 @@ Rectangle {
     // for a backdrop outside aurora — island glass, or a backdrop the user turned
     // on explicitly — silently got nothing. The effects gate still applies.
     property bool forceBackdrop: false
-    property bool forceNeutralMaterial: false
     // Blur radius as a fraction of blurMax. 1 is the house default every existing
     // caller inherits; lower values are for surfaces that expose it to the user.
     property real blurStrength: 1

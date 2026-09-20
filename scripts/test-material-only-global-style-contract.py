@@ -487,7 +487,11 @@ def main() -> None:
         "blur: Appearance.effectsEnabled ? root.blurStrength : 0",
     ):
         require(glass_background, token, "GlassBackground.qml")
-    for token in ("AngelPartialBorder {",):
+    for token in (
+        "AngelPartialBorder {",
+        "property color inirColor:",
+        "property bool forceNeutralMaterial:",
+    ):
         forbid(glass_background, token, "GlassBackground.qml")
     for token in (
         "width: 20",

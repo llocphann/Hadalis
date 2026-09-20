@@ -479,3 +479,22 @@ shows:
 
 Do not modify Bar/ScreenEdges geometry to satisfy this gate, do not add helper
 windows or corner flags, and do not touch Waffle.
+
+### Source-side viewport result
+
+The exact iRiS shader confirms that the proposed G2 paint scissor is technically
+valid: it reconstructs output-space `p` from `viewport.xy/zw` while every
+shape stays in output pixels. A future isolated split-composition PoC can
+therefore keep full owner records for SDF joins and rasterize only a
+popup/junction-local `ShaderEffect` viewport.
+
+Do not treat the upstream wrapper's all-shape `bounds` calculation as a shader
+requirement. For G2, local paint bounds must expand generically by the active
+join/fuse reach and follow the animated popup.
+
+Input and shadow are separate G2 gates. `Region` cannot follow shader alpha and
+the current mask contains old Bézier-strip connector approximations; do not keep
+those merely to make the new renderer interactive. Likewise, preserve popup
+shadow behavior without repainting/shadowing the Top-layer Bar or Screen Edge.
+
+G1 is still unchanged and must run first on the real Wayland/Niri/GPU session.

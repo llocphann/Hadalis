@@ -1985,3 +1985,61 @@ Do not solve this boundary by moving Bar/ScreenEdges, changing their geometry,
 adding same-layer helper windows, restoring corner-specific flags, or touching
 Waffle. If a local paint viewport cannot preserve the iRiS morphology, keep the
 experiment isolated and research another composition strategy.
+
+### 26.12 Shader viewport feasibility — math owners do not require full-owner paint bounds
+
+The exact committed iRiS v2.31 shader provides a source-side answer to the
+composition question above. `IrisField.frag` reconstructs the output-space
+sample position as:
+
+```glsl
+vec2 p = u.viewport.xy + qt_TexCoord0 * max(u.viewport.zw, vec2(1.0));
+```
+
+Every `shapeN` record remains expressed in screen/output pixels. The shader then
+evaluates every rounded-box body and explicit join against that output-space
+`p`. Therefore the shader math does **not** require the pass viewport to equal
+the union of all owner bounds.
+
+Upstream `IrisField.qml` currently derives `pass.x/y/width/height` from the
+union of all shapes as its normal render-bounds policy. That is an upstream
+wrapper choice/optimization, not a coordinate-system requirement of the QSB.
+
+This confirms a concrete G2 experiment is possible without shortening owner
+records or introducing corner-specific geometry:
+
+```text
+full output-local owner records
++ full output-local popup record
++ exact join indices / fuse
+              |
+              v
+small ShaderEffect viewport around popup + junction
+```
+
+The local viewport must still include the complete possible smooth-union
+shoulder plus antialiasing reach. It also has to follow the animated popup during
+the 300 ms slide so no shoulder is clipped mid-motion. Those bounds must be
+derived from generic geometry and fuse, not from edge/module names.
+
+Hadalis already has a compatible clipping primitive for the other half of this
+problem: `ConnectedSurfaceRevealClip` keeps children in full-output
+coordinates and clips them at the resting attachment boundary. A G2 PoC can
+therefore test a field pass with output-local shapes, local paint bounds and the
+existing slide-under reveal semantics without moving the production Bar or
+ScreenEdges.
+
+Two contracts remain intentionally unresolved until that isolated experiment:
+
+- **input:** `Region` cannot consume shader alpha. The current
+  `ConnectedSurfaceMask` includes Bézier-connector strip approximations that
+  belong to the old flare renderer. Do not silently carry those strips into the
+  final iRiS cutover. G2 must determine the minimum generic input/hover region
+  needed for body interaction and Bar-to-popup pointer transfer.
+- **shadow:** the iRiS field shader itself does not replace Hadalis' popup
+  free-side shadow ownership. G2 must prove a popup-only shadow path that does
+  not repaint or shadow the Top-layer Bar/Screen Edge and does not require the
+  obsolete flare renderer to remain underneath.
+
+These are composition/input/effect gates, not reasons to alter G1. The existing
+live morphology matrix remains the next action.

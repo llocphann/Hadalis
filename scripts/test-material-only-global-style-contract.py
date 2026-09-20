@@ -54,6 +54,7 @@ MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea
 TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
 TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField.qml"
 NAVIGATION_RAIL_BUTTON = ROOT / "modules" / "common" / "widgets" / "NavigationRailButton.qml"
+QUICK_WALLPAPER_ITEM = ROOT / "modules" / "settings" / "QuickWallpaperItem.qml"
 WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
 ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
 ANGEL_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "AngelBackground.qml"
@@ -172,6 +173,7 @@ def main() -> None:
     toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
     toolbar_text_field = TOOLBAR_TEXT_FIELD.read_text(encoding="utf-8")
     navigation_rail_button = NAVIGATION_RAIL_BUTTON.read_text(encoding="utf-8")
+    quick_wallpaper_item = QUICK_WALLPAPER_ITEM.read_text(encoding="utf-8")
     widgets_qmldir = WIDGETS_QMLDIR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
@@ -531,6 +533,23 @@ def main() -> None:
             )
     forbid(widgets_qmldir, "AngelAccentBar 1.0 AngelAccentBar.qml", "widgets/qmldir")
     forbid(widgets_qmldir, "AngelBackground 1.0 AngelBackground.qml", "widgets/qmldir")
+
+    # Quick wallpaper tiles retain keyboard/accessibility activation, async
+    # thumbnail loading and selected-state feedback with Material-only chrome.
+    for token in legacy_style_tokens:
+        forbid(quick_wallpaper_item, token, "QuickWallpaperItem.qml")
+    forbid(quick_wallpaper_item, "RegaliaControlFace {", "QuickWallpaperItem.qml")
+    for token in (
+        "signal activated()",
+        "activeFocusOnTab: true",
+        "Accessible.onPressAction: root.activated()",
+        "Keys.onPressed: event =>",
+        "active: root.useThumbnail",
+        "generateThumbnail: true",
+        "border.width: root.isSelected ? 2 : 0",
+        'text: "check_circle"',
+    ):
+        require(quick_wallpaper_item, token, "QuickWallpaperItem.qml")
 
     # NavigationRailButton keeps TabBar state, collapsed tooltip, expanded label,
     # press feedback and animated icon fill while using Material-only chrome.

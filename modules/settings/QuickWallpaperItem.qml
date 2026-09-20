@@ -15,15 +15,10 @@ MouseArea {
     property bool isHovered: false
     readonly property bool interactionHighlighted: root.isHovered || root.activeFocus
 
-    property color colBackground: Appearance.regaliaEverywhere
-        ? (isSelected ? Appearance.regalia.primaryPlate
-            : interactionHighlighted ? Appearance.regalia.controlPlateHover : "transparent")
-        : interactionHighlighted ? Appearance.colors.colPrimary
+    property color colBackground: interactionHighlighted ? Appearance.colors.colPrimary
         : isSelected ? Appearance.colors.colSecondaryContainer
         : ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
-    property color colText: Appearance.regaliaEverywhere
-        ? (isSelected ? Appearance.regalia.primaryPlateInk : Appearance.regalia.onColor)
-        : interactionHighlighted ? Appearance.colors.colOnPrimary
+    property color colText: interactionHighlighted ? Appearance.colors.colOnPrimary
         : isSelected ? Appearance.colors.colOnSecondaryContainer
         : Appearance.colors.colOnLayer1
 
@@ -55,18 +50,11 @@ MouseArea {
         id: background
         anchors.fill: parent
         anchors.margins: 3
-        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall : Appearance.rounding.small
-        color: Appearance.regaliaEverywhere ? "transparent" : root.colBackground
-        border.width: Appearance.regaliaEverywhere ? 0 : (root.isSelected ? 2 : 0)
+        radius: Appearance.rounding.small
+        color: root.colBackground
+        border.width: root.isSelected ? 2 : 0
         border.color: Appearance.colors.colPrimary
 
-        RegaliaControlFace {
-            anchors.fill: parent
-            visible: Appearance.regaliaEverywhere
-            fillColor: root.colBackground
-            radius: background.radius
-            selected: root.isSelected
-        }
         Behavior on color {
             animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }

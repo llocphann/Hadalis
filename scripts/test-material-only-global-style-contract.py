@@ -42,6 +42,10 @@ STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow
 INPUT_CHIP = ROOT / "modules" / "common" / "widgets" / "InputChip.qml"
 FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
 WINDOW_DIALOG = ROOT / "modules" / "common" / "widgets" / "WindowDialog.qml"
+MATERIAL_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialSymbol.qml"
+TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarButton.qml"
+TOOLBAR_TAB_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarTabButton.qml"
+ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButton.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -145,6 +149,10 @@ def main() -> None:
     input_chip = INPUT_CHIP.read_text(encoding="utf-8")
     filter_chip = FILTER_CHIP.read_text(encoding="utf-8")
     window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
+    material_symbol = MATERIAL_SYMBOL.read_text(encoding="utf-8")
+    toolbar_button = TOOLBAR_BUTTON.read_text(encoding="utf-8")
+    toolbar_tab_button = TOOLBAR_TAB_BUTTON.read_text(encoding="utf-8")
+    icon_toolbar_button = ICON_TOOLBAR_BUTTON.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -489,6 +497,41 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # Toolbar controls and MaterialSymbol are shell-wide Material primitives.
+    # Preserve accessibility, fill animation and label reveal without style dispatch.
+    for source, content in (
+        ("MaterialSymbol.qml", material_symbol),
+        ("ToolbarButton.qml", toolbar_button),
+        ("ToolbarTabButton.qml", toolbar_tab_button),
+        ("IconToolbarButton.qml", icon_toolbar_button),
+    ):
+        for token in legacy_style_tokens:
+            forbid(content, token, source)
+    for token in (
+        "readonly property real effectiveFill: animateFill",
+        "enabled: root.animateFill && Appearance.animationsEnabled",
+        'readonly property bool useJp: text.startsWith("jp:")',
+        "property bool forceNerd: false",
+    ):
+        require(material_symbol, token, "MaterialSymbol.qml")
+    require(toolbar_button, "buttonRadius: Appearance.rounding.full", "ToolbarButton.qml")
+    for token in (
+        "Accessible.checkable: true",
+        "Accessible.checked: root.current",
+        "implicitHeight: 40",
+        "buttonRadius: height / 2",
+        "text: root.text",
+        "font.family: Appearance.font.family.main",
+        "color: Appearance.colors.colOnSurface",
+    ):
+        require(toolbar_tab_button, token, "ToolbarTabButton.qml")
+    for token in (
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "iconSize: 22",
+    ):
+        require(icon_toolbar_button, token, "IconToolbarButton.qml")
 
     # WindowDialog keeps measured-content, Escape/outside-click and pixel-aligned
     # reveal behavior, without legacy decoration APIs or hidden style renderers.

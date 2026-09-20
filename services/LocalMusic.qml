@@ -64,9 +64,23 @@ Singleton {
     property real volume: 1
     property bool shuffleMode: false
     property int repeatMode: 0
+    property var _queueRequests: []
     property var _enqueueRequests: []
     property var _bulkEnqueueRequests: []
     property var _playlistRequests: []
+    property bool _queuePayloadWriting: false
+    property bool _bulkEnqueuePayloadWriting: false
+    property bool _playlistPayloadWriting: false
+
+    // Bulk music actions can easily exceed Linux's per-argument exec limit
+    // when thousands of MPD URIs are serialized into one JSON argv entry.
+    // File-backed payloads keep Process command lines small and deterministic.
+    readonly property string _queuePayloadPath:
+        `${Directories.stateUserPath}/local-music-queue-payload.json`
+    readonly property string _bulkEnqueuePayloadPath:
+        `${Directories.stateUserPath}/local-music-enqueue-payload.json`
+    readonly property string _playlistPayloadPath:
+        `${Directories.stateUserPath}/local-music-playlist-payload.json`
 
     // Local-only lyric state. MPD/MPRIS still own playback; this only reads
     // sidecar .lrc/.txt files next to the resolved local track path.
@@ -340,16 +354,34 @@ Singleton {
     }
 
     function _drainBulkEnqueueRequests(): void {
-        if (_bulkEnqueueProc.running || _bulkEnqueueRequests.length === 0) return
-        const uris = _bulkEnqueueRequests[0]
+        if (_bulkEnqueueProc.running || _bulkEnqueuePayloadWriting
+                || _bulkEnqueueRequests.length === 0) return
+        _bulkEnqueuePayloadWriting = true
+        bulkEnqueuePayloadFile.setText(JSON.stringify(_bulkEnqueueRequests[0]))
+    }
+
+    function _startBulkEnqueuePayloadProcess(): void {
+        if (!_bulkEnqueuePayloadWriting) return
+        _bulkEnqueuePayloadWriting = false
+        if (_bulkEnqueueRequests.length === 0) return
+
         _bulkEnqueueRequests = _bulkEnqueueRequests.slice(1)
         _bulkEnqueueProc.output = ""
         _bulkEnqueueProc.command = [
             "python3", _mpdScript, "enqueue-many",
             mpdHost, String(mpdPort), configuredLibraryFolder,
-            JSON.stringify(uris)
+            "@" + _bulkEnqueuePayloadPath
         ]
         _bulkEnqueueProc.running = true
+    }
+
+    function _failBulkEnqueuePayloadWrite(_error): void {
+        _bulkEnqueuePayloadWriting = false
+        if (_bulkEnqueueRequests.length > 0)
+            _bulkEnqueueRequests = _bulkEnqueueRequests.slice(1)
+        error = "mpd_bulk_enqueue_payload_failed"
+        if (_bulkEnqueueRequests.length > 0)
+            Qt.callLater(root._drainBulkEnqueueRequests)
     }
 
     function createPlaylist(name: string, tracks): void {
@@ -374,16 +406,35 @@ Singleton {
     }
 
     function _drainPlaylistRequests(): void {
-        if (_playlistProc.running || _playlistRequests.length === 0) return
+        if (_playlistProc.running || _playlistPayloadWriting
+                || _playlistRequests.length === 0) return
+        _playlistPayloadWriting = true
+        playlistPayloadFile.setText(JSON.stringify(_playlistRequests[0].uris))
+    }
+
+    function _startPlaylistPayloadProcess(): void {
+        if (!_playlistPayloadWriting) return
+        _playlistPayloadWriting = false
+        if (_playlistRequests.length === 0) return
+
         const request = _playlistRequests[0]
         _playlistRequests = _playlistRequests.slice(1)
         _playlistProc.output = ""
         _playlistProc.command = [
             "python3", _mpdScript, request.mode,
             mpdHost, String(mpdPort), request.name,
-            JSON.stringify(request.uris)
+            "@" + _playlistPayloadPath
         ]
         _playlistProc.running = true
+    }
+
+    function _failPlaylistPayloadWrite(_error): void {
+        _playlistPayloadWriting = false
+        if (_playlistRequests.length > 0)
+            _playlistRequests = _playlistRequests.slice(1)
+        error = "mpd_playlist_payload_failed"
+        if (_playlistRequests.length > 0)
+            Qt.callLater(root._drainPlaylistRequests)
     }
 
     function playQueue(queue, index = 0, name = ""): void {
@@ -400,12 +451,43 @@ Singleton {
         currentPosition = 0
         error = ""
 
+        _queueRequests = [..._queueRequests, {
+            index: index,
+            uris: valid.map(track => String(track.uri ?? track.path))
+        }]
+        _drainQueueRequests()
+    }
+
+    function _drainQueueRequests(): void {
+        if (_queueProc.running || _queuePayloadWriting
+                || _queueRequests.length === 0) return
+        _queuePayloadWriting = true
+        queuePayloadFile.setText(JSON.stringify(_queueRequests[0].uris))
+    }
+
+    function _startQueuePayloadProcess(): void {
+        if (!_queuePayloadWriting) return
+        _queuePayloadWriting = false
+        if (_queueRequests.length === 0) return
+
+        const request = _queueRequests[0]
+        _queueRequests = _queueRequests.slice(1)
+        _queueProc.output = ""
         _queueProc.command = [
             "python3", _mpdScript, "queue",
-            mpdHost, String(mpdPort), String(index),
-            JSON.stringify(valid.map(track => String(track.uri ?? track.path)))
+            mpdHost, String(mpdPort), String(request.index),
+            "@" + _queuePayloadPath
         ]
         _queueProc.running = true
+    }
+
+    function _failQueuePayloadWrite(_error): void {
+        _queuePayloadWriting = false
+        if (_queueRequests.length > 0)
+            _queueRequests = _queueRequests.slice(1)
+        error = "mpd_queue_payload_failed"
+        if (_queueRequests.length > 0)
+            Qt.callLater(root._drainQueueRequests)
     }
 
     function _sendMpd(command: string, args): void {
@@ -579,6 +661,33 @@ Singleton {
         }
     }
 
+    FileView {
+        id: queuePayloadFile
+        path: Qt.resolvedUrl(root._queuePayloadPath)
+        watchChanges: false
+        printErrors: false
+        onSaved: root._startQueuePayloadProcess()
+        onSaveFailed: error => root._failQueuePayloadWrite(error)
+    }
+
+    FileView {
+        id: bulkEnqueuePayloadFile
+        path: Qt.resolvedUrl(root._bulkEnqueuePayloadPath)
+        watchChanges: false
+        printErrors: false
+        onSaved: root._startBulkEnqueuePayloadProcess()
+        onSaveFailed: error => root._failBulkEnqueuePayloadWrite(error)
+    }
+
+    FileView {
+        id: playlistPayloadFile
+        path: Qt.resolvedUrl(root._playlistPayloadPath)
+        watchChanges: false
+        printErrors: false
+        onSaved: root._startPlaylistPayloadProcess()
+        onSaveFailed: error => root._failPlaylistPayloadWrite(error)
+    }
+
     Process {
         id: _lyricsProc
         property string requestedPath: ""
@@ -667,11 +776,13 @@ Singleton {
         }
         onStarted: _queueProc.output = ""
         onExited: (code, _status) => {
-            if (code !== 0) {
+            if (code !== 0)
                 root.error = "mpd_queue_failed"
-                return
-            }
-            statusRefreshTimer.restart()
+            else
+                statusRefreshTimer.restart()
+
+            if (root._queueRequests.length > 0)
+                Qt.callLater(root._drainQueueRequests)
         }
     }
 

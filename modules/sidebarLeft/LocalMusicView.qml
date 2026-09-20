@@ -1225,7 +1225,7 @@ Item {
         anchors.fill: parent
         visible: root.playlistDialogVisible
         z: 100
-        color: ColorUtils.applyAlpha(Appearance.colors.colShadow, 0.48)
+        color: Appearance.colors.colScrim
 
         MouseArea {
             anchors.fill: parent
@@ -1281,24 +1281,27 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    Item { Layout.fillWidth: true }
 
                     RippleButton {
-                        implicitWidth: 82
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
                         implicitHeight: 34
                         buttonRadius: Appearance.rounding.full
                         colBackground: Appearance.colors.colLayer2
                         onClicked: root.closePlaylistDialog()
                         contentItem: StyledText {
-                            anchors.centerIn: parent
+                            anchors.fill: parent
                             text: Translation.tr("Cancel")
                             color: Appearance.colors.colOnLayer2
                             font.pixelSize: Appearance.font.pixelSize.smaller
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
                     }
 
                     RippleButton {
-                        implicitWidth: 82
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 1
                         implicitHeight: 34
                         enabled: playlistNameField.text.trim().length > 0
                         buttonRadius: Appearance.rounding.full
@@ -1306,11 +1309,13 @@ Item {
                         colBackgroundHover: Appearance.colors.colPrimaryHover
                         onClicked: root.commitPlaylistDialog()
                         contentItem: StyledText {
-                            anchors.centerIn: parent
+                            anchors.fill: parent
                             text: Translation.tr("Create")
                             color: Appearance.colors.colOnPrimary
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             font.weight: Font.Medium
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
                     }
                 }

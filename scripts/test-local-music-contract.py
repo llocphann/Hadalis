@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Source contract for the Left Sidebar MPD/MPRIS Music player."""
 from __future__ import annotations
+import importlib.util
 import json
 import subprocess
 import sys
@@ -101,6 +102,7 @@ require(settings, 'Config.setNestedValue("sidebar.music.enable", checked)',
 for token in ('client.command("listallinfo")', 'client.command("listplaylists")',
               'client.command("playlistinfo")', "def replace_queue(",
               'client.command("playlistadd", playlist_name, uri)',
+              'def _load_json_list_argument(value: str)',
               'if mode in ("playlist-create", "playlist-add")',
               'if mode == "enqueue-many"'):
     require(mpd, token, f"MPD library contract missing: {token}")
@@ -125,5 +127,27 @@ with tempfile.TemporaryDirectory() as tmp:
         raise SystemExit("local lyrics helper did not recognize synchronized LRC.")
     if [round(float(line["time"]), 2) for line in payload["lines"]] != [1.0, 2.5, 4.0]:
         raise SystemExit("local lyrics timestamp parsing regressed.")
+
+spec = importlib.util.spec_from_file_location("hadalis_local_music_mpd", ROOT / "scripts/local_music_mpd.py")
+if spec is None or spec.loader is None:
+    raise SystemExit("could not import local_music_mpd helper")
+mpd_helper = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mpd_helper)
+
+with tempfile.TemporaryDirectory() as tmp:
+    payload_path = Path(tmp) / "bulk-selection.json"
+    bulk_uris = [
+        f"Artist {i:04d}/Album {i:04d}/" + ("track-" + "x" * 72) + f"-{i:04d}.flac"
+        for i in range(3000)
+    ]
+    encoded = json.dumps(bulk_uris)
+    if len(encoded.encode("utf-8")) <= 131072:
+        raise SystemExit("bulk payload fixture must exceed Linux's common per-argument limit")
+    payload_path.write_text(encoded, encoding="utf-8")
+    loaded = mpd_helper._load_json_list_argument("@" + str(payload_path))
+    if loaded != bulk_uris:
+        raise SystemExit("file-backed MPD bulk payload transport corrupted the selection")
+    if mpd_helper._load_json_list_argument(json.dumps(["a.flac", "b.flac"])) != ["a.flac", "b.flac"]:
+        raise SystemExit("inline MPD JSON payload compatibility regressed")
 
 print("Local Music MPD/MPRIS + local lyrics source contract: OK")

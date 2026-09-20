@@ -29,6 +29,17 @@ def _quote(value: Any) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def _load_json_list_argument(value: str) -> list[Any]:
+    """Load a JSON list from argv or from @/path to avoid exec argv limits."""
+    source = str(value)
+    if source.startswith("@"):
+        source = Path(source[1:]).read_text(encoding="utf-8")
+    payload = json.loads(source)
+    if not isinstance(payload, list):
+        raise MpdError("invalid_list_payload")
+    return payload
+
+
 class MpdClient:
     def __init__(self, host: str, port: int, timeout: float = 2.0) -> None:
         self.host = host
@@ -567,9 +578,7 @@ def main() -> int:
                 return 0
             if mode == "queue" and len(sys.argv) > 5:
                 index = int(sys.argv[4])
-                uris = json.loads(sys.argv[5])
-                if not isinstance(uris, list):
-                    return 2
+                uris = _load_json_list_argument(sys.argv[5])
                 replace_queue(client, [str(uri) for uri in uris], index)
                 print('{"ok":true}')
                 return 0
@@ -585,9 +594,7 @@ def main() -> int:
                 return 0
             if mode == "enqueue-many" and len(sys.argv) > 5:
                 override_root = sys.argv[4]
-                uris = json.loads(sys.argv[5])
-                if not isinstance(uris, list):
-                    return 2
+                uris = _load_json_list_argument(sys.argv[5])
                 enqueue_many(client, [str(uri) for uri in uris])
                 music_root = _music_root(client, override_root)
                 payload = _status_payload(client, music_root)
@@ -596,9 +603,7 @@ def main() -> int:
                 return 0
             if mode in ("playlist-create", "playlist-add") and len(sys.argv) > 5:
                 name = sys.argv[4]
-                uris = json.loads(sys.argv[5])
-                if not isinstance(uris, list):
-                    return 2
+                uris = _load_json_list_argument(sys.argv[5])
                 mutate_playlist(
                     client,
                     name,

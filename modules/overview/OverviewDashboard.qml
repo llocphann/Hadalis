@@ -17,6 +17,11 @@ Item {
     property real revealProgress: 0
     property real dashboardProgress: 1
     property bool _hasPresentedOnce: false
+    // Once the first debounced result set is ready, keep the Dashboard in
+    // Applications mode for the rest of that search session. Subsequent query
+    // debounces update the model in place instead of retriggering the outer
+    // Dashboard <-> Search fade/height transition on every keystroke.
+    property bool _searchSessionPresented: false
     property real availableWidth: root.QsWindow?.window?.screen?.width ?? 1920
     property real availableHeight: root.QsWindow?.window?.screen?.height ?? 1080
     property real attachmentThickness: Math.max(1, Math.min(32,
@@ -25,7 +30,7 @@ Item {
     readonly property bool applicationDragActive: searchWidget.applicationDragActive
     readonly property bool searching: root.searchingText.length > 0
     readonly property bool presentingSearch:
-        root.searching && searchWidget.resultsReady
+        root.searching && root._searchSessionPresented
     readonly property real searchTransitionProgress:
         1 - root.dashboardProgress
     readonly property int modeTransitionDuration:
@@ -102,12 +107,24 @@ Item {
     function syncDashboard(): void {
         root.dashboardProgress = root.presentingSearch ? 0 : 1
     }
+    function syncSearchSession(): void {
+        if (!root.searching)
+            root._searchSessionPresented = false
+        root.syncDashboard()
+    }
+    function acceptReadySearchResults(): void {
+        if (root.searching && searchWidget.resultsReady)
+            root._searchSessionPresented = true
+        root.syncDashboard()
+    }
     onPopupPresentedChanged: root.syncReveal()
-    onSearchingChanged: root.syncDashboard()
+    onSearchingChanged: root.syncSearchSession()
 
     Connections {
         target: searchWidget
-        function onResultsReadyChanged(): void { root.syncDashboard() }
+        function onResultsReadyChanged(): void {
+            root.acceptReadySearchResults()
+        }
     }
 
     Timer {
@@ -122,6 +139,7 @@ Item {
 
     Component.onCompleted: {
         root.revealProgress = 0
+        root._searchSessionPresented = root.searching && searchWidget.resultsReady
         root.dashboardProgress = root.presentingSearch ? 0 : 1
         root.syncReveal()
     }

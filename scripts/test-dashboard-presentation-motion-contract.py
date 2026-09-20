@@ -39,11 +39,22 @@ for token in (
 ):
     require(search, token, "Search readiness")
 for token in (
+    "property bool _searchSessionPresented: false",
     "readonly property bool presentingSearch:",
-    "root.searching && searchWidget.resultsReady",
+    "root.searching && root._searchSessionPresented",
+    "function syncSearchSession(): void",
+    "function acceptReadySearchResults(): void",
+    "if (!root.searching)",
+    "if (root.searching && searchWidget.resultsReady)",
+    "root._searchSessionPresented = true",
     "height: root.presentingSearch",
 ):
     require(dashboard, token, "Dashboard/Search readiness")
+forbid(
+    dashboard,
+    "readonly property bool presentingSearch:\\n        root.searching && searchWidget.resultsReady",
+    "Dashboard/Search per-keystroke mode bounce",
+)
 
 # Internal mode switching is a compact fade-through, not the old broad 50/50
 # linear crossfade and not a slide between two separate surfaces.

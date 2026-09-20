@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression contract for right-rail sliding Weather tabs and shared orbital view."""
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "modules/bar/weather/WeatherPopupContent.qml"
@@ -111,7 +112,7 @@ def main() -> None:
             raise AssertionError(
                 f"Weather composition contains retired token: {forbidden!r}")
 
-    if "Appearance.colors.colSurface" in source:
+    if re.search(r"Appearance\.colors\.colSurface(?![A-Za-z0-9_])", source):
         raise AssertionError("Weather popup must not use the retired colSurface alias")
 
     for retired in (

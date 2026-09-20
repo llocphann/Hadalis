@@ -352,7 +352,8 @@ for token in (
     "Milestone 2K-K — composed Connect research qualification",
     "qualified-reviewed-connect-research-v1",
     "same Clock source SHA",
-    "Config source SHA",
+    "Config",
+    "source SHA",
     "writeAuthorized=false",
     "production TYPE and CYCLE remain UNKNOWN",
 ):

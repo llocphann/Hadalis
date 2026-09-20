@@ -374,7 +374,7 @@ def _negative_control_source(
         f"{parent_type} {{\n"
         f"    property {source_type} workflowSource: {initializer}\n"
         f"    {binding_name}: workflowSource\n"
-        f"    property {parent_type} workflowIncompatibleControl: 42\n"
+        f"    property date workflowIncompatibleControl: 42\n"
         f"}}\n"
     )
 

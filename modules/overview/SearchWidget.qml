@@ -20,6 +20,7 @@ Item { // Wrapper
     property bool showResults: searchingText != ""
     property bool panelVisible: true
     property bool applicationDragActive: false
+    property bool embeddedSurface: false
     property real availableHeight: root.QsWindow?.window?.height ?? (root.QsWindow?.window?.screen?.height ?? 1080)
     // When search has results, Overview can present this whole surface as the
     // bottom-connected Applications popup. The body geometry is exported so
@@ -38,8 +39,12 @@ Item { // Wrapper
     readonly property bool islandStyle: (Config.options?.search?.style ?? "default") === "island"
     readonly property bool actionMode: searchingText.startsWith(root.prefixAction)
     readonly property string actionQuery: actionMode ? StringUtils.cleanPrefix(searchingText, root.prefixAction) : ""
-    implicitWidth: searchWidgetContent.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: searchWidgetContent.implicitHeight + Appearance.sizes.elevationMargin * 2
+    implicitWidth: searchWidgetContent.implicitWidth
+        + (root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin * 2)
+    implicitHeight: searchWidgetContent.implicitHeight
+        + (root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin * 2)
+    readonly property real collapsedHeight:
+        searchBar.implicitHeight + searchBar.verticalPadding * 2
 
     readonly property var searchPrefixes: Config.options?.search?.prefix ?? {}
     readonly property string prefixAction: searchPrefixes.action ?? "/"
@@ -440,7 +445,7 @@ Item { // Wrapper
     StyledRectangularShadow {
         z: 0
         target: searchWidgetContent
-        visible: !root.islandStyle
+        visible: !root.embeddedSurface && !root.islandStyle
         joinBottom: root.directBottomAttachment && root.showResults
     }
 
@@ -450,13 +455,14 @@ Item { // Wrapper
         bodyItem: searchWidgetContent
         fillColor: root.connectedSurfaceColor
         flareRadius: PerimeterTokens.joinFlareRadius
-        progress: root.directBottomAttachment && root.showResults ? 1 : 0
+        progress: !root.embeddedSurface
+            && root.directBottomAttachment && root.showResults ? 1 : 0
         joinBottom: root.directBottomAttachment && root.showResults
     }
 
     IslandPanel {
         anchors.fill: searchWidgetContent
-        visible: root.islandStyle
+        visible: !root.embeddedSurface && root.islandStyle
         radius: searchWidgetContent.radius
         glassEnabled: true
         screen: root.QsWindow?.window?.screen ?? null
@@ -468,23 +474,25 @@ Item { // Wrapper
         anchors {
             top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin: Appearance.sizes.elevationMargin
+            topMargin: root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
         }
         clip: true
-        implicitWidth: columnLayout.implicitWidth
+        implicitWidth: root.embeddedSurface ? root.width : columnLayout.implicitWidth
         implicitHeight: columnLayout.implicitHeight
-        radius: root.islandStyle
-            ? (root.showResults ? (Config.options?.appearance?.island?.radius ?? 18)
-                : searchBar.height / 2 + searchBar.verticalPadding)
-            : searchBar.height / 2 + searchBar.verticalPadding
+        radius: root.embeddedSurface ? 0
+            : root.islandStyle
+                ? (root.showResults ? (Config.options?.appearance?.island?.radius ?? 18)
+                    : searchBar.height / 2 + searchBar.verticalPadding)
+                : searchBar.height / 2 + searchBar.verticalPadding
         // A result surface attached to the bottom Screen Edge owns no inward
         // rounding at that contact. Shared outward flares draw the shoulders.
         bottomLeftRadius: root.directBottomAttachment && root.showResults ? 0 : radius
         bottomRightRadius: root.directBottomAttachment && root.showResults ? 0 : radius
-        fallbackColor: root.islandStyle
+        fallbackColor: root.embeddedSurface || root.islandStyle
             ? "transparent"
             : Appearance.colors.colBackgroundSurfaceContainer
-        wallpaperBackdropEnabled: root.panelVisible && !root.islandStyle
+        wallpaperBackdropEnabled: root.panelVisible
+            && !root.embeddedSurface && !root.islandStyle
         border.width: 0
         border.color: Appearance.colors.colLayer0Border
         Behavior on radius {
@@ -498,7 +506,8 @@ Item { // Wrapper
 
         Behavior on implicitHeight {
             id: searchHeightBehavior
-            enabled: GlobalStates.overviewOpen && root.showResults && Appearance.animationsEnabled
+            enabled: !root.embeddedSurface
+                && GlobalStates.overviewOpen && root.showResults && Appearance.animationsEnabled
             NumberAnimation {
                 duration: Appearance.animation.elementResize.duration
                 easing.type: Appearance.animation.elementResize.type
@@ -513,9 +522,10 @@ Item { // Wrapper
                 horizontalCenter: parent.horizontalCenter
             }
             spacing: 0
+            width: root.embeddedSurface ? searchWidgetContent.width : implicitWidth
 
             // clip: true
-            layer.enabled: true
+            layer.enabled: !root.embeddedSurface
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: searchWidgetContent.width
@@ -526,27 +536,6 @@ Item { // Wrapper
                     bottomLeftRadius: searchWidgetContent.bottomLeftRadius
                     bottomRightRadius: searchWidgetContent.bottomRightRadius
                 }
-            }
-
-            SearchBar {
-                id: searchBar
-                property real verticalPadding: 4
-                Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 4
-                Layout.topMargin: verticalPadding
-                Layout.bottomMargin: verticalPadding
-                searchingText: root.searchingText
-                onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
-            }
-
-            Rectangle {
-                // Separator
-                visible: root.showResults && !root.actionMode
-                Layout.fillWidth: true
-                height: 1
-                color: Appearance.colors.colOutlineVariant
-                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
             }
 
             // ── Action Mode View (replaces normal results when in / mode) ──
@@ -652,6 +641,28 @@ Item { // Wrapper
                     }
                 }
             }
+
+            Rectangle {
+                // Separator
+                visible: root.showResults && !root.actionMode
+                Layout.fillWidth: true
+                height: 1
+                color: Appearance.colors.colOutlineVariant
+                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
+            }
+
+            SearchBar {
+                id: searchBar
+                property real verticalPadding: 4
+                Layout.fillWidth: true
+                Layout.leftMargin: root.embeddedSurface ? 0 : 10
+                Layout.rightMargin: root.embeddedSurface ? 0 : 4
+                Layout.topMargin: verticalPadding
+                Layout.bottomMargin: verticalPadding
+                searchingText: root.searchingText
+                onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
+            }
+
         }
     }
 }

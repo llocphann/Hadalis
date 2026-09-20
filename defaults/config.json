@@ -1045,7 +1045,6 @@
         "style": "panel"
     },
     "dashboard": {
-        "enable": true,
         "keepLoaded": false,
         "showHeader": true,
         "showPowerButtons": true,
@@ -1055,7 +1054,8 @@
             "showCardTitles": true
         },
         "subtitle": "",
-        "widthRatio": 0.62,
+        "widthRatio": 0.72,
+        "heightRatio": 0.72,
         "layout": {
             "left": [
                 "welcome",
@@ -1371,7 +1371,6 @@
         "style": "panel",
         "cardStyle": false,
         "keepRightSidebarLoaded": true,
-        "instantOpen": false,
         "collapseEmptyNotifications": false,
         "collapseWidgetsTab": false,
         "shellLayout": {

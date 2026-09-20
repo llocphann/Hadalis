@@ -500,42 +500,39 @@ def main() -> None:
           "Applications search surface must attach directly to bottom Screen Edge with square contact corners and outward flares")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
-    check("Rectangle {\n        id: dashContainer" in dashboard
-          and "color: Appearance.colors.colLayer0" in dashboard
-          and "GlassBackground {\n        id: dashContainer" not in dashboard
-          and "readonly property bool useWallpaperBackdrop: false" in dashboard,
-          "Dashboard connected body must be a plain solid Material surface without glass tint")
-    check("PerimeterTokens.attachedCornerRadius" not in dashboard
-          and "bottomLeftRadius: root.directBottomAttachment ? 0 : radius" in dashboard
-          and "bottomRightRadius: root.directBottomAttachment ? 0 : radius" in dashboard,
-          "Dashboard attached body edge must stay square; outward flare owns the Bar/Screen Edge shoulder")
+    check("import qs.modules.dashboard" in dashboard
+          and "DashboardContent {" in dashboard
+          and "SearchWidget {" in dashboard
+          and "embeddedSurface: true" in dashboard,
+          "Launcher Dashboard must be one shared three-column/search surface")
+    check("Config.options?.dashboard?.widthRatio" in dashboard
+          and "Config.options?.dashboard?.heightRatio" in dashboard
+          and "height: root.searching ? root.searchOnlyHeight : root.configuredHeight" in dashboard,
+          "Launcher Dashboard must consume Dashboard width/height settings")
+    check("property real dashboardProgress: 1" in dashboard
+          and "(1 - root.dashboardProgress) * dashboardViewport.height" in dashboard,
+          "Dashboard-to-search transition must use spatial slide/resize")
     check("SurfaceMotion.duration" in dashboard
           and "SurfaceMotion.easingType" in dashboard,
-          "Dashboard connected slide must use the immutable SurfaceMotion contract")
-    check("Appearance.colors.colShadow" in dashboard
-          and "Appearance.m3colors.m3shadow" not in dashboard,
-          "Dashboard connected shadow must use the same themed shadow ink as Screen Edge and Bar")
-    check("StyledRectangularShadow {\n        parent: dashboardSurfaceLayer\n" in dashboard
-          and "z: 0\n        target: dashContainer" in dashboard
-          and "Rectangle {\n        id: dashContainer\n        parent: dashboardSurfaceLayer\n" in dashboard
-          and "z: 1\n        anchors {" in dashboard
-          and "ConnectedSurfaceJoinFlares {\n        parent: dashboardSurfaceLayer\n        z: 5" in dashboard,
-          "Dashboard depth stack must keep connected shadow below body below endpoint flares")
-    check("import qs.modules.mediaControls" in dashboard
-          and "EqualizerPanel {" in dashboard
-          and "id: dashboardEqualizer" in dashboard,
-          "Dashboard Media must expose the shared Equalizer DSP panel")
+          "Dashboard connected motion must use immutable SurfaceMotion")
+    dashboard_content = read("modules/dashboard/DashboardContent.qml")
+    check("WidgetColumn { id: leftCol" in dashboard_content
+          and "WidgetColumn { id: centerCol" in dashboard_content
+          and "WidgetColumn { id: rightCol" in dashboard_content
+          and "visible: true" in dashboard_content,
+          "Dashboard must keep all three columns present")
+    check("Item {\n                        id: colFlick" in dashboard_content
+          and "StyledFlickable {\n                        id: colFlick" not in dashboard_content,
+          "Dashboard columns must not provide Dashboard-level scrolling")
     overview_runtime = read("modules/overview/Overview.qml")
     check("readonly property bool applicationsPresentationMode:" in overview_runtime
-          and "root.bottomAttachmentY - bodyBottomInColumn" in overview_runtime
-          and "directBottomAttachment: root.applicationsPresentationMode" in overview_runtime,
-          "Applications results must use the same bottom attachment boundary as Dashboard")
-    check("searchWidget.connectedSurfaceBottomInset" in overview_runtime
-          and "dashboardPanel.item.connectedSurfaceRect.y" in overview_runtime,
-          "Search and Dashboard must cancel their facing wrapper insets and meet without a visual gap")
-    check("opacity: root.dashboardPresentationMode" in overview_runtime
-          and '? 0 : (root._presentedOpen ? 1 : 0)' in overview_runtime,
-          "Dashboard popup mode must not inherit the full-screen Overview scrim")
+          and "dashboardPanel.item.connectedSurfaceRect" in overview_runtime
+          and "searchingText: root.searchingText" in overview_runtime,
+          "Search and Dashboard must share one bottom-connected launcher surface")
+    check("SearchWidget {\n                    id: searchWidget" not in overview_runtime,
+          "Overview must not keep a second floating SearchWidget above Dashboard")
+    check("opacity: root.taskViewMode" in overview_runtime,
+          "Launcher search must not use the old Overview fade path")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,

@@ -1861,7 +1861,6 @@ Singleton {
             }
 
             property JsonObject dashboard: JsonObject {
-                property bool enable: true
                 property bool keepLoaded: false
                 property bool showHeader: true
                 property bool showPowerButtons: true
@@ -1871,7 +1870,8 @@ Singleton {
                     property bool showCardTitles: true
                 }
                 property string subtitle: ""
-                property real widthRatio: 0.62
+                property real widthRatio: 0.72
+                property real heightRatio: 0.72
                 property JsonObject layout: JsonObject {
                     property list<string> left: ["welcome", "clock", "system", "github"]
                     property list<string> center: ["notifications", "todo"]
@@ -2069,14 +2069,6 @@ Singleton {
                     property int delayMs: 280
                     property int closeDelayMs: 220
                 }
-                property JsonObject dashboard: JsonObject {
-                    property bool enable: false
-                    property bool showToggles: true
-                    property bool showMedia: true
-                    property bool showVolume: true
-                    property bool showWeather: true
-                    property bool showSystem: true
-                }
             }
 
             property JsonObject altSwitcher: JsonObject {
@@ -2193,7 +2185,6 @@ Singleton {
                 property string layout: "default"
                 property bool keepRightSidebarLoaded: true
                 property bool keepLeftSidebarLoaded: true
-                property bool instantOpen: false
                 property bool collapseEmptyNotifications: false
                 property bool collapseWidgetsTab: false
                 property JsonObject shellLayout: JsonObject {

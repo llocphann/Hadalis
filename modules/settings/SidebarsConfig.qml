@@ -82,15 +82,6 @@ ContentPage {
                 wrapMode: Text.WordWrap
             }
 
-            SettingsSwitch {
-                buttonIcon: "animation"
-                text: Translation.tr("Instant sidebar opening")
-                checked: Config.options.sidebar?.instantOpen ?? false
-                onCheckedChanged: Config.setNestedValue("sidebar.instantOpen", checked)
-                StyledToolTip {
-                    text: Translation.tr("Skips the slide animation to reduce stutter under load.")
-                }
-            }
 
             SettingsSwitch {
                 buttonIcon: "folder_open"

@@ -24,9 +24,10 @@ Scope {
         + ((Config.options?.bar?.bottom ?? false) ? barReservedSpace : 0)
     readonly property real availablePanelHeight: Math.max(360, screenHeight - topReservedSpace - bottomReservedSpace)
     readonly property real availablePanelWidth: Math.max(480, screenWidth - safePadding * 2)
-    readonly property real widthRatio: Math.min(0.9, Math.max(0.4, Config.options?.dashboard?.widthRatio ?? 0.62))
+    readonly property real widthRatio: Math.min(0.9, Math.max(0.4, Config.options?.dashboard?.widthRatio ?? 0.72))
+    readonly property real heightRatio: Math.min(0.9, Math.max(0.45, Config.options?.dashboard?.heightRatio ?? 0.72))
     readonly property real panelWidth: Math.round(Math.min(availablePanelWidth, screenWidth * widthRatio))
-    readonly property real panelHeight: Math.round(Math.min(availablePanelHeight, 860))
+    readonly property real panelHeight: Math.round(Math.min(availablePanelHeight, screenHeight * heightRatio))
 
     PanelWindow {
         id: panelRoot

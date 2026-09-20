@@ -37,9 +37,7 @@ Scope {
             readonly property bool shouldShow: GlobalStates.overviewOpen
                 && (taskViewMode ? isTargetOutput : (!activeScreenOnly || isTargetOutput))
             readonly property bool dashboardPresentationMode:
-                !root.taskViewMode
-                && (Config.options?.overview?.dashboard?.enable ?? false)
-                && root.searchingText === ""
+                !root.taskViewMode && root.searchingText === ""
             readonly property bool applicationsPresentationMode:
                 !root.taskViewMode && root.searchingText !== ""
             readonly property string outputName: String(root.modelData?.name ?? "")
@@ -73,7 +71,8 @@ Scope {
             // matching the same slide-under contract as connected popups.
             readonly property real bottomAttachmentY: root.height
                 - root.bottomAttachmentThickness
-            readonly property bool applicationDragActive: searchWidget.applicationDragActive
+            readonly property bool applicationDragActive:
+                (dashboardPanel.item?.applicationDragActive ?? false)
                 || (allAppsGridLoader.item?.applicationDragActive ?? false)
             screen: modelData
 
@@ -88,7 +87,7 @@ Scope {
                         return
                     if (root.taskViewMode) {
                         overviewScope.dontAutoCancelSearch = false
-                        searchWidget.cancelSearch()
+                        dashboardPanel.item?.cancelSearch()
                         columnLayout.forceActiveFocus()
                     } else {
                         const prefix = GlobalStates.overviewSearchPrefix
@@ -96,9 +95,9 @@ Scope {
                             overviewScope.dontAutoCancelSearch = true
                             root.setSearchingText(prefix)
                         } else {
-                            searchWidget.cancelSearch()
+                            dashboardPanel.item?.cancelSearch()
                         }
-                        searchWidget.focusSearchInput()
+                        dashboardPanel.item?.focusSearchInput()
                         root.maybeSwitchWorkspaceOnOpen()
                     }
                     delayedGrabTimer.start()
@@ -196,12 +195,8 @@ Scope {
                 enabled: !root.applicationDragActive
                 onClicked: mouse => {
                     // Cierra solo si el click es fuera del contenido visible
-                    // Check against searchWidget and overviewLoader, not columnLayout
+                    // Check the visible launcher/task surfaces, not columnLayout.
                     // because columnLayout fills the whole window height
-                    const searchPos = mapToItem(searchWidget, mouse.x, mouse.y)
-                    const inSearch = searchWidget.visible && searchPos.x >= 0 && searchPos.x <= searchWidget.width &&
-                                     searchPos.y >= 0 && searchPos.y <= searchWidget.height
-                    
                     const overviewPos = overviewLoader.item ? mapToItem(overviewLoader.item, mouse.x, mouse.y) : null
                     const inOverview = overviewLoader.item && overviewPos &&
                                        overviewPos.x >= 0 && overviewPos.x <= overviewLoader.item.width &&
@@ -217,7 +212,7 @@ Scope {
                                       allAppsPos.x >= 0 && allAppsPos.x <= allAppsGridLoader.item.width &&
                                       allAppsPos.y >= 0 && allAppsPos.y <= allAppsGridLoader.item.height
                     
-                    if (!inSearch && !inOverview && !inDashboard && !inAllApps) {
+                    if (!inOverview && !inDashboard && !inAllApps) {
                         GlobalStates.overviewOpen = false
                     }
                 }
@@ -255,13 +250,13 @@ Scope {
                     CompositorService.setSortingConsumer("overview", GlobalStates.overviewOpen)
                     if (!GlobalStates.overviewOpen) {
                         // Al cerrar, limpiar completamente la búsqueda
-                        searchWidget.cancelSearch();
-                        searchWidget.disableExpandAnimation();
+                        dashboardPanel.item?.cancelSearch();
+                        dashboardPanel.item?.disableExpandAnimation();
                         overviewScope.dontAutoCancelSearch = false;
                         GlobalStates.overviewSearchPrefix = "";
                     } else {
                         if (!overviewScope.dontAutoCancelSearch) {
-                            searchWidget.cancelSearch();
+                            dashboardPanel.item?.cancelSearch();
                         }
                     }
                 }
@@ -282,8 +277,9 @@ Scope {
             implicitHeight: columnLayout.implicitHeight
 
             function setSearchingText(text) {
-                searchWidget.setSearchingText(text);
-                searchWidget.focusFirstItem();
+                root.searchingText = text
+                dashboardPanel.item?.setSearchingText(text)
+                dashboardPanel.item?.focusFirstItem()
             }
 
             function maybeSwitchWorkspaceOnOpen() {
@@ -317,15 +313,8 @@ Scope {
                 layer.enabled: Appearance.shouldDesaturate("overlays") && columnLayout.visible
                 layer.effect: ShellDesaturationEffect {}
 
-                // One 0..1 driver so the surface unfolds as a single coherent morph.
-                // Enter rides the per-style spatial spring (elementMoveEnter branches:
-                // cookieSpring bounce, zzzOvershoot punch, emphasizedDecel glide), so
-                // each worldview opens in its own character and the overshoot past 1
-                // becomes a subtle settle on the anisotropic scale. Exit is a clean
-                // decel: it moves decisively at the start and eases into closed, and
-                // because opacity leads OUT (below) the slow tail is already invisible
-                // — the surface dissolves upward toward the search bar instead of
-                // visibly squishing to nothing, which is what made the old close ugly.
+                // Task View keeps its scene transition. Launcher mode never fades
+                // or scales; the unified Dashboard owns the spatial slide.
                 readonly property int motionDuration: root._presentedOpen
                     ? Appearance.animation.elementMoveEnter.duration
                     : Appearance.animation.elementMoveExit.duration
@@ -334,32 +323,22 @@ Scope {
                     : Appearance.animationCurves.emphasizedDecel
                 property real openProgress: root._presentedOpen ? 1 : 0
 
-                // Direction-aware opacity. Open: leads in, fully legible by 70% of the
-                // unfold. Close: leads out, fully faded by the time the surface has
-                // receded ~45%, so the slow decel tail collapses invisibly.
-                opacity: root.dashboardPresentationMode ? 1
-                    : root._presentedOpen
+                opacity: root.taskViewMode
+                    ? (root._presentedOpen
                         ? Math.min(1, openProgress / 0.7)
-                        : Math.max(0, (openProgress - 0.45) / 0.55)
+                        : Math.max(0, (openProgress - 0.45) / 0.55))
+                    : 1
                 visible: openProgress > 0.001
 
                 transform: [
                     Scale {
                         origin.x: columnLayout.width / 2
-                        origin.y: root.taskViewMode ? columnLayout.height / 2 : 0
-                        xScale: root.dashboardPresentationMode ? 1
-                            : (root.taskViewMode ? 0.94 : 0.975)
-                                + (root.taskViewMode ? 0.06 : 0.025)
-                                    * columnLayout.openProgress
-                        yScale: root.dashboardPresentationMode ? 1
-                            : (root.taskViewMode ? 0.94 : 0.93)
-                                + (root.taskViewMode ? 0.06 : 0.07)
-                                    * columnLayout.openProgress
+                        origin.y: columnLayout.height / 2
+                        xScale: root.taskViewMode ? 0.94 + 0.06 * columnLayout.openProgress : 1
+                        yScale: root.taskViewMode ? 0.94 + 0.06 * columnLayout.openProgress : 1
                     },
                     Translate {
-                        y: root.dashboardPresentationMode ? 0
-                            : (1 - columnLayout.openProgress)
-                                * (root.taskViewMode ? 8 : -12)
+                        y: root.taskViewMode ? (1 - columnLayout.openProgress) * 8 : 0
                     }
                 ]
 
@@ -382,15 +361,7 @@ Scope {
                     topMargin: {
                         const ov = Config?.options?.overview;
                         const respectBar = ov && ov.respectBar !== undefined ? ov.respectBar : true;
-                        if (root.applicationsPresentationMode
-                                && searchWidget.visible) {
-                            const rect = searchWidget.connectedSurfaceRect
-                            const bodyBottomInColumn = searchWidget.y
-                                + rect.y + rect.height
-                            return Math.round(Math.max(0,
-                                root.bottomAttachmentY - bodyBottomInColumn))
-                        }
-                        if (root.dashboardPresentationMode
+                        if (!root.taskViewMode
                                 && dashboardPanel.visible && dashboardPanel.item) {
                             const rect = dashboardPanel.item.connectedSurfaceRect
                                 ?? Qt.rect(0, 0, dashboardPanel.width, dashboardPanel.height)
@@ -429,14 +400,7 @@ Scope {
                         return centeredMargin;
                     }
                 }
-                // In Dashboard mode align painted surfaces, not wrapper bounds:
-                // SearchWidget and OverviewDashboard both reserve elevation space
-                // around their bodies. Cancel only those two facing insets so the
-                // Search bar physically touches the Dashboard without magic pixels.
-                spacing: root.dashboardPresentationMode && dashboardPanel.item
-                    ? -(searchWidget.connectedSurfaceBottomInset
-                        + dashboardPanel.item.connectedSurfaceRect.y)
-                    : (root.taskViewMode ? 0 : -8)
+                spacing: root.taskViewMode ? 0 : -8
 
 
                 Keys.onPressed: event => {
@@ -473,22 +437,10 @@ Scope {
                     }
                 }
 
-                SearchWidget {
-                    id: searchWidget
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: !root.taskViewMode
-                    searchingText: root.searchingText
-                    panelVisible: root.visible
-                    directBottomAttachment: root.applicationsPresentationMode
-                    // Centered mode: limit search results to 60% of screen height
-                    availableHeight: Math.max(220, root.height * 0.6)
-                    onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
-                }
-
                 Loader {
                     id: overviewLoader
                     anchors.horizontalCenter: parent.horizontalCenter
-                    readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
+                    readonly property bool dashboardMode: true
                     readonly property bool allAppsGridEnabled: Config.options?.overview?.allAppsGrid ?? false
                     // Workspace Overview now belongs to Bar workspace hover.
                     // This full-screen loader remains only for explicit Task View.
@@ -501,7 +453,7 @@ Scope {
                     id: allAppsGridLoader
                     anchors.horizontalCenter: parent.horizontalCenter
                     readonly property bool allAppsEnabled: Config.options?.overview?.allAppsGrid ?? false
-                    readonly property bool dashboardMode: Config.options?.overview?.dashboard?.enable ?? false
+                    readonly property bool dashboardMode: true
                     active: root.shouldShow && !root.taskViewMode && allAppsEnabled && !dashboardMode
                     visible: active && (root.searchingText == "")
                     sourceComponent: allAppsGridComponent
@@ -533,26 +485,28 @@ Scope {
                     }
                 }
 
-                // Dashboard panel below workspace thumbnails
+                // One launcher surface owns Dashboard + search. It stays mapped
+                // while typing so content can slide down as the body resizes.
                 Loader {
                     id: dashboardPanel
                     anchors.horizontalCenter: parent.horizontalCenter
                     active: !root.taskViewMode
-                        && (Config.options?.overview?.dashboard?.enable ?? false)
-                    // Keep the loader mapped through the reverse slide tail.
                     visible: active && status === Loader.Ready
-                        && root.searchingText === ""
-                        && (root._presentedOpen
-                            || (item?.revealProgress ?? 0) > 0.001)
+                        && (root._presentedOpen || (item?.revealProgress ?? 0) > 0.001)
                     opacity: 1
+                    onLoaded: {
+                        if (root.isTargetOutput && root._presentedOpen)
+                            Qt.callLater(() => item?.focusSearchInput())
+                    }
                     sourceComponent: Component {
                         OverviewDashboard {
                             panelVisible: root.visible
                             directBottomAttachment: true
                             popupPresented: root._presentedOpen
-                                && root.searchingText === ""
-                            availableWidth: dashboardPanel.parent?.width ?? root.width
-                            availableHeight: Math.max(260, root.height * 0.78)
+                            searchingText: root.searchingText
+                            availableWidth: root.width
+                            availableHeight: root.height
+                            onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
                         }
                     }
                 }

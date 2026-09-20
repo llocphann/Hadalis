@@ -8,7 +8,7 @@ status_rings="$repo_root/modules/sidebarLeft/widgets/StatusRings.qml"
 overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
-overview_dashboard="$repo_root/modules/overview/OverviewDashboard.qml"
+dash_system="$repo_root/modules/dashboard/DashSystem.qml"
 inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
@@ -77,14 +77,12 @@ assert_contains 'root._gpuTempPath = ""' "$temp_block" 'temperature startup fail
 assert_contains 'root._dGpuRuntimeStatusPath = ""' "$hybrid_block" 'hybrid GPU startup failure must clear stale runtime-status path'
 assert_contains 'root.maxAvailableCpuString = "--"' "$cpu_block" 'CPU frequency startup failure must restore unknown display state'
 
-for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$overview_dashboard" "$bar_resources" "$vertical_bar_resources"; do
+for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources"; do
     lifecycle_text="$(cat "$lifecycle_file")"
     assert_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must acquire resource polling only while presented"
     assert_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must release resource polling when hidden or destroyed"
 done
 
-assert_contains 'running: root.panelVisible && root.effectiveIsPlaying' "$(cat "$overview_dashboard")" \
-    'hidden Overview dashboard must stop its media position timer'
 assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
     'hidden InnerTune thumbnail must stop its decorative equalizer timer'
 assert_contains 'root.visible && !GameMode.active' "$(cat "$bar_resources")" \

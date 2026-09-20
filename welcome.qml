@@ -61,7 +61,6 @@ Scope {
         "dock.enable": true,
         "dock.hoverToReveal": false,
         "dock.pinnedOnStartup": true,
-        "dashboard.enable": true,
         "bar.weather.enable": true,
         "bar.modules.weather": true,
         "bar.modules.battery": true,
@@ -1588,13 +1587,6 @@ Scope {
                 description: Translation.tr("Keep dock visible at all times (Empty workspace mode only)")
                 checked: Config.options?.dock?.enable ?? true
                 onToggledByUser: checked => root.setProfileFeature("dock.enable", checked)
-            }
-            ConfigSwitch {
-                buttonIcon: "dashboard"
-                text: "Material II · " + Translation.tr("Show dashboard")
-                description: Translation.tr("Keep a centered home panel for notifications, media, weather and daily controls.")
-                checked: Config.options?.dashboard?.enable ?? true
-                onToggledByUser: checked => root.setProfileFeature("dashboard.enable", checked)
             }
             ConfigSwitch {
                 buttonIcon: "auto_awesome_motion"

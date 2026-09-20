@@ -22,6 +22,8 @@ Item {
     id: root
     property int screenWidth: 1920
     property int screenHeight: 1080
+    property bool embeddedSurface: false
+    property bool presentationActive: GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property bool angelEverywhere: Appearance.angelEverywhere
@@ -251,12 +253,14 @@ Item {
     // Shadow
     StyledRectangularShadow {
         target: background
-        visible: (Appearance.angelEverywhere || (!root.inirEverywhere && !root.auroraEverywhere)) && !Appearance.gameModeMinimal
+        visible: !root.embeddedSurface
+            && (Appearance.angelEverywhere || (!root.inirEverywhere && !root.auroraEverywhere))
+            && !Appearance.gameModeMinimal
     }
 
     ZzzPlate {
         anchors.fill: background
-        visible: Appearance.zzzEverywhere
+        visible: !root.embeddedSurface && Appearance.zzzEverywhere
         fillColor: Appearance.colors.colLayer0
         strokeColor: Appearance.zzz.hairlineStrong
         strokeWidth: Appearance.zzz.hairlineThick
@@ -267,17 +271,19 @@ Item {
         id: background
         anchors.fill: parent
 
-        color: Appearance.zzzEverywhere ? "transparent"
+        color: root.embeddedSurface ? "transparent"
+             : Appearance.zzzEverywhere ? "transparent"
              : root.inirEverywhere ? Appearance.inir.colLayer0
              : root.auroraEverywhere ? ColorUtils.applyAlpha((root.blendedColors?.colLayer0 ?? Appearance.colors.colLayer0), 1)
              : Appearance.colors.colLayer0
 
-        radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
+        radius: root.embeddedSurface ? 0
+            : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
             : root.angelEverywhere ? Appearance.angel.roundingLarge
             : root.inirEverywhere ? Appearance.inir.roundingLarge
             : Appearance.rounding.large
 
-        border.width: Appearance.zzzEverywhere ? 0 : 1
+        border.width: root.embeddedSurface || Appearance.zzzEverywhere ? 0 : 1
         border.color: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
                     : root.angelEverywhere ? Appearance.angel.colBorder
                     : root.inirEverywhere ? Appearance.inir.colBorder
@@ -304,7 +310,8 @@ Item {
         clip: true
 
         // ZZZ: mask to rounded shape so children never re-square the corners.
-        layer.enabled: root.useWallpaperBackdrop || (root.zzzEverywhere && !Appearance.gameModeMinimal)
+        layer.enabled: !root.embeddedSurface
+            && (root.useWallpaperBackdrop || (root.zzzEverywhere && !Appearance.gameModeMinimal))
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle {
                 width: background.width
@@ -319,7 +326,7 @@ Item {
             anchors.centerIn: parent
             width: root.screenWidth
             height: root.screenHeight
-            visible: root.useWallpaperBackdrop
+            visible: !root.embeddedSurface && root.useWallpaperBackdrop
             source: root.useWallpaperBackdrop ? root.wallpaperUrl : ""
             fillMode: Image.PreserveAspectCrop
             cache: true
@@ -353,13 +360,14 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             height: Appearance.angel.insetGlowHeight
-            visible: root.angelEverywhere
+            visible: !root.embeddedSurface && root.angelEverywhere
             color: Appearance.angel.colInsetGlow
             z: 10
         }
 
         ZzzPanelBackdrop {
             anchors.fill: parent
+            visible: !root.embeddedSurface
             label: "AUTONOMIC STRIDER"
             index: "52"
             ghostText: "DASH"
@@ -378,7 +386,7 @@ Item {
         ColumnLayout {
             readonly property bool compact: (Config.options?.dashboard?.appearance?.density ?? "comfortable") === "compact"
             anchors.fill: parent
-            anchors.margins: compact ? 12 : 16
+            anchors.margins: root.embeddedSurface ? 0 : (compact ? 12 : 16)
             spacing: compact ? 8 : 12
 
             Loader {
@@ -391,9 +399,10 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 12
+                spacing: 8
 
-                // A column is a scrollable stack: cards keep their natural height
+                // One fixed Dashboard viewport: widgets retain their natural size,
+                // while the Dashboard itself never becomes a scroll container.
                 // (never squished), the stack FILLS the viewport when content fits
                 // (fill-widgets stretch) and GROWS + scrolls when it doesn't — so an
                 // overloaded column never collides or spills out of the panel.
@@ -404,7 +413,7 @@ Item {
                     property real widthWeight: 1
                     readonly property bool hasFill: ids.some(id => root._fillIds.indexOf(id) !== -1)
                     readonly property bool dropActive: root.dragging && root.dropZone === zoneName
-                    visible: ids.length > 0 || root.editMode
+                    visible: true
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.preferredWidth: 100 * widthWeight
@@ -442,11 +451,9 @@ Item {
                         return cards[idx].y - root.rowGap / 2
                     }
 
-                    StyledFlickable {
+                    Item {
                         id: colFlick
                         anchors.fill: parent
-                        contentWidth: width
-                        contentHeight: contentWrap.height
                         clip: true
 
                         Item {

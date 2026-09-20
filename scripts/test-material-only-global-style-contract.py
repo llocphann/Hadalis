@@ -1726,17 +1726,19 @@ def main() -> None:
     ):
         forbid(overview_search_widget, token, "overview/SearchWidget.qml")
     for token in (
+        "property bool embeddedSurface: false",
+        "readonly property real collapsedHeight:",
         "readonly property bool islandStyle:",
         "IslandPanel {",
-        "visible: root.islandStyle",
-        'fallbackColor: root.islandStyle',
+        "visible: !root.embeddedSurface && root.islandStyle",
+        'fallbackColor: root.embeddedSurface || root.islandStyle',
         '? "transparent"',
         ": Appearance.colors.colBackgroundSurfaceContainer",
-        "wallpaperBackdropEnabled: root.panelVisible && !root.islandStyle",
+        "&& !root.embeddedSurface && !root.islandStyle",
         "border.width: 0",
         "border.color: Appearance.colors.colLayer0Border",
-        "Layout.leftMargin: 10",
-        "Layout.rightMargin: 4",
+        "Layout.leftMargin: root.embeddedSurface ? 0 : 10",
+        "Layout.rightMargin: root.embeddedSurface ? 0 : 4",
         "Layout.topMargin: verticalPadding",
         "Layout.bottomMargin: verticalPadding",
         "topMargin: 10",
@@ -1811,64 +1813,31 @@ def main() -> None:
     ):
         require(overview_all_apps_grid, token, "overview/OverviewAllAppsGrid.qml")
 
-    # Dashboard is the final active Overview Global Theme cluster. Collapse
-    # only its presentation tokens; its newer bottom-connected popup mechanics
-    # (slide-under translation, reveal clipping, flares and Screen Edge shadow)
-    # are source invariants and must remain intact.
+    # Launcher Dashboard is a lean connected host around shared DashboardContent
+    # plus the embedded bottom SearchWidget.
     for token in legacy_style_tokens:
         forbid(overview_dashboard, token, "overview/OverviewDashboard.qml")
     for token in (
-        "angelStyle",
-        "inirStyle",
-        "auroraStyle",
-        "zzzStyle",
-        "ZzzPlate {",
-        "ZzzPanelBackdrop {",
-        "AngelPartialBorder {",
-    ):
-        forbid(overview_dashboard, token, "overview/OverviewDashboard.qml")
-    for token in (
-        "readonly property bool useWallpaperBackdrop: false",
-        "readonly property color colText: Appearance.colors.colOnLayer1",
-        "readonly property color colSubtext: Appearance.colors.colSubtext",
-        "readonly property color colCardBg: Appearance.colors.colBackgroundSurfaceContainer",
-        "readonly property color colCard: Appearance.colors.colLayer1",
-        "readonly property color colBorder: Appearance.colors.colLayer0Border",
-        "readonly property color colPrimary: Appearance.colors.colPrimary",
-        "readonly property color colOnPrimary: Appearance.colors.colOnPrimary",
-        "readonly property color colCardHover: Appearance.colors.colLayer2Hover",
-        "readonly property color colLayer2: Appearance.colors.colLayer2",
-        "readonly property real cardRadius: Appearance.rounding.normal",
-        "readonly property real containerRadius: Appearance.rounding.large",
-        "readonly property int bw: 1",
-        "fallbackColor: Appearance.colors.colBackgroundSurfaceContainer",
-        "color: root.colCard",
-        "buttonRadius: Appearance.rounding.full",
-        "colBackgroundHover: Appearance.colors.colLayer2Hover",
-        "color: Appearance.colors.colSecondaryContainer",
-        "property bool directBottomAttachment: false",
-        "property bool popupPresented: true",
-        "property real revealProgress: 0",
-        "clip: root.directBottomAttachment",
-        "transform: Translate {",
+        "import qs.modules.dashboard",
+        "DashboardContent {",
+        "SearchWidget {",
+        "embeddedSurface: true",
+        "Config.options?.dashboard?.widthRatio",
+        "Config.options?.dashboard?.heightRatio",
+        "property real dashboardProgress: 1",
+        "height: root.searching ? root.searchOnlyHeight : root.configuredHeight",
         "y: (1 - root.revealProgress) * dashContainer.height",
+        "(1 - root.dashboardProgress) * dashboardViewport.height",
         "ConnectedSurfaceJoinFlares {",
-        "fillColor: dashContainer.fallbackColor",
+        "fillColor: dashContainer.color",
         "flareRadius: PerimeterTokens.joinFlareRadius",
-        "progress: root.revealProgress > 0.001 ? 1 : 0",
         "joinBottom: root.directBottomAttachment",
         "StyledRectangularShadow {",
         "blur: root.screenEdgeShadowSize",
-        "root.screenEdgeShadowOpacity",
         "bottomLeftRadius: root.directBottomAttachment ? 0 : radius",
         "bottomRightRadius: root.directBottomAttachment ? 0 : radius",
-        "Audio.toggleMute()",
-        "Network.toggleWifi()",
-        "BluetoothStatus.toggle()",
-        "MprisController.togglePlaying()",
-        "Weather.forceRefresh()",
-        "ResourceUsage.cpuUsage",
-        "ResourceUsage.memoryUsedPercentage",
+        "SurfaceMotion.duration",
+        "SurfaceMotion.easingType",
     ):
         require(overview_dashboard, token, "overview/OverviewDashboard.qml")
 

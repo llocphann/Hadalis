@@ -499,8 +499,9 @@ for token in \
     'blur: root.screenEdgeShadowSize' \
     'bottomLeftRadius: root.directBottomAttachment ? 0 : radius' \
     'color: Appearance.colors.colLayer0' \
-    'id: dashboardEqualizer' \
-    'EqualizerPanel {'; do
+    'DashboardContent {' \
+    'SearchWidget {' \
+    'embeddedSurface: true'; do
     grep -Fq "$token" "$overview_dashboard" \
         || fail "OverviewDashboard popup contract missing: $token"
 done

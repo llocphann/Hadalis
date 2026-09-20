@@ -58,7 +58,7 @@ DashCard {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
-                layer.enabled: GlobalStates.dashboardOpen && root.visible && status === Image.Ready
+                layer.enabled: (GlobalStates.dashboardOpen || GlobalStates.overviewOpen) && root.visible && status === Image.Ready
                 layer.effect: GE.OpacityMask { maskSource: avatarMask }
             }
 

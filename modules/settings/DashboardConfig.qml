@@ -54,19 +54,6 @@ ContentPage {
 
         SettingsGroup {
             ConfigSwitch {
-                text: Translation.tr("Enable dashboard")
-                description: Translation.tr("Centered hub with clock, notifications, media, weather and more")
-                checked: Config.options?.dashboard?.enable ?? true
-                onCheckedChanged: Config.setNestedValue("dashboard.enable", checked)
-            }
-            ConfigSwitch {
-                text: Translation.tr("Show compact Dashboard in launcher")
-                description: Translation.tr("Use the compact control dashboard when opening the launcher without a search query")
-                checked: Config.options?.overview?.dashboard?.enable ?? false
-                onCheckedChanged: Config.setNestedValue(
-                    "overview.dashboard.enable", checked)
-            }
-            ConfigSwitch {
                 text: Translation.tr("Show header")
                 description: Translation.tr("Uptime chip and quick action buttons at the top")
                 checked: Config.options?.dashboard?.showHeader ?? true
@@ -87,11 +74,21 @@ ContentPage {
             }
             ConfigSpinBox {
                 text: Translation.tr("Panel width (% of screen)")
-                value: Math.round((Config.options?.dashboard?.widthRatio ?? 0.62) * 100)
+                description: Translation.tr("Shared width for the Dashboard and launcher Dashboard")
+                value: Math.round((Config.options?.dashboard?.widthRatio ?? 0.72) * 100)
                 from: 40
                 to: 90
                 stepSize: 2
                 onValueChanged: Config.setNestedValue("dashboard.widthRatio", value / 100)
+            }
+            ConfigSpinBox {
+                text: Translation.tr("Panel height (% of screen)")
+                description: Translation.tr("Maximum Dashboard height; widgets never add Dashboard scrolling")
+                value: Math.round((Config.options?.dashboard?.heightRatio ?? 0.72) * 100)
+                from: 45
+                to: 90
+                stepSize: 2
+                onValueChanged: Config.setNestedValue("dashboard.heightRatio", value / 100)
             }
         }
 

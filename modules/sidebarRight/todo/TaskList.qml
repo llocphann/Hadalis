@@ -25,7 +25,7 @@ Item {
 
         clip: true
         layer.enabled: root.visible
-            && (GlobalStates.sidebarRightOpen || GlobalStates.dashboardOpen)
+            && (GlobalStates.sidebarRightOpen || GlobalStates.dashboardOpen || GlobalStates.overviewOpen)
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: flickable.width

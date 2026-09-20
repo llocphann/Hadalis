@@ -113,7 +113,6 @@ Scope {
                 : maxHeight
         return Math.max(minHeight, Math.min(maxHeight, requested))
     }
-    readonly property bool instantOpen: Config.options?.sidebar?.instantOpen ?? false
     readonly property string animationType: SurfaceMotion.mode
 
     property bool pluginViewActive: false
@@ -414,7 +413,7 @@ Scope {
         } else if (!root._sidebarShown) {
             root._presentationRequested = false
             presentationTimer.stop()
-        } else if (root.instantOpen || !Appearance.animationsEnabled) {
+        } else if (!Appearance.animationsEnabled) {
             root._presentationRequested = false
             presentationTimer.stop()
             root._sidebarShown = false
@@ -868,7 +867,7 @@ Scope {
                 Transition {
                     to: "open"
                     enabled: Appearance.animationsEnabled
-                        && !root._pluginTransitioning && !root.instantOpen
+                        && !root._pluginTransitioning
                     NumberAnimation {
                         target: sidebarContentLoader
                         property: "animTranslateX"
@@ -880,7 +879,7 @@ Scope {
                 Transition {
                     to: "closed"
                     enabled: Appearance.animationsEnabled
-                        && !root._pluginTransitioning && !root.instantOpen
+                        && !root._pluginTransitioning
                     NumberAnimation {
                         target: sidebarContentLoader
                         property: "animTranslateX"

@@ -24,9 +24,12 @@ same-object parser closure and a source-backed local-singleton fallback that
 resolves the real Clock dependency through Config.qml to the literal
 bar.verbose terminal. A research-only qualification coordinator can now compose
 that acyclic evidence with the qmllint type proof only when both describe the
-same Clock SHA, then reverify both Clock and Config hashes after proof generation.
-Even this composed qualification is not production authorization: the UI and
-transaction path keep TYPE/CYCLE UNKNOWN visibly blocking Connect writes.
+same Clock SHA and exact Connect candidate SHA, then reverify both Clock and
+Config hashes after proof generation. The transaction now defines a
+non-authorizing promotion boundary that can retain only an allowlisted primitive
+safety snapshot and re-hash its Clock/Config dependencies across history/reload.
+Research proof generators remain outside the runtime payload, no promotion UI is
+exposed, and TYPE/CYCLE UNKNOWN continue to block Connect writes.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

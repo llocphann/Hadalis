@@ -33,6 +33,14 @@ Singleton {
     property string _pendingExpectedCurrent: ""
     property string _pendingConnectGraphTargetId: ""
     property string _pendingConnectTargetId: ""
+    property int _pendingConnectSafetyIndex: -1
+    property string _pendingConnectSafetyCandidateSha: ""
+    property var connectSafetyDiagnostics: ({
+        status: "not-evaluated",
+        ready: false,
+        reason: "not-evaluated",
+        writeAuthorized: false
+    })
     property var preApplyDiagnostics: ({
         status: "not-evaluated",
         ready: false,
@@ -80,13 +88,23 @@ Singleton {
         && reloadState.pendingApplyManifestPath.length > 0
     readonly property bool previewBusy:
         previewProcess.running || connectPreviewProcess.running
+    readonly property bool connectSafetyBusy:
+        connectSafetyProcess.running
+    readonly property var activeConnectSafety:
+        root._connectSafetyMatchesCommand(root.activeCommand, false)
+            ? root.activeCommand.connectSafety
+            : null
+    readonly property bool connectSafetySnapshotReady:
+        root._connectSafetyMatchesCommand(root.activeCommand, true)
     readonly property bool canUndo:
         !root.previewBusy
+        && !root.connectSafetyBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex >= 0
     readonly property bool canRedo:
         !root.previewBusy
+        && !root.connectSafetyBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && root.historyIndex + 1 < root.history.length
@@ -166,6 +184,7 @@ Singleton {
         root._reloadStateReady = true
         root._showCommand(root.activeCommand)
         Qt.callLater(root._recoverApplyLifecycle)
+        Qt.callLater(root.reverifyActiveConnectSafety)
     }
 
     function restoreReloadStateJson(encoded: string): bool {
@@ -812,6 +831,449 @@ Singleton {
             ready: false,
             blockers: ["no-active-preview"]
         })
+        root.connectSafetyDiagnostics = ({
+            status: "not-evaluated",
+            ready: false,
+            reason: "no-active-connect-safety",
+            writeAuthorized: false
+        })
+    }
+
+    function _sha256LooksValid(value): bool {
+        const rendered = String(value ?? "")
+        if (rendered.length !== 64)
+            return false
+        const alphabet = "0123456789abcdef"
+        for (let i = 0; i < rendered.length; ++i) {
+            if (!alphabet.includes(rendered[i].toLowerCase()))
+                return false
+        }
+        return true
+    }
+
+    function _runtimeRelativeQmlPathLooksValid(value): bool {
+        const rendered = String(value ?? "")
+        if (rendered.length === 0
+                || rendered.startsWith("/")
+                || !rendered.endsWith(".qml"))
+            return false
+        const parts = rendered.split("/")
+        if (parts.length === 0)
+            return false
+        for (const part of parts) {
+            if (part.length === 0 || part === "." || part === "..")
+                return false
+        }
+        return true
+    }
+
+    function _connectSafetyMatchesCommand(
+        command,
+        requireFresh: bool
+    ): bool {
+        if (!command || String(command.kind ?? "") !== "connect-binding")
+            return false
+
+        const safety = command.connectSafety
+        if (!safety || Number(safety.version ?? 0) !== 1)
+            return false
+
+        const preview = command.result ?? ({})
+        if (
+            String(safety.status ?? "") !== "qualified"
+            || String(safety.qualificationProof ?? "")
+                !== "qualified-reviewed-connect-research-v1"
+            || String(safety.typeCompatibilityProof ?? "")
+                !== "compatible-qmllint-proof"
+            || String(safety.cycleSafetyProof ?? "")
+                !== "acyclic-source-backed-cross-file-closure"
+            || String(safety.targetId ?? "")
+                !== String(command.targetId ?? "")
+            || String(safety.connectTargetId ?? "")
+                !== String(command.connectTargetId ?? "")
+            || String(safety.sourcePath ?? "")
+                !== String(command.sourcePath ?? "")
+            || String(safety.baseSha256 ?? "")
+                !== String(command.baseSha256 ?? "")
+            || String(safety.candidateSha256 ?? "")
+                !== String(command.candidateSha256 ?? "")
+            || String(safety.parentSemanticAnchor ?? "")
+                !== String(command.semanticAnchor ?? "")
+            || String(safety.targetProperty ?? "")
+                !== String(preview.bindingName ?? "")
+            || String(safety.sourceExpression ?? "")
+                !== String(command.replacement ?? "")
+            || String(safety.typeCompatibility ?? "")
+                !== "unknown-unresolved"
+            || String(safety.cycleStatus ?? "")
+                !== "unknown-incomplete-projection"
+            || safety.proofsComposed !== true
+            || safety.sourceReverified !== true
+            || safety.externalSourceReverified !== true
+            || safety.writeAuthorized !== false
+            || safety.applyEnabled !== false
+            || safety.artifactsStaged !== false
+            || safety.productionIntegrated !== false
+            || !root._sha256LooksValid(safety.baseSha256)
+            || !root._sha256LooksValid(safety.candidateSha256)
+            || !root._sha256LooksValid(safety.externalSourceSha256)
+            || !root._runtimeRelativeQmlPathLooksValid(safety.sourcePath)
+            || !root._runtimeRelativeQmlPathLooksValid(
+                safety.externalSourcePath)
+            || String(safety.sourcePropertySemanticAnchor ?? "").length === 0
+            || String(safety.terminalPropertySemanticAnchor ?? "").length === 0
+            || !Array.isArray(safety.dependencyPath)
+            || safety.dependencyPath.length === 0
+        )
+            return false
+
+        for (const item of safety.dependencyPath) {
+            if (String(item ?? "").length === 0)
+                return false
+        }
+
+        if (requireFresh
+                && (String(safety.freshness ?? "") !== "fresh"
+                    || safety.stale === true))
+            return false
+
+        return true
+    }
+
+    function _sanitizeConnectQualification(payload): var {
+        const dependencyPath = Array.isArray(payload?.dependencyPath)
+            ? payload.dependencyPath.map(item => String(item ?? ""))
+            : []
+
+        return {
+            version: 1,
+            status: "qualified",
+            freshness: "pending",
+            stale: false,
+            staleReason: "",
+            qualificationProof: String(
+                payload?.qualificationProof ?? ""),
+            targetId: String(payload?.targetId ?? ""),
+            connectTargetId: String(payload?.connectTargetId ?? ""),
+            sourcePath: String(payload?.sourcePath ?? ""),
+            baseSha256: String(payload?.baseSha256 ?? ""),
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            parentSemanticAnchor: String(
+                payload?.parentSemanticAnchor ?? ""),
+            targetProperty: String(payload?.targetProperty ?? ""),
+            sourceExpression: String(payload?.sourceExpression ?? ""),
+            sourcePropertySemanticAnchor: String(
+                payload?.sourcePropertySemanticAnchor ?? ""),
+            sourceDeclaredType: String(payload?.sourceDeclaredType ?? ""),
+            typeCompatibilityProof: String(
+                payload?.typeCompatibilityProof ?? ""),
+            cycleSafetyProof: String(payload?.cycleSafetyProof ?? ""),
+            dependencyPath: dependencyPath,
+            externalModuleUri: String(payload?.externalModuleUri ?? ""),
+            externalSourcePath: String(
+                payload?.externalSourcePath ?? ""),
+            externalSourceSha256: String(
+                payload?.externalSourceSha256 ?? ""),
+            aliasTargetId: String(payload?.aliasTargetId ?? ""),
+            terminalPropertySemanticAnchor: String(
+                payload?.terminalPropertySemanticAnchor ?? ""),
+            terminalDeclaredType: String(
+                payload?.terminalDeclaredType ?? ""),
+            terminalValueKind: String(payload?.terminalValueKind ?? ""),
+            terminalValueText: String(payload?.terminalValueText ?? ""),
+            fallbackLiteral: String(payload?.fallbackLiteral ?? ""),
+            oracleTool: String(payload?.oracleTool ?? ""),
+            oracleVersion: String(payload?.oracleVersion ?? ""),
+            proofsComposed: payload?.proofsComposed === true,
+            sourceReverified: payload?.sourceReverified === true,
+            externalSourceReverified:
+                payload?.externalSourceReverified === true,
+            typeCompatibility: String(
+                payload?.typeCompatibility ?? ""),
+            cycleStatus: String(payload?.cycleStatus ?? ""),
+            writeAuthorized: false,
+            applyEnabled: false,
+            artifactsStaged: false,
+            productionIntegrated: false
+        }
+    }
+
+    function promoteConnectQualification(payload): bool {
+        if (root.previewBusy
+                || root.connectSafetyBusy
+                || applyPrepareProcess.running
+                || root.applyLifecycleBusy)
+            return false
+
+        const command = root.activeCommand
+        if (!command
+                || root.status !== "preview"
+                || command.stale === true
+                || String(command.kind ?? "") !== "connect-binding")
+            return false
+
+        const preview = command.result ?? ({})
+        if (
+            payload?.protocol !== 1
+            || String(payload?.status ?? "") !== "proof"
+            || String(payload?.qualificationProof ?? "")
+                !== "qualified-reviewed-connect-research-v1"
+            || String(payload?.targetId ?? "")
+                !== String(command.targetId ?? "")
+            || String(payload?.connectTargetId ?? "")
+                !== String(command.connectTargetId ?? "")
+            || String(payload?.sourcePath ?? "")
+                !== String(command.sourcePath ?? "")
+            || String(payload?.baseSha256 ?? "")
+                !== String(command.baseSha256 ?? "")
+            || String(payload?.candidateSha256 ?? "")
+                !== String(command.candidateSha256 ?? "")
+            || String(payload?.parentSemanticAnchor ?? "")
+                !== String(command.semanticAnchor ?? "")
+            || String(payload?.targetProperty ?? "")
+                !== String(preview.bindingName ?? "")
+            || String(payload?.sourceExpression ?? "")
+                !== String(command.replacement ?? "")
+            || String(payload?.typeCompatibilityProof ?? "")
+                !== "compatible-qmllint-proof"
+            || String(payload?.cycleSafetyProof ?? "")
+                !== "acyclic-source-backed-cross-file-closure"
+            || payload?.proofsComposed !== true
+            || payload?.sourceReverified !== true
+            || payload?.externalSourceReverified !== true
+            || String(payload?.typeCompatibility ?? "")
+                !== "unknown-unresolved"
+            || String(payload?.cycleStatus ?? "")
+                !== "unknown-incomplete-projection"
+            || payload?.writeAuthorized !== false
+            || payload?.applyEnabled !== false
+            || payload?.artifactsStaged !== false
+            || payload?.productionIntegrated !== false
+        )
+            return false
+
+        const snapshot = root._sanitizeConnectQualification(payload)
+        const promoted = Object.assign({}, command, {
+            connectSafety: snapshot
+        })
+        if (!root._connectSafetyMatchesCommand(promoted, false))
+            return false
+
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+
+        const next = root.history.slice()
+        next[index] = promoted
+        root.history = next
+        root.connectSafetyDiagnostics = ({
+            status: "pending",
+            ready: false,
+            reason: "freshness-reverification-required",
+            candidateSha256: String(command.candidateSha256 ?? ""),
+            writeAuthorized: false
+        })
+        Qt.callLater(root.reverifyActiveConnectSafety)
+        return true
+    }
+
+    function _setConnectSafetyFreshness(
+        index: int,
+        freshness: string,
+        stale: bool,
+        reason: string
+    ): bool {
+        if (index < 0 || index >= root.history.length)
+            return false
+
+        const command = root.history[index]
+        const safety = command?.connectSafety
+        if (!safety)
+            return false
+
+        const nextSafety = Object.assign({}, safety, {
+            freshness: String(freshness ?? ""),
+            stale: stale,
+            staleReason: String(reason ?? "")
+        })
+        const next = root.history.slice()
+        next[index] = Object.assign({}, command, {
+            connectSafety: nextSafety
+        })
+        root.history = next
+
+        if (index === root.historyIndex) {
+            root.connectSafetyDiagnostics = ({
+                status: String(freshness ?? ""),
+                ready: String(freshness ?? "") === "fresh" && !stale,
+                reason: String(reason ?? ""),
+                sourcePath: String(nextSafety.sourcePath ?? ""),
+                candidateSha256: String(
+                    nextSafety.candidateSha256 ?? ""),
+                externalSourcePath: String(
+                    nextSafety.externalSourcePath ?? ""),
+                writeAuthorized: false
+            })
+        }
+        return true
+    }
+
+    function _markConnectSafetyStale(path: string): void {
+        const changedPath = String(path ?? "")
+        if (changedPath.length === 0)
+            return
+
+        let changed = false
+        const next = root.history.map(command => {
+            const safety = command?.connectSafety
+            if (!safety || safety.stale === true)
+                return command
+
+            const matches = String(safety.sourcePath ?? "") === changedPath
+                || String(safety.externalSourcePath ?? "") === changedPath
+            if (!matches)
+                return command
+
+            changed = true
+            return Object.assign({}, command, {
+                connectSafety: Object.assign({}, safety, {
+                    freshness: "stale",
+                    stale: true,
+                    staleReason:
+                        "Qualified Connect dependency changed; requalify before any future write gate."
+                })
+            })
+        })
+        if (changed)
+            root.history = next
+
+        const active = root.activeCommand?.connectSafety
+        if (active?.stale === true) {
+            root.connectSafetyDiagnostics = ({
+                status: "stale",
+                ready: false,
+                reason: String(active.staleReason ?? "dependency-changed"),
+                writeAuthorized: false
+            })
+        }
+    }
+
+    function _startConnectSafetyFreshnessCheck(command): bool {
+        if (root.connectSafetyBusy
+                || root.previewBusy
+                || applyPrepareProcess.running
+                || root.applyLifecycleBusy
+                || !command
+                || command.stale === true
+                || !root._connectSafetyMatchesCommand(command, false))
+            return false
+
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+
+        const safety = command.connectSafety
+        root._pendingConnectSafetyIndex = index
+        root._pendingConnectSafetyCandidateSha = String(
+            command.candidateSha256 ?? "")
+        root._setConnectSafetyFreshness(
+            index,
+            "pending",
+            false,
+            "freshness-reverification-running")
+
+        connectSafetyProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/connect_snapshot.py"),
+            "--path", String(safety.sourcePath ?? ""),
+            "--base-sha256", String(safety.baseSha256 ?? ""),
+            "--candidate-sha256",
+                String(safety.candidateSha256 ?? ""),
+            "--external-path",
+                String(safety.externalSourcePath ?? ""),
+            "--external-sha256",
+                String(safety.externalSourceSha256 ?? "")
+        ]
+        connectSafetyProcess.running = true
+        return true
+    }
+
+    function reverifyActiveConnectSafety(): bool {
+        const command = root.activeCommand
+        if (!command || !command.connectSafety)
+            return false
+        return root._startConnectSafetyFreshnessCheck(command)
+    }
+
+    function finishConnectSafetyFreshness(exitCode: int): void {
+        const raw = String(connectSafetyStdout.text ?? "").trim()
+        let payload = null
+        try {
+            payload = raw.length > 0 ? JSON.parse(raw) : null
+        } catch (e) {
+            payload = null
+        }
+
+        const index = root._pendingConnectSafetyIndex
+        const pendingCandidate = root._pendingConnectSafetyCandidateSha
+        root._pendingConnectSafetyIndex = -1
+        root._pendingConnectSafetyCandidateSha = ""
+
+        if (index < 0 || index >= root.history.length)
+            return
+
+        const command = root.history[index]
+        const safety = command?.connectSafety
+        if (!safety
+                || String(command?.candidateSha256 ?? "")
+                    !== pendingCandidate
+                || !root._connectSafetyMatchesCommand(command, false)) {
+            root.connectSafetyDiagnostics = ({
+                status: "blocked",
+                ready: false,
+                reason: "connect-safety-command-drifted",
+                writeAuthorized: false
+            })
+            return
+        }
+
+        const identityMatches = payload?.protocol === 1
+            && String(payload?.sourcePath ?? "")
+                === String(safety.sourcePath ?? "")
+            && String(payload?.baseSha256 ?? "")
+                === String(safety.baseSha256 ?? "")
+            && String(payload?.candidateSha256 ?? "")
+                === String(safety.candidateSha256 ?? "")
+            && String(payload?.externalSourcePath ?? "")
+                === String(safety.externalSourcePath ?? "")
+            && String(payload?.externalSourceSha256 ?? "")
+                === String(safety.externalSourceSha256 ?? "")
+            && payload?.writeAuthorized === false
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === false
+
+        if (payload?.status === "fresh"
+                && identityMatches
+                && payload?.sourceFresh === true
+                && payload?.externalSourceFresh === true) {
+            root._setConnectSafetyFreshness(
+                index,
+                "fresh",
+                false,
+                "qualified-sources-match-snapshot")
+            return
+        }
+
+        const stderrText = String(connectSafetyStderr.text ?? "").trim()
+        root._setConnectSafetyFreshness(
+            index,
+            "stale",
+            true,
+            String(
+                payload?.reason
+                ?? stderrText
+                ?? ("connect safety freshness exited " + exitCode)))
     }
 
     function evaluatePreApply(
@@ -912,6 +1374,7 @@ Singleton {
 
     function clear(): void {
         if (root.previewBusy
+                || root.connectSafetyBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return
@@ -928,6 +1391,7 @@ Singleton {
         root._invalidateApplyHandoff()
         root.historyIndex--
         root._showCommand(root.activeCommand)
+        Qt.callLater(root.reverifyActiveConnectSafety)
         return true
     }
 
@@ -937,6 +1401,7 @@ Singleton {
         root._invalidateApplyHandoff()
         root.historyIndex++
         root._showCommand(root.activeCommand)
+        Qt.callLater(root.reverifyActiveConnectSafety)
         return true
     }
 
@@ -988,6 +1453,7 @@ Singleton {
         }
 
         root._markHistoryStale(changedPath)
+        root._markConnectSafetyStale(changedPath)
         if (phase !== "idle"
                 && changedPath
                     === reloadState.pendingApplySourcePath) {
@@ -1019,6 +1485,7 @@ Singleton {
         expectedCurrent: string
     ): bool {
         if (root.previewBusy
+                || root.connectSafetyBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -1131,6 +1598,7 @@ Singleton {
         replaceIndex: int
     ): bool {
         if (root.previewBusy
+                || root.connectSafetyBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -1457,12 +1925,51 @@ Singleton {
             root.finishApplyPreparation(exitCode)
     }
 
+    FileView {
+        id: connectSafetySourceWatch
+        path: root.activeConnectSafety
+            ? Quickshell.shellPath(
+                String(root.activeConnectSafety.sourcePath ?? ""))
+            : ""
+        watchChanges: path.length > 0
+        onFileChanged: {
+            const relative = String(
+                root.activeConnectSafety?.sourcePath ?? "")
+            if (relative.length > 0)
+                root.markSourceChanged(relative)
+        }
+    }
+
+    FileView {
+        id: connectSafetyExternalWatch
+        path: root.activeConnectSafety
+            ? Quickshell.shellPath(
+                String(root.activeConnectSafety.externalSourcePath ?? ""))
+            : ""
+        watchChanges: path.length > 0
+        onFileChanged: {
+            const relative = String(
+                root.activeConnectSafety?.externalSourcePath ?? "")
+            if (relative.length > 0)
+                root.markSourceChanged(relative)
+        }
+    }
+
     Process {
         id: previewProcess
         running: false
         stdout: StdioCollector { id: previewStdout }
         stderr: StdioCollector { id: previewStderr }
         onExited: (exitCode, _exitStatus) => root.finish(exitCode)
+    }
+
+    Process {
+        id: connectSafetyProcess
+        running: false
+        stdout: StdioCollector { id: connectSafetyStdout }
+        stderr: StdioCollector { id: connectSafetyStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishConnectSafetyFreshness(exitCode)
     }
 
     Process {

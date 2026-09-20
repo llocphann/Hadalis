@@ -649,13 +649,55 @@ Implemented research/proof:
   post-proof external source mutation. Native acceptance repeats the composed
   proof twice and then reruns the existing literal Apply lifecycle unchanged.
 
+
+## Milestone 2K-L — Connect safety snapshot promotion boundary
+
+Implemented contract:
+
+- 2K-H/2K-J/2K-K proofs are now bound to the exact
+  `candidateSha256` produced by the Connect preview. Type/cycle composition
+  fails closed if the candidate hash differs even when source SHA and semantic
+  identity still match.
+- `CodeWorkflowTransaction.promoteConnectQualification()` is the production
+  acceptance boundary for one already-generated qualification payload. It is
+  deliberately not called by Settings and does not invoke
+  `connect_type.py`, `connect_cycle.py` or `connect_qualify.py`.
+- Promotion accepts only the exact active `connect-binding` preview identity:
+  reviewed target IDs, source path/base SHA, candidate SHA, parent semantic
+  anchor, absent target property and source expression must all match.
+- The transaction copies only an allowlisted primitive safety snapshot:
+  proof tokens, semantic anchors, source/dependency hashes, dependency path and
+  Qt oracle identity. Parser nodes, byte ranges, QObject values and patch
+  geometry are not promoted.
+- A promoted snapshot retains production blockers exactly:
+  `typeCompatibility=unknown-unresolved`,
+  `cycleStatus=unknown-incomplete-projection`,
+  `writeAuthorized=false`, `applyEnabled=false`,
+  `artifactsStaged=false` and `productionIntegrated=false`.
+- Promotion initially marks freshness PENDING. The runtime-shipped read-only
+  `connect_snapshot.py` then re-hashes the primary Clock source and external
+  Config source after the snapshot has entered transaction history. Only exact
+  hash matches change the snapshot to FRESH.
+- Undo/redo and cross-generation history restore re-run that hash check. A new
+  Connect regenerate replaces the history command without copying the old
+  safety snapshot, so regenerated candidates require a new qualification.
+- Qualified source paths are watched while their history entry is active.
+  Changes to either the primary source or retained external dependency mark the
+  safety snapshot STALE. Inactive history entries are revalidated on activation.
+- The research proof generators remain excluded from the runtime payload.
+  `connect_snapshot.py` is the only new runtime helper and it cannot generate
+  proofs, reconstruct candidates, stage artifacts or write source.
+- 2K-L still does not expose a Qualify/Prepare-Connect control. The existing
+  literal-only `evaluatePreApply()`, `stageApplyHandoff()`,
+  `applyCommandMatchesHandoff` and Apply lifecycle remain unchanged.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
-- promotion/integration of the 2K-H type proof into production Connect authorization;
+- runtime/UI generation of the 2K-K qualification payload;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- production promotion of the 2K-K research qualification into a Connect write-safety contract;
+- Connect artifact preparation and write authorization after a promoted safety snapshot;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -663,17 +705,19 @@ Implemented research/proof:
 
 ## Next gate
 
-2K-K proves that the first reviewed Connect candidate can produce one coherent,
-fresh research qualification whose type and cycle evidence refer to the same
-Clock source snapshot and retained Config dependency snapshot.
+2K-L defines the transaction-side promotion boundary without granting write
+authority or wiring research proof generation into the product. The next gate
+must be an independent Connect artifact-preparation proof, not Apply itself.
 
-The next gate is not another broader resolver. It must define the production
-promotion boundary: which proof fields may be copied into transaction state,
-how proof freshness survives preview history/regenerate, how external Config
-changes invalidate a prepared Connect operation, and which independent checks
-must still run before any artifact can be staged. Promotion must remain a
-separate explicit gate from proof generation.
+Before any Connect artifact can be staged, that gate must re-run or otherwise
+freshly verify the qualified type/cycle evidence, require exact source and
+external dependency hashes, reproduce the same candidate SHA from the current
+source, reparse the complete candidate, re-resolve the inserted binding and
+confirm source writability. A stored FRESH safety snapshot is evidence, not a
+substitute for those immediate pre-stage checks.
 
-Until that promotion gate is qualified, do not map
-`qualified-reviewed-connect-research-v1` to TYPE SAFE, CYCLE SAFE, Apply
-enablement or artifact staging. Production TYPE and CYCLE remain UNKNOWN.
+Until that artifact-preparation gate is separately qualified, do not map
+`qualified-reviewed-connect-research-v1` or a FRESH transaction safety
+snapshot to TYPE SAFE, CYCLE SAFE, Apply enablement or artifact staging.
+Production TYPE and CYCLE remain UNKNOWN and literal-property remains the only
+source-writing command.

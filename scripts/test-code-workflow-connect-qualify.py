@@ -360,9 +360,11 @@ for forbidden in (
         fail("qualification helper must never write source: " + forbidden)
 
 if 'Quickshell.shellPath("scripts/code-workflow/connect_qualify.py")' in transaction:
-    fail("2K-K research qualification must not be wired into transaction")
-if '"qualificationProof"' in transaction:
-    fail("2K-K proof must not become production transaction authorization")
+    fail("2K-K research qualification generator must not be wired into transaction")
+if 'function promoteConnectQualification(payload): bool' not in transaction:
+    fail("2K-L must define the transaction-side qualification acceptance boundary")
+if 'payload?.writeAuthorized !== false' not in transaction:
+    fail("promoted qualification must retain writeAuthorized=false")
 
 if "scripts/code-workflow/connect_qualify.py" not in exclusions.get(
         "excludedPaths", []):

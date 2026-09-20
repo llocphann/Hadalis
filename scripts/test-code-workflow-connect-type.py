@@ -148,9 +148,11 @@ for token in (
         fail("reviewed type metadata boundary missing " + token)
 
 if 'Quickshell.shellPath("scripts/code-workflow/connect_type.py")' in transaction:
-    fail("2K-H research proof must not be wired into production transaction")
-if '"typeCompatibilityProof"' in transaction:
-    fail("2K-H proof must not become production transaction authorization")
+    fail("2K-H research proof generator must not be wired into production")
+if 'function promoteConnectQualification(payload): bool' not in transaction:
+    fail("2K-L transaction must expose a non-authorizing proof promotion boundary")
+if 'String(root.activeCommand?.kind ?? "") === "literal-property"' not in transaction:
+    fail("type proof promotion must not broaden literal-only Apply")
 
 if "scripts/code-workflow/connect_type.py" not in exclusions.get(
         "excludedPaths", []):

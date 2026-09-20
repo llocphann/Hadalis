@@ -368,9 +368,11 @@ for forbidden in (
         fail("cycle proof helper must never write source: " + forbidden)
 
 if 'Quickshell.shellPath("scripts/code-workflow/connect_cycle.py")' in transaction:
-    fail("2K-I research proof must not be wired into production transaction")
-if '"cycleSafetyProof"' in transaction:
-    fail("2K-I research proof must not become production authorization")
+    fail("2K-I/J research cycle generator must not be wired into production")
+if 'function promoteConnectQualification(payload): bool' not in transaction:
+    fail("2K-L transaction must expose a non-authorizing cycle promotion boundary")
+if 'blockers.push("write-subset-not-authorized")' not in transaction:
+    fail("cycle proof promotion must not authorize Connect writes")
 
 if "scripts/code-workflow/connect_cycle.py" not in exclusions.get(
         "excludedPaths", []):

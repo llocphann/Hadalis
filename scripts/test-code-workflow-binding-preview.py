@@ -108,7 +108,7 @@ for token in (
     '"Preview binding patch"',
     '"PREVIEW ONLY"',
     "Literal-property Apply remains independently qualified.",
-    "Direct bindings remain preview-only.",
+    "Direct-binding Apply is restricted to reviewed clock.text.time-to-date",
 ):
     if token not in page:
         fail("binding preview UI missing " + token)

@@ -184,6 +184,13 @@ Item {
                     === CodeWorkflowSession.selectedConnectTargetId
                 && String(command.sourcePath ?? "") === root.sourcePath
         }
+        if (String(command.kind ?? "") === "direct-binding") {
+            return String(command.targetId ?? "")
+                    === CodeWorkflowSession.subflowTargetId
+                && String(command.sourcePath ?? "") === root.sourcePath
+                && String(command.semanticAnchor ?? "")
+                    === root.storedSemanticAnchor
+        }
         if (String(command.kind ?? "") === "disconnect-binding") {
             return root.selectedIrEdge !== null
                 && String(command.targetId ?? "")
@@ -225,6 +232,39 @@ Item {
         case "connect-rollback-conflict":
             return "ROLLBACK CONFLICT"
         case "connect-rollback-failed":
+            return "ROLLBACK FAILED"
+        default:
+            return phase.toUpperCase()
+        }
+    }
+
+    readonly property string bindingLifecyclePhaseText: {
+        const phase = String(
+            CodeWorkflowTransaction.pendingBindingPhase ?? "idle")
+        switch (phase) {
+        case "write-issued":
+            return "WRITING SOURCE"
+        case "waiting-reload":
+            return "WAITING FOR RELOAD"
+        case "candidate-verify-issued":
+            return "VERIFYING CANDIDATE"
+        case "postcondition-checking":
+            return "VERIFYING EXACT REBIND"
+        case "rollback-pending":
+            return "ROLLBACK PENDING"
+        case "rollback-issued":
+            return "RESTORING SNAPSHOT"
+        case "rollback-waiting-reload":
+            return "WAITING FOR ROLLBACK RELOAD"
+        case "rollback-verify-issued":
+            return "VERIFYING ROLLBACK"
+        case "binding-commit-conflict":
+            return "COMMIT CONFLICT"
+        case "binding-commit-failed":
+            return "COMMIT FAILED"
+        case "binding-rollback-conflict":
+            return "ROLLBACK CONFLICT"
+        case "binding-rollback-failed":
             return "ROLLBACK FAILED"
         default:
             return phase.toUpperCase()
@@ -391,7 +431,8 @@ Item {
             root.sourcePath,
             baseSha,
             root.storedSemanticAnchor,
-            String(nextValue ?? ""))
+            String(nextValue ?? ""),
+            CodeWorkflowSession.subflowTargetId)
     }
 
     function previewSelectedConnectTarget(): void {
@@ -1069,7 +1110,7 @@ Item {
                     Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Literal-property Apply remains independently qualified. Direct bindings remain preview-only. Connect Apply requires its exact prepared + authorized handoff. Disconnect Apply is restricted to reviewed clock.data.time and requires exact deletion artifacts + explicit authorization."
+                        text: "Literal-property Apply remains independently qualified. Direct-binding Apply is restricted to reviewed clock.text.time-to-date and requires exact replacement artifacts + explicit authorization. Connect Apply requires its exact prepared + authorized handoff. Disconnect Apply is restricted to reviewed clock.data.time and requires exact deletion artifacts + explicit authorization."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -1087,7 +1128,10 @@ Item {
                     : CodeWorkflowTransaction.activeCommand?.kind
                             === "disconnect-binding"
                         ? 300
-                        : 118)
+                        : CodeWorkflowTransaction.activeCommand?.kind
+                                === "direct-binding"
+                            ? 300
+                            : 118)
                 : 0
             visible: CodeWorkflowTransaction.dirty
             radius: Appearance.rounding.normal
@@ -1181,7 +1225,24 @@ Item {
                                                             : "PREVIEW ONLY"
                                 : CodeWorkflowTransaction.activeCommand?.kind
                                         === "direct-binding"
-                                    ? "PREVIEW ONLY"
+                                    ? CodeWorkflowTransaction.bindingLifecycleBusy
+                                        ? "BINDING APPLY · "
+                                            + root.bindingLifecyclePhaseText
+                                        : CodeWorkflowTransaction.status
+                                                === "binding-applied"
+                                            ? "BINDING APPLIED"
+                                            : CodeWorkflowTransaction.status
+                                                    === "binding-rollback-complete"
+                                                ? "BINDING ROLLED BACK"
+                                                : CodeWorkflowTransaction.bindingApplyEnabled
+                                                    ? "BINDING APPLY READY"
+                                                    : CodeWorkflowTransaction.bindingAuthorizationReady
+                                                        ? "BINDING AUTHORIZED"
+                                                        : CodeWorkflowTransaction.bindingArtifactsReady
+                                                            ? "BINDING READY · AUTHORIZATION REQUIRED"
+                                                            : CodeWorkflowTransaction.bindingPreparationBusy
+                                                                ? "BINDING PREPARING"
+                                                                : "PREVIEW ONLY"
                                     : CodeWorkflowTransaction.applyEnabled
                                     && root.transactionMatchesSelection
                                 ? "APPLY READY"
@@ -1195,6 +1256,12 @@ Item {
                                 && (CodeWorkflowTransaction.connectArtifactsReady
                                     || CodeWorkflowTransaction
                                         .connectAuthorizationReady)
+                            ? Appearance.colors.colPrimary
+                            : CodeWorkflowTransaction.activeCommand?.kind
+                                    === "direct-binding"
+                                && (CodeWorkflowTransaction.bindingArtifactsReady
+                                    || CodeWorkflowTransaction
+                                        .bindingAuthorizationReady)
                             ? Appearance.colors.colPrimary
                             : CodeWorkflowTransaction.activeCommand?.kind
                                     === "disconnect-binding"
@@ -1268,6 +1335,62 @@ Item {
                         enabled: !CodeWorkflowTransaction.connectLifecycleBusy
                         onClicked:
                             CodeWorkflowTransaction.revokeConnectAuthorization(
+                                "user-revoked")
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "direct-binding"
+                            && String(
+                                CodeWorkflowTransaction.activeCommand
+                                    ?.reviewedReplacementId ?? "")
+                                === "clock.text.time-to-date"
+                            && root.transactionMatchesSelection
+                        materialIcon: "inventory_2"
+                        mainText: CodeWorkflowTransaction.bindingArtifactsReady
+                            ? "Binding artifacts prepared"
+                            : "Prepare Binding artifacts"
+                        enabled: CodeWorkflowTransaction.bindingPrepareEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.prepareBindingArtifacts()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "direct-binding"
+                            && CodeWorkflowTransaction.bindingArtifactsReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "verified_user"
+                        mainText: CodeWorkflowTransaction.bindingAuthorizationReady
+                            ? "Binding write authorized"
+                            : "Authorize Binding write"
+                        enabled: CodeWorkflowTransaction.bindingAuthorizeEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.authorizeBindingWrite()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "direct-binding"
+                            && CodeWorkflowTransaction.bindingAuthorizationReady
+                            && !CodeWorkflowTransaction.bindingLifecycleBusy
+                            && root.transactionMatchesSelection
+                        materialIcon: "swap_horiz"
+                        mainText: "Apply Binding replacement"
+                        enabled: CodeWorkflowTransaction.bindingApplyEnabled
+                            && root.transactionMatchesSelection
+                        onClicked:
+                            CodeWorkflowTransaction.beginAuthorizedBindingApply()
+                    }
+                    RippleButtonWithIcon {
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "direct-binding"
+                            && CodeWorkflowTransaction.bindingAuthorizationReady
+                            && root.transactionMatchesSelection
+                        materialIcon: "gpp_bad"
+                        mainText: "Revoke Binding authorization"
+                        enabled: !CodeWorkflowTransaction.bindingLifecycleBusy
+                        onClicked:
+                            CodeWorkflowTransaction.revokeBindingAuthorization(
                                 "user-revoked")
                     }
                     RippleButtonWithIcon {
@@ -1360,8 +1483,12 @@ Item {
                         enabled: root.transactionMatchesSelection
                             && !CodeWorkflowTransaction.connectPreparationBusy
                             && !CodeWorkflowTransaction.connectLifecycleBusy
+                            && !CodeWorkflowTransaction.bindingPreparationBusy
+                            && !CodeWorkflowTransaction.bindingLifecycleBusy
                             && !CodeWorkflowTransaction.disconnectPreparationBusy
                             && !CodeWorkflowTransaction.disconnectLifecycleBusy
+                            && !CodeWorkflowTransaction.bindingPreparationBusy
+                            && !CodeWorkflowTransaction.bindingLifecycleBusy
                             && !CodeWorkflowTransaction.disconnectPreparationBusy
                             && !CodeWorkflowTransaction.disconnectLifecycleBusy
                             && (CodeWorkflowTransaction.activeCommand?.kind
@@ -1378,6 +1505,10 @@ Item {
                             && !CodeWorkflowTransaction.applyLifecycleBusy
                             && !CodeWorkflowTransaction.connectPreparationBusy
                             && !CodeWorkflowTransaction.connectLifecycleBusy
+                            && !CodeWorkflowTransaction.bindingPreparationBusy
+                            && !CodeWorkflowTransaction.bindingLifecycleBusy
+                            && !CodeWorkflowTransaction.disconnectPreparationBusy
+                            && !CodeWorkflowTransaction.disconnectLifecycleBusy
                         onClicked: CodeWorkflowTransaction.clear()
                     }
                 }
@@ -1540,6 +1671,110 @@ Item {
                         .length > 0
                     text: "Prepare Connect artifacts: "
                         + CodeWorkflowTransaction.connectPreparationError
+                    color: Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.bindingArtifactsReady
+                    text: "Binding artifacts prepared · exact rollback snapshot + replacement candidate + manifest are stored in shell state · tracked source QML is unchanged"
+                    color: Appearance.colors.colPrimary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.bindingArtifactsReady
+                    text: "Binding identity · "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.reviewedReplacementId ?? "")
+                        + " · text: "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.expectedCurrent ?? "")
+                        + " → "
+                        + String(
+                            CodeWorkflowTransaction.activeCommand
+                                ?.replacement ?? "")
+                        + " · postcondition SAME ANCHOR + EXACT EXPRESSION"
+                    color: Appearance.colors.colOnLayer1
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.bindingArtifactsReady
+                    text: "Replacement safety · exact binding/property/old+new expression identity + exact candidate SHA + semantic-anchor-rebound-exact-expression · no TYPE/CYCLE proof is used for Binding replacement"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.bindingArtifactsReady
+                    text: CodeWorkflowTransaction.bindingAuthorizationReady
+                        ? "Binding authorization ACTIVE · bound to this exact manifest SHA/history command · Apply Binding replacement may consume it once · exact-snapshot rollback is qualified"
+                        : "Binding authorization REQUIRED · source/history drift expires it · Apply Binding replacement stays disabled until explicit authorization"
+                    color: CodeWorkflowTransaction.bindingAuthorizationReady
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colTertiary
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.activeCommand?.kind
+                            === "direct-binding"
+                        && (CodeWorkflowTransaction.bindingLifecycleBusy
+                            || CodeWorkflowTransaction.bindingLifecycleError
+                                .length > 0
+                            || Object.keys(
+                                CodeWorkflowTransaction
+                                    .bindingLifecycleResult ?? {}
+                            ).length > 0)
+                    text: CodeWorkflowTransaction.bindingLifecycleBusy
+                        ? "Binding Apply lifecycle · "
+                            + root.bindingLifecyclePhaseText
+                            + " · mutation/history/preparation controls are locked"
+                        : CodeWorkflowTransaction.status === "binding-applied"
+                            ? "Binding Apply complete · candidate verified and same semantic anchor rebound to exact DateTime.date · authorization consumed · regenerate before another write"
+                            : CodeWorkflowTransaction.status
+                                    === "binding-rollback-complete"
+                                ? "Binding Apply rolled back · exact base snapshot verified · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .bindingLifecycleError ?? "")
+                                : "Binding Apply stopped · "
+                                    + root.bindingLifecyclePhaseText
+                                    + " · "
+                                    + String(
+                                        CodeWorkflowTransaction
+                                            .bindingLifecycleError ?? "")
+                    color: CodeWorkflowTransaction.status
+                            === "binding-applied"
+                        ? Appearance.colors.colPrimary
+                        : CodeWorkflowTransaction.bindingLifecycleBusy
+                            ? Appearance.colors.colTertiary
+                            : Appearance.colors.colError
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: CodeWorkflowTransaction.bindingPreparationError
+                        .length > 0
+                    text: "Prepare Binding artifacts: "
+                        + CodeWorkflowTransaction.bindingPreparationError
                     color: Appearance.colors.colError
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     wrapMode: Text.WordWrap

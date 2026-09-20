@@ -93,6 +93,9 @@ jobs:
       - name: Prove isolated reviewed direct-binding replacement transaction
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-binding-transaction.py'
 
+      - name: Validate reviewed Binding replacement production lifecycle
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-binding-production-lifecycle.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply
@@ -153,6 +156,16 @@ jobs:
             python3 scripts/code-workflow/run-disconnect-production-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
           '
 
+      - name: Run isolated reviewed Binding replacement production lifecycle
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-binding-production
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-binding-production-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
+          '
+
       - name: Upload lifecycle evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -178,5 +191,8 @@ jobs:
             ${{ runner.temp }}/hadalis-workflow-disconnect-production/disconnect-production-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-disconnect-production/*.log
             ${{ runner.temp }}/hadalis-workflow-disconnect-production/xdg-state/**
+            ${{ runner.temp }}/hadalis-workflow-binding-production/binding-production-lifecycle-report.json
+            ${{ runner.temp }}/hadalis-workflow-binding-production/*.log
+            ${{ runner.temp }}/hadalis-workflow-binding-production/xdg-state/**
           if-no-files-found: warn
           retention-days: 14

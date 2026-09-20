@@ -291,26 +291,13 @@ for forbidden in (
             + forbidden
         )
 
-for helper in (
-    "scripts/code-workflow/binding_prepare.py",
-    "scripts/code-workflow/binding_commit.py",
-):
-    if helper in PAGE or helper in SERVICE:
-        fail(
-            "2K-U-A helper must not be production-wired: " + helper
-        )
-    if helper not in EXCLUSIONS["excludedPaths"]:
-        fail(
-            "2K-U-A helper must remain runtime-excluded: " + helper
-        )
+# 2K-U-A proves the isolated engine semantics independently of the later U-B
+# runtime promotion. Runtime inclusion/wiring is owned by the U-B contract.
 
 if "Milestone 2K-U-A — isolated reviewed direct-binding replacement" not in PHASE2:
     fail("Phase 2 status must document 2K-U-A")
 if "clock.text.time-to-date" not in PHASE2:
     fail("Phase 2 status must identify reviewed replacement")
-if "Direct-binding Apply remains unavailable" not in PHASE2:
-    fail("2K-U-A must keep user-facing direct-binding Apply unavailable")
-
 native_proof()
 print(
     "ok - Code Workflow 2K-U-A isolated reviewed "

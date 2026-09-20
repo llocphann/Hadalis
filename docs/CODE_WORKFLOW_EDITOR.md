@@ -57,18 +57,23 @@ target into production with explicit preparation, exact-manifest authorization
 and a persisted Apply lifecycle. Success requires candidate SHA verification
 plus old semantic anchor `missing`; reload/verify/postcondition failure rolls
 back the exact snapshot. Disconnect uses no Connect TYPE/CYCLE proof tokens.
-All other Disconnect edges remain preview-only. 2K-U-A additionally proves
-one isolated exact direct-binding replacement transaction for
+All other Disconnect edges remain preview-only. 2K-U-A proved one isolated
+exact direct-binding replacement transaction for
 `clock.text.time-to-date`: exact old/new expression identity, candidate SHA,
-semantic-anchor rebind and atomic commit/verify/rollback. The helper remains
-runtime-excluded and direct-binding Apply is still unavailable.
+semantic-anchor rebind and atomic commit/verify/rollback. 2K-U-B now promotes
+only that exact replacement with production preparation, explicit
+manifest-bound authorization, separate persisted Apply lifecycle, exact
+same-anchor `DateTime.date` postcondition and automatic snapshot rollback.
+Other direct-binding replacements remain preview-only and Binding replacement
+inherits no Connect TYPE/CYCLE proof tokens.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write the qualified
 literal-property subset, the first reviewed prepared+authorized Connect command,
-and the single reviewed `clock.data.time` Disconnect deletion. Direct-binding
-replacement remains non-production at 2K-U-A; package-managed/read-only source
-and every unsupported semantic construct remain fail-closed.
+the single reviewed `clock.data.time` Disconnect deletion, and the single
+reviewed `clock.text.time-to-date` direct-binding replacement.
+Package-managed/read-only source and every unsupported semantic construct
+remain fail-closed.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
 [Phase 1 status](CODE_WORKFLOW_PHASE1.md),
 [Phase 2 status](CODE_WORKFLOW_PHASE2.md) and

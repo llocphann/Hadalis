@@ -179,6 +179,32 @@ ShellRoot {
                     CodeWorkflowTransaction.activeConnectSafety,
                 activeConnectPreparation:
                     CodeWorkflowTransaction.activeConnectPreparation,
+                bindingPreparationBusy:
+                    CodeWorkflowTransaction.bindingPreparationBusy,
+                bindingArtifactsReady:
+                    CodeWorkflowTransaction.bindingArtifactsReady,
+                bindingPreparationError:
+                    CodeWorkflowTransaction.bindingPreparationError,
+                bindingLifecycleBusy:
+                    CodeWorkflowTransaction.bindingLifecycleBusy,
+                pendingBindingPhase:
+                    CodeWorkflowTransaction.pendingBindingPhase,
+                bindingLifecycleError:
+                    CodeWorkflowTransaction.bindingLifecycleError,
+                bindingLifecycleResult:
+                    CodeWorkflowTransaction.bindingLifecycleResult,
+                bindingAuthorizationReady:
+                    CodeWorkflowTransaction.bindingAuthorizationReady,
+                bindingAuthorizeEnabled:
+                    CodeWorkflowTransaction.bindingAuthorizeEnabled,
+                bindingApplyEnabled:
+                    CodeWorkflowTransaction.bindingApplyEnabled,
+                bindingAuthorizationDiagnostics:
+                    CodeWorkflowTransaction.bindingAuthorizationDiagnostics,
+                activeBindingAuthorization:
+                    CodeWorkflowTransaction.activeBindingAuthorization,
+                activeBindingPreparation:
+                    CodeWorkflowTransaction.activeBindingPreparation,
                 disconnectPreparationBusy:
                     CodeWorkflowTransaction.disconnectPreparationBusy,
                 disconnectArtifactsReady:
@@ -289,6 +315,74 @@ ShellRoot {
         function workflowBeginLifecycle(): bool {
             return CodeWorkflowTransaction.beginApplyLifecycle()
         }
+        function workflowBindingAnalyze(): void {
+            CodeWorkflowAnalyzer.request(
+                "modules/bar/ClockWidget.qml",
+                "text: DateTime.timeDisplay",
+                "",
+                true)
+        }
+        function workflowBindingAnalyzeBullet(): void {
+            CodeWorkflowAnalyzer.request(
+                "modules/bar/ClockWidget.qml",
+                "text: \"•\"",
+                "",
+                true)
+        }
+        function workflowBindingPreview(): bool {
+            const anchor = String(
+                CodeWorkflowAnalyzer.reviewedAnchor
+                    ?.semanticAnchor ?? "")
+            const sha = String(
+                CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+            if (anchor.length === 0 || sha.length === 0)
+                return false
+            return CodeWorkflowTransaction.previewBinding(
+                "modules/bar/ClockWidget.qml",
+                sha,
+                anchor,
+                "DateTime.date",
+                "bar/clock")
+        }
+        function workflowBindingPrepare(): bool {
+            return CodeWorkflowTransaction.prepareBindingArtifacts()
+        }
+        function workflowBindingAuthorize(): bool {
+            return CodeWorkflowTransaction.authorizeBindingWrite()
+        }
+        function workflowBindingRevoke(): bool {
+            return CodeWorkflowTransaction.revokeBindingAuthorization(
+                "probe-user-revoked")
+        }
+        function workflowBindingApply(): bool {
+            return CodeWorkflowTransaction.beginAuthorizedBindingApply()
+        }
+        function workflowBindingOverridePreparedAnchor(
+            anchor: string,
+            manifestSha256: string
+        ): bool {
+            const index = CodeWorkflowTransaction.historyIndex
+            const command = CodeWorkflowTransaction.activeCommand
+            if (index < 0
+                    || !command
+                    || !command.bindingPreparation)
+                return false
+            const next = CodeWorkflowTransaction.history.slice()
+            next[index] = Object.assign({}, command, {
+                semanticAnchor: String(anchor ?? ""),
+                bindingPreparation: Object.assign(
+                    {},
+                    command.bindingPreparation,
+                    {
+                        semanticAnchor: String(anchor ?? ""),
+                        manifestSha256:
+                            String(manifestSha256 ?? "")
+                    })
+            })
+            CodeWorkflowTransaction.history = next
+            return true
+        }
+
         function workflowDisconnectAnalyze(): void {
             CodeWorkflowAnalyzer.request(
                 "modules/bar/ClockWidget.qml",

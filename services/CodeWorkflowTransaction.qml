@@ -33,6 +33,7 @@ Singleton {
     property string _pendingExpectedCurrent: ""
     property string _pendingConnectGraphTargetId: ""
     property string _pendingConnectTargetId: ""
+    property string _pendingBindingGraphTargetId: ""
     property string _pendingDisconnectGraphTargetId: ""
     property string _pendingDisconnectEdgeId: ""
     property int _pendingConnectSafetyIndex: -1
@@ -50,6 +51,14 @@ Singleton {
     property string connectPreparationError: ""
     property var connectLifecycleResult: ({})
     property string connectLifecycleError: ""
+    property string bindingPreparationError: ""
+    property var bindingLifecycleResult: ({})
+    property string bindingLifecycleError: ""
+    property var bindingAuthorizationDiagnostics: ({
+        status: "not-authorized",
+        ready: false,
+        reason: "not-authorized"
+    })
     property string disconnectPreparationError: ""
     property var disconnectLifecycleResult: ({})
     property string disconnectLifecycleError: ""
@@ -114,6 +123,7 @@ Singleton {
         && Quickshell.watchFiles
         && !root.applyLifecycleBusy
         && !root.connectLifecycleBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && reloadState.pendingApplyManifestPath.length > 0
     readonly property bool previewBusy:
@@ -122,6 +132,93 @@ Singleton {
         connectSafetyProcess.running
     readonly property bool connectPreparationBusy:
         connectCapabilityProcess.running || connectPrepareProcess.running
+    readonly property bool bindingPreparationBusy:
+        bindingPrepareProcess.running
+    readonly property bool bindingLifecycleBusy:
+        [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "postcondition-checking",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ].includes(reloadState.pendingBindingPhase)
+        || bindingCommitProcess.running
+        || bindingVerifyProcess.running
+        || bindingRollbackProcess.running
+    readonly property string pendingBindingPhase:
+        reloadState.pendingBindingPhase
+    readonly property var activeBindingPreparation:
+        root._bindingPreparationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.bindingPreparation
+            : null
+    readonly property bool bindingArtifactsReady:
+        root.activeBindingPreparation !== null
+    readonly property var activeBindingAuthorization:
+        root._bindingAuthorizationMatchesCommand(root.activeCommand)
+            ? root.activeCommand.bindingAuthorization
+            : null
+    readonly property bool bindingAuthorizationReady:
+        root.activeBindingAuthorization !== null
+        && root.bindingArtifactsReady
+        && root.activeCommand?.stale !== true
+    readonly property bool bindingPrepareEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "direct-binding"
+        && String(root.activeCommand?.targetId ?? "") === "bar/clock"
+        && String(root.activeCommand?.reviewedReplacementId ?? "")
+            === "clock.text.time-to-date"
+        && String(root.activeCommand?.sourcePath ?? "")
+            === "modules/bar/ClockWidget.qml"
+        && String(root.activeCommand?.expectedCurrent ?? "")
+            === "DateTime.timeDisplay"
+        && String(root.activeCommand?.replacement ?? "")
+            === "DateTime.date"
+        && root.activeCommand?.sourceWritable === true
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.bindingPreparationBusy
+        && !root.bindingLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.applyLifecycleBusy
+        && !root.bindingArtifactsReady
+    readonly property bool bindingAuthorizeEnabled:
+        root.bindingArtifactsReady
+        && root.status === "preview"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.bindingPreparationBusy
+        && !root.bindingLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.applyLifecycleBusy
+        && !root.bindingAuthorizationReady
+    readonly property bool bindingApplyEnabled:
+        !!root.activeCommand
+        && String(root.activeCommand?.kind ?? "") === "direct-binding"
+        && root.bindingAuthorizationReady
+        && root.bindingArtifactsReady
+        && root.status === "preview"
+        && Quickshell.watchFiles
+        && reloadState.pendingBindingPhase === "idle"
+        && root.activeCommand?.stale !== true
+        && !root.previewBusy
+        && !root.bindingPreparationBusy
+        && !root.bindingLifecycleBusy
+        && !root.connectPreparationBusy
+        && !root.connectLifecycleBusy
+        && !root.disconnectPreparationBusy
+        && !root.disconnectLifecycleBusy
+        && !root.applyLifecycleBusy
+
     readonly property bool disconnectPreparationBusy:
         disconnectPrepareProcess.running
     readonly property bool disconnectLifecycleBusy:
@@ -166,7 +263,9 @@ Singleton {
         && root.status === "preview"
         && root.activeCommand?.stale !== true
         && !root.previewBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
@@ -177,7 +276,9 @@ Singleton {
         && root.status === "preview"
         && root.activeCommand?.stale !== true
         && !root.previewBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
@@ -193,7 +294,9 @@ Singleton {
         && reloadState.pendingDisconnectPhase === "idle"
         && root.activeCommand?.stale !== true
         && !root.previewBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
@@ -245,7 +348,9 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !root.applyLifecycleBusy
         && !root.connectAuthorizationReady
@@ -262,7 +367,9 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !root.applyLifecycleBusy
     readonly property bool connectPrepareEnabled:
@@ -275,7 +382,9 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
@@ -285,7 +394,9 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
@@ -295,7 +406,9 @@ Singleton {
         && !root.connectSafetyBusy
         && !root.connectPreparationBusy
         && !root.connectLifecycleBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
@@ -320,7 +433,9 @@ Singleton {
         && !applyPrepareProcess.running
         && !root.applyLifecycleBusy
         && !root.connectLifecycleBusy
+        && !root.bindingLifecycleBusy
         && !root.disconnectLifecycleBusy
+        && !root.bindingPreparationBusy
         && !root.disconnectPreparationBusy
 
     readonly property string reloadStateJson: JSON.stringify({
@@ -384,6 +499,36 @@ Singleton {
             reloadState.pendingConnectRollbackRecovery,
         pendingConnectError:
             reloadState.pendingConnectError,
+        pendingBindingPhase:
+            reloadState.pendingBindingPhase,
+        pendingBindingGraphTargetId:
+            reloadState.pendingBindingGraphTargetId,
+        pendingBindingReplacementId:
+            reloadState.pendingBindingReplacementId,
+        pendingBindingSourcePath:
+            reloadState.pendingBindingSourcePath,
+        pendingBindingBaseSha256:
+            reloadState.pendingBindingBaseSha256,
+        pendingBindingCandidateSha256:
+            reloadState.pendingBindingCandidateSha256,
+        pendingBindingSemanticAnchor:
+            reloadState.pendingBindingSemanticAnchor,
+        pendingBindingHistoryIndex:
+            reloadState.pendingBindingHistoryIndex,
+        pendingBindingManifestPath:
+            reloadState.pendingBindingManifestPath,
+        pendingBindingManifestSha256:
+            reloadState.pendingBindingManifestSha256,
+        pendingBindingAuthorizationToken:
+            reloadState.pendingBindingAuthorizationToken,
+        pendingBindingReloadOutcome:
+            reloadState.pendingBindingReloadOutcome,
+        pendingBindingVerifyState:
+            reloadState.pendingBindingVerifyState,
+        pendingBindingRollbackRecovery:
+            reloadState.pendingBindingRollbackRecovery,
+        pendingBindingError:
+            reloadState.pendingBindingError,
         pendingDisconnectPhase:
             reloadState.pendingDisconnectPhase,
         pendingDisconnectGraphTargetId:
@@ -446,6 +591,18 @@ Singleton {
             "rollback-waiting-reload",
             "rollback-verify-issued"
         ]
+        const bindingPhase = String(
+            reloadState.pendingBindingPhase ?? "idle")
+        const activeBindingPhases = [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "postcondition-checking",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ]
         const disconnectPhase = String(
             reloadState.pendingDisconnectPhase ?? "idle")
         const activeDisconnectPhases = [
@@ -500,6 +657,35 @@ Singleton {
                 })
             }
 
+            const bindingAuthorization =
+                command?.bindingAuthorization
+            const preserveBindingAuthorization =
+                !!bindingAuthorization
+                && activeBindingPhases.includes(bindingPhase)
+                && index === Number(
+                    reloadState.pendingBindingHistoryIndex ?? -1)
+                && String(command?.candidateSha256 ?? "")
+                    === String(
+                        reloadState.pendingBindingCandidateSha256 ?? "")
+                && String(
+                    bindingAuthorization?.authorizationToken ?? "")
+                    === String(
+                        reloadState.pendingBindingAuthorizationToken ?? "")
+            if (bindingAuthorization
+                    && !preserveBindingAuthorization) {
+                next = Object.assign({}, next, {
+                    bindingAuthorization: Object.assign(
+                        {},
+                        bindingAuthorization,
+                        {
+                            status: "expired",
+                            authorized: false,
+                            reason:
+                                "cross-generation-reauthorization-required"
+                        })
+                })
+            }
+
             const disconnectAuthorization =
                 command?.disconnectAuthorization
             const preserveDisconnectAuthorization =
@@ -540,6 +726,7 @@ Singleton {
         root._showCommand(root.activeCommand)
         Qt.callLater(root._recoverApplyLifecycle)
         Qt.callLater(root._recoverConnectLifecycle)
+        Qt.callLater(root._recoverBindingLifecycle)
         Qt.callLater(root._recoverDisconnectLifecycle)
         Qt.callLater(root.reverifyActiveConnectSafety)
         Qt.callLater(root.probeActiveConnectPreparationCapability)
@@ -626,6 +813,36 @@ Singleton {
             snapshot.pendingConnectRollbackRecovery ?? "none")
         reloadState.pendingConnectError = String(
             snapshot.pendingConnectError ?? "")
+        reloadState.pendingBindingPhase = String(
+            snapshot.pendingBindingPhase ?? "idle")
+        reloadState.pendingBindingGraphTargetId = String(
+            snapshot.pendingBindingGraphTargetId ?? "")
+        reloadState.pendingBindingReplacementId = String(
+            snapshot.pendingBindingReplacementId ?? "")
+        reloadState.pendingBindingSourcePath = String(
+            snapshot.pendingBindingSourcePath ?? "")
+        reloadState.pendingBindingBaseSha256 = String(
+            snapshot.pendingBindingBaseSha256 ?? "")
+        reloadState.pendingBindingCandidateSha256 = String(
+            snapshot.pendingBindingCandidateSha256 ?? "")
+        reloadState.pendingBindingSemanticAnchor = String(
+            snapshot.pendingBindingSemanticAnchor ?? "")
+        reloadState.pendingBindingHistoryIndex = Number(
+            snapshot.pendingBindingHistoryIndex ?? -1)
+        reloadState.pendingBindingManifestPath = String(
+            snapshot.pendingBindingManifestPath ?? "")
+        reloadState.pendingBindingManifestSha256 = String(
+            snapshot.pendingBindingManifestSha256 ?? "")
+        reloadState.pendingBindingAuthorizationToken = String(
+            snapshot.pendingBindingAuthorizationToken ?? "")
+        reloadState.pendingBindingReloadOutcome = String(
+            snapshot.pendingBindingReloadOutcome ?? "none")
+        reloadState.pendingBindingVerifyState = String(
+            snapshot.pendingBindingVerifyState ?? "unknown")
+        reloadState.pendingBindingRollbackRecovery = String(
+            snapshot.pendingBindingRollbackRecovery ?? "none")
+        reloadState.pendingBindingError = String(
+            snapshot.pendingBindingError ?? "")
         reloadState.pendingDisconnectPhase = String(
             snapshot.pendingDisconnectPhase ?? "idle")
         reloadState.pendingDisconnectGraphTargetId = String(
@@ -662,6 +879,947 @@ Singleton {
         return true
     }
 
+    function _bindingPreparationMatchesCommand(command): bool {
+        if (!command
+                || command.stale === true
+                || String(command.kind ?? "") !== "direct-binding"
+                || String(command.targetId ?? "") !== "bar/clock"
+                || String(command.reviewedReplacementId ?? "")
+                    !== "clock.text.time-to-date"
+                || String(command.sourcePath ?? "")
+                    !== "modules/bar/ClockWidget.qml"
+                || String(command.expectedCurrent ?? "")
+                    !== "DateTime.timeDisplay"
+                || String(command.replacement ?? "")
+                    !== "DateTime.date")
+            return false
+
+        const prepared = command.bindingPreparation
+        if (!prepared || Number(prepared.version ?? 0) !== 1)
+            return false
+
+        return String(prepared.status ?? "") === "prepared"
+            && prepared.stale !== true
+            && String(prepared.artifactProof ?? "")
+                === "prepared-reviewed-binding-replacement-artifacts-v1"
+            && String(prepared.graphTargetId ?? "")
+                === String(command.targetId ?? "")
+            && String(prepared.reviewedReplacementId ?? "")
+                === String(command.reviewedReplacementId ?? "")
+            && String(prepared.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(prepared.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(prepared.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(prepared.semanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(prepared.propertyName ?? "") === "text"
+            && String(prepared.expectedCurrent ?? "")
+                === String(command.expectedCurrent ?? "")
+            && String(prepared.replacement ?? "")
+                === String(command.replacement ?? "")
+            && String(prepared.postcondition ?? "")
+                === "semantic-anchor-rebound-exact-expression"
+            && String(prepared.candidatePostconditionStatus ?? "")
+                === "resolved"
+            && String(prepared.candidateExpression ?? "")
+                === String(command.replacement ?? "")
+            && String(prepared.manifestPath ?? "").length > 0
+            && root._sha256LooksValid(prepared.manifestSha256)
+            && prepared.writeAuthorized === false
+            && prepared.applyEnabled === false
+            && prepared.artifactsStaged === true
+            && prepared.productionIntegrated === false
+    }
+
+    function _sanitizeBindingPreparation(payload): var {
+        return {
+            version: 1,
+            status: "prepared",
+            stale: false,
+            staleReason: "",
+            artifactProof: String(payload?.artifactProof ?? ""),
+            graphTargetId: String(payload?.graphTargetId ?? ""),
+            reviewedReplacementId: String(payload?.reviewedReplacementId ?? ""),
+            transactionId: String(payload?.transactionId ?? ""),
+            sourcePath: String(payload?.sourcePath ?? ""),
+            baseSha256: String(payload?.baseSha256 ?? ""),
+            candidateSha256: String(payload?.candidateSha256 ?? ""),
+            semanticAnchor: String(payload?.semanticAnchor ?? ""),
+            propertyName: String(payload?.propertyName ?? ""),
+            expectedCurrent: String(payload?.expectedCurrent ?? ""),
+            replacement: String(payload?.replacement ?? ""),
+            expectedValueKind: String(payload?.expectedValueKind ?? ""),
+            replacementValueKind: String(
+                payload?.replacementValueKind ?? ""),
+            postcondition: String(payload?.postcondition ?? ""),
+            candidatePostconditionStatus: String(
+                payload?.candidatePostcondition?.status ?? ""),
+            candidateExpression: String(payload?.candidateExpression ?? ""),
+            snapshotPath: String(payload?.snapshotPath ?? ""),
+            candidatePath: String(payload?.candidatePath ?? ""),
+            manifestPath: String(payload?.manifestPath ?? ""),
+            manifestSha256: String(payload?.manifestSha256 ?? ""),
+            writeAuthorized: false,
+            applyEnabled: false,
+            artifactsStaged: true,
+            productionIntegrated: false
+        }
+    }
+
+    function prepareBindingArtifacts(): bool {
+        const command = root.activeCommand
+        if (!root.bindingPrepareEnabled || !command)
+            return false
+
+        root.bindingPreparationError = ""
+        bindingPrepareProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/binding_prepare.py"),
+            "--replacement-id", String(command.reviewedReplacementId ?? ""),
+            "--base-sha256", String(command.baseSha256 ?? ""),
+            "--expected-candidate-sha256",
+                String(command.candidateSha256 ?? ""),
+            "--semantic-anchor", String(command.semanticAnchor ?? ""),
+            "--state-dir",
+                Quickshell.statePath(
+                    "code-workflow/binding-transactions")
+        ]
+        bindingPrepareProcess.running = true
+        return true
+    }
+
+    function finishBindingPreparation(exitCode: int): void {
+        const payload = root._parseProcessPayload(
+            bindingPrepareStdout)
+        const command = root.activeCommand
+        const exact = payload?.protocol === 1
+            && String(payload?.status ?? "")
+                === "prepared-binding-replacement-artifacts"
+            && !!command
+            && String(command.kind ?? "") === "direct-binding"
+            && String(payload?.graphTargetId ?? "")
+                === String(command.targetId ?? "")
+            && String(payload?.reviewedReplacementId ?? "")
+                === String(command.reviewedReplacementId ?? "")
+            && String(payload?.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(payload?.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(payload?.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(payload?.semanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(payload?.expectedCurrent ?? "")
+                === String(command.expectedCurrent ?? "")
+            && String(payload?.propertyName ?? "") === "text"
+            && String(payload?.expectedCurrent ?? "")
+                === String(command.expectedCurrent ?? "")
+            && String(payload?.replacement ?? "")
+                === String(command.replacement ?? "")
+            && String(payload?.postcondition ?? "")
+                === "semantic-anchor-rebound-exact-expression"
+            && String(payload?.candidatePostcondition?.status ?? "")
+                === "resolved"
+            && String(payload?.candidateExpression ?? "")
+                === String(command.replacement ?? "")
+            && payload?.writeAuthorized === false
+            && payload?.applyEnabled === false
+            && payload?.artifactsStaged === true
+            && payload?.productionIntegrated === false
+
+        if (exact) {
+            const prepared =
+                root._sanitizeBindingPreparation(payload)
+            const promoted = Object.assign({}, command, {
+                bindingPreparation: prepared
+            })
+            if (root._bindingPreparationMatchesCommand(promoted)) {
+                const index = root.historyIndex
+                const next = root.history.slice()
+                next[index] = promoted
+                root.history = next
+                root.bindingPreparationError = ""
+                root.status = "preview"
+                return
+            }
+        }
+
+        const stderrText = String(
+            bindingPrepareStderr.text ?? "").trim()
+        root.bindingPreparationError = String(
+            payload?.detail
+            ?? payload?.reason
+            ?? stderrText
+            ?? ("Binding preparation exited " + exitCode))
+        root.status = payload?.status === "conflict"
+            ? "conflict"
+            : "error"
+        root.error = root.bindingPreparationError
+    }
+
+    function _bindingAuthorizationIdentityMatchesCommand(
+        command
+    ): bool {
+        if (!command
+                || String(command.kind ?? "") !== "direct-binding"
+                || !root._bindingPreparationMatchesCommand(command))
+            return false
+        const authorization = command.bindingAuthorization
+        const prepared = command.bindingPreparation
+        if (!authorization
+                || Number(authorization.version ?? 0) !== 1)
+            return false
+
+        return String(authorization.status ?? "") === "authorized"
+            && authorization.authorized === true
+            && String(authorization.authorizationProof ?? "")
+                === "explicit-binding-write-authorization-v1"
+            && String(authorization.authorizationToken ?? "")
+                === "binding-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? "")
+            && String(authorization.graphTargetId ?? "")
+                === String(command.targetId ?? "")
+            && String(authorization.reviewedReplacementId ?? "")
+                === String(command.reviewedReplacementId ?? "")
+            && String(authorization.sourcePath ?? "")
+                === String(command.sourcePath ?? "")
+            && String(authorization.baseSha256 ?? "")
+                === String(command.baseSha256 ?? "")
+            && String(authorization.candidateSha256 ?? "")
+                === String(command.candidateSha256 ?? "")
+            && String(authorization.semanticAnchor ?? "")
+                === String(command.semanticAnchor ?? "")
+            && String(authorization.propertyName ?? "") === "text"
+            && String(authorization.expectedCurrent ?? "")
+                === String(command.expectedCurrent ?? "")
+            && String(authorization.replacement ?? "")
+                === String(command.replacement ?? "")
+            && String(authorization.postcondition ?? "")
+                === "semantic-anchor-rebound-exact-expression"
+            && String(authorization.manifestPath ?? "")
+                === String(prepared.manifestPath ?? "")
+            && String(authorization.manifestSha256 ?? "")
+                === String(prepared.manifestSha256 ?? "")
+            && root._sha256LooksValid(authorization.manifestSha256)
+            && String(authorization.transactionId ?? "")
+                === String(prepared.transactionId ?? "")
+            && String(authorization.rollbackGuarantee ?? "")
+                === "exact-snapshot-auto-rollback-v1"
+    }
+
+    function _bindingAuthorizationMatchesCommand(command): bool {
+        return !!command
+            && command.stale !== true
+            && root._bindingPreparationMatchesCommand(command)
+            && root._bindingAuthorizationIdentityMatchesCommand(command)
+    }
+
+    function _expireBindingAuthorization(
+        command,
+        reason: string
+    ): var {
+        const authorization = command?.bindingAuthorization
+        if (!authorization
+                || authorization.authorized !== true
+                || String(authorization.status ?? "")
+                    !== "authorized")
+            return command
+        return Object.assign({}, command, {
+            bindingAuthorization: Object.assign({}, authorization, {
+                status: "expired",
+                authorized: false,
+                reason: String(reason ?? "authorization-expired")
+            })
+        })
+    }
+
+    function _expireAllBindingAuthorizations(
+        reason: string
+    ): void {
+        let changed = false
+        const next = root.history.map(command => {
+            const expired = root._expireBindingAuthorization(
+                command, reason)
+            if (expired !== command)
+                changed = true
+            return expired
+        })
+        if (changed)
+            root.history = next
+        root.bindingAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "authorization-expired")
+        })
+    }
+
+    function authorizeBindingWrite(): bool {
+        if (!root.bindingAuthorizeEnabled)
+            return false
+        const command = root.activeCommand
+        const prepared = root.activeBindingPreparation
+        if (!command || !prepared)
+            return false
+
+        const authorization = {
+            version: 1,
+            status: "authorized",
+            authorized: true,
+            reason: "explicit-user-authorization",
+            authorizationProof:
+                "explicit-binding-write-authorization-v1",
+            authorizationToken:
+                "binding-authorized:"
+                    + String(prepared.transactionId ?? "")
+                    + ":" + String(command.candidateSha256 ?? ""),
+            graphTargetId: String(command.targetId ?? ""),
+            reviewedReplacementId: String(command.reviewedReplacementId ?? ""),
+            sourcePath: String(command.sourcePath ?? ""),
+            baseSha256: String(command.baseSha256 ?? ""),
+            candidateSha256: String(command.candidateSha256 ?? ""),
+            semanticAnchor: String(command.semanticAnchor ?? ""),
+            propertyName: "text",
+            expectedCurrent: String(command.expectedCurrent ?? ""),
+            replacement: String(command.replacement ?? ""),
+            postcondition: "semantic-anchor-rebound-exact-expression",
+            manifestPath: String(prepared.manifestPath ?? ""),
+            manifestSha256: String(prepared.manifestSha256 ?? ""),
+            transactionId: String(prepared.transactionId ?? ""),
+            rollbackGuarantee:
+                "exact-snapshot-auto-rollback-v1"
+        }
+        const promoted = Object.assign({}, command, {
+            bindingAuthorization: authorization
+        })
+        if (!root._bindingAuthorizationMatchesCommand(promoted))
+            return false
+
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+        const next = root.history.slice()
+        next[index] = promoted
+        root.history = next
+        root.bindingAuthorizationDiagnostics = ({
+            status: "authorized",
+            ready: true,
+            reason: "explicit-user-authorization",
+            authorizationToken:
+                authorization.authorizationToken
+        })
+        return true
+    }
+
+    function revokeBindingAuthorization(
+        reason: string
+    ): bool {
+        if (root.bindingLifecycleBusy)
+            return false
+        const command = root.activeCommand
+        if (!command?.bindingAuthorization)
+            return false
+        const index = root.historyIndex
+        if (index < 0 || index >= root.history.length)
+            return false
+
+        const next = root.history.slice()
+        next[index] = root._expireBindingAuthorization(
+            command,
+            String(reason ?? "user-revoked"))
+        root.history = next
+        root.bindingAuthorizationDiagnostics = ({
+            status: "expired",
+            ready: false,
+            reason: String(reason ?? "user-revoked")
+        })
+        return true
+    }
+
+    function _bindingLifecycleCommandMatchesHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = command?.bindingPreparation
+        return !!command
+            && String(command.kind ?? "") === "direct-binding"
+            && root.historyIndex
+                === reloadState.pendingBindingHistoryIndex
+            && String(command.targetId ?? "")
+                === reloadState.pendingBindingGraphTargetId
+            && String(command.reviewedReplacementId ?? "")
+                === reloadState.pendingBindingReplacementId
+            && String(command.sourcePath ?? "")
+                === reloadState.pendingBindingSourcePath
+            && String(command.baseSha256 ?? "")
+                === reloadState.pendingBindingBaseSha256
+            && String(command.candidateSha256 ?? "")
+                === reloadState.pendingBindingCandidateSha256
+            && String(command.semanticAnchor ?? "")
+                === reloadState.pendingBindingSemanticAnchor
+            && String(prepared?.manifestPath ?? "")
+                === reloadState.pendingBindingManifestPath
+            && String(prepared?.manifestSha256 ?? "")
+                === reloadState.pendingBindingManifestSha256
+            && root._bindingAuthorizationIdentityMatchesCommand(
+                command)
+            && String(
+                command?.bindingAuthorization?.authorizationToken
+                    ?? "")
+                === reloadState.pendingBindingAuthorizationToken
+    }
+
+    function stageBindingLifecycleHandoff(): bool {
+        const command = root.activeCommand
+        const prepared = root.activeBindingPreparation
+        if (!root.bindingAuthorizationReady
+                || !root.bindingArtifactsReady
+                || !command
+                || !prepared
+                || command.stale === true
+                || String(command.kind ?? "") !== "direct-binding"
+                || !Quickshell.watchFiles
+                || root.applyLifecycleBusy
+                || root.connectLifecycleBusy
+                || root.bindingLifecycleBusy
+                || root.disconnectLifecycleBusy)
+            return false
+
+        reloadState.pendingBindingPhase = "prepared"
+        reloadState.pendingBindingGraphTargetId = String(
+            command.targetId ?? "")
+        reloadState.pendingBindingReplacementId = String(
+            command.reviewedReplacementId ?? "")
+        reloadState.pendingBindingSourcePath = String(
+            command.sourcePath ?? "")
+        reloadState.pendingBindingBaseSha256 = String(
+            command.baseSha256 ?? "")
+        reloadState.pendingBindingCandidateSha256 = String(
+            command.candidateSha256 ?? "")
+        reloadState.pendingBindingSemanticAnchor = String(
+            command.semanticAnchor ?? "")
+        reloadState.pendingBindingHistoryIndex = root.historyIndex
+        reloadState.pendingBindingManifestPath = String(
+            prepared.manifestPath ?? "")
+        reloadState.pendingBindingManifestSha256 = String(
+            prepared.manifestSha256 ?? "")
+        reloadState.pendingBindingAuthorizationToken = String(
+            command.bindingAuthorization?.authorizationToken ?? "")
+        reloadState.pendingBindingReloadOutcome = "none"
+        reloadState.pendingBindingVerifyState = "unknown"
+        reloadState.pendingBindingRollbackRecovery = "none"
+        reloadState.pendingBindingError = ""
+        return root._bindingLifecycleCommandMatchesHandoff()
+    }
+
+    function clearBindingLifecycleHandoff(): void {
+        bindingRollbackReloadFallbackTimer.stop()
+        reloadState.pendingBindingPhase = "idle"
+        reloadState.pendingBindingGraphTargetId = ""
+        reloadState.pendingBindingReplacementId = ""
+        reloadState.pendingBindingSourcePath = ""
+        reloadState.pendingBindingBaseSha256 = ""
+        reloadState.pendingBindingCandidateSha256 = ""
+        reloadState.pendingBindingSemanticAnchor = ""
+        reloadState.pendingBindingHistoryIndex = -1
+        reloadState.pendingBindingManifestPath = ""
+        reloadState.pendingBindingManifestSha256 = ""
+        reloadState.pendingBindingAuthorizationToken = ""
+        reloadState.pendingBindingReloadOutcome = "none"
+        reloadState.pendingBindingVerifyState = "unknown"
+        reloadState.pendingBindingRollbackRecovery = "none"
+        reloadState.pendingBindingError = ""
+    }
+
+    function _bindingPayloadMatchesPending(payload): bool {
+        return String(payload?.graphTargetId ?? "")
+                === reloadState.pendingBindingGraphTargetId
+            && String(payload?.reviewedReplacementId ?? "")
+                === reloadState.pendingBindingReplacementId
+            && String(payload?.sourcePath ?? "")
+                === reloadState.pendingBindingSourcePath
+            && String(payload?.baseSha256 ?? "")
+                === reloadState.pendingBindingBaseSha256
+            && String(payload?.candidateSha256 ?? "")
+                === reloadState.pendingBindingCandidateSha256
+            && String(payload?.semanticAnchor ?? "")
+                === reloadState.pendingBindingSemanticAnchor
+            && String(payload?.propertyName ?? "") === "text"
+            && String(payload?.expectedCurrent ?? "")
+                === "DateTime.timeDisplay"
+            && String(payload?.replacement ?? "")
+                === "DateTime.date"
+            && String(payload?.postcondition ?? "")
+                === "semantic-anchor-rebound-exact-expression"
+            && String(payload?.manifestPath ?? "")
+                === reloadState.pendingBindingManifestPath
+            && String(payload?.manifestSha256 ?? "")
+                === reloadState.pendingBindingManifestSha256
+    }
+
+    function _setBindingLifecycleFailure(
+        phase: string,
+        message: string,
+        payload
+    ): void {
+        reloadState.pendingBindingPhase = phase
+        reloadState.pendingBindingError = String(message ?? "")
+        root.bindingLifecycleResult = payload ?? ({})
+        root.bindingLifecycleError = String(message ?? "")
+        if (root.activeCommand?.bindingAuthorization)
+            root.revokeBindingAuthorization(
+                "binding-lifecycle-failed")
+        root.status = phase.includes("conflict")
+            ? "conflict"
+            : "error"
+        root.error = String(message ?? "")
+    }
+
+    function beginAuthorizedBindingApply(): bool {
+        if (!root.bindingApplyEnabled)
+            return false
+        const authorizationToken = String(
+            root.activeBindingAuthorization?.authorizationToken
+                ?? "")
+        if (authorizationToken.length === 0)
+            return false
+        if (!root.beginBindingLifecycle())
+            return false
+
+        root.bindingAuthorizationDiagnostics = ({
+            status: "consumed",
+            ready: false,
+            reason: "binding-apply-started",
+            authorizationToken: authorizationToken
+        })
+        return true
+    }
+
+    function beginBindingLifecycle(): bool {
+        if (!root.stageBindingLifecycleHandoff())
+            return false
+
+        reloadState.pendingBindingPhase = "write-issued"
+        reloadState.pendingBindingReloadOutcome = "none"
+        reloadState.pendingBindingVerifyState = "unknown"
+        reloadState.pendingBindingRollbackRecovery = "none"
+        reloadState.pendingBindingError = ""
+        root.bindingLifecycleResult = ({})
+        root.bindingLifecycleError = ""
+        root.status = "binding-writing"
+
+        bindingCommitProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/binding_commit.py"),
+            "commit",
+            "--manifest",
+            reloadState.pendingBindingManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingBindingManifestSha256
+        ]
+        bindingCommitProcess.running = true
+        return true
+    }
+
+    function finishBindingCommit(exitCode: int): void {
+        if (reloadState.pendingBindingPhase
+                === "rollback-pending") {
+            root._startBindingRollback(
+                reloadState.pendingBindingError)
+            return
+        }
+
+        const payload = root._parseProcessPayload(
+            bindingCommitStdout)
+        if (payload?.status === "written"
+                && root._bindingPayloadMatchesPending(payload)
+                && payload?.sourceWritten === true
+                && payload?.rollbackRequired === false) {
+            root.bindingLifecycleResult = payload
+            root.bindingLifecycleError = ""
+            reloadState.pendingBindingPhase = "waiting-reload"
+            root.status = "binding-waiting-reload"
+            if (reloadState.pendingBindingReloadOutcome
+                    === "completed")
+                Qt.callLater(root._startBindingCandidateVerify)
+            return
+        }
+
+        const sourceWritten = payload?.sourceWritten === true
+        const stderrText = String(
+            bindingCommitStderr.text ?? "").trim()
+        const message = String(
+            payload?.reason
+            ?? payload?.detail
+            ?? stderrText
+            ?? ("Binding commit exited " + exitCode))
+        if (sourceWritten) {
+            root._startBindingRollback(message)
+            return
+        }
+
+        root._setBindingLifecycleFailure(
+            payload?.status === "conflict"
+                ? "binding-commit-conflict"
+                : "binding-commit-failed",
+            message,
+            payload)
+    }
+
+    function _startBindingCandidateVerify(): void {
+        if (bindingVerifyProcess.running
+                || reloadState.pendingBindingManifestPath.length === 0)
+            return
+        reloadState.pendingBindingPhase =
+            "candidate-verify-issued"
+        root.status = "binding-verifying"
+        bindingVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/binding_commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingBindingManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingBindingManifestSha256
+        ]
+        bindingVerifyProcess.running = true
+    }
+
+    function _startBindingRollbackVerify(): void {
+        if (bindingVerifyProcess.running
+                || reloadState.pendingBindingManifestPath.length === 0)
+            return
+        bindingRollbackReloadFallbackTimer.stop()
+        reloadState.pendingBindingPhase =
+            "rollback-verify-issued"
+        root.status = "binding-rollback-verifying"
+        bindingVerifyProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/binding_commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingBindingManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingBindingManifestSha256
+        ]
+        bindingVerifyProcess.running = true
+    }
+
+    function finishBindingVerify(exitCode: int): void {
+        const phase = reloadState.pendingBindingPhase
+        const payload = root._parseProcessPayload(
+            bindingVerifyStdout)
+        if (payload?.status !== "verified"
+                || !root._bindingPayloadMatchesPending(payload)) {
+            const stderrText = String(
+                bindingVerifyStderr.text ?? "").trim()
+            const message = String(
+                payload?.reason
+                ?? payload?.detail
+                ?? stderrText
+                ?? ("Binding verify exited " + exitCode))
+            if (phase === "rollback-verify-issued") {
+                root._setBindingLifecycleFailure(
+                    "binding-rollback-conflict",
+                    message,
+                    payload)
+            } else {
+                root._startBindingRollback(message)
+            }
+            return
+        }
+
+        const state = String(payload?.sourceState ?? "")
+        reloadState.pendingBindingVerifyState = state
+        if (phase === "candidate-verify-issued") {
+            if (state !== "candidate-present") {
+                if (state === "base-present") {
+                    root._setBindingLifecycleFailure(
+                        "binding-commit-failed",
+                        "Binding source returned to base before candidate verification.",
+                        payload)
+                } else {
+                    root._startBindingRollback(
+                        "Binding candidate verification reported "
+                            + state + ".")
+                }
+                return
+            }
+            root._beginBindingPostconditionCheck()
+            return
+        }
+
+        if (phase === "rollback-verify-issued") {
+            if (state !== "base-present") {
+                root._setBindingLifecycleFailure(
+                    "binding-rollback-conflict",
+                    "Expected Binding rollback base after recovery reload; "
+                        + "verify reported " + state,
+                    payload)
+                return
+            }
+            root._finalizeBindingRollback(payload)
+        }
+    }
+
+    function _beginBindingPostconditionCheck(): void {
+        reloadState.pendingBindingPhase =
+            "postcondition-checking"
+        root.status = "binding-postcondition"
+        CodeWorkflowAnalyzer.request(
+            reloadState.pendingBindingSourcePath,
+            "text: DateTime.date",
+            reloadState.pendingBindingSemanticAnchor,
+            true)
+    }
+
+    function _finishBindingPostconditionIfReady(): void {
+        if (reloadState.pendingBindingPhase
+                !== "postcondition-checking")
+            return
+        if (CodeWorkflowAnalyzer.status === "analyzing"
+                || CodeWorkflowAnalyzer.status === "idle")
+            return
+
+        const matches = CodeWorkflowAnalyzer.status === "ready"
+            && CodeWorkflowAnalyzer.sourcePath
+                === reloadState.pendingBindingSourcePath
+            && CodeWorkflowAnalyzer.semanticAnchor
+                === reloadState.pendingBindingSemanticAnchor
+            && String(CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+                === reloadState.pendingBindingCandidateSha256
+            && CodeWorkflowAnalyzer.semanticRebind?.status === "resolved"
+            && String(
+                CodeWorkflowAnalyzer.semanticRebind?.anchor ?? "")
+                === reloadState.pendingBindingSemanticAnchor
+            && String(
+                CodeWorkflowAnalyzer.reviewedAnchor?.semanticValueText ?? "")
+                === "DateTime.date"
+            && CodeWorkflowAnalyzer.diagnostics.length === 0
+        if (!matches) {
+            root._startBindingRollback(
+                "Committed binding candidate reloaded, but the exact "
+                    + "semantic anchor/expression postcondition failed.")
+            return
+        }
+        root._finalizeBindingSuccess()
+    }
+
+    function _markHistoryBindingLifecycleResult(
+        applied: bool,
+        reason: string
+    ): void {
+        const index = Number(
+            reloadState.pendingBindingHistoryIndex ?? -1)
+        if (index < 0 || index >= root.history.length)
+            return
+        const next = root.history.slice()
+        next[index] = Object.assign({}, next[index], {
+            bindingApplied: applied,
+            bindingAppliedSha256: applied
+                ? reloadState.pendingBindingCandidateSha256
+                : "",
+            bindingRolledBack: !applied,
+            stale: true,
+            staleReason: reason,
+            bindingPreparation:
+                next[index]?.bindingPreparation
+                ? Object.assign(
+                    {},
+                    next[index].bindingPreparation,
+                    {
+                        status: "stale",
+                        stale: true,
+                        staleReason: reason
+                    })
+                : next[index]?.bindingPreparation,
+            bindingAuthorization:
+                next[index]?.bindingAuthorization
+                ? Object.assign(
+                    {},
+                    next[index].bindingAuthorization,
+                    {
+                        status: "expired",
+                        authorized: false,
+                        reason: reason
+                    })
+                : next[index]?.bindingAuthorization
+        })
+        root.history = next
+        root.historyIndex = index
+    }
+
+    function _finalizeBindingSuccess(): void {
+        const payload = {
+            status: "binding-applied",
+            sourcePath: reloadState.pendingBindingSourcePath,
+            sourceSha256:
+                reloadState.pendingBindingCandidateSha256,
+            semanticAnchor:
+                reloadState.pendingBindingSemanticAnchor,
+            replacement: "DateTime.date",
+            postcondition: "semantic-anchor-rebound-exact-expression"
+        }
+        root._markHistoryBindingLifecycleResult(
+            true,
+            "Binding replacement applied and exact anchor/expression rebound; "
+                + "regenerate before editing again.")
+        root.clearBindingLifecycleHandoff()
+        root.bindingLifecycleResult = payload
+        root.bindingLifecycleError = ""
+        root.status = "binding-applied"
+        root.error = ""
+    }
+
+    function _startBindingRollback(reason: string): void {
+        if (bindingRollbackProcess.running)
+            return
+        if (reloadState.pendingBindingManifestPath.length === 0) {
+            root._setBindingLifecycleFailure(
+                "binding-rollback-failed",
+                "Binding lifecycle has no prepared manifest for rollback.",
+                null)
+            return
+        }
+
+        reloadState.pendingBindingPhase = "rollback-issued"
+        reloadState.pendingBindingReloadOutcome = "none"
+        reloadState.pendingBindingVerifyState = "unknown"
+        if (String(reason ?? "").length > 0)
+            reloadState.pendingBindingError = String(reason)
+        root.status = "binding-rollback-writing"
+
+        bindingRollbackProcess.command = [
+            "python3",
+            Quickshell.shellPath(
+                "scripts/code-workflow/binding_commit.py"),
+            "rollback",
+            "--manifest",
+            reloadState.pendingBindingManifestPath,
+            "--manifest-sha256",
+            reloadState.pendingBindingManifestSha256
+        ]
+        bindingRollbackProcess.running = true
+    }
+
+    function finishBindingRollback(exitCode: int): void {
+        const payload = root._parseProcessPayload(
+            bindingRollbackStdout)
+        if (payload?.status === "rolled-back"
+                && root._bindingPayloadMatchesPending(payload)) {
+            root.bindingLifecycleResult = payload
+            root.bindingLifecycleError = ""
+            reloadState.pendingBindingPhase =
+                "rollback-waiting-reload"
+            reloadState.pendingBindingReloadOutcome = "none"
+            root.status = "binding-rollback-waiting-reload"
+            bindingRollbackReloadFallbackTimer.restart()
+            return
+        }
+
+        const stderrText = String(
+            bindingRollbackStderr.text ?? "").trim()
+        root._setBindingLifecycleFailure(
+            payload?.status === "conflict"
+                ? "binding-rollback-conflict"
+                : "binding-rollback-failed",
+            String(
+                payload?.reason
+                ?? payload?.detail
+                ?? stderrText
+                ?? ("Binding rollback exited " + exitCode)),
+            payload)
+    }
+
+    function _finalizeBindingRollback(payload): void {
+        const failure = String(
+            reloadState.pendingBindingError
+            ?? "Binding lifecycle failed.")
+        const recovery = String(
+            reloadState.pendingBindingRollbackRecovery
+            ?? "none")
+        const result = {
+            status: "binding-rolled-back",
+            sourcePath: reloadState.pendingBindingSourcePath,
+            sourceSha256:
+                reloadState.pendingBindingBaseSha256,
+            semanticAnchor:
+                reloadState.pendingBindingSemanticAnchor,
+            lifecycleError: failure,
+            recoveryMode: recovery,
+            verify: payload
+        }
+        root._markHistoryBindingLifecycleResult(
+            false,
+            "Binding lifecycle failed and exact rollback restored "
+                + "the base; regenerate before retrying.")
+        root.clearBindingLifecycleHandoff()
+        root.bindingLifecycleResult = result
+        root.bindingLifecycleError = failure
+        root.status = "binding-rollback-complete"
+        root.error = failure
+    }
+
+    function _recoverBindingLifecycle(): void {
+        const phase = reloadState.pendingBindingPhase
+        if (phase === "write-issued"
+                || phase === "waiting-reload") {
+            root.status = "binding-waiting-reload"
+            if (reloadState.pendingBindingReloadOutcome
+                    === "completed")
+                root._startBindingCandidateVerify()
+            return
+        }
+        if (phase === "candidate-verify-issued") {
+            root._startBindingCandidateVerify()
+            return
+        }
+        if (phase === "postcondition-checking") {
+            root._beginBindingPostconditionCheck()
+            return
+        }
+        if (phase === "rollback-pending") {
+            root.status = "binding-rollback-pending"
+            if (!bindingCommitProcess.running)
+                root._startBindingRollback(
+                    reloadState.pendingBindingError)
+            return
+        }
+        if (phase === "rollback-issued"
+                || phase === "rollback-waiting-reload") {
+            root.status = "binding-rollback-waiting-reload"
+            if (reloadState.pendingBindingReloadOutcome
+                    === "completed") {
+                root._startBindingRollbackVerify()
+            } else if (phase === "rollback-waiting-reload") {
+                bindingRollbackReloadFallbackTimer.restart()
+            }
+            return
+        }
+        if (phase === "rollback-verify-issued") {
+            root._startBindingRollbackVerify()
+            return
+        }
+        if ([
+                "binding-commit-conflict",
+                "binding-commit-failed",
+                "binding-rollback-conflict",
+                "binding-rollback-failed"
+            ].includes(phase)) {
+            root.bindingLifecycleError =
+                reloadState.pendingBindingError
+            root.error = reloadState.pendingBindingError
+            root.status = phase.includes("conflict")
+                ? "conflict"
+                : "error"
+        }
+    }
+
+    
     function _disconnectPreparationMatchesCommand(command): bool {
         if (!command
                 || command.stale === true
@@ -748,6 +1906,14 @@ Singleton {
         if (!root.disconnectPrepareEnabled || !command)
             return false
 
+        root.bindingPreparationError = ""
+        root.bindingLifecycleResult = ({})
+        root.bindingLifecycleError = ""
+        root.bindingAuthorizationDiagnostics = ({
+            status: "not-authorized",
+            ready: false,
+            reason: "no-active-authorization"
+        })
         root.disconnectPreparationError = ""
         disconnectPrepareProcess.command = [
             "python3",
@@ -1051,7 +2217,8 @@ Singleton {
                 || !Quickshell.watchFiles
                 || root.applyLifecycleBusy
                 || root.connectLifecycleBusy
-                || root.disconnectLifecycleBusy)
+                || root.bindingLifecycleBusy
+        || root.disconnectLifecycleBusy)
             return false
 
         reloadState.pendingDisconnectPhase = "prepared"
@@ -2961,6 +4128,54 @@ Singleton {
             return
         }
 
+        const bindingPhase = reloadState.pendingBindingPhase
+        if (bindingPhase === "write-issued"
+                || bindingPhase === "waiting-reload"
+                || bindingPhase === "candidate-verify-issued") {
+            reloadState.pendingBindingReloadOutcome = "completed"
+            root._startBindingCandidateVerify()
+            return
+        }
+        if (bindingPhase === "rollback-issued"
+                || bindingPhase === "rollback-waiting-reload"
+                || bindingPhase === "rollback-verify-issued") {
+            if (reloadState.pendingBindingRollbackRecovery
+                    === "none")
+                reloadState.pendingBindingRollbackRecovery =
+                    "watcher"
+            reloadState.pendingBindingReloadOutcome = "completed"
+            bindingRollbackReloadFallbackTimer.stop()
+            root._startBindingRollbackVerify()
+            return
+        }
+
+        const bindingPhase = reloadState.pendingBindingPhase
+        if (bindingPhase === "write-issued"
+                || bindingPhase === "waiting-reload"
+                || bindingPhase === "candidate-verify-issued"
+                || bindingPhase === "postcondition-checking") {
+            reloadState.pendingBindingReloadOutcome = "failed"
+            reloadState.pendingBindingError = message
+            if (bindingCommitProcess.running) {
+                reloadState.pendingBindingPhase =
+                    "rollback-pending"
+                root.status = "binding-rollback-pending"
+            } else {
+                root._startBindingRollback(message)
+            }
+            return
+        }
+        if (bindingPhase === "rollback-issued"
+                || bindingPhase === "rollback-waiting-reload"
+                || bindingPhase === "rollback-verify-issued") {
+            root._setBindingLifecycleFailure(
+                "binding-rollback-failed",
+                "Binding rollback source was restored but reload "
+                    + "also failed: " + message,
+                null)
+            return
+        }
+
         const disconnectPhase = reloadState.pendingDisconnectPhase
         if (disconnectPhase === "write-issued"
                 || disconnectPhase === "waiting-reload"
@@ -3363,8 +4578,10 @@ Singleton {
         if (root.previewBusy
                 || root.connectSafetyBusy
                 || root.connectPreparationBusy
-                || root.disconnectPreparationBusy
-                || root.disconnectLifecycleBusy
+                || root.bindingPreparationBusy
+        || root.disconnectPreparationBusy
+                || root.bindingLifecycleBusy
+        || root.disconnectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -4005,8 +5222,10 @@ Singleton {
                 || root.connectSafetyBusy
                 || root.connectPreparationBusy
                 || root.connectLifecycleBusy
-                || root.disconnectPreparationBusy
-                || root.disconnectLifecycleBusy
+                || root.bindingPreparationBusy
+        || root.disconnectPreparationBusy
+                || root.bindingLifecycleBusy
+        || root.disconnectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return
@@ -4067,6 +5286,7 @@ Singleton {
 
         const phase = reloadState.pendingApplyPhase
         const connectPhase = reloadState.pendingConnectPhase
+        const bindingPhase = reloadState.pendingBindingPhase
         const disconnectPhase = reloadState.pendingDisconnectPhase
         const lifecycleOwnsSource = changedPath
                 === reloadState.pendingApplySourcePath
@@ -4112,6 +5332,26 @@ Singleton {
             return
         }
 
+        const bindingLifecycleOwnsSource = changedPath
+                === reloadState.pendingBindingSourcePath
+            && [
+                "write-issued",
+                "waiting-reload",
+                "candidate-verify-issued",
+                "postcondition-checking",
+                "rollback-pending",
+                "rollback-issued",
+                "rollback-waiting-reload",
+                "rollback-verify-issued"
+            ].includes(bindingPhase)
+        if (bindingLifecycleOwnsSource) {
+            if (bindingPhase.startsWith("rollback"))
+                root.status = "binding-rollback-waiting-reload"
+            else
+                root.status = "binding-waiting-reload"
+            return
+        }
+
         const disconnectLifecycleOwnsSource = changedPath
                 === reloadState.pendingDisconnectSourcePath
             && [
@@ -4141,6 +5381,7 @@ Singleton {
 
         root._markHistoryStale(changedPath)
         root._markConnectSafetyStale(changedPath)
+        root._markBindingArtifactsStale(changedPath)
         root._markDisconnectArtifactsStale(changedPath)
         if (phase !== "idle"
                 && changedPath
@@ -4162,6 +5403,40 @@ Singleton {
         }
     }
 
+    function _markBindingArtifactsStale(path: string): void {
+        const changedPath = String(path ?? "")
+        if (changedPath.length === 0)
+            return
+        let changed = false
+        const next = root.history.map(command => {
+            const prepared = command?.bindingPreparation
+            if (!prepared
+                    || String(command.sourcePath ?? "") !== changedPath)
+                return command
+            changed = true
+            return Object.assign({}, command, {
+                bindingPreparation: Object.assign({}, prepared, {
+                    status: "stale",
+                    stale: true,
+                    staleReason:
+                        "Binding source changed; reprepare before write."
+                }),
+                bindingAuthorization:
+                    command?.bindingAuthorization
+                    ? Object.assign({}, command.bindingAuthorization, {
+                        status: "expired",
+                        authorized: false,
+                        reason:
+                            "Binding source changed; reprepare before write."
+                    })
+                    : command?.bindingAuthorization
+            })
+        })
+        if (changed)
+            root.history = next
+    }
+
+    
     function _markDisconnectArtifactsStale(path: string): void {
         const changedPath = String(path ?? "")
         if (changedPath.length === 0)
@@ -4209,8 +5484,10 @@ Singleton {
                 || root.connectSafetyBusy
                 || root.connectPreparationBusy
                 || root.connectLifecycleBusy
-                || root.disconnectPreparationBusy
-                || root.disconnectLifecycleBusy
+                || root.bindingPreparationBusy
+        || root.disconnectPreparationBusy
+                || root.bindingLifecycleBusy
+        || root.disconnectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -4237,6 +5514,8 @@ Singleton {
         root._pendingExpectedCurrent = nextExpectedCurrent
         root._pendingConnectGraphTargetId = ""
         root._pendingConnectTargetId = ""
+        if (nextMode !== "binding")
+            root._pendingBindingGraphTargetId = ""
         if (nextMode !== "disconnect") {
             root._pendingDisconnectGraphTargetId = ""
             root._pendingDisconnectEdgeId = ""
@@ -4287,21 +5566,45 @@ Singleton {
             "")
     }
 
-    function previewBinding(
+    function _startBindingPreview(
         path: string,
         baseSha: string,
         anchor: string,
-        nextValue: string
+        nextValue: string,
+        targetId: string,
+        replaceIndex: int
     ): bool {
-        return root._startPreview(
+        root._pendingBindingGraphTargetId = String(targetId ?? "")
+        if (root._pendingBindingGraphTargetId.length === 0)
+            return false
+        const started = root._startPreview(
             path,
             baseSha,
             anchor,
             nextValue,
-            -1,
+            replaceIndex,
             "direct-binding",
             "binding",
             "")
+        if (!started)
+            root._pendingBindingGraphTargetId = ""
+        return started
+    }
+
+    function previewBinding(
+        path: string,
+        baseSha: string,
+        anchor: string,
+        nextValue: string,
+        targetId: string
+    ): bool {
+        return root._startBindingPreview(
+            path,
+            baseSha,
+            anchor,
+            nextValue,
+            targetId,
+            -1)
     }
 
     function _startDisconnectPreview(
@@ -4361,6 +5664,11 @@ Singleton {
         if (root.previewBusy
                 || root.connectSafetyBusy
                 || root.connectPreparationBusy
+                || root.connectLifecycleBusy
+                || root.bindingPreparationBusy
+                || root.bindingLifecycleBusy
+                || root.disconnectPreparationBusy
+                || root.disconnectLifecycleBusy
                 || applyPrepareProcess.running
                 || root.applyLifecycleBusy)
             return false
@@ -4426,9 +5734,16 @@ Singleton {
                 String(command.reviewedEdgeId ?? ""),
                 root.historyIndex)
         }
-        const previewMode = commandKind === "direct-binding"
-            ? "binding"
-            : "literal"
+        if (commandKind === "direct-binding") {
+            return root._startBindingPreview(
+                String(command.sourcePath ?? ""),
+                String(baseSha ?? ""),
+                String(command.semanticAnchor ?? ""),
+                String(command.replacement ?? ""),
+                String(command.targetId ?? ""),
+                root.historyIndex)
+        }
+        const previewMode = "literal"
         return root._startPreview(
             String(command.sourcePath ?? ""),
             String(baseSha ?? ""),
@@ -4466,9 +5781,23 @@ Singleton {
             candidateSha256: String(payload?.candidateSha256 ?? ""),
             semanticAnchor: root.semanticAnchor,
             replacement: root.replacement,
-            expectedCurrent: root._pendingExpectedCurrent,
-            targetId: root._pendingCommandKind === "disconnect-binding"
-                ? root._pendingDisconnectGraphTargetId
+            expectedCurrent:
+                root._pendingCommandKind === "direct-binding"
+                    ? String(payload?.patch?.oldText ?? "")
+                    : root._pendingExpectedCurrent,
+            targetId: root._pendingCommandKind === "direct-binding"
+                ? root._pendingBindingGraphTargetId
+                : root._pendingCommandKind === "disconnect-binding"
+                    ? root._pendingDisconnectGraphTargetId
+                    : "",
+            reviewedReplacementId:
+                root._pendingCommandKind === "direct-binding"
+                    && root._pendingBindingGraphTargetId === "bar/clock"
+                    && root.sourcePath === "modules/bar/ClockWidget.qml"
+                    && String(payload?.patch?.oldText ?? "")
+                        === "DateTime.timeDisplay"
+                    && root.replacement === "DateTime.date"
+                ? "clock.text.time-to-date"
                 : "",
             reviewedEdgeId:
                 root._pendingCommandKind === "disconnect-binding"
@@ -4625,6 +5954,8 @@ Singleton {
         if (!root._restoringReloadState) {
             root._expireAllConnectAuthorizations(
                 "history-selection-changed")
+            root._expireAllBindingAuthorizations(
+                "history-selection-changed")
             root._expireAllDisconnectAuthorizations(
                 "history-selection-changed")
         }
@@ -4669,6 +6000,21 @@ Singleton {
         property string pendingConnectVerifyState: "unknown"
         property string pendingConnectRollbackRecovery: "none"
         property string pendingConnectError: ""
+        property string pendingBindingPhase: "idle"
+        property string pendingBindingGraphTargetId: ""
+        property string pendingBindingReplacementId: ""
+        property string pendingBindingSourcePath: ""
+        property string pendingBindingBaseSha256: ""
+        property string pendingBindingCandidateSha256: ""
+        property string pendingBindingSemanticAnchor: ""
+        property int pendingBindingHistoryIndex: -1
+        property string pendingBindingManifestPath: ""
+        property string pendingBindingManifestSha256: ""
+        property string pendingBindingAuthorizationToken: ""
+        property string pendingBindingReloadOutcome: "none"
+        property string pendingBindingVerifyState: "unknown"
+        property string pendingBindingRollbackRecovery: "none"
+        property string pendingBindingError: ""
         property string pendingDisconnectPhase: "idle"
         property string pendingDisconnectGraphTargetId: ""
         property string pendingDisconnectEdgeId: ""
@@ -4706,7 +6052,24 @@ Singleton {
         function onStatusChanged(): void {
             root._finishSemanticRebindIfReady()
             root._finishConnectSemanticRebindIfReady()
+            root._finishBindingPostconditionIfReady()
             root._finishDisconnectPostconditionIfReady()
+        }
+    }
+
+    Timer {
+        id: bindingRollbackReloadFallbackTimer
+        interval: 1800
+        repeat: false
+        onTriggered: {
+            if (reloadState.pendingBindingPhase
+                    !== "rollback-waiting-reload"
+                    || reloadState.pendingBindingReloadOutcome
+                        !== "none")
+                return
+            reloadState.pendingBindingRollbackRecovery =
+                "explicit-recovery"
+            Quickshell.reload(false)
         }
     }
 
@@ -4740,6 +6103,42 @@ Singleton {
                 "explicit-recovery"
             Quickshell.reload(false)
         }
+    }
+
+    Process {
+        id: bindingPrepareProcess
+        running: false
+        stdout: StdioCollector { id: bindingPrepareStdout }
+        stderr: StdioCollector { id: bindingPrepareStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishBindingPreparation(exitCode)
+    }
+
+    Process {
+        id: bindingCommitProcess
+        running: false
+        stdout: StdioCollector { id: bindingCommitStdout }
+        stderr: StdioCollector { id: bindingCommitStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishBindingCommit(exitCode)
+    }
+
+    Process {
+        id: bindingVerifyProcess
+        running: false
+        stdout: StdioCollector { id: bindingVerifyStdout }
+        stderr: StdioCollector { id: bindingVerifyStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishBindingVerify(exitCode)
+    }
+
+    Process {
+        id: bindingRollbackProcess
+        running: false
+        stdout: StdioCollector { id: bindingRollbackStdout }
+        stderr: StdioCollector { id: bindingRollbackStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishBindingRollback(exitCode)
     }
 
     Process {

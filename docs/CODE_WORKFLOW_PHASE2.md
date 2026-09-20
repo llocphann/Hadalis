@@ -1098,9 +1098,59 @@ boundary without widening the generic preview subset:
   proves exact preparation, commit, verify, rollback, manifest-drift rejection
   and external-source conflict preservation.
 
+## Milestone 2K-U-B — reviewed direct-binding replacement production lifecycle
+
+2K-U-B promotes only the reviewed `clock.text.time-to-date` replacement into
+production; it does not generalize the identifier/member-expression preview
+subset.
+
+- Production allowlist identity is exact:
+  graph target `bar/clock`, source `modules/bar/ClockWidget.qml`, property
+  `text`, current expression `DateTime.timeDisplay`, replacement
+  `DateTime.date`, reviewed replacement ID `clock.text.time-to-date`.
+- `binding_prepare.py` and `binding_commit.py` now ship in the runtime
+  payload. Preparation remains source-non-writing and retains the 2K-U-A
+  parser-clean candidate, exact candidate SHA and same-anchor exact-expression
+  postcondition.
+- Explicit authorization uses
+  `explicit-binding-write-authorization-v1`. The snapshot binds graph target,
+  reviewed replacement ID, source/base/candidate SHA, semantic anchor, exact
+  old/new expressions, manifest path/SHA, transaction ID and
+  `exact-snapshot-auto-rollback-v1`. It contains no Connect
+  qualification/TYPE/CYCLE proof vocabulary.
+- Settings invokes only the user-facing
+  `beginAuthorizedBindingApply()` wrapper. Authorization is consumed when the
+  lifecycle starts and ordinary history/source/cross-generation drift expires
+  it.
+- Binding replacement owns a separate persisted lifecycle and primitive-only
+  reload handoff. It does not reuse Literal Apply or Disconnect write state.
+  Phases cover source write, watcher reload, candidate verify, exact semantic
+  postcondition, rollback write/reload and rollback verify.
+- Success requires `binding_commit.py verify` to report
+  `candidate-present`, then Analyzer READY on the candidate SHA with zero
+  diagnostics, the original semantic anchor `resolved`, and that exact
+  binding rendering `DateTime.date`.
+- Reload, candidate-verify or exact-rebind failure automatically restores the
+  mode-0600 exact snapshot. Rollback is complete only after verify reports
+  `base-present`; a bounded explicit reload fallback covers watcher
+  suppression.
+- Source watcher ownership distinguishes the lifecycle's own Clock atomic
+  replace from external Clock edits. External source drift stales preparation
+  and expires authorization.
+- Live isolated acceptance uses the real Clock source. The positive path proves
+  explicit authorization, exactly-once Apply, watcher reload, candidate SHA and
+  exact same-anchor `DateTime.date` rebind. A probe-only fixture rewrites the
+  prepared manifest anchor to a surviving bullet-text binding; production
+  postcondition detection must then auto-rollback the exact source snapshot.
+- Other direct-binding replacements remain preview-only. Existing non-reviewed
+  Disconnect edges remain preview-only.
+- The production source-writing subset is now exactly: qualified literal
+  property Apply, the first reviewed Connect insertion, reviewed
+  `clock.data.time` Disconnect deletion, and reviewed
+  `clock.text.time-to-date` direct-binding replacement.
+
 ## Not implemented yet
 
-- production direct-binding replacement preparation/authorization/lifecycle/Apply;
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond `clock.data.time`;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
@@ -1111,18 +1161,15 @@ boundary without widening the generic preview subset:
 
 ## Next gate
 
-2K-U-A proves the isolated exact replacement engine without production wiring.
-The next gate, 2K-U-B, should promote only
-`clock.text.time-to-date` into a prepared + explicitly authorized lifecycle.
+Do not broaden direct-binding Apply from the single reviewed
+`clock.text.time-to-date` fixture by assumption. Any additional replacement
+must receive its own exact old/new expression review, semantic-anchor
+postcondition and live rollback evidence before entering the allowlist.
 
-2K-U-B must bind authorization to the exact replacement manifest SHA/history
-command, consume authorization exactly once, atomically write the candidate,
-wait for watcher reload, verify candidate SHA, and require the same semantic
-anchor to rebind to the exact `DateTime.date` expression with zero diagnostics.
-Reload, verify or rebind failure must restore the exact snapshot and verify the
-base. Source/history/manifest drift must expire authorization before write.
+The next workflow gate should first audit cross-pipeline mutation serialization
+across Literal Apply, Connect, Disconnect and Binding replacement now that four
+independent source-write lifecycles exist. That audit must prove a lifecycle
+cannot start while another owns source/reload state and that history/source
+drift expires only the relevant handoffs without weakening exact rollback.
 
-Do not generalize direct-binding Apply to arbitrary identifier/member
-expressions from this single reviewed fixture, and do not inherit Connect
-TYPE/CYCLE proof tokens unless separately qualified. Existing non-reviewed
-Disconnect edges remain preview-only. Multi-file writes remain out of scope.
+Multi-file writes remain out of scope.

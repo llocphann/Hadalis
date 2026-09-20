@@ -430,3 +430,52 @@ Until that visual evidence is accepted, do not replace
 `ConnectedSurfaceFrame`/`ConnectedSurfaceJoinFlares` in production. Waffle
 remains out of scope and `SurfaceMotion` remains slide-only.
 
+---
+
+## Latest continuation — production composition domain
+
+A source-side architecture audit found one additional constraint before the
+production phase.
+
+At exact upstream iRiS v2.31.0, `IrisBar.qml` aggregates Island, Control
+Center, Stage/card and Dock records into one `fieldShapes` registry and renders
+them through one full-output `IrisField` in the same `barWindow`. Card-owner
+joins therefore assume a shared paint/composition domain, not merely matching
+coordinates.
+
+Hadalis does not currently have that topology: Bar and physical ScreenEdges are
+Top-layer owners while `StyledPopup` is a separate full-output Overlay
+surface. The current PoC also paints its owner/frame records, so **do not paste
+the PoC wrapper directly into `StyledPopup`**; doing so can double-paint the
+owners in Overlay and cover/change existing Bar or Screen Edge presentation.
+
+The existing live matrix remains the first hard gate and is unchanged:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=diagnostic \
+scripts/iris-corner-poc/capture-matrix.sh
+
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=upstream-relative \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+If those matrices pass, the **next** experiment is still developer-only: model
+Hadalis' split composition and test exact iRiS shape/join math with owner records
+kept in output-local coordinates but a popup/junction-limited shader paint
+viewport (plus the existing attachment reveal boundary). This is a rendering
+scissor/domain concern, not a per-corner branch.
+
+Production cutover is not approved until that split-composition experiment also
+shows:
+
+- no duplicate Bar or Screen Edge paint;
+- no Bar-module occlusion;
+- no physical Screen Edge shadow/material discontinuity;
+- symmetric top/bottom/left/right joins and both clamp extremes;
+- unchanged slide-only `SurfaceMotion`, popup input/focus and fractional-scale
+  behavior.
+
+Do not modify Bar/ScreenEdges geometry to satisfy this gate, do not add helper
+windows or corner flags, and do not touch Waffle.

@@ -1903,3 +1903,85 @@ separate blob or hand-drawn corner.
 Production `StyledPopup`, `ConnectedSurfaceFrame`, Bar, ScreenEdges and Waffle
 remain unchanged by these commits.
 
+### 26.11 Production composition-domain finding — upstream one field, Hadalis split layers
+
+A follow-up source audit of exact upstream
+`snowarch/iNiR@9574fa424c0d1008e927454e933a7fbe292f9fb2` found an
+architectural precondition that the morphology PoC does not model by itself.
+
+Upstream iRiS does **not** ask a popup field in one window to visually weld to
+an owner painted by another window. In `IrisBar.qml`, one full-output
+`barWindow` builds a single `fieldShapes` registry by concatenating the
+Island, Control Center, Stage/cards, edit surfaces and Dock bodies, then gives
+that registry to one `IrisField`. Control Center/cards publish their rounded
+body records into that same field and join an owner record there. The owner and
+the joined card therefore share both the output-local coordinate system and the
+paint/composition domain.
+
+Hadalis production currently has a different ownership boundary:
+
+```text
+Bar / ScreenEdges        Top-layer surfaces
+StyledPopup              separate full-output Overlay surface
+```
+
+`StyledPopup` already derives anchor/body placement and tangent Screen Edge
+contact from geometry, but its current `ConnectedSurfaceFrame` paints only the
+popup-side presentation. The isolated iRiS PoC, by contrast, paints the primary
+owner, tangent frame owners and popup together inside its one Overlay field.
+
+Therefore a direct copy of the PoC field wrapper into `StyledPopup` is **not**
+an approved production design. The full owner/frame records would enlarge the
+field paint bounds and could repaint the Bar or physical Screen Edge in the
+Overlay surface, double-painting their material and potentially covering Bar
+content or changing physical-edge shadow/effect ownership.
+
+This does not invalidate the current morphology gate. The existing diagnostic
+and upstream-relative matrices still answer the first question: does the exact
+iRiS SDF/join model produce the desired connected silhouette?
+
+If that gate passes, add a second isolated composition experiment before any
+production cutover. Its purpose is to preserve the owner records as **field
+math/join participants** without making the popup Overlay repaint the complete
+owners. The candidate design to test is:
+
+```text
+output-local shape registry
+  owner
+  optional tangent frame owner
+  popup
+        |
+        +-- exact iRiS SDF/join math
+        |
+        +-- popup/junction-limited paint viewport
+             + existing attachment-boundary reveal/clip
+             + existing popup content/input lifecycle
+```
+
+The paint viewport/scissor is a renderer-composition boundary, not a
+corner-selection mechanism: shape records remain generic and geometry-derived.
+A production-style PoC may expose an explicit `paintBounds`/viewport override
+while keeping the owner records in full output-local coordinates. The tangent
+Screen Edge should likewise participate in the SDF join without repainting the
+entire persistent physical edge.
+
+Gate order is now:
+
+1. **G1 — morphology:** run and visually accept both existing 12-case
+   `card-owner` matrices on the real Wayland/Niri/GPU session.
+2. **G2 — split composition:** only after G1 passes, use an isolated
+   developer-only PoC to reproduce Hadalis' actual owner/popup composition
+   boundary and verify that a local Overlay field can use owner geometry without
+   duplicate owner paint.
+3. Only after G2 acceptance may production integration design advance to a
+   `StyledPopup` cutover experiment.
+
+G2 must explicitly verify no Bar-module occlusion, no duplicate Bar/Screen Edge
+material, no physical-edge shadow discontinuity, all four attachment edges,
+both tangent clamps, slide-under open/close, input/focus preservation and
+fractional-scale behavior.
+
+Do not solve this boundary by moving Bar/ScreenEdges, changing their geometry,
+adding same-layer helper windows, restoring corner-specific flags, or touching
+Waffle. If a local paint viewport cannot preserve the iRiS morphology, keep the
+experiment isolated and research another composition strategy.

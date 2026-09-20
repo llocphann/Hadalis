@@ -151,6 +151,12 @@ def main() -> None:
             fail(f"{key}: Overlay paint crosses primary owner seam")
         if data.get("paintRespectsTangentOwners") is not True:
             fail(f"{key}: Overlay paint crosses tangent Screen Edge owner")
+        if data.get("shadowIsolation") != "texture-source-rect":
+            fail(f"{key}: shadow is not texture-isolated")
+        if data.get("shadowRespectsOwnerSeam") is not True:
+            fail(f"{key}: shadow texture crosses primary owner seam")
+        if data.get("shadowRespectsTangentOwners") is not True:
+            fail(f"{key}: shadow texture crosses tangent Screen Edge owner")
 
         joins, at_start, at_end = expected_join(source)
         if data.get("joins") != joins:
@@ -163,6 +169,7 @@ def main() -> None:
         seam = float(data["attachmentBoundary"])
         paint = rect(data, "paint")
         inp = rect(data, "input")
+        shadow_rect = rect(data, "shadow")
         px, py, pw, ph = rect(data, "popup")
         area_ratio = (paint[2] * paint[3]) / max(1.0, W * H)
         if area_ratio >= 0.30:
@@ -170,35 +177,45 @@ def main() -> None:
 
         eps = 0.02
         if edge == "top":
-            if paint[1] < seam - eps or inp[1] < seam - eps:
-                fail(f"{key}: top owner interior is paint/input reachable")
+            if paint[1] < seam - eps or inp[1] < seam - eps \
+                    or shadow_rect[1] < seam - eps:
+                fail(f"{key}: top owner interior is paint/input/shadow reachable")
         elif edge == "bottom":
-            if paint[1] + paint[3] > seam + eps or inp[1] + inp[3] > seam + eps:
-                fail(f"{key}: bottom owner interior is paint/input reachable")
+            if paint[1] + paint[3] > seam + eps \
+                    or inp[1] + inp[3] > seam + eps \
+                    or shadow_rect[1] + shadow_rect[3] > seam + eps:
+                fail(f"{key}: bottom owner interior is paint/input/shadow reachable")
         elif edge == "left":
-            if paint[0] < seam - eps or inp[0] < seam - eps:
-                fail(f"{key}: left owner interior is paint/input reachable")
+            if paint[0] < seam - eps or inp[0] < seam - eps \
+                    or shadow_rect[0] < seam - eps:
+                fail(f"{key}: left owner interior is paint/input/shadow reachable")
         else:
-            if paint[0] + paint[2] > seam + eps or inp[0] + inp[2] > seam + eps:
-                fail(f"{key}: right owner interior is paint/input reachable")
+            if paint[0] + paint[2] > seam + eps \
+                    or inp[0] + inp[2] > seam + eps \
+                    or shadow_rect[0] + shadow_rect[2] > seam + eps:
+                fail(f"{key}: right owner interior is paint/input/shadow reachable")
 
         frame = float(data["frameThickness"])
         if at_start:
             if edge in ("top", "bottom"):
-                if paint[0] < frame - eps or inp[0] < frame - eps:
-                    fail(f"{key}: start Screen Edge strip is paint/input reachable")
+                if paint[0] < frame - eps or inp[0] < frame - eps \
+                        or shadow_rect[0] < frame - eps:
+                    fail(f"{key}: start Screen Edge strip is paint/input/shadow reachable")
             else:
-                if paint[1] < frame - eps or inp[1] < frame - eps:
-                    fail(f"{key}: start Screen Edge strip is paint/input reachable")
+                if paint[1] < frame - eps or inp[1] < frame - eps \
+                        or shadow_rect[1] < frame - eps:
+                    fail(f"{key}: start Screen Edge strip is paint/input/shadow reachable")
         if at_end:
             if edge in ("top", "bottom"):
                 if paint[0] + paint[2] > W - frame + eps \
-                        or inp[0] + inp[2] > W - frame + eps:
-                    fail(f"{key}: end Screen Edge strip is paint/input reachable")
+                        or inp[0] + inp[2] > W - frame + eps \
+                        or shadow_rect[0] + shadow_rect[2] > W - frame + eps:
+                    fail(f"{key}: end Screen Edge strip is paint/input/shadow reachable")
             else:
                 if paint[1] + paint[3] > H - frame + eps \
-                        or inp[1] + inp[3] > H - frame + eps:
-                    fail(f"{key}: end Screen Edge strip is paint/input reachable")
+                        or inp[1] + inp[3] > H - frame + eps \
+                        or shadow_rect[1] + shadow_rect[3] > H - frame + eps:
+                    fail(f"{key}: end Screen Edge strip is paint/input/shadow reachable")
 
         resting_x = float(data["restingPopupX"])
         resting_y = float(data["restingPopupY"])

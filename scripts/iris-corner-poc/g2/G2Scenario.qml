@@ -27,6 +27,37 @@ QtObject {
         return Math.max(low, Math.min(high, value))
     }
 
+    // One composition-domain clip for every Overlay primitive: iRiS field,
+    // input and shadow. Geometry stays full-output; only pixels/input already
+    // owned by Top-layer Bar/Screen Edge surfaces are removed.
+    function clipExternalOwners(raw) {
+        let left = Math.max(0, raw.x)
+        let top = Math.max(0, raw.y)
+        let right = Math.min(root.outputWidth, raw.x + raw.width)
+        let bottom = Math.min(root.outputHeight, raw.y + raw.height)
+
+        if (root.edgeName === "top")
+            top = Math.max(top, root.attachmentBoundary)
+        else if (root.edgeName === "bottom")
+            bottom = Math.min(bottom, root.attachmentBoundary)
+        else if (root.edgeName === "left")
+            left = Math.max(left, root.attachmentBoundary)
+        else
+            right = Math.min(right, root.attachmentBoundary)
+
+        if (root.horizontal && root.atTangentStart)
+            left = Math.max(left, root.frameThickness)
+        if (root.horizontal && root.atTangentEnd)
+            right = Math.min(right, root.outputWidth - root.frameThickness)
+        if (!root.horizontal && root.atTangentStart)
+            top = Math.max(top, root.frameThickness)
+        if (!root.horizontal && root.atTangentEnd)
+            bottom = Math.min(bottom, root.outputHeight - root.frameThickness)
+
+        return Qt.rect(left, top,
+            Math.max(0, right - left), Math.max(0, bottom - top))
+    }
+
     readonly property string edgeName: {
         const value = String(Quickshell.env("HADALIS_IRIS_G2_EDGE") || "top").toLowerCase()
         return ["top", "bottom", "left", "right"].includes(value) ? value : "top"
@@ -130,64 +161,24 @@ QtObject {
             root.animatedPopupRect.width + 2 * root.aaReach,
             root.animatedPopupRect.height + 2 * (root.fuse + root.aaReach))
 
-    readonly property rect paintBounds: {
-        const raw = root.rawPaintBounds
-        let left = Math.max(0, raw.x)
-        let top = Math.max(0, raw.y)
-        let right = Math.min(root.outputWidth, raw.x + raw.width)
-        let bottom = Math.min(root.outputHeight, raw.y + raw.height)
+    readonly property rect paintBounds:
+        root.clipExternalOwners(root.rawPaintBounds)
 
-        if (root.edgeName === "top")
-            top = Math.max(top, root.attachmentBoundary)
-        else if (root.edgeName === "bottom")
-            bottom = Math.min(bottom, root.attachmentBoundary)
-        else if (root.edgeName === "left")
-            left = Math.max(left, root.attachmentBoundary)
-        else
-            right = Math.min(right, root.attachmentBoundary)
+    readonly property rect visibleBodyRect:
+        root.clipExternalOwners(root.animatedPopupRect)
 
-        // A tangent Screen Edge is another external owner. Keep its record in
-        // the SDF join math, but never rasterize its own strip in Overlay.
-        if (root.horizontal && root.atTangentStart)
-            left = Math.max(left, root.frameThickness)
-        if (root.horizontal && root.atTangentEnd)
-            right = Math.min(right, root.outputWidth - root.frameThickness)
-        if (!root.horizontal && root.atTangentStart)
-            top = Math.max(top, root.frameThickness)
-        if (!root.horizontal && root.atTangentEnd)
-            bottom = Math.min(bottom, root.outputHeight - root.frameThickness)
-
-        return Qt.rect(left, top,
-            Math.max(0, right - left), Math.max(0, bottom - top))
-    }
-
-    readonly property rect visibleBodyRect: {
-        const body = root.animatedPopupRect
-        let left = Math.max(0, body.x)
-        let top = Math.max(0, body.y)
-        let right = Math.min(root.outputWidth, body.x + body.width)
-        let bottom = Math.min(root.outputHeight, body.y + body.height)
-        if (root.edgeName === "top")
-            top = Math.max(top, root.attachmentBoundary)
-        else if (root.edgeName === "bottom")
-            bottom = Math.min(bottom, root.attachmentBoundary)
-        else if (root.edgeName === "left")
-            left = Math.max(left, root.attachmentBoundary)
-        else
-            right = Math.min(right, root.attachmentBoundary)
-
-        if (root.horizontal && root.atTangentStart)
-            left = Math.max(left, root.frameThickness)
-        if (root.horizontal && root.atTangentEnd)
-            right = Math.min(right, root.outputWidth - root.frameThickness)
-        if (!root.horizontal && root.atTangentStart)
-            top = Math.max(top, root.frameThickness)
-        if (!root.horizontal && root.atTangentEnd)
-            bottom = Math.min(bottom, root.outputHeight - root.frameThickness)
-
-        return Qt.rect(left, top,
-            Math.max(0, right - left), Math.max(0, bottom - top))
-    }
+    // RectangularShadow's material is larger than the nominal item by its blur
+    // reach. Render that complete shadow into a private texture first, then
+    // expose only this owner-clipped sourceRect. The displayed texture cannot
+    // bleed back across a Top-layer owner boundary.
+    readonly property real shadowTextureExtent: root.shadowExtent + 2
+    readonly property rect rawShadowBounds: Qt.rect(
+        root.animatedPopupRect.x - root.shadowTextureExtent,
+        root.animatedPopupRect.y - root.shadowTextureExtent,
+        root.animatedPopupRect.width + 2 * root.shadowTextureExtent,
+        root.animatedPopupRect.height + 2 * root.shadowTextureExtent)
+    readonly property rect shadowPaintBounds:
+        root.clipExternalOwners(root.rawShadowBounds)
 
     readonly property rect revealRect: root.edgeName === "top"
         ? Qt.rect(0, root.attachmentBoundary,
@@ -304,6 +295,27 @@ QtObject {
         && (root.horizontal || !root.atTangentEnd
             || root.paintBounds.y + root.paintBounds.height
                 <= root.outputHeight - root.frameThickness + 0.01)
+    readonly property bool shadowRespectsOwnerSeam:
+        root.edgeName === "top"
+            ? root.shadowPaintBounds.y >= root.attachmentBoundary - 0.01
+        : root.edgeName === "bottom"
+            ? root.shadowPaintBounds.y + root.shadowPaintBounds.height
+                <= root.attachmentBoundary + 0.01
+        : root.edgeName === "left"
+            ? root.shadowPaintBounds.x >= root.attachmentBoundary - 0.01
+        : root.shadowPaintBounds.x + root.shadowPaintBounds.width
+            <= root.attachmentBoundary + 0.01
+    readonly property bool shadowRespectsTangentOwners:
+        (!root.horizontal || !root.atTangentStart
+            || root.shadowPaintBounds.x >= root.frameThickness - 0.01)
+        && (!root.horizontal || !root.atTangentEnd
+            || root.shadowPaintBounds.x + root.shadowPaintBounds.width
+                <= root.outputWidth - root.frameThickness + 0.01)
+        && (root.horizontal || !root.atTangentStart
+            || root.shadowPaintBounds.y >= root.frameThickness - 0.01)
+        && (root.horizontal || !root.atTangentEnd
+            || root.shadowPaintBounds.y + root.shadowPaintBounds.height
+                <= root.outputHeight - root.frameThickness + 0.01)
 
     property QtObject ownerWindowObject: PanelWindow {
         id: ownerWindow
@@ -416,26 +428,23 @@ QtObject {
                 width: popupWindow.width
                 height: popupWindow.height
 
+                // First render the complete blur into a bounded private
+                // texture. Directly clipping RectangularShadow is insufficient:
+                // its internal material extends beyond the nominal Item by the
+                // blur reach. ShaderEffectSource.sourceRect turns the final
+                // owner exclusion into an actual texture boundary.
                 Item {
-                    id: shadowClip
-                    z: 0
-                    visible: root.visibleBodyRect.width > 0
-                        && root.visibleBodyRect.height > 0
-                    x: root.animatedPopupRect.x
-                        - (root.shadowLeft ? root.shadowExtent + 2 : 0)
-                    y: root.animatedPopupRect.y
-                        - (root.shadowTop ? root.shadowExtent + 2 : 0)
-                    width: root.animatedPopupRect.width
-                        + (root.shadowLeft ? root.shadowExtent + 2 : 0)
-                        + (root.shadowRight ? root.shadowExtent + 2 : 0)
-                    height: root.animatedPopupRect.height
-                        + (root.shadowTop ? root.shadowExtent + 2 : 0)
-                        + (root.shadowBottom ? root.shadowExtent + 2 : 0)
+                    id: shadowTextureSource
+                    z: -100
+                    x: root.rawShadowBounds.x
+                    y: root.rawShadowBounds.y
+                    width: root.rawShadowBounds.width
+                    height: root.rawShadowBounds.height
                     clip: true
 
                     RectangularShadow {
-                        x: root.animatedPopupRect.x - shadowClip.x
-                        y: root.animatedPopupRect.y - shadowClip.y
+                        x: root.shadowTextureExtent
+                        y: root.shadowTextureExtent
                         width: root.animatedPopupRect.width
                         height: root.animatedPopupRect.height
                         radius: root.popupRadius + root.shadowExtent * 0.75
@@ -445,6 +454,29 @@ QtObject {
                         color: Qt.rgba(0, 0, 0, 0.7)
                         cached: false
                     }
+                }
+
+                ShaderEffectSource {
+                    id: isolatedShadow
+                    z: 0
+                    visible: root.visibleBodyRect.width > 0
+                        && root.visibleBodyRect.height > 0
+                        && root.shadowPaintBounds.width > 0
+                        && root.shadowPaintBounds.height > 0
+                    x: root.shadowPaintBounds.x
+                    y: root.shadowPaintBounds.y
+                    width: root.shadowPaintBounds.width
+                    height: root.shadowPaintBounds.height
+                    sourceItem: shadowTextureSource
+                    sourceRect: Qt.rect(
+                        root.shadowPaintBounds.x - root.rawShadowBounds.x,
+                        root.shadowPaintBounds.y - root.rawShadowBounds.y,
+                        root.shadowPaintBounds.width,
+                        root.shadowPaintBounds.height)
+                    hideSource: true
+                    live: true
+                    recursive: false
+                    smooth: true
                 }
 
                 IrisSplitField {
@@ -526,6 +558,7 @@ QtObject {
         const body = root.animatedPopupRect
         const paint = root.paintBounds
         const input = root.visibleBodyRect
+        const shadow = root.shadowPaintBounds
         const module = root.moduleRect
         return {
             output: root.targetScreen?.name ?? "",
@@ -558,6 +591,13 @@ QtObject {
             inputY: Number(input.y),
             inputWidth: Number(input.width),
             inputHeight: Number(input.height),
+            shadowX: Number(shadow.x),
+            shadowY: Number(shadow.y),
+            shadowWidth: Number(shadow.width),
+            shadowHeight: Number(shadow.height),
+            shadowIsolation: "texture-source-rect",
+            shadowRespectsOwnerSeam: root.shadowRespectsOwnerSeam,
+            shadowRespectsTangentOwners: root.shadowRespectsTangentOwners,
             moduleX: Number(module.x),
             moduleY: Number(module.y),
             moduleWidth: Number(module.width),

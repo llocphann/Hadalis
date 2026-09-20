@@ -82,3 +82,19 @@ Structural PASS is not visual PASS. Inspect both sheets for:
 6. progress 0.55 remains a pure cross-axis slide with unchanged body size.
 
 Production cutover remains blocked until this live matrix is accepted.
+
+
+### First live matrix finding
+
+The first real Niri matrix structurally passed, but visual review rejected its
+shadow path. The field/input scissor was correct; however the direct
+`RectangularShadow` subtree still exposed a narrow black blur tongue over the
+yellow external-owner strips, most clearly on left/right and tangent-clamped
+cases.
+
+That is a G2 failure, not an accepted cosmetic difference. The revised PoC
+renders the complete RectangularShadow into a bounded private
+`ShaderEffectSource`, then displays only an external-owner-clipped
+`sourceRect`. The iRiS field geometry is unchanged. Re-run the same 24-case
+matrix; owner strips must remain completely untouched while free-side shadow
+remains visible.

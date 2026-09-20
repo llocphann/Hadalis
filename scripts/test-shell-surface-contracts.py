@@ -1001,8 +1001,10 @@ def main() -> None:
               and retired_dock_residue not in config_qml
               and retired_dock_residue not in defaults_json,
               f"Panel-only Dock must not retain dead compatibility state: {retired_dock_residue}")
-    check("property string dockPosition" not in read("modules/dock/DockButton.qml"),
-          "Shared DockButton must not expose unused position state")
+    check("property string dockPosition" not in read("modules/dock/DockButton.qml")
+          and "property string dockPosition" not in dock_app_button
+          and dock_apps.count("dockPosition: root.dockPosition") == 1,
+          "Dock app delegates must not receive the retired dockPosition property; only DockPreview owns position")
     check("property bool smartIndicator:" not in dock_app_button
           and "property bool showAllDots:" not in dock_app_button
           and "property int maxDots:" not in dock_app_button,

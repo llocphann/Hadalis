@@ -594,7 +594,6 @@ Item {
             appToplevel: modelData
             appListRoot: root
             vertical: root.vertical
-            dockPosition: root.dockPosition
             dockThicknessOverride: root.dockThickness
 
             anchors.verticalCenter: !root.vertical ? parent?.verticalCenter : undefined

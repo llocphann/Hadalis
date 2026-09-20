@@ -1328,9 +1328,14 @@ without exposing a Settings write action yet:
 - ProbeShell exposes preview/prepare/authorize/internal-Apply instrumentation for
   isolated acceptance only. Settings Apply remains unavailable in W-C:
   production Settings has no Signal/Action prepare, authorize or Apply control.
-- Static W-C contract and Nix/QML parse must pass before live acceptance is
-  added. W-C is not considered fully qualified until a live success path and a
-  forced exact-postcondition rollback path both pass.
+- Live isolated acceptance runs the real reviewed Media candidate through
+  watcher reload, exact candidate SHA verification and inserted-handler
+  semantic rebind. A second scenario substitutes the still-resolvable existing
+  `toggleExpanded()` function anchor for the inserted-handler anchor, proves
+  the exact semantic postcondition rejects it, and requires automatic rollback
+  with `base-present`.
+- W-C is fully qualified only when both live scenarios pass; Settings Apply
+  remains unavailable at this gate.
 
 ## Not implemented yet
 
@@ -1345,13 +1350,14 @@ without exposing a Settings write action yet:
 
 ## Next gate
 
-W-C internal integration is present but remains unqualified until isolated live
-acceptance proves both lifecycle outcomes. The next step is to run the real
-`media.signal.doubleClickToggle` candidate through watcher reload, exact
-candidate SHA verification and inserted-handler semantic rebind, then inject a
-surviving wrong semantic anchor and prove automatic exact rollback to the base.
+2K-W-C now has static, Nix and isolated live lifecycle coverage for the single
+reviewed `media.signal.doubleClickToggle` target. The next gate, 2K-W-D, may
+consider user-facing Settings selection/authorization/Apply for only this exact
+fixture, reusing the already-qualified internal lifecycle rather than creating
+another write engine.
 
-Only after that live gate is green should a W-D gate consider user-facing
-Settings selection/authorization/Apply. Do not generalize from
-`onDoubleClicked` to arbitrary handlers or script bodies, and do not reuse
-data-binding TYPE/CYCLE proof tokens. Multi-file writes remain out of scope.
+W-D must preserve explicit one-shot authorization, fifth-writer serialization,
+exact handler semantic rebind and automatic exact rollback. Do not generalize
+from `onDoubleClicked` to arbitrary handlers or script bodies, and do not
+reuse data-binding TYPE/CYCLE proof tokens. Multi-file writes remain out of
+scope.

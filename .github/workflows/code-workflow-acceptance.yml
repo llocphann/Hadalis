@@ -181,6 +181,16 @@ jobs:
             python3 scripts/code-workflow/run-binding-production-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
           '
 
+      - name: Run isolated reviewed Signal/Action production lifecycle
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-signal-action-production
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-signal-action-production-lifecycle.py               --work-dir "$WORK_DIR"               --revision "${GITHUB_SHA}"               --sway "$(command -v sway)"               --grammar "$HADALIS_WORKFLOW_GRAMMAR"
+          '
+
       - name: Run cross-pipeline mutation contention acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-mutation-contention
@@ -219,6 +229,9 @@ jobs:
             ${{ runner.temp }}/hadalis-workflow-binding-production/binding-production-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-binding-production/*.log
             ${{ runner.temp }}/hadalis-workflow-binding-production/xdg-state/**
+            ${{ runner.temp }}/hadalis-workflow-signal-action-production/signal-action-production-lifecycle-report.json
+            ${{ runner.temp }}/hadalis-workflow-signal-action-production/*.log
+            ${{ runner.temp }}/hadalis-workflow-signal-action-production/xdg-state/**
             ${{ runner.temp }}/hadalis-workflow-mutation-contention/mutation-contention-report.json
             ${{ runner.temp }}/hadalis-workflow-mutation-contention/*.log
             ${{ runner.temp }}/hadalis-workflow-mutation-contention/xdg-state/**

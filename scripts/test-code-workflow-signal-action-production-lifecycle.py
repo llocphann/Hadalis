@@ -18,6 +18,9 @@ PHASE2 = (ROOT / "docs/CODE_WORKFLOW_PHASE2.md").read_text(
 WORKFLOW = (
     ROOT / ".github/workflows/code-workflow-acceptance.yml"
 ).read_text(encoding="utf-8")
+HARNESS = (
+    ROOT / "scripts/code-workflow/run-signal-action-production-lifecycle.py"
+).read_text(encoding="utf-8")
 EXCLUSIONS = json.loads(
     (ROOT / "sdata/runtime-exclusions.json").read_text(encoding="utf-8")
 )
@@ -220,6 +223,28 @@ for token in (
         fail("2K-W-C ProbeShell instrumentation missing " + token)
 
 for token in (
+    "def run_success(",
+    "def run_postcondition_failure(",
+    '"workflowSignalActionApply"',
+    '"signal-action-applied"',
+    '"signal-action-rollback-complete"',
+    '"signal-action-rolled-back"',
+    '"workflowSignalActionAnalyzeExistingAction"',
+    '"workflowSignalActionOverridePreparedAnchor"',
+    '"handler-candidate"',
+    '"root.toggleExpanded()"',
+    '"base-present"',
+):
+    if token not in HARNESS:
+        fail("2K-W-C live harness missing " + token)
+
+if (
+    "scripts/code-workflow/run-signal-action-production-lifecycle.py"
+    not in excluded
+):
+    fail("2K-W-C live harness must remain outside runtime payload")
+
+for token in (
     "Milestone 2K-W-C — reviewed signal/action internal production lifecycle",
     "explicit-signal-action-write-authorization-v1",
     "inserted-handler-rebound-exact-action",
@@ -230,8 +255,14 @@ for token in (
     if token not in PHASE2:
         fail("2K-W-C documentation missing " + token)
 
-if "Validate reviewed Signal/Action internal production lifecycle" not in WORKFLOW:
-    fail("Code Workflow acceptance does not run W-C static contract")
+for token in (
+    "Validate reviewed Signal/Action internal production lifecycle",
+    "Run isolated reviewed Signal/Action production lifecycle",
+    "run-signal-action-production-lifecycle.py",
+    "signal-action-production-lifecycle-report.json",
+):
+    if token not in WORKFLOW:
+        fail("Code Workflow acceptance missing W-C live contract " + token)
 
 print(
     "ok - Code Workflow 2K-W-C reviewed signal/action internal "

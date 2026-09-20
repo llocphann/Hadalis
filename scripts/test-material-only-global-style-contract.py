@@ -52,6 +52,7 @@ STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTi
 MATERIAL_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "MaterialTextField.qml"
 MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
 TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
+TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField.qml"
 WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
 ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
 ANGEL_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "AngelBackground.qml"
@@ -168,6 +169,7 @@ def main() -> None:
     material_text_field = MATERIAL_TEXT_FIELD.read_text(encoding="utf-8")
     material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
     toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
+    toolbar_text_field = TOOLBAR_TEXT_FIELD.read_text(encoding="utf-8")
     widgets_qmldir = WIDGETS_QMLDIR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
@@ -527,6 +529,24 @@ def main() -> None:
             )
     forbid(widgets_qmldir, "AngelAccentBar 1.0 AngelAccentBar.qml", "widgets/qmldir")
     forbid(widgets_qmldir, "AngelBackground 1.0 AngelBackground.qml", "widgets/qmldir")
+
+    # ToolbarTextField is reused by search/filter surfaces. Keep caller styling
+    # through colBackground plus text editing/context-menu behavior, but no dead
+    # global-style renderers.
+    for token in legacy_style_tokens:
+        forbid(toolbar_text_field, token, "ToolbarTextField.qml")
+    forbid(toolbar_text_field, "RegaliaControlFace {", "ToolbarTextField.qml")
+    for token in (
+        "property alias colBackground: background.color",
+        "placeholderTextColor: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colOnLayer1",
+        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+        "selectionColor: Appearance.colors.colSecondaryContainer",
+        "color: Appearance.colors.colLayer1",
+        "radius: Appearance.rounding.full",
+        "TextInputContextMenu {",
+    ):
+        require(toolbar_text_field, token, "ToolbarTextField.qml")
 
     # Material text inputs keep Settings-search registration, focus expansion and
     # context-menu behavior while dropping the unreachable Regalia face.

@@ -142,13 +142,26 @@ def main() -> None:
 
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     for token in (
-        "readonly property point bodyOrigin:",
-        "root.bodyItem.mapToItem(root, 0, 0)",
-        "root.bodyOrigin.x",
-        "root.bodyOrigin.y",
+        "import Quickshell",
+        "property real contactInset: 0",
+        "property int bodyTransformRevision: 0",
+        "readonly property rect bodyRect:",
+        "root.bodyItem.mapToItem(root, 0, 0,",
+        "TransformWatcher {",
+        "a: root",
+        "b: root.bodyItem",
+        "onTransformChanged: root.bodyTransformRevision++",
+        "readonly property real topContactY:",
+        "readonly property real bottomContactY:",
+        "readonly property real leftContactX:",
+        "readonly property real rightContactX:",
     ):
         check(token in join_flares,
-              f"Join flares must map nested body coordinates into their host: {token}")
+              f"Join flares must follow live body geometry and an explicit contact plane: {token}")
+    check("contactInset: root.edgeContactInset" in sidebar_host,
+          "Sidebar flare contact plane must start at the Screen Edge inner boundary")
+    check("contactInset: root.screenEdgeThickness" in osk,
+          "OSK flare contact plane must start at the Screen Edge inner boundary")
 
     check("hoverEnabled: root.active" in styled_popup
           and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in styled_popup

@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 
 // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (maintainer clarified 2026-09-19):
 // Contact corners MUST flare outward from the popup/sidebar/dashboard body into
@@ -19,19 +20,56 @@ Item {
     property real flareRadius: PerimeterTokens.joinFlareRadius
     property real crossScale: PerimeterTokens.joinFlareCrossScale
     property real progress: 1
+    // Distance from the physical body edge to the owner's real inner contact
+    // plane. Most popups already stop at that plane and keep this at 0.
+    // Surfaces that deliberately underlap Screen Edge pixels (Sidebar/OSK)
+    // pass the underlap thickness here without moving their body geometry.
+    property real contactInset: 0
     property bool joinTop: false
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
 
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
-    readonly property point bodyOrigin: root.bodyItem
-        ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
+
+    // mapToItem() is geometrically correct but does not itself create reactive
+    // dependencies for every transform in the item/ancestor chain. Watch that
+    // relative transform explicitly and map the complete body rect so endpoint
+    // placement also follows animated scale, not only the transformed origin.
+    property int bodyTransformRevision: 0
+    readonly property rect bodyRect: {
+        const dependency = root.bodyTransformRevision
+        if (dependency < 0 || !root.bodyItem
+                || root.bodyItem.width <= 0 || root.bodyItem.height <= 0)
+            return Qt.rect(0, 0, 0, 0)
+        return root.bodyItem.mapToItem(root, 0, 0,
+            root.bodyItem.width, root.bodyItem.height)
+    }
+    readonly property real effectiveContactInset: Math.max(0,
+        Number.isFinite(Number(root.contactInset)) ? Number(root.contactInset) : 0)
+    readonly property real horizontalContactInset: Math.min(
+        root.effectiveContactInset, Math.max(0, root.bodyRect.height))
+    readonly property real verticalContactInset: Math.min(
+        root.effectiveContactInset, Math.max(0, root.bodyRect.width))
+    readonly property real topContactY:
+        root.bodyRect.y + root.horizontalContactInset
+    readonly property real bottomContactY:
+        root.bodyRect.y + root.bodyRect.height - root.horizontalContactInset
+    readonly property real leftContactX:
+        root.bodyRect.x + root.verticalContactInset
+    readonly property real rightContactX:
+        root.bodyRect.x + root.bodyRect.width - root.verticalContactInset
+
+    TransformWatcher {
+        a: root
+        b: root.bodyItem
+        onTransformChanged: root.bodyTransformRevision++
+    }
 
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,
-        root.bodyItem?.width / 2 ?? 0,
-        root.bodyItem?.height / 2 ?? 0))
+        root.bodyRect.width / 2,
+        root.bodyRect.height / 2))
     readonly property real depth: Math.max(0,
         Math.min(root.radius, root.radius * Math.max(0.20, Math.min(1, root.crossScale))))
 
@@ -104,32 +142,32 @@ Item {
     Flare {
         flareCorner: "topLeft"
         visible: root.joinTop && !root.joinLeft && root.radius > 0
-        x: root.bodyOrigin.x - root.radius
-        y: root.bodyOrigin.y
+        x: root.bodyRect.x - root.radius
+        y: root.topContactY
         width: root.radius
         height: root.depth
     }
     Flare {
         flareCorner: "topRight"
         visible: root.joinTop && !root.joinRight && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width
-        y: root.bodyOrigin.y
+        x: root.bodyRect.x + root.bodyRect.width
+        y: root.topContactY
         width: root.radius
         height: root.depth
     }
     Flare {
         flareCorner: "bottomLeft"
         visible: root.joinBottom && !root.joinLeft && root.radius > 0
-        x: root.bodyOrigin.x - root.radius
-        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
+        x: root.bodyRect.x - root.radius
+        y: root.bottomContactY - root.depth
         width: root.radius
         height: root.depth
     }
     Flare {
         flareCorner: "bottomRight"
         visible: root.joinBottom && !root.joinRight && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width
-        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
+        x: root.bodyRect.x + root.bodyRect.width
+        y: root.bottomContactY - root.depth
         width: root.radius
         height: root.depth
     }
@@ -138,32 +176,32 @@ Item {
     Flare {
         flareCorner: "leftTop"
         visible: root.joinLeft && !root.joinTop && root.radius > 0
-        x: root.bodyOrigin.x
-        y: root.bodyOrigin.y - root.radius
+        x: root.leftContactX
+        y: root.bodyRect.y - root.radius
         width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "leftBottom"
         visible: root.joinLeft && !root.joinBottom && root.radius > 0
-        x: root.bodyOrigin.x
-        y: root.bodyOrigin.y + root.bodyItem.height
+        x: root.leftContactX
+        y: root.bodyRect.y + root.bodyRect.height
         width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "rightTop"
         visible: root.joinRight && !root.joinTop && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
-        y: root.bodyOrigin.y - root.radius
+        x: root.rightContactX - root.depth
+        y: root.bodyRect.y - root.radius
         width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "rightBottom"
         visible: root.joinRight && !root.joinBottom && root.radius > 0
-        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
-        y: root.bodyOrigin.y + root.bodyItem.height
+        x: root.rightContactX - root.depth
+        y: root.bodyRect.y + root.bodyRect.height
         width: root.depth
         height: root.radius
     }

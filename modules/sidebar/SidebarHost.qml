@@ -60,6 +60,11 @@ Scope {
         root.roleId, sidebarRoot.screen?.name ?? "")
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
+    // The visible body intentionally underlaps the persistent Screen Edge to
+    // the physical display edge. Contact curvature, however, belongs at the
+    // Screen Edge's inner boundary rather than at x=0 / x=window.width.
+    readonly property real edgeContactInset: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     // The owning Overlay surface is anchored to the physical display edge.
     // Let the visible body underlap the entire persistent Screen Edge band,
     // rather than stopping at its inner boundary with only a 2px seam overlap.
@@ -1107,6 +1112,7 @@ Scope {
             fillColor: sidebarContentLoader.item?.connectedSurfaceColor
                 ?? Appearance.colors.colLayer0
             flareRadius: PerimeterTokens.joinFlareRadius
+            contactInset: root.edgeContactInset
             // JoinFlares maps bodyItem through mapToItem(), so the shoulder
             // already follows Loader translations exactly once. Keep it visible
             // through translated slide/drop motion; other morph modes still wait

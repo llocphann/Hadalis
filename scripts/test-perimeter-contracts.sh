@@ -26,6 +26,25 @@ for file in \
     [[ -f "$common/$file" ]] || fail "missing shared primitive $file"
 done
 
+join_flares="$common/ConnectedSurfaceJoinFlares.qml"
+for token in \
+    'import Quickshell' \
+    'property real contactInset: 0' \
+    'property int bodyTransformRevision: 0' \
+    'readonly property rect bodyRect:' \
+    'root.bodyItem.mapToItem(root, 0, 0,' \
+    'TransformWatcher {' \
+    'a: root' \
+    'b: root.bodyItem' \
+    'onTransformChanged: root.bodyTransformRevision++' \
+    'readonly property real topContactY:' \
+    'readonly property real bottomContactY:' \
+    'readonly property real leftContactX:' \
+    'readonly property real rightContactX:'; do
+    grep -Fq "$token" "$join_flares" \
+        || fail "join flares must follow live body geometry and the real contact plane: $token"
+done
+
 for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceMask; do
     grep -Fq "$primitive" "$styled" \
         || fail "StyledPopup must keep using $primitive"
@@ -74,9 +93,11 @@ fi
 for token in \
     'import qs.modules.common.perimeter' \
     'readonly property real edgeDecorationMargin:' \
+    'readonly property real edgeContactInset:' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
     'bodyItem: sidebarContentLoader' \
+    'contactInset: root.edgeContactInset' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$sidebar" \

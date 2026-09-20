@@ -36,6 +36,7 @@ CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
 STYLED_SWITCH = ROOT / "modules" / "common" / "widgets" / "StyledSwitch.qml"
+TOOLBAR = ROOT / "modules" / "common" / "widgets" / "Toolbar.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -133,6 +134,7 @@ def main() -> None:
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
     styled_switch = STYLED_SWITCH.read_text(encoding="utf-8")
+    toolbar = TOOLBAR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -477,6 +479,34 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # Toolbar is a shared shell primitive. Its wallpaper-backdrop positioning,
+    # public aliases and shadow toggle remain, but Global Theme decorations are dead.
+    for token in legacy_style_tokens:
+        forbid(toolbar, token, "Toolbar.qml")
+    for token in (
+        "ZzzPlate {",
+        "ZzzSurfaceAccent {",
+        "RegaliaPlate {",
+        "Appearance.zzz.",
+        "Appearance.regalia.",
+        "Appearance.angel.",
+        "Appearance.inir.",
+        "Appearance.aurora.",
+    ):
+        forbid(toolbar, token, "Toolbar.qml")
+    for token in (
+        "property bool enableShadow: true",
+        "property bool transparent: false",
+        "property alias colBackground: background.color",
+        "active: root.enableShadow && !root.transparent",
+        "fallbackColor: Appearance.colors.colSurfaceContainer",
+        "screenX: root.screenX",
+        "screenY: root.screenY",
+        'border.color: "transparent"',
+        "radius: height / 2",
+    ):
+        require(toolbar, token, "Toolbar.qml")
 
     # StyledSwitch is shell-wide runtime. Keep the public scale/color knobs and
     # Material motion while removing constant-dead Global Theme render branches.

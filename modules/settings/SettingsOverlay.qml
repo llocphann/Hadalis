@@ -506,10 +506,7 @@ Scope {
                 settingsPanel.bottomBarOwnsEdge
                     ? Appearance.sizes.barHeight : settingsPanel.screenEdgeThickness
             readonly property real bottomContactPlane:
-                settingsPanel.height - Math.max(0,
-                    settingsPanel.bottomOwnerThickness - Math.min(
-                        settingsPanel.bottomOwnerThickness,
-                        PerimeterTokens.seamOverlap))
+                settingsPanel.height - settingsPanel.bottomOwnerThickness
 
             Loader {
                 anchors.fill: parent

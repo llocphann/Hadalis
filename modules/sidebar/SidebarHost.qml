@@ -65,34 +65,10 @@ Scope {
     // inner seam rather than at x=0 / x=window.width.
     readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    readonly property string barEdge:
-        (Config.options?.bar?.vertical ?? false)
-            ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
-            : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
-    readonly property bool verticalBarOwnsAttachedEdge: {
-        if (!(Config.options?.bar?.vertical ?? false)
-                || root.barEdge !== root.edge
-                || !GlobalStates.barOpen
-                || GlobalStates.widgetEditMode
-                || (Config.options?.bar?.autoHide?.enable ?? false)
-                || !(Config.options?.enabledPanels ?? []).includes("iiVerticalBar"))
-            return false
-        const list = Config.options?.bar?.screenList ?? []
-        if (!list || list.length === 0)
-            return true
-        const matched = Quickshell.screens.filter(screen => {
-            const name = String(screen?.name ?? "")
-            return name.length > 0 && list.includes(name)
-        })
-        return matched.length === 0 || list.includes(root._screenName)
-    }
-    readonly property real edgeOwnerThickness: root.verticalBarOwnsAttachedEdge
-        ? Appearance.sizes.verticalBarWidth : root.screenEdgeThickness
-    // Separate layer-shell surfaces need a tiny overlap at the antialiased seam.
-    // This does not move the Sidebar body or the locked Screen Edge/Bar geometry.
-    readonly property real edgeContactInset: Math.max(0,
-        root.edgeOwnerThickness - Math.min(
-            root.edgeOwnerThickness, PerimeterTokens.seamOverlap))
+    // The visible body underlaps the physical edge band, but the contact curve
+    // anchors to the exact Screen Edge inner boundary. Raster overlap is owned
+    // by ConnectedSurfaceJoinFlares, not by this coordinate.
+    readonly property real edgeContactPlane: root.screenEdgeThickness
     // The owning Overlay surface is anchored to the physical display edge.
     // Let the visible body underlap the entire persistent Screen Edge band,
     // rather than stopping at its inner boundary with only a 2px seam overlap.
@@ -993,9 +969,9 @@ Scope {
             fillColor: sidebarContentLoader.item?.connectedSurfaceColor
                 ?? Appearance.colors.colLayer0
             flareRadius: PerimeterTokens.joinFlareRadius
-            leftContactPlane: root.isLeftEdge ? root.edgeContactInset : -1
+            leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1
             rightContactPlane: root.isLeftEdge
-                ? -1 : sidebarRoot.width - root.edgeContactInset
+                ? -1 : sidebarRoot.width - root.edgeContactPlane
             // Keep the fully formed shoulder alive through both directions of
             // the same slide-only motion used by connected popups.
             progress: (root.presentationOpen || sidebarContentLoader.animating)

@@ -73,20 +73,24 @@ fi
 
 for token in \
     'readonly property real edgeDecorationMargin:' \
-    'readonly property real edgeOwnerThickness:' \
-    'readonly property real edgeContactInset:' \
-    'PerimeterTokens.seamOverlap' \
+    'readonly property real screenEdgeThickness:' \
+    'readonly property real edgeContactPlane: root.screenEdgeThickness' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
     'bodyItem: sidebarContentLoader.item?.connectedSurfaceItem' \
     'fillColor: sidebarContentLoader.item?.connectedSurfaceColor' \
-    'leftContactPlane: root.isLeftEdge ? root.edgeContactInset : -1' \
-    'sidebarRoot.width - root.edgeContactInset' \
+    'leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1' \
+    'sidebarRoot.width - root.edgeContactPlane' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
         || fail "SidebarHost must own visible flared Screen Edge endpoints: $token"
 done
+if grep -Fq 'edgeOwnerThickness' "$root/modules/sidebar/SidebarHost.qml" \
+        || grep -Fq 'edgeContactInset' "$root/modules/sidebar/SidebarHost.qml" \
+        || grep -Fq 'verticalBarOwnsAttachedEdge' "$root/modules/sidebar/SidebarHost.qml"; then
+    fail 'Sidebar contact plane must stay equal to the Screen Edge seam without per-owner offset patches'
+fi
 
 grep -Fq 'root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0' \
     "$root/modules/sidebar/SidebarHost.qml" \
@@ -258,8 +262,10 @@ grep -Fq 'readonly property real revealProgress: 1 - root.offsetScale' "$styled_
     || fail 'StyledPopup reveal progress must be the inverse of offsetScale'
 grep -Fq 'Behavior on offsetScale {' "$styled_popup" \
     || fail 'StyledPopup must animate the normalized offset scalar directly'
-grep -Fq 'Appearance.animation.elementMove.duration' "$styled_popup" \
-    || fail 'StyledPopup must use expressive default-spatial timing for the shared slide'
+grep -Fq 'Appearance.animationCurves.standardDecel' "$styled_popup" \
+    || fail 'StyledPopup enter motion must remain non-overshooting'
+grep -Fq 'Appearance.animationCurves.standardAccel' "$styled_popup" \
+    || fail 'StyledPopup exit motion must remain non-overshooting'
 grep -Fq 'readonly property real revealProgress: clamp(progress, 0, 1)' "$connected_geometry" \
     || fail 'connected geometry must clamp semantic reveal progress'
 grep -Fq 'readonly property real motionProgress:' "$connected_geometry" \
@@ -306,13 +312,11 @@ if grep -Fq 'layer.effect: MultiEffect {' "$connected_frame"; then
 fi
 grep -Fq 'ConnectedSurfaceJoinFlares {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must add concave shoulders at directly joined edge endpoints'
-for token in \
-    'shadowEnabled: root.shadowEnabled' \
-    'shadowExtent: root.shadowExtent' \
-    'shadowColor: root.shadowColor'; do
-    grep -Fq "$token" "$connected_frame" \
-        || fail "ConnectedSurfaceFrame must forward live Screen Edge shadow state into its shoulders: $token"
-done
+if grep -Fq 'shadowEnabled:' "$join_flares" \
+        || grep -Fq 'shadowExtent:' "$join_flares" \
+        || grep -Fq 'shadowColor:' "$join_flares"; then
+    fail 'ConnectedSurfaceJoinFlares must stay fill-only; body shadow ownership remains in ConnectedSurfaceFrame'
+fi
 grep -Fq 'readonly property bool bodyHovered: bodyHover.hovered' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must expose full-body hover ownership'
 grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \
@@ -338,7 +342,11 @@ for token in \
     'root.bodyItem.mapToItem(root, 0, 0,' \
     'TransformWatcher {' \
     'property int paintRevision: 0' \
-    'component Flare: Canvas {' \
+    'property real contactOverlap: PerimeterTokens.seamOverlap' \
+    'component Flare: Item {' \
+    'required property string ownerEdge' \
+    'id: seamBridge' \
+    'Canvas {' \
     'ctx.bezierCurveTo'; do
     grep -Fq "$token" "$join_flares" \
         || fail "connected shoulder runtime contract missing: $token"
@@ -351,6 +359,17 @@ grep -Fq 'visible: root.reveal > 0.001 && root.radius > 0' "$join_flares" \
 if grep -Fq ') * root.reveal' "$join_flares"; then
     fail 'connected join flare radius must not shrink with reveal progress'
 fi
+
+reveal_clip="$root/modules/common/perimeter/ConnectedSurfaceRevealClip.qml"
+for token in \
+    'property real contactOverlap: PerimeterTokens.seamOverlap' \
+    'root.edge === "top"' \
+    'root.edge === "bottom"' \
+    'root.edge === "left"' \
+    'root.edge === "right"'; do
+    grep -Fq "$token" "$reveal_clip" \
+        || fail "ConnectedSurfaceRevealClip must allow owner-side raster overlap without shifting the contact plane: $token"
+done
 grep -Fq 'root.joinTop && !root.joinLeft' "$join_flares" \
     || fail 'top flare must suppress itself when the adjacent Screen Edge is also joined'
 for token in \

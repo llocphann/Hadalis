@@ -143,7 +143,7 @@ Item {
         + (root.directBottomAttachment
             ? root.connectedDecorationMargin
             : root.connectedDecorationMargin * 2)
-    clip: root.directBottomAttachment
+    clip: false
 
     function syncReveal(): void {
         root.revealProgress = root.popupPresented ? 1 : 0
@@ -167,10 +167,21 @@ Item {
     }
 
     Item {
-        id: dashboardSurfaceLayer
-        anchors.fill: parent
-        transform: Translate {
-            y: (1 - root.revealProgress) * dashContainer.height
+        id: dashboardRevealClip
+        x: 0
+        y: 0
+        width: root.width
+        height: root.height
+            + (root.directBottomAttachment ? PerimeterTokens.seamOverlap : 0)
+        clip: root.directBottomAttachment
+
+        Item {
+            id: dashboardSurfaceLayer
+            width: root.width
+            height: root.height
+            transform: Translate {
+                y: (1 - root.revealProgress) * dashContainer.height
+            }
         }
     }
     // Expose only presentation geometry needed by the owning Overview window.
@@ -287,9 +298,8 @@ Item {
         fillColor: dashContainer.color
         flareRadius: PerimeterTokens.joinFlareRadius
         progress: root.revealProgress > 0.001 ? 1 : 0
-        // Overview places this component so its local bottom coincides with the
-        // authoritative bottomAttachmentY seam of the current physical owner.
-        bottomContactPlane: root.directBottomAttachment ? root.height : -1
+        // dashContainer is anchored to the authoritative owner seam. Derive
+        // contact from the rendered body edge; only raster overlap crosses it.
         joinBottom: root.directBottomAttachment
     }
 

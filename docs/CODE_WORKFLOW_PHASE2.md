@@ -938,6 +938,8 @@ Implemented user-facing write boundary:
 - Settings exposes `Apply Connect` only for the selected matching transaction.
   It calls `beginAuthorizedConnectApply()`; Settings never calls the internal
   `beginConnectLifecycle()` function or `connect_commit.py` directly.
+  The transaction header reports `CONNECT APPLY READY` only while that exact
+  authorization remains valid.
 - `beginAuthorizedConnectApply()` consumes the existing deliberate
   authorization as a single start opportunity and invokes the already-qualified
   2K-Q lifecycle exactly once. A second start while the lifecycle is in flight

@@ -107,7 +107,7 @@ for token in (
     "def run_user_apply_success(",
     "def run_user_apply_rollback(",
     '"workflowConnectApply"',
-    '"workflowConnectAuthorize"',
+    "authorize_connect(probe)",
     '"connectApplyEnabled"',
     '"connect-applied"',
     '"connect-rollback-complete"',

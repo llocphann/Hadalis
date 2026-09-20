@@ -967,12 +967,52 @@ Implemented user-facing write boundary:
   remains explicit and production TYPE/CYCLE remain UNKNOWN; the UI does not
   relabel either proof as generic SAFE.
 
+## Milestone 2K-T-A — isolated reviewed Disconnect transaction proof
+
+Implemented the first non-production Disconnect transaction boundary:
+
+- The promoted write target is deliberately narrower than the existing generic
+  Disconnect preview: only `bar/clock` edge `clock.data.time` is reviewed for
+  transaction proof. Its exact source identity is
+  `modules/bar/ClockWidget.qml`, property `text`, expression
+  `DateTime.timeDisplay`.
+- `disconnect_prepare.py` reparses the current source, resolves the exact
+  semantic anchor, verifies binding/property/expression identity and rebuilds
+  the standalone-line deletion candidate using the already-qualified 2K-C
+  transform.
+- Preparation requires exact preview candidate SHA equality. The complete
+  candidate is reparsed with zero diagnostics and the old semantic anchor must
+  resolve as `missing`; this is the Disconnect postcondition rather than a
+  Connect-style inserted-anchor rebind.
+- Exact rollback snapshot, candidate and manifest artifacts are persisted
+  mode-0600 outside the runtime source tree. The manifest binds source/base/
+  candidate SHA, old semantic anchor, property identity, expected expression,
+  reviewed edge ID, resulting unbound/default state and
+  `semantic-anchor-missing`; a separate manifest SHA-256 binds the handoff.
+- Preparation closes its source TOCTOU window after artifact persistence. Source
+  drift deletes the just-created handoff and fails closed.
+- `disconnect_commit.py` validates only the Disconnect manifest contract and
+  reuses the qualified `atomic_replace_if_hash()` primitive for commit and
+  exact rollback. Verify reports candidate/base/diverged source state.
+- The engine rejects manifest drift before write and refuses stale source
+  replacement without overwriting the external edit.
+- Disconnect has no type-compatibility, cycle-safety or Connect qualification
+  proof tokens. Deletion safety is exact binding identity + exact candidate +
+  post-delete absence.
+- Both helpers remain excluded from the runtime payload and are not referenced
+  by `CodeWorkflowTransaction` or Settings. Disconnect Apply remains unavailable
+  at 2K-T-A.
+- Native acceptance uses the real Clock source and reviewed `clock.data.time`
+  binding to prove preparation, exact artifacts, commit, verify, rollback,
+  manifest-drift rejection and source-conflict preservation.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
-- applying Disconnect transforms;
+- production Disconnect preparation/authorization/lifecycle/Apply;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
 - additional reviewed Connect targets beyond the first Clock fixture;
+- additional reviewed Disconnect targets beyond `clock.data.time`;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -980,18 +1020,18 @@ Implemented user-facing write boundary:
 
 ## Next gate
 
-2K-S completes the first end-to-end reviewed Connect edit without broadening the
-projection or introducing a second mutation engine. The next gate, 2K-T, should
-promote the already-qualified simple Disconnect preview into the same
-transactional architecture.
+2K-T-A proves the Disconnect-specific artifact and atomic mutation contract
+without production wiring. The next stage, 2K-T-B, should promote that exact
+reviewed target into `CodeWorkflowTransaction` while preserving the same
+separation that qualified Connect: preparation first, then a distinct explicit
+authorization snapshot, then an exactly-once user Apply lifecycle.
 
-2K-T must remove only one exact reviewed direct binding, bind deletion artifacts
-to source SHA + semantic anchor + property identity, require an explicit
-authorization snapshot, and reuse atomic commit/reload/verify/rebind-or-static
-postcondition/rollback semantics. Disconnect must not inherit Connect's type or
-cycle proofs because deletion has a different safety argument; its acceptance
-must instead prove exact binding identity, post-delete absence and rollback on
-reload/verification failure.
+2K-T-B must bind authorization to the exact manifest SHA/history command and
+must expose no TYPE/CYCLE language. After candidate reload it must verify the
+candidate SHA and prove the old semantic anchor is still `missing`; failure of
+reload, candidate verification or absence postcondition must invoke exact
+rollback. History/source drift, capability loss or manifest drift must expire
+authorization before write.
 
 Direct-binding replacement remains preview-only until its own proof and
 authorization gate is qualified. Multi-file writes remain out of scope.

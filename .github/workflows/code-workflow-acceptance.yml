@@ -84,6 +84,9 @@ jobs:
       - name: Validate user-facing Connect Apply boundary
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-apply.py'
 
+      - name: Prove isolated reviewed Disconnect transaction
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-disconnect-transaction.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply

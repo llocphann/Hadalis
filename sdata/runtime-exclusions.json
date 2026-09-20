@@ -161,6 +161,8 @@
     "scripts/code-workflow/run-connect-production-lifecycle.py",
     "scripts/code-workflow/run-connect-user-apply.py",
     "scripts/code-workflow/run-connect-authorization.py",
+    "scripts/code-workflow/disconnect_prepare.py",
+    "scripts/code-workflow/disconnect_commit.py",
     "scripts/iris-corner-poc"
   ],
   "excludedDirectorySuffixes": {}

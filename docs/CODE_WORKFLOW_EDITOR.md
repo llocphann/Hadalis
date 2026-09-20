@@ -50,6 +50,10 @@ capability or lifecycle invalidation. 2K-S adds the user-facing Apply Connect
 control over that exact authorization and the already-qualified lifecycle.
 The control starts once, exposes write/reload/verify/rebind/rollback phase state,
 and requires regeneration after success or rollback.
+2K-T-A now proves a separate, non-production Disconnect transaction for the
+single reviewed `clock.data.time` binding: exact deletion artifacts, old-anchor
+absence, manifest identity and atomic commit/verify/rollback. Those helpers stay
+outside the runtime payload; Disconnect Apply is still unavailable.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write the qualified

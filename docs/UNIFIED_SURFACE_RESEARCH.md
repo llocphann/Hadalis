@@ -2125,3 +2125,43 @@ scripts/iris-corner-poc/capture-matrix.sh
 
 Review the two `detail-sheet-card-owner-*.png` files and their matching
 profile-specific manifests/session metadata before any G2 work.
+
+### 26.14 One-command G1 evidence bundle
+
+To reduce operator error during the real-session gate, commit
+`6211d6fbd6fed92a93ff92d935b84d32d400184f`
+(`test(surface): bundle iRiS G1 evidence run`) adds:
+
+```text
+scripts/iris-corner-poc/capture-g1.sh
+```
+
+This wrapper is developer-only and runtime-excluded with the rest of the PoC.
+It does not change any SDF, geometry or production code.
+
+The wrapper deliberately makes the acceptance sequence stricter:
+
+1. G1 is forced to `card-owner`; an `edge-reach` request is rejected.
+2. The source contract runs before any screenshot is taken.
+3. Both required profiles run in order:
+   `diagnostic`, then `upstream-relative`.
+4. Unless the maintainer explicitly sets `HADALIS_IRIS_POC_CAPTURE_DIR`, one
+   timestamped directory contains the complete paired attempt.
+5. `g1-run.txt` records the actual checkout HEAD, requested output, mode and
+   profile pair, so later review cannot accidentally mix artifacts from
+   different source revisions.
+
+The preferred live command is now:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+scripts/iris-corner-poc/capture-g1.sh
+```
+
+The resulting evidence directory should contain both detail sheets, both
+profile-specific manifests, both profile-specific session JSON files, all 24
+full/focused PNG pairs' case artifacts, and `g1-run.txt`.
+
+G1 remains unproven until this wrapper is run on the maintainer's actual
+Wayland/Niri/GPU session and the detail sheets are visually accepted. Do not
+start G2 merely because the wrapper or static contract succeeds.

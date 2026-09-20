@@ -549,3 +549,40 @@ Expected provenance artifacts now include
 contact/detail sheets.
 
 Do not begin G2 until both live detail sheets are visually accepted.
+
+### G1 wrapper now available
+
+The preferred maintainer command is now:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+scripts/iris-corner-poc/capture-g1.sh
+```
+
+Added by:
+
+```text
+6211d6fbd6fed92a93ff92d935b84d32d400184f
+test(surface): bundle iRiS G1 evidence run
+```
+
+The wrapper forces `card-owner`, runs
+`scripts/test-iris-corner-poc-contract.py` first, captures
+`diagnostic` and `upstream-relative` in one timestamped directory, and
+writes `g1-run.txt` with the actual repository HEAD. This prevents a review
+from accidentally combining profiles produced by different revisions.
+
+After it finishes, inspect at minimum:
+
+```text
+detail-sheet-card-owner-diagnostic.png
+detail-sheet-card-owner-upstream-relative.png
+manifest-card-owner-diagnostic.tsv
+manifest-card-owner-upstream-relative.tsv
+session-card-owner-diagnostic.json
+session-card-owner-upstream-relative.json
+g1-run.txt
+```
+
+This does not change the gate: production and G2 remain blocked until the live
+detail sheets pass the existing morphology criteria.

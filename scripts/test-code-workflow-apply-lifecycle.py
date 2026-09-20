@@ -39,8 +39,14 @@ commit_start = service.index("commitProcess.running = true")
 if write_issued < 0 or commit_start < 0 or write_issued > commit_start:
     fail("write-issued must be persisted before commit.py is started")
 
-if "Quickshell.reload(" in service:
-    fail("Apply lifecycle must rely on exactly one watcher-driven reload")
+apply_region_start = service.index("function beginApplyLifecycle(): bool")
+apply_region_end = service.index("function _clearPresentation(): void")
+if "Quickshell.reload(" in service[apply_region_start:apply_region_end]:
+    fail("literal Apply lifecycle must rely on exactly one watcher-driven reload")
+if service.count("Quickshell.reload(false)") != 1:
+    fail("only Connect rollback fallback may issue an explicit shell reload")
+if "connectRollbackReloadFallbackTimer" not in service:
+    fail("explicit shell reload must remain scoped to Connect rollback recovery")
 
 for token in (
     "target: Quickshell",

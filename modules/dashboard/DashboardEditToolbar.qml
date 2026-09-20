@@ -12,9 +12,7 @@ Rectangle {
     readonly property var hiddenIds: root.canvasController?.hiddenIds ?? []
 
     readonly property real horizontalPadding: 7
-    implicitWidth: Math.ceil(Math.max(
-        editActions.implicitWidth,
-        availableModulesRow.implicitWidth)
+    implicitWidth: Math.ceil(editActions.implicitWidth
         + root.horizontalPadding * 2)
     implicitHeight: toolbarColumn.implicitHeight + 14
     visible: root.editing
@@ -110,58 +108,46 @@ Rectangle {
             }
         }
 
-        Flickable {
-            id: availableModulesViewport
+        Flow {
             Layout.fillWidth: true
-            Layout.preferredHeight: availableModulesRow.implicitHeight
             visible: root.hiddenIds.length > 0
-            contentWidth: availableModulesRow.implicitWidth
-            contentHeight: availableModulesRow.implicitHeight
-            clip: true
-            flickableDirection: Flickable.HorizontalFlick
-            boundsBehavior: Flickable.StopAtBounds
-            interactive: contentWidth > width
+            spacing: 5
 
-            Row {
-                id: availableModulesRow
-                spacing: 5
+            Repeater {
+                model: root.hiddenIds
+                delegate: RippleButton {
+                    required property var modelData
+                    implicitHeight: 28
+                    implicitWidth: addRow.implicitWidth + 14
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: Appearance.colors.colLayer1
+                    focusPolicy: Qt.StrongFocus
+                    onClicked: {
+                        if (root.canvasController)
+                            root.canvasController.setWidgetVisible(
+                                String(modelData), true)
+                    }
 
-                Repeater {
-                    model: root.hiddenIds
-                    delegate: RippleButton {
-                        required property var modelData
-                        implicitHeight: 28
-                        implicitWidth: addRow.implicitWidth + 14
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: Appearance.colors.colLayer1
-                        focusPolicy: Qt.StrongFocus
-                        onClicked: {
-                            if (root.canvasController)
-                                root.canvasController.setWidgetVisible(
-                                    String(modelData), true)
+                    RowLayout {
+                        id: addRow
+                        anchors.centerIn: parent
+                        spacing: 4
+                        MaterialSymbol {
+                            text: root.canvasController?._icon(
+                                String(modelData)) ?? "widgets"
+                            iconSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnLayer1
                         }
-
-                        RowLayout {
-                            id: addRow
-                            anchors.centerIn: parent
-                            spacing: 4
-                            MaterialSymbol {
-                                text: root.canvasController?._icon(
-                                    String(modelData)) ?? "widgets"
-                                iconSize: Appearance.font.pixelSize.small
-                                color: Appearance.colors.colOnLayer1
-                            }
-                            StyledText {
-                                text: root.canvasController?._label(
-                                    String(modelData)) ?? String(modelData)
-                                font.pixelSize: Appearance.font.pixelSize.smallest
-                                color: Appearance.colors.colOnLayer1
-                            }
-                            MaterialSymbol {
-                                text: "add"
-                                iconSize: Appearance.font.pixelSize.small
-                                color: Appearance.colors.colPrimary
-                            }
+                        StyledText {
+                            text: root.canvasController?._label(
+                                String(modelData)) ?? String(modelData)
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colOnLayer1
+                        }
+                        MaterialSymbol {
+                            text: "add"
+                            iconSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colPrimary
                         }
                     }
                 }

@@ -46,6 +46,10 @@ with tempfile.TemporaryDirectory() as directory:
         fail("commit engine candidate bytes drifted")
     if stat.S_IMODE(source_path.stat().st_mode) != 0o640:
         fail("atomic commit must preserve source mode")
+    if committed.get("watcherNudge") is not True:
+        fail("atomic commit must emit watcher-driven reload evidence")
+    if list(source_path.parent.glob(".hadalis-code-workflow-watch-*")):
+        fail("watcher nudge must not leave a sibling artifact")
 
     verified = workflow_commit.verify_prepared(root, manifest)
     if verified.get("state") != "candidate-present":
@@ -87,6 +91,9 @@ for token in (
     '"source-changed-before-replace"',
     "os.replace(temp_path, source_path)",
     "os.fsync(directory_fd)",
+    "def nudge_parent_directory(parent: Path) -> None:",
+    '".hadalis-code-workflow-watch-"',
+    "nudge_parent_directory(source_path.parent)",
     "def commit_prepared(",
     "def rollback_prepared(",
     "def verify_prepared(",

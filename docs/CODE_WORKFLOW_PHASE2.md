@@ -209,6 +209,15 @@ Implemented, but **not yet qualified as passing evidence**:
   extractor now unwraps only a unique healthy named expression child, preserving
   fail-closed behavior for ambiguous wrappers; literal/member value kinds and
   exact ranges have dedicated regression coverage.
+- The next automated run reached a successful atomic candidate write but exposed
+  a Quickshell 0.3.1 QFileSystemWatcher ordering race: an atomic rename can
+  invalidate the file watch while directoryChanged arrives before fileChanged,
+  leaving the transaction at waiting-reload. commit.py now creates and removes a
+  hidden sibling after the verified replace so a later directoryChanged drives
+  Quickshell's existing content-hash reload path. No manual shell reload call is
+  introduced.
+- Hosted acceptance forces QT_QUICK_BACKEND=software because Gate 2H validates
+  parser/write/watcher/reload semantics, not GPU/OpenGL availability.
 - No claim of live acceptance is made until a retained
   apply-lifecycle-report.json records all checks passing.
 

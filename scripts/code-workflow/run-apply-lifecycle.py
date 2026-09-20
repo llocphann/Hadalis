@@ -302,6 +302,8 @@ def main():
 
     probe = Probe(work_dir, report, pointer=None, sway=sway)
     probe.env["HADALIS_WORKFLOW_GRAMMAR"] = str(grammar)
+    # Gate 2H is lifecycle evidence, not a GPU acceptance test.
+    probe.env["QT_QUICK_BACKEND"] = "software"
     try:
         probe.launch()
         run_success(probe, target, report)

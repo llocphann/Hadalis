@@ -60,6 +60,7 @@ for token in (
     'parser.add_argument("--grammar", type=Path, required=True)',
     "prepare_module.prepare(work_dir, args.revision)",
     'probe.env["HADALIS_WORKFLOW_GRAMMAR"] = str(grammar)',
+    'probe.env["QT_QUICK_BACKEND"] = "software"',
     "run_success(probe, target, report)",
     "run_rollback(probe, target, report)",
     "run_external_edit(probe, target, report)",

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Atomic commit/verify/rollback engine for prepared Code Workflow artifacts.
 
-The production QML service does not invoke this helper yet. It is deliberately
-separated from artifact preparation so commit semantics can be contract-tested
-on isolated files before Apply is enabled in the UI.
+The production transaction service invokes this helper only after exact artifact
+preparation. User-triggered Apply remains separately gated in Settings.
 """
 
 from __future__ import annotations
@@ -59,6 +58,42 @@ def load_prepared_manifest(manifest_path: Path) -> tuple[dict, bytes, bytes]:
     snapshot.decode("utf-8")
     candidate.decode("utf-8")
     return payload, snapshot, candidate
+
+
+def nudge_parent_directory(parent: Path) -> None:
+    """Emit a post-replace directory event for Quickshell's config watcher.
+
+    Quickshell 0.3.1 watches both each QML file and its parent directory. An
+    atomic rename can invalidate the file watch; its recovery path records the
+    deleted watched file on fileChanged(), then resolves it on a later
+    directoryChanged(). Linux inotify may deliver the rename's directory event
+    first, so create+unlink a hidden sibling after os.replace() to guarantee a
+    later directory event without issuing a manual shell reload.
+    """
+    fd, temporary = tempfile.mkstemp(
+        prefix=".hadalis-code-workflow-watch-",
+        dir=str(parent),
+    )
+    trigger = Path(temporary)
+    try:
+        os.close(fd)
+        trigger.unlink()
+    finally:
+        if trigger.exists():
+            trigger.unlink()
+
+    try:
+        directory_fd = os.open(
+            parent,
+            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+        )
+    except OSError:
+        directory_fd = -1
+    if directory_fd >= 0:
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
 
 
 def atomic_replace_if_hash(
@@ -126,10 +161,16 @@ def atomic_replace_if_hash(
                 "expectedSha256": expected_result_sha256,
                 "currentSha256": result_sha,
             }
+
+        # Keep reload watcher-driven. This closes the QFileSystemWatcher
+        # rename-order race observed by the isolated Gate 2H runtime.
+        nudge_parent_directory(source_path.parent)
+
         return {
             "status": "written",
             "sourceSha256": result_sha,
             "mode": mode,
+            "watcherNudge": True,
         }
     finally:
         if temp_path.exists():

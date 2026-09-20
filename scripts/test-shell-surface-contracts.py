@@ -976,6 +976,29 @@ def main() -> None:
           and "scale: isBeingDragged ? 1.08" not in dock_apps,
           "Panel Dock must keep active/drag emphasis under one scale owner")
 
+    for retired_dock_residue in (
+        "maxWindowPreviewHeight",
+        "maxWindowPreviewWidth",
+        "windowControlsHeight",
+        "buttonPadding",
+        "previewWidthConstraint",
+        "previewHeightConstraint",
+        "nativeBlurGeometryExact",
+        "minimizeUnfocused",
+        "enableBlurGlass",
+    ):
+        check(retired_dock_residue not in dock_runtime_sources
+              and retired_dock_residue not in dock
+              and retired_dock_residue not in config_qml
+              and retired_dock_residue not in defaults_json,
+              f"Panel-only Dock must not retain dead compatibility state: {retired_dock_residue}")
+    check("property string dockPosition" not in read("modules/dock/DockButton.qml"),
+          "Shared DockButton must not expose unused position state")
+    check("property bool smartIndicator:" not in dock_app_button
+          and "property bool showAllDots:" not in dock_app_button
+          and "property int maxDots:" not in dock_app_button,
+          "Dock indicator loader must read its live config directly without dead proxy properties")
+
     dock_runtime_sources = (
         dock,
         read("modules/dock/DockButton.qml"),

@@ -6,7 +6,6 @@ import QtQuick.Layouts
 RippleButton {
     id: root
     property bool vertical: false
-    property string dockPosition: "bottom"
     Layout.fillHeight: !vertical
     Layout.fillWidth: vertical
 

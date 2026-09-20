@@ -1831,8 +1831,6 @@ Singleton {
                 property bool hoverToReveal: false
                 property bool showOnDesktop: true
                 property bool showBackground: true
-                property bool minimizeUnfocused: false
-                property bool enableBlurGlass: true
                 property bool separatePinnedFromRunning: true
                 property bool notificationBadge: true
                 property list<string> pinnedApps: ["org.gnome.Nautilus", "firefox", "kitty"]

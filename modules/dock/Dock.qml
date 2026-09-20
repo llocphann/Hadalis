@@ -171,8 +171,6 @@ Scope {
 
                 readonly property string nativeBlurTopology:
                     Appearance.blurTopology.roundedRectangle
-                readonly property bool nativeBlurGeometryExact:
-                    Appearance.blurTopologyExact(dockRoot.nativeBlurTopology)
                 readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
                         "dock", dockRoot.nativeBlurTopology)
                     && (Config.options?.dock?.showBackground ?? true)
@@ -378,7 +376,6 @@ Scope {
                                 DockApps {
                                     id: dockApps
                                     enabled: !root.isVertical
-                                    buttonPadding: dockRow.padding
                                     dockThickness: dockRoot.dockHeight
                                     vertical: false
                                     dockPosition: root.position
@@ -386,7 +383,6 @@ Scope {
                                 }
                                 DockButton {
                                     vertical: false
-                                    dockPosition: root.position
                                     dockThicknessOverride: dockRoot.dockHeight
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
@@ -417,7 +413,6 @@ Scope {
                                 DockApps {
                                     id: dockAppsVertical
                                     enabled: root.isVertical
-                                    buttonPadding: dockColumn.padding
                                     dockThickness: dockRoot.dockHeight
                                     vertical: true
                                     dockPosition: root.position
@@ -425,7 +420,6 @@ Scope {
                                 }
                                 DockButton {
                                     vertical: true
-                                    dockPosition: root.position
                                     dockThicknessOverride: dockRoot.dockHeight
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")

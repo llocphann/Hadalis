@@ -668,11 +668,6 @@ DockButton {
                     horizontalCenter: parent.horizontalCenter
                 }
 
-                // Config options
-                property bool smartIndicator: Config.options?.dock?.smartIndicator !== false
-                property bool showAllDots: Config.options?.dock?.showAllWindowDots !== false
-                property int maxDots: Config.options?.dock?.maxIndicatorDots ?? 5
-
                 sourceComponent: Row {
                     spacing: 3
 

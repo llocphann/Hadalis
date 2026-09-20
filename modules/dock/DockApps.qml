@@ -17,10 +17,6 @@ Item {
         if (Quickshell.env("QS_DEBUG") === "1") console.log("[DockDrag]", ...args);
     }
 
-    property real maxWindowPreviewHeight: 200
-    property real maxWindowPreviewWidth: 300
-    property real windowControlsHeight: 30
-    property real buttonPadding: 5
     property real dockThickness: Config.options?.dock?.height ?? 60
     property bool vertical: false
     property string dockPosition: "bottom"

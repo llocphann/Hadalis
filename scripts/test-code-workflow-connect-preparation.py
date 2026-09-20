@@ -121,7 +121,7 @@ for token in (
     "artifactsStaged=true",
     "writeAuthorized=false",
     "source QML remains unchanged",
-    "literal-property remains the only",
+    "only source-writing command",
 ):
     if token not in phase2:
         fail("2K-M documentation missing " + token)

@@ -102,7 +102,7 @@ for token in (
     '"Prepare Connect artifacts"',
     '"CONNECT ARTIFACTS READY · APPLY BLOCKED"',
     '"Connect preparation capability: READY',
-    '"tracked source QML is unchanged · Apply remains blocked"',
+    "source QML is unchanged · Apply remains blocked",
     "CodeWorkflowTransaction.prepareConnectArtifacts()",
 ):
     if token not in page:
@@ -160,7 +160,7 @@ for token in (
     "connect_prepare.py",
     "Prepare Connect artifacts",
     "Apply remains blocked",
-    "literal-property remains the only",
+    "only source-writing command",
 ):
     if token not in phase2:
         fail("2K-N documentation missing " + token)

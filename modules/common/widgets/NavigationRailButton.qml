@@ -1,6 +1,5 @@
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -65,10 +64,8 @@ TabButton {
 
             Rectangle {
                 id: bubbleBackground
-                color: Appearance.regaliaEverywhere ? "transparent"
-                    : Appearance.zzzEverywhere ? Appearance.zzz.accent : Appearance.colors.colPrimary
-                radius: Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius
-                    : Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.full
+                color: Appearance.colors.colPrimary
+                radius: Appearance.rounding.full
                 border.width: 0
                 border.color: "transparent"
                 // Organic morph on style/shape switch (organic-transitions)
@@ -77,22 +74,13 @@ TabButton {
                 implicitWidth: bubbleText.implicitWidth + 24
                 implicitHeight: root.baseHighlightHeight
 
-                RegaliaControlFace {
-                    anchors.fill: parent
-                    visible: Appearance.regaliaEverywhere
-                    fillColor: Appearance.regalia.primaryPlate
-                    radius: bubbleBackground.radius
-                    selected: true
-                }
-
                 StyledText {
                     id: bubbleText
                     anchors.centerIn: parent
                     text: root.buttonText
                     font.pixelSize: Appearance.font.pixelSize.small
                     font.weight: Font.Medium
-                    color: Appearance.regaliaEverywhere ? Appearance.regalia.primaryPlateInk
-                        : Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimary
+                    color: Appearance.colors.colOnPrimary
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -124,26 +112,12 @@ TabButton {
             anchors.bottom: itemIconBackground.bottom
             // When collapsed, only show icon area; when expanded, show full width with text
             implicitWidth: root.expanded ? root.visualWidth : root.baseSize
-            radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall
-                : Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-                : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
+            radius: Appearance.rounding.full
             // Organic morph on style/shape switch (organic-transitions)
             Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
             // Regalia turns navigation into compact semantic tiles. Other styles
             // keep the shell-wide bgless doctrine.
             color: "transparent"
-
-            RegaliaControlFace {
-                anchors.fill: parent
-                visible: Appearance.regaliaEverywhere
-                fillColor: root.toggled ? Appearance.regalia.primaryPlate : Appearance.regalia.controlPlate
-                radius: itemBackground.radius
-                hovered: root.hovered
-                pressed: root.down
-                selected: root.toggled
-                focused: root.visualFocus
-            }
 
             states: State {
                 name: "expanded"
@@ -196,21 +170,11 @@ TabButton {
                 font.weight: (toggled || root.hovered) ? Font.DemiBold : Font.Normal
                 text: buttonIcon
                 // Bgless: active icon carries the accent itself (no plate behind).
-                color: Appearance.regaliaEverywhere
-                    ? (toggled ? Appearance.regalia.hardwarePrimary
-                        : root.hovered ? Appearance.regalia.hardwarePrimary
-                        : Appearance.regalia.onMuted)
-                    : Appearance.zzzEverywhere
-                    ? (toggled ? Appearance.zzz.accent : (root.hovered ? Appearance.zzz.ink : Appearance.zzz.inkMuted))
-                    : Appearance.angelEverywhere
-                    ? (toggled ? Appearance.angel.colPrimary : (root.hovered ? Appearance.angel.colText : Appearance.angel.colTextSecondary))
-                    : Appearance.inirEverywhere
-                    ? (toggled ? Appearance.inir.colPrimary : (root.hovered ? Appearance.inir.colText : Appearance.inir.colTextSecondary))
-                    : (toggled ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1)
+                color: toggled ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1
 
                 // Bgless press feedback: the glyph dips on press so a click reads
                 // as registered without any plate behind it.
-                scale: root.down && !Appearance.regaliaEverywhere ? 0.82 : 1
+                scale: root.down ? 0.82 : 1
                 Behavior on scale {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.clickBounce.duration; easing.type: Appearance.animation.clickBounce.type; easing.bezierCurve: Appearance.animation.clickBounce.bezierCurve }
@@ -236,9 +200,7 @@ TabButton {
             }
             text: buttonText
             font.pixelSize: Appearance.font.pixelSize.small
-            color: Appearance.regaliaEverywhere
-                ? (root.toggled ? Appearance.regalia.primaryPlateInk : Appearance.regalia.onMuted)
-                : Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.colors.colOnLayer1
+            color: Appearance.colors.colOnLayer1
             Behavior on color {
                 enabled: Appearance.animationsEnabled
                 ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

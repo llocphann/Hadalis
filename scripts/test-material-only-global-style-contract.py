@@ -53,6 +53,7 @@ MATERIAL_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "MaterialTextFie
 MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
 TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
 TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField.qml"
+NAVIGATION_RAIL_BUTTON = ROOT / "modules" / "common" / "widgets" / "NavigationRailButton.qml"
 WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
 ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
 ANGEL_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "AngelBackground.qml"
@@ -170,6 +171,7 @@ def main() -> None:
     material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
     toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
     toolbar_text_field = TOOLBAR_TEXT_FIELD.read_text(encoding="utf-8")
+    navigation_rail_button = NAVIGATION_RAIL_BUTTON.read_text(encoding="utf-8")
     widgets_qmldir = WIDGETS_QMLDIR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
@@ -529,6 +531,26 @@ def main() -> None:
             )
     forbid(widgets_qmldir, "AngelAccentBar 1.0 AngelAccentBar.qml", "widgets/qmldir")
     forbid(widgets_qmldir, "AngelBackground 1.0 AngelBackground.qml", "widgets/qmldir")
+
+    # NavigationRailButton keeps TabBar state, collapsed tooltip, expanded label,
+    # press feedback and animated icon fill while using Material-only chrome.
+    for token in legacy_style_tokens:
+        forbid(navigation_rail_button, token, "NavigationRailButton.qml")
+    forbid(navigation_rail_button, "RegaliaControlFace {", "NavigationRailButton.qml")
+    forbid(navigation_rail_button, "showToggledHighlight", "NavigationRailButton.qml")
+    for token in (
+        "property bool toggled: TabBar.tabBar?.currentIndex === TabBar.index",
+        "readonly property real visualWidth:",
+        "extraVisibleCondition: !root.expanded",
+        "anchorEdges: Edges.Right",
+        "color: Appearance.colors.colPrimary",
+        "radius: Appearance.rounding.full",
+        "fill: toggled ? 1 : 0",
+        "animateFill: true",
+        "scale: root.down ? 0.82 : 1",
+        "opacity: root.expanded ? 1 : 0",
+    ):
+        require(navigation_rail_button, token, "NavigationRailButton.qml")
 
     # ToolbarTextField is reused by search/filter surfaces. Keep caller styling
     # through colBackground plus text editing/context-menu behavior, but no dead

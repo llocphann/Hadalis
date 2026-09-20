@@ -498,3 +498,54 @@ those merely to make the new renderer interactive. Likewise, preserve popup
 shadow behavior without repainting/shadowing the Top-layer Bar or Screen Edge.
 
 G1 is still unchanged and must run first on the real Wayland/Niri/GPU session.
+
+### Live-capture coordinate proof and harness hardening
+
+The focused-crop coordinate model is now source-verified:
+
+- Quickshell `ShellScreen.x/y` comes from Qt `QScreen::geometry()`;
+- Qt reports window/screen geometry in device-independent coordinates;
+- Niri output positions/sizes are logical/scaled pixels;
+- `grim -g` consumes compositor layout coordinates.
+
+Therefore keep:
+
+```text
+output ShellScreen.x/y + output-local popup geometry -> grim -g
+```
+
+and **do not multiply by `devicePixelRatio`**.
+
+Two additional isolated harness commits are now on `dev`:
+
+- `1d67202d9b54c626779956ef991ae4454a93859c` preserves one manifest and one
+  session metadata file per mode/profile instead of overwriting
+  `manifest.tsv` on the second profile run;
+- `1d5a4c0cf80d19b437c1732a4fecb7eb6b7f4f48` rejects invalid mode/profile
+  labels so fallback QML geometry cannot be saved under a misleading filename.
+
+These commits change capture provenance only; shader and geometry are unchanged.
+
+Because this continuation environment has no access to the maintainer's real
+Wayland/Niri/GPU session, **G1 is still not passed**. The older contract PASS
+was recorded before the two harness hardening commits, so rerun the focused
+contract before capture:
+
+```sh
+python3 scripts/test-iris-corner-poc-contract.py
+
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=diagnostic \
+scripts/iris-corner-poc/capture-matrix.sh
+
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=upstream-relative \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+Expected provenance artifacts now include
+`manifest-card-owner-<profile>.tsv` and
+`session-card-owner-<profile>.json` in addition to the PNG/JSON/log matrix and
+contact/detail sheets.
+
+Do not begin G2 until both live detail sheets are visually accepted.

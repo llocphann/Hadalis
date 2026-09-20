@@ -2043,3 +2043,85 @@ Two contracts remain intentionally unresolved until that isolated experiment:
 
 These are composition/input/effect gates, not reasons to alter G1. The existing
 live morphology matrix remains the next action.
+
+### 26.13 Live crop coordinate chain and artifact provenance
+
+The focused `grim -g` crop path has now been checked end-to-end against the
+upstream coordinate contracts instead of relying on DPR intuition.
+
+Quickshell's current `QuickshellScreenInfo` implementation exposes
+`ShellScreen.x/y` directly from `QScreen::geometry().x/y()`, and
+`ShellScreen.width/height` from `QScreen::size()`. Qt's High DPI contract
+states that window and screen geometry are reported in device-independent
+coordinates. Niri likewise defines output placement and output size in logical
+(scaled) pixels. Finally, grim documents `-g` as accepting compositor
+**layout coordinates** and specifically uses xdg-output logical geometry when
+available.
+
+The current focused-crop construction is therefore the correct coordinate
+chain for Niri/Wayland:
+
+```text
+ShellScreen.x/y        # output origin in logical/global layout space
++
+popup geometry         # output-local Qt logical coordinates
+=
+grim -g geometry       # compositor layout coordinates
+```
+
+Do **not** multiply the crop by `devicePixelRatio`. DPR controls raster density
+and can differ from the compositor's logical layout scale; applying it here
+would move/resize the requested layout region instead of merely increasing
+capture pixels.
+
+The live harness was hardened in two source-only commits after this audit:
+
+- `1d67202d9b54c626779956ef991ae4454a93859c` —
+  `test(surface): preserve iRiS matrix provenance`
+- `1d5a4c0cf80d19b437c1732a4fecb7eb6b7f4f48` —
+  `test(surface): validate iRiS capture labels`
+
+The first prevents the second G1 profile run from overwriting the first run's
+manifest. Artifacts are now profile-specific:
+
+```text
+manifest-card-owner-diagnostic.tsv
+session-card-owner-diagnostic.json
+manifest-card-owner-upstream-relative.tsv
+session-card-owner-upstream-relative.json
+```
+
+The session JSON records the requested profile/mode, Quickshell/grim executable
+paths, Wayland display and the explicit coordinate-space rule
+`compositor-layout-logical` with DPR crop application disabled.
+
+The second commit rejects unknown `HADALIS_IRIS_POC_MODE` or
+`HADALIS_IRIS_POC_PROFILE` values. Previously the QML window would correctly
+fall back to `card-owner` / `diagnostic` while the shell harness kept the
+invalid environment string in filenames and manifest labels, which could create
+mislabelled visual evidence.
+
+These harness changes do not alter SDF math, shape geometry, joins, fuse,
+Screen Edge ownership or production runtime.
+
+No live GPU matrix was executed from the repository-only audit environment, so
+G1 remains **UNPROVEN**. Also do not carry forward the older source-side PASS
+count as proof for the two harness commits without rerunning the contract on the
+maintainer machine.
+
+The next local sequence should therefore begin with:
+
+```sh
+python3 scripts/test-iris-corner-poc-contract.py
+
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=diagnostic \
+scripts/iris-corner-poc/capture-matrix.sh
+
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+HADALIS_IRIS_POC_PROFILE=upstream-relative \
+scripts/iris-corner-poc/capture-matrix.sh
+```
+
+Review the two `detail-sheet-card-owner-*.png` files and their matching
+profile-specific manifests/session metadata before any G2 work.

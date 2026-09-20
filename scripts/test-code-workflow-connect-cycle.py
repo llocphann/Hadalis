@@ -224,7 +224,7 @@ for expression in (
     "Config.options?.bar?.verbose || true",
     "Config.options?.bar?.verbose ?? root.enabled",
     "Config.options[index]?.verbose ?? true",
-    "Config.options?.bar?.verbose?.value ?? true",
+    "Config.options?.bar?.verbose() ?? true",
 ):
     rejected = connect_cycle.parse_optional_member_chain_with_literal_fallback(
         expression

@@ -22,13 +22,17 @@ grep -Fq 'command: ["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"
 grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Music UI must expose MPD update'
 grep -Fq 'PlayerControl {' "$view" || fail 'Music now-playing UI must reuse Media popup PlayerControl'
 grep -Fq 'id: nowPlayingPanel' "$view" || fail 'Music media must live above its section tabs'
-grep -Fq 'id: classicPlaybackOptions' "$view" || fail 'Music shuffle/repeat/volume must use the classic standalone row'
-grep -Fq 'showTip: false' "$view" || fail 'Obvious shuffle/repeat actions must not show hover text'
-grep -Fq 'Layout.preferredWidth: 120' "$view" || fail 'Classic Music volume slider width drifted'
-if grep -Fq 'component MediaToggleButton' "$view"; then
-    fail 'Music must not merge shuffle/repeat/volume into the artwork-tinted media card'
+grep -Fq 'id: classicPlaybackOptions' "$view" || fail 'Music must retain the compact transport-adjacent volume row'
+grep -Fq 'Layout.preferredWidth: 100' "$view" || fail 'Music volume slider width drifted'
+grep -Fq 'configuration: StyledSlider.Configuration.XS' "$view" || fail 'Music volume slider must keep the thin XS track'
+grep -Fq 'playbackAdapter: localMusicPlayerAdapter' "$view" || fail 'Music PlayerControl must retain direct MPD fallback state/actions'
+if grep -Fq 'symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"' "$view"; then
+    fail 'Music must not duplicate Shuffle below PlayerControl'
 fi
-grep -Fq 'player: LocalMusic.mprisPlayer' "$view" || fail 'Music PlayerControl must bind the MPD MPRIS session'
+if grep -Fq 'symbol: LocalMusic.repeatMode === 1' "$view"; then
+    fail 'Music must not duplicate Repeat below PlayerControl'
+fi
+grep -Fq 'player: LocalMusic.mprisPlayer' "$view" || fail 'Music PlayerControl must bind the MPD MPRIS session when available'
 grep -Fq 'model: LocalMusic.playlists' "$view" || fail 'Playlists tab must expose saved MPD playlists only'
 grep -Fq 'property var selectedTrackKeys: []' "$view" || fail 'Songs must expose desktop bulk selection state'
 grep -Fq 'property var selectedFolderPaths: []' "$view" || fail 'Songs must expose folder bulk selection state'

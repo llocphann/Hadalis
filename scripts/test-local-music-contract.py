@@ -75,7 +75,6 @@ for token in (
     'LocalMusic.createPlaylist(name, root.pendingPlaylistTracks)',
     'LocalMusic.addTracksToPlaylist(name, snapshot)',
     'id: classicPlaybackOptions',
-    'showTip: false',
     'Layout.preferredWidth: 100',
     'configuration: StyledSlider.Configuration.XS',
     'playbackAdapter: localMusicPlayerAdapter',
@@ -91,8 +90,10 @@ for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):
 
 if "model: LocalMusic.collections" in view:
     raise SystemExit("Playlists must contain only saved MPD playlists, not folder collections.")
-if "component MediaToggleButton" in view:
-    raise SystemExit("Local Music playback options must keep the classic standalone control row.")
+if 'symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"' in view:
+    raise SystemExit("Local Music must not duplicate Shuffle below the shared PlayerControl.")
+if "symbol: LocalMusic.repeatMode === 1" in view:
+    raise SystemExit("Local Music must not duplicate Repeat below the shared PlayerControl.")
 if view.index("id: nowPlayingPanel") > view.index('model: ['):
     raise SystemExit("Now-playing media must render above the Music section tabs.")
 

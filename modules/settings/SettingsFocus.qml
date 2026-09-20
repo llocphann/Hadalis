@@ -13,6 +13,7 @@ import qs.services
 import qs.modules.settings
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.modules.common.functions as CF
 
 /**
@@ -38,6 +39,8 @@ Scope {
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
     property real _surfaceReveal: settingsOpen ? 1 : 0
+    readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
@@ -586,22 +589,23 @@ Scope {
             }
 
             // ── Bottom-connected settings popup ──
-            StyledRectangularShadow {
-                target: card
-                visible: (root.settingsOpen || root._closeAnimRunning)
-                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15) > 0
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70) > 0
-                blur: Math.max(0, Math.min(32,
+            ConnectedSurfaceIrisEdgeSurface {
+                id: settingsIrisSurface
+                z: 1
+                anchors.fill: parent
+                edge: "bottom"
+                ownerThickness: root._screenEdgeThickness
+                outputRect: Qt.rect(0, 0, settingsPanel.width, settingsPanel.height)
+                bodyRect: Qt.rect(card.x, card.y, card.width, card.height)
+                bodyRadius: card.radius
+                fillColor: card.surfaceFillColor
+                progress: root.settingsOpen || root._closeAnimRunning ? 1 : 0
+                shadowEnabled: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+                shadowExtent: Math.max(0, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-                spread: 0
-                offset: Qt.vector2d(0, 0)
-                color: (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    ? ColorUtils.applyAlpha(Appearance.colors.colShadow,
-                        Math.max(0, Math.min(1.0,
-                            Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
-                    : "transparent"
-                joinBottom: true
+                shadowColor: CF.ColorUtils.applyAlpha(Appearance.colors.colShadow,
+                    Math.max(0, Math.min(1.0,
+                        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
             }
 
             Rectangle {
@@ -610,9 +614,14 @@ Scope {
                 // Same legibility clamp as the rail host — see SettingsOverlay.
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
+                readonly property color surfaceFillColor: CF.ColorUtils.applyAlpha(
+                    Appearance.inirEverywhere ? Appearance.inir.colLayer0
+                  : Appearance.zzzEverywhere ? Appearance.zzz.chrome
+                  : Appearance.colors.colLayer0Base,
+                    card.panelBgOpacity)
 
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: settingsPanel.height - height
+                y: settingsPanel.height - root._screenEdgeThickness - height
                     + (1 - root._surfaceReveal) * height
                 width: Math.min(
                     1560,
@@ -632,12 +641,7 @@ Scope {
                 // Same contract as the rail overlay: backgroundOpacity lands on
                 // the fill alpha (solid) or the blur transparentize (glass),
                 // never on Item opacity, which children inherit.
-                color: Appearance.auroraEverywhere || Appearance.regaliaEverywhere ? "transparent"
-                     : CF.ColorUtils.applyAlpha(
-                         Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                       : Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                       : Appearance.colors.colLayer0Base,
-                         card.panelBgOpacity)
+                color: "transparent"
                 // angel's panel tokens, not its card tokens: this rectangle is
                 // the panel now that the body carries its own plate, and the
                 // rail host draws the equivalent surface the same way.
@@ -669,6 +673,7 @@ Scope {
                 // Keep the card mapped while the bottom-edge exit slide runs.
                 opacity: 1
                 visible: root.settingsOpen || root._closeAnimRunning
+                z: 2
 
                 RegaliaPlate {
                     anchors.fill: parent

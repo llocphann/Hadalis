@@ -450,6 +450,7 @@ Scope {
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
             attachedEdge: root.edge
+            externalConnectedSurface: true
             onPluginViewActiveChanged: root.pluginViewActive = pluginViewActive
         }
     }
@@ -465,6 +466,7 @@ Scope {
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
             attachedEdge: root.edge
+            externalConnectedSurface: true
         }
     }
 
@@ -479,6 +481,7 @@ Scope {
             panelVisible: root.presentationOpen || sidebarContentLoader.animating
             geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
             attachedEdge: root.edge
+            externalConnectedSurface: true
         }
     }
 
@@ -776,7 +779,8 @@ Scope {
 
             active: root._contentResident
             width: Math.max(0, root.effectiveSidebarWidth
-                - Appearance.sizes.elevationMargin)
+                - Appearance.sizes.elevationMargin
+                - root.screenEdgeHoverWidth)
             height: root.effectiveContentHeight
             onStatusChanged: {
                 if (height > 0 && status === Loader.Ready)
@@ -807,9 +811,9 @@ Scope {
                 right: root.isLeftEdge ? undefined : parent.right
                 rightMargin: root.isLeftEdge
                     ? Appearance.sizes.elevationMargin
-                    : 0
+                    : root.screenEdgeHoverWidth
                 leftMargin: root.isLeftEdge
-                    ? 0
+                    ? root.screenEdgeHoverWidth
                     : Appearance.sizes.elevationMargin
             }
 
@@ -926,6 +930,9 @@ Scope {
                 readonly property color connectedSurfaceColor:
                     roleContentItem?.connectedSurfaceColor
                         ?? Appearance.colors.colLayer0
+                readonly property real connectedSurfaceRadius:
+                    roleContentItem?.connectedSurfaceRadius
+                        ?? Appearance.rounding.large
 
                 Item {
                     id: revealViewport
@@ -950,24 +957,32 @@ Scope {
             }
         }
 
-        // Caelestia-style concave shoulders where the content-sized sidebar
-        // terminates against the persistent vertical Screen Edge. Render these
-        // in the host (outside revealViewport clipping) so both endpoints remain
-        // visible for slide/reveal animation modes.
-        ConnectedSurfaceJoinFlares {
-            id: sidebarEdgeFlares
-            z: 9000
+        // Exact iRiS contact with the persistent vertical Screen Edge. The
+        // content starts at the owner's inner boundary; only the SDF record
+        // welds underneath it. The field follows the same slide translation and
+        // disappears only after the exit animation has fully completed.
+        ConnectedSurfaceIrisEdgeSurface {
+            id: sidebarIrisSurface
+            z: -1
             anchors.fill: parent
-            bodyItem: sidebarContentLoader
+            edge: root.edge
+            ownerThickness: root.screenEdgeHoverWidth
+            outputRect: Qt.rect(0, 0, sidebarRoot.width, sidebarRoot.height)
+            bodyRect: Qt.rect(
+                sidebarContentLoader.x + sidebarContentLoader.animTranslateX,
+                sidebarContentLoader.y,
+                sidebarContentLoader.width,
+                sidebarContentLoader.height)
+            bodyRadius: sidebarContentLoader.item?.connectedSurfaceRadius
+                ?? Appearance.rounding.large
             fillColor: sidebarContentLoader.item?.connectedSurfaceColor
                 ?? Appearance.colors.colLayer0
-            flareRadius: PerimeterTokens.joinFlareRadius
-            // JoinFlares maps the body through mapToItem(), so the endpoint
-            // shoulder follows the one immutable slide translation exactly once.
-            progress: root.presentationOpen ? 1 : 0
-
-            joinLeft: root.isLeftEdge
-            joinRight: !root.isLeftEdge
+            progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0
+            shadowEnabled: root.screenEdgeShadowEnabled
+                && root.screenEdgeShadowSize > 0
+                && root.screenEdgeShadowOpacity > 0
+            shadowExtent: root.screenEdgeShadowSize
+            shadowColor: root.screenEdgeShadowColor
         }
 
         ShellEditSurfaceFrame {

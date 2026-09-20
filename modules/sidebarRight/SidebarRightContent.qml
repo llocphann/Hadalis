@@ -38,7 +38,10 @@ Item {
     property int screenHeight: 1080
     property var panelScreen: null
     property real panelScreenY: Appearance.sizes.hyprlandGapsOut
-    readonly property color connectedSurfaceColor: sidebarRightBackground.color
+    property bool externalConnectedSurface: false
+    readonly property color connectedSurfaceColor:
+        sidebarRightBackground.cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
+    readonly property real connectedSurfaceRadius: sidebarRightBackground.radius
     property bool panelVisible: false
     property bool geometryPreviewActive: false
     property string attachedEdge: "right"
@@ -405,7 +408,7 @@ Item {
         color: ColorUtils.applyAlpha(Appearance.colors.colShadow,
             Math.max(0, Math.min(1.0,
                 Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
-        visible: root.panelVisible
+        visible: root.panelVisible && !root.externalConnectedSurface
             && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
             && !Appearance.gameModeMinimal
         joinLeft: root.attachedEdge === "left"
@@ -453,7 +456,9 @@ Item {
         readonly property bool islandStyle: surfaceDialect === "island"
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
 
-        color: (gameModeMinimal || islandStyle) ? "transparent"
+        color: root.externalConnectedSurface
+            ? "transparent"
+            : (gameModeMinimal || islandStyle) ? "transparent"
             : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
         // Screen Edge owns the outer shell boundary. Drawing a second outline
         // here makes the edge/sidebar join read as two stacked cards.

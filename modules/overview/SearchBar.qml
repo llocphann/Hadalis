@@ -150,8 +150,15 @@ RowLayout {
         // MaterialShape/content renderer introduced an extra transformed scene
         // node that could survive as a crescent/face beside the icon. Running
         // state is communicated by ink only; hover/ripple stay shared chrome.
+        colBackground: "transparent"
+        colBackgroundHover: "transparent"
         colBackgroundToggled: "transparent"
-        colBackgroundToggledHover: Appearance.colors.colLayer1Hover
+        colBackgroundToggledHover: "transparent"
+        colRipple: "transparent"
+        colRippleToggled: "transparent"
+        rippleEnabled: false
+        pressScaleEnabled: false
+        stateTransitionsEnabled: false
         colText: toggled
             ? Appearance.colors.colPrimary
             : Appearance.colors.colOnSurfaceVariant

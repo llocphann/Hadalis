@@ -11,6 +11,7 @@ import qs.services
 import qs.modules.settings
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.modules.common.functions as CF
 
 /**
@@ -30,6 +31,8 @@ Scope {
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
     property real _surfaceReveal: settingsOpen ? 1 : 0
+    readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 
     CodeWorkflowPickerHost {
         hostId: "rail"
@@ -568,22 +571,24 @@ Scope {
             // ── Floating settings card (no separate drop shadow — the card
             //    sits on the scrim backdrop; the panel border provides depth) ──
 // ── Bottom-connected settings popup ──
-            StyledRectangularShadow {
-                target: settingsCard
-                visible: (root.settingsOpen || root._closeAnimRunning)
-                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15) > 0
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70) > 0
-                blur: Math.max(0, Math.min(32,
+            ConnectedSurfaceIrisEdgeSurface {
+                id: settingsIrisSurface
+                z: 1
+                anchors.fill: parent
+                edge: "bottom"
+                ownerThickness: root._screenEdgeThickness
+                outputRect: Qt.rect(0, 0, settingsPanel.width, settingsPanel.height)
+                bodyRect: Qt.rect(settingsCard.x, settingsCard.y,
+                    settingsCard.width, settingsCard.height)
+                bodyRadius: settingsCard.radius
+                fillColor: settingsCard.surfaceFillColor
+                progress: root.settingsOpen || root._closeAnimRunning ? 1 : 0
+                shadowEnabled: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+                shadowExtent: Math.max(0, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-                spread: 0
-                offset: Qt.vector2d(0, 0)
-                color: (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    ? ColorUtils.applyAlpha(Appearance.colors.colShadow,
-                        Math.max(0, Math.min(1.0,
-                            Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
-                    : "transparent"
-                joinBottom: true
+                shadowColor: CF.ColorUtils.applyAlpha(Appearance.colors.colShadow,
+                    Math.max(0, Math.min(1.0,
+                        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
             }
 
             Rectangle {
@@ -603,18 +608,18 @@ Scope {
                 // content remains unaffected.
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
+                readonly property color surfaceFillColor: CF.ColorUtils.applyAlpha(
+                    Appearance.colors.colLayer0Base, settingsCard.panelBgOpacity)
 
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: settingsPanel.height - height
+                y: settingsPanel.height - root._screenEdgeThickness - height
                     + (1 - root._surfaceReveal) * height
                 width: maxCardWidth
                 height: maxCardHeight
                 radius: Appearance.rounding.windowRounding
                 bottomLeftRadius: 0
                 bottomRightRadius: 0
-                color: CF.ColorUtils.applyAlpha(
-                    Appearance.colors.colLayer0Base,
-                    settingsCard.panelBgOpacity)
+                color: "transparent"
                 clip: true
 
                 border.width: 0
@@ -632,6 +637,7 @@ Scope {
                 // backdrop already carries the transition).
                 opacity: 1
                 visible: root.settingsOpen || root._closeAnimRunning
+                z: 2
 
                 // Material-only v1.0: retired shell-wide style backdrops are not
                 // instantiated in the active Settings surface.

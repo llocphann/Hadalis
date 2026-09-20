@@ -506,6 +506,7 @@ Scope {
                             searchingText: root.searchingText
                             availableWidth: root.width
                             availableHeight: root.height
+                            attachmentThickness: root.bottomAttachmentThickness
                             onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
                         }
                     }

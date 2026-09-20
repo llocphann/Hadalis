@@ -12,3 +12,4 @@ ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml
 ConnectedSurfaceIrisField 1.0 ConnectedSurfaceIrisField.qml
 ConnectedSurfaceIrisFrame 1.0 ConnectedSurfaceIrisFrame.qml
 ConnectedSurfaceBodyMask 1.0 ConnectedSurfaceBodyMask.qml
+ConnectedSurfaceIrisEdgeSurface 1.0 ConnectedSurfaceIrisEdgeSurface.qml

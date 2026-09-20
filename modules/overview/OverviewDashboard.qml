@@ -18,6 +18,8 @@ Item {
     property real dashboardProgress: 1
     property real availableWidth: root.QsWindow?.window?.screen?.width ?? 1920
     property real availableHeight: root.QsWindow?.window?.screen?.height ?? 1080
+    property real attachmentThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 
     readonly property bool applicationDragActive: searchWidget.applicationDragActive
     readonly property bool searching: root.searchingText.length > 0
@@ -51,7 +53,7 @@ Item {
             : root.connectedDecorationMargin * 2)
     clip: root.directBottomAttachment
     readonly property rect connectedSurfaceRect: Qt.rect(dashContainer.x, dashContainer.y, dashContainer.width, dashContainer.height)
-    readonly property color connectedSurfaceColor: dashContainer.color
+    readonly property color connectedSurfaceColor: Appearance.colors.colLayer0
 
     function focusSearchInput(): void { searchWidget.focusSearchInput() }
     function disableExpandAnimation(): void { searchWidget.disableExpandAnimation() }
@@ -88,7 +90,9 @@ Item {
         parent: dashboardSurfaceLayer
         z: 0
         target: dashContainer
-        visible: root.panelVisible && root.screenEdgeShadowEnabled && root.screenEdgeShadowSize > 0 && root.screenEdgeShadowOpacity > 0
+        visible: root.panelVisible && !root.directBottomAttachment
+            && root.screenEdgeShadowEnabled && root.screenEdgeShadowSize > 0
+            && root.screenEdgeShadowOpacity > 0
         blur: root.screenEdgeShadowSize
         spread: 0
         offset: Qt.vector2d(0, 0)
@@ -96,15 +100,29 @@ Item {
         joinBottom: root.directBottomAttachment
     }
 
-    ConnectedSurfaceJoinFlares {
-        parent: dashboardSurfaceLayer
-        z: 5
+    ConnectedSurfaceIrisEdgeSurface {
+        id: dashboardIrisSurface
+        z: 1
         anchors.fill: parent
-        bodyItem: dashContainer
-        fillColor: dashContainer.color
-        flareRadius: PerimeterTokens.joinFlareRadius
-        progress: root.revealProgress > 0.001 ? 1 : 0
-        joinBottom: root.directBottomAttachment
+        visible: root.directBottomAttachment
+        edge: "bottom"
+        ownerThickness: root.attachmentThickness
+        outputRect: Qt.rect(0, 0, root.width,
+            root.height + root.attachmentThickness)
+        bodyRect: Qt.rect(
+            dashContainer.x,
+            dashContainer.y + (1 - root.revealProgress) * dashContainer.height,
+            dashContainer.width,
+            dashContainer.height)
+        bodyRadius: dashContainer.radius
+        fillColor: Appearance.colors.colLayer0
+        progress: root.revealProgress
+        shadowEnabled: root.screenEdgeShadowEnabled
+            && root.screenEdgeShadowSize > 0
+            && root.screenEdgeShadowOpacity > 0
+        shadowExtent: root.screenEdgeShadowSize
+        shadowColor: ColorUtils.applyAlpha(
+            Appearance.colors.colShadow, root.screenEdgeShadowOpacity)
     }
 
     DashboardEditToolbar {
@@ -136,7 +154,8 @@ Item {
         topRightRadius: radius
         bottomLeftRadius: root.directBottomAttachment ? 0 : radius
         bottomRightRadius: root.directBottomAttachment ? 0 : radius
-        color: Appearance.colors.colLayer0
+        color: root.directBottomAttachment
+            ? "transparent" : Appearance.colors.colLayer0
         clip: true
 
         Behavior on height {

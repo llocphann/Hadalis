@@ -261,8 +261,6 @@ Loader {
                 fillColor: Looks.colors.bg1Base
                 borderColor: Looks.colors.bg2Border
                 borderWidth: Math.max(0, root.ambientShadowWidth)
-                connectorBorderWidth: 0
-                connectorVisible: false
                 // Keep hover ownership on the whole connected body (including
                 // padding) while retaining popupHoverArea for old Waffle callers.
                 hoverEnabled: root.active
@@ -296,12 +294,11 @@ Loader {
             }
         }
 
-        ConnectedSurfaceMask {
+        ConnectedSurfaceBodyMask {
             id: connectedMask
 
             geometry: geometry
             bodyItem: frame.bodyItem
-            connectorItem: frame.connectorItem
             inputEnabled: root.active
         }
 

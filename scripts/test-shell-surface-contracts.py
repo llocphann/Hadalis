@@ -134,17 +134,11 @@ def main() -> None:
         check(token in content_host,
               f"ConnectedSurfaceContentHost must centralize live padded body placement: {token}")
 
-    connector = read("modules/common/perimeter/ConnectedSurfaceConnector.qml")
-    check("Canvas {" in connector,
-          "ConnectedSurfaceConnector must render a shaped shoulder rather than a rectangular stem")
-    check("bezierCurveTo" in connector,
-          "ConnectedSurfaceConnector must retain curved shoulder transitions")
-    check("connectorSourceExtent" in connector,
-          "ConnectedSurfaceConnector must narrow toward the real bar anchor")
-
     for retired_path in (
         "modules/common/perimeter/ConnectedSurfaceJoinFlares.qml",
         "modules/common/perimeter/PerimeterCornerShadow.qml",
+        "modules/common/perimeter/ConnectedSurfaceConnector.qml",
+        "modules/common/perimeter/ConnectedSurfaceMask.qml",
         "modules/common/widgets/RoundCorner.qml",
     ):
         check(not (ROOT / retired_path).exists(),
@@ -661,10 +655,11 @@ def main() -> None:
           "ii StyledPopup must not silently retain the legacy flare/mask renderer after iRiS cutover")
 
     frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
-    check("property real connectorBorderWidth: 0" in frame,
-          "ConnectedSurfaceFrame must default the connector outline off at the seam")
-    check("strokeWidth: root.connectorBorderWidth" in frame,
-          "ConnectedSurfaceFrame must route connector outline width through its seam policy")
+    check("ConnectedSurfaceConnector" not in frame
+          and "connectorBorderWidth" not in frame
+          and "connectorVisible" not in frame
+          and "connectorItem" not in frame,
+          "ConnectedSurfaceFrame must not retain the retired connector painter/API")
     check("ConnectedSurfaceJoinFlares" not in frame
           and "joinFlareRadius" not in frame,
           "ConnectedSurfaceFrame must not retain the retired round-wedge painter")
@@ -686,12 +681,9 @@ def main() -> None:
     check("cached: true" in generic_shadow,
           "Shared rectangular shadow must retain the prior stable cached renderer")
 
-    mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
-    for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
-        check(token in mask,
-              f"ConnectedSurfaceMask must track the flared connector rather than its full bounding box: {token}")
-    check("item: root.active ? root.connectorItem" not in mask,
-          "ConnectedSurfaceMask must not make the transparent connector bounding box fully interactive")
+    check(not (ROOT / "modules/common/perimeter/ConnectedSurfaceConnector.qml").exists()
+          and not (ROOT / "modules/common/perimeter/ConnectedSurfaceMask.qml").exists(),
+          "Retired connector renderer and connector-strip mask must stay deleted")
 
     bar_runtime = read("modules/bar/Bar.qml")
     vertical_bar_runtime = read("modules/verticalBar/VerticalBar.qml")

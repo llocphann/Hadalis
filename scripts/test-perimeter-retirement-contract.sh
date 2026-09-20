@@ -40,7 +40,7 @@ for file in "${retired_files[@]}"; do
     fi
 done
 
-for file in ConnectedSurfaceJoinFlares.qml PerimeterCornerShadow.qml; do
+for file in ConnectedSurfaceJoinFlares.qml PerimeterCornerShadow.qml ConnectedSurfaceConnector.qml ConnectedSurfaceMask.qml; do
     [[ ! -e "$common/$file" ]] || fail "retired round-wedge primitive still exists: $file"
     ! grep -Fq "${file%.qml} 1.0" "$qmldir" || fail "retired round-wedge export remains: $file"
 done
@@ -51,10 +51,8 @@ for export in \
     'PerimeterTopology 1.0 PerimeterTopology.qml' \
     'PerimeterTokens 1.0 PerimeterTokens.qml' \
     'ConnectedSurfaceGeometry 1.0 ConnectedSurfaceGeometry.qml' \
-    'ConnectedSurfaceConnector 1.0 ConnectedSurfaceConnector.qml' \
     'ConnectedSurfaceFrame 1.0 ConnectedSurfaceFrame.qml' \
     'ConnectedSurfaceContentHost 1.0 ConnectedSurfaceContentHost.qml' \
-    'ConnectedSurfaceMask 1.0 ConnectedSurfaceMask.qml' \
     'ConnectedSurfaceIrisField 1.0 ConnectedSurfaceIrisField.qml' \
     'ConnectedSurfaceIrisFrame 1.0 ConnectedSurfaceIrisFrame.qml' \
     'ConnectedSurfaceIrisEdgeSurface 1.0 ConnectedSurfaceIrisEdgeSurface.qml' \

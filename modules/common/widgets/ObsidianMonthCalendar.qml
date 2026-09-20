@@ -98,7 +98,9 @@ Item {
 
     ColumnLayout {
         id: contentColumn
-        width: root.implicitWidth
+        width: root.responsive && root.width > 0
+            ? Math.max(root.implicitWidth, root.width)
+            : root.implicitWidth
         spacing: 10
 
         Item {

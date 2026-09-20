@@ -171,7 +171,9 @@ Item {
             id: monthView
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.top: parent.top
+            anchors.top: root.dashboardAdaptive ? undefined : parent.top
+            anchors.verticalCenter: root.dashboardAdaptive
+                ? parent.verticalCenter : undefined
             implicitHeight: monthColumn.implicitHeight
             opacity: root.viewState === "month" ? 1 : 0
             visible: opacity > 0

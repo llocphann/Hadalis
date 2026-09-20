@@ -18,6 +18,7 @@ MODULES = {
             "Dashboard": "Dashboard.qml",
             "DashboardContent": "DashboardContent.qml",
             "DashboardCanvas": "DashboardCanvas.qml",
+            "DashboardEditToolbar": "DashboardEditToolbar.qml",
             "DashboardHeader": "DashboardHeader.qml",
         },
         "consumers": [

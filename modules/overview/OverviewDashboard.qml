@@ -25,7 +25,15 @@ Item {
     readonly property real heightRatio: Math.min(0.9, Math.max(0.45, Config.options?.dashboard?.heightRatio ?? 0.72))
     readonly property real dashboardWidth: Math.round(Math.max(0,
         Math.min(root.availableWidth - 24, root.availableWidth * root.widthRatio)))
-    readonly property real configuredHeight: Math.round(Math.min(Math.max(320, root.availableHeight - 24), Math.max(420, root.availableHeight * root.heightRatio)))
+    readonly property bool editing: dashboardContent.editMode
+    readonly property real editToolbarReserve: root.editing
+        ? Math.max(0, dashboardEditToolbar.implicitHeight - 1) : 0
+    readonly property real baseConfiguredHeight: Math.round(Math.min(
+        Math.max(320, root.availableHeight - 24),
+        Math.max(420, root.availableHeight * root.heightRatio)))
+    readonly property real configuredHeight: Math.round(Math.max(320,
+        Math.min(root.baseConfiguredHeight,
+            root.availableHeight - 24 - root.editToolbarReserve)))
     readonly property real searchOnlyHeight: Math.min(root.configuredHeight, Math.max(searchWidget.collapsedHeight + 24, searchWidget.implicitHeight + 24))
     readonly property real dashboardContentHeight: Math.max(240, root.configuredHeight - searchWidget.collapsedHeight - 36)
 
@@ -37,7 +45,10 @@ Item {
         : Appearance.sizes.elevationMargin
 
     implicitWidth: dashContainer.width + root.connectedDecorationMargin * 2
-    implicitHeight: dashContainer.height + (root.directBottomAttachment ? root.connectedDecorationMargin : root.connectedDecorationMargin * 2)
+    implicitHeight: dashContainer.height + root.editToolbarReserve
+        + (root.directBottomAttachment
+            ? root.connectedDecorationMargin
+            : root.connectedDecorationMargin * 2)
     clip: root.directBottomAttachment
     readonly property rect connectedSurfaceRect: Qt.rect(dashContainer.x, dashContainer.y, dashContainer.width, dashContainer.height)
     readonly property color connectedSurfaceColor: dashContainer.color
@@ -96,6 +107,17 @@ Item {
         joinBottom: root.directBottomAttachment
     }
 
+    DashboardEditToolbar {
+        id: dashboardEditToolbar
+        parent: dashboardSurfaceLayer
+        z: 8
+        canvasController: dashboardContent.canvasController
+        anchors.horizontalCenter: dashContainer.horizontalCenter
+        anchors.bottom: dashContainer.top
+        anchors.bottomMargin: -1
+        width: Math.min(Math.max(280, dashContainer.width - 32), implicitWidth)
+    }
+
     Rectangle {
         id: dashContainer
         parent: dashboardSurfaceLayer
@@ -131,6 +153,7 @@ Item {
             transform: Translate { y: (1 - root.dashboardProgress) * dashboardViewport.height }
 
             DashboardContent {
+                id: dashboardContent
                 anchors.fill: parent
                 embeddedSurface: true
                 presentationActive: root.panelVisible && root.popupPresented && root.dashboardProgress > 0.001

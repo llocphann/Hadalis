@@ -59,64 +59,71 @@ DashCard {
         value: ResourceUsage.gpuUsage
     }
 
-    RowLayout {
+    Item {
         visible: !root.zzzEverywhere
         Layout.fillWidth: true
-        Layout.preferredHeight: 84
-        Layout.topMargin: 2
-        spacing: 16
+        Layout.fillHeight: true
+        Layout.minimumHeight: 84
 
-        component VerticalBar: ColumnLayout {
-            id: bar
-            required property real value
-            required property string icon
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 6
+        RowLayout {
+            id: meterRow
+            anchors.centerIn: parent
+            width: Math.min(parent.width, 220)
+            height: Math.min(parent.height, 104)
+            spacing: Math.max(10, Math.min(18, width / 12))
 
-            readonly property color barColor: bar.value > 0.8 ? Appearance.colors.colError
-                : bar.value > 0.6 ? Appearance.colors.colTertiary
-                : root.colAccent
-
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                text: `${Math.round(bar.value * 100)}%`
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                font.family: Appearance.font.family.numbers
-                color: root.colSubtext
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
+            component VerticalBar: ColumnLayout {
+                id: bar
+                required property real value
+                required property string icon
+                Layout.fillWidth: true
                 Layout.fillHeight: true
-                implicitWidth: 8
-                radius: 4
-                color: ColorUtils.applyAlpha(root.colSubtext, 0.18)
+                spacing: 6
+
+                readonly property color barColor: bar.value > 0.8 ? Appearance.colors.colError
+                    : bar.value > 0.6 ? Appearance.colors.colTertiary
+                    : root.colAccent
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: `${Math.round(bar.value * 100)}%`
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.family: Appearance.font.family.numbers
+                    color: root.colSubtext
+                }
 
                 Rectangle {
-                    anchors.bottom: parent.bottom
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: parent.width
-                    radius: parent.radius
-                    height: parent.height * Math.max(0, Math.min(1, bar.value))
-                    color: bar.barColor
-                    Behavior on height {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillHeight: true
+                    implicitWidth: 8
+                    radius: 4
+                    color: ColorUtils.applyAlpha(root.colSubtext, 0.18)
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width
+                        radius: parent.radius
+                        height: parent.height * Math.max(0, Math.min(1, bar.value))
+                        color: bar.barColor
+                        Behavior on height {
+                            enabled: Appearance.animationsEnabled
+                            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+                        }
                     }
+                }
+
+                MaterialSymbol {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: bar.icon
+                    iconSize: Appearance.font.pixelSize.normal
+                    color: bar.barColor
                 }
             }
 
-            MaterialSymbol {
-                Layout.alignment: Qt.AlignHCenter
-                text: bar.icon
-                iconSize: Appearance.font.pixelSize.normal
-                color: bar.barColor
-            }
+            VerticalBar { icon: "memory"; value: ResourceUsage.cpuUsage }
+            VerticalBar { icon: "developer_board"; value: ResourceUsage.memoryUsedPercentage }
+            VerticalBar { visible: ResourceUsage.gpuUsage > 0; icon: "videogame_asset"; value: ResourceUsage.gpuUsage }
         }
-
-        VerticalBar { icon: "memory"; value: ResourceUsage.cpuUsage }
-        VerticalBar { icon: "developer_board"; value: ResourceUsage.memoryUsedPercentage }
-        VerticalBar { visible: ResourceUsage.gpuUsage > 0; icon: "videogame_asset"; value: ResourceUsage.gpuUsage }
     }
 }

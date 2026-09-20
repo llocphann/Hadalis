@@ -20,7 +20,7 @@ ShellRoot {
 
         IrisCornerPocWindow {
             required property var modelData
-            screen: modelData
+            targetScreen: modelData
         }
     }
 }

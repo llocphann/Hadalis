@@ -10,6 +10,7 @@ POC = ROOT / "scripts" / "iris-corner-poc"
 field = (POC / "IrisField.frag").read_text(encoding="utf-8")
 wrapper = (POC / "IrisCornerField.qml").read_text(encoding="utf-8")
 window = (POC / "IrisCornerPocWindow.qml").read_text(encoding="utf-8")
+shell = (POC / "shell.qml").read_text(encoding="utf-8")
 readme = (POC / "README.md").read_text(encoding="utf-8")
 capture = (POC / "capture-matrix.sh").read_text(encoding="utf-8")
 g1_capture = (POC / "capture-g1.sh").read_text(encoding="utf-8")
@@ -17,6 +18,13 @@ g1_verify = (POC / "verify-g1-evidence.py").read_text(encoding="utf-8")
 exclusions = json.loads((ROOT / "sdata" / "runtime-exclusions.json").read_text(encoding="utf-8"))
 
 assert "scripts/iris-corner-poc" in exclusions["excludedPaths"]
+assert "required property var modelData" not in window, (
+    "PoC window must not duplicate the Variants delegate modelData requirement"
+)
+assert "property var targetScreen: null" in window
+assert "screen: root.targetScreen" in window
+assert "required property var modelData" in shell
+assert "targetScreen: modelData" in shell
 assert "9574fa424c0d1008e927454e933a7fbe292f9fb2" in wrapper
 assert "9574fa424c0d1008e927454e933a7fbe292f9fb2" in readme
 assert (POC / "IrisField.frag.qsb").stat().st_size == 16765

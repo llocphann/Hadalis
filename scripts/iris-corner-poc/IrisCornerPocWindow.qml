@@ -7,7 +7,7 @@ import Quickshell.Wayland
 PanelWindow {
     id: root
 
-    required property var modelData
+    property var targetScreen: null
 
     function envReal(name, fallback) {
         const raw = Quickshell.env(name)
@@ -192,7 +192,7 @@ PanelWindow {
         joins: root.popupJoins
     })
 
-    screen: modelData
+    screen: root.targetScreen
     visible: true
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore

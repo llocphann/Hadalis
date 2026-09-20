@@ -651,3 +651,17 @@ The PoC now emits readiness only after its window width/height match the target
 dimensions, `geometryStable=true` and the stable-probe count; the verifier
 requires all of them. The failed evidence directory is not a G1 PASS and must
 not unlock G2. Rerun the complete G1 wrapper after updating `dev`.
+
+
+### Live G1 retry: Variants required-property failure
+
+A retry after the stable-geometry fix failed before rendering with:
+
+`Required property modelData was not initialized`.
+
+The PoC had declared `required modelData` both in the `Variants` delegate and
+inside `IrisCornerPocWindow`. The delegate is the object Quickshell populates
+from the model; the custom window's inherited requirement was therefore left
+unsatisfied. The window now receives the delegate's screen explicitly through
+`targetScreen`. This is a PoC lifecycle fix only; no field or production
+geometry changed.

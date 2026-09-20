@@ -250,3 +250,11 @@ Such an attempt must not be used for G1 morphology acceptance because the
 focused crop and join labels may describe the transient pre-layout geometry.
 After updating this harness, rerun `capture-g1.sh` into a fresh evidence
 directory.
+
+
+### Variants screen ownership
+
+The `Variants` delegate owns Quickshell's injected `modelData`. It passes that
+screen explicitly into `IrisCornerPocWindow.targetScreen`; the window itself
+must not redeclare `required modelData`. This keeps delegate construction
+compatible with Quickshell's required-property initialization semantics.

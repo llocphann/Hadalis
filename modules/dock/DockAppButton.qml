@@ -15,7 +15,9 @@ DockButton {
     property var appToplevel
     property var appListRoot
     property int lastFocused: -1
-    property real iconSize: Config.options?.dock?.iconSize ?? 35
+    readonly property real iconSize: Math.min(
+        Math.max(20, Number(Config.options?.dock?.iconSize ?? 35)),
+        Math.max(20, root.controlSize - 10))
     property real countDotWidth: 10
     property real countDotHeight: 4
     // Toplevels come from the dock-wide reactive map so window-list
@@ -174,11 +176,16 @@ DockButton {
         menu: root.appTrayItem?.menu ?? null
     }
 
-    readonly property real dockHeight: Config.options?.dock?.height ?? 70
-    readonly property real separatorSize: dockHeight - 50
+    readonly property real dockHeight: Config.options?.dock?.height ?? 60
+    readonly property real separatorSize:
+        Math.max(8, dockHeight - root.controlSize)
 
-    implicitWidth: isSeparator ? (vertical ? separatorSize : 8) : (vertical ? 50 : (implicitHeight - topInset - bottomInset))
-    implicitHeight: isSeparator ? (vertical ? 8 : separatorSize) : 50
+    implicitWidth: isSeparator
+        ? (vertical ? separatorSize : 8)
+        : root.controlSize
+    implicitHeight: isSeparator
+        ? (vertical ? 8 : separatorSize)
+        : root.controlSize
 
     background.visible: !isSeparator
 

@@ -76,7 +76,7 @@ Scope {
                 property real _editResizeBaseline: -1
                 readonly property real dockHeight: editThicknessPreview >= 0
                     ? editThicknessPreview
-                    : (Config.options?.dock?.height ?? 70)
+                    : (Config.options?.dock?.height ?? 60)
                 readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
                 readonly property bool screenEdgeShadowEnabled:
@@ -93,7 +93,7 @@ Scope {
                     dockRoot.screenEdgeShadowEnabled ? dockRoot.screenEdgeShadowSize + 2 : 0)
 
                 function beginDockResize(): void {
-                    const baseline = Config.options?.dock?.height ?? 70
+                    const baseline = Config.options?.dock?.height ?? 60
                     if (!ShellEditSession.beginGesture("iiDock", "resize-thickness",
                             { thickness: baseline }))
                         return
@@ -238,12 +238,12 @@ Scope {
                     property real hideOffset: dockRoot.reveal
                         ? 0
                         : Config.options?.dock?.hoverToReveal
-                            ? (dockRoot.implicitHeight - (Config.options?.dock?.hoverRegionHeight ?? 5))
+                            ? (dockRoot.implicitHeight - (Config.options?.dock?.hoverRegionHeight ?? 2))
                             : (dockRoot.implicitHeight + 1)
                     property real hideOffsetV: dockRoot.reveal
                         ? 0
                         : Config.options?.dock?.hoverToReveal
-                            ? (dockRoot.implicitWidth - (Config.options?.dock?.hoverRegionHeight ?? 5))
+                            ? (dockRoot.implicitWidth - (Config.options?.dock?.hoverRegionHeight ?? 2))
                             : (dockRoot.implicitWidth + 1)
 
                     anchors.topMargin: root.position === "bottom" ? hideOffset : 0
@@ -539,7 +539,7 @@ Scope {
             // configurable Screen Edge width; elevationMargin is only transparent
             // free-side render room and must not define workspace geometry.
             exclusiveZone: visible
-                ? Math.max(0, Math.round((Config.options?.dock?.height ?? 70)
+                ? Math.max(0, Math.round((Config.options?.dock?.height ?? 60)
                     + Math.max(1, Math.min(32,
                         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))))
                 : 0

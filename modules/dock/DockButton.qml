@@ -10,8 +10,18 @@ RippleButton {
     Layout.fillHeight: !vertical
     Layout.fillWidth: vertical
 
-    implicitWidth: vertical ? (implicitHeight - topInset - bottomInset) : (implicitHeight - topInset - bottomInset)
-    implicitHeight: 50
+    // Keep the default 50px Panel control, but shrink when a thin Dock cannot
+    // contain it and grow only when a larger requested icon needs the room.
+    // This makes the full Settings range (height 40..100, icon 20..60) safe.
+    readonly property real dockThickness:
+        Math.max(40, Number(Config.options?.dock?.height ?? 60))
+    readonly property real requestedIconSize:
+        Math.max(20, Number(Config.options?.dock?.iconSize ?? 35))
+    readonly property real controlSize: Math.max(30, Math.min(
+        dockThickness - 10, Math.max(50, requestedIconSize + 10)))
+
+    implicitWidth: controlSize
+    implicitHeight: controlSize
     // Panel is the only supported ii Dock renderer. Keep one Material button
     // face instead of dispatching through retired global-style branches.
     cookieMorphing: true
@@ -20,6 +30,6 @@ RippleButton {
     colBackgroundHover: Appearance.colors.colLayer0Hover
     colRipple: Appearance.colors.colLayer0Active
 
-    background.implicitHeight: 50
-    background.implicitWidth: 50
+    background.implicitHeight: controlSize
+    background.implicitWidth: controlSize
 }

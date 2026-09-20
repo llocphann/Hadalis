@@ -274,7 +274,7 @@ Singleton {
             const dockState = root.currentState("iiDock", outputName)
             result.dockEdge = dockState.ok ? dockState.slot : ""
             root._applyInset(result, result.dockEdge,
-                (Config.options?.dock?.height ?? 70)
+                (Config.options?.dock?.height ?? 60)
                     + Appearance.sizes.elevationMargin
                     + Appearance.sizes.hyprlandGapsOut)
         }

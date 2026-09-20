@@ -36,6 +36,7 @@ This document records the stabilization contracts that should be checked during 
 - Pinned reservation ends at the Dock body's inward edge (`dock.height + appearance.screenEdge.width`), while transparent free-edge window room expands to the configured Screen Edge shadow reach. Changing shadow size therefore cannot move the Dock body or alter workspace reservation.
 - Dock, Sidebar and Dashboard use the same `appearance.screenEdge.physicalShadow` size/opacity and Material `m3shadow` ink as the physical Screen Edge.
 - Dock reveal/retract remains slide-only through `SurfaceMotion`; the iRiS body follows that translation rather than introducing a second animation stage.
+- Panel controls derive their size from Dock height plus requested icon size: the default remains 50px, thin Docks shrink controls/icons rather than overflowing, and large icons can grow only when the configured Dock height has room. Runtime fallbacks stay aligned with the shipped 60px Dock height and 2px hover-reveal region.
 - Legacy persisted values such as Pill, macOS, Island, or M3 normalize to `panel` during startup.
 - Retired Pill/macOS renderer components are absent from the live Dock module; Panel behavior must not be hidden behind constant-false style branches.
 - The settings UI must not expose the legacy style matrix again.

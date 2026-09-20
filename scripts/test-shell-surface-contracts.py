@@ -908,6 +908,7 @@ def main() -> None:
     check("Dock uses the Panel surface style." in dock_config,
           "Dock settings must describe Panel as the canonical surface style")
 
+    dock_button = read("modules/dock/DockButton.qml")
     dock_app_button = read("modules/dock/DockAppButton.qml")
     dock_apps = read("modules/dock/DockApps.qml")
     dock_qmldir = read("modules/dock/qmldir")
@@ -931,6 +932,24 @@ def main() -> None:
         check(retired_token not in dock_app_button
               and retired_token not in dock_apps,
               f"Panel-only Dock runtime must not retain dormant renderer token: {retired_token}")
+    for token in (
+        "readonly property real dockThickness:",
+        "readonly property real requestedIconSize:",
+        "readonly property real controlSize:",
+        "dockThickness - 10",
+        "requestedIconSize + 10",
+        "background.implicitHeight: controlSize",
+        "background.implicitWidth: controlSize",
+    ):
+        check(token in dock_button,
+              f"Panel Dock control sizing contract missing: {token}")
+    check("root.controlSize - 10" in dock_app_button
+          and "Math.max(8, dockHeight - root.controlSize)" in dock_app_button
+          and "Config.options?.dock?.height ?? 70" not in dock
+          and "Config.options?.dock?.height ?? 70" not in dock_app_button
+          and "Config.options?.dock?.hoverRegionHeight ?? 5" not in dock,
+          "Dock runtime must honor the full Settings size/reveal range without stale fallbacks or overflow")
+
     check("readonly property real activeScale: 1.05" in dock_app_button
           and "property bool dragEmphasis: false" in dock_app_button
           and "scale: root.dragEmphasis ? 1.08 : (root.appIsActive ? root.activeScale : 1.0)" in dock_app_button

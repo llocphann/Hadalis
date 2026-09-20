@@ -180,7 +180,7 @@ ContentPage {
                         Config.setNestedValue("dock.iconSize", value);
                     }
                     StyledToolTip {
-                        text: Translation.tr("Size of application icons in the dock")
+                        text: Translation.tr("Requested application icon size; thin Dock heights clamp icons so controls never overflow.")
                     }
                 }
 

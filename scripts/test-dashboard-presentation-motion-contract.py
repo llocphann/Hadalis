@@ -52,7 +52,7 @@ for token in (
     require(dashboard, token, "Dashboard/Search readiness")
 forbid(
     dashboard,
-    "readonly property bool presentingSearch:\\n        root.searching && searchWidget.resultsReady",
+    "readonly property bool presentingSearch:\n        root.searching && searchWidget.resultsReady",
     "Dashboard/Search per-keystroke mode bounce",
 )
 

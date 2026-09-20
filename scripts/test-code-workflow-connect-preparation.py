@@ -39,7 +39,8 @@ exclusions = json.loads(
 for token in (
     'ARTIFACT_PROOF = "prepared-qualified-connect-artifacts-v1"',
     "def prepare_qualified_connect_artifacts(",
-    "qualify_reviewed_connect(",
+    "qualification_runner: QualificationRunner = qualify_reviewed_connect",
+    "qualification = qualification_runner(",
     "prepare_connect_binding_patch(",
     '"qualified-candidate-sha-drift"',
     '"prepared-candidate-has-parser-diagnostics"',

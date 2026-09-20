@@ -1,0 +1,41 @@
+name: Unified Surface U1 Shader
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "scripts/unified-surface/**"
+      - "scripts/test-unified-surface-u1-contract.py"
+      - "sdata/runtime-exclusions.json"
+      - ".github/workflows/unified-surface-u1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bake-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt shader baker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-shader-baker
+
+      - name: Bake U1 shader
+        run: scripts/unified-surface/build-shader.sh
+
+      - name: Verify isolated U1 contract
+        env:
+          HADALIS_REQUIRE_U1_QSB: "1"
+        run: python3 scripts/test-unified-surface-u1-contract.py
+
+      - name: Upload canonical U1 QSB
+        uses: actions/upload-artifact@v4
+        with:
+          name: hadalis-u1-qsb
+          path: scripts/unified-surface/U1Surface.qsb
+          if-no-files-found: error
+          retention-days: 7

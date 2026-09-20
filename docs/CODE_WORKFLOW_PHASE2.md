@@ -2,8 +2,9 @@
 
 Updated 2026-09-20.
 
-Phase 2 has started with a deliberately non-writing transaction preview
-foundation. No Apply/source-write path exists in this milestone.
+Phase 2 now includes a contract-tested atomic writer and production lifecycle
+controller, but user-triggered Apply remains disabled. The Settings UI can only
+preview and prepare artifacts; applyEnabled is still false.
 
 ## Milestone 2A — literal property dry-run preview
 
@@ -90,10 +91,10 @@ Implemented:
   anchor, replacement and history index.
 - No transient parser byte range, runtime QObject or QJSValue is stored in the
   reload handoff.
-- pendingApplyPhase is only "idle" or "prepared" in this milestone. There is no
-  write-issued/waiting-reload state yet because source writes remain disabled.
-- scripts/test-code-workflow-reload-handoff.py guards reload persistence,
-  primitive-only pending identity and the no-write boundary.
+- Milestone 2G extends the same primitive handoff with write/reload/verify/
+  rollback phases; no QObject, QJSValue or transient byte range is persisted.
+- scripts/test-code-workflow-reload-handoff.py guards reload persistence and
+  primitive-only pending identity across the full lifecycle.
 
 ## Milestone 2E — exact Apply preparation artifacts
 
@@ -140,30 +141,55 @@ Implemented:
   blocks rollback instead of being overwritten.
 - verify distinguishes candidate-present, base-present and diverged without
   modifying the source.
-- The engine is not wired to CodeWorkflowTransaction or Settings yet;
-  applyEnabled remains false. Contract tests exercise commit/verify/rollback only
-  against temporary fixture files.
+- Milestone 2G wires the engine to CodeWorkflowTransaction internally while
+  keeping Settings unable to invoke the write lifecycle; applyEnabled remains
+  false. Contract tests still exercise commit/verify/rollback against temporary
+  fixture files in addition to static lifecycle wiring guards.
 - scripts/test-code-workflow-atomic-commit-engine.py guards source mode
   preservation, commit/rollback hash checks, external-edit conflict behavior,
   runtime packaging and the production no-Apply boundary.
 
+## Milestone 2G — watcher-driven commit/reload/rollback lifecycle
+
+Implemented:
+
+- CodeWorkflowTransaction now consumes only an artifacts-prepared handoff and
+  persists write-issued before spawning commit.py.
+- The controller never calls Quickshell.reload(). It relies on Quickshell's
+  watched-source reload and observes reloadCompleted/reloadFailed.
+- Process death during reload is expected: all recovery identity remains in
+  PersistentProperties, and a new generation can resume write-issued,
+  waiting-reload, verify, rebind, rollback or failure phases.
+- The selected source's own fileChanged event is treated as expected while the
+  lifecycle owns that path; concurrent edits are still detected by commit.py
+  hash checks and post-reload verify.
+- Successful reload requires verify => candidate-present followed by a fresh
+  CodeWorkflowAnalyzer semantic-anchor rebind against the candidate SHA.
+- Reload failure starts conflict-checked rollback from the exact snapshot.
+  Rollback then waits for the watcher-driven reload and verifies base-present.
+- Rollback never overwrites a post-Apply external edit because commit.py permits
+  rollback only while the live source still equals candidateSha256.
+- Undo/Redo/Clear/new preview are blocked while the write lifecycle is active.
+- The lifecycle is intentionally not exposed by Settings yet:
+  applyEnabled remains false and no Apply button calls beginApplyLifecycle().
+- scripts/test-code-workflow-apply-lifecycle.py guards phase persistence,
+  watcher-only reload behavior, semantic rebind, rollback wiring and the
+  no-user-Apply boundary.
+
 ## Not implemented yet
 
-- production source writes or Apply UI;
-- QML lifecycle wiring for the isolated commit engine;
+- user-triggered Apply UI and live acceptance of the wired lifecycle;
 - direct binding transforms;
 - connect/disconnect data dependencies;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
-- rollback after reload failure.
+- multi-file rollback/transactions.
 
 ## Next gate
 
-The next implementation gate is production lifecycle wiring for the isolated
-commit engine. CodeWorkflowTransaction must consume only an artifacts-prepared
-handoff, set write-issued before spawning commit.py, never issue a second manual
-reload, survive the watcher-driven reload through PersistentProperties, observe
-reloadCompleted/reloadFailed, verify candidate-present after success, rebind the
-semantic anchor, and invoke conflict-checked rollback on reload failure. Only
-after that complete lifecycle passes contracts may Apply become enabled.
+The next gate is live acceptance of the wired lifecycle against an expendable
+literal property: successful watcher reload, semantic rebind, forced reload
+failure with exact rollback, and conflict preservation under an external edit.
+Only after that lifecycle evidence is captured should applyEnabled become true
+and an Apply button be exposed.

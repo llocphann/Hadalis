@@ -97,12 +97,18 @@ for token in (
     if token not in commit_source:
         fail("atomic commit engine missing " + token)
 
-if "scripts/code-workflow/commit.py" in service:
-    fail("isolated commit engine must not be wired to production service yet")
+for token in (
+    'Quickshell.shellPath("scripts/code-workflow/commit.py")',
+    '"commit",',
+    '"verify",',
+    '"rollback",',
+):
+    if token not in service:
+        fail("atomic commit engine production wiring missing " + token)
 if "readonly property bool applyEnabled: false" not in service:
-    fail("Apply must remain disabled while commit engine is isolated")
-if "Apply workflow" in page:
-    fail("Settings must not expose Apply before lifecycle wiring")
+    fail("Apply must remain disabled pending live lifecycle acceptance")
+if "beginApplyLifecycle()" in page or "Apply workflow" in page:
+    fail("Settings must not expose Apply before live lifecycle acceptance")
 
 payload = subprocess.run(
     [
@@ -121,4 +127,4 @@ payload = subprocess.run(
 if "scripts/code-workflow/commit.py" not in set(payload):
     fail("atomic commit engine must ship in runtime payload before wiring")
 
-print("ok - Code Workflow isolated atomic commit engine contract")
+print("ok - Code Workflow atomic commit engine and guarded production wiring contract")

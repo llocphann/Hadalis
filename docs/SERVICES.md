@@ -51,7 +51,7 @@
 | **CodeWorkflowIr** | Loads the versioned read-only semantic projection manifest used by the workflow graph; source-range parsing remains a separate boundary. |
 | **CodeWorkflowPicker** | In-process per-output component picker lifecycle for overlay Settings; no standalone cross-process bridge. |
 | **CodeWorkflowSession** | Persists primitive Workflow target, subflow, selected-node and viewport state across lazy page/reload lifetimes. |
-| **CodeWorkflowTransaction** | Owns Phase 2 semantic preview history, pre-Apply diagnostics and reload-stable Apply preparation. Private rollback/candidate artifacts can be staged; an isolated atomic commit/rollback engine is contract-tested but not wired to production, so applyEnabled remains false. |
+| **CodeWorkflowTransaction** | Owns Phase 2 semantic preview history, pre-Apply diagnostics, exact artifacts and the watcher-driven atomic commit/verify/rebind/rollback lifecycle. The controller is wired internally but Settings cannot trigger it; applyEnabled remains false pending live lifecycle acceptance. |
 
 ## Theming and Appearance
 

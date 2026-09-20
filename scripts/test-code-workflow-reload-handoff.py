@@ -53,18 +53,19 @@ for forbidden in (
         fail("reload handoff must stay primitive/JSON-only: " + forbidden)
 
 for forbidden in (
-    "FileView {",
-    "setText(",
-    "writeAdapter(",
-    "atomicWrites",
+    "property var pendingApply",
+    "QObject",
+    "QJSValue",
+    "byteRange",
+    "valueRange",
 ):
-    if forbidden in service:
-        fail("reload handoff milestone must not add source writes: " + forbidden)
+    if forbidden in persistent_block:
+        fail("reload handoff must remain primitive/JSON-only: " + forbidden)
 
 if "readonly property bool applyEnabled: false" not in service:
-    fail("Apply must remain disabled through reload-handoff milestone")
+    fail("Apply must remain disabled through lifecycle wiring")
 
-if "pendingApplyPhase is only" not in phase2 or "source writes remain disabled" not in phase2:
-    fail("Phase 2 status must document the prepared-only handoff boundary")
+if "Milestone 2G" not in phase2 or "PersistentProperties" not in phase2:
+    fail("Phase 2 status must document full reload-stable lifecycle handoff")
 
 print("ok - Code Workflow reload-stable transaction handoff contract")

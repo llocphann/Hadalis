@@ -7,14 +7,14 @@ picker, Geometry canvas, Source Preview and a source-backed semantic projection 
 now form the production read-only foundation. Selected reviewed anchors gain
 transient CST byte-range evidence when native parser capability is present;
 missing/ambiguous anchors fail closed and no ranges are persisted into the IR
-manifest. Generic semantic extraction, stable Arch parser promotion and every
-source-writing transform remain unfinished. Unique parser semantic anchors can
-now rebind read-only inspector identity across source movement, but they are not
-yet authorization for rewriting source. The on-demand
+manifest. Generic semantic extraction and stable Arch parser promotion remain unfinished.
+The first literal-property transform now has dry-run preview, semantic identity,
+exact artifacts, an atomic commit/rollback engine and watcher-driven lifecycle
+wiring; user-triggered Apply remains disabled pending live lifecycle acceptance. The on-demand
 parser boundary still degrades to reviewed IR when native capability is absent.
-Curve sustained-memory acceptance remains HOLD. Phase 2 has started only as a
-dry-run literal-property patch preview with applyEnabled=false; there is still no
-production source-write path.
+Curve sustained-memory acceptance remains HOLD. Phase 2 has an internal
+production source-write controller, but Settings cannot trigger it:
+applyEnabled=false until live reload/rebind/rollback acceptance is complete.
 See [feasibility evidence](CODE_WORKFLOW_FEASIBILITY.md),
 [Phase 1 status](CODE_WORKFLOW_PHASE1.md),
 [Phase 2 status](CODE_WORKFLOW_PHASE2.md) and

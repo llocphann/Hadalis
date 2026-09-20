@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.services
 
 Singleton {
     id: root
@@ -21,6 +22,8 @@ Singleton {
     property string error: ""
     property var applyPreparation: ({})
     property string applyPreparationError: ""
+    property var applyLifecycleResult: ({})
+    property string applyLifecycleError: ""
 
     // Semantic preview commands. Patch byte ranges are evidence attached to a
     // command, never the command identity.
@@ -37,10 +40,34 @@ Singleton {
     readonly property bool preApplyReady:
         root.preApplyDiagnostics?.ready === true
     readonly property bool applyEnabled: false
+    readonly property bool applyLifecycleBusy:
+        [
+            "write-issued",
+            "waiting-reload",
+            "candidate-verify-issued",
+            "rebinding",
+            "rollback-pending",
+            "rollback-issued",
+            "rollback-waiting-reload",
+            "rollback-verify-issued"
+        ].includes(reloadState.pendingApplyPhase)
+        || commitProcess.running
+        || verifyProcess.running
+        || rollbackProcess.running
+    readonly property bool applyLifecycleReady:
+        root.applyArtifactsReady
+        && Quickshell.watchFiles
+        && !root.applyLifecycleBusy
+        && reloadState.pendingApplyManifestPath.length > 0
     readonly property bool canUndo:
-        !previewProcess.running && root.historyIndex >= 0
+        !previewProcess.running
+        && !applyPrepareProcess.running
+        && !root.applyLifecycleBusy
+        && root.historyIndex >= 0
     readonly property bool canRedo:
         !previewProcess.running
+        && !applyPrepareProcess.running
+        && !root.applyLifecycleBusy
         && root.historyIndex + 1 < root.history.length
     readonly property var activeCommand:
         root.historyIndex >= 0 && root.historyIndex < root.history.length
@@ -60,6 +87,7 @@ Singleton {
         root.preApplyReady
         && reloadState.pendingApplyPhase === "idle"
         && !applyPrepareProcess.running
+        && !root.applyLifecycleBusy
 
     function _syncReloadState(): void {
         if (!root._reloadStateReady || root._restoringReloadState)
@@ -88,6 +116,7 @@ Singleton {
         root._restoringReloadState = false
         root._reloadStateReady = true
         root._showCommand(root.activeCommand)
+        Qt.callLater(root._recoverApplyLifecycle)
     }
 
     function _invalidateApplyHandoff(): void {
@@ -117,6 +146,9 @@ Singleton {
         reloadState.pendingApplySnapshotPath = ""
         reloadState.pendingApplyCandidatePath = ""
         reloadState.pendingApplyManifestPath = ""
+        reloadState.pendingApplyReloadOutcome = "none"
+        reloadState.pendingApplyVerifyState = "unknown"
+        reloadState.pendingApplyError = ""
         return true
     }
 
@@ -131,6 +163,9 @@ Singleton {
         reloadState.pendingApplySnapshotPath = ""
         reloadState.pendingApplyCandidatePath = ""
         reloadState.pendingApplyManifestPath = ""
+        reloadState.pendingApplyReloadOutcome = "none"
+        reloadState.pendingApplyVerifyState = "unknown"
+        reloadState.pendingApplyError = ""
     }
 
     function prepareApplyArtifacts(): bool {
@@ -210,6 +245,454 @@ Singleton {
             ?? ("apply preparation exited " + exitCode))
         root.clearApplyHandoff()
         root._showCommand(root.activeCommand)
+    }
+
+
+    function _payloadMatchesPending(payload): bool {
+        return payload?.protocol === 1
+            && String(payload?.sourcePath ?? "")
+                === reloadState.pendingApplySourcePath
+            && String(payload?.baseSha256 ?? "")
+                === reloadState.pendingApplyBaseSha256
+            && String(payload?.candidateSha256 ?? "")
+                === reloadState.pendingApplyCandidateSha256
+            && String(payload?.semanticAnchor ?? "")
+                === reloadState.pendingApplySemanticAnchor
+    }
+
+    function _parseProcessPayload(collector): var {
+        const raw = String(collector.text ?? "").trim()
+        if (raw.length === 0)
+            return null
+        try {
+            return JSON.parse(raw)
+        } catch (e) {
+            return null
+        }
+    }
+
+    function _setLifecycleFailure(
+        phase: string,
+        message: string,
+        payload
+    ): void {
+        reloadState.pendingApplyPhase = phase
+        reloadState.pendingApplyError = message
+        root.applyLifecycleResult = payload ?? ({})
+        root.applyLifecycleError = message
+        root.status = phase === "commit-conflict"
+            || phase === "rollback-conflict"
+            ? "conflict"
+            : "error"
+        root.error = message
+    }
+
+    function beginApplyLifecycle(): bool {
+        if (!root.applyLifecycleReady)
+            return false
+
+        // Persist write-issued before commit.py can touch tracked source. The
+        // watcher-driven reload may destroy this generation before onExited.
+        reloadState.pendingApplyPhase = "write-issued"
+        reloadState.pendingApplyReloadOutcome = "none"
+        reloadState.pendingApplyVerifyState = "unknown"
+        reloadState.pendingApplyError = ""
+        root.applyLifecycleResult = ({})
+        root.applyLifecycleError = ""
+        root.status = "apply-writing"
+
+        commitProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/commit.py"),
+            "commit",
+            "--manifest",
+            reloadState.pendingApplyManifestPath
+        ]
+        commitProcess.running = true
+        return true
+    }
+
+    function finishCommit(exitCode: int): void {
+        if (reloadState.pendingApplyPhase === "rollback-pending") {
+            root._startRollback(reloadState.pendingApplyError)
+            return
+        }
+
+        const payload = root._parseProcessPayload(commitStdout)
+        if (payload?.status === "written"
+                && root._payloadMatchesPending(payload)) {
+            root.applyLifecycleResult = payload
+            root.applyLifecycleError = ""
+            reloadState.pendingApplyPhase = "waiting-reload"
+            root.status = "apply-waiting-reload"
+            if (reloadState.pendingApplyReloadOutcome === "completed")
+                Qt.callLater(root._startCandidateVerify)
+            return
+        }
+
+        const stderrText = String(commitStderr.text ?? "").trim()
+        const message = String(
+            payload?.detail
+            ?? payload?.reason
+            ?? stderrText
+            ?? ("atomic commit exited " + exitCode))
+        root._setLifecycleFailure(
+            payload?.status === "conflict"
+                ? "commit-conflict"
+                : "commit-failed",
+            message,
+            payload)
+    }
+
+    function _startCandidateVerify(): void {
+        if (verifyProcess.running
+                || reloadState.pendingApplyManifestPath.length === 0)
+            return
+
+        reloadState.pendingApplyPhase = "candidate-verify-issued"
+        root.status = "apply-verifying"
+        verifyProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingApplyManifestPath
+        ]
+        verifyProcess.running = true
+    }
+
+    function _startRollbackVerify(): void {
+        if (verifyProcess.running
+                || reloadState.pendingApplyManifestPath.length === 0)
+            return
+
+        reloadState.pendingApplyPhase = "rollback-verify-issued"
+        root.status = "rollback-verifying"
+        verifyProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/commit.py"),
+            "verify",
+            "--manifest",
+            reloadState.pendingApplyManifestPath
+        ]
+        verifyProcess.running = true
+    }
+
+    function finishVerify(exitCode: int): void {
+        const phase = reloadState.pendingApplyPhase
+        const payload = root._parseProcessPayload(verifyStdout)
+        if (payload?.status !== "verified"
+                || !root._payloadMatchesPending(payload)) {
+            const stderrText = String(verifyStderr.text ?? "").trim()
+            root._setLifecycleFailure(
+                phase === "rollback-verify-issued"
+                    ? "rollback-conflict"
+                    : "verify-failed",
+                String(
+                    payload?.detail
+                    ?? payload?.reason
+                    ?? stderrText
+                    ?? ("atomic verify exited " + exitCode)),
+                payload)
+            return
+        }
+
+        const state = String(payload.state ?? "")
+        reloadState.pendingApplyVerifyState = state
+
+        if (phase === "candidate-verify-issued") {
+            if (state !== "candidate-present") {
+                root._setLifecycleFailure(
+                    state === "diverged"
+                        ? "commit-conflict"
+                        : "verify-failed",
+                    "Expected committed candidate after successful reload; "
+                        + "verify reported " + state,
+                    payload)
+                return
+            }
+            root._beginSemanticRebind()
+            return
+        }
+
+        if (phase === "rollback-verify-issued") {
+            if (state !== "base-present") {
+                root._setLifecycleFailure(
+                    "rollback-conflict",
+                    "Expected rollback base after recovery reload; "
+                        + "verify reported " + state,
+                    payload)
+                return
+            }
+            root._finalizeRollback(payload)
+        }
+    }
+
+    function _beginSemanticRebind(): void {
+        reloadState.pendingApplyPhase = "rebinding"
+        root.status = "apply-rebinding"
+        CodeWorkflowAnalyzer.request(
+            reloadState.pendingApplySourcePath,
+            "",
+            reloadState.pendingApplySemanticAnchor,
+            true)
+    }
+
+    function _finishSemanticRebindIfReady(): void {
+        if (reloadState.pendingApplyPhase !== "rebinding")
+            return
+        if (CodeWorkflowAnalyzer.status === "analyzing"
+                || CodeWorkflowAnalyzer.status === "idle")
+            return
+
+        const matches = CodeWorkflowAnalyzer.status === "ready"
+            && CodeWorkflowAnalyzer.sourcePath
+                === reloadState.pendingApplySourcePath
+            && CodeWorkflowAnalyzer.semanticAnchor
+                === reloadState.pendingApplySemanticAnchor
+            && String(CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+                === reloadState.pendingApplyCandidateSha256
+            && CodeWorkflowAnalyzer.semanticRebind?.status === "resolved"
+            && String(
+                CodeWorkflowAnalyzer.semanticRebind?.anchor ?? "")
+                === reloadState.pendingApplySemanticAnchor
+
+        if (!matches) {
+            root._setLifecycleFailure(
+                "rebind-failed",
+                "Committed source reloaded, but semantic anchor rebind "
+                    + "did not resolve to the prepared candidate.",
+                CodeWorkflowAnalyzer.result)
+            return
+        }
+
+        root._finalizeApplySuccess()
+    }
+
+    function _markHistoryLifecycleResult(
+        applied: bool,
+        reason: string
+    ): void {
+        const index = Number(
+            reloadState.pendingApplyHistoryIndex ?? -1)
+        if (index < 0 || index >= root.history.length)
+            return
+
+        const next = root.history.slice()
+        next[index] = Object.assign({}, next[index], {
+            applied: applied,
+            appliedSha256: applied
+                ? reloadState.pendingApplyCandidateSha256
+                : "",
+            applyRolledBack: !applied,
+            stale: true,
+            staleReason: reason
+        })
+        root.history = next
+        root.historyIndex = index
+    }
+
+    function _finalizeApplySuccess(): void {
+        const payload = {
+            status: "applied",
+            sourcePath: reloadState.pendingApplySourcePath,
+            sourceSha256: reloadState.pendingApplyCandidateSha256,
+            semanticAnchor: reloadState.pendingApplySemanticAnchor
+        }
+        root._markHistoryLifecycleResult(
+            true,
+            "Applied successfully; create a new preview against "
+                + "the current source before editing again.")
+        root.clearApplyHandoff()
+        root.applyLifecycleResult = payload
+        root.applyLifecycleError = ""
+        root.status = "applied"
+        root.error = ""
+        root.preApplyDiagnostics = ({
+            status: "not-evaluated",
+            ready: false,
+            blockers: ["source-updated"],
+            applyEnabled: false
+        })
+    }
+
+    function _startRollback(reason: string): void {
+        if (rollbackProcess.running)
+            return
+        if (reloadState.pendingApplyManifestPath.length === 0) {
+            root._setLifecycleFailure(
+                "rollback-failed",
+                "Reload failed but no prepared manifest is available "
+                    + "for rollback.",
+                null)
+            return
+        }
+
+        reloadState.pendingApplyPhase = "rollback-issued"
+        reloadState.pendingApplyReloadOutcome = "none"
+        reloadState.pendingApplyVerifyState = "unknown"
+        if (String(reason ?? "").length > 0)
+            reloadState.pendingApplyError = String(reason)
+        root.status = "rollback-writing"
+
+        rollbackProcess.command = [
+            "python3",
+            Quickshell.shellPath("scripts/code-workflow/commit.py"),
+            "rollback",
+            "--manifest",
+            reloadState.pendingApplyManifestPath
+        ]
+        rollbackProcess.running = true
+    }
+
+    function finishRollback(exitCode: int): void {
+        const payload = root._parseProcessPayload(rollbackStdout)
+        if (payload?.status === "rolled-back"
+                && root._payloadMatchesPending(payload)) {
+            root.applyLifecycleResult = payload
+            root.applyLifecycleError = ""
+            reloadState.pendingApplyPhase = "rollback-waiting-reload"
+            reloadState.pendingApplyReloadOutcome = "none"
+            root.status = "rollback-waiting-reload"
+            return
+        }
+
+        const stderrText = String(rollbackStderr.text ?? "").trim()
+        root._setLifecycleFailure(
+            payload?.status === "conflict"
+                ? "rollback-conflict"
+                : "rollback-failed",
+            String(
+                payload?.detail
+                ?? payload?.reason
+                ?? stderrText
+                ?? ("atomic rollback exited " + exitCode)),
+            payload)
+    }
+
+    function _finalizeRollback(payload): void {
+        const failure = String(
+            reloadState.pendingApplyError
+            ?? "Candidate reload failed.")
+        const result = {
+            status: "rolled-back",
+            sourcePath: reloadState.pendingApplySourcePath,
+            sourceSha256: reloadState.pendingApplyBaseSha256,
+            semanticAnchor: reloadState.pendingApplySemanticAnchor,
+            reloadError: failure,
+            verify: payload
+        }
+        root._markHistoryLifecycleResult(
+            false,
+            "Apply reload failed and exact rollback restored the base; "
+                + "regenerate before retrying.")
+        root.clearApplyHandoff()
+        root.applyLifecycleResult = result
+        root.applyLifecycleError = failure
+        root.status = "rollback-complete"
+        root.error = failure
+        root.preApplyDiagnostics = ({
+            status: "blocked",
+            ready: false,
+            blockers: ["rolled-back-after-reload-failure"],
+            applyEnabled: false
+        })
+    }
+
+    function _recoverApplyLifecycle(): void {
+        const phase = reloadState.pendingApplyPhase
+
+        if (phase === "write-issued"
+                || phase === "waiting-reload") {
+            root.status = "apply-waiting-reload"
+            if (reloadState.pendingApplyReloadOutcome === "completed")
+                root._startCandidateVerify()
+            return
+        }
+        if (phase === "candidate-verify-issued") {
+            root._startCandidateVerify()
+            return
+        }
+        if (phase === "rebinding") {
+            root._beginSemanticRebind()
+            return
+        }
+        if (phase === "rollback-pending") {
+            root.status = "rollback-pending"
+            if (!commitProcess.running)
+                root._startRollback(reloadState.pendingApplyError)
+            return
+        }
+        if (phase === "rollback-issued"
+                || phase === "rollback-waiting-reload") {
+            root.status = "rollback-waiting-reload"
+            if (reloadState.pendingApplyReloadOutcome === "completed")
+                root._startRollbackVerify()
+            return
+        }
+        if (phase === "rollback-verify-issued") {
+            root._startRollbackVerify()
+            return
+        }
+        if ([
+                "commit-conflict",
+                "commit-failed",
+                "verify-failed",
+                "rebind-failed",
+                "rollback-conflict",
+                "rollback-failed"
+            ].includes(phase)) {
+            root.applyLifecycleError =
+                reloadState.pendingApplyError
+            root.error = reloadState.pendingApplyError
+            root.status = phase.includes("conflict")
+                ? "conflict"
+                : "error"
+        }
+    }
+
+    function _handleReloadCompleted(): void {
+        const phase = reloadState.pendingApplyPhase
+        if (phase === "write-issued"
+                || phase === "waiting-reload") {
+            reloadState.pendingApplyReloadOutcome = "completed"
+            root._startCandidateVerify()
+            return
+        }
+        if (phase === "rollback-issued"
+                || phase === "rollback-waiting-reload") {
+            reloadState.pendingApplyReloadOutcome = "completed"
+            root._startRollbackVerify()
+        }
+    }
+
+    function _handleReloadFailed(errorString: string): void {
+        const phase = reloadState.pendingApplyPhase
+        const message = String(errorString ?? "Quickshell reload failed")
+
+        if (phase === "write-issued"
+                || phase === "waiting-reload"
+                || phase === "candidate-verify-issued") {
+            reloadState.pendingApplyReloadOutcome = "failed"
+            reloadState.pendingApplyError = message
+            if (commitProcess.running) {
+                reloadState.pendingApplyPhase = "rollback-pending"
+                root.status = "rollback-pending"
+            } else {
+                root._startRollback(message)
+            }
+            return
+        }
+
+        if (phase === "rollback-issued"
+                || phase === "rollback-waiting-reload"
+                || phase === "rollback-verify-issued") {
+            root._setLifecycleFailure(
+                "rollback-failed",
+                "Rollback source was restored but its watcher reload "
+                    + "also failed: " + message,
+                null)
+        }
     }
 
     function _clearPresentation(): void {
@@ -324,7 +807,9 @@ Singleton {
     }
 
     function clear(): void {
-        if (previewProcess.running || applyPrepareProcess.running)
+        if (previewProcess.running
+                || applyPrepareProcess.running
+                || root.applyLifecycleBusy)
             return
         root._invalidateApplyHandoff()
         root.history = []
@@ -373,8 +858,33 @@ Singleton {
         if (changedPath.length === 0)
             return
 
+        const phase = reloadState.pendingApplyPhase
+        const lifecycleOwnsSource = changedPath
+                === reloadState.pendingApplySourcePath
+            && [
+                "write-issued",
+                "waiting-reload",
+                "candidate-verify-issued",
+                "rebinding",
+                "rollback-pending",
+                "rollback-issued",
+                "rollback-waiting-reload",
+                "rollback-verify-issued"
+            ].includes(phase)
+
+        // The transaction's own atomic replace must be allowed to trigger the
+        // one watcher-driven reload. commit.py/rollback verification detects
+        // concurrent external edits; do not invalidate our persisted handoff.
+        if (lifecycleOwnsSource) {
+            if (phase.startsWith("rollback"))
+                root.status = "rollback-waiting-reload"
+            else
+                root.status = "apply-waiting-reload"
+            return
+        }
+
         root._markHistoryStale(changedPath)
-        if (reloadState.pendingApplyPhase !== "idle"
+        if (phase !== "idle"
                 && changedPath
                     === reloadState.pendingApplySourcePath) {
             root._invalidateApplyHandoff()
@@ -401,7 +911,9 @@ Singleton {
         nextValue: string,
         replaceIndex: int
     ): bool {
-        if (previewProcess.running)
+        if (previewProcess.running
+                || applyPrepareProcess.running
+                || root.applyLifecycleBusy)
             return false
 
         const nextPath = String(path ?? "")
@@ -554,9 +1066,60 @@ Singleton {
         property string pendingApplySnapshotPath: ""
         property string pendingApplyCandidatePath: ""
         property string pendingApplyManifestPath: ""
+        property string pendingApplyReloadOutcome: "none"
+        property string pendingApplyVerifyState: "unknown"
+        property string pendingApplyError: ""
 
         onLoaded: root._restoreReloadState()
         onReloaded: root._restoreReloadState()
+    }
+
+
+    Connections {
+        target: Quickshell
+
+        function onReloadCompleted(): void {
+            root._handleReloadCompleted()
+        }
+
+        function onReloadFailed(errorString): void {
+            root._handleReloadFailed(String(errorString ?? ""))
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowAnalyzer
+
+        function onStatusChanged(): void {
+            root._finishSemanticRebindIfReady()
+        }
+    }
+
+    Process {
+        id: commitProcess
+        running: false
+        stdout: StdioCollector { id: commitStdout }
+        stderr: StdioCollector { id: commitStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishCommit(exitCode)
+    }
+
+    Process {
+        id: verifyProcess
+        running: false
+        stdout: StdioCollector { id: verifyStdout }
+        stderr: StdioCollector { id: verifyStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishVerify(exitCode)
+    }
+
+    Process {
+        id: rollbackProcess
+        running: false
+        stdout: StdioCollector { id: rollbackStdout }
+        stderr: StdioCollector { id: rollbackStderr }
+        onExited: (exitCode, _exitStatus) =>
+            root.finishRollback(exitCode)
     }
 
     Process {

@@ -200,7 +200,7 @@ ContentPage {
 
             ConfigSwitch {
                 text: Translation.tr("Snap modules to grid")
-                description: Translation.tr("Use the Dashboard grid while moving or resizing modules")
+                description: Translation.tr("Move and resize freely, then snap the final placement to the Dashboard grid when you release the pointer")
                 checked: Config.options?.dashboard?.canvas?.snap ?? true
                 onCheckedChanged:
                     Config.setNestedValue("dashboard.canvas.snap", checked)

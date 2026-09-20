@@ -277,6 +277,49 @@ Item {
         return Math.round(value / root.gridSize) * root.gridSize
     }
 
+    function _snapRectForCommit(id, rect, kind, edge) {
+        if (!root.snapEnabled)
+            return root._fitRectToCanvas(
+                rect, root._minimumSizeForCanvas(id))
+
+        const min = root._minimumSizeForCanvas(id)
+        if (kind === "move") {
+            return root._fitRectToCanvas({
+                x: root._snap(rect.x),
+                y: root._snap(rect.y),
+                width: rect.width,
+                height: rect.height
+            }, min)
+        }
+
+        let left = rect.x
+        let top = rect.y
+        let right = rect.x + rect.width
+        let bottom = rect.y + rect.height
+        const resizeEdge = String(edge ?? "")
+
+        if (resizeEdge.indexOf("w") >= 0)
+            left = root._snap(left)
+        if (resizeEdge.indexOf("e") >= 0)
+            right = root._snap(right)
+        if (resizeEdge.indexOf("n") >= 0)
+            top = root._snap(top)
+        if (resizeEdge.indexOf("s") >= 0)
+            bottom = root._snap(bottom)
+
+        left = Math.max(0, Math.min(left, right - min.width))
+        right = Math.min(canvas.width, Math.max(right, left + min.width))
+        top = Math.max(0, Math.min(top, bottom - min.height))
+        bottom = Math.min(canvas.height, Math.max(bottom, top + min.height))
+
+        return root._fitRectToCanvas({
+            x: left,
+            y: top,
+            width: Math.max(1, right - left),
+            height: Math.max(1, bottom - top)
+        }, min)
+    }
+
     // Material cards always keep a visible gutter even on fine grids.
     readonly property real collisionGap: Math.max(8,
         Math.min(16, Math.round(root.gridSize / 3)))
@@ -675,8 +718,8 @@ Item {
         let bottom = start.y + start.height
 
         if (state.kind === "move") {
-            left = root._snap(start.x + dx)
-            top = root._snap(start.y + dy)
+            left = start.x + dx
+            top = start.y + dy
             left = Math.max(0, Math.min(canvas.width - start.width, left))
             top = Math.max(0, Math.min(canvas.height - start.height, top))
 
@@ -692,13 +735,13 @@ Item {
 
         const edge = String(state.edge ?? "")
         if (edge.indexOf("w") >= 0)
-            left = root._snap(start.x + dx)
+            left = start.x + dx
         if (edge.indexOf("e") >= 0)
-            right = root._snap(start.x + start.width + dx)
+            right = start.x + start.width + dx
         if (edge.indexOf("n") >= 0)
-            top = root._snap(start.y + dy)
+            top = start.y + dy
         if (edge.indexOf("s") >= 0)
-            bottom = root._snap(start.y + start.height + dy)
+            bottom = start.y + start.height + dy
 
         left = Math.max(0, Math.min(left, right - min.width))
         right = Math.min(canvas.width, Math.max(right, left + min.width))
@@ -738,25 +781,50 @@ Item {
         if (!state)
             return
 
-        if (commit && Object.keys(root._preview).length > 0) {
-            if (state.kind === "move") {
-                const floatingGeometry = root._preview[state.id]
-                if (floatingGeometry !== undefined) {
-                    const desired = root._rectPixelsForGeometry(
-                        state.id, floatingGeometry)
-                    // Drop is the insertion point: resolve neighbours exactly
-                    // once here, rather than making them chase the pointer.
-                    const resolved = root._resolveFeasibleLayout(
-                        state.id, state.startRect, desired,
-                        state.baselineRects)
-                    root._applyPreviewRects(resolved)
-                }
-            }
-            root._persistPreviewLayout()
+        if (!commit) {
+            // End direct manipulation first so geometry Behaviors animate the
+            // selected module smoothly back to its persisted rect.
+            root._interaction = null
+            root._preview = ({})
+            return
         }
 
-        root._preview = ({})
-        root._interaction = null
+        if (Object.keys(root._preview).length === 0) {
+            root._interaction = null
+            return
+        }
+
+        const activeGeometry = root._preview[state.id]
+        if (activeGeometry !== undefined) {
+            const currentRect = root._rectPixelsForGeometry(
+                state.id, activeGeometry)
+            const snappedRect = root._snapRectForCommit(
+                state.id, currentRect, state.kind, state.edge)
+            // Drop is the insertion point: resolve neighbours exactly once
+            // after continuous pointer tracking has ended.
+            const resolved = root._resolveFeasibleLayout(
+                state.id, state.startRect, snappedRect,
+                state.baselineRects)
+
+            // Pointer tracking ends before the final target is published. The
+            // selected module and any displaced neighbours therefore settle into
+            // their snapped positions with the same spatial animation.
+            root._interaction = null
+            root._applyPreviewRects(resolved)
+            root._persistPreviewLayout()
+
+            // Keep the resolved preview alive through this event-loop turn so
+            // Config propagation cannot briefly expose the old persisted rect.
+            // Clearing on the next turn makes the target handoff visually
+            // continuous instead of flashing back for one frame.
+            Qt.callLater(() => {
+                if (root._interaction === null)
+                    root._preview = ({})
+            })
+        } else {
+            root._interaction = null
+            root._preview = ({})
+        }
     }
 
     function _cycleGridSize() {
@@ -837,14 +905,60 @@ Item {
                 readonly property var px: root._rectPixels(String(modelData))
                 readonly property bool selected:
                     root.editMode && root.selectedId === String(modelData)
+                readonly property bool directlyManipulated:
+                    selected && root._interaction !== null
                 readonly property bool floating:
-                    selected && root._interaction?.kind === "move"
+                    directlyManipulated && root._interaction?.kind === "move"
+                readonly property bool animateGeometry:
+                    root.editMode && !directlyManipulated
 
                 x: px.x
                 y: px.y
                 width: px.width
                 height: px.height
                 z: floating ? 50 : (selected ? 30 : 1)
+
+                Behavior on x {
+                    enabled: Appearance.animationsEnabled
+                        && cardWrap.animateGeometry
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Appearance.animation.elementMoveFast.type
+                        easing.bezierCurve:
+                            Appearance.animation.elementMoveFast.bezierCurve
+                    }
+                }
+                Behavior on y {
+                    enabled: Appearance.animationsEnabled
+                        && cardWrap.animateGeometry
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Appearance.animation.elementMoveFast.type
+                        easing.bezierCurve:
+                            Appearance.animation.elementMoveFast.bezierCurve
+                    }
+                }
+                Behavior on width {
+                    enabled: Appearance.animationsEnabled
+                        && cardWrap.animateGeometry
+                    NumberAnimation {
+                        duration: Appearance.animation.elementResize.duration
+                        easing.type: Appearance.animation.elementResize.type
+                        easing.bezierCurve:
+                            Appearance.animation.elementResize.bezierCurve
+                    }
+                }
+                Behavior on height {
+                    enabled: Appearance.animationsEnabled
+                        && cardWrap.animateGeometry
+                    NumberAnimation {
+                        duration: Appearance.animation.elementResize.duration
+                        easing.type: Appearance.animation.elementResize.type
+                        easing.bezierCurve:
+                            Appearance.animation.elementResize.bezierCurve
+                    }
+                }
+
                 scale: floating ? 1.012 : 1
                 transformOrigin: Item.Center
                 Behavior on scale {

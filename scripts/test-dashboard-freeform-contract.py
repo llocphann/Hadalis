@@ -78,6 +78,9 @@ def main() -> None:
         'root._applyPreviewRects(resolved)',
         'A dragged module is temporarily lifted out of the packed layout.',
         'Drop is the insertion point: resolve neighbours exactly',
+        'function _snapRectForCommit(',
+        'Pointer tracking ends before the final target is published.',
+        'readonly property bool animateGeometry:',
         'readonly property real collisionGap: Math.max(8,',
         'enabled: root.editMode',
         'enabled: !root.editMode',
@@ -96,11 +99,15 @@ def main() -> None:
     move_block = canvas[move_start:move_end]
     require(move_block, "root._setPreview(state.id, {", "DashboardCanvas move block")
     forbid(move_block, "root._resolveFeasibleLayout(", "DashboardCanvas move block")
+    forbid(move_block, "root._snap(", "DashboardCanvas move block")
     finish_start = canvas.index("function finishInteraction(commit)")
     finish_end = canvas.index("function _cycleGridSize()", finish_start)
     finish_block = canvas[finish_start:finish_end]
     require(finish_block, "root._resolveFeasibleLayout(", "DashboardCanvas drop block")
     require(finish_block, "root._persistPreviewLayout()", "DashboardCanvas drop block")
+    require(finish_block, "root._snapRectForCommit(", "DashboardCanvas drop block")
+    require(finish_block, "root._interaction = null", "DashboardCanvas drop block")
+    require(finish_block, "Qt.callLater(() => {", "DashboardCanvas drop block")
 
     for token in (
         'property string gridStyle: "dots"',
@@ -138,6 +145,17 @@ def main() -> None:
     require(canvas, "width: corner ? 8 : (horizontal ? 24 : 6)", "DashboardCanvas.qml")
     require(canvas, "height: corner ? 8 : (vertical ? 24 : 6)", "DashboardCanvas.qml")
     require(canvas, "anchors.margins: -4", "DashboardCanvas.qml")
+
+    for token in (
+        "Behavior on x {",
+        "Behavior on y {",
+        "Behavior on width {",
+        "Behavior on height {",
+        "Appearance.animation.elementMoveFast.duration",
+        "Appearance.animation.elementResize.duration",
+        "&& cardWrap.animateGeometry",
+    ):
+        require(canvas, token, "DashboardCanvas.qml")
 
     for token in (
         "anchors.centerIn: parent",

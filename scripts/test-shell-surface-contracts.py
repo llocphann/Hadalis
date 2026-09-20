@@ -960,6 +960,15 @@ def main() -> None:
           and "Appearance.sizes.elevationMargin\n                    + Appearance.sizes.hyprlandGapsOut" not in shell_layout,
           "Dock desktop-zone inset must match Dock height plus physical Screen Edge width")
 
+    check('if (!separatePinnedFromRunning) {' in dock_apps
+          and 'Unified mode intentionally has no separator.' in dock_apps
+          and 'if (hasPinnedOnly && hasRunning) {' in dock_apps,
+          "Dock separator must exist only in explicit separate-pinned/running mode")
+    check('const appKey = appId.toLowerCase()' in dock_app_button
+          and 'String(id).toLowerCase() === appKey' in dock_app_button
+          and 'String(id).toLowerCase() !== appKey' in dock_app_button,
+          "Dock pin/unpin mutation must use the same case-insensitive identity semantics as the runtime model")
+
     check("readonly property real activeScale: 1.05" in dock_app_button
           and "property bool dragEmphasis: false" in dock_app_button
           and "scale: root.dragEmphasis ? 1.08 : (root.appIsActive ? root.activeScale : 1.0)" in dock_app_button

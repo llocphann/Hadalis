@@ -459,11 +459,22 @@ DockButton {
                 text: appToplevel.pinned ? Translation.tr("Unpin from dock") : Translation.tr("Pin to dock"),
                 monochromeIcon: true,
                 action: () => {
-                    const appId = appToplevel.originalAppId ?? appToplevel.appId;
-                    if (Config.options?.dock?.pinnedApps?.indexOf(appId) !== -1) {
-                        Config.setNestedValue("dock.pinnedApps", (Config.options?.dock?.pinnedApps ?? []).filter(id => id !== appId))
+                    const appId = String(appToplevel.originalAppId
+                        ?? appToplevel.appId ?? "")
+                    if (appId.length === 0)
+                        return
+                    const pinnedApps = [...(Config.options?.dock?.pinnedApps ?? [])]
+                    const appKey = appId.toLowerCase()
+                    const alreadyPinned = pinnedApps.some(id =>
+                        String(id).toLowerCase() === appKey)
+                    if (alreadyPinned) {
+                        // Runtime identity matching is case-insensitive, so the
+                        // mutation must be too. Otherwise a differently-cased
+                        // desktop id can show "Unpin" but append a duplicate.
+                        Config.setNestedValue("dock.pinnedApps", pinnedApps.filter(id =>
+                            String(id).toLowerCase() !== appKey))
                     } else {
-                        Config.setNestedValue("dock.pinnedApps", (Config.options?.dock?.pinnedApps ?? []).concat([appId]))
+                        Config.setNestedValue("dock.pinnedApps", pinnedApps.concat([appId]))
                     }
                 }
             },

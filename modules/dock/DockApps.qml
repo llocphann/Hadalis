@@ -384,18 +384,10 @@ Item {
                 runningAppsMap.delete(lowerAppId);
             }
 
-            if (values.length > 0 && runningAppsMap.size > 0) {
-                values.push({
-                    uniqueId: "separator",
-                    appId: "SEPARATOR",
-                    toplevels: [],
-                    pinned: false,
-                    originalAppId: "SEPARATOR",
-                    section: "separator",
-                    order: order++
-                });
-            }
-
+            // Unified mode intentionally has no separator. Pinned entries keep
+            // their persisted order and unpinned running apps follow them as one
+            // continuous list; the separator belongs only to the explicit
+            // separatePinnedFromRunning mode.
             const running = Array.from(runningAppsMap.entries())
                 .sort((a, b) => root._runningAppOrder.indexOf(a[0])
                     - root._runningAppOrder.indexOf(b[0]));

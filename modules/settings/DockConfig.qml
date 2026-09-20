@@ -127,7 +127,7 @@ ContentPage {
                 checked: Config.options?.dock?.separatePinnedFromRunning ?? true
                 onCheckedChanged: Config.setNestedValue('dock.separatePinnedFromRunning', checked)
                 StyledToolTip {
-                    text: Translation.tr("Show pinned-only apps on the left, running apps on the right with a separator")
+                    text: Translation.tr("Show pinned-only apps separately from running apps with a separator")
                 }
             }
 

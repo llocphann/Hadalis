@@ -23,6 +23,7 @@ def main() -> None:
           "README must retain the maintainer-approved single-owner perimeter contract")
 
     styled_popup = read("modules/bar/StyledPopup.qml")
+    iris_frame = read("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
     for token in (
         "qs.modules.common.perimeter",
         "ConnectedSurfaceGeometry",

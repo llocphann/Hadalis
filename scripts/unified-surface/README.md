@@ -131,3 +131,20 @@ bake, and compares extracted:
 - GLSL 330 payload.
 
 A package is accepted only when those semantic/executable payloads match.
+
+
+## Headless startup smoke
+
+CI also runs `smoke-headless-sway.py` inside Hadalis' existing Nix acceptance
+environment. The smoke owns a separate headless Sway compositor and never targets
+the current desktop or installed shell.
+
+It creates one 1280x800 output at **fractional scale 1.25**, starts U1 in two
+cases (Overlay/top and Top/left), captures the compositor with `grim`, and
+requires real magenta material pixels in the capture. It also rejects known
+QML/ShaderEffect load failures.
+
+This smoke deliberately proves only compositor-independent QML/QSB/layer-shell
+startup and rendering. It is **not** evidence for Niri-specific same-layer
+stacking, fullscreen ordering, final topology quality, or GPU performance. Those
+remain live Niri acceptance gates.

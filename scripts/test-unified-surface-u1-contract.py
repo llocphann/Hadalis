@@ -15,6 +15,7 @@ REQUIRED_TEXT = [
     U1 / "U1Surface.frag",
     U1 / "build-shader.sh",
     U1 / "verify-shader-package.sh",
+    U1 / "smoke-headless-sway.py",
     U1 / "run-u1.sh",
     U1 / "README.md",
 ]
@@ -26,6 +27,7 @@ qml = (U1 / "U1Surface.qml").read_text()
 frag = (U1 / "U1Surface.frag").read_text()
 build = (U1 / "build-shader.sh").read_text()
 verify = (U1 / "verify-shader-package.sh").read_text()
+smoke = (U1 / "smoke-headless-sway.py").read_text()
 combined = qml + "\n" + frag
 
 for forbidden in (
@@ -71,9 +73,21 @@ assert "HADALIS_U1_BENCHMARK" in qml
 for network_tool in ("curl ", "wget "):
     assert network_tool not in build, "shader baker must not download at build/runtime"
     assert network_tool not in verify, "shader verifier must not download at build/runtime"
+    assert network_tool not in smoke, "headless smoke must not download at runtime"
 
 for extracted in ("reflect", "spirv,100", "glsl,300es", "glsl,330"):
     assert extracted in verify, f"semantic QSB verifier missing extraction: {extracted}"
+
+for smoke_invariant in (
+    'WLR_BACKENDS="headless"',
+    'scale 1.25',
+    'HADALIS_U1_COLOR="#ff00ff"',
+    '"-t",',
+    '"ppm"',
+    "count_magenta",
+    "quickshell_alive",
+):
+    assert smoke_invariant in smoke, f"headless smoke lost invariant: {smoke_invariant}"
 
 exclusions = json.loads((ROOT / "sdata" / "runtime-exclusions.json").read_text())
 assert "scripts/unified-surface" in exclusions["excludedPaths"], (

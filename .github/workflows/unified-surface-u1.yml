@@ -16,6 +16,7 @@ permissions:
 jobs:
   bake-and-verify:
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +30,35 @@ jobs:
 
       - name: Verify isolated U1 contract
         run: python3 scripts/test-unified-surface-u1-contract.py
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Smoke U1 on owned headless compositor
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-u1-smoke
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/unified-surface/smoke-headless-sway.py \
+              --work-dir "$WORK_DIR" \
+              --sway "$(command -v sway)" \
+              --quickshell "$(command -v quickshell)" \
+              --grim "$(command -v grim)"
+          '
+
+      - name: Upload U1 smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hadalis-u1-smoke-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/hadalis-u1-smoke/report.json
+            ${{ runner.temp }}/hadalis-u1-smoke/*.log
+            ${{ runner.temp }}/hadalis-u1-smoke/*.ppm
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload freshly baked U1 QSB
         uses: actions/upload-artifact@v4

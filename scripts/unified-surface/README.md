@@ -133,18 +133,22 @@ bake, and compares extracted:
 A package is accepted only when those semantic/executable payloads match.
 
 
-## Headless startup smoke
+## Headless control-mode smoke
 
-CI also runs `smoke-headless-sway.py` inside Hadalis' existing Nix acceptance
-environment. The smoke owns a separate headless Sway compositor and never targets
-the current desktop or installed shell.
+GitHub-hosted runners expose no DRM render node, so CI cannot honestly validate
+ShaderEffect pixels there. The CI smoke therefore uses an owned Sway headless
+compositor with the Pixman renderer plus Qt Quick's software backend and launches
+U1 in `control` mode.
 
-It creates one 1280x800 output at **fractional scale 1.25**, starts U1 in two
-cases (Overlay/top and Top/left), captures the compositor with `grim`, and
-requires real magenta material pixels in the capture. It also rejects known
-QML/ShaderEffect load failures.
+It still verifies:
 
-This smoke deliberately proves only compositor-independent QML/QSB/layer-shell
-startup and rendering. It is **not** evidence for Niri-specific same-layer
-stacking, fullscreen ordering, final topology quality, or GPU performance. Those
-remain live Niri acceptance gates.
+- the isolated QML config loads;
+- both Top and Overlay layer-shell hosts can map;
+- the host remains alive instead of relying on hide/remap;
+- a fractional Sway output at scale 1.25 is visible to the test;
+- no fatal QML type/reference/syntax errors occur.
+
+This smoke **does not** validate the SDF shader, topology, AA, GPU performance or
+Niri stacking. QSB semantic equivalence is checked separately in CI. Actual
+pixels are reserved for the live-Niri GPU validator so a missing CI GPU cannot
+produce a false renderer failure.

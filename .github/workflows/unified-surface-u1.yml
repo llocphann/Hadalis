@@ -34,7 +34,7 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
 
-      - name: Smoke U1 on owned headless compositor
+      - name: Smoke U1 control lifecycle on owned headless compositor
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-u1-smoke
         run: |
@@ -44,8 +44,7 @@ jobs:
             python3 scripts/unified-surface/smoke-headless-sway.py \
               --work-dir "$WORK_DIR" \
               --sway "$(command -v sway)" \
-              --quickshell "$(command -v quickshell)" \
-              --grim "$(command -v grim)"
+              --quickshell "$(command -v quickshell)"
           '
 
       - name: Upload U1 smoke evidence
@@ -56,7 +55,6 @@ jobs:
           path: |
             ${{ runner.temp }}/hadalis-u1-smoke/report.json
             ${{ runner.temp }}/hadalis-u1-smoke/*.log
-            ${{ runner.temp }}/hadalis-u1-smoke/*.ppm
           if-no-files-found: warn
           retention-days: 7
 

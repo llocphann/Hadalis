@@ -80,11 +80,10 @@ for extracted in ("reflect", "spirv,100", "glsl,300es", "glsl,330"):
 
 for smoke_invariant in (
     'WLR_BACKENDS="headless"',
+    'WLR_RENDERER="pixman"',
+    'QT_QUICK_BACKEND="software"',
     'scale 1.25',
-    'HADALIS_U1_COLOR="#ff00ff"',
-    '"-t",',
-    '"ppm"',
-    "count_magenta",
+    'HADALIS_U1_MODE="control"',
     "quickshell_alive",
 ):
     assert smoke_invariant in smoke, f"headless smoke lost invariant: {smoke_invariant}"

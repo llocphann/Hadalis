@@ -1872,10 +1872,23 @@ Singleton {
                 property string subtitle: ""
                 property real widthRatio: 0.72
                 property real heightRatio: 0.72
-                property JsonObject layout: JsonObject {
-                    property list<string> left: ["welcome", "clock", "system", "github"]
-                    property list<string> center: ["notifications", "todo"]
-                    property list<string> right: ["media", "weather", "calendar"]
+                property JsonObject canvas: JsonObject {
+                    property int gridSize: 24
+                    property bool snap: true
+                    property string gridStyle: "dots"
+                    property list<var> widgets: [
+                        { id: "welcome", x: 0.00, y: 0.00, w: 0.30, h: 0.18, visible: true },
+                        { id: "clock", x: 0.00, y: 0.19, w: 0.30, h: 0.14, visible: true },
+                        { id: "system", x: 0.00, y: 0.34, w: 0.30, h: 0.17, visible: true },
+                        { id: "github", x: 0.00, y: 0.52, w: 0.30, h: 0.12, visible: true },
+                        { id: "notifications", x: 0.31, y: 0.00, w: 0.35, h: 0.25, visible: true },
+                        { id: "agenda", x: 0.31, y: 0.26, w: 0.35, h: 0.13, visible: true },
+                        { id: "todo", x: 0.31, y: 0.40, w: 0.35, h: 0.24, visible: true },
+                        { id: "media", x: 0.67, y: 0.00, w: 0.33, h: 0.62, visible: true },
+                        { id: "weather", x: 0.67, y: 0.64, w: 0.33, h: 0.36, visible: true },
+                        { id: "calendar", x: 0.00, y: 0.65, w: 0.66, h: 0.35, visible: true },
+                        { id: "notes", x: 0.67, y: 0.77, w: 0.33, h: 0.23, visible: false }
+                    ]
                 }
                 property JsonObject github: JsonObject {
                     property string username: ""

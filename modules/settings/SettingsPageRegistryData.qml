@@ -1623,7 +1623,7 @@ Singleton {
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel width"), description: Translation.tr("Dashboard width as a percentage of the screen"), keywords: ["dashboard", "width", "size", "ratio", "screen"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel height"), description: Translation.tr("Dashboard height as a percentage of the screen"), keywords: ["dashboard", "height", "size", "ratio", "screen", "scroll"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("GitHub username"), description: Translation.tr("GitHub user for the contributions heatmap widget"), keywords: ["dashboard", "github", "contributions", "heatmap", "username", "activity"] },
-        { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Widgets"), label: Translation.tr("Dashboard widgets"), description: Translation.tr("Place, hide and reorder dashboard widgets per column"), keywords: ["dashboard", "widgets", "layout", "column", "reorder", "clock", "weather", "media", "todo", "calendar", "notifications", "system"] },
+        { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Canvas"), label: Translation.tr("Dashboard canvas"), description: Translation.tr("Move and resize Dashboard modules freely with grid snapping"), keywords: ["dashboard", "widgets", "modules", "canvas", "grid", "snap", "resize", "move", "weather", "media", "calendar"] },
         {
             pageIndex: 17, pageName: root.pages[17].name,
             section: Translation.tr("How autostart works"),

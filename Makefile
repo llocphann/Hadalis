@@ -56,6 +56,7 @@ test-equalizer-contracts:
 
 test-perimeter-contracts:
 	@bash scripts/test-perimeter-contracts.sh
+	@python3 scripts/test-iris-production-surface-contract.py
 	@bash scripts/test-perimeter-compatibility-placement-contract.sh
 	@bash scripts/test-perimeter-family-contracts.sh
 	@bash scripts/test-perimeter-route-contracts.sh

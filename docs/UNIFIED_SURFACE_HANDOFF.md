@@ -586,3 +586,32 @@ g1-run.txt
 
 This does not change the gate: production and G2 remain blocked until the live
 detail sheets pass the existing morphology criteria.
+
+### G1 evidence integrity verifier
+
+Latest isolated G1 harness commit:
+
+```text
+a4c7263160c52583d5718222593b796fc6b5356a
+test(surface): verify iRiS G1 evidence integrity
+```
+
+`capture-g1.sh` now runs `verify-g1-evidence.py` after both matrices. A
+structural PASS means the paired evidence has all 24 cases, correct
+mode/profile labels, expected center/start/end join metadata, one output, valid
+session provenance and one recorded source SHA.
+
+It does **not** mean the corner morphology passed. The verifier explicitly says
+visual morphology is not auto-approved.
+
+The complete next command remains:
+
+```sh
+HADALIS_IRIS_POC_OUTPUT=<output-name> \
+scripts/iris-corner-poc/capture-g1.sh
+```
+
+A successful run should first print the source contract PASS, then complete both
+profile matrices, then print `G1 evidence structure: PASS`. After that, inspect
+the focused images manually against the morphology criteria. Only that visual
+decision can unlock G2.

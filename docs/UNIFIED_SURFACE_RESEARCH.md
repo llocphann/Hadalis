@@ -2165,3 +2165,58 @@ full/focused PNG pairs' case artifacts, and `g1-run.txt`.
 G1 remains unproven until this wrapper is run on the maintainer's actual
 Wayland/Niri/GPU session and the detail sheets are visually accepted. Do not
 start G2 merely because the wrapper or static contract succeeds.
+
+### 26.15 G1 evidence integrity verifier
+
+Commit `a4c7263160c52583d5718222593b796fc6b5356a`
+(`test(surface): verify iRiS G1 evidence integrity`) adds a structural verifier:
+
+```text
+scripts/iris-corner-poc/verify-g1-evidence.py
+```
+
+The G1 wrapper now runs it automatically after both profile matrices.
+
+The verifier is intentionally narrower than visual acceptance. It proves that a
+candidate evidence directory is internally coherent before a maintainer judges
+the pixels. It checks:
+
+- `g1-run.txt` exists and records a full 40-character source SHA;
+- both `card-owner` manifests and session JSON files exist;
+- each profile has exactly 12 unique edge/source cases;
+- every referenced full PNG, focused PNG, metadata JSON and log exists;
+- mode/profile labels agree between manifest and metadata;
+- all cases in a profile target one output, and both profiles target the same
+  output;
+- profile radius/fuse/weld metadata matches the locked diagnostic or
+  upstream-relative values;
+- `sourceT=0.50` reports exactly `["owner"]`;
+- `sourceT=0.02` reports `["owner", "frame-start"]`;
+- `sourceT=0.98` reports `["owner", "frame-end"]`;
+- tangent-start/end flags match those joins;
+- session metadata keeps `compositor-layout-logical` detail crops with DPR
+  explicitly disabled.
+
+The verifier prints:
+
+```text
+G1 evidence structure: PASS
+```
+
+only for structural/provenance integrity. It then explicitly states that visual
+morphology is **not** auto-approved. Missing ImageMagick detail sheets produce a
+warning rather than a structural failure because all 12 individual focused
+captures still exist.
+
+`capture-matrix.sh` also canonicalizes its capture directory to an absolute
+path before writing manifests. This makes manifest file references portable
+across later review shells instead of depending on the capture process' working
+directory.
+
+A repository-side mirror of the static source assertions after this commit
+found no failures, including the locked morphology values and 16,765-byte QSB
+size. This still does not replace running the actual Python contract and live G1
+wrapper on the maintainer desktop.
+
+The remaining hard boundary is unchanged: **no G2 and no production cutover
+until the live images themselves pass review.**

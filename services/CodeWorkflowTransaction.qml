@@ -3008,7 +3008,9 @@ Singleton {
                 || String(command.kind ?? "") !== "connect-binding"
                 || !Quickshell.watchFiles
                 || root.applyLifecycleBusy
-                || root.connectLifecycleBusy)
+                || root.connectLifecycleBusy
+                || root.bindingLifecycleBusy
+                || root.disconnectLifecycleBusy)
             return false
 
         reloadState.pendingConnectPhase = "prepared"
@@ -4700,12 +4702,22 @@ Singleton {
     }
 
     function _markConnectSafetyStale(path: string): void {
+        root._markConnectSafetyStaleExcept(path, -1)
+    }
+
+    function _markConnectSafetyStaleExcept(
+        path: string,
+        preserveIndex: int
+    ): void {
         const changedPath = String(path ?? "")
         if (changedPath.length === 0)
             return
 
+        const preserved = Number(preserveIndex ?? -1)
         let changed = false
-        const next = root.history.map(command => {
+        const next = root.history.map((command, index) => {
+            if (index === preserved)
+                return command
             const safety = command?.connectSafety
             if (!safety || safety.stale === true)
                 return command
@@ -5263,9 +5275,21 @@ Singleton {
     }
 
     function _markHistoryStale(path: string): void {
+        root._markHistoryStaleExcept(path, -1)
+    }
+
+    function _markHistoryStaleExcept(
+        path: string,
+        preserveIndex: int
+    ): void {
+        const changedPath = String(path ?? "")
+        if (changedPath.length === 0)
+            return
+        const preserved = Number(preserveIndex ?? -1)
         let changed = false
-        const next = root.history.map(command => {
-            if (String(command.sourcePath ?? "") !== path
+        const next = root.history.map((command, index) => {
+            if (index === preserved
+                    || String(command.sourcePath ?? "") !== changedPath
                     || command.stale === true)
                 return command
             changed = true
@@ -5277,6 +5301,35 @@ Singleton {
         })
         if (changed)
             root.history = next
+    }
+
+    function _invalidateCompetingHandoffsForOwnedSource(
+        path: string,
+        ownerKind: string,
+        ownerHistoryIndex: int
+    ): void {
+        const changedPath = String(path ?? "")
+        if (changedPath.length === 0)
+            return
+
+        const owner = String(ownerKind ?? "")
+        const preserved = Number(ownerHistoryIndex ?? -1)
+        root._markHistoryStaleExcept(changedPath, preserved)
+        root._markConnectSafetyStaleExcept(
+            changedPath,
+            owner === "connect" ? preserved : -1)
+        root._markBindingArtifactsStaleExcept(
+            changedPath,
+            owner === "binding" ? preserved : -1)
+        root._markDisconnectArtifactsStaleExcept(
+            changedPath,
+            owner === "disconnect" ? preserved : -1)
+
+        if (owner !== "literal"
+                && reloadState.pendingApplyPhase !== "idle"
+                && changedPath
+                    === reloadState.pendingApplySourcePath)
+            root._invalidateApplyHandoff()
     }
 
     function markSourceChanged(path: string): void {
@@ -5305,6 +5358,10 @@ Singleton {
         // one watcher-driven reload. commit.py/rollback verification detects
         // concurrent external edits; do not invalidate our persisted handoff.
         if (lifecycleOwnsSource) {
+            root._invalidateCompetingHandoffsForOwnedSource(
+                changedPath,
+                "literal",
+                reloadState.pendingApplyHistoryIndex)
             if (phase.startsWith("rollback"))
                 root.status = "rollback-waiting-reload"
             else
@@ -5325,6 +5382,10 @@ Singleton {
                 "rollback-verify-issued"
             ].includes(connectPhase)
         if (connectLifecycleOwnsSource) {
+            root._invalidateCompetingHandoffsForOwnedSource(
+                changedPath,
+                "connect",
+                reloadState.pendingConnectHistoryIndex)
             if (connectPhase.startsWith("rollback"))
                 root.status = "connect-rollback-waiting-reload"
             else
@@ -5345,6 +5406,10 @@ Singleton {
                 "rollback-verify-issued"
             ].includes(bindingPhase)
         if (bindingLifecycleOwnsSource) {
+            root._invalidateCompetingHandoffsForOwnedSource(
+                changedPath,
+                "binding",
+                reloadState.pendingBindingHistoryIndex)
             if (bindingPhase.startsWith("rollback"))
                 root.status = "binding-rollback-waiting-reload"
             else
@@ -5365,6 +5430,10 @@ Singleton {
                 "rollback-verify-issued"
             ].includes(disconnectPhase)
         if (disconnectLifecycleOwnsSource) {
+            root._invalidateCompetingHandoffsForOwnedSource(
+                changedPath,
+                "disconnect",
+                reloadState.pendingDisconnectHistoryIndex)
             if (disconnectPhase.startsWith("rollback"))
                 root.status = "disconnect-rollback-waiting-reload"
             else
@@ -5404,11 +5473,21 @@ Singleton {
     }
 
     function _markBindingArtifactsStale(path: string): void {
+        root._markBindingArtifactsStaleExcept(path, -1)
+    }
+
+    function _markBindingArtifactsStaleExcept(
+        path: string,
+        preserveIndex: int
+    ): void {
         const changedPath = String(path ?? "")
         if (changedPath.length === 0)
             return
+        const preserved = Number(preserveIndex ?? -1)
         let changed = false
-        const next = root.history.map(command => {
+        const next = root.history.map((command, index) => {
+            if (index === preserved)
+                return command
             const prepared = command?.bindingPreparation
             if (!prepared
                     || String(command.sourcePath ?? "") !== changedPath)
@@ -5438,11 +5517,21 @@ Singleton {
 
     
     function _markDisconnectArtifactsStale(path: string): void {
+        root._markDisconnectArtifactsStaleExcept(path, -1)
+    }
+
+    function _markDisconnectArtifactsStaleExcept(
+        path: string,
+        preserveIndex: int
+    ): void {
         const changedPath = String(path ?? "")
         if (changedPath.length === 0)
             return
+        const preserved = Number(preserveIndex ?? -1)
         let changed = false
-        const next = root.history.map(command => {
+        const next = root.history.map((command, index) => {
+            if (index === preserved)
+                return command
             const prepared = command?.disconnectPreparation
             if (!prepared
                     || String(command.sourcePath ?? "") !== changedPath)

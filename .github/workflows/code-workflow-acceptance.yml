@@ -96,6 +96,9 @@ jobs:
       - name: Validate reviewed Binding replacement production lifecycle
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-binding-production-lifecycle.py'
 
+      - name: Audit cross-pipeline mutation serialization
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-mutation-serialization.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply

@@ -1152,6 +1152,33 @@ subset.
   `clock.data.time` Disconnect deletion, and reviewed
   `clock.text.time-to-date` direct-binding replacement.
 
+## Milestone 2K-V-A — cross-pipeline mutation serialization hardening
+
+Hardened the shared write boundary now that Literal, Connect, Disconnect and
+reviewed direct-binding replacement each own an independent lifecycle:
+
+- User-facing Apply readiness already blocked the other active lifecycles.
+  `stageConnectLifecycleHandoff()` now carries the same defense-in-depth
+  contract as Binding and Disconnect: it refuses to stage while Literal,
+  Connect, Binding or Disconnect owns source/reload state.
+- Source watcher ownership remains lifecycle-specific so an atomic candidate or
+  rollback write cannot destroy its own persisted handoff.
+- Before an owner watcher event returns, a shared invalidation helper
+  preserves the active lifecycle owner by exact history index and stales every competing handoff on the changed source.
+- Competing Connect qualification/preparation/authorization, Binding
+  preparation/authorization and Disconnect preparation/authorization are
+  invalidated independently while the owner artifacts remain untouched.
+- A prepared Literal handoff is invalidated when another pipeline owns the
+  source change; the active Literal lifecycle preserves its own handoff.
+- Other history commands for the changed source become stale, except for the
+  exact owner history entry. This prevents stale UI readiness after a sibling
+  lifecycle mutates the same QML while leaving exact rollback identity intact.
+- Atomic engines remain the final SHA-based conflict boundary. This milestone
+  tightens coordination before write; it does not weaken commit/rollback hash
+  checks or broaden any mutation allowlist.
+- `test-code-workflow-mutation-serialization.py` locks both lifecycle-start
+  exclusion and owner-preserving cross-pipeline source-drift invalidation.
+
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;
@@ -1164,15 +1191,15 @@ subset.
 
 ## Next gate
 
+2K-V-A hardens the production coordination contract statically. The next gate,
+2K-V-B, should add live contention acceptance around the same four mutation
+pipelines: attempt a competing lifecycle while one owner is in-flight, prove the
+second start is rejected, and prove a real owner source write stales sibling
+prepared handoffs without expiring the owner's rollback identity.
+
 Do not broaden direct-binding Apply from the single reviewed
 `clock.text.time-to-date` fixture by assumption. Any additional replacement
 must receive its own exact old/new expression review, semantic-anchor
 postcondition and live rollback evidence before entering the allowlist.
-
-The next workflow gate should first audit cross-pipeline mutation serialization
-across Literal Apply, Connect, Disconnect and Binding replacement now that four
-independent source-write lifecycles exist. That audit must prove a lifecycle
-cannot start while another owns source/reload state and that history/source
-drift expires only the relevant handoffs without weakening exact rollback.
 
 Multi-file writes remain out of scope.

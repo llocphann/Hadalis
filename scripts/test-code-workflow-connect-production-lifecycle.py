@@ -171,7 +171,7 @@ for token in (
     "beginConnectLifecycle()",
     "watcher-driven reload",
     "automatically invokes exact rollback",
-    "explicit reload fallback",
+    "explicit-recovery",
     "user-facing Connect Apply remains unavailable",
 ):
     if token not in phase2:

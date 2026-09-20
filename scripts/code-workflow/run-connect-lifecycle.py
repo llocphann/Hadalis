@@ -96,6 +96,29 @@ def engine(
     return payload
 
 
+def reset_connect(probe: Probe) -> dict:
+    wait_snapshot(
+        probe,
+        lambda s: (
+            not s["workflowTransaction"]["connectPreparationBusy"]
+            and not s["workflowTransaction"]["applyLifecycleBusy"]
+        ),
+        "Connect transaction idle before clear",
+        timeout=60,
+    )
+    probe.ipc("workflowClear")
+    return wait_snapshot(
+        probe,
+        lambda s: (
+            s["workflowTransaction"]["status"] == "clean"
+            and s["workflowTransaction"]["activeCommandKind"] == ""
+            and s["workflowTransaction"]["connectArtifactsReady"] is False
+        ),
+        "Connect transaction clear",
+        timeout=30,
+    )
+
+
 def prepare_connect(
     probe: Probe,
     clock_path: Path,
@@ -279,7 +302,7 @@ def run_success(
         "rebind": rebound["workflowAnalyzer"],
         "rollback": rolled_back,
     }
-    probe.ipc("workflowClear")
+    reset_connect(probe)
 
 
 def run_rebind_failure(
@@ -354,7 +377,7 @@ def run_rebind_failure(
         "failedRebind": failed_rebind["workflowAnalyzer"],
         "rollback": rolled_back,
     }
-    probe.ipc("workflowClear")
+    reset_connect(probe)
 
 
 def run_external_dependency_edit(

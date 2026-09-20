@@ -839,6 +839,8 @@ Implemented live proof:
   `literal-property` remains the only source-writing command and user-facing
   Connect Apply remains unavailable.
 
+Production invariant: literal-property remains the only source-writing command.
+
 ## Not implemented yet
 
 - applying direct binding transforms;

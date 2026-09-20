@@ -34,6 +34,7 @@ def fail(message: str) -> None:
 
 
 for token in (
+    "def reset_connect(",
     "def prepare_connect(",
     "def run_success(",
     "def run_rebind_failure(",

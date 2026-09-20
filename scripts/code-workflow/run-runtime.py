@@ -54,6 +54,26 @@ class Probe:
         self.processes.append(process)
         return process
 
+    def dbus_session(self, command):
+        runner = self.env.get(
+            'HADALIS_WORKFLOW_DBUS_RUN_SESSION',
+            'dbus-run-session',
+        )
+        wrapped = [runner]
+        config = self.env.get(
+            'HADALIS_WORKFLOW_DBUS_SESSION_CONFIG',
+            '',
+        )
+        daemon = self.env.get(
+            'HADALIS_WORKFLOW_DBUS_DAEMON',
+            '',
+        )
+        if config:
+            wrapped.append('--config-file=' + config)
+        if daemon:
+            wrapped.append('--dbus-daemon=' + daemon)
+        return [*wrapped, '--', *command]
+
     def launch(self):
         runtime = self.directory/'runtime'
         runtime.mkdir(mode=0o700)
@@ -74,7 +94,13 @@ class Probe:
             config.write_text('xwayland disable\noutput HEADLESS-1 resolution 1920x1200 position 0 0\n'
                 'output HEADLESS-2 resolution 1920x1200 position 1920 0 scale 1.25\n'
                 'seat seat0 fallback true\nexec python3 -c '+shlex.quote(capture)+'\n')
-            self.start(['dbus-run-session','--',str(self.sway),'-c',str(config)],env,'sway')
+            self.start(
+                self.dbus_session(
+                    [str(self.sway), '-c', str(config)]
+                ),
+                env,
+                'sway',
+            )
             self.env['LD_LIBRARY_PATH']=env['LD_LIBRARY_PATH']
             self.env['XDG_CURRENT_DESKTOP']='sway'
         else:
@@ -83,7 +109,11 @@ class Probe:
             env['WAYLAND_DISPLAY'] = str(Path(self.env['XDG_RUNTIME_DIR'])/outer_display)
             config = self.directory/'niri.kdl'
             config.write_text('spawn-at-startup "python3" "-c" '+json.dumps(capture)+'\nprefer-no-csd\n')
-            self.start(['dbus-run-session','--','niri','-c',str(config)],env,'niri')
+            self.start(
+                self.dbus_session(['niri', '-c', str(config)]),
+                env,
+                'niri',
+            )
         wait_for(lambda: display_file.exists() and display_file.stat().st_size,'isolated compositor startup')
         self.env.update(json.loads(display_file.read_text()))
         for key, name in [('XDG_CONFIG_HOME','xdg-config'),('XDG_CACHE_HOME','xdg-cache'),('XDG_STATE_HOME','xdg-state'),('XDG_DATA_HOME','xdg-data')]:
@@ -93,7 +123,16 @@ class Probe:
         self.env['QT_QUICK_CONTROLS_STYLE']='Basic'
         self.env['WAYLAND_DEBUG']='client'
         self.env.pop('HYPRLAND_INSTANCE_SIGNATURE',None)
-        self.start(['dbus-run-session','--','quickshell','-p',str(self.directory/'config'),'--no-color'],self.env,'quickshell')
+        self.start(
+            self.dbus_session([
+                'quickshell',
+                '-p',
+                str(self.directory/'config'),
+                '--no-color',
+            ]),
+            self.env,
+            'quickshell',
+        )
         wait_for(lambda: self.snapshot().get('ready'),'Quickshell Bar ready')
 
     def ipc(self, method, *args):

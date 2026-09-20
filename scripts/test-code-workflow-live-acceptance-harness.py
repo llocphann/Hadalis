@@ -95,9 +95,24 @@ for token in (
     "HADALIS_TREE_SITTER_LIBRARY",
     "pkgs.sway",
     "pkgs.dbus",
+    "HADALIS_WORKFLOW_DBUS_RUN_SESSION",
+    "HADALIS_WORKFLOW_DBUS_DAEMON",
+    "HADALIS_WORKFLOW_DBUS_SESSION_CONFIG",
 ):
     if token not in flake:
         fail("workflow acceptance devShell missing " + token)
+
+runtime_driver = (
+    ROOT / "scripts/code-workflow/run-runtime.py"
+).read_text(encoding="utf-8")
+for token in (
+    "def dbus_session(self, command):",
+    "HADALIS_WORKFLOW_DBUS_SESSION_CONFIG",
+    "HADALIS_WORKFLOW_DBUS_DAEMON",
+    "self.dbus_session(",
+):
+    if token not in runtime_driver:
+        fail("isolated runtime DBus wrapper missing " + token)
 
 for token in (
     "name: Code Workflow acceptance",

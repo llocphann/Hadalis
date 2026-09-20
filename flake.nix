@@ -59,6 +59,12 @@
               "${workflowParser}/lib/inir/code-workflow/qmljs.so";
             HADALIS_TREE_SITTER_LIBRARY =
               workflowParser.passthru.treeSitterLibrary;
+            HADALIS_WORKFLOW_DBUS_RUN_SESSION =
+              "${pkgs.dbus}/bin/dbus-run-session";
+            HADALIS_WORKFLOW_DBUS_DAEMON =
+              "${pkgs.dbus}/bin/dbus-daemon";
+            HADALIS_WORKFLOW_DBUS_SESSION_CONFIG =
+              "${pkgs.dbus}/share/dbus-1/session.conf";
           };
         });
 

@@ -198,7 +198,9 @@ Implemented, but **not yet qualified as passing evidence**:
   and Sway executable, and confines its mutable fixture below the staged config.
 - The driver is excluded from the installed runtime payload.
 - flake.nix exposes devShells.workflow-acceptance from the same packaged runtime
-  and QML dependency closures plus Sway/DBus/parser capability.
+  and QML dependency closures plus Sway/DBus/parser capability. The Nix shell
+  also supplies an explicit dbus-run-session binary, dbus-daemon and
+  share/dbus-1/session.conf because non-NixOS CI has no /etc/dbus-1/session.conf.
 - .github/workflows/code-workflow-acceptance.yml runs the harness headlessly on
   relevant Workflow changes and uploads report/log/state artifacts even on
   failure.

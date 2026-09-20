@@ -86,7 +86,6 @@ for token in (
         fail("2K-R commit engine manifest binding missing " + token)
 
 for token in (
-    '"CONNECT AUTHORIZED · APPLY BLOCKED"',
     '"CONNECT READY · AUTHORIZATION REQUIRED"',
     '"Authorize Connect write"',
     '"Revoke authorization"',
@@ -97,7 +96,7 @@ for token in (
     "production TYPE/CYCLE",
     '"Source identity · "',
     '"Dependency identity · "',
-    "source Apply control is still unavailable",
+    '"Authorization ACTIVE · bound to this exact prepared manifest/history command',
 ):
     if token not in page:
         fail("2K-R authorization UI evidence missing " + token)

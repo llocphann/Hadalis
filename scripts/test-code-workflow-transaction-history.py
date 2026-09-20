@@ -22,7 +22,9 @@ for token in (
     "const next = root.history.slice(",
     "0, root.historyIndex + 1)",
     "next[root._pendingReplaceIndex] = command",
-    'kind: "literal-property"',
+    "kind: root._pendingCommandKind",
+    'property string _pendingCommandKind: "literal-property"',
+    '"direct-binding"',
     "semanticAnchor: root.semanticAnchor",
     "baseSha256: root.baseSha256",
 ):

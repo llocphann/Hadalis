@@ -519,12 +519,11 @@ def main() -> None:
     ):
         forbid(bar, token, "Bar.qml")
     for token in (
-        "readonly property bool hugCorners: bar.showBarBackground",
+        "readonly property bool showBarBackground: true",
         "readonly property bool rightDeadPixelWorkaround:",
         "readonly property bool bottomDeadPixelWorkaround:",
-        "readonly property color solidColor: showBarBackground",
-        "? Appearance.colors.colLayer0",
-        "RoundCorner {",
+        "id: barRoot",
+        "BackgroundEffect.blurRegion: Region {",
     ):
         require(bar, token, "Bar.qml")
 
@@ -545,13 +544,9 @@ def main() -> None:
     ):
         forbid(vertical_bar, token, "VerticalBar.qml")
     for token in (
-        'active: showBarBackground && (Config.options?.bar?.cornerStyle ?? 0) === 0',
-        "readonly property bool isRight: Config.options?.bar?.bottom ?? false",
-        "readonly property color solidColor: showBarBackground",
-        "? Appearance.colors.colLayer0",
-        "// Top Material corner.",
-        "// Bottom Material corner.",
-        "RoundCorner {",
+        "readonly property bool showBarBackground: true",
+        "id: barRoot",
+        "BackgroundEffect.blurRegion: Region {",
     ):
         require(vertical_bar, token, "VerticalBar.qml")
 
@@ -1424,8 +1419,6 @@ def main() -> None:
         "color: Appearance.colors.colLayer0",
         "border.width: 0",
         'border.color: "transparent"',
-        "ConnectedSurfaceJoinFlares {",
-        "flareRadius: PerimeterTokens.joinFlareRadius",
         'joinTop: oskRoot.snappedEdge === "top"',
         'joinBottom: oskRoot.snappedEdge === "bottom"',
         "targetY = 0",
@@ -1448,13 +1441,10 @@ def main() -> None:
     ):
         require(osk_key, token, "onScreenKeyboard/OskKey.qml")
 
-    # ScreenCorners is shared by ii and Waffle. Fake-rounding chrome follows
-    # Material directly; corner actions/hot-corner/brightness-volume behavior stay intact.
+    # ScreenCorners is interaction-only; physical corner paint belongs to ScreenEdges.
     for token in legacy_style_tokens:
         forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
     for token in (
-        "readonly property int roundingSize: cornerPanelWindow.showFakeRounding",
-        "? Appearance.rounding.screenRounding",
         "GlobalStates.toggleSidebarLeft",
         "GlobalStates.toggleSidebarRight",
         "GlobalStates.openOrbit(",
@@ -1463,6 +1453,8 @@ def main() -> None:
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+    for token in ("RoundCorner", "fakeScreenRounding", "showFakeRounding", "roundingSize"):
+        forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
 
     # CompactSidebarRightContent is selected by SidebarHost when sidebar.layout
     # is compact. Preserve its connected surface, explicit island skin, rail/nav,
@@ -1476,7 +1468,9 @@ def main() -> None:
     ):
         forbid(compact_sidebar_right_content, token, "sidebarRight/CompactSidebarRightContent.qml")
     for token in (
-        "readonly property color connectedSurfaceColor: bg.color",
+        "property bool externalConnectedSurface: false",
+        "readonly property color connectedSurfaceColor:",
+        "readonly property real connectedSurfaceRadius: bg.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
         "IslandPanel {", "visible: bg.islandStyle",
         "readonly property color colDarkSurface:",
@@ -1518,11 +1512,13 @@ def main() -> None:
     ):
         forbid(sidebar_right_content, token, "sidebarRight/SidebarRightContent.qml")
     for token in (
-        "readonly property color connectedSurfaceColor: sidebarRightBackground.color",
+        "property bool externalConnectedSurface: false",
+        "readonly property color connectedSurfaceColor:",
+        "readonly property real connectedSurfaceRadius: sidebarRightBackground.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
         "IslandPanel {",
         "visible: sidebarRightBackground.islandStyle",
-        "color: (gameModeMinimal || islandStyle) ? \"transparent\"",
+        "color: root.externalConnectedSurface",
         "Appearance.colors.colLayer1",
         "Appearance.colors.colLayer0",
         "radius: cardStyle",
@@ -1575,11 +1571,13 @@ def main() -> None:
     ):
         forbid(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
     for token in (
-        "readonly property color connectedSurfaceColor: sidebarLeftBackground.color",
+        "property bool externalConnectedSurface: false",
+        "readonly property color connectedSurfaceColor:",
+        "readonly property real connectedSurfaceRadius: sidebarLeftBackground.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
         "IslandPanel {",
         "visible: sidebarLeftBackground.islandStyle",
-        "color: (gameModeMinimal || islandStyle) ? \"transparent\"",
+        "color: root.externalConnectedSurface",
         "Appearance.colors.colLayer1",
         "Appearance.colors.colLayer0",
         "radius: cardStyle",
@@ -1875,6 +1873,10 @@ def main() -> None:
         "SurfaceMotion.easingType",
     ):
         require(overview_dashboard, token, "overview/OverviewDashboard.qml")
+
+    for token in ("ConnectedSurfaceJoinFlares", "joinFlareRadius"):
+        forbid(overview_dashboard, token, "overview/OverviewDashboard.qml")
+        forbid(on_screen_keyboard, token, "onScreenKeyboard/OnScreenKeyboard.qml")
 
     # Niri's Overview workspace/window path is the primary compositor surface.
     # Its workspace/background/context-menu chrome is Material-only while Niri

@@ -36,8 +36,10 @@ grep -Fq 'GlobalStates.sidebarRightRequestedWidget = "weather"' "$weather_bar" \
     || fail 'Weather primary activation must target the right-sidebar Weather tab'
 grep -Fq 'GlobalStates.openSidebarRight' "$weather_bar" \
     || fail 'Weather primary activation must use the supported right-sidebar route'
-grep -Fq 'readonly property real directEdgeInset:' "$sidebar" \
-    || fail 'left/right SidebarHost surfaces must directly overlap Screen Edge'
+grep -Fq 'ConnectedSurfaceIrisEdgeSurface {' "$sidebar" \
+    || fail 'left/right SidebarHost must use the shared iRiS edge adapter'
+grep -Fq 'readonly property real hiddenTranslateDistance:' "$sidebar" \
+    || fail 'left/right SidebarHost must fully clear its native host on close'
 if grep -Fq 'ConnectedSurfaceConnector {' "$sidebar"; then
     fail 'left/right SidebarHost surfaces must not use connector stems'
 fi

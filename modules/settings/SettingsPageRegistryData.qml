@@ -808,13 +808,6 @@ Singleton {
             keywords: ["transparency", "opacity", "translucent", "see-through", "glass"]
         },
         {
-            pageIndex: 0, pageName: root.pages[0].name,
-            section: Translation.tr("Bar & screen"),
-            label: Translation.tr("Fake screen rounding"),
-            description: Translation.tr("Rounded corners for the screen edges"),
-            keywords: ["screen", "rounding", "corners", "fake", "round", "edges"]
-        },
-        {
             pageIndex: 4, pageName: root.pages[4].name,
             section: Translation.tr("Theme Scheduling"),
             label: Translation.tr("Theme schedule"),

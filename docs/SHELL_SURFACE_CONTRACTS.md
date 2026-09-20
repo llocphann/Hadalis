@@ -59,9 +59,9 @@ For the final local pass, verify at minimum:
 1. open battery, resources, weather, clock/timer/update and tray overflow from a top bar and confirm each outer shell visually grows from the source control rather than appearing as a separate card;
 2. open the Media wheel-volume HUD, expanded bar Media controls, and taskbar window preview and confirm they use the same connected shell rather than their previous detached `PopupWindow` presentation;
 3. repeat representative popouts with bottom, left, and right bar placement and confirm the growth direction is inward from the owning edge;
-4. close a popout and confirm the body/shoulders retract back into the source edge rather than disappearing immediately;
-5. for a hover popout, move the pointer from the bar control across the shoulder into the popup body and confirm it stays open;
-6. at fractional scaling, inspect the source/shoulder/body joins for a transparent one-pixel seam;
+4. close a popout and confirm the body/iRiS field retract back into the source edge rather than disappearing immediately;
+5. for a hover popout, move the pointer from the bar control across the connected seam into the popup body and confirm it stays open;
+6. at fractional scaling, inspect the source/body join for a transparent one-pixel seam, residual wedge, or closing sliver;
 7. verify clicks in transparent areas outside the visible popup shape are not captured by the full-output host window;
 8. verify expanded Media still receives keyboard focus/Escape correctly on the compositor in use;
 9. restart with a legacy non-zero `bar.cornerStyle` and verify it normalizes to `0`, the Bar remains Hug, and Settings does not offer Float/Rectangle/Card;
@@ -70,3 +70,12 @@ For the final local pass, verify at minimum:
 12. restart with a legacy `language.ui` value and verify the shell remains English and normalizes it to `en_US`.
 
 The retired full `iiPerimeter` composition must remain absent. Local acceptance should validate the supported connected-surface primitives and feature-owned bridges instead of treating the old runtime as an alternate path.
+
+
+## Legacy corner retirement
+
+`ConnectedSurfaceJoinFlares`, `PerimeterCornerShadow`, common `RoundCorner`
+and fake screen-rounding paint are retired. Sidebar/Dashboard/Settings use the
+shared iRiS edge adapter where curved contact is required; remaining
+non-cutover surfaces use direct square seams. Do not restore a standalone
+round-wedge painter.

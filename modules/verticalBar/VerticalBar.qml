@@ -16,8 +16,8 @@ import qs.modules.common.widgets
 
 Scope {
     id: bar
-    // Vertical Hug uses the same structural connected surface as horizontal
-    // Bar; legacy transparent-bar state must not remove its shoulders/shadow.
+    // Vertical Hug uses the same structural Bar ownership as horizontal Bar;
+    // legacy transparent-bar state must not remove its body/shadow.
     readonly property bool showBarBackground: true
 
     Variants {

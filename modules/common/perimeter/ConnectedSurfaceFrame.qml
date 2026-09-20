@@ -17,16 +17,13 @@ Item {
     property bool shadowBottom: true
     property bool shadowLeft: true
     property bool shadowRight: true
-    // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK:
-    // Joined body corners are deliberately square. The visible contact curve is
-    // owned by ConnectedSurfaceJoinFlares outside the body, producing the
-    // outward concave/flattened transition into Screen Edge/Bar. Free corners
-    // keep the normal popup radius.
+    // Joined body corners stay square at an owning Bar/Screen Edge seam.
+    // Auxiliary round-wedge painters are retired; these flags only control body
+    // corner radii and shadow clipping for non-iRiS consumers such as Waffle.
     property bool joinTop: false
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
-    property real joinFlareRadius: PerimeterTokens.joinFlareRadius
     property bool hoverEnabled: false
     readonly property bool bodyHovered: bodyHover.hovered
 
@@ -107,25 +104,10 @@ Item {
         }
     }
 
-    // Outward concave shoulders at every joined endpoint. These own the contact
-    // curvature; the body stays square on the attached edge so the popup never
-    // reads as an inward-rounded detached card.
-    ConnectedSurfaceJoinFlares {
-        z: 2
-        anchors.fill: parent
-        bodyItem: body
-        fillColor: root.fillColor
-        flareRadius: root.joinFlareRadius
-        progress: root.geometry.revealProgress ?? root.geometry.progress ?? 1
-        joinTop: root.joinTop
-        joinBottom: root.joinBottom
-        joinLeft: root.joinLeft
-        joinRight: root.joinRight
-    }
 
     // Retained only for consumers that explicitly need legacy connector
-    // geometry. StyledPopup keeps connectorVisible=false, so ordinary Bar
-    // popups are direct-body surfaces plus the concave shoulders above.
+    // geometry. Waffle currently keeps connectorVisible=false, so attachment
+    // remains a direct square seam with no auxiliary wedge painter.
     ConnectedSurfaceConnector {
         id: connector
         geometry: root.geometry

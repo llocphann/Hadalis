@@ -66,10 +66,9 @@ Scope {
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
     // The owning Overlay surface is anchored to the physical display edge.
-    // Let the visible body underlap the entire persistent Screen Edge band,
-    // rather than stopping at its inner boundary with only a 2px seam overlap.
-    // Its inward/free edge stays at the exact same coordinate because the body
-    // grows only toward the attached physical edge.
+    // The content body starts at the inner boundary of the persistent Screen
+    // Edge; ConnectedSurfaceIrisEdgeSurface alone welds the SDF underneath the
+    // owner. This keeps one visible owner at the edge and avoids double paint.
     // Perimeter sidebars are content-sized by definition. Preserve explicit
     // custom height, but treat legacy/full layout state as fit-to-content.
     readonly property string configuredSizeMode:
@@ -82,14 +81,20 @@ Scope {
         Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
-    // Reserve transparent vertical room for both the concave endpoint shoulders
-    // and the configured free-side shadow. Otherwise large Screen Edge shadow
-    // values clip at the native Sidebar window boundary even though the flare
-    // itself remains visible.
+    // Reserve tangent room for the iRiS field and free-side shadow. This is
+    // field/shadow extent only; no standalone wedge geometry is painted.
     readonly property real edgeDecorationMargin: Math.max(
         Appearance.sizes.hyprlandGapsOut,
-        PerimeterTokens.joinFlareRadius,
+        PerimeterTokens.irisFuseDepth,
         root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0)
+    // During the close tail the iRiS field remains resident. Move its body far
+    // enough beyond the native host that neither body, weld nor shadow can leave
+    // a one-pixel sliver at the physical left/right edge.
+    readonly property real hiddenTranslateDistance:
+        Math.ceil(root.effectiveSidebarWidth) + Math.max(
+            Appearance.sizes.hyprlandGapsOut,
+            PerimeterTokens.irisFuseDepth,
+            root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0)
     readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
         Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
     readonly property color screenEdgeShadowColor:
@@ -772,8 +777,8 @@ Scope {
 
             property bool _everMounted: false
             property real animTranslateX: root.isLeftEdge
-                ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
-                : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut
+                ? -root.hiddenTranslateDistance
+                : root.hiddenTranslateDistance
             property bool animating: false
             onAnimatingChanged: root.reportRuntime()
 
@@ -866,8 +871,8 @@ Scope {
                     PropertyChanges {
                         target: sidebarContentLoader
                         animTranslateX: root.isLeftEdge
-                            ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
-                            : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut
+                            ? -root.hiddenTranslateDistance
+                            : root.hiddenTranslateDistance
                     }
                 }
             ]

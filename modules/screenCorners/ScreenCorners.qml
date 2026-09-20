@@ -13,10 +13,10 @@ Scope {
     id: screenCorners
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
     property var actionForCorner: ({
-        [RoundCorner.CornerEnum.TopLeft]: outputName => GlobalStates.toggleSidebarLeft(outputName),
-        [RoundCorner.CornerEnum.BottomLeft]: outputName => GlobalStates.toggleSidebarLeft(outputName),
-        [RoundCorner.CornerEnum.TopRight]: outputName => GlobalStates.toggleSidebarRight(outputName),
-        [RoundCorner.CornerEnum.BottomRight]: outputName => GlobalStates.toggleSidebarRight(outputName)
+        "topLeft": outputName => GlobalStates.toggleSidebarLeft(outputName),
+        "bottomLeft": outputName => GlobalStates.toggleSidebarLeft(outputName),
+        "topRight": outputName => GlobalStates.toggleSidebarRight(outputName),
+        "bottomRight": outputName => GlobalStates.toggleSidebarRight(outputName)
     })
 
     component CornerPanelWindow: PanelWindow {
@@ -24,20 +24,25 @@ Scope {
         property var screen: QsWindow.window?.screen
         property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
         property bool fullscreen
-        property var corner
+        property string corner: ""
+        readonly property bool isTopLeft: corner === "topLeft"
+        readonly property bool isTopRight: corner === "topRight"
+        readonly property bool isBottomLeft: corner === "bottomLeft"
+        readonly property bool isBottomRight: corner === "bottomRight"
+        readonly property bool isTop: isTopLeft || isTopRight
+        readonly property bool isBottom: isBottomLeft || isBottomRight
+        readonly property bool isLeft: isTopLeft || isBottomLeft
+        readonly property bool isRight: isTopRight || isBottomRight
 
-        // Separate conditions for clarity
-        readonly property int fakeRoundingMode: Config?.options?.appearance?.fakeScreenRounding ?? 0
-        readonly property bool showFakeRounding: fakeRoundingMode === 1 || (fakeRoundingMode === 2 && !fullscreen)
+        // Interaction-only corner windows. Physical rounding is owned exclusively
+        // by ScreenEdges.qml's canonical full-screen frame.
         readonly property bool cornerOpenEnabled: Config?.options?.sidebar?.cornerOpen?.enable ?? false
         readonly property bool cornerOpenAtBottom: Config?.options?.sidebar?.cornerOpen?.bottom ?? false
-        readonly property bool cornerOpenMatchesPosition: cornerOpenAtBottom === cornerWidget.isBottom
+        readonly property bool cornerOpenMatchesPosition: cornerOpenAtBottom === cornerPanelWindow.isBottom
         readonly property bool shouldShowCornerOpen: cornerOpenEnabled
             && cornerOpenMatchesPosition && !fullscreen
         readonly property string orbitCorner: Config.options?.orbit?.hotCorner ?? "topRight"
-        readonly property string cornerName: cornerWidget.isTopLeft ? "topLeft"
-            : cornerWidget.isTopRight ? "topRight"
-            : cornerWidget.isBottomLeft ? "bottomLeft" : "bottomRight"
+        readonly property string cornerName: cornerPanelWindow.corner
         readonly property string outputName: cornerPanelWindow.screen?.name ?? ""
         readonly property bool orbitConflictsWithNiriOverview: CompositorService.isNiri
             && NiriService.isOverviewHotCornerActive(outputName, cornerName)
@@ -51,7 +56,7 @@ Scope {
         readonly property bool shouldShowSidebarCornerOpen: shouldShowCornerOpen
             && !shouldShowOrbitHotCorner
 
-        visible: !fullscreen && (showFakeRounding || shouldShowSidebarCornerOpen || shouldShowOrbitHotCorner)
+        visible: !fullscreen && (shouldShowSidebarCornerOpen || shouldShowOrbitHotCorner)
 
         exclusionMode: ExclusionMode.Ignore
         mask: Region {
@@ -63,10 +68,10 @@ Scope {
         color: "transparent"
 
         anchors {
-            top: cornerWidget.isTopLeft || cornerWidget.isTopRight
-            left: cornerWidget.isBottomLeft || cornerWidget.isTopLeft
-            bottom: cornerWidget.isBottomLeft || cornerWidget.isBottomRight
-            right: cornerWidget.isTopRight || cornerWidget.isBottomRight
+            top: cornerPanelWindow.isTopLeft || cornerPanelWindow.isTopRight
+            left: cornerPanelWindow.isBottomLeft || cornerPanelWindow.isTopLeft
+            bottom: cornerPanelWindow.isBottomLeft || cornerPanelWindow.isBottomRight
+            right: cornerPanelWindow.isTopRight || cornerPanelWindow.isBottomRight
         }
         margins {
             right: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && cornerPanelWindow.anchors.right) * -1
@@ -76,17 +81,10 @@ Scope {
         implicitWidth: cornerWidget.implicitWidth
         implicitHeight: cornerWidget.implicitHeight
 
-        RoundCorner {
+        Item {
             id: cornerWidget
             anchors.fill: parent
-            corner: cornerPanelWindow.corner
-            rightVisualMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && cornerPanelWindow.anchors.right) * 1
-            bottomVisualMargin: ((Config.options?.interactions?.deadPixelWorkaround?.enable ?? false) && cornerPanelWindow.anchors.bottom) * 1
 
-            // Size for the Material fake-rounding visual (0 if disabled).
-            readonly property int roundingSize: cornerPanelWindow.showFakeRounding
-                ? Appearance.rounding.screenRounding
-                : 0
             // Size for corner open interaction area
             readonly property int cornerOpenWidth: Config.options?.sidebar?.cornerOpen?.cornerRegionWidth ?? 20
             readonly property int cornerOpenHeight: Config.options?.sidebar?.cornerOpen?.cornerRegionHeight ?? 20
@@ -97,11 +95,10 @@ Scope {
             readonly property int orbitHotCornerHitSize: Math.max(
                 orbitHotCornerSize, orbitHotCornerActivationDistance)
 
-            implicitSize: roundingSize
-            implicitWidth: Math.max(roundingSize,
+            implicitWidth: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenWidth : 0,
                 cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0)
-            implicitHeight: Math.max(roundingSize,
+            implicitHeight: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenHeight : 0,
                 cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0)
 
@@ -109,10 +106,10 @@ Scope {
                 id: orbitHotCornerLoader
                 active: cornerPanelWindow.shouldShowOrbitHotCorner
                 anchors {
-                    top: cornerWidget.isTop ? parent.top : undefined
-                    bottom: cornerWidget.isBottom ? parent.bottom : undefined
-                    left: cornerWidget.isLeft ? parent.left : undefined
-                    right: cornerWidget.isRight ? parent.right : undefined
+                    top: cornerPanelWindow.isTop ? parent.top : undefined
+                    bottom: cornerPanelWindow.isBottom ? parent.bottom : undefined
+                    left: cornerPanelWindow.isLeft ? parent.left : undefined
+                    right: cornerPanelWindow.isRight ? parent.right : undefined
                 }
 
                 sourceComponent: MouseArea {
@@ -133,9 +130,9 @@ Scope {
 
                     onPositionChanged: mouse => {
                         const distance = cornerWidget.orbitHotCornerActivationDistance
-                        const atX = cornerWidget.isRight
+                        const atX = cornerPanelWindow.isRight
                             ? mouse.x >= width - distance : mouse.x <= distance
-                        const atY = cornerWidget.isTop
+                        const atY = cornerPanelWindow.isTop
                             ? mouse.y <= distance : mouse.y >= height - distance
                         atCorner = atX && atY
                         if (!atCorner) {
@@ -170,10 +167,10 @@ Scope {
                 id: sidebarCornerOpenInteractionLoader
                 active: cornerPanelWindow.shouldShowSidebarCornerOpen
                 anchors {
-                    top: (cornerWidget.isTopLeft || cornerWidget.isTopRight) ? parent.top : undefined
-                    bottom: (cornerWidget.isBottomLeft || cornerWidget.isBottomRight) ? parent.bottom : undefined
-                    left: (cornerWidget.isLeft) ? parent.left : undefined
-                    right: (cornerWidget.isTopRight || cornerWidget.isBottomRight) ? parent.right : undefined
+                    top: (cornerPanelWindow.isTopLeft || cornerPanelWindow.isTopRight) ? parent.top : undefined
+                    bottom: (cornerPanelWindow.isBottomLeft || cornerPanelWindow.isBottomRight) ? parent.bottom : undefined
+                    left: (cornerPanelWindow.isLeft) ? parent.left : undefined
+                    right: (cornerPanelWindow.isTopRight || cornerPanelWindow.isBottomRight) ? parent.right : undefined
                 }
 
                 sourceComponent: FocusedScrollMouseArea {
@@ -185,8 +182,8 @@ Scope {
                         if (Config.options?.sidebar?.cornerOpen?.clickless ?? false) return;
                         if (!(Config.options?.sidebar?.cornerOpen?.clicklessCornerEnd ?? false)) return;
                         const verticalOffset = Config.options?.sidebar?.cornerOpen?.clicklessCornerVerticalOffset ?? 10;
-                        const correctX = (cornerWidget.isRight && mouseArea.mouseX >= mouseArea.width - 2) || (cornerWidget.isLeft && mouseArea.mouseX <= 2);
-                        const correctY = (cornerWidget.isTop && mouseArea.mouseY > verticalOffset || cornerWidget.isBottom && mouseArea.mouseY < mouseArea.height - verticalOffset);
+                        const correctX = (cornerPanelWindow.isRight && mouseArea.mouseX >= mouseArea.width - 2) || (cornerPanelWindow.isLeft && mouseArea.mouseX <= 2);
+                        const correctY = (cornerPanelWindow.isTop && mouseArea.mouseY > verticalOffset || cornerPanelWindow.isBottom && mouseArea.mouseY < mouseArea.height - verticalOffset);
                         if (correctX && correctY)
                             screenCorners.actionForCorner[cornerPanelWindow.corner](cornerPanelWindow.screen?.name ?? "");
                     }
@@ -205,7 +202,7 @@ Scope {
                     onScrollDown: {
                         if (!(Config.options?.sidebar?.cornerOpen?.valueScroll ?? false))
                             return;
-                        if (cornerWidget.isLeft)
+                        if (cornerPanelWindow.isLeft)
                             cornerPanelWindow.brightnessMonitor.setBrightness(cornerPanelWindow.brightnessMonitor.brightness - 0.05);
                         else {
                             Audio.decrementVolume();
@@ -214,7 +211,7 @@ Scope {
                     onScrollUp: {
                         if (!(Config.options?.sidebar?.cornerOpen?.valueScroll ?? false))
                             return;
-                        if (cornerWidget.isLeft)
+                        if (cornerPanelWindow.isLeft)
                             cornerPanelWindow.brightnessMonitor.setBrightness(cornerPanelWindow.brightnessMonitor.brightness + 0.05);
                         else {
                             Audio.incrementVolume();
@@ -223,7 +220,7 @@ Scope {
                     onMovedAway: {
                         if (!(Config.options?.sidebar?.cornerOpen?.valueScroll ?? false))
                             return;
-                        if (cornerWidget.isLeft)
+                        if (cornerPanelWindow.isLeft)
                             GlobalStates.osdBrightnessOpen = false;
                         else
                             GlobalStates.osdVolumeOpen = false;
@@ -258,9 +255,8 @@ Scope {
                 if (CompositorService.isHyprland) {
                     return activeWorkspaceWithFullscreen != undefined;
                 }
-                // Corners only stop being painted; they never unmap a surface
-                // or change the exclusive zone, so they can safely follow
-                // automatic fullscreen detection.
+                // Corner windows are interaction-only and reserve no work area,
+                // so they can safely follow automatic fullscreen detection.
                 if (CompositorService.isNiri)
                     return GameMode.hasFullscreenOnOutput(modelData?.name ?? "")
                 return false;
@@ -268,22 +264,22 @@ Scope {
 
             CornerPanelWindow {
                 screen: modelData
-                corner: RoundCorner.CornerEnum.TopLeft
+                corner: "topLeft"
                 fullscreen: monitorScope.fullscreen
             }
             CornerPanelWindow {
                 screen: modelData
-                corner: RoundCorner.CornerEnum.TopRight
+                corner: "topRight"
                 fullscreen: monitorScope.fullscreen
             }
             CornerPanelWindow {
                 screen: modelData
-                corner: RoundCorner.CornerEnum.BottomLeft
+                corner: "bottomLeft"
                 fullscreen: monitorScope.fullscreen
             }
             CornerPanelWindow {
                 screen: modelData
-                corner: RoundCorner.CornerEnum.BottomRight
+                corner: "bottomRight"
                 fullscreen: monitorScope.fullscreen
             }
         }

@@ -213,7 +213,6 @@ Item {
         { pageIndex: 6, pageName: "Interface", section: "Lock Screen", label: "Blur radius", targetLabel: "Blur radius", keywords: ["lock", "screen", "blur", "radius"] },
         { pageIndex: 6, pageName: "Interface", section: "Lock Screen", label: "Center clock", targetLabel: "Center clock", keywords: ["lock", "screen", "clock", "center", "position"] },
         { pageIndex: 6, pageName: "Interface", section: "Lock Screen", label: "Show 'Locked' text", targetLabel: "Show 'Locked' text", keywords: ["lock", "screen", "text", "locked"] },
-        { pageIndex: 6, pageName: "Interface", section: "Screen Corners", label: "Fake rounded corners", targetLabel: "Fake rounded corners", keywords: ["screen", "corners", "rounded", "rounding", "fake"] },
         
         // === Modules (7) ===
         { pageIndex: 7, pageName: "Modules", section: "Panel Style", label: "Panel family", targetLabel: "Panel family", keywords: ["panel", "family", "style", "material", "waffle", "windows"] },

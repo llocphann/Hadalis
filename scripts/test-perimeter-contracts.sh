@@ -19,17 +19,29 @@ for file in \
     ConnectedSurfaceGeometry.qml \
     ConnectedSurfaceConnector.qml \
     ConnectedSurfaceFrame.qml \
-    ConnectedSurfaceJoinFlares.qml \
     ConnectedSurfaceRevealClip.qml \
     ConnectedSurfaceContentHost.qml \
     ConnectedSurfaceMask.qml \
     ConnectedSurfaceIrisField.qml \
     ConnectedSurfaceIrisFrame.qml \
     ConnectedSurfaceBodyMask.qml \
+    ConnectedSurfaceIrisEdgeSurface.qml \
     IrisField.frag \
     IrisField.frag.qsb; do
     [[ -f "$common/$file" ]] || fail "missing shared primitive $file"
 done
+
+for retired in \
+    "$common/ConnectedSurfaceJoinFlares.qml" \
+    "$common/PerimeterCornerShadow.qml" \
+    "$root/modules/common/widgets/RoundCorner.qml"; do
+    [[ ! -e "$retired" ]] || fail "retired round-wedge primitive still exists: ${retired#$root/}"
+done
+for token in 'ConnectedSurfaceJoinFlares 1.0' 'PerimeterCornerShadow 1.0'; do
+    ! grep -Fq "$token" "$common/qmldir" || fail "retired perimeter export remains: $token"
+done
+! grep -Fq 'RoundCorner 1.0' "$root/modules/common/widgets/qmldir" \
+    || fail 'retired RoundCorner export remains'
 
 for primitive in ConnectedSurfaceGeometry ConnectedSurfaceIrisFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceBodyMask; do
     grep -Fq "$primitive" "$styled" \
@@ -64,7 +76,12 @@ for token in \
     'ConnectedSurfaceIrisEdgeSurface {' \
     'ownerThickness: root.screenEdgeHoverWidth' \
     'sidebarContentLoader.x + sidebarContentLoader.animTranslateX' \
-    'progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0'; do
+    'progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0' \
+    'readonly property real hiddenTranslateDistance:' \
+    'Math.ceil(root.effectiveSidebarWidth) + Math.max(' \
+    'PerimeterTokens.irisFuseDepth' \
+    '? -root.hiddenTranslateDistance' \
+    ': root.hiddenTranslateDistance'; do
     grep -Fq -- "$token" "$sidebar" \
         || fail "SidebarHost must use owner-clipped iRiS Screen Edge composition: $token"
 done
@@ -109,9 +126,15 @@ for token in \
     grep -Fq "$token" "$dashboard" \
         || fail "OverviewDashboard must use the iRiS bottom-owner composition: $token"
 done
-if grep -Fq 'ConnectedSurfaceJoinFlares {' "$dashboard"; then
-    fail 'OverviewDashboard must not retain the legacy flare renderer'
+if grep -Fq 'ConnectedSurfaceJoinFlares {' "$dashboard" \
+        || grep -Fq 'joinFlareRadius' "$dashboard"; then
+    fail 'OverviewDashboard must not retain the legacy flare renderer/tokens'
 fi
+for file in "$root/modules/overview/SearchWidget.qml" "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" "$common/ConnectedSurfaceFrame.qml"; do
+    if grep -Fq 'ConnectedSurfaceJoinFlares' "$file" || grep -Fq 'joinFlareRadius' "$file"; then
+        fail "${file#$root/} retained legacy round-wedge geometry"
+    fi
+done
 
 for token in \
     'import qs.modules.waffle.looks as WaffleLooks' \

@@ -40,6 +40,13 @@ for file in "${retired_files[@]}"; do
     fi
 done
 
+for file in ConnectedSurfaceJoinFlares.qml PerimeterCornerShadow.qml; do
+    [[ ! -e "$common/$file" ]] || fail "retired round-wedge primitive still exists: $file"
+    ! grep -Fq "${file%.qml} 1.0" "$qmldir" || fail "retired round-wedge export remains: $file"
+done
+[[ ! -e "$root/modules/common/widgets/RoundCorner.qml" ]] || fail 'retired RoundCorner painter still exists'
+! grep -Fq 'RoundCorner 1.0' "$root/modules/common/widgets/qmldir" || fail 'retired RoundCorner export remains'
+
 for export in \
     'PerimeterTopology 1.0 PerimeterTopology.qml' \
     'PerimeterTokens 1.0 PerimeterTokens.qml' \
@@ -66,6 +73,8 @@ done
 
 grep -Fq 'ConnectedSurfaceIrisEdgeSurface {' "$sidebar" \
     || fail 'SidebarHost lost the supported iRiS edge-surface adapter'
+grep -Fq 'readonly property real hiddenTranslateDistance:' "$sidebar" \
+    || fail 'SidebarHost lost its full-hide distance'
 if grep -Fq 'ConnectedSurfaceConnector {' "$sidebar" \
         || grep -Fq 'ConnectedSurfaceJoinFlares {' "$sidebar"; then
     fail 'SidebarHost restored retired connector/flare patch geometry'

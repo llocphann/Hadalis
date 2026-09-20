@@ -45,16 +45,15 @@ This section is the **maintainer handoff for new chat sessions**. Read it before
 - Auto-hide behavior is also frozen for current geometry work: when ii Bar auto-hide is enabled, Bar relinquishes physical-edge ownership back to `ScreenEdges.qml`. Do not reintroduce `autoHideScreenEdge` or another Bar-local physical edge.
 - Waffle is a separate supported panel family. Do not change Waffle geometry as a side effect of ii perimeter work.
 
-**Current active perimeter task — connected surfaces only:**
+**Connected-surface policy — legacy round-wedge geometry retired:**
 
-- The maintainer's current focus is **Popup / Sidebar / Dashboard / Settings / OSK contact geometry** where a connected body physically meets Screen Edge or normal ii Bar.
-- Desired visual result: the attached body edge stays **square at the seam**, while each endpoint grows an **outward flattened/concave shoulder** into Screen Edge/Bar, matching the supplied Caelestia references. The curve must bulge/flatten **outside** the popup body; never round the attached body corner inward.
-- Legacy Sidebar/Dashboard/OSK/Waffle outward shoulders still follow `appearance.screenEdge.radius` through `PerimeterTokens.joinFlareRadius = frameRadius`. ii `StyledPopup` no longer uses that Canvas/flare geometry: its contact is the G1/G2-validated iRiS SDF union, with popup free-corner radius kept by the popup token.
-- This must be implemented in the **connected-surface layer only**. Do not solve it by changing `ScreenEdges.qml`, Bar/VerticalBar geometry, the locked physical frame, or by painting a second physical-edge overlay.
-- ii Bar popups stay on the single `StyledPopup` framework and its production `ConnectedSurfaceIrisFrame` + `ConnectedSurfaceBodyMask` path. `ConnectedSurfaceFrame` + `ConnectedSurfaceJoinFlares` remain shared only by Waffle/non-cutover Sidebar/Dashboard/OSK surfaces. Do not create per-popup patches or a second popup framework.
-- The rejected implementation rounded the attached popup body corner inward. That is explicitly wrong. The clean baseline keeps attached body corners at radius 0 and lets the fill-only flare outside the body own the contact curvature.
-- Caelestia's real implementation uses `BlobRect` surfaces in the same smoothed `BlobGroup` as `BlobInvertedRect`; Hadalis approximates that smooth union across separate layer-shell surfaces with an outward Bezier/ellipse shoulder. Do not replace it with standalone inward `PathArc` patches.
-- Any connected-surface implementation is **not considered complete until runtime screenshots validate Popup, Sidebar, Dashboard and Settings contact corners** at the relevant Bar/Screen Edge positions.
+- **Physical Screen Edge geometry remains locked** to the single full-screen odd-even frame below.
+- ii Bar popups keep the production iRiS SDF union through `StyledPopup`.
+- Sidebar, Dashboard and Settings use `ConnectedSurfaceIrisEdgeSurface`, which adapts their real body rectangle to the same iRiS field without a standalone wedge/corner helper.
+- Search, OSK and current Waffle/non-cutover bodies use direct square joined edges; they do not paint auxiliary endpoint wedges.
+- `ConnectedSurfaceJoinFlares`, `PerimeterCornerShadow`, common `RoundCorner`, fake screen-rounding paint and the `joinFlare*` token family are retired.
+- Sidebar close translation must clear the complete native left/right host plus iRiS/shadow overflow so no visible sliver survives at Screen Edge.
+- Runtime-sensitive geometry remains open until the maintainer validates left/right/top/bottom and fractional-scale behavior in the real Niri session.
 
 **Known-good physical perimeter invariants to preserve during all future popup work:**
 
@@ -80,7 +79,7 @@ radius      -> PerimeterTokens.frameRadius
 1. Read this section and §2.1 completely.
 2. Refetch current `dev` and re-read the exact target file plus its consumers immediately before writing.
 3. Treat `SCREEN-EDGE-GEOMETRY-LOCK` and `BAR-SCREEN-EDGE-CORNER-LOCK` as hard guards.
-4. For ii Popup work, first inspect `ConnectedSurfaceIrisFrame.qml`, `ConnectedSurfaceIrisField.qml`, `ConnectedSurfaceBodyMask.qml`, `ConnectedSurfaceGeometry.qml` and the calling surface. For Sidebar/Dashboard/OSK/Waffle, inspect the legacy shared frame/flares they still consume. Avoid editing locked physical perimeter files.
+4. For ii Popup work, inspect the iRiS frame/field/body-mask path. For Sidebar/Dashboard/Settings inspect `ConnectedSurfaceIrisEdgeSurface`; for Search/OSK/Waffle preserve direct square attachment unless explicitly migrating to iRiS. Avoid editing locked physical perimeter files.
 5. Update `scripts/test-shell-surface-contracts.py` whenever ownership or geometry contracts change intentionally.
 6. Do not claim runtime success until the maintainer has run `inir update` / `inir restart` and visually validated the result.
 
@@ -122,7 +121,7 @@ The maintainer requires the physical Screen Edge corners to match Caelestia with
 - **`ScreenEdges.qml` is the only physical Screen Edge renderer.** Each output has exactly one painted full-screen frame surface.
 - The frame is one odd-even path: a padded outer rectangle minus one rounded inner workspace rectangle. This mirrors the isolated geometry of Caelestia's `BlobInvertedRect` instead of approximating it with four strips plus four corner patches.
 - **Normal ii Bar is treated as a thicker side of that same frame.** This follows Caelestia `ContentWindow.qml`: when Bar owns top/bottom, the matching inner-frame inset becomes `Appearance.sizes.barHeight`; when VerticalBar owns left/right it becomes `Appearance.sizes.verticalBarWidth`. The other three sides remain the Screen Edge thickness. Therefore the two inward Bar endpoint corners are produced by the same locked rounded workspace hole, not by Bar-local patches.
-- **ii connected popup contacts are SDF unions, not corner patches.** `StyledPopup` keeps Bar/Screen Edge owner rectangles in exact iRiS v2.31.0 SDF math and clips Overlay paint/shadow/input at the real owner boundaries. The accepted split-composition uses `irisFuseDepth = 30` and `irisWeldDepth = 3`; no `ConnectedSurfaceJoinFlares`, connector stem or connector-strip input mask remains in the ii popup path. Legacy Sidebar/Dashboard/OSK/Waffle surfaces still use their shared outward-shoulder primitive until separately cut over.
+- **Connected curvature is iRiS-owned, not patch-owned.** `StyledPopup` and the shared edge adapter use the exact iRiS SDF path. Sidebar/Dashboard/Settings consume `ConnectedSurfaceIrisEdgeSurface`; Search/OSK/Waffle keep direct square seams. No standalone round-wedge painter remains.
 - Caelestia's border defaults are preserved: Screen Edge thickness defaults to **10px**, corner radius defaults to **25px**, and the outer path extends **50px** beyond the window so the compositor clips the physical screen boundary rather than exposing antialiasing on an outer shape edge. Radius is user-adjustable through Settings without changing renderer ownership.
 - The full-screen visual `FrameWindow` follows Caelestia's layer-shell placement contract: it is anchored to all four physical output edges and uses `ExclusionMode.Ignore` without setting an `exclusiveZone`, so edge reservations cannot inset the painted frame. The four thin `ReservationWindow` surfaces are transparent compositor reservations only; they set the positive edge `exclusiveZone` and otherwise remain in normal exclusion semantics. They never paint Screen Edge pixels and therefore cannot change the frame silhouette.
 - Physical Screen Edge shadow is allowed only as **one effect attached directly to the locked frame Shape**. It must not introduce an Item wrapper, edge/corner renderer, gradient band, radial patch, wedge, rectangle or second painted geometry. Defaults match Caelestia ContentWindow: Material `m3shadow`, `blurMax = 15`, alpha `0.70`.
@@ -138,13 +137,13 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 ### A. Screen Edge and connected surfaces — P0
 
-> **Latest maintainer correction (2026-09-19):** connected Popup/Sidebar/Dashboard/Settings/OSK contacts must flare **outward** into Screen Edge/Bar. The attached body corners stay square; inward rounding is explicitly rejected. The outward shoulder follows the same user-controlled Border Radius as Screen Edge/Bar, while the locked Screen Edge/Bar renderer itself remains untouched. Horizontal/vertical Bar PanelWindows must also remain mapped across fullscreen so leaving fullscreen never strands Bar contents blank.
+> **Latest perimeter correction:** the legacy round-wedge/corner renderer family is retired. Curved connected contact is iRiS-owned; otherwise the joined body edge stays square. Horizontal/vertical Bar PanelWindows and the canonical Screen Edge frame remain independently owned and mapped across fullscreen.
 
 - [ ] **Screen Edge exists both while idle and while a window is maximized.** It must not disappear simply because no maximized window is present.
 - [ ] **Bar survives fullscreen enter/exit without reload.** Horizontal and vertical ii Bar native surfaces and the painted Screen Edge `FrameWindow` stay mapped/updating; fullscreen coverage is owned by compositor stacking, not `visible`/`updatesEnabled` gates. Transparent reservation-only windows may release their exclusive zones independently. Leaving fullscreen must restore all Bar contents immediately without `inir restart` or shell reload.
 - [ ] **Screen Edge width is configurable in Settings.** The setting must use one canonical configuration field, have a safe default/range and update the active edge without requiring an alternate renderer.
-- [ ] **Screen Edge corner radius is configurable in Settings and defines the physical ii Bar/Screen Edge plus legacy connected shoulders.** Default is 25px. Sidebar/Dashboard/OSK/Waffle flare tangent width still follows `PerimeterTokens.joinFlareRadius = frameRadius`; ii `StyledPopup` contact morphology is now owned by the independent iRiS field tokens and popup radius.
-- [ ] **All connected surfaces use one shared direct-attachment contract.** No popup may draw a connector/stem or invent a private gap. Shared geometry owns seam overlap, joined-edge corner ownership, concave union shoulders and shadow clipping.
+- [ ] **Screen Edge corner radius is configurable in Settings and defines the physical ii Bar/Screen Edge.** Default is 25px. Direct-attached surfaces do not derive a second legacy wedge radius from it; iRiS contact remains independently tokenized.
+- [ ] **All connected surfaces use one direct-attachment contract.** No popup may invent a private gap or auxiliary round-wedge patch. Shared geometry/iRiS owns seam overlap, joined-edge ownership and shadow/input clipping.
 - [ ] **No visible gap between bar/Screen Edge and popup body.** Shared geometry must own seam overlap so fractional scaling, animation and antialiasing do not expose a slit.
 - [ ] **Left and right Sidebars connect to the vertical Screen Edge**, not to the top bar or bottom screen edge.
 - [ ] Connected surfaces behave correctly for top/bottom/left/right bar placement, transformed outputs and fractional scale.

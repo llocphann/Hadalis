@@ -70,9 +70,6 @@ def main() -> None:
         "readonly property real irisFuseDepth: 30",
         "readonly property real irisWeldDepth: 3",
         "readonly property real popupRadius: 28",
-        "readonly property real joinFlareRadius: frameRadius",
-        "readonly property real joinFlareCrossScale: 0.55",
-        "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK",
     ):
         check(token in perimeter_tokens,
               f"Perimeter geometry token missing: {token}")
@@ -141,15 +138,21 @@ def main() -> None:
     check("connectorSourceExtent" in connector,
           "ConnectedSurfaceConnector must narrow toward the real bar anchor")
 
-    join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
-    for token in (
-        "readonly property point bodyOrigin:",
-        "root.bodyItem.mapToItem(root, 0, 0)",
-        "root.bodyOrigin.x",
-        "root.bodyOrigin.y",
+    for retired_path in (
+        "modules/common/perimeter/ConnectedSurfaceJoinFlares.qml",
+        "modules/common/perimeter/PerimeterCornerShadow.qml",
+        "modules/common/widgets/RoundCorner.qml",
     ):
-        check(token in join_flares,
-              f"Join flares must map nested body coordinates into their host: {token}")
+        check(not (ROOT / retired_path).exists(),
+              f"Retired round-wedge geometry must be absent: {retired_path}")
+    iris_edge = read("modules/common/perimeter/ConnectedSurfaceIrisEdgeSurface.qml")
+    for token in (
+        "readonly property rect weldedBodyRect:",
+        "property real ownerThickness: 10",
+        "ConnectedSurfaceIrisFrame {",
+        "externalFrameThickness: root.ownerThickness",
+    ):
+        check(token in iris_edge, f"iRiS edge adapter contract missing: {token}")
 
     check("hoverEnabled: root.active" in styled_popup
           and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in styled_popup
@@ -159,24 +162,6 @@ def main() -> None:
           and "interval: 90" in styled_popup
           and "hoverTransferTimer.restart()" in styled_popup,
           "StyledPopup must debounce the compositor leave/enter hand-off across Bar and popup windows")
-
-    round_corner = read("modules/common/widgets/RoundCorner.qml")
-    check("PathCubic {" in round_corner
-          and "PathAngleArc {" not in round_corner
-          and "readonly property real _k: 0.5522847498307936" in round_corner,
-          "Screen Edge/Bar inverse corners must use the shared circular cubic geometry")
-    for token in (
-        "RoundCorner.CornerEnum.TopLeft",
-        "RoundCorner.CornerEnum.TopRight",
-        "RoundCorner.CornerEnum.BottomLeft",
-        "RoundCorner.CornerEnum.BottomRight",
-    ):
-        check(token in round_corner,
-              f"RoundCorner must preserve all four orientations: {token}")
-    check("id: shadowCanvas" in round_corner
-          and "ctx.arc(" in round_corner
-          and "property real shadowExtent: 0" in round_corner,
-          "RoundCorner must carry the inward shadow around the circular arc")
 
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
@@ -328,22 +313,25 @@ def main() -> None:
         "GlobalStates.sidebarRightPresentationOutput",
         "PanelWindow {",
         "width: Math.max(0, root.effectiveSidebarWidth",
+        "- Appearance.sizes.elevationMargin",
         "- root.screenEdgeHoverWidth)",
-        "ConnectedSurfaceIrisEdgeSurface {",
-        "ownerThickness: root.screenEdgeHoverWidth",
-        "sidebarContentLoader.x + sidebarContentLoader.animTranslateX",
-        "progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0",
+        "rightMargin: root.isLeftEdge",
+        "? Appearance.sizes.elevationMargin",
+        ": root.screenEdgeHoverWidth",
+        "leftMargin: root.isLeftEdge",
+        "? root.screenEdgeHoverWidth",
+        ": Appearance.sizes.elevationMargin",
     ):
         check(token in sidebar_host,
-              f"Sidebar iRiS physical-edge contract missing: {token}")
+              f"Sidebar Screen Edge boundary contract missing: {token}")
     for retired in (
         "ConnectedSurfaceConnector",
-        "ConnectedSurfaceJoinFlares {",
         "sidebarBridgeGeometry",
         "directEdgeInset",
+        "screenEdgeThickness",
     ):
         check(retired not in sidebar_host,
-              f"Sidebar must not restore connector/flare patch geometry: {retired}")
+              f"Sidebar must not stop at an inner-edge inset or restore a connector: {retired}")
     check(sidebar_host.count('property: "animTranslateX"') == 2
           and "SurfaceMotion.duration" in sidebar_host
           and "SurfaceMotion.easingType" in sidebar_host
@@ -355,8 +343,6 @@ def main() -> None:
         "targetY = 0",
         "targetY = ph - kh",
         "y: parent ? parent.height - height : 0",
-        "ConnectedSurfaceJoinFlares {",
-        "flareRadius: PerimeterTokens.joinFlareRadius",
         'joinTop: oskRoot.snappedEdge === "top"',
         'joinBottom: oskRoot.snappedEdge === "bottom"',
     ):
@@ -369,7 +355,7 @@ def main() -> None:
           and 'bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius' in osk
           and 'bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius' in osk
           and "PerimeterTokens.attachedCornerRadius" not in osk,
-          "OSK attached body edge must stay square; outward flare owns Screen Edge contact rounding")
+          "OSK attached body edge must stay square without a legacy endpoint wedge")
     check("Appearance.animation.elementMove.duration" in osk
           and "Appearance.animation.elementMove.bezierCurve" in osk,
           "OSK attached-edge slide must use the default-spatial motion token")
@@ -378,7 +364,6 @@ def main() -> None:
         "property real _oskRevealProgress:",
         "readonly property real revealOffsetY:",
         "transform: Translate { y: oskRoot.revealOffsetY }",
-        "progress: root._oskRevealProgress",
     ):
         check(token in osk,
               f"OSK must stay resident and slide through its attached edge: {token}")
@@ -398,24 +383,19 @@ def main() -> None:
           "Rejected curved perimeter-shadow stitching must stay removed from Screen Edge")
 
     for token in (
-        "id: sidebarEdgeFlares",
-        "tracksBodyTranslation",
-        "JoinFlares maps bodyItem through mapToItem()",
+        "readonly property real hiddenTranslateDistance:",
+        "Math.ceil(root.effectiveSidebarWidth) + Math.max(",
+        "PerimeterTokens.irisFuseDepth",
+        "? -root.hiddenTranslateDistance",
+        ": root.hiddenTranslateDistance",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        "id: sidebarIrisSurface",
+        "ownerThickness: root.screenEdgeHoverWidth",
     ):
-        check(token in sidebar_host,
-              f"Sidebar Screen Edge shoulders must follow the mapped body once: {token}")
-    sidebar_flare_start = sidebar_host.index("id: sidebarEdgeFlares")
-    sidebar_flare_end = sidebar_host.index("ShellEditSurfaceFrame", sidebar_flare_start)
-    sidebar_flare_block = sidebar_host[sidebar_flare_start:sidebar_flare_end]
-    check("transform: Translate" not in sidebar_flare_block,
-          "Sidebar flares must not double-apply the Loader translation after mapToItem()")
-    check("shadowEnabled:" not in sidebar_flare_block
-          and "shadowExtent:" not in sidebar_flare_block
-          and "shadowColor:" not in sidebar_flare_block,
-          "Sidebar Caelestia shoulders must remain fill-only; body shadow owns depth")
-    check("PerimeterTokens.joinFlareRadius" in sidebar_host
-          and "root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0" in sidebar_host,
-          "Sidebar native host must reserve room for the larger of flare and configured Screen Edge shadow")
+        check(token in sidebar_host, f"Sidebar iRiS/full-hide contract missing: {token}")
+    for retired in ("ConnectedSurfaceJoinFlares", "joinFlareRadius", "sidebarEdgeFlares"):
+        check(retired not in sidebar_host,
+              f"Sidebar must not retain retired wedge geometry: {retired}")
 
     media_popup = read("modules/mediaControls/BarMediaPopup.qml")
     check("EqualizerPanel {" in media_popup,
@@ -434,7 +414,7 @@ def main() -> None:
               f"{rounded_sidebar_path} must not round attached body corners inward")
         check('root.attachedEdge === "left" ? 0 : radius' in rounded_sidebar
               or 'root.attachedEdge === "right" ? 0 : radius' in rounded_sidebar,
-              f"{rounded_sidebar_path} attached body edge must stay square for outward flare ownership")
+              f"{rounded_sidebar_path} attached body edge must stay square at the owner seam")
 
     compact_sidebar = read("modules/sidebarRight/CompactSidebarRightContent.qml")
     check("import qs.modules.mediaControls" in compact_sidebar
@@ -456,18 +436,17 @@ def main() -> None:
         settings_surface = read(settings_path)
         for token in (
             "PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay",
-            "import qs.modules.common.perimeter",
-            "readonly property real _screenEdgeThickness:",
             "ConnectedSurfaceIrisEdgeSurface {",
             'edge: "bottom"',
             "ownerThickness: root._screenEdgeThickness",
-            "settingsPanel.height - root._screenEdgeThickness - height",
+            "bottomLeftRadius: 0",
+            "bottomRightRadius: 0",
             'color: "transparent"',
         ):
             check(token in settings_surface,
-                  f"{settings_path} must use iRiS bottom Screen Edge composition: {token}")
-        check("ConnectedSurfaceJoinFlares {" not in settings_surface,
-              f"{settings_path} must not paint legacy endpoint flare geometry")
+                  f"{settings_path} iRiS bottom-attachment contract missing: {token}")
+        check("ConnectedSurfaceJoinFlares" not in settings_surface,
+              f"{settings_path} must not restore legacy endpoint wedge geometry")
 
     settings_overlay = read("modules/settings/SettingsOverlay.qml")
     settings_focus = read("modules/settings/SettingsFocus.qml")
@@ -485,19 +464,20 @@ def main() -> None:
               "Connected Settings overlays must use the immutable slide-only SurfaceMotion contract")
         check("Appearance.colors.colShadow" in settings_surface
               and "screenEdge?.shadow?.size" in settings_surface
-              and "screenEdge?.shadow?.opacity" in settings_surface,
-              "Connected Settings overlays must share the Screen Edge shadow contract")
-        check("ConnectedSurfaceJoinFlares {" not in settings_surface,
-              "Settings must not reintroduce floating endpoint shoulder geometry inside the full-screen overlay")
+              and "screenEdge?.shadow?.opacity" in settings_surface
+              and "shadowExtent:" in settings_surface,
+              "Connected Settings iRiS surfaces must share the Screen Edge shadow contract")
+        check("ConnectedSurfaceJoinFlares" not in settings_surface,
+              "Settings must not reintroduce floating endpoint wedge geometry")
 
     search_widget = read("modules/overview/SearchWidget.qml")
     check("property bool directBottomAttachment: false" in search_widget
           and "readonly property rect connectedSurfaceRect:" in search_widget
-          and "joinBottom: root.directBottomAttachment && root.showResults" in search_widget
           and "bottomLeftRadius: root.directBottomAttachment && root.showResults ? 0 : radius" in search_widget
           and "bottomRightRadius: root.directBottomAttachment && root.showResults ? 0 : radius" in search_widget
-          and "ConnectedSurfaceJoinFlares {" in search_widget,
-          "Applications search surface must attach directly to bottom Screen Edge with square contact corners and outward flares")
+          and "ConnectedSurfaceJoinFlares" not in search_widget
+          and "joinFlareRadius" not in search_widget,
+          "Applications search must keep a square direct seam without legacy endpoint wedges")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
     check("import qs.modules.dashboard" in dashboard
@@ -505,12 +485,6 @@ def main() -> None:
           and "SearchWidget {" in dashboard
           and "embeddedSurface: true" in dashboard,
           "Launcher Dashboard must be one shared three-column/search surface")
-    check("ConnectedSurfaceIrisEdgeSurface {" in dashboard
-          and 'edge: "bottom"' in dashboard
-          and "ownerThickness: root.attachmentThickness" in dashboard
-          and "root.height + root.attachmentThickness" in dashboard
-          and "ConnectedSurfaceJoinFlares {" not in dashboard,
-          "Dashboard/Search Applications must share the production iRiS Screen Edge contact")
     check("Config.options?.dashboard?.widthRatio" in dashboard
           and "Config.options?.dashboard?.heightRatio" in dashboard
           and "height: root.searching ? root.searchOnlyHeight : root.configuredHeight" in dashboard,
@@ -521,6 +495,12 @@ def main() -> None:
     check("SurfaceMotion.duration" in dashboard
           and "SurfaceMotion.easingType" in dashboard,
           "Dashboard connected motion must use immutable SurfaceMotion")
+    check("ConnectedSurfaceIrisEdgeSurface {" in dashboard
+          and "id: dashboardIrisSurface" in dashboard
+          and "ownerThickness: root.attachmentThickness" in dashboard
+          and "PerimeterTokens.irisFuseDepth" in dashboard
+          and "ConnectedSurfaceJoinFlares" not in dashboard,
+          "Dashboard bottom attachment must use iRiS without legacy wedge geometry")
     dashboard_content = read("modules/dashboard/DashboardContent.qml")
     dashboard_canvas = read("modules/dashboard/DashboardCanvas.qml")
     dashboard_grid = read("modules/dashboard/DashboardEditGrid.qml")
@@ -638,9 +618,9 @@ def main() -> None:
           "ConnectedSurfaceFrame must default the connector outline off at the seam")
     check("strokeWidth: root.connectorBorderWidth" in frame,
           "ConnectedSurfaceFrame must route connector outline width through its seam policy")
-    check("ConnectedSurfaceJoinFlares {" in frame
-          and "flareRadius: root.joinFlareRadius" in frame,
-          "ConnectedSurfaceFrame must preserve the circular direct-edge shoulder contract")
+    check("ConnectedSurfaceJoinFlares" not in frame
+          and "joinFlareRadius" not in frame,
+          "ConnectedSurfaceFrame must not retain the retired round-wedge painter")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
     check("attachedCornerRadius" not in frame
@@ -648,7 +628,7 @@ def main() -> None:
           and "topRightRadius: (root.joinTop || root.joinRight) ? 0 : surfaceRadius" in frame
           and "bottomLeftRadius: (root.joinBottom || root.joinLeft) ? 0 : surfaceRadius" in frame
           and "bottomRightRadius: (root.joinBottom || root.joinRight) ? 0 : surfaceRadius" in frame,
-          "Shared connected popup body must stay square on attached edges; outward flare owns contact curvature")
+          "Shared connected popup body must stay square on attached edges without a wedge painter")
     check("property bool hoverEnabled: false" in frame
           and "readonly property bool bodyHovered: bodyHover.hovered" in frame
           and "HoverHandler {" in frame,
@@ -658,41 +638,6 @@ def main() -> None:
           "Shared rectangular shadow must use the proven themed shell shadow source")
     check("cached: true" in generic_shadow,
           "Shared rectangular shadow must retain the prior stable cached renderer")
-
-    join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
-    for token in (
-        "component Flare: Canvas {",
-        "const k = 0.5522847498",
-        'corner === "topLeft"',
-        'corner === "topRight"',
-        'corner === "bottomLeft"',
-        'corner === "bottomRight"',
-        'corner === "leftTop"',
-        'corner === "leftBottom"',
-        'corner === "rightTop"',
-        'corner === "rightBottom"',
-        "root.bodyItem.mapToItem(root, 0, 0)",
-        "visible: root.reveal > 0.001 && root.radius > 0",
-    ):
-        check(token in join_flares,
-              f"Connected-surface shoulder baseline missing: {token}")
-    check("component Flare: RoundCorner" not in join_flares
-          and "PerimeterCornerShadow" not in join_flares
-          and "property bool shadowEnabled" not in join_flares
-          and "property real shadowExtent" not in join_flares
-          and "property color shadowColor" not in join_flares,
-          "Connected-surface shoulders must remain on the clean pre-experiment baseline")
-    check("root.radius * Math.max(0.20, Math.min(1, root.crossScale))" in join_flares
-          and "width: root.radius" in join_flares
-          and "height: root.depth" in join_flares,
-          "Connected-surface shoulders must keep the prior broad-tangent/compressed-depth geometry")
-    check("CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in join_flares
-          and "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in perimeter_tokens,
-          "Connected popup contact geometry must retain the outward-flare lock marker")
-    check("readonly property real joinFlareRadius: frameRadius" in perimeter_tokens,
-          "Outward flare tangent radius must follow the Screen Edge/Bar Border Radius setting")
-    check(") * root.reveal" not in join_flares,
-          "Connected shoulder radius must stay fully formed during reveal")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):

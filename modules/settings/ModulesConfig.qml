@@ -698,7 +698,7 @@ ContentPage {
                 text: Translation.tr("Screen Corners")
                 checked: modulesPage.isPanelEnabled("iiScreenCorners")
                 onCheckedChanged: modulesPage.setPanelEnabled("iiScreenCorners", checked)
-                StyledToolTip { text: Translation.tr("Rounded corner overlays for screens without hardware rounding") }
+                StyledToolTip { text: Translation.tr("Allow opening sidebars by interacting with screen corners") }
             }
 
             SettingsSwitch {

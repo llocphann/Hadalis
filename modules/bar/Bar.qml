@@ -15,7 +15,7 @@ import qs.modules.common.widgets
 Scope {
     id: bar
     // Hug is the only supported Classic Bar surface. Keep its structural
-    // background resident so endpoint shoulders and the shared perimeter shadow
+    // background resident so the Bar body and canonical perimeter relationship
     // cannot disappear because of an old transparent-bar config value.
     readonly property bool showBarBackground: true
     property bool _legacyCornerStyleMigrationDone: false

@@ -17,23 +17,27 @@ done
 
 grep -Fq 'Config.options?.appearance?.screenEdge?.width ?? 10' "$screen_edges" \
     || fail 'persistent Screen Edge width/default contract is missing'
-if grep -Fq 'screenEdge?.enable' "$screen_edges"; then
-    fail 'stale Screen Edge enable flag must not disable persistent edge chrome'
-fi
+grep -Fq 'component FrameWindow: PanelWindow {' "$screen_edges" \
+    || fail 'canonical Screen Edge FrameWindow is missing'
+grep -Fq 'fillRule: ShapePath.OddEvenFill' "$screen_edges" \
+    || fail 'canonical Screen Edge odd-even geometry is missing'
 for edge in top bottom left right; do
-    grep -Fq "EdgeWindow { edge: \"$edge\" }" "$screen_edges" \
-        || fail "persistent Screen Edge missing $edge output edge"
+    grep -Fq "ReservationWindow { edge: \"$edge\" }" "$screen_edges" \
+        || fail "persistent Screen Edge missing $edge reservation"
 done
 
 for token in \
     'required property string edge' \
-    'readonly property bool isLeftEdge: root.edge === "left"' \
     'GlobalStates.sidebarLeftPresentationOutput' \
     'GlobalStates.sidebarRightPresentationOutput' \
-    'id: sidebarBridgeGeometry' \
-    'ConnectedSurfaceConnector {' \
-    'PerimeterTokens.seamOverlap'; do
-    grep -Fq "$token" "$sidebar" || fail "semantic SidebarHost bridge missing: $token"
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'ownerThickness: root.screenEdgeHoverWidth' \
+    'readonly property real hiddenTranslateDistance:' \
+    '- root.screenEdgeHoverWidth)'; do
+    grep -Fq -- "$token" "$sidebar" || fail "Sidebar direct-edge/iRiS contract missing: $token"
+done
+for retired in 'sidebarBridgeGeometry' 'ConnectedSurfaceConnector {' 'ConnectedSurfaceJoinFlares' 'directEdgeInset'; do
+    ! grep -Fq "$retired" "$sidebar" || fail "Sidebar restored retired edge geometry: $retired"
 done
 
 grep -Fq 'visible: surfaceSection.sidebarRole' "$settings" \
@@ -41,4 +45,4 @@ grep -Fq 'visible: surfaceSection.sidebarRole' "$settings" \
 grep -Fq 'text: Translation.tr("Width")' "$settings" \
     || fail 'Shell Layout must retain sidebar width setting'
 
-printf 'PASS: persistent Screen Edge and semantic left/right SidebarHost placement remain supported\n'
+printf 'PASS: locked Screen Edge and iRiS left/right Sidebar placement remain supported\n'

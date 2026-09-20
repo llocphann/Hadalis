@@ -689,7 +689,6 @@ Singleton {
                     property string m3successContainer: "#79740e"
                     property string m3onSuccessContainer: "#d5c4a1"
                 }
-                property int fakeScreenRounding: 2
                 property JsonObject transparency: JsonObject {
                     property bool enable: false
                     property bool automatic: true

@@ -17,20 +17,16 @@ QtObject {
     }
 
     // iRiS StyledPopup contact geometry is an exact SDF smooth union validated
-    // by the real G1/G2 matrices. Keep its fuse depth independent of the legacy
-    // Canvas flare tokens still consumed by Waffle/non-StyledPopup surfaces.
+    // by the real G1/G2 matrices. It is the only active curved contact renderer;
+    // legacy Canvas/RoundCorner wedge tokens are intentionally retired.
     readonly property real irisFuseDepth: 30
     // G2 upstream-relative morphology overlaps every joined owner by 3 logical
     // px for SDF continuity, while Overlay paint/input still starts at the
     // actual owner boundary.
     readonly property real irisWeldDepth: 3
 
-    // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (legacy shared consumers only):
-    // Sidebar/Dashboard/OSK/Waffle surfaces that have not cut over to iRiS keep
-    // the prior outward shoulder contract. ii StyledPopup must not use it.
+    // Free-corner radius used by connected popup body geometry.
     readonly property real popupRadius: 28
-    readonly property real joinFlareRadius: frameRadius
-    readonly property real joinFlareCrossScale: 0.55
 
     readonly property real revealSlideDistance: 18
     readonly property real connectorWidth: 40

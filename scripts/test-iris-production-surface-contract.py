@@ -105,6 +105,15 @@ for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorItem"):
 require(mask, "visibleBodyRect", "body-only compositor mask")
 require(tokens, "readonly property real irisFuseDepth: 30", "validated G2 fuse token")
 require(tokens, "readonly property real irisWeldDepth: 3", "validated G2 weld token")
+for token in ("joinFlareRadius", "joinFlareCrossScale"):
+    forbid(tokens, token, "retired flare token")
+for path in (
+    "modules/common/perimeter/ConnectedSurfaceJoinFlares.qml",
+    "modules/common/perimeter/PerimeterCornerShadow.qml",
+    "modules/common/widgets/RoundCorner.qml",
+):
+    if (ROOT / path).exists():
+        raise SystemExit(f"iRiS production surface contract failed: retired wedge source still exists: {path}")
 
 for export in (
     "ConnectedSurfaceIrisField 1.0 ConnectedSurfaceIrisField.qml",
@@ -150,6 +159,14 @@ for token in (
 ):
     require(dashboard, token, "Dashboard/Search iRiS edge cutover")
 forbid(dashboard, "ConnectedSurfaceJoinFlares {", "Dashboard legacy edge renderer")
+for source_path in (
+    "modules/overview/SearchWidget.qml",
+    "modules/onScreenKeyboard/OnScreenKeyboard.qml",
+    "modules/common/perimeter/ConnectedSurfaceFrame.qml",
+):
+    source = read(source_path)
+    forbid(source, "ConnectedSurfaceJoinFlares", f"{source_path} legacy wedge renderer")
+    forbid(source, "joinFlareRadius", f"{source_path} legacy flare token")
 
 for token in (
     'colBackground: "transparent"',

@@ -4,7 +4,6 @@ import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.common.perimeter
 import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
@@ -460,16 +459,6 @@ Item { // Wrapper
         joinBottom: root.directBottomAttachment && root.showResults
     }
 
-    ConnectedSurfaceJoinFlares {
-        z: 5
-        anchors.fill: parent
-        bodyItem: searchWidgetContent
-        fillColor: root.connectedSurfaceColor
-        flareRadius: PerimeterTokens.joinFlareRadius
-        progress: !root.embeddedSurface
-            && root.directBottomAttachment && root.showResults ? 1 : 0
-        joinBottom: root.directBottomAttachment && root.showResults
-    }
 
     IslandPanel {
         anchors.fill: searchWidgetContent

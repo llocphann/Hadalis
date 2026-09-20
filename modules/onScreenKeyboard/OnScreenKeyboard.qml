@@ -205,7 +205,7 @@ Scope { // Scope
             }
 
             // Use the same configurable shadow contract as Screen Edge/Bar.
-            // The body itself underlaps the full edge band; no separate stem exists.
+            // The body underlaps the full edge band; no stem or wedge painter exists.
             StyledRectangularShadow {
                 target: oskBackground
                 // Screen Edge shadow is structural connected chrome, not an
@@ -222,16 +222,6 @@ Scope { // Scope
                 offset: Qt.vector2d(0, 0)
                 color: root.screenEdgeShadowEnabled
                     ? root.screenEdgeShadowColor : "transparent"
-                joinTop: oskRoot.snappedEdge === "top"
-                joinBottom: oskRoot.snappedEdge === "bottom"
-            }
-            ConnectedSurfaceJoinFlares {
-                anchors.fill: parent
-                bodyItem: oskBackground
-                fillColor: oskBackground.color
-                flareRadius: PerimeterTokens.joinFlareRadius
-                progress: root._oskRevealProgress
-                transform: Translate { y: oskRoot.revealOffsetY }
                 joinTop: oskRoot.snappedEdge === "top"
                 joinBottom: oskRoot.snappedEdge === "bottom"
             }

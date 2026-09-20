@@ -345,7 +345,7 @@ def run_postcondition_failure(
             and (s["workflowAnalyzer"].get("reviewedAnchor") or {})
                 .get("status") == "resolved"
             and (s["workflowAnalyzer"].get("reviewedAnchor") or {})
-                .get("semanticValueText") == "•"
+                .get("semanticValueText") == '"•"'
         ),
         "surviving Clock bullet binding analysis",
         timeout=60,

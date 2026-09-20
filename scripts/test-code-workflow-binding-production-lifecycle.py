@@ -244,6 +244,7 @@ for forbidden in (
 for token in (
     "def run_success(",
     "def run_postcondition_failure(",
+    '.get("semanticValueText") == \'"•"\'',
     '"workflowBindingApply"',
     '"binding-applied"',
     '"binding-rollback-complete"',

@@ -51,6 +51,21 @@ def terminate(process: subprocess.Popen | None) -> None:
             pass
 
 
+def dbus_session(command: list[str], env: dict[str, str]) -> list[str]:
+    runner = env.get("HADALIS_WORKFLOW_DBUS_RUN_SESSION") or shutil.which("dbus-run-session")
+    if not runner:
+        raise RuntimeError("dbus-run-session was not found")
+
+    wrapped = [runner]
+    config = env.get("HADALIS_WORKFLOW_DBUS_SESSION_CONFIG", "")
+    daemon = env.get("HADALIS_WORKFLOW_DBUS_DAEMON", "")
+    if config:
+        wrapped.append("--config-file=" + config)
+    if daemon:
+        wrapped.append("--dbus-daemon=" + daemon)
+    return [*wrapped, "--", *command]
+
+
 def ppm_payload(path: Path) -> tuple[int, int, bytes]:
     data = path.read_bytes()
     if not data.startswith(b"P6"):
@@ -131,10 +146,6 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    dbus_run_session = shutil.which("dbus-run-session")
-    if not dbus_run_session:
-        raise RuntimeError("dbus-run-session was not found")
-
     host_env = os.environ.copy()
     for key in ("WAYLAND_DISPLAY", "DISPLAY", "SWAYSOCK", "NIRI_SOCKET"):
         host_env.pop(key, None)
@@ -167,7 +178,10 @@ def main() -> int:
     try:
         with sway_log_path.open("w", encoding="utf-8") as sway_log:
             sway_process = subprocess.Popen(
-                [dbus_run_session, "--", str(args.sway.resolve()), "-c", str(config)],
+                dbus_session(
+                    [str(args.sway.resolve()), "-c", str(config)],
+                    host_env,
+                ),
                 env=host_env,
                 stdout=sway_log,
                 stderr=sway_log,
@@ -250,14 +264,15 @@ def main() -> int:
             try:
                 with log_path.open("w", encoding="utf-8") as log:
                     process = subprocess.Popen(
-                        [
-                            dbus_run_session,
-                            "--",
-                            str(args.quickshell.resolve()),
-                            "-p",
-                            str(HERE),
-                            "--no-color",
-                        ],
+                        dbus_session(
+                            [
+                                str(args.quickshell.resolve()),
+                                "-p",
+                                str(HERE),
+                                "--no-color",
+                            ],
+                            case_env,
+                        ),
                         env=case_env,
                         stdout=log,
                         stderr=log,

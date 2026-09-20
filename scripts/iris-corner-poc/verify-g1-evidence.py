@@ -73,7 +73,7 @@ def expected_join(source_t: float) -> tuple[list[str], bool, bool]:
     return ["owner"], False, False
 
 
-def verify_profile(evidence_dir: Path, profile: str) -> set[str]:
+def verify_profile(evidence_dir: Path, profile: str, requested_output: str) -> set[str]:
     manifest = evidence_dir / f"manifest-card-owner-{profile}.tsv"
     session = evidence_dir / f"session-card-owner-{profile}.json"
     if not manifest.is_file():
@@ -90,6 +90,8 @@ def verify_profile(evidence_dir: Path, profile: str) -> set[str]:
         fail(f"{session.name}: unexpected detail crop coordinate space")
     if session_data.get("devicePixelRatioAppliedToCrop") is not False:
         fail(f"{session.name}: DPR must not be applied to grim -g geometry")
+    if str(session_data.get("requestedOutput") or "") != requested_output:
+        fail(f"{session.name}: requested output does not match g1-run.txt")
 
     with manifest.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
@@ -160,6 +162,8 @@ def verify_profile(evidence_dir: Path, profile: str) -> set[str]:
         fail(f"{manifest.name}: missing cases {missing}")
     if len(outputs) != 1:
         fail(f"{manifest.name}: cases span multiple outputs {sorted(outputs)}")
+    if requested_output and outputs != {requested_output}:
+        fail(f"{manifest.name}: rendered output does not match requested output {requested_output!r}")
     return outputs
 
 
@@ -178,12 +182,23 @@ def main() -> None:
         fail("g1-run.txt: mode is not card-owner")
     if run.get("profiles") != "diagnostic,upstream-relative":
         fail("g1-run.txt: profile pair mismatch")
-    if not re.fullmatch(r"[0-9a-f]{40}", run.get("repo_head", "")):
-        fail("g1-run.txt: repo_head is not a full Git SHA")
+    for key in (
+        "repo_head",
+        "poc_tree_sha",
+        "contract_blob_sha",
+        "runtime_exclusions_blob_sha",
+    ):
+        if not re.fullmatch(r"[0-9a-f]{40}", run.get(key, "")):
+            fail(f"g1-run.txt: {key} is not a full Git SHA")
+    if run.get("source_scope_clean") != "true":
+        fail("g1-run.txt: source scope was not clean")
+    if run.get("evidence_dir_was_empty") != "true":
+        fail("g1-run.txt: evidence directory was not fresh")
 
+    requested_output = run.get("requested_output", "")
     outputs = set()
     for profile in PROFILES:
-        outputs.update(verify_profile(evidence_dir, profile))
+        outputs.update(verify_profile(evidence_dir, profile, requested_output))
     if len(outputs) != 1:
         fail(f"paired profiles target different outputs: {sorted(outputs)}")
 

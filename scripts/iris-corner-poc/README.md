@@ -212,12 +212,16 @@ scripts/iris-corner-poc/capture-g1.sh
 
 It forces `card-owner`, captures `diagnostic` then `upstream-relative`,
 writes `g1-run.txt` with the repository HEAD plus the paired profile artifacts,
-then runs `verify-g1-evidence.py`. The verifier checks structural completeness,
-labels, output consistency and expected center/start/end join metadata only; it
+then runs `verify-g1-evidence.py`. Before capture, it refuses a non-empty
+evidence directory and requires the G1 source scope (PoC, contract test and
+runtime-exclusion record) to be clean. The run file records the PoC tree and
+contract/runtime-exclusion blob SHAs so the screenshots can be tied to the
+actual source revision. The verifier also checks requested-output consistency,
+structural completeness, labels and expected center/start/end join metadata; it
 does **not** approve visual morphology.
 
 Set `HADALIS_IRIS_POC_CAPTURE_DIR` only when you intentionally want a specific
-evidence directory.
+**new or empty** evidence directory.
 
 ## Acceptance before production work
 

@@ -615,3 +615,18 @@ A successful run should first print the source contract PASS, then complete both
 profile matrices, then print `G1 evidence structure: PASS`. After that, inspect
 the focused images manually against the morphology criteria. Only that visual
 decision can unlock G2.
+
+
+### G1 source/evidence freshness lock
+
+The G1 wrapper now closes two provenance gaps before any live capture:
+
+- the evidence directory must be new or empty, so a stale detail sheet cannot
+  survive a later run and be reviewed as current evidence;
+- the G1 source scope must have no staged, unstaged or untracked changes
+  (ignored capture artifacts remain allowed).
+
+`g1-run.txt` now records the PoC tree SHA plus the contract and runtime-
+exclusion blob SHAs, and the structural verifier requires those provenance
+fields and requested-output consistency. This still does not auto-approve
+morphology; the live focused images remain the hard G1 gate.

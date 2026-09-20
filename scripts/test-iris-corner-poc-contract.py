@@ -242,6 +242,15 @@ for token in (
     "python3 \"$repo_root/scripts/test-iris-corner-poc-contract.py\"",
     "g1-run.txt",
     "repo_head=",
+    "poc_tree_sha=",
+    "contract_blob_sha=",
+    "runtime_exclusions_blob_sha=",
+    "source_scope_clean=true",
+    "evidence_dir_was_empty=true",
+    "G1 evidence directory must be new or empty",
+    'git -C "$repo_root" diff --quiet',
+    'git -C "$repo_root" diff --cached --quiet',
+    "ls-files --others --exclude-standard",
     "for profile in diagnostic upstream-relative",
     "HADALIS_IRIS_POC_MODE=card-owner",
     "detail-sheet-card-owner-diagnostic.png",
@@ -267,6 +276,12 @@ for token in (
     '["owner", "frame-end"]',
     '"compositor-layout-logical"',
     '"repo_head"',
+    '"poc_tree_sha"',
+    '"contract_blob_sha"',
+    '"runtime_exclusions_blob_sha"',
+    '"source_scope_clean"',
+    '"evidence_dir_was_empty"',
+    '"requestedOutput"',
 ):
     assert token in g1_verify, f"G1 evidence verifier contract missing: {token}"
 

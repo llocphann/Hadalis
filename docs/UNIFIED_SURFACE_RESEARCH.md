@@ -2220,3 +2220,31 @@ wrapper on the maintainer desktop.
 
 The remaining hard boundary is unchanged: **no G2 and no production cutover
 until the live images themselves pass review.**
+
+
+### 26.16 G1 source/evidence freshness lock
+
+A final provenance audit found two cases that could make otherwise complete
+evidence ambiguous: a locally modified G1 source scope could still share the
+same recorded `repo_head`, and reusing a custom capture directory could leave
+an older detail sheet behind.
+
+The wrapper now refuses both conditions. Before the static contract or any
+screenshot, it requires a new/empty evidence directory and a clean scoped set of
+PoC/contract/runtime-exclusion files. It does not require the entire Hadalis
+working tree to be clean, so unrelated development remains unaffected.
+
+The run manifest now adds:
+
+- `poc_tree_sha`;
+- `contract_blob_sha`;
+- `runtime_exclusions_blob_sha`;
+- `source_scope_clean=true`;
+- `evidence_dir_was_empty=true`.
+
+The verifier requires these fields to be valid and also checks that each
+profile's session `requestedOutput` agrees with `g1-run.txt`, and that a
+non-empty requested output is the one actually rendered.
+
+This is still harness hardening only. It does not change production geometry,
+does not touch Waffle, and does not unlock G2 without a live visual PASS.

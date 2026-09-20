@@ -258,3 +258,24 @@ The `Variants` delegate owns Quickshell's injected `modelData`. It passes that
 screen explicitly into `IrisCornerPocWindow.targetScreen`; the window itself
 must not redeclare `required modelData`. This keeps delegate construction
 compatible with Quickshell's required-property initialization semantics.
+
+
+## Production runtime preflight
+
+After syncing/reloading the real Hadalis runtime, verify that the installed
+runtime is actually using the cutover sources and exact locked shader before
+judging production visuals:
+
+```sh
+scripts/iris-corner-poc/verify-production-runtime.sh
+```
+
+For a non-default runtime root:
+
+```sh
+HADALIS_RUNTIME_ROOT=/path/to/quickshell/runtime \
+scripts/iris-corner-poc/verify-production-runtime.sh
+```
+
+A PASS proves source/install parity only. It does not replace the final live
+visual and interaction acceptance pass.

@@ -29,7 +29,11 @@ Config hashes after proof generation. The transaction now defines a
 non-authorizing promotion boundary that can retain only an allowlisted primitive
 safety snapshot and re-hash its Clock/Config dependencies across history/reload.
 Research proof generators remain outside the runtime payload, no promotion UI is
-exposed, and TYPE/CYCLE UNKNOWN continue to block Connect writes.
+exposed, and TYPE/CYCLE UNKNOWN continue to block Connect writes. A research-only
+2K-M preparation helper can now re-run that qualification, reconstruct the exact
+candidate from current parser state and stage mode-0600 rollback/candidate/
+manifest files outside the runtime tree without changing source or authorizing
+Apply.
 The on-demand parser boundary still degrades to reviewed IR when native
 capability is absent.
 Curve sustained-memory acceptance remains HOLD. Phase 2 can write only the

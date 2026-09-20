@@ -691,13 +691,52 @@ Implemented contract:
   literal-only `evaluatePreApply()`, `stageApplyHandoff()`,
   `applyCommandMatchesHandoff` and Apply lifecycle remain unchanged.
 
+## Milestone 2K-M — qualified Connect artifact preparation proof
+
+Implemented research/proof:
+
+- `scripts/code-workflow/connect_prepare.py` is research-only and excluded
+  from the runtime payload. It is not referenced by Settings or
+  `CodeWorkflowTransaction`.
+- Preparation re-runs the complete 2K-K qualification against the current
+  Clock and Config sources; a stored 2K-L FRESH safety snapshot is not accepted
+  as a substitute for fresh proof generation.
+- The qualified source path, parent semantic anchor, absent binding name and
+  reviewed source expression are resolved again from current parser state.
+  `prepare_connect_binding_patch()` then reconstructs the candidate from the
+  current source rather than copying an old patch range or candidate file.
+- The reconstructed candidate SHA must equal the 2K-K
+  `candidateSha256`. The complete candidate is reparsed, the parent anchor
+  must survive, and exactly one non-opaque same-scope direct binding with the
+  reviewed expression must resolve.
+- Immediately before artifact staging, the helper re-reads the primary source
+  and retained external Config dependency, requires their hashes to remain
+  unchanged, and rechecks source writability. It re-reads both inputs again
+  after state persistence; drift during staging deletes the newly created
+  artifact directory and fails closed.
+- Successful proof writes only exact rollback snapshot, candidate QML and
+  manifest files beneath an external state directory. The helper refuses any
+  state directory inside the runtime source tree. Every artifact is mode 0600.
+- The manifest records
+  `artifactProof=prepared-qualified-connect-artifacts-v1`, qualification/type/
+  cycle proof identity, source/candidate/dependency hashes and semantic anchors.
+  For this isolated state-artifact proof `artifactsStaged=true`, while
+  `writeAuthorized=false`, `applyEnabled=false` and
+  `productionIntegrated=false` remain mandatory.
+- Tracked source QML remains unchanged. No atomic source replacement, watcher
+  reload, rollback lifecycle or Connect Apply path is introduced by 2K-M.
+- Native acceptance stages the real reviewed Clock candidate in a temporary
+  state directory, verifies exact bytes/modes/manifest identity, then proves a
+  mismatched qualified candidate SHA cannot stage any artifact.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
 - applying Connect or Disconnect transforms;
 - runtime/UI generation of the 2K-K qualification payload;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- Connect artifact preparation and write authorization after a promoted safety snapshot;
+- production integration of qualified Connect artifact preparation;
+- Connect source-write authorization/commit/rollback lifecycle;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -705,19 +744,20 @@ Implemented contract:
 
 ## Next gate
 
-2K-L defines the transaction-side promotion boundary without granting write
-authority or wiring research proof generation into the product. The next gate
-must be an independent Connect artifact-preparation proof, not Apply itself.
+2K-M proves that exact Connect artifacts can be prepared safely in isolated
+state without mutating tracked QML. The next gate is still not a source write.
+It must define how production can obtain a fresh qualification and invoke the
+qualified preparation path without shipping or silently trusting development-
+only proof machinery.
 
-Before any Connect artifact can be staged, that gate must re-run or otherwise
-freshly verify the qualified type/cycle evidence, require exact source and
-external dependency hashes, reproduce the same candidate SHA from the current
-source, reparse the complete candidate, re-resolve the inserted binding and
-confirm source writability. A stored FRESH safety snapshot is evidence, not a
-substitute for those immediate pre-stage checks.
+That integration gate must resolve runtime capability explicitly (native parser,
+Qt type oracle/import paths and writable source), keep qualification/preparation
+user-triggered, bind transaction history to the newly prepared manifest, and
+invalidate the handoff on any Clock/Config change. It must preserve an explicit
+separation between PREPARED artifacts and source-write authorization.
 
-Until that artifact-preparation gate is separately qualified, do not map
-`qualified-reviewed-connect-research-v1` or a FRESH transaction safety
-snapshot to TYPE SAFE, CYCLE SAFE, Apply enablement or artifact staging.
-Production TYPE and CYCLE remain UNKNOWN and literal-property remains the only
+Until that production preparation integration is independently qualified, do
+not expose Connect Apply, do not atomically replace source from 2K-M artifacts,
+and do not map research proof tokens to production TYPE/CYCLE SAFE. Production
+TYPE and CYCLE remain UNKNOWN and literal-property remains the only
 source-writing command.

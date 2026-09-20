@@ -280,7 +280,6 @@ ContentPage {
             }
         }
     }
-}
 
     SettingsCardSection {
         settingsTaskSection: "spectrum"

@@ -985,10 +985,10 @@ def main() -> None:
     check("BarConfigHugOnly.qml" not in settings_registry
           and "QuickConfigHugOnly.qml" not in settings_registry,
           "Settings registry must not retain post-construction Hug-only facade routing")
+    settings_registry_data = read("modules/settings/SettingsPageRegistryData.qml")
     check('component: "modules/settings/BarConfig.qml"' in settings_registry_data
           and 'component: "modules/settings/QuickConfig.qml"' in settings_registry_data,
           "Settings registry data must route directly to canonical Bar/Quick pages")
-    settings_registry_data = read("modules/settings/SettingsPageRegistryData.qml")
     check('label: Translation.tr("Bar background")' not in settings_registry_data,
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,

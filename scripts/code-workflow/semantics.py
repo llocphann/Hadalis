@@ -73,7 +73,8 @@ def extract(path, source, nodes):
             name, kind = type_name, "object"
             details = {"qml_id": ids[0] if len(ids) == 1 else None,
                        "identity_basis": "qml-id" if len(ids) == 1 else "structural-ordinal",
-                       "object_type": type_name}
+                       "object_type": type_name,
+                       "initializer_range": span(initializer)}
             if short_type and short_type[0].islower():
                 kind, opaque[i] = "opaque", True
                 details["reason"] = "grouped-binding-or-object; needs type/scope resolution"

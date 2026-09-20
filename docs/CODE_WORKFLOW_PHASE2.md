@@ -376,10 +376,42 @@ Implemented:
 - Connect of a previously absent property is still deferred because it requires
   a verified legal insertion point and stronger port/type compatibility.
 
+## Milestone 2K-D — parser-backed Connect insertion proof
+
+Implemented research/proof:
+
+- Connect identity is `parent object anchor + binding name + source expression`.
+  There is no target binding anchor before insertion, and no byte offset is
+  persisted as command identity.
+- Generic semantic extraction now exposes transient `initializer_range` on
+  object entries. Stable identity remains the object semantic anchor.
+- `scripts/code-workflow/connect.py` is a preview-only parser helper. It
+  re-resolves the parent anchor, rejects opaque/non-unique parents and existing
+  members, derives the insertion point from the current standalone closing-brace
+  line, and preserves the existing direct-member indentation/newline style.
+- The first proof intentionally requires an object with resolvable, consistent
+  existing direct-member indentation. Empty/inline/inconsistently-indented
+  objects fail closed instead of guessing formatting.
+- The candidate is reparsed as a complete QML document. The parent anchor must
+  survive, and exactly one new same-scope `binding` with the requested name and
+  identifier/member-expression value must appear.
+- Native Spike A regression covers real tree-sitter-qmljs initializer ranges,
+  stable parent rebind and inserted binding extraction.
+- The helper emits `commandKind=connect-binding`,
+  `applyEnabled=false`, insertion evidence, and never writes source.
+- Type compatibility remains UNKNOWN because 2K-D has no QML type resolver.
+  UNKNOWN is not permission to connect or Apply.
+- Cycle safety remains UNKNOWN because the reviewed IR is incomplete. A known
+  reviewed path may later hard-block a candidate; absence of such a path cannot
+  qualify it as acyclic.
+- This proof is not wired to Settings or CodeWorkflowTransaction. No Connect
+  button is exposed and literal-property Apply remains the only source-writing
+  transform.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
-- connect new/previously absent data dependencies;
+- production Connect UI/transaction integration;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -387,8 +419,9 @@ Implemented:
 
 ## Next gate
 
-The next gate is source insertion research for connecting a previously absent
-data dependency. It must prove a legal parent/member insertion point, preserve
-local formatting without whole-file rewriting, and keep cycle/type compatibility
-conservative. No Connect or Disconnect write may be enabled from 2K-C evidence;
-literal Apply remains the only production source-writing transform.
+The next gate is to define a reviewed port/target contract that can supply a
+parent object semantic anchor, absent binding name and candidate source
+expression to the 2K-D helper without guessing from geometry or labels. Only
+after that identity is stable should Connect preview enter
+CodeWorkflowTransaction history. Type/cycle status must remain explicit blockers;
+no Connect or Disconnect Apply is authorized.

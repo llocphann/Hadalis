@@ -6,6 +6,7 @@ No downloads or builds happen inside the canonical local validator.
 """
 
 from dataclasses import replace
+from hashlib import sha256
 import os
 from pathlib import Path
 import shutil
@@ -16,6 +17,7 @@ import unittest
 from corpus import inspect
 from native import Parser, insertion, verify_ranges
 from semantics import extract
+from connect import prepare_connect_binding_patch
 
 
 GRAMMAR = os.environ.get("HADALIS_WORKFLOW_GRAMMAR")
@@ -140,6 +142,65 @@ class SpikeA(unittest.TestCase):
         self.assertEqual(
             source[slice(*entries["visible"]["range"])],
             b"visible: enabled",
+        )
+
+    def test_parent_initializer_range_and_connect_insertion(self):
+        source = (
+            b"import QtQuick\n"
+            b"Item {\n"
+            b"    id: root\n"
+            b"    width: 20\n"
+            b"}\n"
+        )
+        with self.parser.parse(source) as (_, nodes):
+            semantic = extract("fixture.qml", source, nodes)
+        parent = next(
+            entry for entry in semantic["entries"]
+            if entry["kind"] == "object" and entry["name"] == "Item"
+        )
+        init_start, init_end = parent["initializer_range"]
+        self.assertEqual(source[init_start:init_start + 1], b"{")
+        self.assertEqual(source[init_end - 1:init_end], b"}")
+
+        prepared, candidate = prepare_connect_binding_patch(
+            source,
+            sha256(source).hexdigest(),
+            parent,
+            semantic["entries"],
+            "height",
+            "parent.height",
+        )
+        self.assertEqual(prepared["status"], "candidate")
+        self.assertEqual(
+            candidate,
+            (
+                b"import QtQuick\n"
+                b"Item {\n"
+                b"    id: root\n"
+                b"    width: 20\n"
+                b"    height: parent.height\n"
+                b"}\n"
+            ),
+        )
+
+        with self.parser.parse(candidate) as (_, candidate_nodes):
+            result = extract("fixture.qml", candidate, candidate_nodes)
+        self.assertFalse(result["diagnostics"])
+        rebound_parent = next(
+            entry for entry in result["entries"]
+            if entry["anchor"] == parent["anchor"]
+        )
+        self.assertEqual(rebound_parent["scope"], parent["scope"])
+        height = next(
+            entry for entry in result["entries"]
+            if entry["kind"] == "binding"
+            and entry["name"] == "height"
+            and entry["scope"] == parent["scope"]
+        )
+        self.assertEqual(height["value_kind"], "member_expression")
+        self.assertEqual(
+            candidate[slice(*height["value_range"])],
+            b"parent.height",
         )
 
     def test_grouped_binding_is_opaque_including_descendants(self):

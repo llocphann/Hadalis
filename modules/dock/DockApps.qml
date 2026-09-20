@@ -204,7 +204,7 @@ Item {
 
         const fromIsRunning = (fromItem.toplevels?.length ?? 0) > 0
         const toIsRunning = (toItem.toplevels?.length ?? 0) > 0
-        let pinnedApps = [...(Config.options?.dock?.pinnedApps ?? [])]
+        let pinnedApps = root._normalizedPinnedApps()
 
         const fromIsPinned = fromItem.pinned
         const toIsPinned = toItem.pinned
@@ -253,12 +253,37 @@ Item {
     property var _cachedIgnoredRegexes: []
     property var _lastIgnoredRegexStrings: []
 
+    function _normalizedPinnedApps(): list<var> {
+        const raw = Config.options?.dock?.pinnedApps ?? []
+        const seen = new Set()
+        const normalized = []
+        for (const value of raw) {
+            const appId = String(value ?? "").trim()
+            if (appId.length === 0)
+                continue
+            const key = appId.toLowerCase()
+            if (seen.has(key))
+                continue
+            seen.add(key)
+            normalized.push(appId)
+        }
+        return normalized
+    }
+
     function _getIgnoredRegexes(): list<var> {
         const ignoredRegexStrings = Config.options?.dock?.ignoredAppRegexes ?? [];
         if (JSON.stringify(ignoredRegexStrings) !== JSON.stringify(_lastIgnoredRegexStrings)) {
             const systemIgnored = ["^$", "^portal$", "^x-run-dialog$", "^kdialog$", "^org.freedesktop.impl.portal.*"];
             const allIgnored = ignoredRegexStrings.concat(systemIgnored);
-            _cachedIgnoredRegexes = allIgnored.map(pattern => new RegExp(pattern, "i"));
+            const compiled = [];
+            for (const pattern of allIgnored) {
+                try {
+                    compiled.push(new RegExp(String(pattern), "i"));
+                } catch (error) {
+                    root._log(`Ignoring invalid ignoredAppRegexes pattern: ${String(pattern)}`);
+                }
+            }
+            _cachedIgnoredRegexes = compiled;
             _lastIgnoredRegexStrings = ignoredRegexStrings.slice();
         }
         return _cachedIgnoredRegexes;
@@ -303,7 +328,7 @@ Item {
     }
 
     function _doRebuildDockItems() {
-        const pinnedApps = Config.options?.dock?.pinnedApps ?? [];
+        const pinnedApps = root._normalizedPinnedApps();
         const ignoredRegexes = _getIgnoredRegexes();
         const separatePinnedFromRunning = root.separatePinnedFromRunning;
 

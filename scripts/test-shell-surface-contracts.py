@@ -969,6 +969,15 @@ def main() -> None:
           and 'String(id).toLowerCase() !== appKey' in dock_app_button,
           "Dock pin/unpin mutation must use the same case-insensitive identity semantics as the runtime model")
 
+    check("function _normalizedPinnedApps(): list<var>" in dock_apps
+          and "const seen = new Set()" in dock_apps
+          and dock_apps.count("root._normalizedPinnedApps()") >= 2,
+          "Dock model/reorder must deduplicate persisted pinned ids case-insensitively")
+    check("try {" in dock_apps
+          and 'compiled.push(new RegExp(String(pattern), "i"))' in dock_apps
+          and "Ignoring invalid ignoredAppRegexes pattern" in dock_apps,
+          "Invalid user ignored-app regexes must not abort Dock model rebuild")
+
     check("readonly property real activeScale: 1.05" in dock_app_button
           and "property bool dragEmphasis: false" in dock_app_button
           and "scale: root.dragEmphasis ? 1.08 : (root.appIsActive ? root.activeScale : 1.0)" in dock_app_button

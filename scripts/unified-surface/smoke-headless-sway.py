@@ -153,7 +153,9 @@ def main() -> int:
         XDG_RUNTIME_DIR=str(runtime),
         WLR_BACKENDS="headless",
         WLR_HEADLESS_OUTPUTS="1",
-        WLR_RENDERER="pixman",
+        WLR_RENDERER="gles2",
+        WLR_RENDERER_ALLOW_SOFTWARE="1",
+        LIBGL_ALWAYS_SOFTWARE="1",
         XDG_CONFIG_HOME=str(directory / "xdg-config"),
         XDG_CACHE_HOME=str(directory / "xdg-cache"),
         XDG_STATE_HOME=str(directory / "xdg-state"),
@@ -168,7 +170,7 @@ def main() -> int:
 
     report: dict[str, object] = {
         "version": 1,
-        "backend": "sway-headless-pixman",
+        "backend": "sway-headless-gles2-software",
         "requested_scale": 1.25,
         "cases": [],
         "failure": None,

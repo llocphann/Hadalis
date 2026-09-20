@@ -314,9 +314,9 @@ Scope {
                                 // iRiS is the sole body painter. Keeping a second
                                 // Rectangle fill here double-composited alpha and
                                 // made transparent Material settings too opaque.
-                                readonly property color surfaceColor:
+                                property color surfaceColor:
                                     Appearance.colors.colLayer0
-                                readonly property color surfaceBorderColor:
+                                property color surfaceBorderColor:
                                     Appearance.colors.colLayer0Border
                                 readonly property real surfaceBorderWidth: 1
 

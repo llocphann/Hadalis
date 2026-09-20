@@ -1909,3 +1909,195 @@ Before production cutover, add an isolated U1 owner-probe test:
 
 Do not modify `StyledPopup` until this projection gate and the existing
 live-GPU matrix pass.
+
+
+---
+
+## 28. Workspace projection PoC result and production cutover boundary
+
+The Overlay-domain blocker identified in section 27.6 now has an isolated
+implementation.
+
+Relevant commits:
+
+- `2120903bdf60c6cb96f368198dd554bcc2d996f8` —
+  `research(surface): add workspace projection owner probe`
+- `1b7ca94cfea983a0bc9fd4a2d834a6f9f55a5fec` —
+  `build(surface): update U1 projection shader artifact`
+
+Dedicated `Unified Surface U1 Shader` workflow for `1b7ca94...`: **PASS**.
+
+It confirms:
+
+- canonical QSB semantic equivalence;
+- static architecture contract;
+- QML/control-mode Top and Overlay layer-shell lifecycle;
+- the projection shader package is loadable by the existing U1 pipeline.
+
+Live GPU pixels remain a separate gate.
+
+### 28.1 Projection model
+
+The shader now preserves two related distance fields:
+
+```text
+dWorkspace
+  = base rounded frameInner SDF
+  = physical owner/workspace ownership boundary
+
+dInner
+  = dWorkspace - generic borderSink(...)
+
+dFrame + dPopup
+  -> complete smooth union
+  -> merged
+```
+
+`projection=full` outputs the complete field.
+
+`projection=workspace` still computes the same complete field, but multiplies
+the final alpha by the antialiased inside mask of **base** `dWorkspace`.
+
+This distinction matters: using the sink-modified `dInner` as the projection
+boundary would let the Overlay domain dynamically claim owner-band pixels,
+which could cover Top-layer Bar foreground. The immutable base inner boundary
+keeps visual ownership stable.
+
+### 28.2 Owner foreground probe
+
+`U1OwnerProbe.qml` is a test-only, input-transparent Top-layer window. It paints
+a high-contrast green marker in the owner band near the popup source.
+
+The live nested-Niri validator now runs, for top/bottom/left/right:
+
+1. Overlay `projection=full` + Top owner probe;
+2. Overlay `projection=workspace` + Top owner probe.
+
+The gate requires:
+
+- full projection to occlude the marker, proving the test is sensitive;
+- workspace projection to preserve the marker;
+- workspace-projected material inside the workspace to match the full-field
+  reference with IoU >= 0.995;
+- the explicit shoulder-position/taper gate to continue passing.
+
+This directly validates the hybrid-domain architecture needed by Hadalis:
+Overlay owns only popup/workspace pixels while Top keeps Bar/Screen Edge
+foreground authority.
+
+### 28.3 Production primitive audit
+
+Runtime search shows only two actual QML consumers of
+`ConnectedSurfaceFrame`:
+
+- `modules/bar/StyledPopup.qml`;
+- `modules/waffle/bar/BarPopup.qml`.
+
+Both already use:
+
+- a full-output Overlay `PanelWindow`;
+- `ConnectedSurfaceGeometry`;
+- a fixed `ConnectedSurfaceRevealClip`;
+- `ConnectedSurfaceContentHost`;
+- `ConnectedSurfaceMask`.
+
+Therefore a final production migration can use one shared renderer for ii and
+Waffle rather than maintaining separate corner systems.
+
+### 28.4 Where the production field belongs
+
+Do **not** put the SDF material inside `ConnectedSurfaceFrame` or inside
+`ConnectedSurfaceRevealClip`.
+
+`ConnectedSurfaceFrame` currently lacks the clean full-output/frame-domain
+contract and still owns legacy `joinTop/joinBottom/joinLeft/joinRight`,
+Canvas flares and body-only shadow. Forcing SDF into that component would
+encourage the rejected offset/join metadata to leak into the renderer.
+
+Instead, the final material item should live directly under the full-output
+popup `PanelWindow`, outside the reveal clip:
+
+```text
+Overlay popup PanelWindow
+├── ConnectedSurfaceField           # full-output coordinates, workspace projection
+├── ConnectedSurfaceRevealClip
+│   ├── geometry/input proxy         # no painted legacy body/flare
+│   └── ConnectedSurfaceContentHost  # existing content motion/clip
+└── ConnectedSurfaceMask             # existing input ownership
+```
+
+The field consumes only generic geometry:
+
+- output dimensions;
+- padded frame outer rect;
+- base frame inner rect derived from Screen Edge + owning Bar thickness;
+- frame radius;
+- `geometry.animatedBodyRect`;
+- popup radius;
+- smoothing/material parameters;
+- renderer-domain projection mode.
+
+It must not consume direct-edge booleans or source module identity.
+
+### 28.5 Input migration is separable from material migration
+
+`ConnectedSurfaceMask` fundamentally needs geometry Items/Regions, not painted
+pixels. Therefore the current body rectangle can be replaced by a transparent
+geometry/input proxy without retaining the legacy painted body.
+
+Hover ownership can likewise remain on that proxy and on
+`ConnectedSurfaceContentHost`.
+
+This means the final migration does not need Canvas alpha to drive input.
+
+### 28.6 Shadow migration cannot remain body-only
+
+Current `ConnectedSurfaceFrame` uses `RectangularShadow` around only the
+rounded body. Keeping that as the final shadow would visually disagree with the
+new SDF shoulder.
+
+Also, applying a shadow to the **workspace-projected alpha** directly would
+invent a false shadow boundary at the owner seam.
+
+Correct future ownership is:
+
+1. derive fill and shadow from the **complete merged signed-distance field**;
+2. only after that, apply workspace-domain output projection;
+3. let the persistent Top Screen Edge/Bar own its existing physical shadow.
+
+This avoids both a body-only shoulder mismatch and a seam shadow.
+
+A production cutover may temporarily keep shadow disabled for the new field
+while its field-derived shadow is validated; it must not claim final parity while
+using the legacy rectangular shadow as if it represented the unified silhouette.
+
+### 28.7 Remaining blocker before production write
+
+No production cutover is approved from CI alone.
+
+The exact current live acceptance command remains:
+
+```sh
+python3 scripts/unified-surface/validate-live-niri.py \
+  --scales 1 1.25 1.5 1.75 2 \
+  --benchmark
+```
+
+That run now includes:
+
+- bounded/full topology;
+- frameInner clamp;
+- enlarged junction morphology;
+- shoulder position/taper;
+- motion/reveal no-remap;
+- fullscreen Top/Overlay lifecycle;
+- owner foreground/workspace projection;
+- performance.
+
+If this live run fails, change only the isolated U1 field/projection model and
+re-run. Do not start a production migration and do not compensate with contact
+geometry.
+
+If it passes, the final production commit can be prepared as one atomic renderer
+replacement for ii + Waffle Bar popup material, with a clean rollback to the
+current legacy `ConnectedSurfaceFrame` path.

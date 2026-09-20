@@ -375,3 +375,75 @@ should retain the fixed reveal clip.
 Production `StyledPopup`, `ConnectedSurfaceFrame`, Bar and ScreenEdges are
 still untouched by U1. Do not create the production cutover commit until both
 the live GPU matrix and the owner-projection gate are accepted.
+
+
+---
+
+## Latest continuation update — projection PoC implemented and CI-clean
+
+Current isolated U1 projection commits:
+
+- `2120903bdf60c6cb96f368198dd554bcc2d996f8` —
+  workspace projection + Top owner foreground probe;
+- `1b7ca94cfea983a0bc9fd4a2d834a6f9f55a5fec` —
+  canonical projection QSB.
+
+The dedicated U1 workflow for `1b7ca94...` is **PASS**:
+
+- QSB semantic verification;
+- U1 static architecture contract;
+- Top/Overlay headless control lifecycle;
+- artifact bake/upload.
+
+Production is still untouched.
+
+### Current model
+
+The Overlay popup renderer computes the full virtual owner-frame + popup SDF but
+may output only the portion inside the **base rounded frameInner workspace**.
+This preserves Top-layer Bar/Screen Edge foreground while retaining the same
+workspace-side shoulder field.
+
+The new test-only `U1OwnerProbe.qml` will verify on live nested Niri that:
+
+- full Overlay field hides a Top probe;
+- workspace projection leaves the Top probe visible;
+- projected workspace pixels match the full-field reference;
+- shoulder position/taper remains correct.
+
+### Final production placement if live gate passes
+
+Do not place the shader inside `ConnectedSurfaceRevealClip` and do not retrofit
+SDF into the legacy join-flag/flare implementation.
+
+Preferred structure:
+
+```text
+full-output Overlay popup window
+  -> shared ConnectedSurfaceField material
+     (full field evaluation + workspace projection)
+  -> existing reveal-clipped content
+  -> geometry-only body/input proxy
+  -> existing Region-based input mask
+```
+
+Only two runtime consumers currently instantiate `ConnectedSurfaceFrame`:
+ii `StyledPopup` and Waffle `BarPopup`. Plan one shared material replacement
+for both.
+
+Do not keep `RectangularShadow` as the final unified-surface shadow. The
+eventual shadow must come from the full signed-distance field before workspace
+projection, otherwise the seam or shoulder will be wrong.
+
+### Remaining hard gate
+
+Run on a real Wayland/Niri GPU session:
+
+```sh
+python3 scripts/unified-surface/validate-live-niri.py \
+  --scales 1 1.25 1.5 1.75 2 \
+  --benchmark
+```
+
+Do not write the production cutover commit until that run passes. If it fails,
+fix/revert isolated U1 rather than adding production offsets or flares.

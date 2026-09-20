@@ -50,8 +50,8 @@ PanelWindow {
         envReal("HADALIS_U1_OWNER_THICKNESS", horizontal ? 40 : 46)
     )
     readonly property real frameRadius: Math.max(0, envReal("HADALIS_U1_FRAME_RADIUS", 25))
-    readonly property real popupRadius: Math.max(0, envReal("HADALIS_U1_POPUP_RADIUS", 28))
-    readonly property real smoothK: Math.max(1, envReal("HADALIS_U1_SMOOTH_K", 20))
+    readonly property real popupRadius: Math.max(0, envReal("HADALIS_U1_POPUP_RADIUS", 32))
+    readonly property real smoothK: Math.max(1, envReal("HADALIS_U1_SMOOTH_K", 28))
     readonly property real popupWidth: Math.max(40, envReal("HADALIS_U1_POPUP_WIDTH", horizontal ? 320 : 260))
     readonly property real popupHeight: Math.max(40, envReal("HADALIS_U1_POPUP_HEIGHT", horizontal ? 220 : 340))
     readonly property color materialColor: Quickshell.env("HADALIS_U1_COLOR") || "#e6e0e9"

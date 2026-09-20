@@ -239,3 +239,20 @@ a corner deep inside the workspace keeps the full popup radius. Therefore the
 Bar-facing corners and any additional Screen-Edge-facing corners follow live
 geometry without `joinTop`, `joinLeft`, module identity or a separately
 positioned corner object.
+
+
+## Diagnostic morphology defaults
+
+The current U1 defaults intentionally exaggerate the contact morphology a little
+so junction placement is visually obvious during live validation:
+
+- `HADALIS_U1_POPUP_RADIUS=32` (previously 28);
+- `HADALIS_U1_SMOOTH_K=28` (previously 20);
+- `HADALIS_U1_FRAME_RADIUS=25` remains unchanged so the physical frame baseline
+  is not conflated with the junction experiment.
+
+This is a research/viewability preset, not a production token decision. The
+contact shoulder is still produced only by the same SDF field and corner-fill
+math. No contact object, semantic offset, join flag or module-specific branch is
+introduced. Override either environment variable to compare smaller/larger
+morphology with the same shader.

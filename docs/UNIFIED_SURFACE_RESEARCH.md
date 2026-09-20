@@ -1693,3 +1693,50 @@ decision must be based on the live report:
   renderer-neutral contract;
 - any need for module-specific contact patches -> reject the direction before
   production integration.
+
+
+---
+
+## 27. U1 junction morphology correction and exaggerated diagnostic preset
+
+A follow-up visual report showed that the old production Canvas shoulder could
+appear below the popup rather than at the owner seam. That production path is
+still intentionally untouched during this research pass; moving the Canvas
+would only recreate the rejected contact-plane/flare patch cycle.
+
+The isolated U1 model was re-audited against current Caelestia Blob behavior.
+Two corrections are now considered essential:
+
+1. the resting popup rectangle is flush with the inverted frame's inner boundary;
+   there is no permanent attachment-depth penetration;
+2. effective popup corner radii are derived from each corner's signed distance
+   to the inverted frame inner box, matching Caelestia's inverted-frame
+   `cornerFill` behavior. Corners at the visible junction reduce toward the
+   minimum radius while free/deep-workspace corners retain their normal radius.
+
+A scalar/raster comparison of the same equations at `smoothK=20`, `26`, and
+`32` confirmed that the visible outward shoulder width is controlled primarily
+by the smooth-union radius, not by increasing popup radius alone. For easier live
+inspection without changing topology, U1 therefore uses an intentionally
+exaggerated diagnostic default:
+
+```text
+frameRadius = 25    # unchanged physical-frame baseline
+popupRadius = 32    # +4 for clearer free-corner transition
+smoothK = 28        # larger visible junction shoulder
+```
+
+These numbers are **not production values**. They exist only to make placement
+errors unmistakable during U1 validation. The shader equations, registry
+contract and forbidden-token rules are unchanged.
+
+The corrected shader was baked by the dedicated workflow from commit
+`4b32d9b2396122e9af4e0a7752b245e930509e2c`. The freshly baked QSB is 7248
+bytes with SHA-256
+`a06771d24e1e135103343adc0fe7a7002b2d7556c7f3e5f1cc99f2a85f71579a`.
+That artifact is now the canonical U1 package for this corrected field model.
+
+Next acceptance remains live nested-Niri GPU validation. If the enlarged
+diagnostic morphology still places the shoulder on the wrong side of the popup,
+do not add offsets or resurrect `ConnectedSurfaceJoinFlares`; revert the U1
+morphology experiment and continue field-model research.

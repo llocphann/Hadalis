@@ -171,6 +171,7 @@ def qualify_reviewed_connect(
         "connectTargetId",
         "sourcePath",
         "baseSha256",
+        "candidateSha256",
         "parentSemanticAnchor",
         "targetProperty",
         "sourceExpression",
@@ -204,10 +205,21 @@ def qualify_reviewed_connect(
 
     source_path = str(type_proof.get("sourcePath") or "")
     base_sha = str(type_proof.get("baseSha256") or "")
+    candidate_sha = str(type_proof.get("candidateSha256") or "")
     if len(base_sha) != 64:
         return _blocked(
             "composition",
             "proof-source-sha-invalid",
+            target_id,
+            connect_target_id,
+        )
+    if (
+        len(candidate_sha) != 64
+        or any(ch not in "0123456789abcdef" for ch in candidate_sha.lower())
+    ):
+        return _blocked(
+            "composition",
+            "proof-candidate-sha-invalid",
             target_id,
             connect_target_id,
         )
@@ -289,6 +301,7 @@ def qualify_reviewed_connect(
         "connectTargetId": connect_target_id,
         "sourcePath": source_path,
         "baseSha256": base_sha,
+        "candidateSha256": candidate_sha,
         "parentSemanticAnchor": type_proof.get(
             "parentSemanticAnchor", ""),
         "targetProperty": type_proof.get("targetProperty", ""),

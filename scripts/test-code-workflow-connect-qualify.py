@@ -28,6 +28,7 @@ clock_path = target["sourcePath"]
 config_path = "modules/common/Config.qml"
 clock_sha = sha256((ROOT / clock_path).read_bytes()).hexdigest()
 config_sha = sha256((ROOT / config_path).read_bytes()).hexdigest()
+candidate_sha = "c" * 64
 parent_anchor = "qml-semantic:object:clock-root"
 source_anchor = "qml-semantic:property:clock-root:showDate"
 terminal_anchor = "qml-semantic:property:config-bar:verbose"
@@ -43,6 +44,7 @@ def type_payload(
         "connectTargetId": target["id"],
         "sourcePath": source_path,
         "baseSha256": base_sha,
+        "candidateSha256": candidate_sha,
         "parentSemanticAnchor": parent_anchor,
         "targetProperty": target["bindingName"],
         "sourceExpression": target["sourceExpression"],
@@ -73,6 +75,7 @@ def cycle_payload(
         "connectTargetId": target["id"],
         "sourcePath": source_path,
         "baseSha256": base_sha,
+        "candidateSha256": candidate_sha,
         "parentSemanticAnchor": parent_anchor,
         "targetProperty": target["bindingName"],
         "sourceExpression": target["sourceExpression"],
@@ -138,6 +141,8 @@ if qualified.get("qualificationProof") != connect_qualify.QUALIFICATION_PROOF:
     fail("qualification proof token drifted")
 if qualified.get("typeCompatibilityProof") != connect_type.TYPE_PROOF:
     fail("qualified type proof token drifted")
+if qualified.get("candidateSha256") != candidate_sha:
+    fail("qualification must bind to exact preview candidate SHA")
 if qualified.get("cycleSafetyProof") != (
     connect_cycle.PROVEN_ACYCLIC_CROSS_FILE
 ):
@@ -158,6 +163,31 @@ if qualified.get("typeCompatibility") != "unknown-unresolved":
     fail("production TYPE must remain UNKNOWN after composition")
 if qualified.get("cycleStatus") != "unknown-incomplete-projection":
     fail("production CYCLE must remain UNKNOWN after composition")
+
+
+def mismatched_candidate_cycle_runner(
+    root,
+    target_id,
+    connect_target_id,
+    grammar="",
+    library="",
+):
+    payload = cycle_payload()
+    payload["candidateSha256"] = "d" * 64
+    return payload
+
+
+blocked = connect_qualify.qualify_reviewed_connect(
+    ROOT,
+    "bar/clock",
+    target["id"],
+    type_runner=good_type_runner,
+    cycle_runner=mismatched_candidate_cycle_runner,
+)
+if blocked.get("reason") != "proof-identity-mismatch":
+    fail("type/cycle candidate SHA mismatch must fail closed")
+if blocked.get("mismatchField") != "candidateSha256":
+    fail("candidate SHA mismatch field evidence drifted")
 
 
 def mismatched_cycle_runner(
@@ -303,6 +333,8 @@ for token in (
     'QUALIFICATION_PROOF = "qualified-reviewed-connect-research-v1"',
     "def qualify_reviewed_connect(",
     '"proof-identity-mismatch"',
+    '"candidateSha256"',
+    '"proof-candidate-sha-invalid"',
     '"qualified-source-became-stale"',
     '"qualified-external-source-became-stale"',
     '"proofsComposed": True',
@@ -414,6 +446,7 @@ if grammar and Path(grammar).is_file():
     stable_fields = (
         "sourcePath",
         "baseSha256",
+        "candidateSha256",
         "parentSemanticAnchor",
         "targetProperty",
         "sourceExpression",

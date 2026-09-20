@@ -220,6 +220,8 @@ if grammar and Path(grammar).is_file():
             fail("native 2K-H compatibility proof drifted")
         if payload.get("sourceDeclaredType") != "bool":
             fail("native 2K-H source type must resolve to bool")
+        if len(str(payload.get("candidateSha256") or "")) != 64:
+            fail("native 2K-H must bind proof to preview candidate SHA")
         if payload.get("typeCompatibility") != "unknown-unresolved":
             fail("production TYPE must stay UNKNOWN after research proof")
         if payload.get("cycleStatus") != "unknown-incomplete-projection":
@@ -243,6 +245,7 @@ if grammar and Path(grammar).is_file():
 
     stable_fields = (
         "baseSha256",
+        "candidateSha256",
         "parentSemanticAnchor",
         "parentTypeModule",
         "parentTypeName",

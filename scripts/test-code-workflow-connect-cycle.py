@@ -476,6 +476,8 @@ if grammar and Path(grammar).is_file():
             fail("native 2K-J real fixture analysis failed")
         if payload.get("localCycleSafetyProof") != connect_cycle.PROOF_UNKNOWN:
             fail("2K-I local subset must still report the real Clock as UNKNOWN")
+        if len(str(payload.get("candidateSha256") or "")) != 64:
+            fail("native 2K-J must bind cycle proof to preview candidate SHA")
         if payload.get("cycleSafetyProof") != (
             connect_cycle.PROVEN_ACYCLIC_CROSS_FILE
         ):
@@ -524,6 +526,7 @@ if grammar and Path(grammar).is_file():
 
     stable_fields = (
         "baseSha256",
+        "candidateSha256",
         "parentSemanticAnchor",
         "targetProperty",
         "sourceExpression",

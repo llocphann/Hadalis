@@ -859,6 +859,17 @@ def analyze_connect_cycle(
             target_id,
             connect_target_id,
         )
+    candidate_sha = str(preview.get("candidateSha256") or "")
+    if (
+        len(candidate_sha) != 64
+        or any(ch not in "0123456789abcdef" for ch in candidate_sha.lower())
+    ):
+        return _blocked(
+            "connect-preview",
+            "connect-preview-candidate-sha-invalid",
+            target_id,
+            connect_target_id,
+        )
 
     try:
         source_path = resolve_source(root, descriptor["sourcePath"])
@@ -958,6 +969,7 @@ def analyze_connect_cycle(
         "connectTargetId": connect_target_id,
         "sourcePath": descriptor["sourcePath"],
         "baseSha256": source_sha,
+        "candidateSha256": candidate_sha,
         "parentSemanticAnchor": preview.get("parentSemanticAnchor", ""),
         "targetProperty": descriptor["bindingName"],
         "sourceExpression": descriptor["sourceExpression"],

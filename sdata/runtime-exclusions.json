@@ -165,6 +165,8 @@
     "scripts/code-workflow/run-binding-production-lifecycle.py",
     "scripts/code-workflow/run-mutation-contention.py",
     "scripts/code-workflow/signal_action.py",
+    "scripts/code-workflow/signal_action_prepare.py",
+    "scripts/code-workflow/signal_action_commit.py",
     "scripts/iris-corner-poc"
   ],
   "excludedDirectorySuffixes": {}

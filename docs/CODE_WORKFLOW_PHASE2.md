@@ -1252,12 +1252,44 @@ Qualified the first signal/action transform only as a non-writing parser proof:
   candidate contains exactly one reviewed handler, and the existing
   `toggleExpanded()` action remains intact.
 
+## Milestone 2K-W-B — isolated reviewed signal/action transaction
+
+Built the first exact transaction boundary for the W-A fixture without exposing
+a production write path:
+
+- The only reviewed target remains `media.signal.doubleClickToggle` in
+  `modules/bar/Media.qml`: parent `MouseArea#mediaInput`, handler
+  `onDoubleClicked`, existing action `toggleExpanded()`, exact call
+  `root.toggleExpanded()`.
+- Preparation re-runs the complete W-A parser proof and requires exact equality
+  for base SHA, candidate SHA, parent semantic anchor, existing-action semantic
+  anchor and inserted-handler semantic anchor. Preview drift fails closed.
+- Mode-0600 `snapshot.qml`, `candidate.qml` and `manifest.json` artifacts
+  are written outside the runtime source tree. The manifest binds all reviewed
+  semantic identity plus postcondition
+  `inserted-handler-rebound-exact-action`.
+- The manifest remains non-authorizing:
+  `writeAuthorized=false`, `applyEnabled=false`,
+  `productionIntegrated=false`. Artifact staging is evidence only.
+- Preparation closes its source TOCTOU window after artifact persistence; source
+  drift discards the handoff and returns conflict.
+- `signal_action_commit.py` validates only this reviewed manifest and reuses
+  the qualified same-directory atomic replacement primitive for exact commit and
+  rollback. Verify reports candidate/base/diverged source state.
+- Native acceptance uses a temporary runtime copy of the real Media source and
+  proves exact preparation, commit, candidate verification, rollback,
+  manifest-drift rejection and preservation of an external source edit.
+- All W-A/W-B helpers remain runtime-excluded and are referenced by neither
+  Settings nor `CodeWorkflowTransaction`. Apply remains unavailable.
+- No TYPE/CYCLE or Connect qualification token is used by the signal/action
+  artifact or atomic engine.
+
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond `clock.data.time`;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- production signal/action artifact preparation/authorization/Apply;
+- production signal/action integration/authorization/lifecycle/Apply;
 - additional reviewed signal/action targets beyond `media.signal.doubleClickToggle`;
 - Connections creation/removal;
 - multi-file transactions;
@@ -1265,13 +1297,13 @@ Qualified the first signal/action transform only as a non-writing parser proof:
 
 ## Next gate
 
-2K-W-A proves one exact signal-to-existing-action insertion without any source
-write. The next gate, 2K-W-B, should build an isolated transaction proof for
-`media.signal.doubleClickToggle`: exact base/candidate identity, private
-snapshot/candidate/manifest artifacts, atomic commit/verify/rollback and a
-postcondition that the same inserted handler semantic anchor resolves to the
-exact `root.toggleExpanded()` call.
+2K-W-B proves exact private artifacts and atomic rollback for the single reviewed
+signal/action fixture while keeping production writes disabled. The next gate,
+2K-W-C, should promote only `media.signal.doubleClickToggle` into a production
+prepared + explicitly authorized lifecycle with watcher reload, candidate SHA
+verification, exact inserted-handler semantic rebind and automatic exact
+rollback.
 
-Keep production Settings/Apply unavailable at W-B. Do not reuse data-binding
-TYPE/CYCLE proof tokens, and do not generalize from `onDoubleClicked` to
-arbitrary handlers or script bodies. Multi-file writes remain out of scope.
+Do not generalize from `onDoubleClicked` to arbitrary handlers or script
+bodies, and do not reuse data-binding TYPE/CYCLE proof tokens. Multi-file writes
+remain out of scope.

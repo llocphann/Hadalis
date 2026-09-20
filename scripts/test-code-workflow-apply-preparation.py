@@ -128,7 +128,10 @@ payload = subprocess.run(
 if "scripts/code-workflow/apply.py" not in set(payload):
     fail("Apply preparation helper must ship in runtime payload")
 
-if "Source QML remains unchanged until" not in phase2:
+if (
+    "Source QML remains" not in phase2
+    or "unchanged until the separate Apply action" not in phase2
+):
     fail("Phase 2 status must document non-writing Apply preparation")
 
 print("ok - Code Workflow exact Apply preparation artifact contract")

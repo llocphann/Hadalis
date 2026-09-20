@@ -107,7 +107,7 @@ for token in (
     "CodeWorkflowTransaction.previewBinding(",
     '"Preview binding patch"',
     '"PREVIEW ONLY"',
-    "Only qualified literal-property commands may Apply.",
+    "Literal-property Apply remains independently qualified.",
     "Direct bindings and Disconnect are preview-only.",
 ):
     if token not in page:

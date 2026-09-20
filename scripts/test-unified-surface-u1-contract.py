@@ -76,6 +76,10 @@ assert "Math.ceil(value * dpr) / dpr" in qml
 assert "FrameAnimation" in qml
 assert "HADALIS_U1_BENCHMARK" in qml
 assert "HADALIS_U1_SOURCE_T" in qml
+assert "HADALIS_U1_OUTER_PADDING" in qml
+assert "-outerPadding" in qml
+assert "width + outerPadding * 2" in qml
+assert "height + outerPadding * 2" in qml
 assert "HADALIS_U1_ATTACHMENT_DEPTH" not in qml
 assert "attachmentDepth" not in qml
 assert "const restingY = innerTop" in qml

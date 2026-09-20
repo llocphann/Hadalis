@@ -65,6 +65,7 @@ Geometry overrides are intentionally generic:
 
 ```text
 HADALIS_U1_EDGE_THICKNESS
+HADALIS_U1_OUTER_PADDING
 HADALIS_U1_OWNER_THICKNESS
 HADALIS_U1_FRAME_RADIUS
 HADALIS_U1_POPUP_RADIUS
@@ -269,3 +270,15 @@ The popup's maximum width/height is likewise bounded by the inner workspace.
 This matters for the extreme `sourceT=0.02/0.98` cases: those cases now test an
 actual adjacent-Screen-Edge junction rather than letting the synthetic popup
 underlap all the way to output coordinate zero.
+
+
+## Padded inverted frame
+
+U1 uses `HADALIS_U1_OUTER_PADDING=50` by default. The outer SDF rectangle
+extends 50 logical pixels beyond the output while `frameInner` stays at the
+actual Bar/Screen Edge inner boundary.
+
+This mirrors both Caelestia's `BlobInvertedRect { anchors.margins: -50 }` and
+Hadalis `ScreenEdges.qml`'s locked `outerPadding: 50`. It prevents the
+off-screen outer boundary from artificially limiting the inner-frame smooth-max
+radius. The window still clips all drawing to the real output.

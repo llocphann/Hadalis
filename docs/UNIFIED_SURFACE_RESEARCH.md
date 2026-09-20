@@ -1750,6 +1750,22 @@ This is important because a popup at x=0 is a different SDF topology from a
 production popup at x=screenEdgeThickness; keeping the former would make corner
 validation near the display edge misleading.
 
+### 27.2 Padded outer frame fidelity
+
+U1 originally set `frameOuter = outputRect`. That differs from both current
+Caelestia and Hadalis production geometry. Caelestia expands
+`BlobInvertedRect` by 50px, while `ScreenEdges.qml` locks
+`outerPadding = 50` and subtracts the same inner workspace hole.
+
+The difference is mathematically relevant. With an unpadded outer rect and a
+10px Screen Edge, U1's global minimum frame thickness forces `frameK` down to
+roughly 9px. With a 50px padded outer rect, the off-screen frame thickness is
+large enough for the full diagnostic `smoothK=28` to shape the inner wall.
+
+U1 now uses a generic `outerPadding` input with default 50. The output-local
+window/effect bounds are unchanged; only the SDF outer rectangle extends beyond
+the clipped output. No production geometry is modified.
+
 Next acceptance remains live nested-Niri GPU validation. If the enlarged
 diagnostic morphology still places the shoulder on the wrong side of the popup,
 do not add offsets or resurrect `ConnectedSurfaceJoinFlares`; revert the U1

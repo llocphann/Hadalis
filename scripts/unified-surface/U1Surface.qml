@@ -45,6 +45,7 @@ PanelWindow {
     readonly property bool horizontal: edge === "top" || edge === "bottom"
     readonly property real dpr: Math.max(1, modelData?.devicePixelRatio ?? 1)
     readonly property real edgeThickness: Math.max(1, envReal("HADALIS_U1_EDGE_THICKNESS", 10))
+    readonly property real outerPadding: Math.max(0, envReal("HADALIS_U1_OUTER_PADDING", 50))
     readonly property real ownerThickness: Math.max(
         edgeThickness,
         envReal("HADALIS_U1_OWNER_THICKNESS", horizontal ? 40 : 46)
@@ -93,7 +94,12 @@ PanelWindow {
     mask: Region { item: emptyInput }
 
     // Semantic geometry remains in output-local logical coordinates.
-    readonly property rect frameOuter: Qt.rect(0, 0, width, height)
+    readonly property rect frameOuter: Qt.rect(
+        -outerPadding,
+        -outerPadding,
+        width + outerPadding * 2,
+        height + outerPadding * 2
+    )
     readonly property real innerLeft: edge === "left" ? ownerThickness : edgeThickness
     readonly property real innerTop: edge === "top" ? ownerThickness : edgeThickness
     readonly property real innerRight: width - (edge === "right" ? ownerThickness : edgeThickness)
@@ -258,6 +264,7 @@ PanelWindow {
             sourceT: sourceT,
             reveal: reveal,
             smoothK: smoothK,
+            outerPadding: outerPadding,
             frameOuter: rectObject(frameOuter),
             frameInner: rectObject(frameInner),
             popupRect: rectObject(popupRect),

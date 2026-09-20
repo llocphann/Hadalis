@@ -243,6 +243,27 @@
           "label": "open/close",
           "editable": false
         }
+      ],
+      "signalActionTargets": [
+        {
+          "id": "media.signal.doubleClickToggle",
+          "label": "Double-click toggles expanded media",
+          "eventNodeId": "media.input",
+          "actionNodeId": "media.toggle",
+          "sourcePath": "modules/bar/Media.qml",
+          "parentObjectNeedle": "id: mediaInput",
+          "handlerName": "onDoubleClicked",
+          "signalName": "doubleClicked",
+          "actionFunctionNeedle": "function toggleExpanded(): void",
+          "actionFunctionName": "toggleExpanded",
+          "actionExpression": "root.toggleExpanded()",
+          "reviewedParentSemanticKind": "object",
+          "reviewedActionSemanticKind": "function",
+          "insertedSemanticKind": "handler-candidate",
+          "insertedValueKind": "call_expression",
+          "previewable": false,
+          "editable": false
+        }
       ]
     },
     "bar/clock": {

@@ -1217,28 +1217,61 @@ exposed:
   remain probe-only and excluded from the runtime payload. No mutation allowlist
   is broadened.
 
+## Milestone 2K-W-A — reviewed signal-to-existing-action preview proof
+
+Qualified the first signal/action transform only as a non-writing parser proof:
+
+- The reviewed fixture is `media.signal.doubleClickToggle` in
+  `bar/media`, source `modules/bar/Media.qml`.
+- The event owner is the existing `MouseArea#mediaInput` object resolved from
+  `id: mediaInput`. The existing action is the unique QML function
+  `toggleExpanded()`, resolved independently by stable semantic anchor from
+  `function toggleExpanded(): void`.
+- The exact candidate inserts one new handler:
+  `onDoubleClicked: root.toggleExpanded()`. The source currently has no
+  `onDoubleClicked` member, so the transform is an insertion rather than a
+  replacement of existing behavior.
+- Insertion derives indentation and closing-brace position from the reviewed
+  parent object, writes only an in-memory candidate, and reparses the complete
+  file with zero parser diagnostics.
+- Candidate acceptance requires the parent semantic anchor to survive, the
+  existing action semantic anchor to survive with byte-identical function
+  source, and exactly one new unique `handler-candidate` named
+  `onDoubleClicked` whose value kind is `call_expression` and whose exact
+  rendered expression is `root.toggleExpanded()`.
+- Signal identity is reviewed handler-name identity and action identity is an
+  existing-function semantic anchor. This gate uses no TYPE/CYCLE or Connect
+  qualification evidence because those data-binding proofs do not establish
+  signal/action safety.
+- `signal_action.py` remains outside the runtime payload and is referenced by
+  neither Settings nor `CodeWorkflowTransaction`.
+  Apply remains unavailable: `applyEnabled=false`,
+  `artifactsStaged=false`, `writeAuthorized=false` and
+  `productionIntegrated=false`.
+- Native acceptance proves the real Media source is unchanged, the minimal
+  candidate contains exactly one reviewed handler, and the existing
+  `toggleExpanded()` action remains intact.
+
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond `clock.data.time`;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- signal/action transforms;
+- production signal/action artifact preparation/authorization/Apply;
+- additional reviewed signal/action targets beyond `media.signal.doubleClickToggle`;
 - Connections creation/removal;
 - multi-file transactions;
 - multi-file rollback/transactions.
 
 ## Next gate
 
-2K-V-B closes the shared single-writer contention gate for the current four
-production mutation pipelines. The next mutation family should be qualified
-independently rather than widening an existing allowlist by analogy.
+2K-W-A proves one exact signal-to-existing-action insertion without any source
+write. The next gate, 2K-W-B, should build an isolated transaction proof for
+`media.signal.doubleClickToggle`: exact base/candidate identity, private
+snapshot/candidate/manifest artifacts, atomic commit/verify/rollback and a
+postcondition that the same inserted handler semantic anchor resolves to the
+exact `root.toggleExpanded()` call.
 
-A 2K-W-A gate should begin with a non-writing signal/action transform proof:
-identify one reviewed signal-to-existing-action fixture, define exact semantic
-identity and a parser-clean minimal candidate, and keep Apply unavailable until
-an isolated transaction/rollback proof exists. Do not infer signal safety from
-data-binding TYPE/CYCLE evidence.
-
-Do not broaden direct-binding Apply from the single reviewed
-`clock.text.time-to-date` fixture by assumption. Multi-file writes remain out
-of scope.
+Keep production Settings/Apply unavailable at W-B. Do not reuse data-binding
+TYPE/CYCLE proof tokens, and do not generalize from `onDoubleClicked` to
+arbitrary handlers or script bodies. Multi-file writes remain out of scope.

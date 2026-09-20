@@ -16,16 +16,14 @@ QtObject {
             Number(Config.options?.appearance?.screenEdge?.radius ?? 25)))
     }
 
-    // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK:
-    // Joined popup/sidebar/dashboard body corners stay SQUARE. Contact rounding
-    // is drawn only by the outward concave shoulder outside the body, never by
-    // rounding the body inward. The flare tangent radius follows the same user
-    // setting as Screen Edge/Bar; cross-axis compression preserves the broad,
-    // flattened Caelestia-like transition.
-    readonly property real smoothUnionRadius: 20
-    // Locked by the real G2 split-composition matrix. Keep this independent of
-    // the legacy Canvas flare tokens still consumed by non-StyledPopup surfaces.
+    // iRiS StyledPopup contact geometry is an exact SDF smooth union validated
+    // by the real G1/G2 matrices. Keep its fuse depth independent of the legacy
+    // Canvas flare tokens still consumed by Waffle/non-StyledPopup surfaces.
     readonly property real irisFuseDepth: 30
+
+    // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (legacy shared consumers only):
+    // Sidebar/Dashboard/OSK/Waffle surfaces that have not cut over to iRiS keep
+    // the prior outward shoulder contract. ii StyledPopup must not use it.
     readonly property real popupRadius: 28
     readonly property real joinFlareRadius: frameRadius
     readonly property real joinFlareCrossScale: 0.55

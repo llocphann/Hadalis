@@ -246,7 +246,7 @@ Never run raw `qs kill -c inir` / `qs -c inir` by hand. iNiR runs under `inir.se
 
 Connected Perimeter has two distinct runtime roles that must not be conflated:
 
-- **Connected popup presentation is active by default** for existing bar popups through `StyledPopup.qml`. The shared `ConnectedSurfaceGeometry`, `ConnectedSurfaceFrame`, and `ConnectedSurfaceMask` path supports top/bottom/left/right attachment, edge-origin reveal, DPR-aware seam overlap, and click-through transparent regions without adding a second popup framework or an appearance toggle.
+- **Connected popup presentation is active by default** for existing ii bar popups through `StyledPopup.qml`. `ConnectedSurfaceGeometry` and `ConnectedSurfaceRevealClip` retain the slide-only lifecycle, while `ConnectedSurfaceIrisFrame` renders the exact iRiS v2.31.0 SDF union in the Overlay window using Top-layer Bar/Screen Edge owner records without repainting those owners. `ConnectedSurfaceBodyMask` keeps compositor input on the revealed rounded body only. Legacy `ConnectedSurfaceFrame` / `ConnectedSurfaceMask` remain available for Waffle and non-cutover shared surfaces; they are no longer the ii StyledPopup renderer.
 - **Full `iiPerimeter` composition ownership remains guarded/opt-in** through `PerimeterCutoverPolicy.qml`. The configurable topology, registry/hosting, anchors, routing, reservations, and module adapters exist, but broad cutover must remain disabled whenever it would drop functionality that the legacy composition still provides.
 
 Detailed contracts and local visual acceptance steps live in `docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`.

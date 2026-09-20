@@ -67,7 +67,6 @@ def main() -> None:
         "const revision = Config.revision",
         "Config.options?.appearance?.screenEdge?.radius ?? 25",
         "Math.max(0, Math.min(96",
-        "readonly property real smoothUnionRadius: 20",
         "readonly property real irisFuseDepth: 30",
         "readonly property real popupRadius: 28",
         "readonly property real joinFlareRadius: frameRadius",

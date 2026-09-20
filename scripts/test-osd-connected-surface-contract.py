@@ -16,14 +16,23 @@ for token in (
     "seamOverlap: 0",
     "ConnectedSurfaceRevealClip {",
     "ConnectedSurfaceFrame {",
-    "connectorVisible: false",
     "ConnectedSurfaceContentHost {",
-    "ConnectedSurfaceMask {",
+    "ConnectedSurfaceBodyMask {",
+    "bodyItem: statusFrame.bodyItem",
+    "inputEnabled: root.connectedIndicator && root._visualOpen",
     'joinTop: connectedGeometry.edge === "top"',
     "shadowTop: !statusFrame.joinTop",
     "item.connectedSurface = true",
 ):
     assert token in osd, token
+
+for retired in (
+    "ConnectedSurfaceMask {",
+    "connectorItem:",
+    "connectorVisible:",
+    "connectorBorderWidth:",
+):
+    assert retired not in osd, retired
 
 for source in (value, keyboard):
     assert "property bool connectedSurface: false" in source

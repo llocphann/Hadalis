@@ -351,10 +351,35 @@ Implemented:
 - Selecting a normal node, changing target/subflow, or restoring an invalid edge
   clears edge selection. Only primitive edge ID is persisted.
 
+## Milestone 2K-C — verified Disconnect preview
+
+Implemented:
+
+- Disconnect is available only from a selected 2K-A previewable edge whose
+  reviewed `sourceExpression` still exactly equals the analyzer's current
+  semantic binding value.
+- The transaction resolves the target semantic anchor again and accepts only a
+  unique, non-opaque direct `binding` in the existing 2J value-kind subset.
+- Disconnect deletes the complete `ui_binding` member only when that member is
+  the sole non-whitespace content on its source line. Inline/multi-member line
+  deletion fails closed.
+- The candidate reparses as a full QML document with zero parser diagnostics;
+  the old semantic anchor must resolve as missing. A surviving/ambiguous anchor
+  invalidates the candidate.
+- Preview reports an empty replacement and explicit
+  `resultingState=unbound/default`; it never substitutes `undefined`.
+- History uses command kind `disconnect-binding` and regenerates the same
+  semantic deletion command against fresh source identity.
+- Disconnect is PREVIEW ONLY. The existing pre-Apply
+  `write-subset-not-authorized`, literal-only stageApplyHandoff(), and
+  literal-only applyCommandMatchesHandoff guards remain intact. Disconnect Apply remains disabled.
+- Connect of a previously absent property is still deferred because it requires
+  a verified legal insertion point and stronger port/type compatibility.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
-- connect/disconnect data dependencies;
+- connect new/previously absent data dependencies;
 - signal/action transforms;
 - Connections creation/removal;
 - multi-file transactions;
@@ -362,9 +387,8 @@ Implemented:
 
 ## Next gate
 
-The next gate is a true Disconnect preview for the selected 2K edge. It must
-delete only a verified `ui_binding` member, reparse the full candidate, require
-the old semantic anchor to become missing, and show the resulting unbound/default
-property state. Connect of a previously absent property remains deferred because
-it requires a legal insertion point and stronger type/port compatibility.
-Literal Apply remains the only production source-writing transform.
+The next gate is source insertion research for connecting a previously absent
+data dependency. It must prove a legal parent/member insertion point, preserve
+local formatting without whole-file rewriting, and keep cycle/type compatibility
+conservative. No Connect or Disconnect write may be enabled from 2K-C evidence;
+literal Apply remains the only production source-writing transform.

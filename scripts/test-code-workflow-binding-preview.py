@@ -80,7 +80,7 @@ for token in (
     'DIRECT_BINDING_VALUE_KINDS = {"identifier", "member_expression"}',
     "def prepare_binding_patch(",
     '"--mode"',
-    'choices=("literal", "binding")',
+    'choices=("literal", "binding", "disconnect")',
     '"commandKind": command_kind',
     '"candidate-left-direct-binding-subset"',
 ):

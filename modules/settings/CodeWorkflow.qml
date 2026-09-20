@@ -281,6 +281,28 @@ Item {
             String(nextValue ?? ""))
     }
 
+    function previewSelectedEdgeDisconnect(): void {
+        if (!root.selectedIrEdge
+                || !root.bindingPreviewEligible
+                || root.selectedIrEdge.previewable !== true)
+            return
+        const expected = String(
+            root.selectedIrEdge.sourceExpression ?? "")
+        const current = String(
+            root.sourceAnchorEvidence?.semanticValueText ?? "")
+        if (expected.length === 0 || current !== expected)
+            return
+        const baseSha = String(
+            CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+        if (baseSha.length === 0)
+            return
+        CodeWorkflowTransaction.previewDisconnectBinding(
+            root.sourcePath,
+            baseSha,
+            root.storedSemanticAnchor,
+            expected)
+    }
+
     function evaluatePreApplyGate(): void {
         const analyzerReady = root.analyzerMatchesAnchor
             && CodeWorkflowAnalyzer.status === "ready"
@@ -812,6 +834,18 @@ Item {
                                 root.previewLiteral(transactionPreviewField.text)
                         }
                     }
+                    RippleButtonWithIcon {
+                        visible: root.selectedIrEdge !== null
+                            && root.bindingPreviewEligible
+                        Layout.fillWidth: true
+                        materialIcon: "link_off"
+                        mainText: "Preview Disconnect"
+                        enabled: String(
+                            root.sourceAnchorEvidence?.semanticValueText ?? "")
+                            === String(
+                                root.selectedIrEdge?.sourceExpression ?? "")
+                        onClicked: root.previewSelectedEdgeDisconnect()
+                    }
                     StyledText {
                         Layout.fillWidth: true
                         visible: root.transactionMatchesSelection
@@ -881,10 +915,13 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: (CodeWorkflowTransaction.activeCommand?.kind
+                        text: CodeWorkflowTransaction.activeCommand?.kind
+                                === "disconnect-binding"
+                            ? "Disconnect Preview · "
+                            : CodeWorkflowTransaction.activeCommand?.kind
                                 === "direct-binding"
                             ? "Binding Preview · "
-                            : "Literal Transaction · ")
+                            : "Literal Transaction · "
                             + String(CodeWorkflowTransaction.status).toUpperCase()
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -895,8 +932,9 @@ Item {
                         accent: Appearance.colors.colSubtext
                     }
                     Pill {
-                        label: CodeWorkflowTransaction.activeCommand?.kind
-                                === "direct-binding"
+                        label: ["direct-binding", "disconnect-binding"]
+                                .includes(
+                                    CodeWorkflowTransaction.activeCommand?.kind)
                             ? "PREVIEW ONLY"
                             : CodeWorkflowTransaction.applyEnabled
                                 && root.transactionMatchesSelection
@@ -906,8 +944,9 @@ Item {
                                 : CodeWorkflowTransaction.preApplyReady
                                     ? "PRE-APPLY READY"
                                     : "PRE-APPLY BLOCKED"
-                        accent: CodeWorkflowTransaction.activeCommand?.kind
-                                === "direct-binding"
+                        accent: ["direct-binding", "disconnect-binding"]
+                                .includes(
+                                    CodeWorkflowTransaction.activeCommand?.kind)
                             ? Appearance.colors.colTertiary
                             : CodeWorkflowTransaction.applyEnabled
                                 && root.transactionMatchesSelection

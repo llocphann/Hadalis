@@ -211,16 +211,108 @@ def prepare_binding_patch(
     }, candidate)
 
 
+def prepare_disconnect_binding_patch(
+    source: bytes,
+    base_sha256: str,
+    entry: dict,
+    expected_current: str,
+):
+    """Prepare a preview-only deletion of one standalone direct QML binding."""
+    current_sha = digest(source)
+    if current_sha != base_sha256:
+        return ({
+            "status": "conflict",
+            "reason": "base-sha-mismatch",
+            "expectedSha256": base_sha256,
+            "currentSha256": current_sha,
+        }, None)
+
+    if (
+        entry.get("kind") != "binding"
+        or not entry.get("anchor_unique", False)
+        or entry.get("opaque_context", False)
+        or entry.get("value_kind") not in DIRECT_BINDING_VALUE_KINDS
+    ):
+        return ({
+            "status": "unsupported",
+            "reason": "semantic-entry-not-safe-disconnect-binding",
+        }, None)
+
+    value_range = entry.get("value_range")
+    member_range = entry.get("range")
+    if (
+        not isinstance(value_range, list)
+        or len(value_range) != 2
+        or not isinstance(member_range, list)
+        or len(member_range) != 2
+        or not all(isinstance(value, int) for value in value_range + member_range)
+    ):
+        return ({
+            "status": "unsupported",
+            "reason": "semantic-entry-has-no-member-range",
+        }, None)
+
+    value_start, value_end = value_range
+    member_start, member_end = member_range
+    if not (
+        0 <= member_start <= value_start <= value_end <= member_end <= len(source)
+    ):
+        return ({
+            "status": "error",
+            "reason": "semantic-member-range-out-of-bounds",
+        }, None)
+
+    current_value = source[value_start:value_end].decode("utf-8")
+    if current_value != str(expected_current):
+        return ({
+            "status": "conflict",
+            "reason": "reviewed-edge-source-expression-drift",
+            "expectedCurrent": str(expected_current),
+            "currentValue": current_value,
+        }, None)
+
+    line_start = source.rfind(b"\n", 0, member_start) + 1
+    newline = source.find(b"\n", member_end)
+    line_end = len(source) if newline < 0 else newline + 1
+    before = source[line_start:member_start]
+    after_end = newline if newline >= 0 else line_end
+    after = source[member_end:after_end]
+    if before.strip() or after.strip():
+        return ({
+            "status": "unsupported",
+            "reason": "binding-member-is-not-standalone-line",
+        }, None)
+
+    old_bytes = source[line_start:line_end]
+    candidate = source[:line_start] + source[line_end:]
+    line = source[:line_start].count(b"\n") + 1
+    return ({
+        "status": "candidate",
+        "sourceSha256": current_sha,
+        "candidateSha256": digest(candidate),
+        "expectedCurrent": current_value,
+        "resultingState": "unbound/default",
+        "patch": {
+            "start": line_start,
+            "end": line_end,
+            "line": line,
+            "oldText": old_bytes.decode("utf-8").rstrip("\n"),
+            "newText": "",
+        },
+    }, candidate)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
     parser.add_argument("--path", required=True)
     parser.add_argument("--base-sha256", required=True)
     parser.add_argument("--semantic-anchor", required=True)
-    parser.add_argument("--replacement", required=True)
+    parser.add_argument("--replacement", default="")
+    parser.add_argument("--expected-current", default="")
     parser.add_argument(
         "--mode",
-        choices=("literal", "binding"),
+        choices=("literal", "binding", "disconnect"),
         default="literal",
     )
     parser.add_argument("--grammar", default="")
@@ -295,7 +387,15 @@ def main() -> int:
                 "reason": "semantic-anchor-not-unique",
             }, 6)
 
-        if args.mode == "binding":
+        if args.mode == "disconnect":
+            prepared, candidate = prepare_disconnect_binding_patch(
+                source,
+                args.base_sha256,
+                matches[0],
+                args.expected_current,
+            )
+            command_kind = "disconnect-binding"
+        elif args.mode == "binding":
             prepared, candidate = prepare_binding_patch(
                 source,
                 args.base_sha256,
@@ -339,18 +439,30 @@ def main() -> int:
             candidate_semantic["entries"],
             args.semantic_anchor,
         )
-        if rebound.get("status") != "resolved":
-            return emit({
-                "status": "invalid-patch",
-                "reason": "semantic-anchor-did-not-survive-candidate",
-                "semanticRebind": rebound,
-            }, 8)
+        if args.mode == "disconnect":
+            if rebound.get("status") != "missing":
+                return emit({
+                    "status": "invalid-patch",
+                    "reason": "disconnected-semantic-anchor-still-resolves",
+                    "semanticRebind": rebound,
+                }, 8)
+            candidate_entry = None
+        else:
+            if rebound.get("status") != "resolved":
+                return emit({
+                    "status": "invalid-patch",
+                    "reason": "semantic-anchor-did-not-survive-candidate",
+                    "semanticRebind": rebound,
+                }, 8)
+            candidate_entry = next(
+                entry for entry in candidate_semantic["entries"]
+                if entry.get("anchor") == args.semantic_anchor
+            )
 
-        candidate_entry = next(
-            entry for entry in candidate_semantic["entries"]
-            if entry.get("anchor") == args.semantic_anchor
-        )
-        if args.mode == "binding":
+        if args.mode == "disconnect":
+            candidate_safe = True
+            candidate_reason = ""
+        elif args.mode == "binding":
             candidate_safe = (
                 candidate_entry.get("kind") == "binding"
                 and not candidate_entry.get("opaque_context", False)
@@ -372,18 +484,19 @@ def main() -> int:
                 "reason": candidate_reason,
             }, 8)
 
-        value_range = candidate_entry.get("value_range")
-        if not isinstance(value_range, list) or len(value_range) != 2:
-            return emit({
-                "status": "invalid-patch",
-                "reason": "candidate-lost-value-range",
-            }, 8)
-        rendered = candidate[value_range[0]:value_range[1]].decode("utf-8")
-        if rendered != args.replacement:
-            return emit({
-                "status": "invalid-patch",
-                "reason": "candidate-value-range-does-not-match-replacement",
-            }, 8)
+        if args.mode != "disconnect":
+            value_range = candidate_entry.get("value_range")
+            if not isinstance(value_range, list) or len(value_range) != 2:
+                return emit({
+                    "status": "invalid-patch",
+                    "reason": "candidate-lost-value-range",
+                }, 8)
+            rendered = candidate[value_range[0]:value_range[1]].decode("utf-8")
+            if rendered != args.replacement:
+                return emit({
+                    "status": "invalid-patch",
+                    "reason": "candidate-value-range-does-not-match-replacement",
+                }, 8)
 
         patch = prepared["patch"]
         preview = (
@@ -401,6 +514,8 @@ def main() -> int:
             "semanticRebind": rebound,
             "commandKind": command_kind,
             "previewMode": args.mode,
+            "expectedCurrent": prepared.get("expectedCurrent", ""),
+            "resultingState": prepared.get("resultingState", ""),
             "patch": patch,
             "preview": preview,
             "sourceWritable": os.access(source_path, os.W_OK),

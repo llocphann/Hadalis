@@ -133,6 +133,14 @@ class SpikeA(unittest.TestCase):
             source[slice(*entries["visible"]["value_range"])],
             b"enabled",
         )
+        self.assertEqual(
+            source[slice(*entries["width"]["range"])],
+            b"width: parent.width",
+        )
+        self.assertEqual(
+            source[slice(*entries["visible"]["range"])],
+            b"visible: enabled",
+        )
 
     def test_grouped_binding_is_opaque_including_descendants(self):
         entries = self.entries()["entries"]

@@ -30,6 +30,7 @@ Singleton {
     property int _pendingReplaceIndex: -1
     property string _pendingCommandKind: "literal-property"
     property string _pendingPreviewMode: "literal"
+    property string _pendingExpectedCurrent: ""
     property var preApplyDiagnostics: ({
         status: "not-evaluated",
         ready: false,
@@ -1010,7 +1011,8 @@ Singleton {
         nextValue: string,
         replaceIndex: int,
         commandKind: string,
-        previewMode: string
+        previewMode: string,
+        expectedCurrent: string
     ): bool {
         if (previewProcess.running
                 || applyPrepareProcess.running
@@ -1021,19 +1023,26 @@ Singleton {
         const nextSha = String(baseSha ?? "")
         const nextAnchor = String(anchor ?? "")
         const nextReplacement = String(nextValue ?? "")
+        const nextMode = String(previewMode ?? "")
+        const nextExpectedCurrent = String(expectedCurrent ?? "")
         if (nextPath.length === 0
                 || nextSha.length === 0
                 || nextAnchor.length === 0
-                || nextReplacement.length === 0)
+                || (nextMode !== "disconnect"
+                    && nextReplacement.length === 0)
+                || (nextMode === "disconnect"
+                    && nextExpectedCurrent.length === 0))
             return false
 
         root._invalidateApplyHandoff()
         root._pendingReplaceIndex = replaceIndex
         root._pendingCommandKind = String(commandKind ?? "")
-        root._pendingPreviewMode = String(previewMode ?? "")
-        if (!["literal-property", "direct-binding"]
+        root._pendingPreviewMode = nextMode
+        root._pendingExpectedCurrent = nextExpectedCurrent
+        if (!["literal-property", "direct-binding", "disconnect-binding"]
                 .includes(root._pendingCommandKind)
-                || !["literal", "binding"].includes(root._pendingPreviewMode))
+                || !["literal", "binding", "disconnect"]
+                    .includes(root._pendingPreviewMode))
             return false
         root.status = "previewing"
         root.sourcePath = nextPath
@@ -1052,6 +1061,7 @@ Singleton {
             "--base-sha256", nextSha,
             "--semantic-anchor", nextAnchor,
             "--replacement", nextReplacement,
+            "--expected-current", root._pendingExpectedCurrent,
             "--mode", root._pendingPreviewMode
         ]
         previewProcess.running = true
@@ -1071,7 +1081,8 @@ Singleton {
             nextValue,
             -1,
             "literal-property",
-            "literal")
+            "literal",
+            "")
     }
 
     function previewBinding(
@@ -1087,7 +1098,25 @@ Singleton {
             nextValue,
             -1,
             "direct-binding",
-            "binding")
+            "binding",
+            "")
+    }
+
+    function previewDisconnectBinding(
+        path: string,
+        baseSha: string,
+        anchor: string,
+        expectedCurrent: string
+    ): bool {
+        return root._startPreview(
+            path,
+            baseSha,
+            anchor,
+            "",
+            -1,
+            "disconnect-binding",
+            "disconnect",
+            expectedCurrent)
     }
 
     function regenerate(baseSha: string): bool {
@@ -1095,9 +1124,11 @@ Singleton {
         if (!command)
             return false
         const commandKind = String(command.kind ?? "")
-        const previewMode = commandKind === "direct-binding"
-            ? "binding"
-            : "literal"
+        const previewMode = commandKind === "disconnect-binding"
+            ? "disconnect"
+            : commandKind === "direct-binding"
+                ? "binding"
+                : "literal"
         return root._startPreview(
             String(command.sourcePath ?? ""),
             String(baseSha ?? ""),
@@ -1105,7 +1136,8 @@ Singleton {
             String(command.replacement ?? ""),
             root.historyIndex,
             commandKind,
-            previewMode)
+            previewMode,
+            String(command.expectedCurrent ?? ""))
     }
 
     function _commitPreviewCommand(payload): void {
@@ -1116,6 +1148,7 @@ Singleton {
             candidateSha256: String(payload?.candidateSha256 ?? ""),
             semanticAnchor: root.semanticAnchor,
             replacement: root.replacement,
+            expectedCurrent: root._pendingExpectedCurrent,
             result: payload,
             patch: payload?.patch ?? ({}),
             previewText: String(payload?.preview ?? ""),

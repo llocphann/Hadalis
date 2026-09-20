@@ -1142,7 +1142,7 @@ subset.
   exact same-anchor `DateTime.date` rebind. A probe-only fixture rewrites the
   prepared manifest anchor to a surviving bullet-text binding; production
   postcondition detection must then auto-rollback the exact source snapshot.
-- Other direct-binding replacements remain preview-only. Existing non-reviewed
+- Other direct-binding previews remain non-writing. Existing non-reviewed
   Disconnect edges remain preview-only.
 - The production source-writing subset is now exactly: qualified literal
   property Apply, the first reviewed Connect insertion, reviewed

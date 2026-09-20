@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 
 // CONNECTED-SURFACE-OUTWARD-FLARE-LOCK (maintainer clarified 2026-09-19):
 // Contact corners MUST flare outward from the popup/sidebar/dashboard body into
@@ -20,169 +19,83 @@ Item {
     property real flareRadius: PerimeterTokens.joinFlareRadius
     property real crossScale: PerimeterTokens.joinFlareCrossScale
     property real progress: 1
-    // Raster overlap is deliberately independent from the mathematical contact
-    // plane. The curve stays anchored to the exact Bar/Screen Edge seam while a
-    // tiny same-color strip extends underneath the owner to hide compositor /
-    // antialias cracks between independent layer-shell surfaces.
-    property real contactOverlap: PerimeterTokens.seamOverlap
-    // Owner-authoritative contact planes in this item's coordinate space.
-    // Negative means "use the mapped body edge" for compatibility. Consumers
-    // connected to Bar/Screen Edge should pass the real owner seam explicitly.
-    property real topContactPlane: -1
-    property real bottomContactPlane: -1
-    property real leftContactPlane: -1
-    property real rightContactPlane: -1
     property bool joinTop: false
     property bool joinBottom: false
     property bool joinLeft: false
     property bool joinRight: false
 
     readonly property real reveal: Math.max(0, Math.min(1, root.progress))
-
-    // mapToItem() is geometrically correct but does not itself create reactive
-    // dependencies for every transform in the item/ancestor chain. Watch that
-    // relative transform explicitly and map the complete body rect so endpoint
-    // placement also follows animated scale, not only the transformed origin.
-    property int bodyTransformRevision: 0
-    readonly property rect bodyRect: {
-        const dependency = root.bodyTransformRevision
-        if (dependency < 0 || !root.bodyItem
-                || root.bodyItem.width <= 0 || root.bodyItem.height <= 0)
-            return Qt.rect(0, 0, 0, 0)
-        return root.bodyItem.mapToItem(root, 0, 0,
-            root.bodyItem.width, root.bodyItem.height)
-    }
-    readonly property real topContactY:
-        root.topContactPlane >= 0 ? root.topContactPlane : root.bodyRect.y
-    readonly property real bottomContactY:
-        root.bottomContactPlane >= 0
-            ? root.bottomContactPlane : root.bodyRect.y + root.bodyRect.height
-    readonly property real leftContactX:
-        root.leftContactPlane >= 0 ? root.leftContactPlane : root.bodyRect.x
-    readonly property real rightContactX:
-        root.rightContactPlane >= 0
-            ? root.rightContactPlane : root.bodyRect.x + root.bodyRect.width
-
-    TransformWatcher {
-        a: root
-        b: root.bodyItem
-        onTransformChanged: root.bodyTransformRevision++
-    }
+    readonly property point bodyOrigin: root.bodyItem
+        ? root.bodyItem.mapToItem(root, 0, 0) : Qt.point(0, 0)
 
     readonly property real radius: Math.max(0, Math.min(
         root.flareRadius,
-        root.bodyRect.width / 2,
-        root.bodyRect.height / 2))
+        root.bodyItem?.width / 2 ?? 0,
+        root.bodyItem?.height / 2 ?? 0))
     readonly property real depth: Math.max(0,
         Math.min(root.radius, root.radius * Math.max(0.20, Math.min(1, root.crossScale))))
 
     visible: root.reveal > 0.001 && root.radius > 0 && root.depth > 0
         && (root.joinTop || root.joinBottom || root.joinLeft || root.joinRight)
 
-    // Ancestor visibility changes do not toggle each Canvas.visible property.
-    // Bump a paint revision whenever the flare host becomes visible so reused
-    // hover popups cannot return with a stale/empty Canvas texture.
-    property int paintRevision: 0
-    onVisibleChanged: {
-        if (visible)
-            root.paintRevision++
-    }
-    Component.onCompleted: root.paintRevision++
-
-    component Flare: Item {
+    component Flare: Canvas {
         id: flare
 
         required property string flareCorner
-        required property string ownerEdge
         property color flareColor: root.fillColor
-        readonly property real overlap: Math.max(0,
-            Math.min(root.contactOverlap, Math.max(width, height)))
 
         visible: width > 0 && height > 0
-        onFlareColorChanged: curveCanvas.queuePaint()
-        onFlareCornerChanged: curveCanvas.queuePaint()
+        antialiasing: true
 
-        // Keep the mathematical curve untouched. Raster overlap is rendered by
-        // seamBridge instead of moving the contact plane.
-        Canvas {
-            id: curveCanvas
-            anchors.fill: parent
-            antialiasing: true
-            property int paintRevision: root.paintRevision
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onFlareColorChanged: requestPaint()
+        onFlareCornerChanged: requestPaint()
 
-            function queuePaint(): void {
-                if (available && visible && width > 0 && height > 0)
-                    requestPaint()
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            if (!(width > 0 && height > 0))
+                return
+
+            const k = 0.5522847498307936
+            const w = width
+            const h = height
+            const corner = flare.flareCorner
+
+            ctx.beginPath()
+
+            if (corner === "topLeft" || corner === "rightBottom") {
+                // Inverse top-right ellipse.
+                ctx.moveTo(w, 0)
+                ctx.lineTo(w, h)
+                ctx.bezierCurveTo(w, h * (1 - k), w * k, 0, 0, 0)
+                ctx.lineTo(w, 0)
+            } else if (corner === "topRight" || corner === "leftBottom") {
+                // Inverse top-left ellipse.
+                ctx.moveTo(0, 0)
+                ctx.lineTo(0, h)
+                ctx.bezierCurveTo(0, h * (1 - k), w * (1 - k), 0, w, 0)
+                ctx.lineTo(0, 0)
+            } else if (corner === "bottomLeft" || corner === "rightTop") {
+                // Inverse bottom-right ellipse.
+                ctx.moveTo(w, h)
+                ctx.lineTo(w, 0)
+                ctx.bezierCurveTo(w, h * k, w * k, h, 0, h)
+                ctx.lineTo(w, h)
+            } else if (corner === "bottomRight" || corner === "leftTop") {
+                // Inverse bottom-left ellipse.
+                ctx.moveTo(0, h)
+                ctx.lineTo(0, 0)
+                ctx.bezierCurveTo(0, h * k, w * (1 - k), h, w, h)
+                ctx.lineTo(0, h)
+            } else {
+                return
             }
 
-            onAvailableChanged: queuePaint()
-            onVisibleChanged: queuePaint()
-            onWidthChanged: queuePaint()
-            onHeightChanged: queuePaint()
-            onPaintRevisionChanged: queuePaint()
-            Component.onCompleted: queuePaint()
-
-            onPaint: {
-                const ctx = getContext("2d")
-                ctx.clearRect(0, 0, width, height)
-                if (!(width > 0 && height > 0))
-                    return
-
-                const k = 0.5522847498307936
-                const w = width
-                const h = height
-                const corner = flare.flareCorner
-
-                ctx.beginPath()
-
-                if (corner === "topLeft" || corner === "rightBottom") {
-                    // Inverse top-right ellipse.
-                    ctx.moveTo(w, 0)
-                    ctx.lineTo(w, h)
-                    ctx.bezierCurveTo(w, h * (1 - k), w * k, 0, 0, 0)
-                    ctx.lineTo(w, 0)
-                } else if (corner === "topRight" || corner === "leftBottom") {
-                    // Inverse top-left ellipse.
-                    ctx.moveTo(0, 0)
-                    ctx.lineTo(0, h)
-                    ctx.bezierCurveTo(0, h * (1 - k), w * (1 - k), 0, w, 0)
-                    ctx.lineTo(0, 0)
-                } else if (corner === "bottomLeft" || corner === "rightTop") {
-                    // Inverse bottom-right ellipse.
-                    ctx.moveTo(w, h)
-                    ctx.lineTo(w, 0)
-                    ctx.bezierCurveTo(w, h * k, w * k, h, 0, h)
-                    ctx.lineTo(w, h)
-                } else if (corner === "bottomRight" || corner === "leftTop") {
-                    // Inverse bottom-left ellipse.
-                    ctx.moveTo(0, h)
-                    ctx.lineTo(0, 0)
-                    ctx.bezierCurveTo(0, h * k, w * (1 - k), h, w, h)
-                    ctx.lineTo(0, h)
-                } else {
-                    return
-                }
-
-                ctx.closePath()
-                ctx.fillStyle = flare.flareColor
-                ctx.fill()
-            }
-        }
-
-        // Overlap only the straight owner-facing edge. This prevents a raster
-        // crack without moving the curve or changing its radius/depth.
-        Rectangle {
-            id: seamBridge
-            visible: flare.overlap > 0
-            color: flare.flareColor
-            x: flare.ownerEdge === "left" ? -flare.overlap
-                : flare.ownerEdge === "right" ? flare.width : 0
-            y: flare.ownerEdge === "top" ? -flare.overlap
-                : flare.ownerEdge === "bottom" ? flare.height : 0
-            width: (flare.ownerEdge === "left" || flare.ownerEdge === "right")
-                ? flare.overlap : flare.width
-            height: (flare.ownerEdge === "top" || flare.ownerEdge === "bottom")
-                ? flare.overlap : flare.height
+            ctx.closePath()
+            ctx.fillStyle = flare.flareColor
+            ctx.fill()
         }
     }
 
@@ -190,37 +103,33 @@ Item {
     // depth is compressed. This is the characteristic flat Caelestia contact.
     Flare {
         flareCorner: "topLeft"
-        ownerEdge: "top"
         visible: root.joinTop && !root.joinLeft && root.radius > 0
-        x: root.bodyRect.x - root.radius
-        y: root.topContactY
+        x: root.bodyOrigin.x - root.radius
+        y: root.bodyOrigin.y
         width: root.radius
         height: root.depth
     }
     Flare {
         flareCorner: "topRight"
-        ownerEdge: "top"
         visible: root.joinTop && !root.joinRight && root.radius > 0
-        x: root.bodyRect.x + root.bodyRect.width
-        y: root.topContactY
+        x: root.bodyOrigin.x + root.bodyItem.width
+        y: root.bodyOrigin.y
         width: root.radius
         height: root.depth
     }
     Flare {
         flareCorner: "bottomLeft"
-        ownerEdge: "bottom"
         visible: root.joinBottom && !root.joinLeft && root.radius > 0
-        x: root.bodyRect.x - root.radius
-        y: root.bottomContactY - root.depth
+        x: root.bodyOrigin.x - root.radius
+        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
         width: root.radius
         height: root.depth
     }
     Flare {
         flareCorner: "bottomRight"
-        ownerEdge: "bottom"
         visible: root.joinBottom && !root.joinRight && root.radius > 0
-        x: root.bodyRect.x + root.bodyRect.width
-        y: root.bottomContactY - root.depth
+        x: root.bodyOrigin.x + root.bodyItem.width
+        y: root.bodyOrigin.y + root.bodyItem.height - root.depth
         width: root.radius
         height: root.depth
     }
@@ -228,37 +137,33 @@ Item {
     // Left/right attachment uses the same geometry rotated 90 degrees.
     Flare {
         flareCorner: "leftTop"
-        ownerEdge: "left"
         visible: root.joinLeft && !root.joinTop && root.radius > 0
-        x: root.leftContactX
-        y: root.bodyRect.y - root.radius
+        x: root.bodyOrigin.x
+        y: root.bodyOrigin.y - root.radius
         width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "leftBottom"
-        ownerEdge: "left"
         visible: root.joinLeft && !root.joinBottom && root.radius > 0
-        x: root.leftContactX
-        y: root.bodyRect.y + root.bodyRect.height
+        x: root.bodyOrigin.x
+        y: root.bodyOrigin.y + root.bodyItem.height
         width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "rightTop"
-        ownerEdge: "right"
         visible: root.joinRight && !root.joinTop && root.radius > 0
-        x: root.rightContactX - root.depth
-        y: root.bodyRect.y - root.radius
+        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
+        y: root.bodyOrigin.y - root.radius
         width: root.depth
         height: root.radius
     }
     Flare {
         flareCorner: "rightBottom"
-        ownerEdge: "right"
         visible: root.joinRight && !root.joinBottom && root.radius > 0
-        x: root.rightContactX - root.depth
-        y: root.bodyRect.y + root.bodyRect.height
+        x: root.bodyOrigin.x + root.bodyItem.width - root.depth
+        y: root.bodyOrigin.y + root.bodyItem.height
         width: root.depth
         height: root.radius
     }

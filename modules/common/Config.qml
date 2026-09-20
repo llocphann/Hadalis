@@ -2194,6 +2194,7 @@ Singleton {
                 property bool keepRightSidebarLoaded: true
                 property bool keepLeftSidebarLoaded: true
                 property bool instantOpen: false
+                property string animationType: "slide"
                 property bool collapseEmptyNotifications: false
                 property bool collapseWidgetsTab: false
                 property JsonObject shellLayout: JsonObject {

@@ -173,19 +173,15 @@ LazyLoader {
     onRequestedVisibleChanged: root._syncRequestedVisibility()
     Component.onCompleted: root._syncRequestedVisibility()
 
-    // Connected chrome must never overshoot away from its owner seam. Use a
-    // monotonic slide-only curve in both directions so Bar/Screen Edge and popup
-    // always read as one continuous surface.
+    // Caelestia's wrappers use one default-spatial animation for both enter and
+    // exit instead of separate accelerate/decelerate curves. Hadalis already
+    // ships the same expressive-default-spatial token as elementMove.
     Behavior on offsetScale {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: root.requestedVisible
-                ? Appearance.animation.elementMoveEnter.duration
-                : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.requestedVisible
-                ? Appearance.animationCurves.standardDecel
-                : Appearance.animationCurves.standardAccel
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 
@@ -204,7 +200,7 @@ LazyLoader {
 
     property QtObject _retractTimerObject: Timer {
         id: retractTimer
-        interval: Math.max(1, Appearance.animation.elementMoveExit.duration + 16)
+        interval: Math.max(1, Appearance.animation.elementMove.duration + 16)
         repeat: false
         onTriggered: {
             if (!root.requestedVisible && root.offsetScale >= 0.999)
@@ -393,18 +389,6 @@ LazyLoader {
                     && root._edgeShadowOpacity > 0
                 shadowExtent: root._edgeShadowExtent
                 shadowColor: root._edgeShadowColor
-                // Primary attachment uses the Bar's exact inner seam. Any
-                // additional edge join uses the physical Screen Edge inner seam.
-                topContactPlane: root._attachmentEdge === "top"
-                    ? geometry.attachmentBoundary : root._screenEdgeThickness
-                bottomContactPlane: root._attachmentEdge === "bottom"
-                    ? geometry.attachmentBoundary
-                    : popupWindow.height - root._screenEdgeThickness
-                leftContactPlane: root._attachmentEdge === "left"
-                    ? geometry.attachmentBoundary : root._screenEdgeThickness
-                rightContactPlane: root._attachmentEdge === "right"
-                    ? geometry.attachmentBoundary
-                    : popupWindow.width - root._screenEdgeThickness
                 joinTop: root._attachmentEdge === "top"
                     || directEdgeAttachment.atTop
                 joinBottom: root._attachmentEdge === "bottom"

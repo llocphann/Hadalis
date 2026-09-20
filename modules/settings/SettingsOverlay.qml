@@ -11,7 +11,6 @@ import qs.services
 import qs.modules.settings
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.perimeter
 import qs.modules.common.functions as CF
 
 /**
@@ -43,13 +42,9 @@ Scope {
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: root.settingsOpen
-                ? Appearance.animation.elementMoveEnter.duration
-                : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.settingsOpen
-                ? Appearance.animationCurves.standardDecel
-                : Appearance.animationCurves.standardAccel
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 
@@ -72,7 +67,7 @@ Scope {
     // Keep the native host alive until the bottom-edge exit slide completes.
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMoveExit.duration + 40
+        interval: Appearance.animation.elementMove.duration + 40
         repeat: false
         onTriggered: _closeAnimRunning = false
     }
@@ -479,35 +474,6 @@ Scope {
             readonly property int backdropBlur:
                 Config.options?.settingsUi?.overlayAppearance?.backdropBlur ?? 0
 
-            readonly property string outputName:
-                String(settingsPanel.screen?.name ?? "")
-            readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
-                Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-            function barTargetsThisOutput(): bool {
-                const list = Config.options?.bar?.screenList ?? []
-                if (!list || list.length === 0)
-                    return true
-                const matched = Quickshell.screens.filter(screen => {
-                    const name = String(screen?.name ?? "")
-                    return name.length > 0 && list.includes(name)
-                })
-                return matched.length === 0 || list.includes(settingsPanel.outputName)
-            }
-            readonly property bool bottomBarOwnsEdge:
-                (Config.options?.panelFamily ?? "ii") === "ii"
-                && !(Config.options?.bar?.vertical ?? false)
-                && (Config.options?.bar?.bottom ?? false)
-                && (Config.options?.enabledPanels ?? []).includes("iiBar")
-                && GlobalStates.barOpen
-                && !GlobalStates.widgetEditMode
-                && !(Config.options?.bar?.autoHide?.enable ?? false)
-                && settingsPanel.barTargetsThisOutput()
-            readonly property real bottomOwnerThickness:
-                settingsPanel.bottomBarOwnsEdge
-                    ? Appearance.sizes.barHeight : settingsPanel.screenEdgeThickness
-            readonly property real bottomContactPlane:
-                settingsPanel.height - settingsPanel.bottomOwnerThickness
-
             Loader {
                 anchors.fill: parent
                 z: -1
@@ -628,17 +594,6 @@ Scope {
                         Math.max(0, Math.min(1.0,
                             Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
                     : "transparent"
-                joinBottom: true
-            }
-
-            ConnectedSurfaceJoinFlares {
-                z: 2
-                anchors.fill: parent
-                bodyItem: settingsCard
-                fillColor: settingsCard.color
-                flareRadius: PerimeterTokens.joinFlareRadius
-                progress: root._surfaceReveal
-                bottomContactPlane: settingsPanel.bottomContactPlane
                 joinBottom: true
             }
 

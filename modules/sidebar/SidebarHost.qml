@@ -60,15 +60,6 @@ Scope {
         root.roleId, sidebarRoot.screen?.name ?? "")
     readonly property int configuredWidth: Math.round(
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
-    // The visible body intentionally underlaps the persistent Screen Edge to
-    // the physical display edge. Contact curvature belongs at the owner's real
-    // inner seam rather than at x=0 / x=window.width.
-    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    // The visible body underlaps the physical edge band, but the contact curve
-    // anchors to the exact Screen Edge inner boundary. Raster overlap is owned
-    // by ConnectedSurfaceJoinFlares, not by this coordinate.
-    readonly property real edgeContactPlane: root.screenEdgeThickness
     // The owning Overlay surface is anchored to the physical display edge.
     // Let the visible body underlap the entire persistent Screen Edge band,
     // rather than stopping at its inner boundary with only a 2px seam overlap.
@@ -123,6 +114,7 @@ Scope {
         return Math.max(minHeight, Math.min(maxHeight, requested))
     }
     readonly property bool instantOpen: Config.options?.sidebar?.instantOpen ?? false
+    readonly property string animationType: Config.options?.sidebar?.animationType ?? "slide"
 
     property bool pluginViewActive: false
     property real widthPreview: -1
@@ -264,11 +256,11 @@ Scope {
             contentReady: sidebarContentLoader.item !== null,
             contentResident: root._contentResident,
             idleUnloadPending: contentUnloadTimer.running,
-            animationType: "slide",
+            animationType: root.animationType,
             animationRunning: sidebarContentLoader.animating,
             animationTranslateX: Math.round(sidebarContentLoader.animTranslateX),
-            animationOpacity: 1,
-            animationScale: 1,
+            animationOpacity: Number(sidebarContentLoader.animOpacity.toFixed(3)),
+            animationScale: Number(sidebarContentLoader.animScale.toFixed(3)),
             sizeMode: root.sizeMode,
             preferredHeight: Math.round(root.reportedPreferredHeight),
             minimumHeight: Math.round(root.reportedMinimumHeight),
@@ -775,6 +767,12 @@ Scope {
             property real animTranslateX: root.isLeftEdge
                 ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
                 : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut
+            property real animOpacity: 1
+            property real animScale: 1
+            property bool useClip: root.animationType === "reveal"
+            property real clipWidth: Math.max(0, width)
+            property real animTranslateY: 0
+            property real animScaleX: 1
             property bool animating: false
             onAnimatingChanged: root.reportRuntime()
 
@@ -836,9 +834,19 @@ Scope {
                 }
             }
 
-            transform: Translate {
-                x: sidebarContentLoader.animTranslateX
-            }
+            transform: [
+                Translate {
+                    x: sidebarContentLoader.animTranslateX
+                    y: sidebarContentLoader.animTranslateY
+                },
+                Scale {
+                    xScale: sidebarContentLoader.animScaleX
+                    origin.x: root.isLeftEdge ? 0 : sidebarContentLoader.width
+                    origin.y: sidebarContentLoader.height / 2
+                }
+            ]
+            opacity: sidebarContentLoader.animOpacity
+            scale: sidebarContentLoader.animScale
 
             states: [
                 State {
@@ -847,6 +855,11 @@ Scope {
                     PropertyChanges {
                         target: sidebarContentLoader
                         animTranslateX: 0
+                        animOpacity: 1
+                        animScale: 1
+                        animTranslateY: 0
+                        animScaleX: 1
+                        clipWidth: sidebarContentLoader.width
                     }
                 },
                 State {
@@ -855,6 +868,11 @@ Scope {
                     PropertyChanges {
                         target: sidebarContentLoader
                         animTranslateX: 0
+                        animOpacity: 1
+                        animScale: 1
+                        animTranslateY: 0
+                        animScaleX: 1
+                        clipWidth: sidebarContentLoader.width
                     }
                 },
                 State {
@@ -863,9 +881,26 @@ Scope {
                         && (!root.roleOpen || !root._sidebarShown)
                     PropertyChanges {
                         target: sidebarContentLoader
-                        animTranslateX: root.isLeftEdge
-                            ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
-                            : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut
+                        animTranslateX:
+                            root.animationType === "slide"
+                            ? (root.isLeftEdge
+                                ? -(root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
+                                : root.effectiveSidebarWidth + Appearance.sizes.hyprlandGapsOut)
+                            : 0
+                        animOpacity:
+                            root.animationType === "slide" || root.animationType === "reveal"
+                            ? 1 : 0
+                        animScale:
+                            root.animationType === "elastic" ? 0.88
+                            : root.animationType === "pop" ? 0.94 : 1
+                        animTranslateY:
+                            root.animationType === "drop"
+                            ? -(sidebarContentLoader.height
+                                + Appearance.sizes.hyprlandGapsOut * 2)
+                            : 0
+                        animScaleX: root.animationType === "swing" ? 0 : 1
+                        clipWidth: root.animationType === "reveal"
+                            ? 0 : sidebarContentLoader.width
                     }
                 }
             ]
@@ -875,12 +910,73 @@ Scope {
                     to: "open"
                     enabled: Appearance.animationsEnabled
                         && !root._pluginTransitioning && !root.instantOpen
-                    NumberAnimation {
-                        target: sidebarContentLoader
-                        property: "animTranslateX"
-                        duration: Appearance.animation.elementMoveEnter.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.standardDecel
+                    ParallelAnimation {
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animTranslateX"
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animTranslateY"
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animOpacity"
+                            duration: Math.round(
+                                (Appearance.animation?.elementMoveEnter?.duration ?? 400) * 0.7)
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.standardDecel
+                                ?? [0, 0, 0, 1, 1, 1]
+                        }
+                        SequentialAnimation {
+                            NumberAnimation {
+                                target: sidebarContentLoader
+                                property: "animScale"
+                                from: root.animationType === "elastic" ? 0.88
+                                    : root.animationType === "pop" ? 0.94 : 1
+                                to: root.animationType === "elastic" ? 1.04
+                                    : root.animationType === "pop" ? 1.018 : 1
+                                duration: Math.round(
+                                    (Appearance.animation?.elementMoveEnter?.duration ?? 400) * 0.62)
+                                easing.type: Easing.BezierSpline
+                                easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel
+                                    ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                            }
+                            NumberAnimation {
+                                target: sidebarContentLoader
+                                property: "animScale"
+                                to: 1
+                                duration: Math.round(
+                                    (Appearance.animation?.elementMoveEnter?.duration ?? 400) * 0.38)
+                                easing.type: Easing.BezierSpline
+                                easing.bezierCurve: Appearance.animationCurves?.expressiveEffects
+                                    ?? [0.34, 0.80, 0.34, 1.00, 1, 1]
+                            }
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animScaleX"
+                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel
+                                ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "clipWidth"
+                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel
+                                ?? [0.05, 0.7, 0.1, 1, 1, 1]
+                        }
                     }
                     onRunningChanged: sidebarContentLoader.animating = running
                 },
@@ -888,12 +984,56 @@ Scope {
                     to: "closed"
                     enabled: Appearance.animationsEnabled
                         && !root._pluginTransitioning && !root.instantOpen
-                    NumberAnimation {
-                        target: sidebarContentLoader
-                        property: "animTranslateX"
-                        duration: Appearance.animation.elementMoveExit.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.standardAccel
+                    ParallelAnimation {
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animTranslateX"
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animTranslateY"
+                            duration: Appearance.animation?.elementMove?.duration ?? 500
+                            easing.type: Appearance.animation?.elementMove?.type ?? Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animation?.elementMove?.bezierCurve
+                                ?? [0.38, 1.21, 0.22, 1.00, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animOpacity"
+                            duration: Math.round(
+                                (Appearance.animation?.elementMoveExit?.duration ?? 200) * 0.7)
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.standardAccel
+                                ?? [0.3, 0, 1, 1, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animScale"
+                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel
+                                ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "animScaleX"
+                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel
+                                ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                        }
+                        NumberAnimation {
+                            target: sidebarContentLoader
+                            property: "clipWidth"
+                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel
+                                ?? [0.3, 0, 0.8, 0.15, 1, 1]
+                        }
                     }
                     onRunningChanged: sidebarContentLoader.animating = running
                 }
@@ -930,8 +1070,6 @@ Scope {
                 readonly property color connectedSurfaceColor:
                     roleContentItem?.connectedSurfaceColor
                         ?? Appearance.colors.colLayer0
-                readonly property Item connectedSurfaceItem:
-                    roleContentItem?.connectedSurfaceItem ?? sidebarContentLoader
 
                 Item {
                     id: revealViewport
@@ -941,8 +1079,9 @@ Scope {
                         left: root.isLeftEdge ? parent.left : undefined
                         right: root.isLeftEdge ? undefined : parent.right
                     }
-                    width: parent.width
-                    clip: false
+                    width: sidebarContentLoader.useClip
+                        ? sidebarContentLoader.clipWidth : parent.width
+                    clip: sidebarContentLoader.useClip
 
                     Loader {
                         id: roleContentLoader
@@ -964,17 +1103,18 @@ Scope {
             id: sidebarEdgeFlares
             z: 9000
             anchors.fill: parent
-            bodyItem: sidebarContentLoader.item?.connectedSurfaceItem
-                ?? sidebarContentLoader
+            bodyItem: sidebarContentLoader
             fillColor: sidebarContentLoader.item?.connectedSurfaceColor
                 ?? Appearance.colors.colLayer0
             flareRadius: PerimeterTokens.joinFlareRadius
-            leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1
-            rightContactPlane: root.isLeftEdge
-                ? -1 : sidebarRoot.width - root.edgeContactPlane
-            // Keep the fully formed shoulder alive through both directions of
-            // the same slide-only motion used by connected popups.
-            progress: (root.presentationOpen || sidebarContentLoader.animating)
+            // JoinFlares maps bodyItem through mapToItem(), so the shoulder
+            // already follows Loader translations exactly once. Keep it visible
+            // through translated slide/drop motion; other morph modes still wait
+            // for their body geometry to settle.
+            readonly property bool tracksBodyTranslation:
+                root.animationType === "slide" || root.animationType === "drop"
+            progress: root.presentationOpen
+                && (!sidebarContentLoader.animating || tracksBodyTranslation)
                 ? 1 : 0
 
             joinLeft: root.isLeftEdge

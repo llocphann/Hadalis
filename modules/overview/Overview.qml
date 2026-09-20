@@ -63,10 +63,7 @@ Scope {
                 return matched.length === 0 || list.includes(root.outputName)
             }
             readonly property bool bottomBarOwnsEdge:
-                root.bottomBarConfigured
-                && root.bottomBarTargetsOutput
-                && !(Config.options?.bar?.autoHide?.enable ?? false)
-                && !GlobalStates.widgetEditMode
+                root.bottomBarConfigured && root.bottomBarTargetsOutput
             readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                 Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
             readonly property real bottomAttachmentThickness: root.bottomBarOwnsEdge

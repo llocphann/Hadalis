@@ -142,44 +142,13 @@ def main() -> None:
 
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     for token in (
-        "import Quickshell",
-        "property real contactOverlap: PerimeterTokens.seamOverlap",
-        "property real topContactPlane: -1",
-        "property real bottomContactPlane: -1",
-        "property real leftContactPlane: -1",
-        "property real rightContactPlane: -1",
-        "property int bodyTransformRevision: 0",
-        "readonly property rect bodyRect:",
-        "root.bodyItem.mapToItem(root, 0, 0,",
-        "TransformWatcher {",
-        "a: root",
-        "b: root.bodyItem",
-        "onTransformChanged: root.bodyTransformRevision++",
-        "property int paintRevision: 0",
-        "component Flare: Item {",
-        "id: seamBridge",
-        "required property string ownerEdge",
-        "onAvailableChanged: queuePaint()",
-        "onPaintRevisionChanged: queuePaint()",
+        "readonly property point bodyOrigin:",
+        "root.bodyItem.mapToItem(root, 0, 0)",
+        "root.bodyOrigin.x",
+        "root.bodyOrigin.y",
     ):
         check(token in join_flares,
-              f"Join flares must follow live geometry, explicit owner seams, and repaint reliably: {token}")
-    check("contactInset" not in join_flares,
-          "Join flares must not infer owner seams from a generic body inset")
-    check("leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1" in sidebar_host
-          and "sidebarRoot.width - root.edgeContactPlane" in sidebar_host,
-          "Sidebar flare contact plane must use the explicit Screen Edge owner seam")
-    check("readonly property real edgeContactPlane: root.screenEdgeThickness" in sidebar_host
-          and "edgeOwnerThickness" not in sidebar_host
-          and "edgeContactInset" not in sidebar_host
-          and "verticalBarOwnsAttachedEdge" not in sidebar_host,
-          "Sidebar contact geometry must use the exact Screen Edge seam without per-owner offset patches")
-    check('topContactPlane: oskRoot.snappedEdge === "top"' in osk
-          and 'bottomContactPlane: oskRoot.snappedEdge === "bottom"' in osk,
-          "OSK flare contact plane must use explicit top/bottom owner seams")
-    check("Appearance.animationCurves.standardDecel" in styled_popup
-          and "Appearance.animationCurves.standardAccel" in styled_popup,
-          "Connected StyledPopup motion must remain monotonic and non-overshooting")
+              f"Join flares must map nested body coordinates into their host: {token}")
 
     check("hoverEnabled: root.active" in styled_popup
           and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in styled_popup
@@ -496,15 +465,9 @@ def main() -> None:
         ):
             check(token in settings_surface,
                   f"{settings_path} must remain a square bottom-connected popup below Polkit: {token}")
-        for token in (
-            "import qs.modules.common.perimeter",
-            "ConnectedSurfaceJoinFlares {",
-            "flareRadius: PerimeterTokens.joinFlareRadius",
-            "bottomContactPlane: settingsPanel.bottomContactPlane",
-            "joinBottom: true",
-        ):
-            check(token in settings_surface,
-                  f"{settings_path} must render shared bottom contact corners at the owner seam: {token}")
+        check("ConnectedSurfaceJoinFlares {" not in settings_surface
+              and "PerimeterTokens.joinFlareRadius" not in settings_surface,
+              f"{settings_path} must not paint full-overlay endpoint flares that float beside the centered Settings card")
 
     settings_overlay = read("modules/settings/SettingsOverlay.qml")
     settings_focus = read("modules/settings/SettingsFocus.qml")
@@ -517,17 +480,15 @@ def main() -> None:
           and "settingsPanel.height * 0.92" in settings_focus,
           "Focus Settings overlay must use the enlarged bottom-connected footprint")
     for settings_surface in (settings_overlay, settings_focus):
-        check("Appearance.animationCurves.standardDecel" in settings_surface
-              and "Appearance.animationCurves.standardAccel" in settings_surface,
-              "Connected Settings overlays must use the same non-overshooting slide as shared popups")
+        check("Appearance.animation.elementMove.duration" in settings_surface
+              and "Appearance.animation.elementMove.bezierCurve" in settings_surface,
+              "Connected Settings overlays must use the Caelestia-style default-spatial slide")
         check("Appearance.colors.colShadow" in settings_surface
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface,
               "Connected Settings overlays must share the Screen Edge shadow contract")
-        check("readonly property real bottomContactPlane:" in settings_surface
-              and "settingsPanel.height - settingsPanel.bottomOwnerThickness" in settings_surface
-              and "PerimeterTokens.seamOverlap" not in settings_surface,
-              "Settings contact corners must use the exact owner seam; raster overlap belongs to the shared flare primitive")
+        check("ConnectedSurfaceJoinFlares {" not in settings_surface,
+              "Settings must not reintroduce floating endpoint shoulder geometry inside the full-screen overlay")
 
     search_widget = read("modules/overview/SearchWidget.qml")
     check("property bool directBottomAttachment: false" in search_widget
@@ -548,23 +509,18 @@ def main() -> None:
           and "bottomLeftRadius: root.directBottomAttachment ? 0 : radius" in dashboard
           and "bottomRightRadius: root.directBottomAttachment ? 0 : radius" in dashboard,
           "Dashboard attached body edge must stay square; outward flare owns the Bar/Screen Edge shoulder")
-    check("Appearance.animationCurves.standardDecel" in dashboard
-          and "Appearance.animationCurves.standardAccel" in dashboard,
-          "Dashboard connected slide must remain monotonic and non-overshooting")
+    check("Appearance.animation.elementMove.duration" in dashboard
+          and "Appearance.animation.elementMove.bezierCurve" in dashboard,
+          "Dashboard connected slide must use the default-spatial motion token")
     check("Appearance.colors.colShadow" in dashboard
           and "Appearance.m3colors.m3shadow" not in dashboard,
           "Dashboard connected shadow must use the same themed shadow ink as Screen Edge and Bar")
-    check("id: dashboardRevealClip" in dashboard
-          and "height: root.height" in dashboard
-          and "PerimeterTokens.seamOverlap" in dashboard
-          and "clip: root.directBottomAttachment" in dashboard
-          and "StyledRectangularShadow {\n        parent: dashboardSurfaceLayer\n" in dashboard
+    check("StyledRectangularShadow {\n        parent: dashboardSurfaceLayer\n" in dashboard
           and "z: 0\n        target: dashContainer" in dashboard
           and "Rectangle {\n        id: dashContainer\n        parent: dashboardSurfaceLayer\n" in dashboard
           and "z: 1\n        anchors {" in dashboard
-          and "ConnectedSurfaceJoinFlares {\n        parent: dashboardSurfaceLayer\n        z: 5" in dashboard
-          and "bottomContactPlane: root.directBottomAttachment" not in dashboard,
-          "Dashboard must centralize raster overlap in its reveal clip and derive the seam from the rendered body edge")
+          and "ConnectedSurfaceJoinFlares {\n        parent: dashboardSurfaceLayer\n        z: 5" in dashboard,
+          "Dashboard depth stack must keep connected shadow below body below endpoint flares")
     check("import qs.modules.mediaControls" in dashboard
           and "EqualizerPanel {" in dashboard
           and "id: dashboardEqualizer" in dashboard,
@@ -599,14 +555,6 @@ def main() -> None:
           "ConnectedSurfaceFrame must preserve the circular direct-edge shoulder contract")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
-
-    reveal_clip = read("modules/common/perimeter/ConnectedSurfaceRevealClip.qml")
-    check("property real contactOverlap: PerimeterTokens.seamOverlap" in reveal_clip
-          and 'root.edge === "top"' in reveal_clip
-          and 'root.edge === "bottom"' in reveal_clip
-          and 'root.edge === "left"' in reveal_clip
-          and 'root.edge === "right"' in reveal_clip,
-          "Shared reveal clipping must permit the same owner-side raster overlap without moving the contact plane")
     check("attachedCornerRadius" not in frame
           and "topLeftRadius: (root.joinTop || root.joinLeft) ? 0 : surfaceRadius" in frame
           and "topRightRadius: (root.joinTop || root.joinRight) ? 0 : surfaceRadius" in frame
@@ -625,10 +573,7 @@ def main() -> None:
 
     join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
     for token in (
-        "component Flare: Item {",
-        "Canvas {",
-        "id: seamBridge",
-        "property real contactOverlap: PerimeterTokens.seamOverlap",
+        "component Flare: Canvas {",
         "const k = 0.5522847498",
         'corner === "topLeft"',
         'corner === "topRight"',
@@ -941,23 +886,6 @@ def main() -> None:
           and 'Translation.tr("Island")' not in sidebars_config
           and 'Config.setNestedValue("sidebar.style"' not in sidebars_config,
           "Sidebar General settings must not expose Island or Card surface choices")
-    check('Translation.tr("Sidebar animation")' not in sidebars_config
-          and 'sidebar.animationType' not in sidebars_config,
-          "Sidebar Settings must not expose a separate animation-style selector")
-    sidebar_host = read("modules/sidebar/SidebarHost.qml")
-    check("root.animationType" not in sidebar_host
-          and 'animationType: "slide"' in sidebar_host
-          and "Appearance.animationCurves.standardDecel" in sidebar_host
-          and "Appearance.animationCurves.standardAccel" in sidebar_host,
-          "Sidebar runtime must contain only the shared slide-only connected motion contract")
-    for sidebar_surface_path in (
-        "modules/sidebarLeft/SidebarLeftContent.qml",
-        "modules/sidebarRight/SidebarRightContent.qml",
-        "modules/sidebarRight/CompactSidebarRightContent.qml",
-    ):
-        sidebar_surface = read(sidebar_surface_path)
-        check("readonly property Item connectedSurfaceItem:" in sidebar_surface,
-              f"{sidebar_surface_path} must expose its exact visible surface for flare tangent alignment")
 
     shell = read("shell.qml")
     check("DevNavigation.registerSettingsPages(SettingsPageRegistry.pages)" in shell,

@@ -61,7 +61,8 @@ grep -Fq 'width: Math.max(0, root.effectiveSidebarWidth' "$root/modules/sidebar/
     || fail 'SidebarHost must keep its visible body width tied to the host edge surface'
 grep -Fq -- '- Appearance.sizes.elevationMargin)' "$root/modules/sidebar/SidebarHost.qml" \
     || fail 'Sidebar body must reserve margin only on its free inward side'
-if grep -Fq 'directEdgeInset' "$root/modules/sidebar/SidebarHost.qml"; then
+if grep -Fq 'directEdgeInset' "$root/modules/sidebar/SidebarHost.qml" \
+        || grep -Fq 'screenEdgeThickness' "$root/modules/sidebar/SidebarHost.qml"; then
     fail 'Sidebar body must extend through the full Screen Edge band to the physical edge'
 fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$root/modules/sidebar/SidebarHost.qml"; then
@@ -73,42 +74,19 @@ fi
 
 for token in \
     'readonly property real edgeDecorationMargin:' \
-    'readonly property real screenEdgeThickness:' \
-    'readonly property real edgeContactPlane: root.screenEdgeThickness' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
-    'bodyItem: sidebarContentLoader.item?.connectedSurfaceItem' \
+    'bodyItem: sidebarContentLoader' \
     'fillColor: sidebarContentLoader.item?.connectedSurfaceColor' \
-    'leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1' \
-    'sidebarRoot.width - root.edgeContactPlane' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
         || fail "SidebarHost must own visible flared Screen Edge endpoints: $token"
 done
-if grep -Fq 'edgeOwnerThickness' "$root/modules/sidebar/SidebarHost.qml" \
-        || grep -Fq 'edgeContactInset' "$root/modules/sidebar/SidebarHost.qml" \
-        || grep -Fq 'verticalBarOwnsAttachedEdge' "$root/modules/sidebar/SidebarHost.qml"; then
-    fail 'Sidebar contact plane must stay equal to the Screen Edge seam without per-owner offset patches'
-fi
 
 grep -Fq 'root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0' \
     "$root/modules/sidebar/SidebarHost.qml" \
     || fail 'SidebarHost must reserve native endpoint room for the configured Screen Edge shadow'
-
-for token in \
-    'animationType: "slide"' \
-    'Appearance.animationCurves.standardDecel' \
-    'Appearance.animationCurves.standardAccel'; do
-    grep -Fq "$token" "$root/modules/sidebar/SidebarHost.qml" \
-        || fail "Sidebar runtime must use the shared non-bounce slide motion: $token"
-done
-if grep -Fq 'root.animationType' "$root/modules/sidebar/SidebarHost.qml"; then
-    fail 'SidebarHost must not keep retired fade/pop/reveal/swing/drop animation branches'
-fi
-if grep -Fq 'sidebar.animationType' "$root/modules/settings/SidebarsConfig.qml"; then
-    fail 'Sidebar Settings must not expose a separate animation style selector'
-fi
 
 for sidebar_surface in \
     "$root/modules/sidebarLeft/SidebarLeftContent.qml" \
@@ -126,8 +104,6 @@ for sidebar_surface in \
         || fail "${sidebar_surface#$root/} must share Screen Edge shadow enable state"
     grep -Fq 'readonly property color connectedSurfaceColor:' "$sidebar_surface" \
         || fail "${sidebar_surface#"$root/"} must expose its real surface color to host-owned flares"
-    grep -Fq 'readonly property Item connectedSurfaceItem:' "$sidebar_surface" \
-        || fail "${sidebar_surface#"$root/"} must expose its exact visible surface to host-owned flares"
 done
 
 grep -Fq 'property JsonObject screenEdge: JsonObject {' "$root/modules/common/Config.qml" \
@@ -262,10 +238,8 @@ grep -Fq 'readonly property real revealProgress: 1 - root.offsetScale' "$styled_
     || fail 'StyledPopup reveal progress must be the inverse of offsetScale'
 grep -Fq 'Behavior on offsetScale {' "$styled_popup" \
     || fail 'StyledPopup must animate the normalized offset scalar directly'
-grep -Fq 'Appearance.animationCurves.standardDecel' "$styled_popup" \
-    || fail 'StyledPopup enter motion must remain non-overshooting'
-grep -Fq 'Appearance.animationCurves.standardAccel' "$styled_popup" \
-    || fail 'StyledPopup exit motion must remain non-overshooting'
+grep -Fq 'Appearance.animation.elementMove.duration' "$styled_popup" \
+    || fail 'StyledPopup must use expressive default-spatial timing for the shared slide'
 grep -Fq 'readonly property real revealProgress: clamp(progress, 0, 1)' "$connected_geometry" \
     || fail 'connected geometry must clamp semantic reveal progress'
 grep -Fq 'readonly property real motionProgress:' "$connected_geometry" \
@@ -312,64 +286,56 @@ if grep -Fq 'layer.effect: MultiEffect {' "$connected_frame"; then
 fi
 grep -Fq 'ConnectedSurfaceJoinFlares {' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must add concave shoulders at directly joined edge endpoints'
-if grep -Fq 'shadowEnabled:' "$join_flares" \
-        || grep -Fq 'shadowExtent:' "$join_flares" \
-        || grep -Fq 'shadowColor:' "$join_flares"; then
-    fail 'ConnectedSurfaceJoinFlares must stay fill-only; body shadow ownership remains in ConnectedSurfaceFrame'
-fi
+for token in \
+    'shadowEnabled: root.shadowEnabled' \
+    'shadowExtent: root.shadowExtent' \
+    'shadowColor: root.shadowColor'; do
+    grep -Fq "$token" "$connected_frame" \
+        || fail "ConnectedSurfaceFrame must forward live Screen Edge shadow state into its shoulders: $token"
+done
 grep -Fq 'readonly property bool bodyHovered: bodyHover.hovered' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must expose full-body hover ownership'
 grep -Fq 'property real joinFlareRadius: PerimeterTokens.joinFlareRadius' "$connected_frame" \
     || fail 'ConnectedSurfaceFrame must source join flare size from shared perimeter tokens'
+grep -Fq 'No stem is' "$join_flares" \
+    || fail 'join flare primitive must remain a direct-union shoulder rather than a connector stem'
+grep -Fq 'root.bodyItem.mapToItem(root, 0, 0)' "$join_flares" \
+    || fail 'join flares must map nested body geometry into the flare host coordinate space'
+grep -Fq 'import qs.modules.common.widgets' "$join_flares" \
+    || fail 'join flares must reuse the common Hug corner primitive'
+grep -Fq 'component Flare: Item {' "$join_flares" \
+    || fail 'connected shoulders must compose fill and curved shadow in one flare item'
+grep -Fq 'RoundCorner {' "$join_flares" \
+    || fail 'connected shoulder fill must reuse the Hug RoundCorner primitive'
+grep -Fq 'PerimeterCornerShadow {' "$join_flares" \
+    || fail 'connected shoulder shadow must follow the same concave arc'
 for token in \
-    'property real topContactPlane: -1' \
-    'property real bottomContactPlane: -1' \
-    'property real leftContactPlane: -1' \
-    'property real rightContactPlane: -1' \
-    'topContactPlane: root.topContactPlane' \
-    'rightContactPlane: root.rightContactPlane'; do
-    grep -Fq "$token" "$connected_frame" \
-        || fail "ConnectedSurfaceFrame must forward explicit owner contact planes: $token"
-done
-for token in \
-    'import Quickshell' \
-    'property real topContactPlane: -1' \
-    'property real bottomContactPlane: -1' \
-    'property real leftContactPlane: -1' \
-    'property real rightContactPlane: -1' \
-    'property int bodyTransformRevision: 0' \
-    'readonly property rect bodyRect:' \
-    'root.bodyItem.mapToItem(root, 0, 0,' \
-    'TransformWatcher {' \
-    'property int paintRevision: 0' \
-    'property real contactOverlap: PerimeterTokens.seamOverlap' \
-    'component Flare: Item {' \
-    'required property string ownerEdge' \
-    'id: seamBridge' \
-    'Canvas {' \
-    'ctx.bezierCurveTo'; do
+    'property bool shadowEnabled: false' \
+    'property real shadowExtent: 0' \
+    'property color shadowColor: "transparent"'; do
     grep -Fq "$token" "$join_flares" \
-        || fail "connected shoulder runtime contract missing: $token"
+        || fail "connected shoulders must expose live perimeter shadow state: $token"
 done
-if grep -Fq 'contactInset' "$join_flares"; then
-    fail 'connected shoulders must consume explicit owner contact planes, not a generic inset'
+for mapping in \
+    'case "topLeft": return RoundCorner.CornerEnum.TopRight' \
+    'case "topRight": return RoundCorner.CornerEnum.TopLeft' \
+    'case "bottomLeft": return RoundCorner.CornerEnum.BottomRight' \
+    'case "bottomRight": return RoundCorner.CornerEnum.BottomLeft' \
+    'case "leftTop": return RoundCorner.CornerEnum.BottomLeft' \
+    'case "leftBottom": return RoundCorner.CornerEnum.TopLeft' \
+    'case "rightTop": return RoundCorner.CornerEnum.BottomRight' \
+    'case "rightBottom": return RoundCorner.CornerEnum.TopRight'; do
+    grep -Fq "$mapping" "$join_flares" \
+        || fail "connected shoulder orientation drifted: $mapping"
+done
+if grep -Fq 'component Flare: Canvas {' "$join_flares"; then
+    fail 'connected shoulders must not keep a second Canvas corner renderer'
 fi
 grep -Fq 'visible: root.reveal > 0.001 && root.radius > 0' "$join_flares" \
     || fail 'connected join flares must remain fully formed while the body slides'
 if grep -Fq ') * root.reveal' "$join_flares"; then
     fail 'connected join flare radius must not shrink with reveal progress'
 fi
-
-reveal_clip="$root/modules/common/perimeter/ConnectedSurfaceRevealClip.qml"
-for token in \
-    'property real contactOverlap: PerimeterTokens.seamOverlap' \
-    'root.edge === "top"' \
-    'root.edge === "bottom"' \
-    'root.edge === "left"' \
-    'root.edge === "right"'; do
-    grep -Fq "$token" "$reveal_clip" \
-        || fail "ConnectedSurfaceRevealClip must allow owner-side raster overlap without shifting the contact plane: $token"
-done
 grep -Fq 'root.joinTop && !root.joinLeft' "$join_flares" \
     || fail 'top flare must suppress itself when the adjacent Screen Edge is also joined'
 for token in \
@@ -388,15 +354,9 @@ fi
 for token in \
     'property var anchorRect: null' \
     'Number(root.anchorRect?.x ?? 0)' \
-    'host.mapFromItem(target, localX, localY)' \
-    'topContactPlane: root._attachmentEdge === "top"' \
-    'bottomContactPlane: root._attachmentEdge === "bottom"' \
-    'leftContactPlane: root._attachmentEdge === "left"' \
-    'rightContactPlane: root._attachmentEdge === "right"' \
-    'Appearance.animationCurves.standardDecel' \
-    'Appearance.animationCurves.standardAccel'; do
+    'host.mapFromItem(target, localX, localY)'; do
     grep -Fq "$token" "$styled_popup" \
-        || fail "StyledPopup must keep explicit contact planes and slide-only connected motion: $token"
+        || fail "StyledPopup must support source-local tangent sub-rect placement: $token"
 done
 grep -Fq 'anchorRect: root.anchorRect' "$bar_context_menu" \
     || fail 'BarContextMenu must forward source-local anchorRect into StyledPopup'
@@ -463,14 +423,6 @@ grep -Fq 'frame.bodyHovered || popupHoverHandler.hovered' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup hover ownership must include the complete connected body'
 grep -Fq 'hoverEnabled: root.active' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup must enable shared full-body hover tracking'
-for token in \
-    'topContactPlane: root._attachmentEdge === "top"' \
-    'bottomContactPlane: root._attachmentEdge === "bottom"' \
-    'leftContactPlane: root._screenEdgeThickness' \
-    'rightContactPlane: popupWindow.width - root._screenEdgeThickness'; do
-    grep -Fq "$token" "$waffle_bar_popup" \
-        || fail "Waffle connected popup must expose all owner contact planes: $token"
-done
 if grep -Eq 'focusGrab\.active[[:space:]]*=' "$waffle_bar_popup"; then
     fail 'Waffle BarPopup must not imperatively detach the focusGrab.active binding'
 fi
@@ -498,8 +450,6 @@ for token in \
     'y: parent ? parent.height - height : 0' \
     'ConnectedSurfaceJoinFlares {' \
     'flareRadius: PerimeterTokens.joinFlareRadius' \
-    'topContactPlane: oskRoot.snappedEdge === "top"' \
-    'bottomContactPlane: oskRoot.snappedEdge === "bottom"' \
     'joinTop: oskRoot.snappedEdge === "top"' \
     'joinBottom: oskRoot.snappedEdge === "bottom"'; do
     grep -Fq "$token" "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" \

@@ -143,7 +143,7 @@ Item {
         + (root.directBottomAttachment
             ? root.connectedDecorationMargin
             : root.connectedDecorationMargin * 2)
-    clip: false
+    clip: root.directBottomAttachment
 
     function syncReveal(): void {
         root.revealProgress = root.popupPresented ? 1 : 0
@@ -151,37 +151,23 @@ Item {
 
     onPopupPresentedChanged: root.syncReveal()
 
-    // Directly connected chrome must slide without overshoot so its bottom seam
-    // never appears to detach from the owning Bar/Screen Edge.
+    // Keep the connected Dashboard on the same Caelestia-style spatial
+    // gesture as shared popups: one scalar, one default-spatial curve, and a
+    // natural reverse from the current value.
     Behavior on revealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: root.popupPresented
-                ? Appearance.animation.elementMoveEnter.duration
-                : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.popupPresented
-                ? Appearance.animationCurves.standardDecel
-                : Appearance.animationCurves.standardAccel
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
         }
     }
 
     Item {
-        id: dashboardRevealClip
-        x: 0
-        y: 0
-        width: root.width
-        height: root.height
-            + (root.directBottomAttachment ? PerimeterTokens.seamOverlap : 0)
-        clip: root.directBottomAttachment
-
-        Item {
-            id: dashboardSurfaceLayer
-            width: root.width
-            height: root.height
-            transform: Translate {
-                y: (1 - root.revealProgress) * dashContainer.height
-            }
+        id: dashboardSurfaceLayer
+        anchors.fill: parent
+        transform: Translate {
+            y: (1 - root.revealProgress) * dashContainer.height
         }
     }
     // Expose only presentation geometry needed by the owning Overview window.
@@ -298,8 +284,6 @@ Item {
         fillColor: dashContainer.color
         flareRadius: PerimeterTokens.joinFlareRadius
         progress: root.revealProgress > 0.001 ? 1 : 0
-        // dashContainer is anchored to the authoritative owner seam. Derive
-        // contact from the rendered body edge; only raster overlap crosses it.
         joinBottom: root.directBottomAttachment
     }
 

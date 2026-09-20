@@ -26,38 +26,6 @@ for file in \
     [[ -f "$common/$file" ]] || fail "missing shared primitive $file"
 done
 
-join_flares="$common/ConnectedSurfaceJoinFlares.qml"
-for token in \
-    'import Quickshell' \
-    'property real contactOverlap: PerimeterTokens.seamOverlap' \
-    'property real topContactPlane: -1' \
-    'property real bottomContactPlane: -1' \
-    'property real leftContactPlane: -1' \
-    'property real rightContactPlane: -1' \
-    'property int bodyTransformRevision: 0' \
-    'readonly property rect bodyRect:' \
-    'root.bodyItem.mapToItem(root, 0, 0,' \
-    'TransformWatcher {' \
-    'a: root' \
-    'b: root.bodyItem' \
-    'onTransformChanged: root.bodyTransformRevision++' \
-    'property int paintRevision: 0' \
-    'onAvailableChanged: queuePaint()' \
-    'onPaintRevisionChanged: queuePaint()'; do
-    grep -Fq "$token" "$join_flares" \
-        || fail "join flares must follow live body geometry and the real contact plane: $token"
-done
-if grep -Fq 'contactInset' "$join_flares"; then
-    fail 'join flares must not infer owner seams from a generic contact inset'
-fi
-for token in \
-    'component Flare: Item {' \
-    'required property string ownerEdge' \
-    'id: seamBridge'; do
-    grep -Fq "$token" "$join_flares" \
-        || fail "join flare must separate curve geometry from owner-side raster overlap: $token"
-done
-
 for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceMask; do
     grep -Fq "$primitive" "$styled" \
         || fail "StyledPopup must keep using $primitive"
@@ -94,7 +62,8 @@ for token in \
     grep -Fq -- "$token" "$sidebar" \
         || fail "SidebarHost must underlap the full attached Screen Edge band: $token"
 done
-if grep -Fq 'directEdgeInset' "$sidebar"; then
+if grep -Fq 'directEdgeInset' "$sidebar" \
+        || grep -Fq 'screenEdgeThickness' "$sidebar"; then
     fail 'SidebarHost must not stop the body at the inner Screen Edge boundary'
 fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$sidebar" \
@@ -105,44 +74,13 @@ fi
 for token in \
     'import qs.modules.common.perimeter' \
     'readonly property real edgeDecorationMargin:' \
-    'readonly property real screenEdgeThickness:' \
-    'readonly property real edgeContactPlane: root.screenEdgeThickness' \
     'PerimeterTokens.joinFlareRadius' \
     'ConnectedSurfaceJoinFlares {' \
-    'bodyItem: sidebarContentLoader.item?.connectedSurfaceItem' \
-    'leftContactPlane: root.isLeftEdge ? root.edgeContactPlane : -1' \
-    'sidebarRoot.width - root.edgeContactPlane' \
+    'bodyItem: sidebarContentLoader' \
     'joinLeft: root.isLeftEdge' \
     'joinRight: !root.isLeftEdge'; do
     grep -Fq "$token" "$sidebar" \
         || fail "SidebarHost must render Caelestia-style Screen Edge endpoint flares: $token"
-done
-if grep -Fq 'edgeOwnerThickness' "$sidebar" \
-        || grep -Fq 'edgeContactInset' "$sidebar" \
-        || grep -Fq 'verticalBarOwnsAttachedEdge' "$sidebar"; then
-    fail 'Sidebar contact plane must not contain per-owner offset patches'
-fi
-
-for token in \
-    'animationType: "slide"' \
-    'Appearance.animationCurves.standardDecel' \
-    'Appearance.animationCurves.standardAccel'; do
-    grep -Fq "$token" "$sidebar" \
-        || fail "Sidebar must use one shared non-bounce slide motion: $token"
-done
-if grep -Fq 'root.animationType' "$sidebar"; then
-    fail 'SidebarHost must not keep retired fade/pop/reveal/swing/drop animation branches'
-fi
-
-for token in \
-    'topContactPlane: root._attachmentEdge === "top"' \
-    'bottomContactPlane: root._attachmentEdge === "bottom"' \
-    'leftContactPlane: root._attachmentEdge === "left"' \
-    'rightContactPlane: root._attachmentEdge === "right"' \
-    'Appearance.animationCurves.standardDecel' \
-    'Appearance.animationCurves.standardAccel'; do
-    grep -Fq "$token" "$styled" \
-        || fail "StyledPopup must own explicit Bar/Screen Edge contact planes and non-bounce motion: $token"
 done
 
 for token in \
@@ -167,10 +105,8 @@ for token in \
     'property bool directBottomAttachment: false' \
     'property bool popupPresented: true' \
     'property real revealProgress: 0' \
-    'id: dashboardRevealClip' \
     'id: dashboardSurfaceLayer' \
     '(1 - root.revealProgress) * dashContainer.height' \
-    'PerimeterTokens.seamOverlap' \
     'clip: root.directBottomAttachment' \
     'ConnectedSurfaceJoinFlares {' \
     'joinBottom: root.directBottomAttachment' \
@@ -178,20 +114,6 @@ for token in \
     'readonly property rect connectedSurfaceRect:'; do
     grep -Fq "$token" "$dashboard" \
         || fail "OverviewDashboard must behave like a bottom-connected popup: $token"
-done
-if grep -Fq 'bottomContactPlane: root.directBottomAttachment' "$dashboard"; then
-    fail 'Dashboard must derive the contact plane from the rendered body edge'
-fi
-
-reveal_clip="$common/ConnectedSurfaceRevealClip.qml"
-for token in \
-    'property real contactOverlap: PerimeterTokens.seamOverlap' \
-    'root.edge === "top"' \
-    'root.edge === "bottom"' \
-    'root.edge === "left"' \
-    'root.edge === "right"'; do
-    grep -Fq "$token" "$reveal_clip" \
-        || fail "ConnectedSurfaceRevealClip must expose owner-side raster overlap without moving the seam: $token"
 done
 
 for token in \

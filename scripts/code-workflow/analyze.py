@@ -160,6 +160,80 @@ def resolve_reviewed_anchor(
     return result
 
 
+def resolve_reviewed_object_anchor(
+    source: bytes,
+    entries: list[dict],
+    needle: str,
+) -> dict:
+    if not needle:
+        return {"status": "not-requested", "occurrences": 0}
+
+    target = needle.encode("utf-8")
+    starts = []
+    cursor = 0
+    while True:
+        found = source.find(target, cursor)
+        if found < 0:
+            break
+        starts.append(found)
+        cursor = found + max(1, len(target))
+
+    if not starts:
+        return {"status": "missing", "occurrences": 0}
+    if len(starts) != 1:
+        return {"status": "ambiguous", "occurrences": len(starts)}
+
+    start = starts[0]
+    end = start + len(target)
+    candidates = []
+    for entry in entries:
+        span = entry.get("range")
+        if (
+            entry.get("kind") == "object"
+            and isinstance(span, list)
+            and len(span) == 2
+            and span[0] <= start
+            and end <= span[1]
+        ):
+            candidates.append(entry)
+
+    if not candidates:
+        return {
+            "status": "unresolved",
+            "occurrences": 1,
+            "reason": "needle-is-not-contained-by-reviewed-object",
+        }
+
+    entry = min(
+        candidates,
+        key=lambda item: (
+            item["range"][1] - item["range"][0],
+            item["range"][0],
+            item.get("anchor", ""),
+        ),
+    )
+    if not entry.get("anchor_unique", False) or entry.get("opaque_context", False):
+        return {
+            "status": "ambiguous",
+            "occurrences": 1,
+            "semanticAnchor": entry.get("anchor", ""),
+        }
+
+    return {
+        "status": "resolved",
+        "occurrences": 1,
+        "needleRange": [start, end],
+        "semanticAnchor": entry.get("anchor", ""),
+        "semanticAnchorUnique": True,
+        "semanticKind": entry.get("kind", ""),
+        "semanticName": entry.get("name", ""),
+        "semanticRange": entry.get("range"),
+        "initializerRange": entry.get("initializer_range"),
+        "scope": entry.get("scope", []),
+        "opaqueContext": False,
+    }
+
+
 def resolve_semantic_anchor(entries: list[dict], anchor: str) -> dict:
     if not anchor:
         return {"status": "not-requested"}
@@ -223,6 +297,11 @@ def main() -> int:
         default="",
         help="stable semantic anchor to re-resolve after source movement",
     )
+    parser.add_argument(
+        "--object-needle",
+        default="",
+        help="reviewed unique needle used only to resolve a containing object",
+    )
     args = parser.parse_args()
 
     root = Path(args.root).expanduser().resolve()
@@ -266,6 +345,11 @@ def main() -> int:
                 semantic["entries"],
                 args.semantic_anchor,
             )
+            reviewed_object_anchor = resolve_reviewed_object_anchor(
+                source,
+                semantic["entries"],
+                args.object_needle,
+            )
     except OSError as exc:
         return unavailable("tree-sitter-library-missing", str(exc))
     except (RuntimeError, AssertionError, UnicodeError) as exc:
@@ -291,6 +375,7 @@ def main() -> int:
         "counts": semantic["counts"],
         "anchorCollisions": semantic["anchor_collisions"],
         "reviewedAnchor": reviewed_anchor,
+        "reviewedObjectAnchor": reviewed_object_anchor,
         "semanticRebind": semantic_rebind,
         "parser": {
             "grammar": str(grammar),

@@ -21,7 +21,8 @@ Singleton {
         rootNodeId: "",
         sourcePath: "",
         nodes: [],
-        edges: []
+        edges: [],
+        connectTargets: []
     })
 
     function hasGraph(targetId: string): bool {
@@ -50,6 +51,15 @@ Singleton {
             edge.kind === "data"
             && edge.previewable === true
             && edge.previewTransform === "direct-binding-retarget")
+    }
+
+    function connectTargetsFor(targetId: string): var {
+        return root.graphFor(targetId)?.connectTargets ?? []
+    }
+
+    function connectTargetFor(targetId: string, connectTargetId: string): var {
+        return root.connectTargetsFor(targetId)
+            .find(target => target.id === connectTargetId) ?? null
     }
 
     FileView {

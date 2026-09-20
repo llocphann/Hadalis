@@ -408,6 +408,34 @@ Implemented research/proof:
   button is exposed and literal-property Apply remains the only source-writing
   transform.
 
+## Milestone 2K-E — reviewed Connect target identity
+
+Implemented foundation:
+
+- Reviewed IR may declare explicit `connectTargets`; these are authored
+  descriptors, not inferred ports. The first fixture is
+  `clock.connect.rootVisible`, representing an absent root `visible`
+  binding with candidate expression `root.showDate`.
+- A target carries `parentNodeId`, runtime-relative source path,
+  `parentObjectNeedle`, absent `bindingName`, reviewed source expression and
+  expected parser kinds. It also carries explicit UNKNOWN type/cycle status.
+- The fixture remains `previewable=false` and `editable=false`; descriptor
+  presence is identity/evidence only and grants no transaction authority.
+- `CodeWorkflowIr.connectTargetsFor()` and `connectTargetFor()` provide
+  reviewed lookup without deriving target identity from geometry, labels or
+  arbitrary source scanning.
+- Analyzer protocol adds `--object-needle` and
+  `resolve_reviewed_object_anchor()`. A unique needle such as `id: root`
+  resolves to the smallest containing non-opaque semantic `object`, not to the
+  id binding itself, and returns the stable parent anchor, scope and transient
+  initializer range.
+- Native Spike A proves that the reviewed object needle resolves the real parent
+  `Item` object and its initializer braces.
+- 2K-E deliberately does not wire `connect.py` into
+  CodeWorkflowTransaction. No Connect control is exposed, no history command is
+  created and no Apply path changes.
+- Type/cycle UNKNOWN remain hard blockers to product integration.
+
 ## Not implemented yet
 
 - applying direct binding transforms;
@@ -419,9 +447,9 @@ Implemented research/proof:
 
 ## Next gate
 
-The next gate is to define a reviewed port/target contract that can supply a
-parent object semantic anchor, absent binding name and candidate source
-expression to the 2K-D helper without guessing from geometry or labels. Only
-after that identity is stable should Connect preview enter
-CodeWorkflowTransaction history. Type/cycle status must remain explicit blockers;
+The next gate is a dedicated Connect preview coordinator that composes the 2K-E
+reviewed target resolver with the 2K-D insertion helper. It must pass only
+primitive identity between the two parser requests and preserve UNKNOWN
+type/cycle blockers in the resulting preview. Production transaction history/UI
+integration remains deferred until that composed path is proven deterministic;
 no Connect or Disconnect Apply is authorized.

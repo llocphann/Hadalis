@@ -18,6 +18,7 @@ from corpus import inspect
 from native import Parser, insertion, verify_ranges
 from semantics import extract
 from connect import prepare_connect_binding_patch
+from analyze import resolve_reviewed_object_anchor
 
 
 GRAMMAR = os.environ.get("HADALIS_WORKFLOW_GRAMMAR")
@@ -143,6 +144,29 @@ class SpikeA(unittest.TestCase):
             source[slice(*entries["visible"]["range"])],
             b"visible: enabled",
         )
+
+    def test_reviewed_object_needle_resolves_parent_object(self):
+        source = (
+            b"import QtQuick\n"
+            b"Item {\n"
+            b"    id: root\n"
+            b"    width: 20\n"
+            b"}\n"
+        )
+        with self.parser.parse(source) as (_, nodes):
+            semantic = extract("fixture.qml", source, nodes)
+        result = resolve_reviewed_object_anchor(
+            source,
+            semantic["entries"],
+            "id: root",
+        )
+        self.assertEqual(result["status"], "resolved")
+        self.assertEqual(result["semanticKind"], "object")
+        self.assertEqual(result["semanticName"], "Item")
+        self.assertTrue(result["semanticAnchorUnique"])
+        init_start, init_end = result["initializerRange"]
+        self.assertEqual(source[init_start:init_start + 1], b"{")
+        self.assertEqual(source[init_end - 1:init_end], b"}")
 
     def test_parent_initializer_range_and_connect_insertion(self):
         source = (

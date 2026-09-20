@@ -378,6 +378,23 @@
           "label": "presentation",
           "editable": false
         }
+      ],
+      "connectTargets": [
+        {
+          "id": "clock.connect.rootVisible",
+          "label": "Clock root visible",
+          "parentNodeId": "clock.component",
+          "sourcePath": "modules/bar/ClockWidget.qml",
+          "parentObjectNeedle": "id: root",
+          "bindingName": "visible",
+          "sourceExpression": "root.showDate",
+          "reviewedParentSemanticKind": "object",
+          "reviewedValueKind": "member_expression",
+          "typeCompatibility": "unknown-unresolved",
+          "cycleStatus": "unknown-incomplete-projection",
+          "previewable": false,
+          "editable": false
+        }
       ]
     },
     "bar/resources": {

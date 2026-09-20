@@ -245,28 +245,17 @@ def source_contract_failures() -> list[str]:
     # or require the retired surface merely to satisfy a presentation assertion.
     forbid(styled, "ThinkFanConnectedSurface", str(STYLED_POPUP_PATH), failures)
 
-    # Public settings routes intentionally expose Hug-only facades. Their base
-    # types and facades must be registered in the settings module or Loader will
-    # fail with a blank/error page before any controls are created.
+    # Canonical settings pages are registered directly. Deleted compatibility
+    # facades must not remain in qmldir or registry, otherwise module loading can
+    # fail before a Settings page is created.
     for registration in (
         "QuickConfig 1.0 QuickConfig.qml",
-        "QuickConfigHugOnly 1.0 QuickConfigHugOnly.qml",
         "BarConfig 1.0 BarConfig.qml",
-        "BarConfigHugOnly 1.0 BarConfigHugOnly.qml",
     ):
         require(settings_qmldir, registration, str(SETTINGS_QMLDIR_PATH), failures)
-    require(
-        settings_registry,
-        'component: "modules/settings/BarConfigHugOnly.qml"',
-        str(SETTINGS_REGISTRY_PATH),
-        failures,
-    )
-    require(
-        settings_registry,
-        'component: "modules/settings/QuickConfigHugOnly.qml"',
-        str(SETTINGS_REGISTRY_PATH),
-        failures,
-    )
+    for retired_facade in ("QuickConfigHugOnly", "BarConfigHugOnly"):
+        forbid(settings_qmldir, retired_facade, str(SETTINGS_QMLDIR_PATH), failures)
+        forbid(settings_registry, retired_facade, str(SETTINGS_REGISTRY_PATH), failures)
 
     # Startup type graph: retired aliases/cutover symbols must not make the
     # VerticalBar or sidebars unavailable before the first frame.

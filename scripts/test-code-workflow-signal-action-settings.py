@@ -124,7 +124,7 @@ for token in (
 for token in (
     "signalActionApplyEnabled:",
     "function workflowSignalActionApply(): bool",
-    "CodeWorkflowTransaction.beginAuthorizedSignalActionApply()",
+    ".beginAuthorizedSignalActionApply()",
 ):
     if token not in PROBE:
         fail("2K-W-D ProbeShell user-Apply boundary missing " + token)

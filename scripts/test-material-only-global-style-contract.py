@@ -49,6 +49,7 @@ ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButt
 GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
 SELECTION_GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "SelectionGroupButton.qml"
 STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTipContent.qml"
+TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
 WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
 ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
 ANGEL_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "AngelBackground.qml"
@@ -162,6 +163,7 @@ def main() -> None:
     group_button = GROUP_BUTTON.read_text(encoding="utf-8")
     selection_group_button = SELECTION_GROUP_BUTTON.read_text(encoding="utf-8")
     styled_tooltip_content = STYLED_TOOLTIP_CONTENT.read_text(encoding="utf-8")
+    toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
     widgets_qmldir = WIDGETS_QMLDIR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
@@ -521,6 +523,23 @@ def main() -> None:
             )
     forbid(widgets_qmldir, "AngelAccentBar 1.0 AngelAccentBar.qml", "widgets/qmldir")
     forbid(widgets_qmldir, "AngelBackground 1.0 AngelBackground.qml", "widgets/qmldir")
+
+    # ToolbarTabBar keeps its animated index bounds, wheel selection and reorder
+    # mechanics while the track/indicator use the sole Material chrome.
+    for token in legacy_style_tokens:
+        forbid(toolbar_tab_bar, token, "ToolbarTabBar.qml")
+    for token in (
+        "signal userSelected(int index)",
+        "signal reorderRequested(int fromIndex, int toIndex)",
+        "height: 40",
+        "color: Appearance.colors.colSurfaceContainer",
+        "color: Appearance.colors.colSecondaryContainer",
+        "property Item targetItem: tabRepeater.itemAt(root.currentIndex)",
+        "AnimatedTabIndexPair {",
+        "visible: root.reorderEnabled",
+        "onWheel: (event) =>",
+    ):
+        require(toolbar_tab_bar, token, "ToolbarTabBar.qml")
 
     # Grouped controls and tooltip content are shared runtime primitives.
     # Preserve interaction/reveal behavior while keeping only Material chrome.

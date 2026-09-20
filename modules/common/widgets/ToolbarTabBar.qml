@@ -1,8 +1,5 @@
 pragma ComponentBehavior: Bound
 import qs.modules.common
-import qs.modules.common.models
-import qs.modules.common.functions
-import qs.services
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -142,24 +139,16 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 readonly property real padding: 4
                 implicitWidth: contentItem.implicitWidth + padding * 2
-                height: Appearance.angelEverywhere ? 36 : Appearance.inirEverywhere ? 36 : 40
+                height: 40
                 x: flick.contentWidth > flick.width ? 0 : Math.max(0, (flick.width - width) / 2)
 
                 Rectangle {
                     id: groupBackground
                     anchors.fill: parent
-                    radius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-                        : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : height / 2
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.chromeAlt
-                        : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                        : Appearance.inirEverywhere ? "transparent" 
-                         : Appearance.auroraEverywhere ? "transparent"
-                         : Appearance.colors.colSurfaceContainer
-                    border.width: Appearance.zzzEverywhere ? 1 : (Appearance.angelEverywhere || Appearance.inirEverywhere) ? 1 : 0
-                    border.color: Appearance.zzzEverywhere ? Appearance.zzz.quietStroke
-                        : Appearance.angelEverywhere ? Appearance.angel.colBorder
-                        : Appearance.inirEverywhere ? Appearance.inir.colBorder : "transparent"
+                    radius: height / 2
+                    color: Appearance.colors.colSurfaceContainer
+                    border.width: 0
+                    border.color: "transparent"
                     // Organic morph on style/shape switch (organic-transitions)
                     Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
                     Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
@@ -172,24 +161,12 @@ Item {
                     z: 1
                     opacity: root.reorderEnabled ? 0.35 : 1
                     Behavior on opacity { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration } }
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                        : Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                        : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colPrimary, 0.85)
-                        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                        : Appearance.cookieEverywhere ? Appearance.colors.colLayer2
-                        : Appearance.colors.colSecondaryContainer
-                    border.width: Appearance.zzzEverywhere ? 1 : (Appearance.angelEverywhere || Appearance.inirEverywhere) ? 1 : 0
-                    border.color: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-                        : Appearance.angelEverywhere ? Appearance.angel.colBorderHover
-                        : Appearance.inirEverywhere ? Appearance.inir.colBorderAccent : "transparent"
+                    color: Appearance.colors.colSecondaryContainer
+                    border.width: 0
+                    border.color: "transparent"
                     implicitWidth: targetItem ? targetItem.implicitWidth : 0
-                    implicitHeight: targetItem ? (Appearance.zzzEverywhere ? 30 : Appearance.angelEverywhere ? 28 : Appearance.inirEverywhere ? 28 : (Appearance.auroraEverywhere ? 32 : targetItem.implicitHeight)) : 0
-                    // Concentric with groupBackground (same controlRadius, but
-                    // inset ~4px): echo the track's silhouette instead of looking
-                    // more-rounded-than-parent. Other styles keep their own read.
-                    radius: Appearance.zzzEverywhere ? Appearance.concentricRadius(Appearance.zzz.controlRadius, 4)
-                        : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : height / 2
+                    implicitHeight: targetItem ? targetItem.implicitHeight : 0
+                    radius: height / 2
                     anchors.verticalCenter: parent.verticalCenter
 
                     // Organic morph on style/shape switch (organic-transitions)
@@ -272,7 +249,7 @@ Item {
                                 width: 3
                                 height: Math.max(14, parent.height - 10)
                                 radius: width / 2
-                                color: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
+                                color: Appearance.colors.colPrimary
                                 visible: tabButton.dropTarget && root.reorderHoverIndex < root.reorderDragIndex
                             }
                             Rectangle {
@@ -282,7 +259,7 @@ Item {
                                 width: 3
                                 height: Math.max(14, parent.height - 10)
                                 radius: width / 2
-                                color: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
+                                color: Appearance.colors.colPrimary
                                 visible: tabButton.dropTarget && root.reorderHoverIndex > root.reorderDragIndex
                             }
 

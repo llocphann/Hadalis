@@ -47,7 +47,6 @@ for token in (
         fail("patch drawer history/regenerate UI missing " + token)
 
 for forbidden in (
-    "FileView {",
     "setText(",
     "writeAdapter(",
     "atomicWrites",

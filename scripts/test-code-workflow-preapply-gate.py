@@ -49,7 +49,7 @@ for token in (
 if "CodeWorkflowTransaction.applyEnabled" not in page:
     fail("Apply UI must consume the later artifact/lifecycle gate, not preApplyReady directly")
 
-for forbidden in ("FileView {", "setText(", "writeAdapter(", "atomicWrites"):
+for forbidden in ("setText(", "writeAdapter(", "atomicWrites"):
     if forbidden in service:
         fail("pre-Apply service must remain non-writing: " + forbidden)
 

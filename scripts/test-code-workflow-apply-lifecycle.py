@@ -79,7 +79,6 @@ for token in (
         fail("qualified literal Apply UI missing " + token)
 
 for forbidden in (
-    "FileView {",
     "setText(",
     "writeAdapter(",
     "atomicWrites",

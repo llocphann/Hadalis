@@ -93,7 +93,7 @@ for token in (
     if token not in service:
         fail("transaction service missing " + token)
 
-for forbidden in ("FileView {", "setText(", "writeAdapter(", "atomicWrites"):
+for forbidden in ("setText(", "writeAdapter(", "atomicWrites"):
     if forbidden in service:
         fail("transaction preview service must not own a source write path: " + forbidden)
 

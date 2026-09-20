@@ -273,12 +273,42 @@ def _diagnostic_markers(payload: object) -> dict:
     }
 
 
+def _qmllint_import_paths() -> list[str]:
+    paths = []
+    seen = set()
+    for name in ("QML_IMPORT_PATH", "QML2_IMPORT_PATH"):
+        raw = os.environ.get(name, "")
+        for item in raw.split(os.pathsep):
+            candidate = item.strip()
+            if not candidate or candidate in seen:
+                continue
+            path = Path(candidate).expanduser()
+            if not path.is_dir():
+                continue
+            resolved = str(path.resolve())
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            paths.append(resolved)
+    return paths
+
+
 def _run_qmllint_json(tool: str, source: str) -> dict:
+    import_args = []
+    for path in _qmllint_import_paths():
+        import_args += ["-I", path]
+
     with tempfile.TemporaryDirectory(prefix="hadalis-connect-type-") as directory:
         path = Path(directory) / "TypeProbe.qml"
         path.write_text(source, encoding="utf-8")
         completed = subprocess.run(
-            [tool, "--json", "-", "--ignore-settings", str(path)],
+            [
+                tool,
+                "--json", "-",
+                "--ignore-settings",
+                *import_args,
+                str(path),
+            ],
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -624,6 +654,7 @@ def prove_connect_type_compatibility(
         "oracle": {
             "tool": "qmllint",
             "version": version_text,
+            "importPaths": _qmllint_import_paths(),
             "positiveReturnCode": positive.get("returnCode"),
             "positiveMarkers": positive_markers,
             "negativeReturnCode": negative.get("returnCode"),

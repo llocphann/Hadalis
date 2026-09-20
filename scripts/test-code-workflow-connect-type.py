@@ -77,6 +77,36 @@ if result.get("reason") != "source-property-declaration-not-unique":
     fail("ambiguous source property type must fail closed")
 
 helper = (SCRIPT_DIR / "connect_type.py").read_text(encoding="utf-8")
+
+original_qml_import_path = os.environ.get("QML_IMPORT_PATH")
+original_qml2_import_path = os.environ.get("QML2_IMPORT_PATH")
+try:
+    os.environ["QML_IMPORT_PATH"] = os.pathsep.join([
+        str(ROOT / "modules"),
+        str(ROOT / "missing-qml-import"),
+    ])
+    os.environ["QML2_IMPORT_PATH"] = os.pathsep.join([
+        str(ROOT / "modules"),
+        str(ROOT / "services"),
+    ])
+    import_paths = connect_type._qmllint_import_paths()
+finally:
+    if original_qml_import_path is None:
+        os.environ.pop("QML_IMPORT_PATH", None)
+    else:
+        os.environ["QML_IMPORT_PATH"] = original_qml_import_path
+    if original_qml2_import_path is None:
+        os.environ.pop("QML2_IMPORT_PATH", None)
+    else:
+        os.environ["QML2_IMPORT_PATH"] = original_qml2_import_path
+
+expected_import_paths = [
+    str((ROOT / "modules").resolve()),
+    str((ROOT / "services").resolve()),
+]
+if import_paths != expected_import_paths:
+    fail("qmllint import roots must be explicit, existing and deduplicated")
+
 coordinator = (
     SCRIPT_DIR / "connect_preview.py"
 ).read_text(encoding="utf-8")
@@ -91,7 +121,11 @@ exclusions = json.loads(
 for token in (
     "def resolve_parent_member_declared_type(",
     '"qmllint"',
-    '"--json", "-", "--ignore-settings"',
+    '"--json", "-",',
+    '"--ignore-settings"',
+    '"QML_IMPORT_PATH", "QML2_IMPORT_PATH"',
+    'import_args += ["-I", path]',
+    '"importPaths": _qmllint_import_paths()',
     '"incompatible-type"',
     '"typeCompatibilityProof": TYPE_PROOF',
     '"typeCompatibility": TYPE_UNKNOWN',
@@ -195,6 +229,8 @@ if grammar and Path(grammar).is_file():
         if payload.get("productionIntegrated") is not False:
             fail("2K-H proof must remain outside production authorization")
         oracle = payload.get("oracle") or {}
+        if not oracle.get("importPaths"):
+            fail("native 2K-H must pass explicit QML import roots to qmllint")
         positive = oracle.get("positiveMarkers") or {}
         negative = oracle.get("negativeMarkers") or {}
         if any(positive.values()):

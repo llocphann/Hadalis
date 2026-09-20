@@ -35,6 +35,7 @@ SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
+STYLED_SWITCH = ROOT / "modules" / "common" / "widgets" / "StyledSwitch.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -131,6 +132,7 @@ def main() -> None:
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
+    styled_switch = STYLED_SWITCH.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -475,6 +477,28 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
+
+    # StyledSwitch is shell-wide runtime. Keep the public scale/color knobs and
+    # Material motion while removing constant-dead Global Theme render branches.
+    for token in legacy_style_tokens:
+        forbid(styled_switch, token, "StyledSwitch.qml")
+    for token in (
+        "RegaliaControlFace {",
+        "ColorUtils.",
+        "Gradient {",
+    ):
+        forbid(styled_switch, token, "StyledSwitch.qml")
+    for token in (
+        "implicitHeight: 32 * root.scale",
+        "implicitWidth: 52 * root.scale",
+        "property color activeColor: Appearance.colors.colPrimary",
+        "property color inactiveColor: Appearance.colors.colSurfaceContainerHighest",
+        "radius: Appearance.rounding.full",
+        "border.width: 2 * root.scale",
+        "color: root.checked ? Appearance.colors.colOnPrimary : Appearance.colors.colOutline",
+        "duration: Appearance.animationCurves.expressiveFastSpatialDuration",
+    ):
+        require(styled_switch, token, "StyledSwitch.qml")
 
     # RippleButton is a shell-wide primitive. Its public knobs stay stable, but
     # the renderer itself must follow the sole Material Global Theme.

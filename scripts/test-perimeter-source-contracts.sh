@@ -238,8 +238,10 @@ grep -Fq 'readonly property real revealProgress: 1 - root.offsetScale' "$styled_
     || fail 'StyledPopup reveal progress must be the inverse of offsetScale'
 grep -Fq 'Behavior on offsetScale {' "$styled_popup" \
     || fail 'StyledPopup must animate the normalized offset scalar directly'
-grep -Fq 'Appearance.animation.elementMove.duration' "$styled_popup" \
-    || fail 'StyledPopup must use expressive default-spatial timing for the shared slide'
+grep -Fq 'SurfaceMotion.duration' "$styled_popup" \
+    || fail 'StyledPopup must use the immutable surface slide duration'
+grep -Fq 'SurfaceMotion.easingType' "$styled_popup" \
+    || fail 'StyledPopup must use the immutable monotonic surface easing'
 grep -Fq 'readonly property real revealProgress: clamp(progress, 0, 1)' "$connected_geometry" \
     || fail 'connected geometry must clamp semantic reveal progress'
 grep -Fq 'readonly property real motionProgress:' "$connected_geometry" \

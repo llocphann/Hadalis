@@ -1372,7 +1372,6 @@
         "cardStyle": false,
         "keepRightSidebarLoaded": true,
         "instantOpen": false,
-        "animationType": "slide",
         "collapseEmptyNotifications": false,
         "collapseWidgetsTab": false,
         "shellLayout": {

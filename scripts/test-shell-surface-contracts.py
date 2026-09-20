@@ -345,11 +345,11 @@ def main() -> None:
     ):
         check(retired not in sidebar_host,
               f"Sidebar must not stop at an inner-edge inset or restore a connector: {retired}")
-    check('property: "animTranslateX"' in sidebar_host
-          and 'property: "animTranslateY"' in sidebar_host
-          and "Appearance.animation?.elementMove?.duration ?? 500" in sidebar_host
-          and "Appearance.animation?.elementMove?.bezierCurve" in sidebar_host,
-          "Sidebar slide translation must use the default-spatial motion token")
+    check(sidebar_host.count('property: "animTranslateX"') == 2
+          and "SurfaceMotion.duration" in sidebar_host
+          and "SurfaceMotion.easingType" in sidebar_host
+          and 'readonly property string animationType: SurfaceMotion.mode' in sidebar_host,
+          "Sidebar presentation must use the immutable slide-only SurfaceMotion contract")
 
     osk = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     for token in (

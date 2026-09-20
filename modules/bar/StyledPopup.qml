@@ -173,15 +173,13 @@ LazyLoader {
     onRequestedVisibleChanged: root._syncRequestedVisibility()
     Component.onCompleted: root._syncRequestedVisibility()
 
-    // Caelestia's wrappers use one default-spatial animation for both enter and
-    // exit instead of separate accelerate/decelerate curves. Hadalis already
-    // ships the same expressive-default-spatial token as elementMove.
+    // Immutable ii surface-motion contract: slide only, monotonic, no
+    // spring/back/overshoot and no theme/config curve override.
     Behavior on offsetScale {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 
@@ -200,7 +198,7 @@ LazyLoader {
 
     property QtObject _retractTimerObject: Timer {
         id: retractTimer
-        interval: Math.max(1, Appearance.animation.elementMove.duration + 16)
+        interval: Math.max(1, SurfaceMotion.duration + 16)
         repeat: false
         onTriggered: {
             if (!root.requestedVisible && root.offsetScale >= 0.999)

@@ -51,6 +51,9 @@ jobs:
       - name: Evaluate acceptance environment
         run: nix develop .#workflow-acceptance --command bash -lc 'command -v quickshell; command -v sway; test -f "$HADALIS_WORKFLOW_GRAMMAR"; test -f "$HADALIS_TREE_SITTER_LIBRARY"'
 
+      - name: Prove deterministic Connect preview coordinator
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-preview-coordinator.py'
+
       - name: Run isolated Apply lifecycle acceptance
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-apply

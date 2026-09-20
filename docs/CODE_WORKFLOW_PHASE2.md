@@ -434,7 +434,41 @@ Implemented foundation:
 - 2K-E deliberately does not wire `connect.py` into
   CodeWorkflowTransaction. No Connect control is exposed, no history command is
   created and no Apply path changes.
-- Type/cycle UNKNOWN remain hard blockers to product integration.
+- Type/cycle UNKNOWN remain hard blockers to write authorization.
+
+
+## Milestone 2K-F — deterministic Connect preview coordinator
+
+Implemented research/proof:
+
+- `scripts/code-workflow/connect_preview.py` composes the explicit 2K-E reviewed
+  target descriptor with the 2K-D parser-backed insertion helper. It is not wired
+  into `CodeWorkflowTransaction` or Settings.
+- The resolver request uses the reviewed source path and `parentObjectNeedle`,
+  requires one non-opaque parent object of the reviewed semantic kind, and captures
+  the current source SHA plus stable parent semantic anchor.
+- The second parser request receives a primitive-only handoff: source path, source
+  SHA, connect-target ID, stable parent anchor, absent binding name, source
+  expression, and reviewed semantic/value kinds. Transient initializer/semantic
+  ranges, parser nodes/indices, QObject/QJSValue values and parser objects never
+  cross the request boundary.
+- `connect.py` re-resolves the parent from the stable anchor, checks the same-SHA
+  base, proves the member is still absent, derives formatting from the current
+  CST/source, reparses the full candidate, and proves one inserted direct binding.
+- The coordinator independently checks source-path/SHA/parent/name/expression
+  continuity and requires the inserted semantic/value kinds to match the reviewed
+  subset before returning preview.
+- TYPE UNKNOWN (`unknown-unresolved`) and CYCLE UNKNOWN
+  (`unknown-incomplete-projection`) are preserved exactly. They remain blockers
+  to source-write authorization.
+- The result is PREVIEW ONLY: `applyEnabled=false`,
+  `artifactsStaged=false`, no source write and no production history/UI wiring.
+- `test-code-workflow-connect-preview-coordinator.py` locks the two-request
+  boundary, primitive handoff, drift rejection and write isolation. When the
+  native grammar is available it runs the real coordinator twice and requires
+  deterministic semantic anchors, candidate hash and patch.
+- Code Workflow acceptance runs this focused native proof before the existing
+  literal Apply lifecycle gate; this does not broaden Gate 2H authorization.
 
 ## Not implemented yet
 
@@ -447,9 +481,13 @@ Implemented foundation:
 
 ## Next gate
 
-The next gate is a dedicated Connect preview coordinator that composes the 2K-E
-reviewed target resolver with the 2K-D insertion helper. It must pass only
-primitive identity between the two parser requests and preserve UNKNOWN
-type/cycle blockers in the resulting preview. Production transaction history/UI
-integration remains deferred until that composed path is proven deterministic;
-no Connect or Disconnect Apply is authorized.
+The coordinator proof is now the completed 2K-F research gate. The next gate may
+integrate `connect-binding` into transaction history as PREVIEW ONLY, add
+primitive selected-connect-target session state, and expose an explicit reviewed
+Connect Preview control with diagnostics that visibly retain TYPE UNKNOWN,
+CYCLE UNKNOWN and PREVIEW ONLY.
+
+Do not open Connect Apply, stage Apply artifacts, mark reviewed connect targets
+editable/previewable as mutation authority, or infer compatibility/cycle safety
+from labels, runtime values or the incomplete reviewed graph. Connect write
+authorization still requires separate type/cycle acceptance gates.

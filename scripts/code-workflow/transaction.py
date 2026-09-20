@@ -26,6 +26,7 @@ from semantics import extract
 
 PROTOCOL = 1
 LITERAL_VALUE_KINDS = {"true", "false", "number", "string"}
+DIRECT_BINDING_VALUE_KINDS = {"identifier", "member_expression"}
 
 
 def digest(source: bytes) -> str:
@@ -120,6 +121,96 @@ def prepare_literal_patch(
     }, candidate)
 
 
+def prepare_binding_patch(
+    source: bytes,
+    base_sha256: str,
+    entry: dict,
+    replacement: str,
+):
+    """Prepare a dry-run direct QML binding patch.
+
+    This subset is intentionally preview-only. It accepts only a semantic
+    ui_binding projected as kind=binding whose current value is a plain
+    identifier or member_expression. No call/binary/conditional/script body is
+    admitted here.
+    """
+    current_sha = digest(source)
+    if current_sha != base_sha256:
+        return ({
+            "status": "conflict",
+            "reason": "base-sha-mismatch",
+            "expectedSha256": base_sha256,
+            "currentSha256": current_sha,
+        }, None)
+
+    if (
+        entry.get("kind") != "binding"
+        or not entry.get("anchor_unique", False)
+        or entry.get("opaque_context", False)
+    ):
+        return ({
+            "status": "unsupported",
+            "reason": "semantic-entry-not-safe-direct-binding",
+        }, None)
+
+    value_kind = entry.get("value_kind")
+    if value_kind not in DIRECT_BINDING_VALUE_KINDS:
+        return ({
+            "status": "unsupported",
+            "reason": "current-value-is-not-supported-direct-binding",
+            "valueKind": value_kind,
+        }, None)
+
+    value_range = entry.get("value_range")
+    if (
+        not isinstance(value_range, list)
+        or len(value_range) != 2
+        or not all(isinstance(value, int) for value in value_range)
+    ):
+        return ({
+            "status": "unsupported",
+            "reason": "semantic-entry-has-no-value-range",
+        }, None)
+
+    start, end = value_range
+    if not (0 <= start <= end <= len(source)):
+        return ({
+            "status": "error",
+            "reason": "semantic-value-range-out-of-bounds",
+        }, None)
+
+    next_value = str(replacement)
+    if (
+        not next_value
+        or next_value != next_value.strip()
+        or "\n" in next_value
+        or "\r" in next_value
+        or len(next_value.encode("utf-8")) > 512
+    ):
+        return ({
+            "status": "unsupported",
+            "reason": "replacement-must-be-one-trimmed-binding-expression",
+        }, None)
+
+    replacement_bytes = next_value.encode("utf-8")
+    old_bytes = source[start:end]
+    candidate = source[:start] + replacement_bytes + source[end:]
+    line = source[:start].count(b"\n") + 1
+
+    return ({
+        "status": "candidate",
+        "sourceSha256": current_sha,
+        "candidateSha256": digest(candidate),
+        "patch": {
+            "start": start,
+            "end": end,
+            "line": line,
+            "oldText": old_bytes.decode("utf-8"),
+            "newText": next_value,
+        },
+    }, candidate)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
@@ -127,6 +218,11 @@ def main() -> int:
     parser.add_argument("--base-sha256", required=True)
     parser.add_argument("--semantic-anchor", required=True)
     parser.add_argument("--replacement", required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("literal", "binding"),
+        default="literal",
+    )
     parser.add_argument("--grammar", default="")
     parser.add_argument("--library", default="")
     args = parser.parse_args()
@@ -199,12 +295,22 @@ def main() -> int:
                 "reason": "semantic-anchor-not-unique",
             }, 6)
 
-        prepared, candidate = prepare_literal_patch(
-            source,
-            args.base_sha256,
-            matches[0],
-            args.replacement,
-        )
+        if args.mode == "binding":
+            prepared, candidate = prepare_binding_patch(
+                source,
+                args.base_sha256,
+                matches[0],
+                args.replacement,
+            )
+            command_kind = "direct-binding"
+        else:
+            prepared, candidate = prepare_literal_patch(
+                source,
+                args.base_sha256,
+                matches[0],
+                args.replacement,
+            )
+            command_kind = "literal-property"
         if candidate is None:
             status = prepared.get("status")
             return emit(
@@ -244,14 +350,26 @@ def main() -> int:
             entry for entry in candidate_semantic["entries"]
             if entry.get("anchor") == args.semantic_anchor
         )
-        if (
-            candidate_entry.get("kind") != "property"
-            or candidate_entry.get("opaque_context", False)
-            or candidate_entry.get("value_kind") not in LITERAL_VALUE_KINDS
-        ):
+        if args.mode == "binding":
+            candidate_safe = (
+                candidate_entry.get("kind") == "binding"
+                and not candidate_entry.get("opaque_context", False)
+                and candidate_entry.get("value_kind")
+                    in DIRECT_BINDING_VALUE_KINDS
+            )
+            candidate_reason = "candidate-left-direct-binding-subset"
+        else:
+            candidate_safe = (
+                candidate_entry.get("kind") == "property"
+                and not candidate_entry.get("opaque_context", False)
+                and candidate_entry.get("value_kind")
+                    in LITERAL_VALUE_KINDS
+            )
+            candidate_reason = "candidate-left-literal-property-subset"
+        if not candidate_safe:
             return emit({
                 "status": "invalid-patch",
-                "reason": "candidate-left-literal-property-subset",
+                "reason": candidate_reason,
             }, 8)
 
         value_range = candidate_entry.get("value_range")
@@ -281,6 +399,8 @@ def main() -> int:
             "candidateSha256": prepared["candidateSha256"],
             "semanticAnchor": args.semantic_anchor,
             "semanticRebind": rebound,
+            "commandKind": command_kind,
+            "previewMode": args.mode,
             "patch": patch,
             "preview": preview,
             "sourceWritable": os.access(source_path, os.W_OK),

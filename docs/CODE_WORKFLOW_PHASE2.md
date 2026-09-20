@@ -4,8 +4,9 @@ Updated 2026-09-20.
 
 Phase 2 now includes a qualified literal-property write path. User-triggered
 Apply is enabled only after the same semantic command passes preview, current
-pre-Apply diagnostics and exact artifact preparation. Direct bindings and every
-broader transform remain disabled.
+pre-Apply diagnostics and exact artifact preparation. Direct-binding preview is
+available under Milestone 2J, but direct-binding Apply and every broader write
+transform remain disabled.
 
 ## Milestone 2A — literal property dry-run preview
 
@@ -258,11 +259,35 @@ Implemented:
   live transaction controller.
 - scripts/test-code-workflow-apply-enablement.py guards the retained Gate 2H
   evidence, literal-only subset, semantic handoff identity and two-step UI.
-- Direct binding transforms remain disabled.
+- Direct-binding Apply remains disabled; Milestone 2J adds preview-only binding
+  transactions without artifact staging or write authorization.
+
+## Milestone 2J — direct binding preview
+
+Implemented:
+
+- A second dry-run transaction subset covers semantic `binding` entries only.
+- Current and candidate value kinds are restricted to `identifier` and
+  `member_expression`. Calls, binary/conditional expressions, handler/script
+  bodies, grouped bindings and opaque contexts remain unsupported.
+- The helper still performs exact byte replacement only in memory, reparses the
+  full candidate and requires the same stable semantic anchor to remain uniquely
+  resolved as a direct binding.
+- Binding commands use history kind `direct-binding` and regenerate through the
+  same semantic identity rather than saved byte ranges.
+- Pre-Apply diagnostics adds `write-subset-not-authorized` for every command
+  outside `literal-property`; stageApplyHandoff() independently repeats the
+  literal-only check. No direct binding command can stage Apply artifacts.
+- Settings exposes identifier/member-expression editing as “Preview binding
+  patch” and marks such commands PREVIEW ONLY. Qualified literal Apply remains
+  unchanged.
+- Native parser regression locks the actual tree-sitter-qmljs kinds used by the
+  subset, and scripts/test-code-workflow-binding-preview.py guards exact
+  replacement and write isolation.
 
 ## Not implemented yet
 
-- direct binding transforms;
+- applying direct binding transforms;
 - connect/disconnect data dependencies;
 - signal/action transforms;
 - Connections creation/removal;
@@ -271,7 +296,7 @@ Implemented:
 
 ## Next gate
 
-The next gate is a conservative direct-property-binding preview subset. It must
-first classify safe expression kinds and remain dry-run only; literal Apply is
-the only production source-writing transform until separate binding acceptance
-evidence exists.
+The next gate is semantic connect/disconnect preview for existing direct
+dependencies. It must remain preview-only until dependency identity, cycle
+detection and reload behavior have separate acceptance evidence. Literal Apply
+remains the only production source-writing transform.

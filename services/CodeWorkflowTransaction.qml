@@ -28,6 +28,8 @@ Singleton {
     property var history: []
     property int historyIndex: -1
     property int _pendingReplaceIndex: -1
+    property string _pendingCommandKind: "literal-property"
+    property string _pendingPreviewMode: "literal"
     property var preApplyDiagnostics: ({
         status: "not-evaluated",
         ready: false,
@@ -222,6 +224,8 @@ Singleton {
     function stageApplyHandoff(): bool {
         const command = root.activeCommand
         if (!root.preApplyReady || !command)
+            return false
+        if (String(command.kind ?? "") !== "literal-property")
             return false
 
         reloadState.pendingApplyPhase = "prepared"
@@ -821,6 +825,8 @@ Singleton {
         } else {
             if (root.status !== "preview")
                 blockers.push("transaction-not-preview")
+            if (String(command.kind ?? "") !== "literal-property")
+                blockers.push("write-subset-not-authorized")
             if (command.stale === true)
                 blockers.push("preview-stale")
             if (!analyzerReady)
@@ -1002,7 +1008,9 @@ Singleton {
         baseSha: string,
         anchor: string,
         nextValue: string,
-        replaceIndex: int
+        replaceIndex: int,
+        commandKind: string,
+        previewMode: string
     ): bool {
         if (previewProcess.running
                 || applyPrepareProcess.running
@@ -1021,6 +1029,12 @@ Singleton {
 
         root._invalidateApplyHandoff()
         root._pendingReplaceIndex = replaceIndex
+        root._pendingCommandKind = String(commandKind ?? "")
+        root._pendingPreviewMode = String(previewMode ?? "")
+        if (!["literal-property", "direct-binding"]
+                .includes(root._pendingCommandKind)
+                || !["literal", "binding"].includes(root._pendingPreviewMode))
+            return false
         root.status = "previewing"
         root.sourcePath = nextPath
         root.baseSha256 = nextSha
@@ -1037,7 +1051,8 @@ Singleton {
             "--path", nextPath,
             "--base-sha256", nextSha,
             "--semantic-anchor", nextAnchor,
-            "--replacement", nextReplacement
+            "--replacement", nextReplacement,
+            "--mode", root._pendingPreviewMode
         ]
         previewProcess.running = true
         return true
@@ -1050,24 +1065,52 @@ Singleton {
         nextValue: string
     ): bool {
         return root._startPreview(
-            path, baseSha, anchor, nextValue, -1)
+            path,
+            baseSha,
+            anchor,
+            nextValue,
+            -1,
+            "literal-property",
+            "literal")
+    }
+
+    function previewBinding(
+        path: string,
+        baseSha: string,
+        anchor: string,
+        nextValue: string
+    ): bool {
+        return root._startPreview(
+            path,
+            baseSha,
+            anchor,
+            nextValue,
+            -1,
+            "direct-binding",
+            "binding")
     }
 
     function regenerate(baseSha: string): bool {
         const command = root.activeCommand
         if (!command)
             return false
+        const commandKind = String(command.kind ?? "")
+        const previewMode = commandKind === "direct-binding"
+            ? "binding"
+            : "literal"
         return root._startPreview(
             String(command.sourcePath ?? ""),
             String(baseSha ?? ""),
             String(command.semanticAnchor ?? ""),
             String(command.replacement ?? ""),
-            root.historyIndex)
+            root.historyIndex,
+            commandKind,
+            previewMode)
     }
 
     function _commitPreviewCommand(payload): void {
         const command = {
-            kind: "literal-property",
+            kind: root._pendingCommandKind,
             sourcePath: root.sourcePath,
             baseSha256: root.baseSha256,
             candidateSha256: String(payload?.candidateSha256 ?? ""),
@@ -1109,6 +1152,13 @@ Singleton {
 
         const nextStatus = String(payload?.status ?? "error")
         if (payload?.protocol === 1 && nextStatus === "preview") {
+            const payloadKind = String(payload?.commandKind ?? "")
+            if (payloadKind !== root._pendingCommandKind) {
+                root._pendingReplaceIndex = -1
+                root.status = "error"
+                root.error = "preview-command-kind-mismatch"
+                return
+            }
             root._commitPreviewCommand(payload)
             return
         }

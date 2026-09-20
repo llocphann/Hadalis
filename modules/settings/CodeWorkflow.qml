@@ -113,6 +113,9 @@ Item {
     readonly property var literalValueKinds: [
         "true", "false", "number", "string"
     ]
+    readonly property var directBindingValueKinds: [
+        "identifier", "member_expression"
+    ]
     readonly property bool literalPreviewEligible:
         root.analyzerMatchesAnchor
         && CodeWorkflowAnalyzer.status === "ready"
@@ -122,8 +125,21 @@ Item {
         && root.literalValueKinds.includes(
             String(root.sourceAnchorEvidence?.semanticValueKind ?? ""))
         && root.storedSemanticAnchor.length > 0
+    readonly property bool bindingPreviewEligible:
+        root.analyzerMatchesAnchor
+        && CodeWorkflowAnalyzer.status === "ready"
+        && root.sourceAnchorEvidence?.status === "resolved"
+        && root.sourceAnchorEvidence?.semanticAnchorUnique === true
+        && root.sourceAnchorEvidence?.semanticKind === "binding"
+        && root.directBindingValueKinds.includes(
+            String(root.sourceAnchorEvidence?.semanticValueKind ?? ""))
+        && root.storedSemanticAnchor.length > 0
     readonly property string currentLiteralText:
         root.literalPreviewEligible
+            ? String(root.sourceAnchorEvidence?.semanticValueText ?? "")
+            : ""
+    readonly property string currentBindingText:
+        root.bindingPreviewEligible
             ? String(root.sourceAnchorEvidence?.semanticValueText ?? "")
             : ""
     readonly property bool transactionMatchesSelection:
@@ -237,6 +253,20 @@ Item {
         if (baseSha.length === 0)
             return
         CodeWorkflowTransaction.previewLiteral(
+            root.sourcePath,
+            baseSha,
+            root.storedSemanticAnchor,
+            String(nextValue ?? ""))
+    }
+
+    function previewBinding(nextValue: string): void {
+        if (!root.bindingPreviewEligible)
+            return
+        const baseSha = String(
+            CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
+        if (baseSha.length === 0)
+            return
+        CodeWorkflowTransaction.previewBinding(
             root.sourcePath,
             baseSha,
             root.storedSemanticAnchor,
@@ -405,13 +435,13 @@ Item {
                         Layout.fillWidth: true
                         text: "Phase 2 · "
                             + (root.graph?.title ?? "Workflow")
-                            + " · dry-run transactions"
+                            + " · guarded literal writes + binding preview"
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         color: Appearance.colors.colSubtext
                     }
                 }
 
-                Pill { label: "READ ONLY"; accent: Appearance.colors.colTertiary }
+                Pill { label: "LITERAL APPLY"; accent: Appearance.colors.colPrimary }
                 Pill {
                     visible: CodeWorkflowTransaction.dirty
                     label: CodeWorkflowTransaction.status === "preview"
@@ -697,26 +727,47 @@ Item {
                     }
                     StyledText {
                         visible: root.literalPreviewEligible
+                            || root.bindingPreviewEligible
                             || root.transactionMatchesSelection
-                        text: "Phase 2 literal edit"
+                        text: root.bindingPreviewEligible
+                            ? "Phase 2 direct binding · preview only"
+                            : "Phase 2 literal edit · guarded Apply"
                         color: Appearance.colors.colSubtext
                     }
                     ToolbarTextField {
-                        id: literalPreviewField
+                        id: transactionPreviewField
                         visible: root.literalPreviewEligible
+                            || root.bindingPreviewEligible
                         Layout.fillWidth: true
                         Layout.fillHeight: false
                         Layout.preferredHeight: 34
-                        text: root.currentLiteralText
-                        placeholderText: "QML literal"
-                        onAccepted: root.previewLiteral(text)
+                        text: root.bindingPreviewEligible
+                            ? root.currentBindingText
+                            : root.currentLiteralText
+                        placeholderText: root.bindingPreviewEligible
+                            ? "QML identifier or member expression"
+                            : "QML literal"
+                        onAccepted: {
+                            if (root.bindingPreviewEligible)
+                                root.previewBinding(text)
+                            else
+                                root.previewLiteral(text)
+                        }
                     }
                     RippleButtonWithIcon {
                         visible: root.literalPreviewEligible
+                            || root.bindingPreviewEligible
                         Layout.fillWidth: true
                         materialIcon: "difference"
-                        mainText: "Preview literal patch"
-                        onClicked: root.previewLiteral(literalPreviewField.text)
+                        mainText: root.bindingPreviewEligible
+                            ? "Preview binding patch"
+                            : "Preview literal patch"
+                        onClicked: {
+                            if (root.bindingPreviewEligible)
+                                root.previewBinding(transactionPreviewField.text)
+                            else
+                                root.previewLiteral(transactionPreviewField.text)
+                        }
                     }
                     StyledText {
                         Layout.fillWidth: true
@@ -752,7 +803,7 @@ Item {
                     Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Picker and source transforms are intentionally deferred to later Phase 1/2 milestones."
+                        text: "Only qualified literal-property commands may Apply. Direct bindings are preview-only."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -787,7 +838,10 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Literal Transaction · "
+                        text: (CodeWorkflowTransaction.activeCommand?.kind
+                                === "direct-binding"
+                            ? "Binding Preview · "
+                            : "Literal Transaction · ")
                             + String(CodeWorkflowTransaction.status).toUpperCase()
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -798,7 +852,10 @@ Item {
                         accent: Appearance.colors.colSubtext
                     }
                     Pill {
-                        label: CodeWorkflowTransaction.applyEnabled
+                        label: CodeWorkflowTransaction.activeCommand?.kind
+                                === "direct-binding"
+                            ? "PREVIEW ONLY"
+                            : CodeWorkflowTransaction.applyEnabled
                                 && root.transactionMatchesSelection
                             ? "APPLY READY"
                             : CodeWorkflowTransaction.applyArtifactsReady
@@ -806,7 +863,10 @@ Item {
                                 : CodeWorkflowTransaction.preApplyReady
                                     ? "PRE-APPLY READY"
                                     : "PRE-APPLY BLOCKED"
-                        accent: CodeWorkflowTransaction.applyEnabled
+                        accent: CodeWorkflowTransaction.activeCommand?.kind
+                                === "direct-binding"
+                            ? Appearance.colors.colTertiary
+                            : CodeWorkflowTransaction.applyEnabled
                                 && root.transactionMatchesSelection
                             ? Appearance.colors.colPrimary
                             : CodeWorkflowTransaction.applyArtifactsReady

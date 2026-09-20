@@ -110,6 +110,30 @@ class SpikeA(unittest.TestCase):
                 self.assertEqual(entry["value_kind"], kind)
                 self.assertEqual(source[slice(*entry["value_range"])], rendered)
 
+    def test_direct_binding_value_kinds_for_phase2j_subset(self):
+        source = (
+            b"import QtQuick\n"
+            b"Item {\n"
+            b"    width: parent.width\n"
+            b"    visible: enabled\n"
+            b"}\n"
+        )
+        entries = {
+            entry["name"]: entry
+            for entry in self.entries(source)["entries"]
+            if entry["kind"] == "binding"
+        }
+        self.assertEqual(entries["width"]["value_kind"], "member_expression")
+        self.assertEqual(
+            source[slice(*entries["width"]["value_range"])],
+            b"parent.width",
+        )
+        self.assertEqual(entries["visible"]["value_kind"], "identifier")
+        self.assertEqual(
+            source[slice(*entries["visible"]["value_range"])],
+            b"enabled",
+        )
+
     def test_grouped_binding_is_opaque_including_descendants(self):
         entries = self.entries()["entries"]
         group = next(e for e in entries if e["name"] == "anchors")

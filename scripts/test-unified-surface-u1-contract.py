@@ -101,11 +101,8 @@ assert "scripts/unified-surface" in exclusions["excludedPaths"], (
 qsb = U1 / "U1Surface.qsb"
 assert qsb.is_file() and qsb.stat().st_size > 0, "committed U1Surface.qsb is required"
 
-print("unified-surface U1 static contract: PASS")
-
-
 for live_invariant in (
-    '"niri", "-c"',
+    'dbus_session([niri, "-c", str(config_path)]',
     '"msg", "output"',
     '"scale"',
     '"bounded"',
@@ -116,3 +113,5 @@ for live_invariant in (
     "HADALIS_U1_GEOMETRY",
 ):
     assert live_invariant in live, f"live Niri validator lost invariant: {live_invariant}"
+
+print("unified-surface U1 static contract: PASS")

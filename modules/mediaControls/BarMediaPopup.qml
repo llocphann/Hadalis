@@ -152,8 +152,17 @@ Item {
         }
     }
 
+    // BarMediaPopup is hosted as StyledPopup's external visual content root.
+    // ConnectedSurfaceContentHost reparents that Item but intentionally does not
+    // assign its size. The old VerticalBar PopupWindow used explicit content
+    // width/height, so dropping those bindings made the player viewport keep its
+    // reserved height while PlayerControl itself rendered at 0x0; the Equalizer
+    // could still expose its own implicit content below. Materialize the implicit
+    // size here so horizontal and left/right Bar callers share one contract.
     implicitWidth: widgetWidth
     implicitHeight: playerColumn.implicitHeight
+    width: implicitWidth
+    height: implicitHeight
 
     ColumnLayout {
         id: playerColumn

@@ -83,6 +83,7 @@ Scope {
             cliRegistered: false,
             cliResponsive: false,
             activeVaultPath: "",
+            activeVaultBasePath: "",
             activeVaultMatches: false,
             tasksPluginInstalled: false,
             tasksPluginEnabled: false,

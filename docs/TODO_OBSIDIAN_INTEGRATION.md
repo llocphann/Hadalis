@@ -428,7 +428,10 @@ V1 therefore applies these restrictions:
 3. Never use a target-vault CLI invocation merely to test availability; targeting
    a closed second vault can open a new Obsidian window.
 4. For rich mutation, require the currently active CLI vault to resolve to the
-   configured physical vault path.
+   configured physical vault path. Preserve the raw
+   `FileSystemAdapter.getBasePath()` value from that probe and bind the
+   following mutating eval to that exact value. This permits symlink aliases
+   without weakening the guard against an active-vault switch.
 5. Serialize all Hadalis CLI calls. Current CLI versions have reported stdout
    cross-talk when eval calls overlap.
 6. Use a helper-side lock in addition to the QML operation queue.

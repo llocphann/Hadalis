@@ -317,14 +317,15 @@ def _probe_tasks_locked(cli: str, configured_vault: Path) -> dict[str, Any]:
 
     payload = _parse_eval_json(result.stdout)
     active_raw = payload.get("vaultPath")
+    active_base_path = active_raw if isinstance(active_raw, str) else ""
     active_path = ""
     matches = False
-    if isinstance(active_raw, str) and active_raw:
+    if active_base_path:
         try:
-            active_path = str(Path(active_raw).expanduser().resolve(strict=True))
+            active_path = str(Path(active_base_path).expanduser().resolve(strict=True))
             matches = active_path == str(configured_vault)
         except (OSError, RuntimeError):
-            active_path = active_raw
+            active_path = active_base_path
 
     plugin_enabled = payload.get("tasksPluginEnabled") is True
     api_available = payload.get("tasksApiAvailable") is True
@@ -332,6 +333,7 @@ def _probe_tasks_locked(cli: str, configured_vault: Path) -> dict[str, Any]:
     return {
         "cliResponsive": True,
         "activeVaultPath": active_path,
+        "activeVaultBasePath": active_base_path,
         "activeVaultMatches": matches,
         "tasksPluginInstalled": plugin_enabled,
         "tasksPluginEnabled": plugin_enabled,
@@ -347,6 +349,7 @@ def probe_capabilities(vault_path: str) -> dict[str, Any]:
     result = runtime_probe()
     result.update({
         "activeVaultPath": "",
+        "activeVaultBasePath": "",
         "activeVaultMatches": False,
         "tasksPluginInstalled": False,
         "tasksPluginEnabled": False,
@@ -477,19 +480,27 @@ def toggle_tasks_task(
     if not cli:
         raise RuntimeErrorInfo("cli_unavailable", "Obsidian CLI is not registered")
 
-    code = _toggle_eval_code(
-        str(configured_vault),
-        doc["notePath"],
-        int(task["sourceLine"]),
-        str(task["rawLine"]),
-    )
-
     with _cli_lock():
         capability = _probe_tasks_locked(cli, configured_vault)
         if not capability["activeVaultMatches"]:
             raise RuntimeErrorInfo("active_vault_mismatch", "active Obsidian vault does not match configured vault")
         if not capability["tasksApiAvailable"]:
             raise RuntimeErrorInfo("tasks_api_unavailable", "Obsidian Tasks API v1 is unavailable")
+
+        # Bind the mutating eval to the exact raw FileSystemAdapter base path
+        # observed by the immediately preceding capability probe. The probe may
+        # resolve a symlink alias to prove physical-vault equality, while the
+        # in-eval guard intentionally stays an exact raw comparison so a vault
+        # switch between probe and mutation still fails closed.
+        active_base_path = capability.get("activeVaultBasePath")
+        if not isinstance(active_base_path, str) or not active_base_path:
+            raise RuntimeErrorInfo("active_vault_mismatch", "active Obsidian vault path is unavailable")
+        code = _toggle_eval_code(
+            active_base_path,
+            doc["notePath"],
+            int(task["sourceLine"]),
+            str(task["rawLine"]),
+        )
 
         result = _run_cli(
             cli,

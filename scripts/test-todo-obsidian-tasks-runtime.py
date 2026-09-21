@@ -185,6 +185,7 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         result = obsidian_tasks.probe_capabilities(str(vault))
         self.assertTrue(result["cliResponsive"])
         self.assertTrue(result["activeVaultMatches"])
+        self.assertEqual(result["activeVaultBasePath"], str(vault.resolve()))
         self.assertTrue(result["tasksApiAvailable"])
         self.assertTrue(result["richMutationAvailable"])
         self.assertEqual(result["tasksSettings"]["globalFilter"], "#task")
@@ -213,6 +214,30 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         self.assertFalse(result["tasksApiAvailable"])
         self.assertFalse(result["richMutationAvailable"])
         self.assertIsNone(result["tasksSettings"])
+
+    def test_capability_probe_accepts_symlink_alias_and_preserves_raw_base_path(self):
+        vault, _ = self.make_vault()
+        alias = vault.parent / "VaultAlias"
+        alias.symlink_to(vault, target_is_directory=True)
+        self.patch("_obsidian_running", lambda: True)
+        self.patch("_find_cli", lambda: "/fake/obsidian")
+
+        payload = {
+            "vaultPath": str(alias),
+            "tasksPluginEnabled": True,
+            "tasksApiAvailable": True,
+            "settings": {},
+        }
+        self.patch(
+            "_run_cli",
+            lambda *_args: subprocess.CompletedProcess(
+                ["obsidian"], 0, stdout="=> " + json.dumps(payload), stderr=""
+            ),
+        )
+        result = obsidian_tasks.probe_capabilities(str(vault))
+        self.assertTrue(result["activeVaultMatches"])
+        self.assertEqual(result["activeVaultPath"], str(vault.resolve()))
+        self.assertEqual(result["activeVaultBasePath"], str(alias))
 
     def test_capability_probe_fails_closed_on_other_vault(self):
         vault, _ = self.make_vault()
@@ -330,6 +355,49 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         )
         self.assertTrue(result["verified"])
         self.assertEqual(result["mutation"], "toggle-tasks")
+        self.assertTrue(result["tasks"][0]["done"])
+        self.assertEqual(len(calls), 2)
+
+    def test_toggle_binds_eval_to_probed_symlink_alias(self):
+        vault, note = self.make_vault()
+        alias = vault.parent / "VaultAlias"
+        alias.symlink_to(vault, target_is_directory=True)
+        scan = obsidian_tasks.obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")
+        self.patch("_obsidian_running", lambda: True)
+        self.patch("_find_cli", lambda: "/fake/obsidian")
+        calls = []
+
+        capability = {
+            "vaultPath": str(alias),
+            "tasksPluginEnabled": True,
+            "tasksApiAvailable": True,
+            "settings": {},
+        }
+
+        def fake_cli(_cli, args, _timeout):
+            code = next(arg[5:] for arg in args if arg.startswith("code="))
+            calls.append(code)
+            if "app.vault.process(file" not in code:
+                return subprocess.CompletedProcess(
+                    ["obsidian"], 0,
+                    stdout="=> " + json.dumps(capability), stderr=""
+                )
+            self.assertIn(
+                "const expectedVault=" + json.dumps(str(alias), ensure_ascii=False),
+                code,
+            )
+            current = note.read_text(encoding="utf-8")
+            note.write_text(current.replace("- [ ] task", "- [x] task"), encoding="utf-8")
+            return subprocess.CompletedProcess(["obsidian"], 0, stdout="", stderr="")
+
+        self.patch("_run_cli", fake_cli)
+        result = obsidian_tasks.toggle_tasks_task(
+            str(vault),
+            "Hadalis/Todo.md",
+            scan["tasks"][0]["id"],
+            scan["document"]["sha256"],
+        )
+        self.assertTrue(result["verified"])
         self.assertTrue(result["tasks"][0]["done"])
         self.assertEqual(len(calls), 2)
 

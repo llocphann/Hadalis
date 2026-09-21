@@ -302,10 +302,21 @@ old per-pointer full-router + layout-map mutation path that caused visible lag.
 Idle graph/node cursors remain `ArrowCursor`; closed-hand feedback appears only
 while a pan/node drag is active.
 
-Source Preview now reuses the production `org.kde.syntaxhighlighting` backend
-already used by AI code blocks. It selects QML/JavaScript/JSON/Python/Bash from
-the reviewed source path and follows `Appearance.syntaxHighlightingTheme` while
-remaining read-only/selectable. Runtime visual verification is still required.
+Source Preview has now become a guarded Source Editor. It reuses the production
+`org.kde.syntaxhighlighting` backend, keeps per-source draft buffers across
+inspect-selection switches, exposes dirty/save/conflict state, and writes only
+through an atomic compare-and-swap helper scoped to the Hadalis shell root.
+External edits (including Neovim) therefore become explicit conflicts instead
+of silent overwrites. `Ctrl+S`, Revert and `Open in Neovim` are available in
+the pane header; Save is disabled while a Code Workflow transaction is dirty.
+
+Neovim-native editor direction: do not grow a parallel Vim implementation in
+QML. The current TextEdit editor is the bridge/fallback. A future embedded
+Neovim UI should launch `nvim --embed`, speak msgpack-RPC, attach through the
+Neovim UI protocol, and render/input the resulting editor grid in the Source
+pane. Until a PTY/RPC bridge and redraw-grid renderer exist, `Open in Neovim`
+uses Hadalis' configured terminal and the inline editor remains the safe local
+fallback.
 
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment

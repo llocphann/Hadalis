@@ -1377,7 +1377,7 @@ ContentPage {
                     }
 
                     StyledToolTip {
-                        text: Translation.tr("Append the two Hadalis managed markers to an existing note. Existing content is preserved.")
+                        text: Translation.tr("Create the note if needed, then append the two Hadalis managed markers. Existing content is preserved.")
                     }
                 }
 

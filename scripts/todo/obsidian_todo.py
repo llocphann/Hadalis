@@ -149,6 +149,61 @@ def resolve_note(vault_path: str, note_path: str) -> tuple[Path, str, Path]:
     return vault, normalized_note, resolved_note
 
 
+def _resolve_or_create_note(vault_path: str, note_path: str) -> tuple[Path, str, Path]:
+    """Resolve a note, creating an empty one only for explicit setup."""
+
+    try:
+        return resolve_note(vault_path, note_path)
+    except TodoError as exc:
+        if exc.code != "note_not_found":
+            raise
+
+    raw_vault = str(vault_path or "").strip()
+    try:
+        vault = Path(raw_vault).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise TodoError("invalid_vault_path", f"cannot resolve vault path: {exc}") from exc
+    if not vault.is_dir() or vault == Path(vault.anchor):
+        raise TodoError("invalid_vault_path", "vault path is not a usable directory")
+
+    normalized_note = _normalize_note_path(note_path)
+    candidate = vault.joinpath(*PurePosixPath(normalized_note).parts)
+    try:
+        parent = candidate.parent.resolve(strict=False)
+        if os.path.commonpath((str(vault), str(parent))) != str(vault):
+            raise TodoError("note_outside_vault", "note parent escapes the configured vault")
+        parent.mkdir(parents=True, exist_ok=True)
+        parent = parent.resolve(strict=True)
+        if os.path.commonpath((str(vault), str(parent))) != str(vault):
+            raise TodoError("note_outside_vault", "note parent escapes the configured vault")
+    except TodoError:
+        raise
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise TodoError("note_create_failed", f"cannot create note parent: {exc}") from exc
+
+    target = parent / candidate.name
+    try:
+        fd = os.open(
+            target,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0),
+            0o600,
+        )
+        os.close(fd)
+        dir_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except FileExistsError:
+        # A concurrent creator won. Resolve it through the normal containment
+        # checks instead of overwriting anything.
+        return resolve_note(vault_path, note_path)
+    except OSError as exc:
+        raise TodoError("note_create_failed", f"cannot create Todo note: {exc}") from exc
+
+    return resolve_note(vault_path, note_path)
+
+
 def _newline_kind(raw: bytes) -> str:
     crlf = raw.count(b"\r\n")
     without_crlf = raw.replace(b"\r\n", b"")
@@ -321,7 +376,7 @@ def initialize_section(
 ) -> dict[str, Any]:
     """Append managed markers to an existing note after explicit user action."""
 
-    vault, normalized_note, resolved_note = resolve_note(vault_path, note_path)
+    vault, normalized_note, resolved_note = _resolve_or_create_note(vault_path, note_path)
     try:
         raw = resolved_note.read_bytes()
     except OSError as exc:

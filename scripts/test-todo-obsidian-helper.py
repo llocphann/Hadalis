@@ -190,6 +190,37 @@ not a task
         self.assertFalse(again["initialized"])
         self.assertEqual(path.read_bytes(), raw)
 
+    def test_initialize_section_creates_missing_nested_note(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        vault = Path(tmp.name) / "Vault"
+        vault.mkdir()
+        result = obsidian_todo.initialize_section(
+            str(vault), "Hadalis/Nested/Todo.md"
+        )
+        note = vault / "Hadalis" / "Nested" / "Todo.md"
+        self.assertTrue(note.is_file())
+        self.assertTrue(result["initialized"])
+        self.assertEqual(
+            note.read_text(encoding="utf-8"),
+            "<!-- hadalis:todo:start -->\n<!-- hadalis:todo:end -->",
+        )
+
+    @unittest.skipUnless(hasattr(os, "symlink"), "symlinks unavailable")
+    def test_initialize_section_rejects_symlink_parent_escape(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        vault = root / "Vault"
+        outside = root / "Outside"
+        vault.mkdir()
+        outside.mkdir()
+        (vault / "Hadalis").symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(obsidian_todo.TodoError) as error:
+            obsidian_todo.initialize_section(str(vault), "Hadalis/Todo.md")
+        self.assertEqual(error.exception.code, "note_outside_vault")
+        self.assertFalse((outside / "Todo.md").exists())
+
     def test_initialize_section_ignores_marker_text_inside_fence(self):
         vault, path = self.make_vault(
             b"```md\n<!-- hadalis:todo:start -->\n<!-- hadalis:todo:end -->\n```\n"

@@ -14,6 +14,7 @@ Singleton {
     property string selectedNodeId: "bar.component"
     property string selectedEdgeId: ""
     property string selectedConnectTargetId: ""
+    property string selectedSemanticAnchor: ""
     property string semanticAnchor: ""
     property string semanticAnchorNodeId: ""
     property real panX: 32
@@ -45,6 +46,7 @@ Singleton {
         root.selectedEdgeId = String(state.codeWorkflowEdgeId ?? "")
         root.selectedConnectTargetId = String(
             state.codeWorkflowConnectTargetId ?? "")
+        root.selectedSemanticAnchor = ""
         if (!CodeWorkflowIr.hasGraph(root.subflowTargetId))
             root.subflowTargetId = "bar"
         if (!CodeWorkflowIr.nodeFor(root.subflowTargetId, root.selectedNodeId))
@@ -166,6 +168,7 @@ Singleton {
                 ?? graph.nodes?.[0]?.id ?? ""
             root.selectedEdgeId = ""
             root.selectedConnectTargetId = ""
+            root.selectedSemanticAnchor = ""
             root.clearSemanticAnchor()
             root.resetViewport()
         }
@@ -179,6 +182,7 @@ Singleton {
         root.selectedNodeId = nodeId
         root.selectedEdgeId = ""
         root.selectedConnectTargetId = ""
+        root.selectedSemanticAnchor = ""
         if (changed)
             root.clearSemanticAnchor()
         else
@@ -203,6 +207,7 @@ Singleton {
                 return false
             root.selectedEdgeId = edge.id
             root.selectedConnectTargetId = ""
+            root.selectedSemanticAnchor = ""
             root.selectedNodeId = actionNode.id
             root.clearSemanticAnchor()
             root.persist()
@@ -219,11 +224,26 @@ Singleton {
         const changedNode = root.selectedNodeId !== target.id
         root.selectedEdgeId = edge.id
         root.selectedConnectTargetId = ""
+        root.selectedSemanticAnchor = ""
         root.selectedNodeId = target.id
         if (changedNode)
             root.clearSemanticAnchor()
         else
             root.persist()
+        return true
+    }
+
+    function selectSemantic(anchor: string): bool {
+        const nextAnchor = String(anchor ?? "")
+        if (nextAnchor.length === 0) {
+            root.selectedSemanticAnchor = ""
+            root.persist()
+            return true
+        }
+        root.selectedSemanticAnchor = nextAnchor
+        root.selectedEdgeId = ""
+        root.selectedConnectTargetId = ""
+        root.persist()
         return true
     }
 
@@ -245,6 +265,7 @@ Singleton {
 
         root.selectedConnectTargetId = String(target.id ?? "")
         root.selectedEdgeId = ""
+        root.selectedSemanticAnchor = ""
         root.selectedNodeId = parentNode.id
         root.clearSemanticAnchor()
         root.persist()
@@ -261,6 +282,7 @@ Singleton {
             ?? graph.nodes?.[0]?.id ?? ""
         root.selectedEdgeId = ""
         root.selectedConnectTargetId = ""
+        root.selectedSemanticAnchor = ""
         root.clearSemanticAnchor()
 
         if (CodeWorkflowRuntime.descriptor(targetId)) {

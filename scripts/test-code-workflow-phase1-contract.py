@@ -94,6 +94,12 @@ require(page, "CodeWorkflowSession.selectedSemanticAnchor",
         "page must consume the shared semantic selection")
 require(page, 'placeholderText: "Filter targets"',
         "Targets must expose a search/filter control")
+require(page, 'Accessible.name: "Filter inspect targets"',
+        "Targets filter must expose an explicit accessibility label")
+require(page, 'Accessible.name: "Source preview"',
+        "Source Preview must expose an explicit accessibility label")
+require(page, "activeFocusOnTab: true",
+        "read-only Source Preview must remain keyboard-focusable")
 require(page, 'category: "section"',
         "Targets must group runtime, graph and parsed QML sources")
 require(page, "appendSection(",

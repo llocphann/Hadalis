@@ -116,6 +116,8 @@ for token in (
     "id: nodeContent",
     "clip: true",
     "id: edgeLabel",
+    "function revealNode(nodeId: string): void",
+    "function onSelectedNodeIdChanged(): void",
     "root.cubicCoordinate(",
     "Layout.maximumWidth: node.width - 20",
     "CodeWorkflowSession.selectNode",

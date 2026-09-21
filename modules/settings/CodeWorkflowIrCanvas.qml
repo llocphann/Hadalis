@@ -98,6 +98,37 @@ Item {
         return best
     }
 
+    function revealNode(nodeId: string): void {
+        const node = root.nodeById(nodeId)
+        if (!node || root.width <= 0 || root.height <= 0)
+            return
+
+        const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
+        const margin = 34
+        const left = CodeWorkflowSession.panX
+            + Number(node.x ?? 0) * zoom
+        const top = CodeWorkflowSession.panY
+            + Number(node.y ?? 0) * zoom
+        const right = left + root.nodeWidth * zoom
+        const bottom = top + root.nodeHeight * zoom
+        let nextX = CodeWorkflowSession.panX
+        let nextY = CodeWorkflowSession.panY
+
+        if (left < margin)
+            nextX += margin - left
+        else if (right > root.width - margin)
+            nextX -= right - (root.width - margin)
+        if (top < margin)
+            nextY += margin - top
+        else if (bottom > root.height - margin)
+            nextY -= bottom - (root.height - margin)
+
+        if (Math.abs(nextX - CodeWorkflowSession.panX) > 0.5
+                || Math.abs(nextY - CodeWorkflowSession.panY) > 0.5)
+            CodeWorkflowSession.setViewport(
+                nextX, nextY, CodeWorkflowSession.zoom)
+    }
+
     function nodeAtWorld(px: real, py: real): bool {
         return root.nodes.some(node => {
             const x = Number(node.x ?? 0)
@@ -231,6 +262,15 @@ Item {
                 eventPoint.position.x, eventPoint.position.y)
             if (edgeId.length > 0)
                 CodeWorkflowSession.selectEdge(edgeId)
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowSession
+
+        function onSelectedNodeIdChanged(): void {
+            Qt.callLater(() => root.revealNode(
+                CodeWorkflowSession.selectedNodeId))
         }
     }
 

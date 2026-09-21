@@ -244,7 +244,11 @@ def main() -> None:
         "ConnectedSurfaceIrisFrame {",
         "externalFrameThickness: root.screenEdgeThickness",
         "joinTop: true",
-        "joinRight: true",
+        "joinRight: !root.topBarOwnsEdge",
+        "readonly property real topBarFreeRightInset: Math.max(",
+        "PerimeterTokens.irisFuseDepth + 2",
+        "root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0",
+        "root.topBarOwnsEdge ? root.topBarFreeRightInset : 0",
         "ConnectedSurfaceContentHost {",
         "ConnectedSurfaceBodyMask {",
         "visibleBodyRect: toastFrame.visibleBodyRect",
@@ -257,6 +261,9 @@ def main() -> None:
               f"Top-right connected reload toast contract missing: {token}")
     check('"Niri config reloaded"' not in toast_manager,
           "Legacy Niri reload toast title must stay retired")
+    check("joinRight: true" not in toast_manager
+          and "joinRight: !root.topBarOwnsEdge" in toast_manager,
+          "Reload toast must prefer a real top Bar; right Screen Edge welding is fallback-only")
     check("ConnectedSurfaceIrisEdgeSurface {" not in toast_manager
           and "popup.width - width - root.edgeDecorationMargin" not in toast_manager
           and "x: Math.max(root.edgeDecorationMargin," not in toast_manager,

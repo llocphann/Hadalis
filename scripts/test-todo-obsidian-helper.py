@@ -174,6 +174,42 @@ not a task
             obsidian_todo.resolve_note("/", "tmp/example.md")
         self.assertEqual(error.exception.code, "invalid_vault_path")
 
+    def test_initialize_section_appends_only_markers_and_is_idempotent(self):
+        original = codecs.BOM_UTF8 + "# Existing\r\nbody".encode("utf-8")
+        vault, path = self.make_vault(original)
+        result = obsidian_todo.initialize_section(str(vault), "Hadalis/Todo.md")
+        raw = path.read_bytes()
+        self.assertTrue(result["initialized"])
+        self.assertTrue(raw.startswith(codecs.BOM_UTF8 + b"# Existing\r\nbody\r\n"))
+        self.assertTrue(raw.endswith(
+            b"<!-- hadalis:todo:start -->\r\n<!-- hadalis:todo:end -->"
+        ))
+        self.assertEqual(result["document"]["newline"], "crlf")
+
+        again = obsidian_todo.initialize_section(str(vault), "Hadalis/Todo.md")
+        self.assertFalse(again["initialized"])
+        self.assertEqual(path.read_bytes(), raw)
+
+    def test_initialize_section_ignores_marker_text_inside_fence(self):
+        vault, path = self.make_vault(
+            b"```md\n<!-- hadalis:todo:start -->\n<!-- hadalis:todo:end -->\n```\n"
+        )
+        result = obsidian_todo.initialize_section(str(vault), "Hadalis/Todo.md")
+        self.assertTrue(result["initialized"])
+        self.assertEqual(
+            path.read_text(encoding="utf-8").count("<!-- hadalis:todo:start -->"), 2
+        )
+
+    def test_initialize_section_rejects_partial_marker_without_writing(self):
+        vault, path = self.make_vault(
+            b"# Existing\n<!-- hadalis:todo:start -->\n- [ ] task\n"
+        )
+        before = path.read_bytes()
+        with self.assertRaises(obsidian_todo.TodoError) as error:
+            obsidian_todo.initialize_section(str(vault), "Hadalis/Todo.md")
+        self.assertEqual(error.exception.code, "invalid_managed_section")
+        self.assertEqual(path.read_bytes(), before)
+
     def test_basic_toggle_preserves_bom_crlf_spacing_and_outside_bytes(self):
         original = codecs.BOM_UTF8 + (
             "# Before\r\n"

@@ -313,6 +313,79 @@ def scan_note(
     return _scan_payload(_load_document(vault_path, note_path, start_marker, end_marker))
 
 
+def initialize_section(
+    vault_path: str,
+    note_path: str,
+    start_marker: str = START_MARKER,
+    end_marker: str = END_MARKER,
+) -> dict[str, Any]:
+    """Append managed markers to an existing note after explicit user action."""
+
+    vault, normalized_note, resolved_note = resolve_note(vault_path, note_path)
+    try:
+        raw = resolved_note.read_bytes()
+    except OSError as exc:
+        raise TodoError("note_read_failed", f"cannot read note: {exc}") from exc
+
+    has_bom = raw.startswith(codecs.BOM_UTF8)
+    payload = raw[len(codecs.BOM_UTF8) :] if has_bom else raw
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise TodoError("invalid_utf8", f"note is not valid UTF-8: {exc}") from exc
+
+    lines = text.splitlines(keepends=True)
+    outside = _outside_fence_flags(lines)
+    starts: list[int] = []
+    ends: list[int] = []
+    for index, physical in enumerate(lines):
+        if not outside[index]:
+            continue
+        line = physical.rstrip("\r\n")
+        if line == start_marker:
+            starts.append(index)
+        elif line == end_marker:
+            ends.append(index)
+
+    if len(starts) == 1 and len(ends) == 1 and starts[0] < ends[0]:
+        result = scan_note(vault_path, note_path, start_marker, end_marker)
+        result["mutation"] = "initialize-section"
+        result["initialized"] = False
+        return result
+
+    if starts or ends:
+        raise TodoError(
+            "invalid_managed_section",
+            "refusing to repair partial, duplicate or out-of-order managed markers",
+        )
+
+    kind = _newline_kind(raw)
+    newline = "\r\n" if kind == "crlf" else ("\r" if kind == "cr" else "\n")
+    had_final_newline = raw.endswith((b"\n", b"\r"))
+
+    addition = ""
+    if text and not had_final_newline:
+        addition += newline
+    addition += start_marker + newline + end_marker
+    if had_final_newline:
+        addition += newline
+
+    new_payload = (text + addition).encode("utf-8")
+    new_raw = (codecs.BOM_UTF8 + new_payload) if has_bom else new_payload
+    _atomic_replace_if_unchanged({
+        "vault": vault,
+        "notePath": normalized_note,
+        "resolved": resolved_note,
+        "raw": raw,
+        "bom": has_bom,
+    }, new_raw)
+
+    result = scan_note(vault_path, note_path, start_marker, end_marker)
+    result["mutation"] = "initialize-section"
+    result["initialized"] = True
+    return result
+
+
 def _require_hashes(
     doc: dict[str, Any],
     expected_document_sha: str,
@@ -497,6 +570,12 @@ def _build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--start-marker", default=START_MARKER)
     scan.add_argument("--end-marker", default=END_MARKER)
 
+    initialize = subparsers.add_parser(
+        "initialize-section",
+        help="append managed markers to an existing note after explicit setup",
+    )
+    _add_source_args(initialize)
+
     add = subparsers.add_parser("add-basic", help="append a plain task to the managed section")
     _add_source_args(add)
     add.add_argument("--text", required=True)
@@ -526,6 +605,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "scan":
             payload = scan_note(args.vault, args.note, args.start_marker, args.end_marker)
+        elif args.command == "initialize-section":
+            payload = initialize_section(args.vault, args.note)
         elif args.command == "add-basic":
             payload = add_basic_task(
                 args.vault, args.note, args.text,

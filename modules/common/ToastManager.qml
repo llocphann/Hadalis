@@ -221,151 +221,164 @@ Scope {
             id: popup
             visible: root.toasts.length > 0 && !root.suppressOnScreenToasts
             exclusiveZone: 0
+            exclusionMode: ExclusionMode.Ignore
             anchors.top: true
+            anchors.bottom: true
             anchors.left: true
             anchors.right: true
-            
+
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.namespace: "quickshell:toast-manager"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-            // This full-width Overlay is positioned in physical output
-            // coordinates. Bar/Screen Edge reservation windows must not offset
-            // it before topOwnerThickness/screenEdgeThickness are applied.
-            exclusionMode: ExclusionMode.Ignore
-            
-            mask: Region {
-                item: toastBody
-                radius: PerimeterTokens.popupRadius
-            }
-            
-            implicitHeight: root.topOwnerThickness
-                + toastBody.height + root.edgeDecorationMargin
             color: "transparent"
 
-            ConnectedSurfaceIrisEdgeSurface {
-                id: toastIrisSurface
-                z: 0
-                anchors.fill: parent
-                visible: popup.visible && toastBody.width > 0 && toastBody.height > 0
+            // Mirror BatteryPopup/StyledPopup production geometry. A one-pixel
+            // logical anchor at the Bar's top-right edge is enough to make the
+            // shared geometry clamp the body to the right Screen Edge while the
+            // top owner remains the full Bar (or Screen Edge fallback).
+            ConnectedSurfaceGeometry {
+                id: toastGeometry
                 edge: "top"
-                ownerThickness: root.topOwnerThickness
-                tangentFrameThickness: root.screenEdgeThickness
-                joinTangentEnd: true
+                alignment: "end"
                 outputRect: Qt.rect(0, 0, popup.width, popup.height)
-                bodyRect: Qt.rect(
-                    toastBody.x,
-                    toastBody.y,
-                    toastBody.width,
-                    toastBody.height)
-                bodyRadius: PerimeterTokens.popupRadius
-                fillColor: Appearance.colors.colLayer0
-                borderColor: Appearance.colors.colLayer0Border
-                borderWidth: 0
+                anchorRect: Qt.rect(
+                    Math.max(0, popup.width - root.screenEdgeThickness - 1),
+                    0,
+                    1,
+                    root.topOwnerThickness)
+                bodySize: Qt.size(
+                    Math.max(1, toastColumn.implicitWidth
+                        + root.toastBodyPadding * 2),
+                    Math.max(1, toastColumn.implicitHeight
+                        + root.toastBodyPadding * 2))
+                outerRadius: PerimeterTokens.popupRadius
+                screenMargin: root.screenEdgeThickness
+                connectorLength: 0
+                seamOverlap: PerimeterTokens.irisWeldDepth
                 progress: 1
-                shadowEnabled: root.edgeShadowEnabled
-                    && root.edgeShadowSize > 0
-                    && root.edgeShadowOpacity > 0
-                shadowExtent: root.edgeShadowSize
-                shadowColor: root.edgeShadowColor
+                devicePixelRatio: popup.devicePixelRatio
             }
 
-            Item {
-                id: toastBody
-                z: 1
-                // Sit on the real top/right owner boundaries: the top
-                // owner is Bar (or Screen Edge fallback), while the right owner
-                // remains the physical Screen Edge. Shadow room is needed only
-                // on the free left/bottom sides.
-                x: popup.width - root.screenEdgeThickness - width
-                y: root.topOwnerThickness
-                width: toastColumn.implicitWidth + root.toastBodyPadding * 2
-                height: toastColumn.implicitHeight + root.toastBodyPadding * 2
+            ConnectedSurfaceRevealClip {
+                id: toastRevealClip
+                geometry: toastGeometry
 
-                ColumnLayout {
-                    id: toastColumn
-                    x: root.toastBodyPadding
-                    y: root.toastBodyPadding
-                    spacing: root.toastSpacing
-                    
-                    Repeater {
-                        model: root.toasts
-                        
-                        delegate: ToastNotification {
-                            required property var modelData
-                            required property int index
-                            
-                            connectedSurface: true
-                            title: modelData.title
-                            message: modelData.message
-                            icon: modelData.icon
-                            isError: modelData.isError
-                            duration: modelData.duration
-                            source: modelData.source
-                            accentColor: modelData.accentColor
-                        
-                        opacity: 1
-                        scale: 1
-                        
-                        Component.onCompleted: {
-                            if (Appearance.animationsEnabled) {
-                                entryAnim.start()
+                ConnectedSurfaceIrisFrame {
+                    id: toastFrame
+                    anchors.fill: parent
+                    geometry: toastGeometry
+                    fillColor: Appearance.colors.colLayer0
+                    borderColor: Appearance.colors.colLayer0Border
+                    borderWidth: 0
+                    fuseDepth: PerimeterTokens.irisFuseDepth
+                    externalFrameThickness: root.screenEdgeThickness
+                    shadowEnabled: root.edgeShadowEnabled
+                        && root.edgeShadowSize > 0
+                        && root.edgeShadowOpacity > 0
+                    shadowExtent: root.edgeShadowSize
+                    shadowColor: root.edgeShadowColor
+                    joinTop: true
+                    joinRight: true
+                }
+
+                ConnectedSurfaceContentHost {
+                    id: toastContentHost
+                    geometry: toastGeometry
+                    padding: root.toastBodyPadding
+
+                    ColumnLayout {
+                        id: toastColumn
+                        anchors.fill: parent
+                        spacing: root.toastSpacing
+
+                        Repeater {
+                            model: root.toasts
+
+                            delegate: ToastNotification {
+                                required property var modelData
+                                required property int index
+
+                                connectedSurface: true
+                                title: modelData.title
+                                message: modelData.message
+                                icon: modelData.icon
+                                isError: modelData.isError
+                                duration: modelData.duration
+                                source: modelData.source
+                                accentColor: modelData.accentColor
+
+                                opacity: 1
+                                scale: 1
+
+                                Component.onCompleted: {
+                                    if (Appearance.animationsEnabled)
+                                        entryAnim.start()
+                                }
+
+                                ParallelAnimation {
+                                    id: entryAnim
+                                    NumberAnimation {
+                                        target: parent
+                                        property: "opacity"
+                                        from: 0
+                                        to: 1
+                                        duration: Appearance.animation.elementMoveFast.duration
+                                        easing.type: Appearance.animation.elementMoveFast.type
+                                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                    }
+                                    NumberAnimation {
+                                        target: parent
+                                        property: "scale"
+                                        from: 0.9
+                                        to: 1
+                                        duration: Appearance.animation.elementMoveFast.duration
+                                        easing.type: Appearance.animation.elementMoveFast.type
+                                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                    }
+                                }
+
+                                onDismissed: {
+                                    if (Appearance.animationsEnabled)
+                                        exitAnim.start()
+                                    else
+                                        root.removeToast(modelData.id)
+                                }
+
+                                ParallelAnimation {
+                                    id: exitAnim
+                                    NumberAnimation {
+                                        target: parent
+                                        property: "opacity"
+                                        to: 0
+                                        duration: Appearance.animation.elementMoveExit.duration
+                                        easing.type: Appearance.animation.elementMoveExit.type
+                                        easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+                                    }
+                                    NumberAnimation {
+                                        target: parent
+                                        property: "scale"
+                                        to: 0.9
+                                        duration: Appearance.animation.elementMoveExit.duration
+                                        easing.type: Appearance.animation.elementMoveExit.type
+                                        easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+                                    }
+                                    onFinished: root.removeToast(modelData.id)
+                                }
                             }
-                        }
-                        
-                        ParallelAnimation {
-                            id: entryAnim
-                            NumberAnimation {
-                                target: parent
-                                property: "opacity"
-                                from: 0
-                                to: 1
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
-                            NumberAnimation {
-                                target: parent
-                                property: "scale"
-                                from: 0.9
-                                to: 1
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
-                        }
-                        
-                        onDismissed: {
-                            if (Appearance.animationsEnabled) {
-                                exitAnim.start()
-                            } else {
-                                root.removeToast(modelData.id)
-                            }
-                        }
-                        
-                        ParallelAnimation {
-                            id: exitAnim
-                            NumberAnimation {
-                                target: parent
-                                property: "opacity"
-                                to: 0
-                                duration: Appearance.animation.elementMoveExit.duration
-                                easing.type: Appearance.animation.elementMoveExit.type
-                                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
-                            }
-                            NumberAnimation {
-                                target: parent
-                                property: "scale"
-                                to: 0.9
-                                duration: Appearance.animation.elementMoveExit.duration
-                                easing.type: Appearance.animation.elementMoveExit.type
-                                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
-                            }
-                            onFinished: root.removeToast(modelData.id)
-                        }
                         }
                     }
                 }
             }
+
+            ConnectedSurfaceBodyMask {
+                id: toastMask
+                geometry: toastGeometry
+                bodyItem: toastFrame.bodyItem
+                visibleBodyRect: toastFrame.visibleBodyRect
+                inputEnabled: popup.visible
+            }
+
+            mask: toastMask
         }
     }
 }

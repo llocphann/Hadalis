@@ -37,6 +37,10 @@ Scope {
     property bool _refreshQueued: false
     property string _scanVaultPath: ""
     property string _scanNotePath: ""
+    property string _capabilityVaultPath: ""
+    property string _capabilityNotePath: ""
+    property string _mutationVaultPath: ""
+    property string _mutationNotePath: ""
     property var _pendingMutation: null
 
     readonly property bool configured:
@@ -106,16 +110,32 @@ Scope {
     }
 
     function _scheduleRefresh(): void {
+        // A queued action belongs to the exact source that was visible when
+        // the user invoked it. Never carry it across backend activation, vault
+        // or note changes (especially Add, which has no task-id CAS guard).
+        root._pendingMutation = null
+
         if (!root.configured) {
             configDebounce.stop()
             scanDebounce.stop()
             capabilityDebounce.stop()
-            root._pendingMutation = null
             root._clearUnavailable("", "")
             return
         }
         configDebounce.restart()
         capabilityDebounce.restart()
+    }
+
+    function _capabilitySourceCurrent(): bool {
+        return root.configured
+            && root._capabilityVaultPath === root.vaultPath
+            && root._capabilityNotePath === root.notePath
+    }
+
+    function _mutationSourceCurrent(): bool {
+        return root.configured
+            && root._mutationVaultPath === root.vaultPath
+            && root._mutationNotePath === root.notePath
     }
 
     function refresh(): void {
@@ -156,6 +176,8 @@ Scope {
             return
 
         root.capabilityBusy = true
+        root._capabilityVaultPath = root.vaultPath
+        root._capabilityNotePath = root.notePath
         capabilityProc.command = [
             "/usr/bin/python3",
             root.runtimeHelperPath,
@@ -385,6 +407,8 @@ Scope {
         }
         root.busy = true
         root._clearError()
+        root._mutationVaultPath = root.vaultPath
+        root._mutationNotePath = root.notePath
         mutationProc.kind = kind
         mutationProc.taskId = taskId
         mutationProc.command = command
@@ -580,6 +604,11 @@ Scope {
                 return
             capabilityTimeout.stop()
             root.capabilityBusy = false
+            if (!root._capabilitySourceCurrent()) {
+                if (root.configured)
+                    capabilityDebounce.restart()
+                return
+            }
             const caps = root._emptyCapabilities()
             caps.lastError = "Failed to start Obsidian capability helper"
             root.capabilities = caps
@@ -595,6 +624,15 @@ Scope {
         onExited: (exitCode, exitStatus) => {
             capabilityTimeout.stop()
             root.capabilityBusy = false
+
+            // The eval result belongs to the source captured at launch. A
+            // config edit while it was running must not authorize a mutation
+            // or overwrite capability state for the newly selected note.
+            if (!root._capabilitySourceCurrent()) {
+                if (root.configured)
+                    capabilityDebounce.restart()
+                return
+            }
 
             if (capabilityProc.timedOut) {
                 const caps = root._emptyCapabilities()
@@ -652,6 +690,11 @@ Scope {
             if (mutationProc.startObserved)
                 return
             mutationTimeout.stop()
+            if (!root._mutationSourceCurrent()) {
+                root._refreshQueued = root.configured
+                root._finishMutation()
+                return
+            }
             root._setError("mutation_start_failed", "Failed to start Todo mutation helper")
             root._finishMutation()
         }
@@ -664,6 +707,17 @@ Scope {
 
         onExited: (exitCode, exitStatus) => {
             mutationTimeout.stop()
+
+            // A mutation may already have reached the old canonical note, but
+            // its result must never be applied to a newly selected source.
+            // Refresh the new source instead; filesystem scan remains
+            // authoritative for whichever backend is currently active.
+            if (!root._mutationSourceCurrent()) {
+                root._refreshQueued = root.configured
+                root._finishMutation()
+                return
+            }
+
             if (mutationProc.timedOut) {
                 root._setError("mutation_timeout", "Todo mutation timed out")
                 root._finishMutation()

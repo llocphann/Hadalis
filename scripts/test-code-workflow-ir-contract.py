@@ -571,7 +571,7 @@ if "component GraphText: StyledText {" not in canvas:
 if "renderType: Text.QtRendering" not in canvas:
     fail("IR canvas GraphText must use Qt rendering under fractional zoom")
 world_start = canvas.index("    Item {\n        id: world")
-world_end = canvas.index("\n    Rectangle {\n        anchors.left: parent.left", world_start)
+world_end = canvas.index("\n    Rectangle {\n        id: edgeLabelTooltip", world_start)
 world_block = canvas[world_start:world_end]
 if "StyledText {" in world_block:
     fail("transformed graph world must not use Native-rendered StyledText directly")

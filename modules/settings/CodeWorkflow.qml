@@ -1449,6 +1449,11 @@ Item {
                 ? 18 : splitHandle.height
         }
 
+        HoverHandler {
+            cursorShape: splitHandle.horizontalRule
+                ? Qt.SizeVerCursor : Qt.SizeHorCursor
+        }
+
         Rectangle {
             anchors.centerIn: parent
             width: splitHandle.horizontalRule

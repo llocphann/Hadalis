@@ -61,7 +61,7 @@ required = [
     "capabilityDebounce.restart()",
     "root._taskNeedsTasks(task)",
     "function _applyTasksStatusSemantics(): void",
-    "const statusType = String(bySymbol[symbol] ?? item.statusType ?? \"TODO\")",
+    "const statusType = String(bySymbol[symbol] ?? \"TODO\")",
     'item.done = statusType === "DONE"',
     "root.capabilities?.richMutationAvailable === true",
     'code === "rich_task_required"',
@@ -78,6 +78,7 @@ for snippet in required:
 assert '["obsidian"' not in backend
 assert '"eval"' not in backend
 assert "vault=" not in backend
+assert 'bySymbol[symbol] ?? item.statusType' not in backend, "Tasks-known status semantics must not inherit scanner guesses"
 
 assert markdown_helper.is_file(), "Obsidian Markdown helper is missing"
 assert runtime_helper.is_file(), "Obsidian Tasks runtime helper is missing"

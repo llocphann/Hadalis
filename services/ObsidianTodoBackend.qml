@@ -385,7 +385,7 @@ Scope {
         for (let i = 0; i < root.list.length; ++i) {
             const item = Object.assign({}, root.list[i] ?? ({}))
             const symbol = String(item.statusChar ?? " ")
-            const statusType = String(bySymbol[symbol] ?? item.statusType ?? "TODO")
+            const statusType = String(bySymbol[symbol] ?? "TODO")
             item.statusType = statusType
             item.done = statusType === "DONE"
             enriched.push(item)

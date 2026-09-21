@@ -140,6 +140,12 @@ require(page, "property string inspectedSemanticAnchor:", "inspect mode must tra
 require(page, "CodeWorkflowAnalyzer.result?.entries", "inspect mode must expose parser semantic entries")
 require(page, "model: root.inspectTargets", "Targets must include runtime, graph and parsed QML elements")
 require(page, "Appearance.colors.colOnPrimaryContainer", "selected inspect targets need contrast-safe foreground")
+require(page, "id: pill",
+        "inline Pill must own a local id for tooltip/hover bindings")
+require(page, "target: pill",
+        "Pill hover handler must bind to the inline Pill, not the page root")
+require(page, "text: pill.label",
+        "Pill tooltip must read the inline Pill label without undefined QString warnings")
 require(page, "readonly property bool hovered: pillHover.hovered",
         "elided status pills must expose a stable hover surface")
 require(page, "id: pillHover",
@@ -196,6 +202,12 @@ require(page, 'Accessible.name: "Source preview"',
         "Source Preview must expose an explicit accessibility label")
 require(page, "activeFocusOnTab: true",
         "read-only Source Preview must remain keyboard-focusable")
+source_preview_start = page.index("id: sourcePreviewText")
+source_preview_end = page.index("font.pixelSize: Appearance.font.pixelSize.small",
+                                source_preview_start)
+source_preview_block = page[source_preview_start:source_preview_end]
+require(source_preview_block, "renderType: Text.QtRendering",
+        "Source Preview must use Qt text rendering for clean monospace antialiasing")
 require(page, 'category: "section"',
         "Targets must group runtime, graph and parsed QML sources")
 require(page, "appendSection(",

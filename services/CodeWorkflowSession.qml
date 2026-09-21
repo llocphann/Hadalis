@@ -57,9 +57,7 @@ Singleton {
         const restoredSignalAction =
             CodeWorkflowIr.reviewedSignalActionTargetForEdge(
                 root.subflowTargetId, root.selectedEdgeId)
-        if (!restoredEdge
-                || (restoredEdge.previewable !== true
-                    && restoredSignalAction === null)) {
+        if (!restoredEdge) {
             root.selectedEdgeId = ""
         } else if (restoredSignalAction !== null) {
             const actionNode = CodeWorkflowIr.nodeFor(
@@ -69,9 +67,13 @@ Singleton {
                 root.selectedNodeId = actionNode.id
             else
                 root.selectedEdgeId = ""
-        } else if (CodeWorkflowIr.nodeFor(
-                root.subflowTargetId, restoredEdge.to)) {
-            root.selectedNodeId = restoredEdge.to
+        } else {
+            const edgeTarget = CodeWorkflowIr.nodeFor(
+                root.subflowTargetId, String(restoredEdge.to ?? ""))
+            if (edgeTarget)
+                root.selectedNodeId = edgeTarget.id
+            else
+                root.selectedEdgeId = ""
         }
         const restoredConnectTarget = CodeWorkflowIr.connectTargetFor(
             root.subflowTargetId, root.selectedConnectTargetId)
@@ -214,11 +216,15 @@ Singleton {
             return true
         }
 
-        if (edge.previewable !== true)
-            return false
         const target = CodeWorkflowIr.nodeFor(
             root.subflowTargetId, String(edge.to ?? ""))
-        if (!target || target.kind !== "binding")
+        if (!target)
+            return false
+
+        // Inspection and mutation eligibility are separate concerns. Every
+        // source-backed IR edge may be selected for read-only inspection, while
+        // previewable mutation edges keep their stricter binding invariant.
+        if (edge.previewable === true && target.kind !== "binding")
             return false
 
         const changedNode = root.selectedNodeId !== target.id

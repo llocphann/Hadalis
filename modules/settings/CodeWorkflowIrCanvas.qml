@@ -247,30 +247,90 @@ Item {
         return length
     }
 
-    function edgeLaneOffset(edge): real {
+    function edgeLaneOffset(
+        edge, vertical: bool, direction: real
+    ): real {
         const fromId = String(edge?.from ?? "")
         const siblings = root.edges.filter(candidate =>
             String(candidate?.from ?? "") === fromId)
         if (siblings.length <= 1)
             return 0
+
+        const axis = vertical ? "x" : "y"
+        siblings.sort((left, right) => {
+            const leftNode = root.nodeById(left?.to ?? "")
+            const rightNode = root.nodeById(right?.to ?? "")
+            const leftPosition = Number(leftNode?.[axis] ?? 0)
+            const rightPosition = Number(rightNode?.[axis] ?? 0)
+            if (Math.abs(leftPosition - rightPosition) > 0.001)
+                return leftPosition - rightPosition
+            return String(left?.id ?? "").localeCompare(
+                String(right?.id ?? ""))
+        })
+
         const edgeId = String(edge?.id ?? "")
         const index = siblings.findIndex(candidate =>
             String(candidate?.id ?? "") === edgeId)
         if (index < 0)
             return 0
-        return Math.max(-72, Math.min(
-            72, (index - (siblings.length - 1) / 2) * 12))
+
+        const middle = (siblings.length - 1) / 2
+        return Math.max(-64, Math.min(
+            64, (middle - index) * 8 * direction))
     }
 
-    function routeScore(route, edge): real {
+    function segmentsCross(firstA, firstB, secondA, secondB): bool {
+        const firstVertical =
+            Math.abs(firstA.x - firstB.x) < 0.001
+        const secondVertical =
+            Math.abs(secondA.x - secondB.x) < 0.001
+        if (firstVertical === secondVertical)
+            return false
+
+        const verticalA = firstVertical ? firstA : secondA
+        const verticalB = firstVertical ? firstB : secondB
+        const horizontalA = firstVertical ? secondA : firstA
+        const horizontalB = firstVertical ? secondB : firstB
+        const x = verticalA.x
+        const y = horizontalA.y
+        const epsilon = 0.001
+        return x > Math.min(horizontalA.x, horizontalB.x) + epsilon
+            && x < Math.max(horizontalA.x, horizontalB.x) - epsilon
+            && y > Math.min(verticalA.y, verticalB.y) + epsilon
+            && y < Math.max(verticalA.y, verticalB.y) - epsilon
+    }
+
+    function routeCrossingCount(route, occupiedRoutes): int {
+        const points = route?.points ?? []
+        let crossings = 0
+        for (const occupied of (occupiedRoutes ?? [])) {
+            const otherPoints = occupied?.points ?? []
+            for (let first = 1; first < points.length; ++first) {
+                for (let second = 1;
+                        second < otherPoints.length; ++second) {
+                    if (root.segmentsCross(
+                            points[first - 1], points[first],
+                            otherPoints[second - 1],
+                            otherPoints[second]))
+                        crossings += 1
+                }
+            }
+        }
+        return crossings
+    }
+
+    function routeScore(route, edge, occupiedRoutes): real {
         const collisions = root.routeCollisionCount(route, edge)
+        const crossings =
+            root.routeCrossingCount(route, occupiedRoutes)
         const bends = Math.max(0, (route?.points?.length ?? 2) - 2)
         return collisions * 1000000
+            + crossings * 10000
             + root.routeLength(route)
             + bends * 18
     }
 
-    function edgeRoute(edge): var {
+    function edgeRoute(edge, occupiedRoutes = []): var {
         const fromNode = root.nodeById(edge?.from ?? "")
         const toNode = root.nodeById(edge?.to ?? "")
         if (!fromNode || !toNode)
@@ -289,7 +349,11 @@ Item {
         const separatedRight = toX >= fromRight
         const separatedLeft = toRight <= fromX
         const vertical = !separatedRight && !separatedLeft
-        const laneOffset = root.edgeLaneOffset(edge)
+        const primaryDirection = vertical
+            ? (toCenterY >= fromCenterY ? 1 : -1)
+            : (separatedRight ? 1 : -1)
+        const laneOffset = root.edgeLaneOffset(
+            edge, vertical, primaryDirection)
         const candidates = []
         const bounds = root.rawNodeBounds()
 
@@ -429,7 +493,8 @@ Item {
         for (const candidate of candidates) {
             if (!candidate)
                 continue
-            const score = root.routeScore(candidate, edge)
+            const score = root.routeScore(
+                candidate, edge, occupiedRoutes)
             if (score < bestScore) {
                 bestRoute = candidate
                 bestScore = score
@@ -440,11 +505,16 @@ Item {
 
     function buildEdgeRouteCache(): var {
         const cache = ({})
+        const occupiedRoutes = []
         const graph = root.graph
         for (const edge of (graph?.edges ?? [])) {
             const edgeId = String(edge?.id ?? "")
-            if (edgeId.length > 0)
-                cache[edgeId] = root.edgeRoute(edge)
+            if (edgeId.length === 0)
+                continue
+            const route = root.edgeRoute(edge, occupiedRoutes)
+            cache[edgeId] = route
+            if (route)
+                occupiedRoutes.push(route)
         }
         return cache
     }

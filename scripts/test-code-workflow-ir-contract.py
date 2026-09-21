@@ -306,8 +306,11 @@ def resolved_route(
         y0 = from_center_y
         x3 = to_x + (0.0 if rightward else NODE_WIDTH)
         y3 = to_center_y
-        base_corridor = (x0 + x3) / 2.0 + lane_offset
-        for offset in (0, 48, -48, 96, -96, 160, -160):
+        target_label_run = min(
+            84.0, max(60.0, abs(x3 - x0) * 0.45))
+        base_corridor = (
+            x3 - direction * target_label_run + lane_offset * 0.5)
+        for offset in (0, 32, -32, 64, -64, 120, -120):
             corridor = base_corridor + offset
             candidates.append(make_route([
                 {"x": x0, "y": y0},
@@ -611,7 +614,9 @@ for token in (
     "+ crossings * 1000000",
     "+ overlap * 1000",
     "function edgeRoute(edge, occupiedRoutes = []): var",
-    "const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]",
+    "const targetLabelRun = Math.min(",
+    "const corridorOffsets = [0, 32, -32, 64, -64, 120, -120]",
+    "let foundTargetHorizontal = false",
     "const horizontalPortLanes = [",
     "const perimeterPortLanes = [",
     "const verticalPortLanes = [",

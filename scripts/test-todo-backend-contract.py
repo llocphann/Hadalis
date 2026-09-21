@@ -13,7 +13,7 @@ required_facade = [
     "ObsidianTodoBackend {",
     'Config.options?.todo?.backend ?? "internal"',
     'root.requestedBackend === "obsidian"',
-    "active: root.useObsidian",
+    "active: root.useObsidian || root._obsidianSetupActive",
     "readonly property var list:",
     "readonly property bool ready:",
     "readonly property bool busy:",
@@ -29,10 +29,22 @@ required_facade = [
     "return internal.deleteItem(index)",
     "return obsidian.toggleTask(String(item.id ?? \"\"))",
     "return obsidian.deleteTask(String(item.id ?? \"\"))",
+    "readonly property bool obsidianSetupActive: root._obsidianSetupActive",
+    "readonly property bool obsidianReady: obsidian.ready",
+    "readonly property var obsidianMigrationPreview: obsidian.migrationPreview",
+    "function beginObsidianSetup(): bool",
+    "function cancelObsidianSetup(): void",
     "function initializeSection()",
+    "function previewInternalToObsidian(): bool",
     "readonly property int internalItemCount: internal.list.length",
-    "function migrateInternalToObsidian()",
-    "return obsidian.migrateInternal(internal.filePath)",
+    "function migrateInternalToObsidian(expectedInternalSha)",
+    "root._activateAfterMigration = staging",
+    "obsidian.migrateInternal(",
+    "function activateObsidian(): bool",
+    "function reactivateInternal(): bool",
+    'Config.setNestedValue("todo.backend", "obsidian")',
+    'Config.setNestedValue("todo.backend", "internal")',
+    "function openObsidianSource(): bool",
     "function toggleTask(taskId)",
     "function deleteTask(taskId)",
     "function openSource(taskId)",
@@ -44,6 +56,8 @@ for snippet in required_facade:
 assert "FileView {" not in facade, "persistence leaked into Todo facade"
 assert "Process {" not in facade, "process implementation leaked into Todo facade"
 assert '"internal"' in facade, "internal backend default/fallback disappeared"
+assert "readonly property var list: root.useObsidian ? obsidian.list : internal.list" in facade
+assert "root._obsidianSetupActive ? obsidian.list" not in facade, "staging backend leaked into public canonical list"
 
 required_internal = [
     "Scope {",

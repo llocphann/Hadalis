@@ -27,7 +27,7 @@ def main() -> None:
     system_settings = read("modules/settings/GeneralConfigCore.qml")
     system_facade = read("modules/settings/GeneralConfig.qml")
     settings_registry = read("modules/settings/SettingsPageRegistryData.qml")
-    bar_settings = read("modules/settings/BarConfig.qml")
+    bar_settings = read("modules/settings/BarConfigHugOnly.qml")
     bar_config = read("modules/settings/BarConfig.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
     thinkfan_migration = read("sdata/migrations/041-thinkfan-helper-bridge.sh")
@@ -106,6 +106,7 @@ def main() -> None:
               f"System Monitor compact grid must keep screenshot-aligned metrics: {token}")
 
     for token in (
+        "property bool connectAdjacentScreenEdge: false",
         "id: directEdgeAttachment",
         "readonly property real _popupScreenMargin: root._screenEdgeThickness",
         "screenMargin: root._popupScreenMargin",
@@ -118,7 +119,6 @@ def main() -> None:
         check(token in styled_popup,
               f"StyledPopup must use direct Caelestia-style edge attachment: {token}")
     for forbidden in (
-        "connectAdjacentScreenEdge",
         "id: adjacentScreenEdgeGeometry",
         "geometry: adjacentScreenEdgeGeometry",
     ):

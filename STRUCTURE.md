@@ -53,9 +53,9 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **modules/common/:** shared config, visual infrastructure, perimeter infrastructure, and reusable widgets. `Config.qml` owns the typed runtime schema and the custom-widget persistence workaround.
 
-**modules/common/perimeter/:** shared connected-surface primitives: perimeter tokens/topology, popup geometry/reveal/content placement, iRiS field/frame/edge adapters, and body-only input masks. Existing ii Bar popups consume these primitives through `modules/bar/StyledPopup.qml`. The broad `iiPerimeter` registry/hosting/routing runtime is retired.
+**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Existing bar popups consume this substrate through `modules/bar/StyledPopup.qml`; full `iiPerimeter` composition ownership remains a separate broader cutover.
 
-**modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement with Hug as the only live Classic Bar geometry. Existing bar popups use `StyledPopup.qml`, which provides the connected-surface presentation path without introducing a second popup framework.
+**modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement and Classic geometry modes (Hug, Float, Rectangle, Card). Existing bar popups use `StyledPopup.qml`, which provides the connected-surface presentation path without introducing a second popup framework.
 
 **modules/dock/:** the ii-family application Dock. Panel is the canonical supported Dock surface style; legacy persisted style values are normalized to `panel` during startup.
 
@@ -101,10 +101,10 @@ Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specif
 
 ### Classic Bar
 - `modules/bar/` — Classic Bar runtime.
-- `modules/bar/StyledPopup.qml` — existing popup abstraction with connected geometry, iRiS rendering, reveal clipping and body-only input integration.
+- `modules/bar/StyledPopup.qml` — existing popup abstraction with connected perimeter geometry/frame/mask integration.
 - `modules/settings/BarConfig.qml` — Classic Bar settings.
 - `bar.bottom` + `bar.vertical` — placement.
-- `bar.cornerStyle` — compatibility-only persisted key; startup normalizes it to Hug (`0`).
+- `bar.cornerStyle` — Hug/Float/Rectangle/Card geometry.
 - `bar.blurBackground` — native compositor blur controls.
 - `bar.autoHide.showWhenPressingSuper` — Super-key reveal behavior.
 
@@ -115,13 +115,14 @@ Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specif
 - `SettingsPageRegistry.qml` — startup compatibility migration for legacy Dock styles and UI locale values.
 
 ### Connected Perimeter core
-- `modules/common/perimeter/PerimeterTopology.qml` / `PerimeterTokens.qml` — canonical edge topology and shared geometry tokens.
-- `ConnectedSurfaceGeometry.qml`, `ConnectedSurfaceRevealClip.qml`, and `ConnectedSurfaceContentHost.qml` — shared placement, slide-under reveal and content placement.
-- `ConnectedSurfaceIrisField.qml`, `ConnectedSurfaceIrisFrame.qml`, and `ConnectedSurfaceIrisEdgeSurface.qml` — iRiS rendering for popups and feature-owned Screen Edge bodies.
-- `ConnectedSurfaceFrame.qml` — non-iRiS body/shadow renderer used by Waffle.
-- `ConnectedSurfaceBodyMask.qml` — body-only compositor input for both ii and Waffle direct-seam paths.
+- `modules/common/perimeter/PerimeterTopology.qml` — canonical edge/alignment slot topology.
+- `modules/common/perimeter/PerimeterConfig.qml` — perimeter configuration adapter.
+- `modules/common/perimeter/ModuleRegistry.qml` and `PerimeterModuleHost.qml` — module registration/hosting contract.
+- `modules/common/perimeter/AnchorRegistry.qml` and `AnchorPublisher.qml` — rendered-anchor publication and lookup.
+- `modules/common/perimeter/SurfaceRouteController.qml` — transient-surface route coordination.
+- `modules/common/perimeter/ConnectedSurfaceGeometry.qml`, `ConnectedSurfaceFrame.qml`, `ConnectedSurfaceConnector.qml`, and `ConnectedSurfaceMask.qml` — shared connected geometry/render/input primitives.
 
-The connector Canvas/mask and the broad `iiPerimeter` registry/hosting/anchor/routing cutover runtime are retired.
+Connected popup presentation is already active through `StyledPopup.qml` for existing bar popups. The broad `iiPerimeter` composition cutover remains independently guarded by `PerimeterCutoverPolicy.qml` so connected popup geometry cannot accidentally drop legacy-only functionality.
 
 ### Overview and task view
 - `modules/overview/Overview.qml` — workspace/window overview and navigation.

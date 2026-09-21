@@ -76,8 +76,7 @@ def main() -> None:
 
     for token in (
         "property bool verticalPreset: false",
-        'readonly property string layoutPath: root.verticalPreset\n'
-        '        ? "bar.verticalLayout" : "bar.layout"',
+        'root.verticalPreset ? "bar.verticalLayout" : "bar.layout"',
         '["top", "centerTop", "center", "centerBottom", "bottom"]',
         'Translation.tr("Top edge")',
         'Translation.tr("Center top")',

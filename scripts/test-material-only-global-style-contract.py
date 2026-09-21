@@ -6,7 +6,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
-GLOBAL_ACTIONS = ROOT / "services" / "GlobalActions.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 BAR = ROOT / "modules" / "bar" / "Bar.qml"
 VERTICAL_BAR = ROOT / "modules" / "verticalBar" / "VerticalBar.qml"
@@ -36,31 +35,6 @@ SYS_TRAY_MENU = ROOT / "modules" / "bar" / "SysTrayMenu.qml"
 CONTEXT_MENU = ROOT / "modules" / "common" / "widgets" / "ContextMenu.qml"
 GLASS_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "GlassBackground.qml"
 STYLED_RADIO_BUTTON = ROOT / "modules" / "common" / "widgets" / "StyledRadioButton.qml"
-STYLED_SWITCH = ROOT / "modules" / "common" / "widgets" / "StyledSwitch.qml"
-TOOLBAR = ROOT / "modules" / "common" / "widgets" / "Toolbar.qml"
-DIALOG_BUTTON = ROOT / "modules" / "common" / "widgets" / "DialogButton.qml"
-STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
-INPUT_CHIP = ROOT / "modules" / "common" / "widgets" / "InputChip.qml"
-FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
-WINDOW_DIALOG = ROOT / "modules" / "common" / "widgets" / "WindowDialog.qml"
-MATERIAL_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialSymbol.qml"
-TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarButton.qml"
-TOOLBAR_TAB_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarTabButton.qml"
-ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButton.qml"
-GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
-SELECTION_GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "SelectionGroupButton.qml"
-STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTipContent.qml"
-MATERIAL_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "MaterialTextField.qml"
-MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
-TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
-TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField.qml"
-NAVIGATION_RAIL_BUTTON = ROOT / "modules" / "common" / "widgets" / "NavigationRailButton.qml"
-QUICK_WALLPAPER_ITEM = ROOT / "modules" / "settings" / "QuickWallpaperItem.qml"
-CLASSIC_QUICK_TOGGLE = ROOT / "modules" / "sidebarRight" / "quickToggles" / "classicStyle" / "QuickToggleButton.qml"
-WIDGETS_QMLDIR = ROOT / "modules" / "common" / "widgets" / "qmldir"
-ANGEL_ACCENT_BAR = ROOT / "modules" / "common" / "widgets" / "AngelAccentBar.qml"
-ANGEL_BACKGROUND = ROOT / "modules" / "common" / "widgets" / "AngelBackground.qml"
-REGALIA_CONTROL_FACE = ROOT / "modules" / "common" / "widgets" / "RegaliaControlFace.qml"
 RIPPLE_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButton.qml"
 STYLED_RECTANGULAR_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledRectangularShadow.qml"
 STYLED_COMBO_BOX = ROOT / "modules" / "common" / "widgets" / "StyledComboBox.qml"
@@ -124,7 +98,6 @@ def forbid(text: str, token: str, source: str) -> None:
 def main() -> None:
     appearance = APPEARANCE.read_text(encoding="utf-8")
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
-    global_actions = GLOBAL_ACTIONS.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
     bar = BAR.read_text(encoding="utf-8")
     vertical_bar = VERTICAL_BAR.read_text(encoding="utf-8")
@@ -158,28 +131,6 @@ def main() -> None:
     context_menu = CONTEXT_MENU.read_text(encoding="utf-8")
     glass_background = GLASS_BACKGROUND.read_text(encoding="utf-8")
     styled_radio_button = STYLED_RADIO_BUTTON.read_text(encoding="utf-8")
-    styled_switch = STYLED_SWITCH.read_text(encoding="utf-8")
-    toolbar = TOOLBAR.read_text(encoding="utf-8")
-    dialog_button = DIALOG_BUTTON.read_text(encoding="utf-8")
-    styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
-    input_chip = INPUT_CHIP.read_text(encoding="utf-8")
-    filter_chip = FILTER_CHIP.read_text(encoding="utf-8")
-    window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
-    material_symbol = MATERIAL_SYMBOL.read_text(encoding="utf-8")
-    toolbar_button = TOOLBAR_BUTTON.read_text(encoding="utf-8")
-    toolbar_tab_button = TOOLBAR_TAB_BUTTON.read_text(encoding="utf-8")
-    icon_toolbar_button = ICON_TOOLBAR_BUTTON.read_text(encoding="utf-8")
-    group_button = GROUP_BUTTON.read_text(encoding="utf-8")
-    selection_group_button = SELECTION_GROUP_BUTTON.read_text(encoding="utf-8")
-    styled_tooltip_content = STYLED_TOOLTIP_CONTENT.read_text(encoding="utf-8")
-    material_text_field = MATERIAL_TEXT_FIELD.read_text(encoding="utf-8")
-    material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
-    toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
-    toolbar_text_field = TOOLBAR_TEXT_FIELD.read_text(encoding="utf-8")
-    navigation_rail_button = NAVIGATION_RAIL_BUTTON.read_text(encoding="utf-8")
-    quick_wallpaper_item = QUICK_WALLPAPER_ITEM.read_text(encoding="utf-8")
-    classic_quick_toggle = CLASSIC_QUICK_TOGGLE.read_text(encoding="utf-8")
-    widgets_qmldir = WIDGETS_QMLDIR.read_text(encoding="utf-8")
     ripple_button = RIPPLE_BUTTON.read_text(encoding="utf-8")
     styled_rectangular_shadow = STYLED_RECTANGULAR_SHADOW.read_text(encoding="utf-8")
     styled_combo_box = STYLED_COMBO_BOX.read_text(encoding="utf-8")
@@ -428,20 +379,6 @@ def main() -> None:
     ):
         forbid(theme_service, token, "ThemeService.qml")
 
-    # GlobalActions is user-facing runtime. Do not advertise style actions that
-    # ThemeService intentionally ignores under the Material-only v1.0 contract.
-    require(global_actions, 'id: "style-material"', "GlobalActions.qml")
-    for token in (
-        'id: "style-cards"',
-        'id: "style-aurora"',
-        'id: "style-inir"',
-        'id: "style-angel"',
-        'id: "style-regalia"',
-        'id: "style-zzz"',
-        'id: "style-cookie"',
-    ):
-        forbid(global_actions, token, "GlobalActions.qml")
-
     # The shared connected-popup path is user-facing runtime, not migration
     # compatibility. It must consume the canonical Material tokens directly.
     for token in (
@@ -528,11 +465,7 @@ def main() -> None:
         "blur: Appearance.effectsEnabled ? root.blurStrength : 0",
     ):
         require(glass_background, token, "GlassBackground.qml")
-    for token in (
-        "AngelPartialBorder {",
-        "property color inirColor:",
-        "property bool forceNeutralMaterial:",
-    ):
+    for token in ("AngelPartialBorder {",):
         forbid(glass_background, token, "GlassBackground.qml")
     for token in (
         "width: 20",
@@ -542,337 +475,6 @@ def main() -> None:
     ):
         require(styled_radio_button, token, "StyledRadioButton.qml")
     forbid(styled_radio_button, "RegaliaControlFace {", "StyledRadioButton.qml")
-
-    # RegaliaControlFace became orphaned after all shared controls collapsed to
-    # Material. Keep the renderer and its module export retired.
-    if REGALIA_CONTROL_FACE.exists():
-        raise AssertionError(
-            "modules/common/widgets/RegaliaControlFace.qml must stay retired under Material-only v1.0"
-        )
-    forbid(widgets_qmldir, "RegaliaControlFace 1.0 RegaliaControlFace.qml", "widgets/qmldir")
-
-    # Angel-only wrapper components had no consumers outside their qmldir exports.
-    # Keep them retired instead of carrying unreachable wallpaper/effect renderers.
-    for retired_path in (ANGEL_ACCENT_BAR, ANGEL_BACKGROUND):
-        if retired_path.exists():
-            raise AssertionError(
-                f"{retired_path.relative_to(ROOT)} must stay retired under Material-only v1.0"
-            )
-    forbid(widgets_qmldir, "AngelAccentBar 1.0 AngelAccentBar.qml", "widgets/qmldir")
-    forbid(widgets_qmldir, "AngelBackground 1.0 AngelBackground.qml", "widgets/qmldir")
-
-    # Classic quick toggles inherit GroupButton's Material interaction model.
-    # Dead style branches must not reintroduce the invalid buttonHovered binding.
-    for token in legacy_style_tokens:
-        forbid(classic_quick_toggle, token, "classicStyle/QuickToggleButton.qml")
-    for token in ("button.buttonHovered", "ZzzPlate {"):
-        forbid(classic_quick_toggle, token, "classicStyle/QuickToggleButton.qml")
-    for token in (
-        "Accessible.checkable: true",
-        "Accessible.checked: button.toggled",
-        "buttonRadiusPressed: Appearance.rounding.small",
-        "colBackground: Appearance.colors.colLayer2",
-        "colBackgroundToggled: Appearance.colors.colPrimary",
-        "fill: button.toggled ? 1 : 0",
-        "animateFill: true",
-    ):
-        require(classic_quick_toggle, token, "classicStyle/QuickToggleButton.qml")
-
-    # Quick wallpaper tiles retain keyboard/accessibility activation, async
-    # thumbnail loading and selected-state feedback with Material-only chrome.
-    for token in legacy_style_tokens:
-        forbid(quick_wallpaper_item, token, "QuickWallpaperItem.qml")
-    forbid(quick_wallpaper_item, "RegaliaControlFace {", "QuickWallpaperItem.qml")
-    forbid(quick_wallpaper_item, "property color colText:", "QuickWallpaperItem.qml")
-    for token in (
-        "signal activated()",
-        "activeFocusOnTab: true",
-        "Accessible.onPressAction: root.activated()",
-        "Keys.onPressed: event =>",
-        "active: root.useThumbnail",
-        "generateThumbnail: true",
-        "border.width: root.isSelected ? 2 : 0",
-        'text: "check_circle"',
-    ):
-        require(quick_wallpaper_item, token, "QuickWallpaperItem.qml")
-
-    # NavigationRailButton keeps TabBar state, collapsed tooltip, expanded label,
-    # press feedback and animated icon fill while using Material-only chrome.
-    for token in legacy_style_tokens:
-        forbid(navigation_rail_button, token, "NavigationRailButton.qml")
-    forbid(navigation_rail_button, "RegaliaControlFace {", "NavigationRailButton.qml")
-    forbid(navigation_rail_button, "showToggledHighlight", "NavigationRailButton.qml")
-    for token in (
-        "property bool toggled: TabBar.tabBar?.currentIndex === TabBar.index",
-        "readonly property real visualWidth:",
-        "extraVisibleCondition: !root.expanded",
-        "anchorEdges: Edges.Right",
-        "color: Appearance.colors.colPrimary",
-        "radius: Appearance.rounding.full",
-        "fill: toggled ? 1 : 0",
-        "animateFill: true",
-        "scale: root.down ? 0.82 : 1",
-        "opacity: root.expanded ? 1 : 0",
-    ):
-        require(navigation_rail_button, token, "NavigationRailButton.qml")
-
-    # ToolbarTextField is reused by search/filter surfaces. Keep caller styling
-    # through colBackground plus text editing/context-menu behavior, but no dead
-    # global-style renderers.
-    for token in legacy_style_tokens:
-        forbid(toolbar_text_field, token, "ToolbarTextField.qml")
-    forbid(toolbar_text_field, "RegaliaControlFace {", "ToolbarTextField.qml")
-    for token in (
-        "property alias colBackground: background.color",
-        "placeholderTextColor: Appearance.colors.colSubtext",
-        "color: Appearance.colors.colOnLayer1",
-        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
-        "selectionColor: Appearance.colors.colSecondaryContainer",
-        "color: Appearance.colors.colLayer1",
-        "radius: Appearance.rounding.full",
-        "TextInputContextMenu {",
-    ):
-        require(toolbar_text_field, token, "ToolbarTextField.qml")
-
-    # Material text inputs keep Settings-search registration, focus expansion and
-    # context-menu behavior while dropping the unreachable Regalia face.
-    for source, content in (
-        ("MaterialTextField.qml", material_text_field),
-        ("MaterialTextArea.qml", material_text_area),
-    ):
-        for token in legacy_style_tokens:
-            forbid(content, token, source)
-        forbid(content, "RegaliaControlFace {", source)
-        for token in (
-            "SettingsSearchRegistry.registerOption",
-            "SettingsSearchRegistry.unregisterControl(root)",
-            "function focusFromSettingsSearch()",
-            "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
-            "selectionColor: Appearance.colors.colSecondaryContainer",
-            "placeholderTextColor: Appearance.colors.colOnLayer1",
-            "TextInputContextMenu {",
-        ):
-            require(content, token, source)
-    require(material_text_field, "Material.containerStyle: Material.Outlined", "MaterialTextField.qml")
-    require(material_text_area, "Material.containerStyle: Material.Filled", "MaterialTextArea.qml")
-
-    # ToolbarTabBar keeps its animated index bounds, wheel selection and reorder
-    # mechanics while the track/indicator use the sole Material chrome.
-    for token in legacy_style_tokens:
-        forbid(toolbar_tab_bar, token, "ToolbarTabBar.qml")
-    for token in (
-        "signal userSelected(int index)",
-        "signal reorderRequested(int fromIndex, int toIndex)",
-        "height: 40",
-        "color: Appearance.colors.colSurfaceContainer",
-        "color: Appearance.colors.colSecondaryContainer",
-        "property Item targetItem: tabRepeater.itemAt(root.currentIndex)",
-        "AnimatedTabIndexPair {",
-        "visible: root.reorderEnabled",
-        "onWheel: (event) =>",
-    ):
-        require(toolbar_tab_bar, token, "ToolbarTabBar.qml")
-
-    # Grouped controls and tooltip content are shared runtime primitives.
-    # Preserve interaction/reveal behavior while keeping only Material chrome.
-    for source, content in (
-        ("GroupButton.qml", group_button),
-        ("SelectionGroupButton.qml", selection_group_button),
-        ("StyledToolTipContent.qml", styled_tooltip_content),
-    ):
-        for token in legacy_style_tokens:
-            forbid(content, token, source)
-    for token in (
-        "property bool bounce: true",
-        "property color colBackgroundToggled: Appearance.colors.colPrimary",
-        "border.width: root.visualFocus ? 1 : 0",
-        "onLongPressed:",
-    ):
-        require(group_button, token, "GroupButton.qml")
-    forbid(group_button, "cookieMorphing", "GroupButton.qml")
-    for token in (
-        "Accessible.checkable: true",
-        "Accessible.checked: root.toggled",
-        "horizontalPadding: 11",
-        "verticalPadding: 6",
-        "colBackground: Appearance.colors.colSecondaryContainer",
-    ):
-        require(selection_group_button, token, "SelectionGroupButton.qml")
-    forbid(selection_group_button, "ZzzCornerPreview", "SelectionGroupButton.qml")
-    forbid(selection_group_button, "buttonPreviewKind", "SelectionGroupButton.qml")
-    forbid(config_selection_array, "buttonPreviewKind", "ConfigSelectionArray.qml")
-    for token in (
-        "property bool shown: false",
-        "property string position:",
-        "color: Appearance.colors.colLayer3",
-        "radius: Appearance.rounding.verysmall",
-        "border.width: 1",
-        "border.color: Appearance.colors.colLayer3Hover",
-        "color: Appearance.colors.colOnLayer3",
-    ):
-        require(styled_tooltip_content, token, "StyledToolTipContent.qml")
-    forbid(styled_tooltip_content, "RegaliaPlate {", "StyledToolTipContent.qml")
-    forbid(styled_tooltip_content, "AngelPartialBorder {", "StyledToolTipContent.qml")
-
-    # Toolbar controls and MaterialSymbol are shell-wide Material primitives.
-    # Preserve accessibility, fill animation and label reveal without style dispatch.
-    for source, content in (
-        ("MaterialSymbol.qml", material_symbol),
-        ("ToolbarButton.qml", toolbar_button),
-        ("ToolbarTabButton.qml", toolbar_tab_button),
-        ("IconToolbarButton.qml", icon_toolbar_button),
-    ):
-        for token in legacy_style_tokens:
-            forbid(content, token, source)
-    for token in (
-        "readonly property real effectiveFill: animateFill",
-        "enabled: root.animateFill && Appearance.animationsEnabled",
-        'readonly property bool useJp: text.startsWith("jp:")',
-        "property bool forceNerd: false",
-    ):
-        require(material_symbol, token, "MaterialSymbol.qml")
-    require(toolbar_button, "buttonRadius: Appearance.rounding.full", "ToolbarButton.qml")
-    for token in (
-        "Accessible.checkable: true",
-        "Accessible.checked: root.current",
-        "implicitHeight: 40",
-        "buttonRadius: height / 2",
-        "text: root.text",
-        "font.family: Appearance.font.family.main",
-        "color: Appearance.colors.colOnSurface",
-    ):
-        require(toolbar_tab_button, token, "ToolbarTabButton.qml")
-    for token in (
-        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
-        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
-        "iconSize: 22",
-    ):
-        require(icon_toolbar_button, token, "IconToolbarButton.qml")
-
-    # WindowDialog keeps measured-content, Escape/outside-click and pixel-aligned
-    # reveal behavior, without legacy decoration APIs or hidden style renderers.
-    for token in legacy_style_tokens:
-        forbid(window_dialog, token, "WindowDialog.qml")
-    for token in (
-        "zzzLabel", "zzzIndex", "zzzGhostText", "zzzAccentColor",
-        "zzzShowBurst", "zzzShowTicks", "zzzDecorationsEnabled",
-        "ZzzPanelBackdrop {", "RegaliaPlate {",
-    ):
-        forbid(window_dialog, token, "WindowDialog.qml")
-    for token in (
-        "property real backgroundHeight: -1",
-        "Keys.onPressed:",
-        "onPressed: root.dismiss()",
-        "radius: Appearance.rounding.large",
-        "fallbackColor: Appearance.colors.colSurfaceContainerHigh",
-        "wallpaperBackdropEnabled: true",
-        "border.width: 0",
-        'border.color: "transparent"',
-        "readonly property real measuredContentHeight:",
-        "Math.max(radius, Appearance.sizes.spacingLarge)",
-    ):
-        require(window_dialog, token, "WindowDialog.qml")
-
-    # Shared Material chips keep interaction/accessibility behavior but no longer
-    # instantiate or branch through retired Regalia/ZZZ Global Theme chrome.
-    for source, content in (
-        ("InputChip.qml", input_chip),
-        ("FilterChip.qml", filter_chip),
-    ):
-        for token in legacy_style_tokens:
-            forbid(content, token, source)
-        forbid(content, "RegaliaControlFace {", source)
-    for token in (
-        "implicitHeight: 30",
-        "radius: height / 2",
-        "border.width: 1",
-        "anchors.rightMargin: root.removable ? 24 : 0",
-        "onClicked: root.activated()",
-        "onClicked: root.removed()",
-    ):
-        require(input_chip, token, "InputChip.qml")
-    for token in (
-        "implicitHeight: 30",
-        "buttonRadius: height / 2",
-        "Accessible.checkable: true",
-        "Accessible.checked: root.selected",
-        "ColorUtils.ensureReadable(",
-        "border.width: root.visualFocus ? 2",
-        "spacing: icon.visible ? 6 : 0",
-    ):
-        require(filter_chip, token, "FilterChip.qml")
-
-    # DialogButton and StyledDropShadow are shared Material primitives. Legacy
-    # style aliases must not change text treatment or suppress an otherwise enabled shadow.
-    for source, content in (
-        ("DialogButton.qml", dialog_button),
-        ("StyledDropShadow.qml", styled_drop_shadow),
-    ):
-        for token in legacy_style_tokens:
-            forbid(content, token, source)
-    for token in (
-        "buttonRadius: Appearance.rounding.full",
-        "property color colEnabled: Appearance.colors.colPrimary",
-        "property color colDisabled: Appearance.colors.colOutline",
-        "colBackground: ColorUtils.transparentize(Appearance.colors.colLayer3)",
-        "colBackgroundHover: Appearance.colors.colLayer3Hover",
-        "colRipple: Appearance.colors.colLayer3Active",
-        "text: root.buttonText",
-        "font.family: Appearance.font.family.main",
-        "font.weight: Font.Normal",
-    ):
-        require(dialog_button, token, "DialogButton.qml")
-    require(styled_drop_shadow, "visible: Appearance.effectsEnabled", "StyledDropShadow.qml")
-
-    # Toolbar is a shared shell primitive. Its wallpaper-backdrop positioning,
-    # public aliases and shadow toggle remain, but Global Theme decorations are dead.
-    for token in legacy_style_tokens:
-        forbid(toolbar, token, "Toolbar.qml")
-    for token in (
-        "ZzzPlate {",
-        "ZzzSurfaceAccent {",
-        "RegaliaPlate {",
-        "Appearance.zzz.",
-        "Appearance.regalia.",
-        "Appearance.angel.",
-        "Appearance.inir.",
-        "Appearance.aurora.",
-    ):
-        forbid(toolbar, token, "Toolbar.qml")
-    for token in (
-        "property bool enableShadow: true",
-        "property bool transparent: false",
-        "property alias colBackground: background.color",
-        "active: root.enableShadow && !root.transparent",
-        "fallbackColor: Appearance.colors.colSurfaceContainer",
-        "screenX: root.screenX",
-        "screenY: root.screenY",
-        'border.color: "transparent"',
-        "radius: height / 2",
-    ):
-        require(toolbar, token, "Toolbar.qml")
-
-    # StyledSwitch is shell-wide runtime. Keep the public scale/color knobs and
-    # Material motion while removing constant-dead Global Theme render branches.
-    for token in legacy_style_tokens:
-        forbid(styled_switch, token, "StyledSwitch.qml")
-    for token in (
-        "RegaliaControlFace {",
-        "ColorUtils.",
-        "Gradient {",
-    ):
-        forbid(styled_switch, token, "StyledSwitch.qml")
-    for token in (
-        "implicitHeight: 32 * root.scale",
-        "implicitWidth: 52 * root.scale",
-        "property color activeColor: Appearance.colors.colPrimary",
-        "property color inactiveColor: Appearance.colors.colSurfaceContainerHighest",
-        "radius: Appearance.rounding.full",
-        "border.width: 2 * root.scale",
-        "color: root.checked ? Appearance.colors.colOnPrimary : Appearance.colors.colOutline",
-        "duration: Appearance.animationCurves.expressiveFastSpatialDuration",
-    ):
-        require(styled_switch, token, "StyledSwitch.qml")
 
     # RippleButton is a shell-wide primitive. Its public knobs stay stable, but
     # the renderer itself must follow the sole Material Global Theme.
@@ -1845,14 +1447,12 @@ def main() -> None:
     for token in (
         "GlobalStates.toggleSidebarLeft",
         "GlobalStates.toggleSidebarRight",
-        "GlobalStates.openTaskView(",
-        'GlobalStates.overviewMode !== "taskview"',
+        "GlobalStates.openOrbit(",
         "Brightness.getMonitorForScreen",
         "Audio.incrementVolume()",
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
-    forbid(screen_corners, "GlobalStates.openOrbit(", "screenCorners/ScreenCorners.qml")
     for token in ("RoundCorner", "fakeScreenRounding", "showFakeRounding", "roundingSize"):
         forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
 
@@ -2009,39 +1609,6 @@ def main() -> None:
         "SoftwareView {}",
     ):
         require(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
-
-    # Horizontal BarContent is active runtime and Material-only. Retired global
-    # styles must not keep hidden renderers, image effects or constant-dead branches alive.
-    for token in legacy_style_tokens:
-        forbid(bar_content, token, "bar/BarContent.qml")
-    for token in (
-        "surfaceDialect",
-        "root.zzzEverywhere",
-        "root.regaliaEverywhere",
-        "root.angelEverywhere",
-        "root.inirEverywhere",
-        "root.auroraEverywhere",
-        "RegaliaPlate {",
-        "ZzzGlassWash {",
-        "ZzzTechFrame {",
-        "AngelPartialBorder {",
-        "MultiEffect {",
-        "GE.OpacityMask {",
-        "ColorQuantizer {",
-        "nativeBlurActive",
-        "nativeBlurAllowed",
-    ):
-        forbid(bar_content, token, "bar/BarContent.qml")
-    for token in (
-        "readonly property color separatorColor: Appearance.colors.colOutlineVariant",
-        "root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary",
-        "color: Appearance.colors.colLayer0",
-        "border.width: 0",
-        "border.color: Appearance.colors.colLayer0Border",
-        "CavaSpectrum {",
-    ):
-        require(bar_content, token, "bar/BarContent.qml")
-    forbid(bar, "nativeBlurAllowed: false", "bar/Bar.qml")
 
     # VerticalBarContent owns the supported ii vertical bar chrome. Keep the
     # independent islands/cornerStyle/cardStyle, compositor blur and connected

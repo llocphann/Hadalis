@@ -134,11 +134,17 @@ def main() -> None:
         check(token in content_host,
               f"ConnectedSurfaceContentHost must centralize live padded body placement: {token}")
 
+    connector = read("modules/common/perimeter/ConnectedSurfaceConnector.qml")
+    check("Canvas {" in connector,
+          "ConnectedSurfaceConnector must render a shaped shoulder rather than a rectangular stem")
+    check("bezierCurveTo" in connector,
+          "ConnectedSurfaceConnector must retain curved shoulder transitions")
+    check("connectorSourceExtent" in connector,
+          "ConnectedSurfaceConnector must narrow toward the real bar anchor")
+
     for retired_path in (
         "modules/common/perimeter/ConnectedSurfaceJoinFlares.qml",
         "modules/common/perimeter/PerimeterCornerShadow.qml",
-        "modules/common/perimeter/ConnectedSurfaceConnector.qml",
-        "modules/common/perimeter/ConnectedSurfaceMask.qml",
         "modules/common/widgets/RoundCorner.qml",
     ):
         check(not (ROOT / retired_path).exists(),
@@ -305,38 +311,8 @@ def main() -> None:
         check(f'ReservationWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must retain transparent {edge} work-area reservation")
 
-    # The deferred ii router and SidebarHost were restored to the last known-good
-    # pre-optimization composition after source-isolation experiments made the
-    # whole interaction tree disappear. Keep the proven component boundaries
-    # stable until a replacement is validated on the live Niri desktop.
-    ii_panels = read("modules/ii/ShellIiPanelsImpl.qml")
-    for token in (
-        "import qs.modules.notificationPopup",
-        "import qs.modules.onScreenDisplay",
-        "import qs.modules.screenCorners",
-        'PanelLoader { identifier: "iiNotificationPopup"; component: NotificationPopup {} }',
-        'PanelLoader { identifier: "iiOnScreenDisplay"; component: OnScreenDisplay {} }',
-        'DeferredPanelLoader { identifier: "iiScreenCorners"; component: ScreenCorners {} }',
-        'source: "../dashboard/Dashboard.qml"',
-        'source: "../overview/Overview.qml"',
-        'source: "../sidebarLeft/SidebarLeft.qml"',
-        'source: "../sidebarRight/SidebarRight.qml"',
-    ):
-        check(token in ii_panels,
-              f"Restored ii deferred runtime route changed: {token}")
-    check("onStatusChanged:" not in ii_panels,
-          "LazyLoader-based ii panel routes must not use Qt Loader.status handlers")
-    check(not (ROOT / "modules/ii/ShellIiOptionalRuntime.qml").exists(),
-          "Failed optional-runtime isolation experiment must stay retired")
-
     sidebar_host = read("modules/sidebar/SidebarHost.qml")
     for token in (
-        "import qs.modules.sidebarLeft",
-        "import qs.modules.sidebarRight",
-        "id: featureContentComponent",
-        "id: systemContentComponent",
-        "sourceComponent: root.featureRole",
-        "? featureContentComponent : systemContentComponent",
         "GlobalStates.sidebarLeftPresentationOutput",
         "GlobalStates.sidebarRightPresentationOutput",
         "PanelWindow {",
@@ -352,8 +328,6 @@ def main() -> None:
     ):
         check(token in sidebar_host,
               f"Sidebar Screen Edge boundary contract missing: {token}")
-    check("source: root.featureRole" not in sidebar_host,
-          "SidebarHost must not restore the failed URL-switched content loader")
     for retired in (
         "ConnectedSurfaceConnector",
         "sidebarBridgeGeometry",
@@ -379,40 +353,16 @@ def main() -> None:
         "ownerThickness: dockRoot.screenEdgeThickness",
         "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
         "dockRoot.edgeDecorationMargin * 2",
-        "dockHeight + dockRoot.edgeDecorationMargin",
-        "model: root.targetScreens",
-        "readonly property bool barIsVertical: Config.options?.bar?.vertical ?? false",
-        "fillColor: dockVisualBackground.surfaceColor",
-        'color: "transparent"',
-        "border.width: 0",
         "? dockRoot.screenEdgeThickness",
         "screenEdge?.physicalShadow?.enabled ?? true",
         "screenEdge?.physicalShadow?.size ?? 15",
         "screenEdge?.physicalShadow?.opacity ?? 0.70",
         "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
-        "exclusionMode: ExclusionMode.Ignore",
-        'WlrLayershell.namespace: "quickshell:dock-reservation"',
-        "exclusiveZone: visible",
-        "mask: Region { item: emptyReservationInput }",
     ):
         check(token in dock,
               f"Dock iRiS Screen Edge / shadow contract missing: {token}")
     check("StyledRectangularShadow {" not in dock,
           "Dock must not retain its detached local shadow after iRiS cutover")
-    check("Config.options?.bar?.bottom !== undefined" not in dock,
-          "Dock reload key must track Bar orientation rather than existence of the bottom key")
-    check("exclusiveZone: root.pinned" not in dock,
-          "Painted Dock must not participate in normal exclusion or Screen Edge will displace its iRiS seam")
-    check("Appearance.sizes.elevationMargin))" not in dock,
-          "Pinned Dock reservation must track Screen Edge width rather than decorative elevation margin")
-    check("fillColor: dockVisualBackground.color" not in dock
-          and "borderColor: dockVisualBackground.border.color" not in dock,
-          "Dock iRiS field must be the sole body painter; duplicate Rectangle paint changes alpha")
-    check("surfaceBorderColor" not in dock
-          and "surfaceBorderWidth" not in dock
-          and "borderColor: dockVisualBackground" not in dock
-          and "borderWidth: dockVisualBackground" not in dock,
-          "Dock connected plate must remain borderless like the other ii popup surfaces")
     check(dock.count("duration: SurfaceMotion.duration") >= 4
           and "Appearance.animation.elementMoveEnter.duration" not in dock,
           "Dock reveal/retract must use the same immutable slide motion as connected popups")
@@ -702,11 +652,10 @@ def main() -> None:
           "ii StyledPopup must not silently retain the legacy flare/mask renderer after iRiS cutover")
 
     frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
-    check("ConnectedSurfaceConnector" not in frame
-          and "connectorBorderWidth" not in frame
-          and "connectorVisible" not in frame
-          and "connectorItem" not in frame,
-          "ConnectedSurfaceFrame must not retain the retired connector painter/API")
+    check("property real connectorBorderWidth: 0" in frame,
+          "ConnectedSurfaceFrame must default the connector outline off at the seam")
+    check("strokeWidth: root.connectorBorderWidth" in frame,
+          "ConnectedSurfaceFrame must route connector outline width through its seam policy")
     check("ConnectedSurfaceJoinFlares" not in frame
           and "joinFlareRadius" not in frame,
           "ConnectedSurfaceFrame must not retain the retired round-wedge painter")
@@ -728,9 +677,12 @@ def main() -> None:
     check("cached: true" in generic_shadow,
           "Shared rectangular shadow must retain the prior stable cached renderer")
 
-    check(not (ROOT / "modules/common/perimeter/ConnectedSurfaceConnector.qml").exists()
-          and not (ROOT / "modules/common/perimeter/ConnectedSurfaceMask.qml").exists(),
-          "Retired connector renderer and connector-strip mask must stay deleted")
+    mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
+    for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
+        check(token in mask,
+              f"ConnectedSurfaceMask must track the flared connector rather than its full bounding box: {token}")
+    check("item: root.active ? root.connectorItem" not in mask,
+          "ConnectedSurfaceMask must not make the transparent connector bounding box fully interactive")
 
     bar_runtime = read("modules/bar/Bar.qml")
     vertical_bar_runtime = read("modules/verticalBar/VerticalBar.qml")
@@ -787,19 +739,6 @@ def main() -> None:
           "Horizontal Hug body must ignore persisted retired cornerStyle at runtime")
     check("Config.options?.bar?.cornerStyle" not in vertical_bar_content,
           "Vertical Hug body must ignore persisted retired cornerStyle at runtime")
-    bar_group = read("modules/bar/BarGroup.qml")
-    for retired_constant in (
-        "readonly property int cornerStyle: 0",
-        "readonly property bool floatingStyle: false",
-        "readonly property bool cardStyleEverywhere: false",
-        "Detached Float/Card shadow is retired",
-    ):
-        check(retired_constant not in bar_content
-              and retired_constant not in vertical_bar_content,
-              f"Hug-only Bar runtime must not retain constant-false style residue: {retired_constant}")
-    check("cardStyleEverywhere" not in bar_group
-          and "Config.options?.bar?.cornerStyle" not in bar_group,
-          "BarGroup must not retain unreachable legacy Card-style selection")
     check("(Config.options?.bar?.cornerStyle ?? 0) === 0" not in vertical_bar_runtime,
           "Vertical Hug shoulders must not depend on legacy cornerStyle state")
     for fullscreen_bar_surface in (bar_runtime, vertical_bar_runtime):
@@ -841,9 +780,6 @@ def main() -> None:
           "Taskbar window previews must not draw a second floating card inside the connected shell")
     check("anchorItem" in taskbar_preview and "previewOpen" in taskbar_preview,
           "Taskbar preview must preserve real button anchoring and hover lifecycle")
-    check("import Quickshell.Wayland" in taskbar_preview
-          and "target: ToplevelManager.toplevels" in taskbar_preview,
-          "Taskbar preview must import the Wayland owner of ToplevelManager")
 
     tray = read("modules/bar/SysTray.qml")
     check("alternativeVisibleCondition: root.trayOverflowOpen" in tray,
@@ -905,21 +841,21 @@ def main() -> None:
         check(retired_runtime_token not in bar_runtime,
               f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")
 
-    bar_settings = read("modules/settings/BarConfig.qml")
-    quick_settings = read("modules/settings/QuickConfig.qml")
-    for retired_settings_token in (
-        'Translation.tr("Corner style")',
-        'Translation.tr("Float shadow")',
-        'Translation.tr("Show background")',
-    ):
-        check(retired_settings_token not in bar_settings,
-              f"Canonical Bar settings must not retain retired control: {retired_settings_token}")
-    check('Translation.tr("Bar style")' not in quick_settings
-          and "Config.options?.bar?.cornerStyle" not in quick_settings,
-          "Canonical Quick settings must not retain the retired Bar style selector")
-    for retired_facade in ("BarConfigHugOnly.qml", "QuickConfigHugOnly.qml"):
-        check(not (ROOT / "modules/settings" / retired_facade).exists(),
-              f"Retired Settings compatibility facade must stay deleted: {retired_facade}")
+    bar_settings = read("modules/settings/BarConfigHugOnly.qml")
+    quick_settings = read("modules/settings/QuickConfigHugOnly.qml")
+    check('Translation.tr("Corner style")' in bar_settings
+          and 'Translation.tr("Float shadow")' in bar_settings,
+          "Public Bar settings must suppress retired corner-style and float-shadow controls")
+    check('Translation.tr("Bar style")' in quick_settings,
+          "Quick settings must suppress the retired Bar style selector")
+    check("_hugUiReady" not in bar_settings
+          and "opacity: root._hugUiReady" not in bar_settings
+          and "onTriggered: root._applyHugOnlyUi(root)" in bar_settings,
+          "Public Bar settings must remain visible while the compatibility pruning pass runs")
+    check("_hugUiReady" not in quick_settings
+          and "opacity: root._hugUiReady" not in quick_settings
+          and "onTriggered: root._applyHugOnlyUi(root)" in quick_settings,
+          "Quick settings must remain visible while the Hug compatibility pruning pass runs")
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
@@ -948,144 +884,6 @@ def main() -> None:
     check("Dock uses the Panel surface style." in dock_config,
           "Dock settings must describe Panel as the canonical surface style")
 
-    dock_button = read("modules/dock/DockButton.qml")
-    dock_app_button = read("modules/dock/DockAppButton.qml")
-    dock_apps = read("modules/dock/DockApps.qml")
-    dock_qmldir = read("modules/dock/qmldir")
-    pill_qmldir = read("modules/pill/qmldir")
-    for retired_component in (
-        "DockMacBackground.qml",
-        "DockMacItem.qml",
-        "DockPillItem.qml",
-        "DockSeparator.qml",
-    ):
-        check(not (ROOT / "modules/dock" / retired_component).exists(),
-              f"Retired Dock renderer must stay deleted: {retired_component}")
-        check(retired_component not in dock_qmldir,
-              f"Retired Dock renderer must stay out of qmldir: {retired_component}")
-    check(not (ROOT / "modules/pill/PillTheme.qml").exists()
-          and "PillTheme" not in pill_qmldir,
-          "Retired Dock-only PillTheme compatibility tokens must stay deleted")
-
-    for retired_token in ("pillStyle", "macosStyle", "DockPillItem", "DockMacItem",
-                          "macHoveredIndex", "previewAnchorItem"):
-        check(retired_token not in dock_app_button
-              and retired_token not in dock_apps,
-              f"Panel-only Dock runtime must not retain dormant renderer token: {retired_token}")
-    for token in (
-        "property real dockThicknessOverride: -1",
-        "readonly property real dockThickness:",
-        "root.dockThicknessOverride > 0",
-        "readonly property real requestedIconSize:",
-        "readonly property real controlSize:",
-        "dockThickness - 10",
-        "requestedIconSize + 10",
-        "background.implicitHeight: controlSize",
-        "background.implicitWidth: controlSize",
-    ):
-        check(token in dock_button,
-              f"Panel Dock control sizing contract missing: {token}")
-    check("root.controlSize - 10" in dock_app_button
-          and "Math.max(8, root.dockThickness - root.controlSize)" in dock_app_button
-          and "Config.options?.dock?.height ?? 70" not in dock
-          and "Config.options?.dock?.height ?? 70" not in dock_app_button
-          and "Config.options?.dock?.hoverRegionHeight ?? 5" not in dock,
-          "Dock runtime must honor the full Settings size/reveal range without stale fallbacks or overflow")
-    check(dock.count("dockThickness: dockRoot.dockHeight") == 2
-          and dock.count("dockThicknessOverride: dockRoot.dockHeight") == 2
-          and "dockThicknessOverride: root.dockThickness" in dock_apps,
-          "Dock edit-resize preview must resize all Panel controls/separators with the iRiS body")
-    check("Math.max(40, Math.min(100," in dock
-          and "Math.max(40, Math.min(100, numeric))" in shell_layout
-          and 'text: Translation.tr("Dock height (px)")' in dock_config
-          and "from: 40" in dock_config
-          and "to: 100" in dock_config,
-          "Dock Settings, shell-edit preview and persisted layout mutation must share the 40-100px range")
-    check("Config.options?.appearance?.screenEdge?.width ?? 10" in shell_layout
-          and "(Config.options?.dock?.height ?? 60)" in shell_layout
-          and "Appearance.sizes.elevationMargin\n                    + Appearance.sizes.hyprlandGapsOut" not in shell_layout,
-          "Dock desktop-zone inset must match Dock height plus physical Screen Edge width")
-
-    check('if (!separatePinnedFromRunning) {' in dock_apps
-          and 'Unified mode intentionally has no separator.' in dock_apps
-          and 'if (hasPinnedOnly && hasRunning) {' in dock_apps,
-          "Dock separator must exist only in explicit separate-pinned/running mode")
-    check('const appKey = appId.toLowerCase()' in dock_app_button
-          and 'String(id).toLowerCase() === appKey' in dock_app_button
-          and 'String(id).toLowerCase() !== appKey' in dock_app_button,
-          "Dock pin/unpin mutation must use the same case-insensitive identity semantics as the runtime model")
-
-    check("function _normalizedPinnedApps(): list<var>" in dock_apps
-          and "const seen = new Set()" in dock_apps
-          and dock_apps.count("root._normalizedPinnedApps()") >= 2,
-          "Dock model/reorder must deduplicate persisted pinned ids case-insensitively")
-    check("try {" in dock_apps
-          and 'compiled.push(new RegExp(String(pattern), "i"))' in dock_apps
-          and "Ignoring invalid ignoredAppRegexes pattern" in dock_apps,
-          "Invalid user ignored-app regexes must not abort Dock model rebuild")
-
-    check("readonly property real activeScale: 1.05" in dock_app_button
-          and "property bool dragEmphasis: false" in dock_app_button
-          and "scale: root.dragEmphasis ? 1.08 : (root.appIsActive ? root.activeScale : 1.0)" in dock_app_button
-          and "dragEmphasis: isBeingDragged" in dock_apps
-          and "scale: isBeingDragged ? 1.08" not in dock_apps,
-          "Panel Dock must keep active/drag emphasis under one scale owner")
-
-    for retired_dock_residue in (
-        "maxWindowPreviewHeight",
-        "maxWindowPreviewWidth",
-        "windowControlsHeight",
-        "buttonPadding",
-        "previewWidthConstraint",
-        "previewHeightConstraint",
-        "nativeBlurGeometryExact",
-        "minimizeUnfocused",
-        "enableBlurGlass",
-    ):
-        check(retired_dock_residue not in dock_runtime_sources
-              and retired_dock_residue not in dock
-              and retired_dock_residue not in config_qml
-              and retired_dock_residue not in defaults_json,
-              f"Panel-only Dock must not retain dead compatibility state: {retired_dock_residue}")
-    check("property string dockPosition" not in read("modules/dock/DockButton.qml")
-          and "property string dockPosition" not in dock_app_button
-          and dock_apps.count("dockPosition: root.dockPosition") == 1,
-          "Dock app delegates must not receive the retired dockPosition property; only DockPreview owns position")
-    check("property bool smartIndicator:" not in dock_app_button
-          and "property bool showAllDots:" not in dock_app_button
-          and "property int maxDots:" not in dock_app_button,
-          "Dock indicator loader must read its live config directly without dead proxy properties")
-
-    dock_runtime_sources = (
-        dock,
-        read("modules/dock/DockButton.qml"),
-        dock_app_button,
-        dock_apps,
-        read("modules/dock/DockPreview.qml"),
-        read("modules/dock/DockWindowPreview.qml"),
-    )
-    for retired_dock_style_token in (
-        "surfaceDialect",
-        "PillTheme",
-        "Appearance.zzz",
-        "Appearance.regalia",
-        "Appearance.angel",
-        "Appearance.inir",
-        "Appearance.aurora",
-        "Appearance.zzzEverywhere",
-        "Appearance.regaliaEverywhere",
-        "Appearance.angelEverywhere",
-        "Appearance.inirEverywhere",
-        "Appearance.auroraEverywhere",
-        "ZzzPlate",
-        "RegaliaPlate",
-        "RegaliaControlFace",
-        "zzzOvershoot",
-    ):
-        check(all(retired_dock_style_token not in source
-                  for source in dock_runtime_sources),
-              f"Panel-only Dock runtime must not retain dormant global-style token: {retired_dock_style_token}")
-
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,
           "Legacy Dock styles must normalize to Panel")
@@ -1102,15 +900,16 @@ def main() -> None:
     check('Config.setNestedValue("sidebar.style", "panel")' in settings_registry
           and 'Config.setNestedValue("sidebar.cardStyle", false)' in settings_registry,
           "Legacy Sidebar Island/Card values must normalize to Panel/non-card")
-    check("BarConfigHugOnly.qml" not in settings_registry
-          and "QuickConfigHugOnly.qml" not in settings_registry,
-          "Settings registry must not retain post-construction Hug-only facade routing")
+    check('component: "modules/settings/BarConfigHugOnly.qml"' in settings_registry,
+          "Public Bar settings must route through the Hug-only facade")
+    bar_hug_config = read("modules/settings/BarConfigHugOnly.qml")
+    check('text === Translation.tr("Show background")' in bar_hug_config,
+          "Hug-only Bar settings must hide the retired transparent-background toggle")
+    check('component: "modules/settings/QuickConfigHugOnly.qml"' in settings_registry,
+          "Public Quick settings must route through the Hug-only facade")
+    check('entry.label !== Translation.tr("Corner style")' in settings_registry,
+          "Settings search must not expose the retired Bar corner-style selector")
     settings_registry_data = read("modules/settings/SettingsPageRegistryData.qml")
-    check('component: "modules/settings/BarConfig.qml"' in settings_registry_data
-          and 'component: "modules/settings/QuickConfig.qml"' in settings_registry_data,
-          "Settings registry data must route directly to canonical Bar/Quick pages")
-    check("onGeneratedTranslationsChanged" not in settings_registry_data,
-          "Settings search registry must not listen for the retired generatedTranslations signal")
     check('label: Translation.tr("Bar background")' not in settings_registry_data,
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,

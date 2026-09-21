@@ -18,9 +18,11 @@ fail() {
 for file in \
     PerimeterTokens.qml \
     ConnectedSurfaceGeometry.qml \
+    ConnectedSurfaceConnector.qml \
     ConnectedSurfaceFrame.qml \
     ConnectedSurfaceRevealClip.qml \
     ConnectedSurfaceContentHost.qml \
+    ConnectedSurfaceMask.qml \
     ConnectedSurfaceIrisField.qml \
     ConnectedSurfaceIrisFrame.qml \
     ConnectedSurfaceBodyMask.qml \
@@ -33,12 +35,10 @@ done
 for retired in \
     "$common/ConnectedSurfaceJoinFlares.qml" \
     "$common/PerimeterCornerShadow.qml" \
-    "$common/ConnectedSurfaceConnector.qml" \
-    "$common/ConnectedSurfaceMask.qml" \
     "$root/modules/common/widgets/RoundCorner.qml"; do
     [[ ! -e "$retired" ]] || fail "retired round-wedge primitive still exists: ${retired#$root/}"
 done
-for token in 'ConnectedSurfaceJoinFlares 1.0' 'PerimeterCornerShadow 1.0' 'ConnectedSurfaceConnector 1.0' 'ConnectedSurfaceMask 1.0'; do
+for token in 'ConnectedSurfaceJoinFlares 1.0' 'PerimeterCornerShadow 1.0'; do
     ! grep -Fq "$token" "$common/qmldir" || fail "retired perimeter export remains: $token"
 done
 ! grep -Fq 'RoundCorner 1.0' "$root/modules/common/widgets/qmldir" \

@@ -17,9 +17,9 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     mask = read("modules/common/perimeter/ConnectedSurfaceBodyMask.qml")
+    legacy_mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     popup = read("modules/bar/StyledPopup.qml")
     media = read("modules/bar/Media.qml")
-    waffle = read("modules/waffle/bar/BarPopup.qml")
 
     check("property bool inputEnabled: true" in mask,
           "ConnectedSurfaceBodyMask must expose an explicit pointer-input policy")
@@ -32,13 +32,8 @@ def main() -> None:
           and "_bodyStrip" not in mask
           and "connectorItem" not in mask,
           "ii popup input must stay body-only with no retired connector-strip approximation")
-    check(not (ROOT / "modules/common/perimeter/ConnectedSurfaceMask.qml").exists()
-          and not (ROOT / "modules/common/perimeter/ConnectedSurfaceConnector.qml").exists(),
-          "retired connector renderer/mask must stay deleted")
-    check("ConnectedSurfaceBodyMask {" in waffle
-          and "connectorItem:" not in waffle
-          and "ConnectedSurfaceMask {" not in waffle,
-          "Waffle direct seam must use the body-only compositor mask")
+    check("_sourceStrip" in legacy_mask and "_bodyStrip" in legacy_mask,
+          "legacy connected mask must remain available for Waffle/non-cutover surfaces")
     check("inputEnabled: root.requestedVisible" in popup
           and "|| (root.hoverActivates && root._lingerVisible)" in popup,
           "StyledPopup must revoke click-popup input on close while preserving the hover bridge")

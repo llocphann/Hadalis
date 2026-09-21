@@ -95,8 +95,8 @@ def main() -> None:
            "Overview Settings must not expose retired launcher-workspace behavior")
     forbid(overview_settings, "overview.focusAnimationDurationMs",
            "Overview Settings must keep advanced motion tuning out of the primary UI")
-    require(dashboard_settings, 'Config.setNestedValue("dashboard.widthRatio"',
-            "Dashboard Settings must own the shared Dashboard / launcher Dashboard sizing contract")
+    require(dashboard_settings, "overview.dashboard.enable",
+            "Dashboard Settings must own compact launcher Dashboard integration")
     require(arrangement, "readonly property int layoutSchemaVersion: 6",
             "Settings arrangement must preserve the Overview migration while adding Code Workflow")
     require(arrangement, "root.overviewPageIndex",

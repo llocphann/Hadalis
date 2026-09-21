@@ -13,7 +13,7 @@ This document records the stabilization contracts that should be checked during 
 - Hover popouts stay resident during the short retract tail so the pointer can cross the Bar↔popup seam into the body without collapsing the surface.
 - The iRiS body welds under joined owners by `irisWeldDepth = 3`; field/shadow/input scissoring still begins at the actual owner boundary, so the weld cannot repaint or steal input from Bar/Screen Edge pixels.
 - Bar popup shadows use the same public Screen Edge shadow controls and Material `m3shadow` ink as the physical frame; owner-side clipping still suppresses shadow across joined Bar/Screen Edge pixels.
-- Popup input is body-only through `ConnectedSurfaceBodyMask`; shader fillets and transparent full-output regions do not steal pointer input. The old connector Canvas and connector-strip mask are retired entirely, including from Waffle.
+- ii popup input is body-only through `ConnectedSurfaceBodyMask`; shader fillets and transparent full-output regions do not steal pointer input. The connector-strip mask is no longer part of the ii path.
 - Transparent regions outside the visible popup shape remain click-through.
 - Focused connected popouts preserve Niri layer-shell focus and the existing Hyprland compositor focus grab.
 - Media volume HUD, expanded bar Media controls, tray overflow, taskbar window previews, and the existing battery/resources/weather/clock/timer/update popouts all use the shared connected path. Context menus remain context menus rather than being forced into this presentation contract.
@@ -32,16 +32,9 @@ This document records the stabilization contracts that should be checked during 
 
 - Panel is the only supported user-facing Dock style.
 - Dock uses `ConnectedSurfaceIrisEdgeSurface` for top/bottom/left/right attachment, so the visible body stops at the real Screen Edge inner boundary while the SDF weld makes it one connected block with Screen Edge.
-- The painted Dock ignores layer-shell exclusion zones and stays in physical-output coordinates. Pinned workspace reservation is owned by a separate transparent/input-empty reservation surface; never put `exclusiveZone` back on the painted Dock or the Screen Edge reservation will displace the iRiS seam.
-- Pinned reservation ends at the Dock body's inward edge (`dock.height + appearance.screenEdge.width`), while transparent free-edge window room expands to the configured Screen Edge shadow reach. Changing shadow size therefore cannot move the Dock body or alter workspace reservation.
 - Dock, Sidebar and Dashboard use the same `appearance.screenEdge.physicalShadow` size/opacity and Material `m3shadow` ink as the physical Screen Edge.
 - Dock reveal/retract remains slide-only through `SurfaceMotion`; the iRiS body follows that translation rather than introducing a second animation stage.
-- Panel controls derive their size from Dock height plus requested icon size: the default remains 50px, thin Docks shrink controls/icons rather than overflowing, and large icons can grow only when the configured Dock height has room. Settings, shell-edit resize preview and persisted layout mutation share the same 40-100px Dock-height range. Shell-layout resize previews feed the same live thickness into app buttons, separators and the Overview button, so controls resize with the iRiS body instead of snapping after commit. Runtime fallbacks stay aligned with the shipped 60px Dock height and 2px hover-reveal region.
-- Automatic desktop-zone insets use the same physical boundary as the pinned reservation (`dock.height + appearance.screenEdge.width`); transparent elevation/shadow room is never counted as occupied Dock thickness.
-- `separatePinnedFromRunning=false` is one continuous visual list with no separator; the separator exists only in explicit separated mode. Pin/unpin identity matching is case-insensitive, persisted duplicate/case-variant pinned ids collapse to one runtime entry, and an invalid user ignored-app regex is skipped instead of aborting the Dock rebuild.
-- Hover preview capture is app-scoped: hovering one Dock icon requests only that app's live window ids from `WindowPreviewService`; it must not trigger a full-session screenshot batch.
 - Legacy persisted values such as Pill, macOS, Island, or M3 normalize to `panel` during startup.
-- Retired Pill/macOS renderer components are absent from the live Dock module; Panel behavior must not be hidden behind constant-false style branches.
 - The settings UI must not expose the legacy style matrix again.
 - Waffle remains a separate panel family and is not a value of `dock.style`.
 

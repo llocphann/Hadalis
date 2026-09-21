@@ -63,8 +63,6 @@ for token in \
     'Appearance.m3colors.m3shadow'; do
     grep -Fq "$token" "$dock" || fail "Dock iRiS edge contract missing: $token"
 done
-! grep -Fq 'surfaceBorderColor' "$dock" || fail 'Dock restored a decorative surface border color'
-! grep -Fq 'surfaceBorderWidth' "$dock" || fail 'Dock restored a decorative surface border width'
 
 for file in "$search" "$osk" "$common/ConnectedSurfaceFrame.qml"; do
     ! grep -Fq 'ConnectedSurfaceJoinFlares' "$file" || fail "${file#$root/} restored JoinFlares"
@@ -78,8 +76,6 @@ grep -Fq 'GlobalStates.toggleSidebarLeft' "$screen_corners" || fail 'ScreenCorne
 grep -Fq 'GlobalStates.openOrbit(' "$screen_corners" || fail 'ScreenCorners lost Orbit interaction'
 
 grep -Fq 'ConnectedSurfaceFrame {' "$waffle" || fail 'Waffle lost shared non-iRiS frame'
-grep -Fq 'ConnectedSurfaceBodyMask {' "$waffle" || fail 'Waffle direct seam lost body-only input mask'
-! grep -Fq 'ConnectedSurfaceMask {' "$waffle" || fail 'Waffle restored retired connector-strip mask'
-! grep -Fq 'connectorItem:' "$waffle" || fail 'Waffle restored invisible connector input ownership'
+grep -Fq 'connectorVisible: false' "$waffle" || fail 'Waffle connector painter must stay disabled'
 
 printf 'PASS: runtime QML is free of retired round-wedge geometry; current iRiS/direct-seam routes are authoritative\n'

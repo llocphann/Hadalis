@@ -54,7 +54,7 @@ require_token 'modules/verticalBar/VerticalMedia.qml' 'Bar.StyledPopup {'     'V
 # Waffle remains a separate panel family/API, but its BarPopup must consume
 # shared ConnectedSurface primitives and all Waffle Bar menus/previews must use
 # that entrypoint.
-for token in     'ConnectedSurfaceGeometry {'     'ConnectedSurfaceFrame {'     'ConnectedSurfaceContentHost {'     'ConnectedSurfaceBodyMask {'; do
+for token in     'ConnectedSurfaceGeometry {'     'ConnectedSurfaceFrame {'     'ConnectedSurfaceContentHost {'     'ConnectedSurfaceMask {'; do
     require_token 'modules/waffle/bar/BarPopup.qml' "$token"         "Waffle BarPopup lost shared connected-surface primitive: $token"
 done
 for file in     'modules/waffle/bar/BarMenu.qml'     'modules/waffle/bar/tray/WaffleTrayMenu.qml'     'modules/waffle/bar/tray/TrayOverflowMenu.qml'     'modules/waffle/bar/tasks/TaskPreview.qml'; do

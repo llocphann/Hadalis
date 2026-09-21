@@ -244,21 +244,12 @@ Never run raw `qs kill -c inir` / `qs -c inir` by hand. iNiR runs under `inir.se
 
 ## Connected Perimeter Status
 
-Connected-surface presentation is active for existing ii Bar popups through
-`StyledPopup.qml`. `ConnectedSurfaceGeometry` and
-`ConnectedSurfaceRevealClip` own placement/reveal, while
-`ConnectedSurfaceIrisFrame` renders the iRiS SDF union without repainting the
-Top-layer Bar/Screen Edge owners. `ConnectedSurfaceBodyMask` keeps compositor
-input on the revealed body only.
+Connected Perimeter has two distinct runtime roles that must not be conflated:
 
-Waffle remains a separate panel family and reuses `ConnectedSurfaceFrame` for
-its non-iRiS body/shadow presentation plus the same body-only input mask. The
-old connector Canvas, connector-strip mask, broad `iiPerimeter` composition
-runtime, cutover policy, registries, anchor publishers and route controllers are
-retired and must not be reintroduced.
+- **Connected popup presentation is active by default** for existing ii bar popups through `StyledPopup.qml`. `ConnectedSurfaceGeometry` and `ConnectedSurfaceRevealClip` retain the slide-only lifecycle, while `ConnectedSurfaceIrisFrame` renders the exact iRiS v2.31.0 SDF union in the Overlay window using Top-layer Bar/Screen Edge owner records without repainting those owners. `ConnectedSurfaceBodyMask` keeps compositor input on the revealed rounded body only. Legacy `ConnectedSurfaceFrame` / `ConnectedSurfaceMask` remain available for Waffle and non-cutover shared surfaces; they are no longer the ii StyledPopup renderer.
+- **Full `iiPerimeter` composition ownership remains guarded/opt-in** through `PerimeterCutoverPolicy.qml`. The configurable topology, registry/hosting, anchors, routing, reservations, and module adapters exist, but broad cutover must remain disabled whenever it would drop functionality that the legacy composition still provides.
 
-Detailed contracts and local visual acceptance steps live in
-`docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`.
+Detailed contracts and local visual acceptance steps live in `docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`.
 
 ## Localization Contract
 

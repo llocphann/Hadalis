@@ -122,8 +122,7 @@ for path in files:
 # false positives. If a type is intentionally restored, its implementation
 # automatically disables the retired-type check and falls through to the owner-
 # import contract below for critical exported types.
-for type_name in ('MascotImage', 'MascotAnimation', 'CompositorFocusGrab',
-                  'ConnectedSurfaceMask', 'ConnectedSurfaceConnector'):
+for type_name in ('MascotImage', 'MascotAnimation', 'CompositorFocusGrab'):
     implementations = [path for path in files if path.name == f'{type_name}.qml']
     if implementations:
         continue

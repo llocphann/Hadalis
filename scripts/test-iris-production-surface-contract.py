@@ -188,26 +188,13 @@ for token in (
     "edge: root.position",
     "ownerThickness: dockRoot.screenEdgeThickness",
     "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
-    "dockHeight + dockRoot.edgeDecorationMargin",
-    "model: root.targetScreens",
-    "fillColor: dockVisualBackground.surfaceColor",
-    'color: "transparent"',
-    "border.width: 0",
     "screenEdge?.physicalShadow?.enabled ?? true",
     "screenEdge?.physicalShadow?.size ?? 15",
     "screenEdge?.physicalShadow?.opacity ?? 0.70",
     "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
-    "exclusionMode: ExclusionMode.Ignore",
-    'WlrLayershell.namespace: "quickshell:dock-reservation"',
-    "exclusiveZone: visible",
-    "mask: Region { item: emptyReservationInput }",
 ):
     require(dock, token, "Dock iRiS edge cutover")
 forbid(dock, "StyledRectangularShadow {", "Dock detached legacy shadow")
-forbid(dock, "fillColor: dockVisualBackground.color", "Dock duplicate body paint")
-forbid(dock, "Config.options?.bar?.bottom !== undefined", "Dock stale Bar orientation probe")
-forbid(dock, "exclusiveZone: root.pinned", "Dock visual surface displaced by Screen Edge reservation")
-forbid(dock, "Appearance.sizes.elevationMargin))", "Dock reservation detached from Screen Edge width")
 
 for source, label in (
     (sidebar, "Sidebar"),
@@ -242,9 +229,9 @@ for token in (
     require(search_bar, token, "SongRec geometry cleanup")
 
 require(motion, 'readonly property string mode: "slide"', "immutable motion")
-require(waffle, "ConnectedSurfaceFrame {", "Waffle direct-seam compatibility")
-require(waffle, "ConnectedSurfaceBodyMask {", "Waffle body-only input mask")
-for token in ("ConnectedSurfaceIrisFrame {", "ConnectedSurfaceMask {"):
-    forbid(waffle, token, "Waffle must stay on the non-iRiS direct-seam path")
+require(waffle, "ConnectedSurfaceFrame {", "Waffle compatibility")
+require(waffle, "ConnectedSurfaceMask {", "Waffle compatibility")
+for token in ("ConnectedSurfaceIrisFrame {", "ConnectedSurfaceBodyMask {"):
+    forbid(waffle, token, "Waffle must remain unchanged by ii cutover")
 
 print("iRiS production surface contract: PASS")

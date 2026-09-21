@@ -206,7 +206,8 @@ Item {
         const edgeId = String(edge?.id ?? "")
         if (edgeId.length === 0)
             return root.edgeRoute(edge)
-        return root.edgeRouteCache?.[edgeId] ?? root.edgeRoute(edge)
+        const cached = root.edgeRouteCache[edgeId]
+        return cached ?? root.edgeRoute(edge)
     }
 
     function graphBounds(): var {

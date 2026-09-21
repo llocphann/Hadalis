@@ -41,7 +41,9 @@ require(arrangement, "layoutSchemaVersion: 6", "saved layouts need v6 migration"
 require(arrangement, "codeWorkflowPageIndex: 30", "Code Workflow must keep appended index 30")
 
 for token in ("codeWorkflowTargetId", "codeWorkflowInstanceId", "codeWorkflowOutputName",
-              "codeWorkflowPanX", "codeWorkflowPanY", "codeWorkflowZoom"):
+              "codeWorkflowPanX", "codeWorkflowPanY", "codeWorkflowZoom",
+              "codeWorkflowTargetsPaneWidth", "codeWorkflowInspectorPaneWidth",
+              "codeWorkflowSourcePreviewHeight"):
     require(persistent, token, "missing primitive workspace state " + token)
 
 for token in ("singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml",
@@ -197,6 +199,14 @@ require(page, "SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneWidth"
         "Inspector width must restore from session state")
 require(page, "SplitView.preferredHeight: CodeWorkflowSession.sourcePreviewHeight",
         "Source Preview height must restore from session state")
+for token in (
+    'property real codeWorkflowTargetsPaneWidth: 224',
+    'property real codeWorkflowInspectorPaneWidth: 280',
+    'property real codeWorkflowSourcePreviewHeight: 190',
+):
+    require(persistent, token,
+            "Persistent.settings missing resizable pane schema " + token)
+
 for token in (
     'property real targetsPaneWidth: 224',
     'property real inspectorPaneWidth: 280',

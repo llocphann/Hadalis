@@ -108,6 +108,12 @@ for token in (
 
 require(capture_script, '"$WTYPE_BIN" "sidebar"',
         "capture runner must exercise the real target filter input path when wtype is available")
+require(capture_script, "for cmd in jq niri grim tar git sha256sum python3; do",
+        "capture runner must preflight Python before generating runtime diagnostics")
+require(capture_script, 'meta/parser-capability.json',
+        "capture runner must record parser capability for semantic-source review")
+require(capture_script, 'meta/code-workflow-runtime-warnings.txt',
+        "capture runner must summarize Code Workflow runtime warnings")
 require(capture_script, 'settings_window_json >"$BUNDLE_DIR/meta/niri-settings-window.json"',
         "capture runner must retain only the selected Settings window geometry record")
 
@@ -166,11 +172,15 @@ require(page, 'import qs.modules.common.functions',
         "Code Workflow page must import ColorUtils helpers used by pills and target contrast")
 require(page, 'placeholderText: "Filter targets"',
         "Targets must expose a search/filter control")
-require(page, "id: targetFilter",
-        "Targets filter must retain a stable QML id")
-require(page, "Layout.fillHeight: false",
+target_filter_start = page.index("id: targetFilter")
+target_filter_end = page.index("onTextChanged: root.inspectFilter = text",
+                               target_filter_start)
+target_filter_block = page[target_filter_start:target_filter_end]
+require(target_filter_block, "Layout.fillHeight: false",
         "Targets filter must not consume the flexible height reserved for the inspect list")
-require(page, "colBackground: Appearance.colors.colLayer2",
+require(target_filter_block, "Layout.preferredHeight: 34",
+        "Targets filter must keep its compact toolbar height")
+require(target_filter_block, "colBackground: Appearance.colors.colLayer2",
         "Targets filter must remain visually distinct from the Targets panel")
 require(page, "property bool inspectSelectionFromTargets: false",
         "Targets must distinguish list-originated selection from external selection")

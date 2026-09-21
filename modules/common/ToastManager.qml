@@ -48,6 +48,33 @@ Scope {
         PerimeterTokens.irisFuseDepth,
         root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0)
     readonly property real toastBodyPadding: 8
+
+    // Match StyledPopup's immutable ii motion contract: the whole connected
+    // surface slides under its owner. Individual toast content never fades,
+    // scales or morphs independently.
+    property real surfaceOffsetScale: 1
+    readonly property real surfaceRevealProgress: 1 - root.surfaceOffsetScale
+    property var _pendingSurfaceRemovalId: null
+
+    Behavior on surfaceOffsetScale {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
+        }
+    }
+
+    Timer {
+        id: surfaceRetractTimer
+        interval: Math.max(1, SurfaceMotion.duration + 16)
+        repeat: false
+        onTriggered: {
+            const pendingId = root._pendingSurfaceRemovalId
+            root._pendingSurfaceRemovalId = null
+            if (pendingId !== null && root.surfaceOffsetScale >= 0.999)
+                root.removeToast(pendingId)
+        }
+    }
     
     // Unified reload tracking - only show ONE toast per reload event
     property real _lastReloadToastTime: 0
@@ -70,12 +97,37 @@ Scope {
         return true
     }
     
+    function _revealSurface(wasEmpty) {
+        const reversingRetract = root._pendingSurfaceRemovalId !== null
+        surfaceRetractTimer.stop()
+        root._pendingSurfaceRemovalId = null
+
+        if (!Appearance.animationsEnabled) {
+            root.surfaceOffsetScale = 0
+            return
+        }
+
+        if (!wasEmpty || reversingRetract) {
+            // Reverse naturally from the current slide position if a new toast
+            // arrives during retract; do not replay or snap the animation.
+            root.surfaceOffsetScale = 0
+            return
+        }
+
+        root.surfaceOffsetScale = 1
+        Qt.callLater(() => {
+            if (root.toasts.length > 0)
+                root.surfaceOffsetScale = 0
+        })
+    }
+
     function addToast(title, message, icon, isError, duration, source, accentColor) {
         // Prevent duplicates: if same source and title already visible, ignore
         if (toasts.some(t => t.source === source && t.title === title)) {
             return
         }
-        
+
+        const wasEmpty = toasts.length === 0
         const toast = {
             id: Date.now(),
             title: title,
@@ -86,21 +138,37 @@ Scope {
             source: source || "system",
             accentColor: accentColor || Appearance.colors.colPrimary
         }
-        
+
         toasts = [...toasts, toast]
-        
+
         if (toasts.length > maxToasts) {
             toasts = toasts.slice(-maxToasts)
         }
-        
+
         popupLoader.loading = true
+        root._revealSurface(wasEmpty)
     }
-    
+
     function removeToast(id) {
         toasts = toasts.filter(t => t.id !== id)
         if (toasts.length === 0) {
+            root.surfaceOffsetScale = 1
             popupLoader.active = false
         }
+    }
+
+    function dismissToast(id) {
+        if (!toasts.some(t => t.id === id))
+            return
+
+        if (toasts.length > 1 || !Appearance.animationsEnabled) {
+            root.removeToast(id)
+            return
+        }
+
+        root._pendingSurfaceRemovalId = id
+        root.surfaceOffsetScale = 1
+        surfaceRetractTimer.restart()
     }
     
     // Show the pending reload toast
@@ -271,7 +339,7 @@ Scope {
                 screenMargin: root.screenEdgeThickness
                 connectorLength: 0
                 seamOverlap: PerimeterTokens.irisWeldDepth
-                progress: 1
+                progress: root.surfaceRevealProgress
                 devicePixelRatio: popup.devicePixelRatio
             }
 
@@ -330,60 +398,7 @@ Scope {
                                 opacity: 1
                                 scale: 1
 
-                                Component.onCompleted: {
-                                    if (Appearance.animationsEnabled)
-                                        entryAnim.start()
-                                }
-
-                                ParallelAnimation {
-                                    id: entryAnim
-                                    NumberAnimation {
-                                        target: parent
-                                        property: "opacity"
-                                        from: 0
-                                        to: 1
-                                        duration: Appearance.animation.elementMoveFast.duration
-                                        easing.type: Appearance.animation.elementMoveFast.type
-                                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                                    }
-                                    NumberAnimation {
-                                        target: parent
-                                        property: "scale"
-                                        from: 0.9
-                                        to: 1
-                                        duration: Appearance.animation.elementMoveFast.duration
-                                        easing.type: Appearance.animation.elementMoveFast.type
-                                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                                    }
-                                }
-
-                                onDismissed: {
-                                    if (Appearance.animationsEnabled)
-                                        exitAnim.start()
-                                    else
-                                        root.removeToast(modelData.id)
-                                }
-
-                                ParallelAnimation {
-                                    id: exitAnim
-                                    NumberAnimation {
-                                        target: parent
-                                        property: "opacity"
-                                        to: 0
-                                        duration: Appearance.animation.elementMoveExit.duration
-                                        easing.type: Appearance.animation.elementMoveExit.type
-                                        easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
-                                    }
-                                    NumberAnimation {
-                                        target: parent
-                                        property: "scale"
-                                        to: 0.9
-                                        duration: Appearance.animation.elementMoveExit.duration
-                                        easing.type: Appearance.animation.elementMoveExit.type
-                                        easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
-                                    }
-                                    onFinished: root.removeToast(modelData.id)
-                                }
+                                onDismissed: root.dismissToast(modelData.id)
                             }
                         }
                     }

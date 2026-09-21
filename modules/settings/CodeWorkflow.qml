@@ -52,6 +52,7 @@ Item {
         const items = []
         const runtimeItems = []
         const graphItems = []
+        const edgeItems = []
         const semanticItems = []
         const query = root.inspectFilter.trim().toLowerCase()
 
@@ -108,6 +109,25 @@ Item {
             })
         }
 
+        for (const edge of (root.graph?.edges ?? [])) {
+            append(edgeItems, {
+                category: "edge",
+                id: String(edge.id ?? ""),
+                label: String(edge.label ?? edge.id ?? "Connection"),
+                detail: String(edge.kind ?? "connection")
+                    + " · " + String(edge.from ?? "—")
+                    + " → " + String(edge.to ?? "—")
+                    + (edge.previewable === true
+                        || CodeWorkflowIr.reviewedSignalActionTargetForEdge(
+                            CodeWorkflowSession.subflowTargetId,
+                            String(edge.id ?? "")) !== null
+                        ? " · reviewed"
+                        : " · read only"),
+                icon: "conversion_path",
+                depth: 0
+            })
+        }
+
         for (const entry of root.parsedSemanticEntries) {
             if (!root.semanticEntryVisible(
                     entry,
@@ -148,6 +168,8 @@ Item {
             "runtime", "Runtime", "memory", "targets", runtimeItems)
         appendSection(
             "graph", "Workflow graph", "account_tree", "nodes", graphItems)
+        appendSection(
+            "edges", "Connections", "conversion_path", "edges", edgeItems)
         appendSection(
             "semantic", "Parsed QML", "code", "elements", semanticItems)
         return items
@@ -624,8 +646,15 @@ Item {
         if (category === "runtime")
             return CodeWorkflowSession.selectedTargetId === id
                 && root.inspectedSemanticAnchor.length === 0
+                && CodeWorkflowSession.selectedEdgeId.length === 0
+                && CodeWorkflowSession.selectedConnectTargetId.length === 0
         if (category === "graph")
             return CodeWorkflowSession.selectedNodeId === id
+                && root.inspectedSemanticAnchor.length === 0
+                && CodeWorkflowSession.selectedEdgeId.length === 0
+                && CodeWorkflowSession.selectedConnectTargetId.length === 0
+        if (category === "edge")
+            return CodeWorkflowSession.selectedEdgeId === id
                 && root.inspectedSemanticAnchor.length === 0
         if (category === "semantic")
             return root.inspectedSemanticAnchor === id
@@ -643,6 +672,10 @@ Item {
         }
         if (category === "graph") {
             CodeWorkflowSession.selectNode(id)
+            return
+        }
+        if (category === "edge") {
+            CodeWorkflowSession.selectEdge(id)
             return
         }
         if (category === "semantic") {
@@ -1244,7 +1277,7 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Runtime · graph · parsed QML elements"
+                        text: "Runtime · graph · connections · parsed QML"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap

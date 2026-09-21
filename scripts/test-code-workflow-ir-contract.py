@@ -110,13 +110,24 @@ def route_length(route: dict) -> float:
         for index in range(1, len(points))
     )
 
-def edge_lane_offset(edge: dict, edges: list[dict]) -> float:
+def edge_lane_offset(
+    edge: dict,
+    edges: list[dict],
+    node_by_id: dict,
+    vertical: bool,
+    direction: float,
+) -> float:
     siblings = [
         candidate for candidate in edges
         if candidate.get("from") == edge.get("from")
     ]
     if len(siblings) <= 1:
         return 0.0
+    axis = "x" if vertical else "y"
+    siblings.sort(key=lambda candidate: (
+        float(node_by_id[candidate.get("to")].get(axis) or 0),
+        str(candidate.get("id") or ""),
+    ))
     index = next(
         (
             index for index, candidate in enumerate(siblings)
@@ -126,14 +137,58 @@ def edge_lane_offset(edge: dict, edges: list[dict]) -> float:
     )
     if index < 0:
         return 0.0
-    return max(-72.0, min(
-        72.0, (index - (len(siblings) - 1) / 2.0) * 12.0))
+    middle = (len(siblings) - 1) / 2.0
+    return max(-64.0, min(
+        64.0, (middle - index) * 8.0 * direction))
+
+def segments_cross(
+    first_a: dict,
+    first_b: dict,
+    second_a: dict,
+    second_b: dict,
+) -> bool:
+    first_vertical = abs(first_a["x"] - first_b["x"]) < 0.001
+    second_vertical = abs(second_a["x"] - second_b["x"]) < 0.001
+    if first_vertical == second_vertical:
+        return False
+    vertical_a, vertical_b = (
+        (first_a, first_b)
+        if first_vertical else (second_a, second_b)
+    )
+    horizontal_a, horizontal_b = (
+        (second_a, second_b)
+        if first_vertical else (first_a, first_b)
+    )
+    x = vertical_a["x"]
+    y = horizontal_a["y"]
+    epsilon = 0.001
+    return (
+        x > min(horizontal_a["x"], horizontal_b["x"]) + epsilon
+        and x < max(horizontal_a["x"], horizontal_b["x"]) - epsilon
+        and y > min(vertical_a["y"], vertical_b["y"]) + epsilon
+        and y < max(vertical_a["y"], vertical_b["y"]) - epsilon
+    )
+
+def route_crossing_count(route: dict, occupied_routes: list[dict]) -> int:
+    crossings = 0
+    points = route["points"]
+    for occupied in occupied_routes:
+        other = occupied["points"]
+        for first in range(1, len(points)):
+            for second in range(1, len(other)):
+                if segments_cross(
+                    points[first - 1], points[first],
+                    other[second - 1], other[second],
+                ):
+                    crossings += 1
+    return crossings
 
 def resolved_route(
     edge: dict,
     node_by_id: dict,
     nodes: list[dict],
     edges: list[dict],
+    occupied_routes: list[dict],
 ) -> dict:
     from_node = node_by_id[edge.get("from")]
     to_node = node_by_id[edge.get("to")]
@@ -150,7 +205,14 @@ def resolved_route(
     separated_right = to_x >= from_right
     separated_left = to_right <= from_x
     vertical = not separated_right and not separated_left
-    lane_offset = edge_lane_offset(edge, edges)
+    primary_direction = (
+        1.0 if (
+            (to_center_y >= from_center_y)
+            if vertical else separated_right
+        ) else -1.0
+    )
+    lane_offset = edge_lane_offset(
+        edge, edges, node_by_id, vertical, primary_direction)
     bounds = raw_node_bounds(nodes)
     candidates = []
 
@@ -267,6 +329,7 @@ def resolved_route(
         candidates,
         key=lambda route: (
             route_collision_count(route, edge, nodes) * 1_000_000
+            + route_crossing_count(route, occupied_routes) * 10_000
             + route_length(route)
             + max(0, len(route["points"]) - 2) * 18,
             route_length(route),
@@ -340,6 +403,7 @@ for graph_id, graph in graphs.items():
     edge_ids = [edge.get("id") for edge in edges]
     if len(edge_ids) != len(set(edge_ids)):
         fail(f"{graph_id}: duplicate edge IDs")
+    occupied_routes = []
     for edge in edges:
         seen_edges.add(edge.get("kind"))
         if edge.get("editable") is not False:
@@ -355,13 +419,21 @@ for graph_id, graph in graphs.items():
         if from_x == to_x:
             seen_same_column_edge = True
 
-        route = resolved_route(edge, node_by_id, nodes, edges)
+        route = resolved_route(
+            edge, node_by_id, nodes, edges, occupied_routes)
         collisions = route_collision_count(route, edge, nodes)
         if collisions != 0:
             fail(
                 f"{graph_id}/{edge.get('id')}: routed edge still intersects "
                 f"{collisions} unrelated node(s)"
             )
+        crossings = route_crossing_count(route, occupied_routes)
+        if crossings != 0:
+            fail(
+                f"{graph_id}/{edge.get('id')}: routed edge still crosses "
+                f"{crossings} previously routed segment(s)"
+            )
+        occupied_routes.append(route)
 
 if not required_kinds.issubset(seen_kinds):
     fail("IR node-kind coverage missing: " + ", ".join(sorted(required_kinds - seen_kinds)))
@@ -419,16 +491,20 @@ for token in (
     "function segmentIntersectsRect(",
     "function routeIntersectsNode(route, node, padding: real): bool",
     "function routeCollisionCount(route, edge): int",
-    "function edgeLaneOffset(edge): real",
-    "function routeScore(route, edge): real",
-    "function edgeRoute(edge): var",
+    "function edgeLaneOffset(",
+    "function segmentsCross(firstA, firstB, secondA, secondB): bool",
+    "function routeCrossingCount(route, occupiedRoutes): int",
+    "function routeScore(route, edge, occupiedRoutes): real",
+    "function edgeRoute(edge, occupiedRoutes = []): var",
     "const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]",
     "const horizontalPortLanes = [",
     "const verticalPortLanes = [",
     "readonly property var edgeRouteCache: root.buildEdgeRouteCache()",
     "function buildEdgeRouteCache(): var",
     "function routeForEdge(edge): var",
-    "cache[edgeId] = root.edgeRoute(edge)",
+    "const occupiedRoutes = []",
+    "const route = root.edgeRoute(edge, occupiedRoutes)",
+    "occupiedRoutes.push(route)",
     "const route = root.routeForEdge(edge)",
     "root.routeForEdge(edgeShape.modelData)",
     "root.routeForEdge(modelData)",

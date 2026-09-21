@@ -14,6 +14,7 @@ Singleton {
     property string state: "idle"
     property string error: ""
     property string path: ""
+    property string pendingPath: ""
     property int cols: 80
     property int rows: 24
     property int cursorRow: 0
@@ -108,8 +109,11 @@ Singleton {
         }
         if (type === "state") {
             root.state = String(message?.state ?? "error")
-            if (message?.path)
+            if (message?.path) {
                 root.path = String(message.path)
+                if (root.pendingPath === root.path)
+                    root.pendingPath = ""
+            }
             if (message?.error)
                 root.error = String(message.error)
             else if (root.state === "ready")
@@ -117,6 +121,8 @@ Singleton {
             return
         }
         if (type === "rpc-error" || type === "command-error") {
+            if (String(message?.request ?? "") === "open")
+                root.pendingPath = ""
             root.error = String(message?.error ?? type)
             return
         }
@@ -143,6 +149,7 @@ Singleton {
         }
 
         root.path = requestedPath
+        root.pendingPath = ""
         root.cols = safeCols
         root.rows = safeRows
         root.cursorRow = 0
@@ -177,11 +184,16 @@ Singleton {
         const requestedPath = String(targetPath ?? "")
         if (requestedPath.length === 0)
             return false
-        root.path = requestedPath
-        return root._send({
-            op: "open",
-            path: requestedPath
-        })
+        if (root.path === requestedPath || root.pendingPath === requestedPath)
+            return true
+        root.pendingPath = requestedPath
+        if (root._send({
+                op: "open",
+                path: requestedPath
+            }))
+            return true
+        root.pendingPath = ""
+        return false
     }
 
     function resize(nextCols: int, nextRows: int): bool {

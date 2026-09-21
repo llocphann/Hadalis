@@ -361,6 +361,75 @@ Item {
                 nextX, nextY, CodeWorkflowSession.zoom)
     }
 
+    function revealEdge(edgeId: string): void {
+        const edge = root.edges.find(item =>
+            String(item?.id ?? "") === String(edgeId ?? ""))
+        const route = root.routeForEdge(edge)
+        if (!edge || !route || root.width <= 0 || root.height <= 0)
+            return
+
+        const minX = Math.min(
+            route.x0, route.x1, route.x2, route.x3)
+        const minY = Math.min(
+            route.y0, route.y1, route.y2, route.y3)
+        const maxX = Math.max(
+            route.x0, route.x1, route.x2, route.x3)
+        const maxY = Math.max(
+            route.y0, route.y1, route.y2, route.y3)
+        const boundsWidth = Math.max(1, maxX - minX)
+        const boundsHeight = Math.max(1, maxY - minY)
+        const margin = 40
+        const availableWidth = Math.max(1, root.width - margin * 2)
+        const availableHeight = Math.max(1, root.height - margin * 2)
+        const currentZoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            CodeWorkflowSession.zoom)
+        const nextZoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            Math.min(
+                currentZoom,
+                availableWidth / boundsWidth,
+                availableHeight / boundsHeight))
+
+        if (Math.abs(nextZoom - currentZoom) > 0.001) {
+            CodeWorkflowSession.setViewport(
+                (root.width - boundsWidth * nextZoom) / 2
+                    - minX * nextZoom,
+                (root.height - boundsHeight * nextZoom) / 2
+                    - minY * nextZoom,
+                nextZoom)
+            return
+        }
+
+        const left = CodeWorkflowSession.panX + minX * nextZoom
+        const top = CodeWorkflowSession.panY + minY * nextZoom
+        const right = CodeWorkflowSession.panX + maxX * nextZoom
+        const bottom = CodeWorkflowSession.panY + maxY * nextZoom
+        let nextX = CodeWorkflowSession.panX
+        let nextY = CodeWorkflowSession.panY
+        if (left < margin)
+            nextX += margin - left
+        else if (right > root.width - margin)
+            nextX -= right - (root.width - margin)
+        if (top < margin)
+            nextY += margin - top
+        else if (bottom > root.height - margin)
+            nextY -= bottom - (root.height - margin)
+
+        if (Math.abs(nextX - CodeWorkflowSession.panX) > 0.5
+                || Math.abs(nextY - CodeWorkflowSession.panY) > 0.5)
+            CodeWorkflowSession.setViewport(nextX, nextY, nextZoom)
+    }
+
+    function revealPrimarySelection(): void {
+        if (CodeWorkflowSession.selectedEdgeId.length > 0) {
+            root.revealEdge(CodeWorkflowSession.selectedEdgeId)
+            return
+        }
+        if (CodeWorkflowSession.selectedSemanticAnchor.length === 0)
+            root.revealNode(CodeWorkflowSession.selectedNodeId)
+    }
+
     function nodeAtWorld(px: real, py: real): bool {
         return root.nodes.some(node => {
             const x = Number(node.x ?? 0)
@@ -500,8 +569,11 @@ Item {
         }
 
         function onSelectedNodeIdChanged(): void {
-            Qt.callLater(() => root.revealNode(
-                CodeWorkflowSession.selectedNodeId))
+            Qt.callLater(root.revealPrimarySelection)
+        }
+
+        function onSelectedEdgeIdChanged(): void {
+            Qt.callLater(root.revealPrimarySelection)
         }
     }
 

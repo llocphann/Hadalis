@@ -265,6 +265,9 @@ Singleton {
                 property real codeWorkflowPanY: 28
                 property real codeWorkflowZoom: 1
                 property bool codeWorkflowSourcePreview: true
+                property real codeWorkflowTargetsPaneWidth: 224
+                property real codeWorkflowInspectorPaneWidth: 280
+                property real codeWorkflowSourcePreviewHeight: 190
             }
 
             // Desktop-widget editor workspace state. This is transient UI

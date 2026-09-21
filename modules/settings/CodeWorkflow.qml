@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
@@ -226,6 +227,9 @@ Item {
             parserEntryCount: root.parsedSemanticEntries.length,
             pageWidth: root.width,
             pageHeight: root.height,
+            targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
+            inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
+            sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom
@@ -1405,6 +1409,34 @@ Item {
         }
     }
 
+
+    component WorkflowSplitHandle: Rectangle {
+        id: splitHandle
+        implicitWidth: 10
+        implicitHeight: 10
+        color: "transparent"
+        readonly property bool handleHovered: SplitHandle.hovered
+        readonly property bool handlePressed: SplitHandle.pressed
+        readonly property bool horizontalRule: width > height
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: splitHandle.horizontalRule
+                ? Math.min(48, Math.max(12, splitHandle.width - 8))
+                : 2
+            height: splitHandle.horizontalRule
+                ? 2
+                : Math.min(48, Math.max(12, splitHandle.height - 8))
+            radius: 1
+            color: splitHandle.handlePressed
+                ? Appearance.colors.colPrimary
+                : splitHandle.handleHovered
+                    ? Appearance.colors.colOutline
+                    : ColorUtils.applyAlpha(
+                        Appearance.colors.colOutlineVariant, 0.65)
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
@@ -1545,14 +1577,32 @@ Item {
             }
         }
 
-        RowLayout {
+        SplitView {
+            id: workflowVerticalSplit
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 8
+            orientation: Qt.Vertical
+            handle: WorkflowSplitHandle {}
+
+            SplitView {
+                id: workflowHorizontalSplit
+                SplitView.fillHeight: true
+                SplitView.minimumHeight: 280
+                orientation: Qt.Horizontal
+                handle: WorkflowSplitHandle {}
+
+                onResizingChanged: {
+                    if (resizing)
+                        return
+                    CodeWorkflowSession.targetsPaneWidth = targetsPane.width
+                    CodeWorkflowSession.inspectorPaneWidth = inspectorPane.width
+                }
 
             Rectangle {
-                Layout.preferredWidth: 224
-                Layout.fillHeight: true
+                id: targetsPane
+                SplitView.preferredWidth: CodeWorkflowSession.targetsPaneWidth
+                SplitView.minimumWidth: 180
+                SplitView.maximumWidth: 420
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
@@ -1749,15 +1799,15 @@ Item {
 
             CodeWorkflowIrCanvas {
                 id: canvas
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.minimumWidth: 360
+                SplitView.fillWidth: true
+                SplitView.minimumWidth: 360
             }
 
             Rectangle {
-                Layout.preferredWidth: 280
-                Layout.minimumWidth: 250
-                Layout.fillHeight: true
+                id: inspectorPane
+                SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneWidth
+                SplitView.minimumWidth: 240
+                SplitView.maximumWidth: 520
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
@@ -3283,12 +3333,14 @@ Item {
                 }
                 }
             }
-        }
+            }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: CodeWorkflowSession.sourcePreviewVisible ? 190 : 0
-            visible: CodeWorkflowSession.sourcePreviewVisible
+            Rectangle {
+                id: sourcePane
+                SplitView.preferredHeight: CodeWorkflowSession.sourcePreviewHeight
+                SplitView.minimumHeight: 120
+                SplitView.maximumHeight: 420
+                visible: CodeWorkflowSession.sourcePreviewVisible
             radius: Appearance.rounding.normal
             color: Appearance.colors.colLayer1
             border.width: 1
@@ -3354,6 +3406,12 @@ Item {
                         }
                     }
                 }
+            }
+            }
+
+            onResizingChanged: {
+                if (!resizing && sourcePane.visible)
+                    CodeWorkflowSession.sourcePreviewHeight = sourcePane.height
             }
         }
     }

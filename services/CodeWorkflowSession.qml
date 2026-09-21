@@ -72,10 +72,13 @@ Singleton {
         } else {
             const edgeTarget = CodeWorkflowIr.nodeFor(
                 root.subflowTargetId, String(restoredEdge.to ?? ""))
-            if (edgeTarget)
-                root.selectedNodeId = edgeTarget.id
-            else
+            if (!edgeTarget
+                    || (restoredEdge.previewable === true
+                        && edgeTarget.kind !== "binding")) {
                 root.selectedEdgeId = ""
+            } else {
+                root.selectedNodeId = edgeTarget.id
+            }
         }
         const restoredConnectTarget = CodeWorkflowIr.connectTargetFor(
             root.subflowTargetId, root.selectedConnectTargetId)

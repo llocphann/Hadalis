@@ -78,6 +78,16 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
     def test_settings_defaults_and_custom_status_are_sanitized(self):
         summary = obsidian_tasks._settings_summary({
             "globalFilter": "#task",
+        })
+        self.assertEqual(summary["globalFilter"], "#task")
+        self.assertEqual(summary["taskFormat"], "tasksPluginEmoji")
+        self.assertTrue(summary["setDoneDate"])
+        by_symbol = {entry["symbol"]: entry for entry in summary["statuses"]}
+        self.assertEqual(by_symbol["/"]["type"], "IN_PROGRESS")
+        self.assertEqual(by_symbol["-"]["type"], "CANCELLED")
+
+    def test_explicit_custom_status_registry_replaces_default_customs(self):
+        summary = obsidian_tasks._settings_summary({
             "statusSettings": {
                 "customStatuses": [
                     {
@@ -92,16 +102,35 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
                         "nextStatusSymbol": "x",
                         "type": "NOT_A_TYPE",
                     },
+                    {
+                        "symbol": "x",
+                        "name": "Cannot override core",
+                        "nextStatusSymbol": " ",
+                        "type": "CANCELLED",
+                    },
+                    {
+                        "symbol": "?",
+                        "name": "Duplicate symbol",
+                        "nextStatusSymbol": " ",
+                        "type": "DONE",
+                    },
                 ]
             },
         })
-        self.assertEqual(summary["globalFilter"], "#task")
-        self.assertEqual(summary["taskFormat"], "tasksPluginEmoji")
-        self.assertTrue(summary["setDoneDate"])
         by_symbol = {entry["symbol"]: entry for entry in summary["statuses"]}
+        self.assertNotIn("/", by_symbol)
+        self.assertNotIn("-", by_symbol)
+        self.assertEqual(by_symbol["?"]["name"], "Question")
         self.assertEqual(by_symbol["?"]["type"], "ON_HOLD")
         self.assertEqual(by_symbol["!"]["type"], "TODO")
-        self.assertEqual(by_symbol["/"]["type"], "IN_PROGRESS")
+        self.assertEqual(by_symbol["x"]["type"], "DONE")
+
+    def test_explicit_empty_custom_status_registry_stays_empty(self):
+        summary = obsidian_tasks._settings_summary({
+            "statusSettings": {"customStatuses": []},
+        })
+        by_symbol = {entry["symbol"]: entry for entry in summary["statuses"]}
+        self.assertEqual(set(by_symbol), {" ", "x"})
 
     def test_capability_probe_matches_physical_vault(self):
         vault, _ = self.make_vault()

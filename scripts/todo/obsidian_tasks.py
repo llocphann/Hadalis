@@ -36,6 +36,8 @@ _STATUS_TYPES = {
 _CORE_STATUSES = [
     {"symbol": " ", "name": "Todo", "nextStatusSymbol": "x", "type": "TODO"},
     {"symbol": "x", "name": "Done", "nextStatusSymbol": " ", "type": "DONE"},
+]
+_DEFAULT_CUSTOM_STATUSES = [
     {"symbol": "/", "name": "In Progress", "nextStatusSymbol": "x", "type": "IN_PROGRESS"},
     {"symbol": "-", "name": "Cancelled", "nextStatusSymbol": " ", "type": "CANCELLED"},
 ]
@@ -192,14 +194,17 @@ def _parse_eval_json(stdout: str) -> dict[str, Any]:
 
 def _sanitize_statuses(saved: Any) -> list[dict[str, str]]:
     statuses = [dict(item) for item in _CORE_STATUSES]
-    if not isinstance(saved, dict):
-        return statuses
-    status_settings = saved.get("statusSettings")
-    if not isinstance(status_settings, dict):
-        return statuses
-    custom = status_settings.get("customStatuses")
-    if not isinstance(custom, list):
-        return statuses
+    custom: Any = _DEFAULT_CUSTOM_STATUSES
+
+    if isinstance(saved, dict):
+        status_settings = saved.get("statusSettings")
+        if status_settings is not None:
+            if not isinstance(status_settings, dict):
+                return statuses
+            if "customStatuses" in status_settings:
+                custom = status_settings.get("customStatuses")
+                if not isinstance(custom, list):
+                    return statuses
 
     for item in custom:
         if not isinstance(item, dict):
@@ -218,16 +223,19 @@ def _sanitize_statuses(saved: Any) -> list[dict[str, str]]:
             continue
         if status_type not in _STATUS_TYPES:
             status_type = "TODO"
-        replacement = {
+
+        # Tasks applies core statuses first and ignores later duplicate symbols.
+        # An explicitly persisted empty customStatuses list therefore removes
+        # the default "/" and "-" registrations instead of restoring them.
+        if any(entry["symbol"] == symbol for entry in statuses):
+            continue
+        statuses.append({
             "symbol": symbol,
             "name": name,
             "nextStatusSymbol": next_symbol,
             "type": status_type,
-        }
-        statuses = [entry for entry in statuses if entry["symbol"] != symbol]
-        statuses.append(replacement)
+        })
     return statuses
-
 
 def _settings_summary(saved: Any) -> dict[str, Any]:
     data = saved if isinstance(saved, dict) else {}

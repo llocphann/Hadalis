@@ -33,8 +33,23 @@ the parser/transaction safety model or unrelated shell runtime:
   `LIVE · RESIDENT`, unloaded targets report `UNLOADED · STATIC SOURCE`, and
   parser `UNAVAILABLE`/`ERROR` state includes the analyzer reason such as
   `grammar-missing`.
-- Reset view now performs a graph fit using actual canvas/world extents rather than
-  restoring one hard-coded pan/zoom tuple.
+- The **Fit graph** control uses actual canvas/world extents instead of one
+  hard-coded pan/zoom tuple, and entering a new subflow schedules the same fit.
+- Every valid source-backed IR edge is now selectable for inspection. This does
+  not widen mutation authority: preview/write affordances remain gated to the
+  existing reviewed edge subsets, while ordinary structure/lifecycle/action/data
+  edges are labeled `READ ONLY` in Inspector.
+- Targets are grouped into non-interactive Runtime, Workflow graph and Parsed QML
+  sections after filtering. Semantic selection suppresses stale graph highlights;
+  parser READY reconciliation clears a selected semantic anchor if it disappeared
+  after source drift.
+- **Show internals** and search also expose parser-known `pragma` and `opaque`
+  entries as read-only inspect targets. Unsupported semantics remain explicit
+  rather than being silently omitted or promoted to editable behavior.
+- Edge selection is the primary Inspector object when an edge is selected: the
+  header follows the edge label/kind while the destination node/runtime remains
+  supporting context.
+
 - Static regression contracts in
   `scripts/test-code-workflow-ir-contract.py` and
   `scripts/test-code-workflow-phase1-contract.py` lock the renderer visibility,

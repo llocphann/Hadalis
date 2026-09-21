@@ -167,7 +167,7 @@ Item {
         anchors.bottomMargin: 8
         baseSize: 40
         enabled: Todo.ready
-        onClicked: ShellExec.execDetachedArgs(["xdg-open", Directories.todoTxtPath], "Open todo file")
+        onClicked: Todo.openSource("")
         iconText: "edit_note"
     }
 

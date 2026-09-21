@@ -63,6 +63,14 @@ Item {
                     }
 
                     function startAction() {
+                        // Obsidian mutations are asynchronous and can fail
+                        // closed after capability/CAS validation. Do not
+                        // optimistically collapse the delegate or a rejected
+                        // mutation would leave a phantom-disappeared task.
+                        if (Todo.backend === "obsidian") {
+                            actionTimer.start()
+                            return
+                        }
                         enableHeightAnimation = true
                         todoItem.implicitHeight = 0
                         actionTimer.start()
@@ -115,6 +123,7 @@ Item {
                                 }
                                 TodoItemActionButton {
                                     Layout.fillWidth: false
+                                    enabled: !Todo.busy
                                     onClicked: {
                                         todoItem.pendingDoneToggle = true
                                         todoItem.startAction()
@@ -129,6 +138,7 @@ Item {
                                 }
                                 TodoItemActionButton {
                                     Layout.fillWidth: false
+                                    enabled: !Todo.busy
                                     onClicked: {
                                         todoItem.pendingDelete = true
                                         todoItem.startAction()

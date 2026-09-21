@@ -1350,6 +1350,39 @@ ContentPage {
 
                 RippleButton {
                     visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
+                        && !Todo.ready
+                        && String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim().length > 0
+                        && String(Config.options?.todo?.obsidian?.notePath ?? "").trim().length > 0
+                    Layout.preferredWidth: todoInitRow.implicitWidth + 20
+                    implicitHeight: 34
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    onClicked: Todo.initializeSection()
+
+                    contentItem: RowLayout {
+                        id: todoInitRow
+                        anchors.centerIn: parent
+                        spacing: 5
+                        MaterialSymbol {
+                            text: "playlist_add"
+                            iconSize: 16
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            text: Translation.tr("Initialize section")
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Append the two Hadalis managed markers to an existing note. Existing content is preserved.")
+                    }
+                }
+
+                RippleButton {
+                    visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
                         && Todo.ready
                     Layout.preferredWidth: todoOpenRow.implicitWidth + 20
                     implicitHeight: 34

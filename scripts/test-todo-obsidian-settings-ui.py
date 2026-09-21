@@ -21,6 +21,8 @@ required_ui = [
     'Todo.capabilities?.obsidianRunning',
     'Todo.refresh()',
     'Todo.openSource("")',
+    "Todo.initializeSection()",
+    'Translation.tr("Initialize section")',
     'Obsidian 1.13 or newer',
 ]
 for snippet in required_ui:

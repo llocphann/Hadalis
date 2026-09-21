@@ -53,6 +53,12 @@ Scope {
     // tiny configurable hot-strip at the physical display boundary.
     readonly property int screenEdgeHoverWidth: Math.max(1, Math.round(
         Config.options?.appearance?.screenEdge?.width ?? 10))
+    // The physical frame's antialiased inner edge can expose a ~1-2 px dark
+    // raster seam at fractional scale. Let only the iRiS field paint across the
+    // shared seam token; content, input and shadow still stop at the real owner.
+    readonly property real screenEdgePaintOverlap: Math.min(
+        PerimeterTokens.seamOverlap,
+        Math.max(0, root.screenEdgeHoverWidth - 1))
     readonly property int edgeOpenWidth: Math.max(
         screenEdgeHoverWidth,
         Math.max(1, Math.round(Config.options?.sidebar?.edgeOpen?.regionWidth ?? 2)))
@@ -67,8 +73,8 @@ Scope {
         root.roleLayoutState?.width ?? Appearance.sizes.sidebarWidth)
     // The owning Overlay surface is anchored to the physical display edge.
     // The content body starts at the inner boundary of the persistent Screen
-    // Edge; ConnectedSurfaceIrisEdgeSurface alone welds the SDF underneath the
-    // owner. This keeps one visible owner at the edge and avoids double paint.
+    // Edge. iRiS keeps its SDF weld underneath the owner and may raster-overlap
+    // only the tiny seam above; layout/input never underlap the Screen Edge.
     // Perimeter sidebars are content-sized by definition. Preserve explicit
     // custom height, but treat legacy/full layout state as fit-to-content.
     readonly property string configuredSizeMode:
@@ -976,6 +982,7 @@ Scope {
             anchors.fill: parent
             edge: root.edge
             ownerThickness: root.screenEdgeHoverWidth
+            paintOverlap: root.screenEdgePaintOverlap
             outputRect: Qt.rect(0, 0, sidebarRoot.width, sidebarRoot.height)
             bodyRect: Qt.rect(
                 sidebarContentLoader.x + sidebarContentLoader.animTranslateX,

@@ -152,21 +152,32 @@ Item {
         const last = normalized[normalized.length - 1]
         let labelFrom = normalized[0]
         let labelTo = normalized[1]
-        let bestLabelScore = -1
-        for (let index = 1; index < normalized.length; ++index) {
+        let foundTargetHorizontal = false
+        for (let index = normalized.length - 1; index >= 1; --index) {
             const segmentFrom = normalized[index - 1]
             const segmentTo = normalized[index]
-            const span = Math.abs(segmentTo.x - segmentFrom.x)
-                + Math.abs(segmentTo.y - segmentFrom.y)
             const horizontal =
                 Math.abs(segmentTo.y - segmentFrom.y) < 0.001
-            // Prefer a long horizontal "wire run" for labels. If a route has
-            // no horizontal run, fall back to its longest segment.
-            const score = span + (horizontal ? 10000 : 0)
-            if (score > bestLabelScore) {
-                bestLabelScore = score
-                labelFrom = segmentFrom
-                labelTo = segmentTo
+            if (!horizontal)
+                continue
+            labelFrom = segmentFrom
+            labelTo = segmentTo
+            foundTargetHorizontal = true
+            break
+        }
+
+        if (!foundTargetHorizontal) {
+            let bestSpan = -1
+            for (let index = 1; index < normalized.length; ++index) {
+                const segmentFrom = normalized[index - 1]
+                const segmentTo = normalized[index]
+                const span = Math.abs(segmentTo.x - segmentFrom.x)
+                    + Math.abs(segmentTo.y - segmentFrom.y)
+                if (span > bestSpan) {
+                    bestSpan = span
+                    labelFrom = segmentFrom
+                    labelTo = segmentTo
+                }
             }
         }
         return {
@@ -459,8 +470,12 @@ Item {
             const y0 = fromCenterY
             const x3 = toX + (rightward ? 0 : root.nodeWidth)
             const y3 = toCenterY
-            const baseCorridor = (x0 + x3) / 2 + laneOffset
-            const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]
+            const targetLabelRun = Math.min(
+                84, Math.max(60, Math.abs(x3 - x0) * 0.45))
+            const baseCorridor = x3
+                - direction * targetLabelRun
+                + laneOffset * 0.5
+            const corridorOffsets = [0, 32, -32, 64, -64, 120, -120]
             for (const offset of corridorOffsets) {
                 const corridor = baseCorridor + offset
                 candidates.push(root.routeFromPoints([

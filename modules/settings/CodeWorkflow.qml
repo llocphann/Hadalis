@@ -738,6 +738,18 @@ Item {
         }
     }
 
+    function prepareSelectedSemanticInspectTarget(): void {
+        if (root.inspectedSemanticAnchor.length === 0)
+            return
+
+        root.inspectFilter = ""
+        const entry = root.inspectedSemanticEntry
+        if (entry !== null
+                && !root.semanticEntryVisible(
+                    entry, root.inspectShowInternals))
+            root.inspectShowInternals = true
+    }
+
     function revealSelectedInspectTarget(): void {
         const index = root.inspectTargets.findIndex(
             item => root.inspectTargetSelected(item))
@@ -1091,6 +1103,7 @@ Item {
         }
 
         function onSelectedSemanticAnchorChanged(): void {
+            root.prepareSelectedSemanticInspectTarget()
             Qt.callLater(root.revealSelectedInspectTarget)
         }
     }
@@ -1101,6 +1114,10 @@ Item {
             if (CodeWorkflowAnalyzer.status === "ready") {
                 Qt.callLater(root.reconcileSemanticInspectSelection)
                 Qt.callLater(root.captureSemanticAnchor)
+                Qt.callLater(() => {
+                    root.prepareSelectedSemanticInspectTarget()
+                    root.revealSelectedInspectTarget()
+                })
             }
             Qt.callLater(root.evaluatePreApplyGate)
         }

@@ -141,13 +141,25 @@ log "repo: $ROOT"
 log "bundle: $BUNDLE_DIR"
 
 git -C "$ROOT" rev-parse HEAD >"$BUNDLE_DIR/meta/git-head.txt"
-git -C "$ROOT" status --short >"$BUNDLE_DIR/meta/git-status.txt"
+git -C "$ROOT" status --short \
+    | grep -vF "?? $BUNDLE_NAME/" \
+    >"$BUNDLE_DIR/meta/git-status.txt" || true
 git -C "$ROOT" diff --stat >"$BUNDLE_DIR/meta/git-diff-stat.txt"
 (niri --version || true) >"$BUNDLE_DIR/meta/niri-version.txt" 2>&1
 ("$QS_BIN" --version || true) >"$BUNDLE_DIR/meta/quickshell-version.txt" 2>&1
-(grim --version || true) >"$BUNDLE_DIR/meta/grim-version.txt" 2>&1
+{
+    printf 'path: %s\n' "$(command -v grim)"
+    if command -v pacman >/dev/null 2>&1; then
+        pacman -Q grim 2>/dev/null || true
+    fi
+} >"$BUNDLE_DIR/meta/grim-version.txt"
 if [[ -n "$WTYPE_BIN" ]]; then
-    (wtype --version || true) >"$BUNDLE_DIR/meta/wtype-version.txt" 2>&1
+    {
+        printf 'path: %s\n' "$WTYPE_BIN"
+        if command -v pacman >/dev/null 2>&1; then
+            pacman -Q wtype 2>/dev/null || true
+        fi
+    } >"$BUNDLE_DIR/meta/wtype-version.txt"
 else
     printf 'wtype unavailable; filter keyboard step will use IPC fallback\n' \
         >"$BUNDLE_DIR/meta/wtype-version.txt"

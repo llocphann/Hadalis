@@ -510,8 +510,8 @@ Item {
                 radius: implicitHeight / 2
                 color: Appearance.colors.colLayer0
                 border.width: 1
-                border.color: ColorUtils.transparentize(
-                    root.edgeColor(modelData.kind), 0.35)
+                border.color: ColorUtils.applyAlpha(
+                    root.edgeInk(modelData.kind, false), 0.72)
                 z: 0.5
 
                 StyledText {
@@ -521,9 +521,8 @@ Item {
                     anchors.rightMargin: 6
                     verticalAlignment: Text.AlignVCenter
                     text: String(edgeLabel.modelData.label ?? "")
-                    color: ColorUtils.ensureReadable(
-                        root.edgeColor(edgeLabel.modelData.kind),
-                        edgeLabel.color, 4.5)
+                    color: root.edgeInk(
+                        edgeLabel.modelData.kind, true)
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     elide: Text.ElideRight
                     maximumLineCount: 1

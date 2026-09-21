@@ -217,6 +217,7 @@ Scope {
         caps.noteReadable = true
         caps.noteWritable = true
         root.capabilities = caps
+        root._applyTasksStatusSemantics()
         return true
     }
 
@@ -275,6 +276,34 @@ Scope {
     function _tasksSettingsKnown(): bool {
         return root.capabilities?.tasksSettings !== null
             && root.capabilities?.tasksSettings !== undefined
+    }
+
+    function _applyTasksStatusSemantics(): void {
+        if (!root._tasksSettingsKnown() || !Array.isArray(root.list))
+            return
+
+        const statuses = root.capabilities?.tasksSettings?.statuses
+        if (!Array.isArray(statuses))
+            return
+
+        const bySymbol = ({})
+        for (let i = 0; i < statuses.length; ++i) {
+            const status = statuses[i] ?? ({})
+            const symbol = String(status.symbol ?? "")
+            if (symbol.length === 1)
+                bySymbol[symbol] = String(status.type ?? "TODO")
+        }
+
+        const enriched = []
+        for (let i = 0; i < root.list.length; ++i) {
+            const item = Object.assign({}, root.list[i] ?? ({}))
+            const symbol = String(item.statusChar ?? " ")
+            const statusType = String(bySymbol[symbol] ?? item.statusType ?? "TODO")
+            item.statusType = statusType
+            item.done = statusType === "DONE"
+            enriched.push(item)
+        }
+        root.list = enriched
     }
 
     function _taskNeedsTasks(task): bool {
@@ -658,6 +687,7 @@ Scope {
                     payload.noteReadable = root.ready
                     payload.noteWritable = root.ready
                     root.capabilities = payload
+                    root._applyTasksStatusSemantics()
                 } else {
                     const caps = root._emptyCapabilities()
                     caps.lastError = String(payload?.error?.message ?? "Obsidian capability probe failed")

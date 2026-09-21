@@ -589,9 +589,19 @@ Item {
             return
         }
         if (category === "semantic") {
+            root.inspectShowInternals = true
             CodeWorkflowSession.selectSemantic(id)
+            Qt.callLater(root.revealSelectedInspectTarget)
             return
         }
+    }
+
+    function revealSelectedInspectTarget(): void {
+        const index = root.inspectTargets.findIndex(
+            item => root.inspectTargetSelected(item))
+        if (index < 0)
+            return
+        targetList.positionViewAtIndex(index, ListView.Contain)
     }
 
     function recordFor(targetId: string): var {
@@ -891,6 +901,25 @@ Item {
     onStoredSemanticAnchorChanged: {
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
+    }
+
+    Connections {
+        target: CodeWorkflowSession
+
+        function onSelectedTargetIdChanged(): void {
+            root.inspectFilter = ""
+            Qt.callLater(root.revealSelectedInspectTarget)
+        }
+
+        function onSelectedNodeIdChanged(): void {
+            if (CodeWorkflowSession.selectedSemanticAnchor.length === 0)
+                root.inspectFilter = ""
+            Qt.callLater(root.revealSelectedInspectTarget)
+        }
+
+        function onSelectedSemanticAnchorChanged(): void {
+            Qt.callLater(root.revealSelectedInspectTarget)
+        }
     }
 
     Connections {

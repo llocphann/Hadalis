@@ -50,6 +50,28 @@ require(page, "Appearance.colors.colOnPrimaryContainer", "selected inspect targe
 require(page, "StyledFlickable {", "Inspector must scroll instead of overflowing its panel")
 require(page, "contentHeight: inspectorColumn.implicitHeight + 12", "Inspector scroll extent must follow content")
 require(page, "inspectedSemanticRangeText", "parsed QML targets must expose source range evidence")
+require(session, 'property string selectedSemanticAnchor: ""',
+        "semantic inspect selection must live in the session singleton")
+require(session, "function selectSemantic(anchor: string): bool",
+        "session must own semantic inspect selection")
+require(page, "CodeWorkflowSession.selectedSemanticAnchor",
+        "page must consume the shared semantic selection")
+require(page, 'placeholderText: "Filter targets"',
+        "Targets must expose a search/filter control")
+require(page, "property bool inspectShowInternals: false",
+        "Targets must use progressive disclosure for parser internals")
+require(page, "function semanticEntryVisible(entry, discloseInternals: bool): bool",
+        "Targets must suppress anonymous parser noise by default")
+require(page, "function semanticEntryDepth(entry): int",
+        "Targets must derive parser hierarchy depth")
+require(page, "function textIndexForUtf8ByteOffset(byteOffset: int): int",
+        "Source Preview must map parser byte ranges to text positions")
+require(page, "function revealSourceSelection(start: int, end: int): void",
+        "Source Preview must reveal selected parser evidence")
+require(page, "onClicked: canvas.fitGraph()",
+        "Reset view must fit the actual graph")
+require(page, "ColorUtils.readableAccentInk(",
+        "Code Workflow chips must derive readable foreground ink")
 require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")
 require(page, "readOnly: true", "Source Preview must be read-only")
 require(page, "FileView {", "Source Preview must read selected source")

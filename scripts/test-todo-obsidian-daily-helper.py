@@ -86,6 +86,22 @@ class DailyTodoTests(unittest.TestCase):
         self.assertEqual(error.exception.code, "daily_note_not_found")
         self.assertEqual(list(vault.rglob("*.md")), [])
 
+    def test_add_uses_real_template_position_before_thematic_break(self):
+        vault, note, scan = self.scan(
+            "## Day Planner\n\n---\n\n## Daily Log\n\n---\n"
+        )
+        daily.add_task(
+            str(vault), daily.DEFAULT_FOLDER, daily.DEFAULT_FORMAT,
+            "2026-09-22", daily.DEFAULT_HEADING, 2, 30,
+            "Buy coffee", "", "",
+            scan["document"]["sha256"], scan["managed"]["sha256"],
+        )
+        text = note.read_text(encoding="utf-8")
+        self.assertIn(
+            "## Day Planner\n\n- [ ] Buy coffee\n---\n\n## Daily Log",
+            text,
+        )
+
     def test_add_unscheduled_task_preserves_other_sections(self):
         vault, note, scan = self.scan(
             "# Before\n## Day Planner\n\n## Daily Log\nkeep me\n"

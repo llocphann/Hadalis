@@ -343,11 +343,21 @@ def _target_group(start_time: str) -> str:
     return "morning" if hour < 12 else ("afternoon" if hour < 18 else "evening")
 
 
+def _section_append_index(doc: dict[str, Any]) -> int:
+    """Insert before trailing whitespace/thematic break that closes the section."""
+    index = doc["endIndex"]
+    while index > doc["startIndex"] + 1 and not doc["lines"][index - 1].strip():
+        index -= 1
+    if index > doc["startIndex"] + 1 and doc["lines"][index - 1].strip() in ("---", "***", "___"):
+        return index - 1
+    return index
+
+
 def _insertion_index(doc: dict[str, Any], start_time: str) -> int:
     target = _target_group(start_time)
     if target:
         group_start = -1
-        group_end = doc["endIndex"]
+        group_end = _section_append_index(doc)
         for index in range(doc["startIndex"] + 1, doc["endIndex"]):
             label = _group_label(doc["lines"][index].rstrip("\r\n")).lower()
             if not label:
@@ -359,7 +369,7 @@ def _insertion_index(doc: dict[str, Any], start_time: str) -> int:
                 group_start = index
         if group_start >= 0:
             return group_end
-    return doc["endIndex"]
+    return _section_append_index(doc)
 
 
 def _mutation_result(common: dict[str, Any], action: str) -> dict[str, Any]:

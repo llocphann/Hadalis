@@ -29,6 +29,16 @@ required_kinds = {"component", "service", "binding", "event", "action", "lifecyc
 seen_kinds = set()
 seen_edges = set()
 
+expected_bar_inspect_nodes = {
+    "bar.workspaces", "bar.activeWindow", "bar.tray", "bar.battery",
+    "bar.weather", "bar.utilButtons", "bar.shellUpdate", "bar.leftSidebar",
+    "bar.rightSidebar", "bar.timer", "bar.background", "bar.edgeCell",
+    "bar.separator", "bar.cava",
+}
+bar_node_ids = {node.get("id") for node in graphs["bar"].get("nodes", [])}
+if not expected_bar_inspect_nodes.issubset(bar_node_ids):
+    fail("Bar inspect projection is missing reviewed component-level targets")
+
 for graph_id, graph in graphs.items():
     nodes = graph.get("nodes") or []
     edges = graph.get("edges") or []
@@ -99,6 +109,8 @@ for token in (
     "CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)",
     "Shape.GeometryRenderer",
     "id: edgePath",
+    'root.graphExtent("x", 1050)',
+    'root.graphExtent("y", 570)',
     "x: edgePath.endNodeX",
     "control1X: edgePath.startNodeX",
     "id: nodeContent",

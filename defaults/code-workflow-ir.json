@@ -72,6 +72,160 @@
           "x": 650,
           "y": 360,
           "editable": false
+        },
+        {
+          "id": "bar.workspaces",
+          "kind": "component",
+          "title": "Workspaces",
+          "description": "Workspace strip and Overview input surface.",
+          "sourceNeedle": "id: workspacesModuleComponent",
+          "x": 650,
+          "y": 470,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.activeWindow",
+          "kind": "component",
+          "title": "Active Window / Taskbar",
+          "description": "Active-window slot and taskbar loader.",
+          "sourceNeedle": "id: activeWindowComponent",
+          "x": 650,
+          "y": 580,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.tray",
+          "kind": "component",
+          "title": "System Tray",
+          "description": "System tray presentation module.",
+          "sourceNeedle": "id: trayComponent",
+          "x": 650,
+          "y": 690,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.battery",
+          "kind": "component",
+          "title": "Battery",
+          "description": "Battery indicator module.",
+          "sourceNeedle": "id: batteryModuleComponent",
+          "x": 650,
+          "y": 800,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.weather",
+          "kind": "component",
+          "title": "Weather",
+          "description": "Weather module loader and Bar group.",
+          "sourceNeedle": "id: weatherComponent",
+          "x": 650,
+          "y": 910,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.utilButtons",
+          "kind": "component",
+          "title": "Utilities",
+          "description": "Bar utility controls.",
+          "sourceNeedle": "id: utilButtonsModuleComponent",
+          "x": 650,
+          "y": 1020,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.shellUpdate",
+          "kind": "component",
+          "title": "Shell Update",
+          "description": "Shell update indicator module.",
+          "sourceNeedle": "id: shellUpdateComponent",
+          "x": 650,
+          "y": 1130,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.leftSidebar",
+          "kind": "component",
+          "title": "Left Sidebar control",
+          "description": "Feature Sidebar trigger in the Bar.",
+          "sourceNeedle": "id: leftSidebarButtonComponent",
+          "x": 650,
+          "y": 1240,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.rightSidebar",
+          "kind": "component",
+          "title": "Right Sidebar control",
+          "description": "System Sidebar trigger in the Bar.",
+          "sourceNeedle": "id: rightSidebarButtonComponent",
+          "x": 650,
+          "y": 1350,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.timer",
+          "kind": "component",
+          "title": "Timer",
+          "description": "Timer indicator module.",
+          "sourceNeedle": "id: timerComponent",
+          "x": 650,
+          "y": 1460,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.background",
+          "kind": "component",
+          "title": "Bar Background",
+          "description": "Structural Bar body and presentation surface.",
+          "sourceNeedle": "id: barBackground",
+          "x": 40,
+          "y": 470,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.edgeCell",
+          "kind": "inline-component",
+          "title": "EdgeZoneCell",
+          "description": "Inline slot wrapper that loads one configured edge module.",
+          "sourceNeedle": "component EdgeZoneCell: Item",
+          "x": 320,
+          "y": 470,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.separator",
+          "kind": "inline-component",
+          "title": "VerticalBarSeparator",
+          "description": "Inline separator used by Bar layout zones.",
+          "sourceNeedle": "component VerticalBarSeparator: Rectangle",
+          "x": 320,
+          "y": 580,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
+        },
+        {
+          "id": "bar.cava",
+          "kind": "service",
+          "title": "CavaProcess",
+          "description": "Bar spectrum sampling process.",
+          "sourceNeedle": "id: barCavaProcess",
+          "x": 40,
+          "y": 580,
+          "sourcePath": "modules/bar/BarContent.qml",
+          "editable": false
         }
       ],
       "edges": [
@@ -103,6 +257,118 @@
           "id": "bar.lifecycle.resources",
           "from": "bar.loader",
           "to": "bar.resources",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.structure.background",
+          "from": "bar.component",
+          "to": "bar.background",
+          "kind": "structure",
+          "label": "surface",
+          "editable": false
+        },
+        {
+          "id": "bar.structure.edgeCell",
+          "from": "bar.component",
+          "to": "bar.edgeCell",
+          "kind": "structure",
+          "label": "slot wrapper",
+          "editable": false
+        },
+        {
+          "id": "bar.structure.separator",
+          "from": "bar.component",
+          "to": "bar.separator",
+          "kind": "structure",
+          "label": "separator",
+          "editable": false
+        },
+        {
+          "id": "bar.data.cava",
+          "from": "bar.cava",
+          "to": "bar.component",
+          "kind": "data",
+          "label": "spectrum",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.workspaces",
+          "from": "bar.loader",
+          "to": "bar.workspaces",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.activeWindow",
+          "from": "bar.loader",
+          "to": "bar.activeWindow",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.tray",
+          "from": "bar.loader",
+          "to": "bar.tray",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.battery",
+          "from": "bar.loader",
+          "to": "bar.battery",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.weather",
+          "from": "bar.loader",
+          "to": "bar.weather",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.utilButtons",
+          "from": "bar.loader",
+          "to": "bar.utilButtons",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.shellUpdate",
+          "from": "bar.loader",
+          "to": "bar.shellUpdate",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.leftSidebar",
+          "from": "bar.loader",
+          "to": "bar.leftSidebar",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.rightSidebar",
+          "from": "bar.loader",
+          "to": "bar.rightSidebar",
+          "kind": "lifecycle",
+          "label": "instantiate",
+          "editable": false
+        },
+        {
+          "id": "bar.lifecycle.timer",
+          "from": "bar.loader",
+          "to": "bar.timer",
           "kind": "lifecycle",
           "label": "instantiate",
           "editable": false

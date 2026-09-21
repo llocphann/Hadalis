@@ -16,8 +16,18 @@ Item {
 
     readonly property real nodeWidth: 190
     readonly property real nodeHeight: 88
-    readonly property real worldWidth: 1050
-    readonly property real worldHeight: 570
+    readonly property real worldWidth: root.graphExtent("x", 1050)
+    readonly property real worldHeight: root.graphExtent("y", 570)
+
+    function graphExtent(axis: string, minimum: real): real {
+        let extent = minimum
+        for (const node of root.nodes) {
+            const position = Number(node?.[axis] ?? 0)
+            const size = axis === "x" ? root.nodeWidth : root.nodeHeight
+            extent = Math.max(extent, position + size + 80)
+        }
+        return extent
+    }
 
     function nodeById(nodeId: string): var {
         return root.nodes.find(node => node.id === nodeId) ?? null

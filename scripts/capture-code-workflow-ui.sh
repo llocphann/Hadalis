@@ -58,7 +58,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-for cmd in jq niri grim tar git sha256sum; do
+for cmd in jq niri grim tar git sha256sum python3; do
     command -v "$cmd" >/dev/null 2>&1 || {
         echo "Missing required command: $cmd" >&2
         exit 1

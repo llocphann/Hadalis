@@ -203,8 +203,14 @@ require(page, '"OTHER SELECTION"',
         "transaction panel must label selection mismatch explicitly")
 require(page, '"Preview belongs to another inspect selection. "',
         "transaction panel must explain how to resume guarded controls")
-require(page, '=== "signal-action"\n                                ? 300',
-        "signal/action transaction controls must not be clipped by literal height")
+require(page, "Math.max(118, transactionColumn.implicitHeight + 16)",
+        "transaction panel height must follow visible content")
+require(page, "id: transactionScroll",
+        "transaction panel must scroll instead of clipping long evidence")
+require(page, "contentHeight: transactionColumn.implicitHeight + 8",
+        "transaction scroll extent must follow transaction content")
+require(page, "Math.min(\n                    420,",
+        "transaction panel must cap growth before scrolling")
 require(page, "root.selectedIrEdge !== null",
         "Inspector header must treat selected edges as primary inspect objects")
 require(page, "?? root.selectedIrEdge?.kind",

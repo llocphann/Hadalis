@@ -577,6 +577,8 @@ if "StyledText {" in world_block:
     fail("transformed graph world must not use Native-rendered StyledText directly")
 if "textRenderType: Text.QtRendering" not in world_block:
     fail("graph MaterialSymbol text must use Qt rendering under world transforms")
+if "id: edgeLabelTooltip" in world_block:
+    fail("edge-label tooltip HUD must stay outside the transformed graph world")
 
 for token in (
     "defaults/code-workflow-ir.json",
@@ -649,7 +651,7 @@ for token in (
     "readonly property bool hovered:",
     "edgeLabelHover.hovered",
     "id: edgeLabelHover",
-    "StyledToolTip {",
+    "id: edgeLabelTooltip",
     "function revealNode(nodeId: string): void",
     "function revealEdge(edgeId: string): void",
     "function revealPrimarySelection(): void",

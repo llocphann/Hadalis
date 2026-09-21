@@ -267,6 +267,10 @@ class UiState:
         self.cursor_row = 0
         self.cursor_col = 0
         self.mode = "normal"
+        self.mode_index = 0
+        self.mode_info: list[dict[str, Any]] = []
+        self.cursor_style_enabled = False
+        self.cursor_visible = True
         self.mouse_enabled = False
         self.default_fg = -1
         self.default_bg = -1
@@ -364,8 +368,22 @@ class UiState:
             self.default_bg = int(args[1])
             self.default_sp = int(args[2])
             self.defaults_dirty = True
+        elif name == "mode_info_set" and len(args) >= 2:
+            self.cursor_style_enabled = bool(args[0])
+            self.mode_info = [
+                dict(item or {}) for item in list(args[1] or [])
+            ]
+            self.meta_dirty = True
         elif name == "mode_change" and args:
             self.mode = str(args[0])
+            if len(args) >= 2:
+                self.mode_index = max(0, int(args[1]))
+            self.meta_dirty = True
+        elif name == "busy_start":
+            self.cursor_visible = False
+            self.meta_dirty = True
+        elif name == "busy_stop":
+            self.cursor_visible = True
             self.meta_dirty = True
         elif name == "mouse_on":
             self.mouse_enabled = True
@@ -387,6 +405,11 @@ class UiState:
             for row in sorted(self.dirty_rows)
             if 0 <= row < self.rows
         ]
+        cursor_style: dict[str, Any] = {}
+        if (self.cursor_style_enabled
+                and 0 <= self.mode_index < len(self.mode_info)):
+            cursor_style = dict(self.mode_info[self.mode_index] or {})
+
         frame: dict[str, Any] = {
             "type": "frame",
             "revision": self.revision,
@@ -395,6 +418,8 @@ class UiState:
             "cursorRow": self.cursor_row,
             "cursorCol": self.cursor_col,
             "mode": self.mode,
+            "cursorVisible": self.cursor_visible,
+            "cursorStyle": cursor_style,
             "mouseEnabled": self.mouse_enabled,
             "dirtyRows": rows,
         }
@@ -484,7 +509,9 @@ class Bridge:
                 continue
             name = str(packed_event[0])
             calls = packed_event[1:] or (
-                [[]] if name in ("flush", "mouse_on", "mouse_off") else [])
+                [[]] if name in (
+                    "flush", "mouse_on", "mouse_off",
+                    "busy_start", "busy_stop") else [])
             for args in calls:
                 if not isinstance(args, list):
                     args = []
@@ -561,6 +588,20 @@ class Bridge:
         self.selector.register(self.nvim.stdout, selectors.EVENT_READ, "rpc")
         self.selector.register(self.nvim.stderr, selectors.EVENT_READ, "stderr")
 
+        self.request(
+            "nvim_set_client_info",
+            [
+                "Hadalis",
+                {"major": 0, "minor": 1, "patch": 0},
+                "ui",
+                {},
+                {
+                    "website": "https://github.com/llocphann/Hadalis",
+                    "license": "GPL-3.0"
+                }
+            ],
+            "client-info",
+        )
         self.request(
             "nvim_ui_attach",
             [self.ui.cols, self.ui.rows, {"rgb": True, "ext_linegrid": True}],

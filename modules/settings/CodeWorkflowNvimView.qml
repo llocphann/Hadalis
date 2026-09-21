@@ -424,18 +424,40 @@ Item {
                     }
 
                     if (CodeWorkflowNvim.ready
+                            && CodeWorkflowNvim.cursorVisible
                             && CodeWorkflowNvim.cursorRow >= 0
                             && CodeWorkflowNvim.cursorCol >= 0) {
                         const cursorX =
                             CodeWorkflowNvim.cursorCol * root.cellWidth
                         const cursorY =
                             CodeWorkflowNvim.cursorRow * root.cellHeight
+                        const cursorStyle =
+                            CodeWorkflowNvim.cursorStyle ?? ({})
+                        const cursorShape = String(
+                            cursorStyle.cursor_shape
+                                ?? (CodeWorkflowNvim.mode.startsWith("insert")
+                                    ? "vertical" : "block"))
+                        const percentage = Math.max(
+                            1, Math.min(
+                                100,
+                                Number(cursorStyle.cell_percentage ?? 100)))
                         ctx.fillStyle = Appearance.colors.colPrimary
-                        if (CodeWorkflowNvim.mode.startsWith("insert")) {
+
+                        if (cursorShape === "vertical") {
                             ctx.fillRect(
                                 cursorX, cursorY,
-                                Math.max(2, root.cellWidth * 0.14),
+                                Math.max(
+                                    2,
+                                    root.cellWidth * percentage / 100),
                                 root.cellHeight)
+                        } else if (cursorShape === "horizontal") {
+                            const cursorHeight = Math.max(
+                                2,
+                                root.cellHeight * percentage / 100)
+                            ctx.fillRect(
+                                cursorX,
+                                cursorY + root.cellHeight - cursorHeight,
+                                root.cellWidth, cursorHeight)
                         } else {
                             ctx.globalAlpha = 0.72
                             ctx.fillRect(

@@ -77,6 +77,26 @@ ui.event("mouse_on", [])
 assert ui.event("flush", [])
 mouse_frame = ui.frame()
 assert mouse_frame is not None and mouse_frame["mouseEnabled"] is True
+
+ui.event("mode_info_set", [
+    True,
+    [
+        {"cursor_shape": "block", "cell_percentage": 100},
+        {"cursor_shape": "vertical", "cell_percentage": 25},
+    ],
+])
+ui.event("mode_change", ["insert", 1])
+assert ui.event("flush", [])
+cursor_frame = ui.frame()
+assert cursor_frame["cursorStyle"]["cursor_shape"] == "vertical"
+assert cursor_frame["cursorStyle"]["cell_percentage"] == 25
+ui.event("busy_start", [])
+assert ui.event("flush", [])
+assert ui.frame()["cursorVisible"] is False
+ui.event("busy_stop", [])
+assert ui.event("flush", [])
+assert ui.frame()["cursorVisible"] is True
+
 ui.event("mouse_off", [])
 assert ui.event("flush", [])
 assert ui.frame()["mouseEnabled"] is False

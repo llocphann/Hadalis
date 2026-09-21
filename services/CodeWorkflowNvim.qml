@@ -19,6 +19,8 @@ Singleton {
     property int cursorRow: 0
     property int cursorCol: 0
     property string mode: "normal"
+    property bool cursorVisible: true
+    property var cursorStyle: ({})
     property bool mouseEnabled: false
     property int revision: 0
     property var gridRows: []
@@ -80,6 +82,8 @@ Singleton {
         root.cursorCol = Math.max(
             0, Math.min(root.cols - 1, Number(frame?.cursorCol ?? 0)))
         root.mode = String(frame?.mode ?? root.mode)
+        root.cursorVisible = frame?.cursorVisible !== false
+        root.cursorStyle = Object.assign({}, frame?.cursorStyle ?? ({}))
         root.mouseEnabled = frame?.mouseEnabled === true
         root.gridRows = nextRows
         root.revision += 1
@@ -144,6 +148,8 @@ Singleton {
         root.cursorRow = 0
         root.cursorCol = 0
         root.mode = "normal"
+        root.cursorVisible = true
+        root.cursorStyle = ({})
         root.mouseEnabled = false
         root.gridRows = root._blankGrid(safeRows)
         root.highlights = ({})

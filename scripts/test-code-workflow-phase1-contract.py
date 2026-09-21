@@ -94,6 +94,14 @@ require(page, "CodeWorkflowSession.selectedSemanticAnchor",
         "page must consume the shared semantic selection")
 require(page, 'placeholderText: "Filter targets"',
         "Targets must expose a search/filter control")
+require(page, "property bool inspectSelectionFromTargets: false",
+        "Targets must distinguish list-originated selection from external selection")
+require(page, "root.inspectSelectionFromTargets = true",
+        "Targets activation must mark its selection origin")
+require(page, "finally {\n            root.inspectSelectionFromTargets = false",
+        "Targets activation must always clear its selection-origin guard")
+require(page, "if (!root.inspectSelectionFromTargets)",
+        "external selection may clear filters while list selection preserves them")
 require(page, 'Accessible.name: "Filter inspect targets"',
         "Targets filter must expose an explicit accessibility label")
 require(page, 'Accessible.name: "Source preview"',

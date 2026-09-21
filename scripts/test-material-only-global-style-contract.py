@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
 THEME_SERVICE = ROOT / "services" / "ThemeService.qml"
+GLOBAL_ACTIONS = ROOT / "services" / "GlobalActions.qml"
 STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 BAR = ROOT / "modules" / "bar" / "Bar.qml"
 VERTICAL_BAR = ROOT / "modules" / "verticalBar" / "VerticalBar.qml"
@@ -123,6 +124,7 @@ def forbid(text: str, token: str, source: str) -> None:
 def main() -> None:
     appearance = APPEARANCE.read_text(encoding="utf-8")
     theme_service = THEME_SERVICE.read_text(encoding="utf-8")
+    global_actions = GLOBAL_ACTIONS.read_text(encoding="utf-8")
     styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
     bar = BAR.read_text(encoding="utf-8")
     vertical_bar = VERTICAL_BAR.read_text(encoding="utf-8")
@@ -425,6 +427,20 @@ def main() -> None:
         'case "cookie":',
     ):
         forbid(theme_service, token, "ThemeService.qml")
+
+    # GlobalActions is user-facing runtime. Do not advertise style actions that
+    # ThemeService intentionally ignores under the Material-only v1.0 contract.
+    require(global_actions, 'id: "style-material"', "GlobalActions.qml")
+    for token in (
+        'id: "style-cards"',
+        'id: "style-aurora"',
+        'id: "style-inir"',
+        'id: "style-angel"',
+        'id: "style-regalia"',
+        'id: "style-zzz"',
+        'id: "style-cookie"',
+    ):
+        forbid(global_actions, token, "GlobalActions.qml")
 
     # The shared connected-popup path is user-facing runtime, not migration
     # compatibility. It must consume the canonical Material tokens directly.

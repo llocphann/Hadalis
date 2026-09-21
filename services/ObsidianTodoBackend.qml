@@ -269,6 +269,34 @@ Scope {
         return true
     }
 
+    function migrateInternal(internalJsonPath: string): bool {
+        if (!root.configured || !root.ready) {
+            root._setError("not_ready", "Obsidian Todo source is not ready")
+            return false
+        }
+        if (mutationProc.running || root._pendingMutation !== null) {
+            root._setError("busy", "Another Todo mutation is already in progress")
+            return false
+        }
+
+        const command = [
+            "/usr/bin/python3", root.helperPath,
+            "migrate-internal",
+            "--vault", root.vaultPath,
+            "--note", root.notePath,
+            "--internal-json", String(internalJsonPath ?? ""),
+            "--expected-document-sha", String(root.documentMeta?.sha256 ?? ""),
+            "--expected-managed-sha", String(root.managedMeta?.sha256 ?? "")
+        ]
+        if (root.preferTasksPlugin && root._tasksSettingsKnown()) {
+            const filter = String(root.capabilities.tasksSettings?.globalFilter ?? "").trim()
+            if (filter.length > 0)
+                command.push("--global-filter", filter)
+        }
+        root._startMutation("migrate-internal", command, "")
+        return true
+    }
+
     function addTask(text: string): bool {
         const clean = String(text ?? "").trim()
         if (clean.length === 0) {

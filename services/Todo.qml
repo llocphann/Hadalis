@@ -37,6 +37,7 @@ Singleton {
         })
     readonly property string sourceLabel:
         root.useObsidian ? "Obsidian · " + String(Config.options?.todo?.obsidian?.notePath ?? "") : "Hadalis"
+    readonly property int internalItemCount: internal.list.length
 
     // Compatibility paths remain the internal store paths. New UI must use
     // openSource() instead of assuming Todo.txtFilePath is canonical.
@@ -67,6 +68,12 @@ Singleton {
         if (!root.useObsidian)
             return false
         return obsidian.initializeSection()
+    }
+
+    function migrateInternalToObsidian() {
+        if (!root.useObsidian)
+            return false
+        return obsidian.migrateInternal(internal.filePath)
     }
 
     function addItem(item) {

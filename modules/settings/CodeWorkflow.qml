@@ -672,16 +672,27 @@ Item {
     function inspectTargetSelected(item): bool {
         const category = String(item?.category ?? "")
         const id = String(item?.id ?? "")
-        if (category === "runtime")
+        if (category === "runtime") {
+            const targetGraph = CodeWorkflowIr.graphFor(id)
             return CodeWorkflowSession.selectedTargetId === id
+                && CodeWorkflowSession.subflowTargetId === id
+                && CodeWorkflowSession.selectedNodeId
+                    === String(targetGraph?.rootNodeId ?? "")
                 && root.inspectedSemanticAnchor.length === 0
                 && CodeWorkflowSession.selectedEdgeId.length === 0
                 && CodeWorkflowSession.selectedConnectTargetId.length === 0
-        if (category === "graph")
+        }
+        if (category === "graph") {
+            const rootNodeId = String(root.graph?.rootNodeId ?? "")
+            const runtimeOwnsRoot = id === rootNodeId
+                && CodeWorkflowSession.selectedTargetId
+                    === CodeWorkflowSession.subflowTargetId
             return CodeWorkflowSession.selectedNodeId === id
+                && !runtimeOwnsRoot
                 && root.inspectedSemanticAnchor.length === 0
                 && CodeWorkflowSession.selectedEdgeId.length === 0
                 && CodeWorkflowSession.selectedConnectTargetId.length === 0
+        }
         if (category === "edge")
             return CodeWorkflowSession.selectedEdgeId === id
                 && root.inspectedSemanticAnchor.length === 0

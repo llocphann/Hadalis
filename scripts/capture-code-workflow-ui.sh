@@ -217,7 +217,7 @@ WINDOW_FULLSCREEN="$(niri msg -j windows | jq -r --argjson id "$WINDOW_ID" '
     .[] | select(.id == $id) | .is_fullscreen // false
 ')"
 if [[ "$WINDOW_FULLSCREEN" != "true" ]]; then
-    niri msg action fullscreen-window \
+    niri msg action fullscreen-window --id "$WINDOW_ID" \
         >>"$BUNDLE_DIR/logs/niri-actions.log" 2>&1 || {
         log "Could not fullscreen Settings window"
         exit 1

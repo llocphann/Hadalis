@@ -202,6 +202,10 @@ def main() -> None:
         "x: root.screenshotLeftOwnerInset",
         "y: root.screenshotTopOwnerInset",
         "clip: true",
+        "layer.effect: GE.OpacityMask {",
+        "PerimeterTokens.frameRadius",
+        "paintOverlap: Math.min(",
+        "PerimeterTokens.seamOverlap",
     ):
         check(token in region_selection,
               f"Region selector connected Screen Edge controls missing: {token}")
@@ -231,8 +235,8 @@ def main() -> None:
         "ConnectedSurfaceIrisEdgeSurface {",
         'edge: "top"',
         "tangentFrameThickness: root.screenEdgeThickness",
-        "paintOverlap: Math.min(",
         "joinTangentEnd: true",
+        "exclusionMode: ExclusionMode.Ignore",
         "x: popup.width - root.screenEdgeThickness - width",
         "y: root.topOwnerThickness",
         "connectedSurface: true",
@@ -244,8 +248,9 @@ def main() -> None:
     check('"Niri config reloaded"' not in toast_manager,
           "Legacy Niri reload toast title must stay retired")
     check("popup.width - width - root.edgeDecorationMargin" not in toast_manager
-          and "x: Math.max(root.edgeDecorationMargin," not in toast_manager,
-          "Reload toast must not retain a detached right-side decoration gap")
+          and "x: Math.max(root.edgeDecorationMargin," not in toast_manager
+          and "paintOverlap: Math.min(" not in toast_manager,
+          "Reload toast must use physical-output placement instead of detached-gap or paint-overlap workarounds")
     check("\n    property bool connectedSurface: false\n" in toast_notification
           and "\n    property bool copied: false\n" in toast_notification
           and "layer.enabled: Appearance.effectsEnabled && !root.connectedSurface" in toast_notification
@@ -442,8 +447,7 @@ def main() -> None:
         "id: dockIrisSurface",
         "edge: root.position",
         "ownerThickness: dockRoot.screenEdgeThickness",
-        "paintOverlap: dockRoot.screenEdgePaintOverlap",
-        "readonly property real screenEdgePaintOverlap: Math.min(",
+        "exclusionMode: ExclusionMode.Ignore",
         "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
         "dockRoot.edgeDecorationMargin * 2",
         "? dockRoot.screenEdgeThickness",
@@ -472,6 +476,9 @@ def main() -> None:
               f"Dock body must not overpaint iRiS weld fillets: {stale_corner_override}")
     check("StyledRectangularShadow {" not in dock,
           "Dock must not retain its detached local shadow after iRiS cutover")
+    check("screenEdgePaintOverlap" not in dock
+          and "paintOverlap: dockRoot." not in dock,
+          "Dock must not hide compositor double-offset bugs with paint-overlap workarounds")
     check(dock.count("duration: SurfaceMotion.duration") >= 4
           and "Appearance.animation.elementMoveEnter.duration" not in dock,
           "Dock reveal/retract must use the same immutable slide motion as connected popups")

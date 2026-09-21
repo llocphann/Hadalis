@@ -1185,7 +1185,10 @@ Item {
                 preferredRendererType: Shape.CurveRenderer
                 antialiasing: true
                 asynchronous: false
-                z: 0
+                // Shared endpoint trunks are intentional. Lift the active
+                // relation above sibling wires without painting over labels
+                // (z 0.5) or nodes (z 1).
+                z: selectedEdge ? 0.4 : hoveredEdge ? 0.3 : 0
 
                 ShapePath {
                     id: edgePath

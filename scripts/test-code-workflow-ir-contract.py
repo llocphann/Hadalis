@@ -599,6 +599,7 @@ for token in (
     "CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)",
     "Shape.CurveRenderer",
     "antialiasing: true",
+    "z: selectedEdge ? 0.4 : hoveredEdge ? 0.3 : 0",
     "function edgeStrokeWidth(selected: bool, highlighted: bool): real",
     "return screenWidth / zoom",
     "id: edgePath",

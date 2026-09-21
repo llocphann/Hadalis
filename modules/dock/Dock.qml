@@ -200,12 +200,15 @@ Scope {
                     visible: dockVisualBackground.visible
                     edge: root.position
                     ownerThickness: dockRoot.screenEdgeThickness
+                    paintOverlap: Math.min(
+                        PerimeterTokens.seamOverlap,
+                        Math.max(0, dockRoot.screenEdgeThickness - 1))
                     outputRect: Qt.rect(0, 0, dockRoot.width, dockRoot.height)
                     bodyRect: Qt.rect(
-                        dockMouseArea.x + dockBackground.x + dockVisualBackground.x,
-                        dockMouseArea.y + dockBackground.y + dockVisualBackground.y,
-                        dockVisualBackground.width,
-                        dockVisualBackground.height)
+                        dockMouseArea.x + dockBackground.x + dockConnectedBody.x,
+                        dockMouseArea.y + dockBackground.y + dockConnectedBody.y,
+                        dockConnectedBody.width,
+                        dockConnectedBody.height)
                     bodyRadius: dockVisualBackground.radius
                     fillColor: dockVisualBackground.irisFillColor
                     borderColor: dockVisualBackground.irisBorderColor
@@ -314,6 +317,27 @@ Scope {
                             width: implicitWidth
                             height: implicitHeight
 
+                            // Single connected-body geometry, mirroring the
+                            // screenshot controls: one resting rect ends exactly
+                            // at the Screen Edge inner boundary. The visual plate
+                            // and iRiS field both consume this same item.
+                            Item {
+                                id: dockConnectedBody
+                                anchors.fill: parent
+                                anchors.topMargin: root.isTop
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
+                                anchors.bottomMargin: root.position === "bottom"
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
+                                anchors.leftMargin: root.isLeft
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
+                                anchors.rightMargin: root.position === "right"
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
+                            }
+
                             Rectangle {
                                 id: dockVisualBackground
                                 readonly property bool zzzGlassActive: root.zzzEverywhere
@@ -383,19 +407,7 @@ Scope {
                                         0.8) || Appearance.colors.colSecondaryContainer
                                 }
 
-                                anchors.fill: parent
-                                anchors.topMargin: root.isTop
-                                    ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
-                                anchors.bottomMargin: root.position === "bottom"
-                                    ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
-                                anchors.leftMargin: root.isLeft
-                                    ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
-                                anchors.rightMargin: root.position === "right"
-                                    ? dockRoot.screenEdgeThickness
-                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
+                                anchors.fill: dockConnectedBody
 
                                 visible: (Config.options?.dock?.showBackground ?? true)
                                     && !gameModeMinimal
@@ -414,7 +426,7 @@ Scope {
                                 border.width: root.zzzEverywhere || regaliaEverywhere
                                     ? 0
                                     : angelEverywhere
-                                        ? Appearance.angel.panelBorderWidth : 1
+                                        ? Appearance.angel.panelBorderWidth : 0
                                 border.color: root.zzzEverywhere || regaliaEverywhere
                                     ? "transparent"
                                     : angelEverywhere

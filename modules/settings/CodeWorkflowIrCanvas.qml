@@ -327,6 +327,61 @@ Item {
         }
 
         Repeater {
+            model: root.edges
+
+            delegate: Rectangle {
+                id: edgeLabel
+                required property var modelData
+
+                readonly property var fromNode: root.nodeById(modelData.from)
+                readonly property var toNode: root.nodeById(modelData.to)
+                readonly property real startX:
+                    Number(fromNode?.x ?? 0) + root.nodeWidth
+                readonly property real startY:
+                    Number(fromNode?.y ?? 0) + root.nodeHeight / 2
+                readonly property real endX: Number(toNode?.x ?? 0)
+                readonly property real endY:
+                    Number(toNode?.y ?? 0) + root.nodeHeight / 2
+                readonly property real bend:
+                    Math.max(48, Math.abs(endX - startX) / 2)
+                readonly property real midX: root.cubicCoordinate(
+                    startX, startX + bend, endX - bend, endX, 0.5)
+                readonly property real midY: root.cubicCoordinate(
+                    startY, startY, endY, endY, 0.5)
+
+                visible: fromNode !== null
+                    && toNode !== null
+                    && String(modelData.label ?? "").length > 0
+                x: midX - width / 2
+                y: midY - height / 2
+                implicitWidth: Math.min(150,
+                    edgeLabelText.implicitWidth + 12)
+                implicitHeight: edgeLabelText.implicitHeight + 6
+                radius: implicitHeight / 2
+                color: Appearance.colors.colLayer0
+                border.width: 1
+                border.color: ColorUtils.transparentize(
+                    root.edgeColor(modelData.kind), 0.35)
+                z: 0.5
+
+                StyledText {
+                    id: edgeLabelText
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    verticalAlignment: Text.AlignVCenter
+                    text: String(edgeLabel.modelData.label ?? "")
+                    color: ColorUtils.ensureReadable(
+                        root.edgeColor(edgeLabel.modelData.kind),
+                        edgeLabel.color, 4.5)
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                }
+            }
+        }
+
+        Repeater {
             model: root.nodes
 
             delegate: Rectangle {
@@ -351,7 +406,6 @@ Item {
                     ? accent
                     : Appearance.colors.colOutlineVariant
                 z: 1
-                clip: true
                 activeFocusOnTab: true
 
                 Accessible.role: Accessible.Button
@@ -386,9 +440,11 @@ Item {
                 }
 
                 ColumnLayout {
+                    id: nodeContent
                     anchors.fill: parent
                     anchors.margins: 10
                     spacing: 3
+                    clip: true
 
                     RowLayout {
                         Layout.fillWidth: true

@@ -2026,7 +2026,10 @@ Item {
                         : CodeWorkflowTransaction.activeCommand?.kind
                                 === "direct-binding"
                             ? 300
-                            : 118)
+                            : CodeWorkflowTransaction.activeCommand?.kind
+                                    === "signal-action"
+                                ? 300
+                                : 118)
                     + (root.transactionSelectionMismatch ? 44 : 0)
                 : 0
             visible: CodeWorkflowTransaction.dirty

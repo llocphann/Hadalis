@@ -51,7 +51,7 @@ Item {
         const items = []
         const query = root.inspectFilter.trim().toLowerCase()
 
-        function append(item): void {
+        const append = item => {
             const haystack = (
                 String(item.label ?? "") + " "
                 + String(item.detail ?? "") + " "
@@ -479,7 +479,11 @@ Item {
     }
 
     function scopeLeaf(value: string): string {
-        return String(value ?? "").replace(/\\[\\d+\\]$/, "")
+        const text = String(value ?? "")
+        const bracket = text.lastIndexOf("[")
+        return bracket > 0 && text.endsWith("]")
+            ? text.slice(0, bracket)
+            : text
     }
 
     function semanticEntryDepth(entry): int {

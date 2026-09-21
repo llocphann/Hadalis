@@ -138,6 +138,13 @@ Item {
         CodeWorkflowIr.reviewedSignalActionTargetForEdge(
             CodeWorkflowSession.subflowTargetId,
             CodeWorkflowSession.selectedEdgeId)
+    readonly property bool selectedEdgeMutationReviewed:
+        root.selectedIrEdge !== null
+        && (root.selectedIrEdge?.previewable === true
+            || root.selectedSignalActionTarget !== null)
+    readonly property bool selectedEdgeReadOnly:
+        root.selectedIrEdge !== null
+        && !root.selectedEdgeMutationReviewed
     readonly property var reviewedSignalActionTargetForSelection:
         CodeWorkflowIr.reviewedSignalActionTargetForNode(
             CodeWorkflowSession.subflowTargetId,
@@ -1399,9 +1406,15 @@ Item {
                         Layout.fillWidth: true
                         visible: root.selectedIrEdge !== null
                         text: root.selectedIrEdge
-                            ? String(root.selectedIrEdge.label ?? root.selectedIrEdge.id)
-                                + " · "
-                                + String(root.selectedIrEdge.sourceExpression ?? "")
+                            ? String(root.selectedIrEdge.label
+                                ?? root.selectedIrEdge.id)
+                                + (String(root.selectedIrEdge.sourceExpression
+                                        ?? "").length > 0
+                                    ? " · "
+                                        + String(
+                                            root.selectedIrEdge
+                                                .sourceExpression)
+                                    : "")
                             : ""
                         color: Appearance.colors.colPrimary
                         font.family: Appearance.font.family.monospace
@@ -1409,6 +1422,27 @@ Item {
                         wrapMode: Text.WrapAnywhere
                         maximumLineCount: 3
                         elide: Text.ElideRight
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedIrEdge !== null
+                        text: root.selectedIrEdge
+                            ? String(root.selectedIrEdge.kind
+                                ?? "connection").toUpperCase()
+                                + " · "
+                                + String(root.selectedIrEdge.from ?? "—")
+                                + " → "
+                                + String(root.selectedIrEdge.to ?? "—")
+                                + (root.selectedEdgeReadOnly
+                                    ? " · READ ONLY"
+                                    : " · REVIEWED")
+                            : ""
+                        color: root.selectedEdgeReadOnly
+                            ? Appearance.colors.colSubtext
+                            : Appearance.colors.colTertiary
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        elide: Text.ElideMiddle
+                        maximumLineCount: 1
                     }
                     RippleButtonWithIcon {
                         visible: root.selectedIrEdge === null
@@ -1672,7 +1706,7 @@ Item {
                         }
                     }
                     RippleButtonWithIcon {
-                        visible: root.selectedIrEdge !== null
+                        visible: root.selectedIrEdge?.previewable === true
                             && root.bindingPreviewEligible
                         Layout.fillWidth: true
                         materialIcon: "link_off"

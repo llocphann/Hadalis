@@ -141,6 +141,20 @@ def _obsidian_running() -> bool:
     )
 
 
+def runtime_probe() -> dict[str, Any]:
+    """Detect Obsidian/CLI presence without invoking the launch-capable CLI."""
+    cli = _find_cli()
+    running = _obsidian_running()
+    return {
+        "ok": True,
+        "obsidianInstalled": bool(cli or running),
+        "obsidianRunning": running,
+        "cliRegistered": bool(cli),
+        "cliResponsive": False,
+        "cliPath": cli or "",
+    }
+
+
 def _resolve_vault(vault_path: str) -> Path:
     raw = str(vault_path or "").strip()
     if not raw:

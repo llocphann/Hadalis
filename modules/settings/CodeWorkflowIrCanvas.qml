@@ -461,6 +461,21 @@ Item {
                     CodeWorkflowSession.selectedNodeId === modelData.id
                 readonly property color accent:
                     root.accentForKind(modelData.kind)
+                readonly property color foreground: selected
+                    ? Appearance.colors.colOnPrimaryContainer
+                    : Appearance.colors.colOnLayer1
+                readonly property color subtext: selected
+                    ? ColorUtils.readableSubtext(
+                        Appearance.colors.colOnPrimaryContainer,
+                        Appearance.colors.colPrimaryContainer,
+                        0.78)
+                    : Appearance.colors.colSubtext
+                readonly property color portInk:
+                    ColorUtils.readableAccentInk(
+                        accent,
+                        Appearance.colors.colLayer0,
+                        3.0,
+                        Appearance.colors.colOnLayer0)
 
                 x: Number(modelData.x ?? 0)
                 y: Number(modelData.y ?? 0)
@@ -468,7 +483,7 @@ Item {
                 height: root.nodeHeight
                 radius: Appearance.rounding.normal
                 color: selected
-                    ? ColorUtils.transparentize(accent, 0.78)
+                    ? Appearance.colors.colPrimaryContainer
                     : Appearance.colors.colLayer1
                 border.width: selected ? 2 : 1
                 border.color: selected
@@ -523,13 +538,17 @@ Item {
                             implicitWidth: kindLabel.implicitWidth + 10
                             implicitHeight: kindLabel.implicitHeight + 4
                             radius: implicitHeight / 2
-                            color: ColorUtils.transparentize(node.accent, 0.82)
+                            color: Appearance.colors.colLayer2
 
                             StyledText {
                                 id: kindLabel
                                 anchors.centerIn: parent
                                 text: String(node.modelData.kind ?? "node").toUpperCase()
-                                color: node.accent
+                                color: ColorUtils.readableAccentInk(
+                                    node.accent,
+                                    Appearance.colors.colLayer2,
+                                    4.5,
+                                    Appearance.colors.colOnLayer1)
                                 font.pixelSize: Appearance.font.pixelSize.smallest
                                 font.weight: Font.DemiBold
                             }
@@ -538,7 +557,7 @@ Item {
                         StyledText {
                             Layout.fillWidth: true
                             text: node.modelData.title ?? node.modelData.id
-                            color: Appearance.colors.colOnLayer1
+                            color: node.foreground
                             font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.DemiBold
                             elide: Text.ElideRight
@@ -558,7 +577,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "arrow_outward"
                                 iconSize: Appearance.font.pixelSize.small
-                                color: node.accent
+                                color: node.portInk
                             }
 
                             MouseArea {
@@ -577,12 +596,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.maximumWidth: node.width - 20
                         text: node.modelData.description ?? ""
-                        color: node.selected
-                            ? ColorUtils.ensureReadable(
-                                Appearance.colors.colSubtext,
-                                ColorUtils.transparentize(node.accent, 0.78),
-                                4.5)
-                            : Appearance.colors.colSubtext
+                        color: node.subtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         elide: Text.ElideRight
                     }
@@ -591,12 +605,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.maximumWidth: node.width - 20
                         text: node.modelData.sourceNeedle ?? ""
-                        color: node.selected
-                            ? ColorUtils.ensureReadable(
-                                Appearance.colors.colSubtext,
-                                ColorUtils.transparentize(node.accent, 0.78),
-                                4.5)
-                            : Appearance.colors.colSubtext
+                        color: node.subtext
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         elide: Text.ElideMiddle
@@ -609,7 +618,7 @@ Item {
                     width: 8
                     height: 8
                     radius: 4
-                    color: node.accent
+                    color: node.portInk
                 }
 
                 Rectangle {
@@ -618,7 +627,7 @@ Item {
                     width: 8
                     height: 8
                     radius: 4
-                    color: node.accent
+                    color: node.portInk
                 }
             }
         }

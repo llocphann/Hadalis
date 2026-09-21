@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 
 /**
- * GitHub contributions card: total count + heatmap for the last year.
+ * GitHub contributions card: total count + heatmap for the last 6 months.
  * Fetches once per panel session (cached 1h) and only when a username is
  * configured — zero cost otherwise.
  */
@@ -37,10 +37,15 @@ DashCard {
             try {
                 const data = JSON.parse(xhr.responseText)
                 const days = data?.contributions ?? []
-                root.total = data?.total?.lastYear ?? days.reduce((acc, d) => acc + (d.count ?? 0), 0)
+                // The Dashboard intentionally presents only the most recent
+                // 26 weeks. Keep the headline total on the exact same window
+                // so the number and heatmap always describe one period.
+                const recentDays = days.slice(Math.max(0, days.length - 26 * 7))
+                root.total = recentDays.reduce(
+                    (acc, d) => acc + (d.count ?? 0), 0)
                 const wk = []
-                for (let i = 0; i < days.length; i += 7) {
-                    wk.push(days.slice(i, i + 7).map(d => d.level ?? 0))
+                for (let i = 0; i < recentDays.length; i += 7) {
+                    wk.push(recentDays.slice(i, i + 7).map(d => d.level ?? 0))
                 }
                 root.weeks = wk
                 root._lastFetch = Date.now()
@@ -137,7 +142,7 @@ DashCard {
                 StyledText {
                     id: periodLabel
                     anchors.centerIn: parent
-                    text: "1Y"
+                    text: "6M"
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     color: root.colSubtext
                 }
@@ -164,7 +169,7 @@ DashCard {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 horizontalAlignment: Text.AlignHCenter
-                text: Translation.tr("contributions · last year")
+                text: Translation.tr("contributions · last 6 months")
                     + "  ·  @" + root.username
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 font.weight: Font.Medium
@@ -213,12 +218,12 @@ DashCard {
                     if (!wk.length || width <= 0 || height <= 0)
                         return
 
-                    // Prefer the complete rolling year. Cell pitch scales down
-                    // with narrow cards instead of silently dropping old weeks.
-                    const cols = Math.min(wk.length, 53)
+                    // Six months keeps the graph legible enough to be the
+                    // card's primary visual instead of compressing 53 columns.
+                    const cols = Math.min(wk.length, 26)
                     const start = Math.max(0, wk.length - cols)
                     const pitch = Math.max(2.5, Math.min(
-                        contributionContent.roomy ? 11 : 9,
+                        contributionContent.roomy ? 14 : 11,
                         width / Math.max(1, cols),
                         height / 7))
                     const gap = Math.max(0.75, Math.min(1.5, pitch * 0.18))

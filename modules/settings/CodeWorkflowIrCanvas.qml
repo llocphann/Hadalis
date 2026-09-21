@@ -438,6 +438,14 @@ Item {
             root.revealNode(CodeWorkflowSession.selectedNodeId)
     }
 
+    function edgeStrokeWidth(selected: bool, highlighted: bool): real {
+        const screenWidth = selected ? 3.6 : highlighted ? 3.0 : 2.4
+        const zoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            CodeWorkflowSession.zoom)
+        return screenWidth / zoom
+    }
+
     function nodeAtWorld(px: real, py: real): bool {
         return root.nodes.some(node => {
             const x = Number(node.x ?? 0)
@@ -659,7 +667,8 @@ Item {
                                 === modelData.to))
 
                 anchors.fill: parent
-                preferredRendererType: Shape.GeometryRenderer
+                preferredRendererType: Shape.CurveRenderer
+                antialiasing: true
                 asynchronous: false
                 z: 0
 
@@ -671,9 +680,9 @@ Item {
                     strokeColor: root.edgeInk(
                         edgeShape.modelData.kind,
                         edgeShape.highlighted)
-                    strokeWidth: edgeShape.selectedEdge
-                        ? 3.6
-                        : edgeShape.highlighted ? 3.0 : 2.4
+                    strokeWidth: root.edgeStrokeWidth(
+                        edgeShape.selectedEdge,
+                        edgeShape.highlighted)
                     capStyle: ShapePath.RoundCap
                     joinStyle: ShapePath.RoundJoin
                     fillColor: "transparent"

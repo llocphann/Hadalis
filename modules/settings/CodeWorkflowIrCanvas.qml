@@ -615,6 +615,18 @@ Item {
                     readonly property var route: edgePath.route
                     readonly property real tipX: route?.x3 ?? 0
                     readonly property real tipY: route?.y3 ?? 0
+                    readonly property real tangentX:
+                        tipX - Number(route?.x2 ?? tipX - 1)
+                    readonly property real tangentY:
+                        tipY - Number(route?.y2 ?? tipY)
+                    readonly property real tangentLength:
+                        Math.max(0.001, Math.sqrt(
+                            tangentX * tangentX
+                            + tangentY * tangentY))
+                    readonly property real unitX: tangentX / tangentLength
+                    readonly property real unitY: tangentY / tangentLength
+                    readonly property real backX: tipX - unitX * 10
+                    readonly property real backY: tipY - unitY * 10
                     readonly property color ink: root.edgeInk(
                         edgeShape.modelData.kind,
                         edgeShape.highlighted)
@@ -625,24 +637,12 @@ Item {
                     startY: tipY
 
                     PathLine {
-                        x: arrowPath.route?.vertical
-                            ? arrowPath.tipX - 5
-                            : arrowPath.tipX
-                                - 10 * (arrowPath.route?.direction ?? 1)
-                        y: arrowPath.route?.vertical
-                            ? arrowPath.tipY
-                                - 10 * (arrowPath.route?.direction ?? 1)
-                            : arrowPath.tipY - 5
+                        x: arrowPath.backX - arrowPath.unitY * 5
+                        y: arrowPath.backY + arrowPath.unitX * 5
                     }
                     PathLine {
-                        x: arrowPath.route?.vertical
-                            ? arrowPath.tipX + 5
-                            : arrowPath.tipX
-                                - 10 * (arrowPath.route?.direction ?? 1)
-                        y: arrowPath.route?.vertical
-                            ? arrowPath.tipY
-                                - 10 * (arrowPath.route?.direction ?? 1)
-                            : arrowPath.tipY + 5
+                        x: arrowPath.backX + arrowPath.unitY * 5
+                        y: arrowPath.backY - arrowPath.unitX * 5
                     }
                     PathLine {
                         x: arrowPath.tipX

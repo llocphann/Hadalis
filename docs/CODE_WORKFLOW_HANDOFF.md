@@ -274,10 +274,16 @@ zoom, receives a small pickup-scale animation, and invalidates the route cache
 on each layout revision so connected smart-lane edges reroute live. Dragging
 empty canvas space pans the viewport with either left or middle mouse button;
 node and edge hit areas are excluded so selection/drag gestures keep priority.
+Edge-proximity node drag now auto-pans at a bounded 16ms cadence. Pan deltas are
+fed back into the node's world-position calculation, so the grabbed node stays
+under the pointer while the viewport moves. Wheel, pinch, empty-space pan and
+auto-pan use transient viewport updates during active gestures and commit only
+after the gesture/debounce window, avoiding per-frame persistence churn.
 The visual offsets survive Settings page eviction through
 `CodeWorkflowSession` but intentionally do not mutate source/IR and are not yet
-persisted across a full shell restart. `resetGraphLayout()` exists as the
-session API for later UI affordances.
+persisted across a full shell restart. The toolbar now exposes `Reset layout`,
+enabled only when the current graph has visual offsets; it restores reviewed
+positions and re-fits the graph.
 
 The capture harness now snapshots/restores visual layout state and includes a
 `node-layout` scenario that moves `clock.hover`, fits the graph and records the

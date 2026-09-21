@@ -102,6 +102,10 @@ require(page, '" · " + CodeWorkflowAnalyzer.error',
         "Inspector must expose parser unavailability/error reason")
 require(page, "readonly property bool selectedEdgeReadOnly:",
         "Inspector must distinguish read-only edge inspection")
+require(page, "root.selectedIrEdge !== null",
+        "Inspector header must treat selected edges as primary inspect objects")
+require(page, "?? root.selectedIrEdge?.kind",
+        "Inspector kind pill must follow edge selection")
 require(page, '" · READ ONLY"',
         "Inspector must label mutation-ineligible edges explicitly")
 require(page, "visible: root.selectedIrEdge?.previewable === true",

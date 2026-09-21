@@ -30,6 +30,8 @@ Item {
         CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)
     readonly property string inspectedSemanticAnchor:
         CodeWorkflowSession.selectedSemanticAnchor
+    property string inspectFilter: ""
+    property bool inspectShowInternals: false
     readonly property var parsedSemanticEntries:
         root.analyzerMatchesSource
             && CodeWorkflowAnalyzer.status === "ready"
@@ -47,9 +49,21 @@ Item {
     }
     readonly property var inspectTargets: {
         const items = []
+        const query = root.inspectFilter.trim().toLowerCase()
+
+        function append(item): void {
+            const haystack = (
+                String(item.label ?? "") + " "
+                + String(item.detail ?? "") + " "
+                + String(item.id ?? "")
+            ).toLowerCase()
+            if (query.length === 0 || haystack.includes(query))
+                items.push(item)
+        }
+
         for (const target of CodeWorkflowRuntime.catalog) {
             const rowRecord = root.recordFor(target.targetId)
-            items.push({
+            append({
                 category: "runtime",
                 id: target.targetId,
                 label: target.label,
@@ -57,47 +71,57 @@ Item {
                     ? String(rowRecord.output ?? "") + " · live"
                     : "source only",
                 icon: target.icon,
-                depth: 0
+                depth: Math.min(5, Math.max(
+                    0, Number(target.depth ?? 0)))
             })
         }
+
         for (const node of (root.graph?.nodes ?? [])) {
-            items.push({
+            append({
                 category: "graph",
                 id: String(node.id ?? ""),
                 label: String(node.title ?? node.id ?? "Node"),
                 detail: "graph · " + String(node.kind ?? "node"),
                 icon: root.inspectIconForKind(String(node.kind ?? "")),
-                depth: 0
+                depth: String(node.id ?? "") === String(
+                        root.graph?.rootNodeId ?? "")
+                    ? 0 : 1
             })
         }
-        const visibleKinds = [
-            "object", "component", "inline-component", "lifecycle",
-            "connections", "property", "binding", "explicit-binding",
-            "signal", "function", "handler-candidate", "id", "required"
-        ]
+
         for (const entry of root.parsedSemanticEntries) {
-            const kind = String(entry.kind ?? "")
-            if (!visibleKinds.includes(kind))
+            if (!root.semanticEntryVisible(
+                    entry,
+                    root.inspectShowInternals || query.length > 0))
                 continue
+
+            const kind = String(entry.kind ?? "")
             const scope = entry.scope ?? []
             const objectType = String(entry.object_type ?? "")
             const qmlId = String(entry.qml_id ?? "")
             const name = String(entry.name ?? "")
-            let label = qmlId.length > 0
-                ? objectType + "#" + qmlId
-                : name
-            if (label.length === 0)
+            let label = ""
+            if (qmlId.length > 0)
+                label = (objectType.length > 0 ? objectType : "Object")
+                    + "#" + qmlId
+            else if (name.length > 0)
+                label = name
+            else if (objectType.length > 0)
+                label = objectType
+            else
                 label = kind
-            items.push({
+
+            append({
                 category: "semantic",
                 id: String(entry.anchor ?? ""),
                 label: label,
                 detail: "qml · " + kind
                     + (scope.length > 0
-                        ? " · " + String(scope[scope.length - 1])
+                        ? " · " + root.scopeLeaf(
+                            String(scope[scope.length - 1]))
                         : ""),
                 icon: root.inspectIconForKind(kind),
-                depth: Math.min(3, Math.max(0, scope.length - 1))
+                depth: root.semanticEntryDepth(entry)
             })
         }
         return items
@@ -452,6 +476,61 @@ Item {
         if (CodeWorkflowAnalyzer.status === "error")
             return "ERROR"
         return "IDLE"
+    }
+
+    function scopeLeaf(value: string): string {
+        return String(value ?? "").replace(/\\[\\d+\\]$/, "")
+    }
+
+    function semanticEntryDepth(entry): int {
+        const kind = String(entry?.kind ?? "")
+        const scope = entry?.scope ?? []
+        const ownsScope = kind === "object"
+            || kind === "component"
+            || kind === "inline-component"
+            || kind === "lifecycle"
+            || kind === "connections"
+            || kind === "explicit-binding"
+        return Math.min(5, Math.max(
+            0, scope.length - (ownsScope ? 1 : 0)))
+    }
+
+    function semanticEntryVisible(entry, discloseInternals: bool): bool {
+        const kind = String(entry?.kind ?? "")
+        const visibleKinds = [
+            "object", "component", "inline-component", "lifecycle",
+            "connections", "property", "binding", "explicit-binding",
+            "signal", "function", "handler-candidate", "id", "required"
+        ]
+        if (!visibleKinds.includes(kind))
+            return false
+        if (discloseInternals)
+            return true
+
+        if (kind === "component"
+                || kind === "inline-component"
+                || kind === "lifecycle"
+                || kind === "connections"
+                || kind === "explicit-binding")
+            return true
+
+        const qmlId = String(entry?.qml_id ?? "")
+        if (qmlId.length > 0)
+            return true
+
+        if (kind !== "object")
+            return false
+
+        const objectType = String(entry?.object_type ?? entry?.name ?? "")
+        const shortType = objectType.split(".").pop()
+        const genericTypes = [
+            "Item", "Rectangle", "Text", "Row", "Column", "Grid", "Flow",
+            "RowLayout", "ColumnLayout", "GridLayout", "MouseArea",
+            "TapHandler", "HoverHandler", "WheelHandler", "DragHandler",
+            "PinchHandler", "Shape", "ShapePath", "Repeater", "ListView",
+            "Flickable", "StyledText"
+        ]
+        return !genericTypes.includes(shortType)
     }
 
     function inspectIconForKind(kind: string): string {
@@ -1007,6 +1086,25 @@ Item {
                         wrapMode: Text.WordWrap
                     }
 
+                    ToolbarTextField {
+                        id: targetFilter
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 34
+                        text: root.inspectFilter
+                        placeholderText: "Filter targets"
+                        onTextChanged: root.inspectFilter = text
+                    }
+
+                    RippleButtonWithIcon {
+                        Layout.fillWidth: true
+                        materialIcon: root.inspectShowInternals
+                            ? "visibility_off" : "account_tree"
+                        mainText: root.inspectShowInternals
+                            ? "Hide internals" : "Show internals"
+                        onClicked: root.inspectShowInternals =
+                            !root.inspectShowInternals
+                    }
+
                     ListView {
                         id: targetList
                         Layout.fillWidth: true
@@ -1039,7 +1137,7 @@ Item {
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: 8
-                                    + Number(targetRow.modelData.depth ?? 0) * 8
+                                    + Number(targetRow.modelData.depth ?? 0) * 12
                                 anchors.rightMargin: 8
                                 spacing: 7
                                 MaterialSymbol {
@@ -1058,7 +1156,7 @@ Item {
                                             targetRow.width - 44
                                                 - Number(
                                                     targetRow.modelData.depth
-                                                        ?? 0) * 8)
+                                                        ?? 0) * 12)
                                         text: targetRow.modelData.label
                                         color: targetRow.selected
                                             ? Appearance.colors.colOnPrimaryContainer
@@ -1074,7 +1172,7 @@ Item {
                                             targetRow.width - 44
                                                 - Number(
                                                     targetRow.modelData.depth
-                                                        ?? 0) * 8)
+                                                        ?? 0) * 12)
                                         text: targetRow.modelData.detail
                                         color: targetRow.selected
                                             ? ColorUtils.ensureReadable(

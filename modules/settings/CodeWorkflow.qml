@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 
 Item {
@@ -1572,7 +1573,9 @@ Item {
                     ToolbarTextField {
                         id: targetFilter
                         Layout.fillWidth: true
+                        Layout.fillHeight: false
                         Layout.preferredHeight: 34
+                        colBackground: Appearance.colors.colLayer2
                         text: root.inspectFilter
                         placeholderText: "Filter targets"
                         Accessible.name: "Filter inspect targets"

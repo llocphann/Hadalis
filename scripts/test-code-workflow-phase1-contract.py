@@ -78,8 +78,26 @@ require(page, 'category: "section"',
         "Targets must group runtime, graph and parsed QML sources")
 require(page, "appendSection(",
         "Targets must preserve source grouping after filtering")
+require(page, 'category: "edge"',
+        "Targets must expose graph connections as first-class inspect rows")
+require(page, '"edges", "Connections", "conversion_path", "edges", edgeItems',
+        "Targets must group graph connections separately from nodes")
+require(page, 'if (category === "edge")',
+        "Target activation must route connection rows through session selection")
+require(page, "function onSelectedEdgeIdChanged(): void",
+        "Targets must reveal graph-driven edge selection")
 require(page, "enabled: !targetRow.section",
         "Target section headers must be non-interactive")
+require(page, "function activateRow(): void",
+        "Target rows must expose one activation path for pointer, keyboard and AT")
+require(page, "activeFocusOnTab: !section",
+        "Inspect targets must be keyboard-focusable while headers stay static")
+require(page, "Accessible.focusable: !section",
+        "Inspect targets must expose focusability to assistive technology")
+require(page, "Keys.onPressed: event =>",
+        "Inspect targets must support Enter/Space activation")
+require(page, '"No targets match the current filter"',
+        "Targets filter must expose an explicit empty state")
 require(page, "property bool inspectShowInternals: false",
         "Targets must use progressive disclosure for parser internals")
 require(page, "function semanticEntryVisible(entry, discloseInternals: bool): bool",
@@ -149,6 +167,14 @@ require(page, "visible: root.selectedIrEdge?.previewable === true",
         "Disconnect affordance must stay gated to reviewed previewable edges")
 require(canvas, "CodeWorkflowSession.selectedSemanticAnchor.length === 0",
         "graph highlight must yield to finer semantic selection")
+require(canvas, "CodeWorkflowSession.selectedEdgeId.length === 0",
+        "node/incident highlight must yield to selected edge inspection")
+require(canvas, "id: subflowAction",
+        "graph subflow drill-down must expose a dedicated interactive target")
+require(canvas, "activeFocusOnTab: parent.visible",
+        "graph subflow drill-down must be keyboard-focusable")
+require(canvas, 'Accessible.name: "Open "',
+        "graph subflow drill-down must expose an accessibility label")
 require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")
 require(page, "readOnly: true", "Source Preview must be read-only")
 require(page, "FileView {", "Source Preview must read selected source")

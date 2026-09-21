@@ -289,6 +289,8 @@ for token in (
     "id: edgeLabel",
     "readonly property real labelWidthLimit:",
     "readonly property bool hovered:",
+    "edgeLabelHover.hovered",
+    "id: edgeLabelHover",
     "StyledToolTip {",
     "function revealNode(nodeId: string): void",
     "function graphBounds(): var",

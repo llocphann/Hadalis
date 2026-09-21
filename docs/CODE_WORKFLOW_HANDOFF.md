@@ -167,6 +167,22 @@ state. Those are recorded as capture-environment capability limits, not treated
 as graph-rendering regressions. The runner now emits parser capability and a
 focused Code Workflow runtime-warning summary for every future bundle.
 
+The second real capture (`20260921-215123`) confirmed the missing ColorUtils
+imports and Targets filter-height fixes were effective: graph edges were visible
+again and the Targets list occupied the full panel. It also exposed a separate
+text-rasterization problem. The graph world was fitted at roughly 0.64× and all
+node/edge text inherited `StyledText`'s `Text.NativeRendering`; native glyph
+rasters looked thin/hollow after fractional scene scaling. Graph-local text now
+uses a dedicated `GraphText` with `Text.QtRendering`, and graph MaterialSymbol
+text also requests Qt rendering. Source Preview uses the same Qt renderer for
+cleaner monospace antialiasing without changing the global StyledText policy.
+
+The same capture's only focused Code Workflow runtime warnings were seven
+`Unable to assign [undefined] to QString` messages from the inline Pill tooltip.
+The Pill had no local id, so `root.label` resolved to the page root rather than
+the inline component. It now owns `id: pill`; hover and tooltip bindings target
+`pill`/`pill.label`, eliminating the undefined QString path.
+
 This pass intentionally does **not** widen source-write allowlists, transaction
 semantics, parser capability, runtime registration scope, or shell-wide inspect
 coverage. GitHub connector status queries for these direct `dev` push commits

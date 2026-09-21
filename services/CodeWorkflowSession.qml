@@ -26,6 +26,10 @@ Singleton {
     property real targetsPaneWidth: 224
     property real inspectorPaneWidth: 280
     property real sourcePreviewHeight: 190
+    // Visual graph layout is session-only. It never mutates reviewed IR or
+    // source, but survives Settings page eviction while this shell lives.
+    property var graphNodeLayoutOffsets: ({})
+    property int graphLayoutRevision: 0
     property bool _restoring: false
     property bool _ready: false
 
@@ -152,6 +156,44 @@ Singleton {
         state.codeWorkflowTargetsPaneWidth = root.targetsPaneWidth
         state.codeWorkflowInspectorPaneWidth = root.inspectorPaneWidth
         state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight
+    }
+
+    function nodeLayoutOffset(graphId: string, nodeId: string): var {
+        root.graphLayoutRevision
+        const graphKey = String(graphId ?? "")
+        const nodeKey = String(nodeId ?? "")
+        const graphOffsets = root.graphNodeLayoutOffsets[graphKey] ?? null
+        const offset = graphOffsets?.[nodeKey] ?? null
+        return offset ?? ({ x: 0, y: 0 })
+    }
+
+    function setNodeLayoutOffset(
+        graphId: string, nodeId: string, x: real, y: real
+    ): void {
+        const graphKey = String(graphId ?? "")
+        const nodeKey = String(nodeId ?? "")
+        if (graphKey.length === 0 || nodeKey.length === 0)
+            return
+        const nextAll = Object.assign({}, root.graphNodeLayoutOffsets)
+        const nextGraph = Object.assign({}, nextAll[graphKey] ?? ({}))
+        nextGraph[nodeKey] = {
+            x: Number(x ?? 0),
+            y: Number(y ?? 0)
+        }
+        nextAll[graphKey] = nextGraph
+        root.graphNodeLayoutOffsets = nextAll
+        root.graphLayoutRevision += 1
+    }
+
+    function resetGraphLayout(graphId: string): void {
+        const graphKey = String(graphId ?? "")
+        if (graphKey.length === 0
+                || root.graphNodeLayoutOffsets[graphKey] === undefined)
+            return
+        const nextAll = Object.assign({}, root.graphNodeLayoutOffsets)
+        delete nextAll[graphKey]
+        root.graphNodeLayoutOffsets = nextAll
+        root.graphLayoutRevision += 1
     }
 
     function clearSemanticAnchor(): void {

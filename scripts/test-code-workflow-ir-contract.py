@@ -597,6 +597,20 @@ if "RegExp" in ir_service or ".match(" in ir_service:
 
 for token in (
     "CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)",
+    "CodeWorkflowSession.graphLayoutRevision",
+    "function nodeLayoutOffset(node): var",
+    "function nodeX(node): real",
+    "function nodeY(node): real",
+    "id: canvasPanArea",
+    "acceptedButtons: Qt.LeftButton | Qt.MiddleButton",
+    "root.nodeAtScreen(mouse.x, mouse.y)",
+    "id: nodeDrag",
+    "dragThreshold: 3",
+    "centroid.scenePosition.x - startSceneX",
+    "centroid.scenePosition.y - startSceneY",
+    "CodeWorkflowSession.setNodeLayoutOffset(",
+    "z: nodeDrag.active ? 1.4 : 1",
+    "Behavior on scale {",
     "Shape.CurveRenderer",
     "antialiasing: true",
     "z: selectedEdge ? 0.4 : hoveredEdge ? 0.3 : 0",
@@ -705,6 +719,8 @@ for token in (
 
 if "function selectableEdgeAt(" in canvas or "function previewableEdgeAt(" in canvas:
     fail("canvas must not restrict inspect hit-testing to mutation-eligible edges")
+if "acceptedButtons: Qt.MiddleButton\n" in canvas:
+    fail("empty-space pan must not regress to middle-button-only interaction")
 
 for token in (
     'property string subflowTargetId: "bar"',
@@ -713,6 +729,11 @@ for token in (
     "function openSubflow(targetId: string): bool",
     "if (!Persistent.ready || !CodeWorkflowIr.ready)",
     "target: CodeWorkflowIr",
+    "property var graphNodeLayoutOffsets: ({})",
+    "property int graphLayoutRevision: 0",
+    "function nodeLayoutOffset(graphId: string, nodeId: string): var",
+    "function setNodeLayoutOffset(",
+    "function resetGraphLayout(graphId: string): void",
 ):
     if token not in session:
         fail("session missing " + token)

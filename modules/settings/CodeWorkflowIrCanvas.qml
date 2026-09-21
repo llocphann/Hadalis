@@ -34,12 +34,32 @@ Item {
     property string hoveredEdgeLabelId: ""
     property real edgeLabelHoverX: 0
     property real edgeLabelHoverY: 0
-    readonly property var edgeRouteCache: root.buildEdgeRouteCache()
+    readonly property var edgeRouteCache: {
+        CodeWorkflowSession.graphLayoutRevision
+        return root.buildEdgeRouteCache()
+    }
+
+    function nodeLayoutOffset(node): var {
+        return CodeWorkflowSession.nodeLayoutOffset(
+            CodeWorkflowSession.subflowTargetId,
+            String(node?.id ?? ""))
+    }
+
+    function nodeX(node): real {
+        const offset = root.nodeLayoutOffset(node)
+        return Number(node?.x ?? 0) + Number(offset?.x ?? 0)
+    }
+
+    function nodeY(node): real {
+        const offset = root.nodeLayoutOffset(node)
+        return Number(node?.y ?? 0) + Number(offset?.y ?? 0)
+    }
 
     function graphExtent(axis: string, minimum: real): real {
         let extent = minimum
         for (const node of root.nodes) {
-            const position = Number(node?.[axis] ?? 0)
+            const position = axis === "x"
+                ? root.nodeX(node) : root.nodeY(node)
             const size = axis === "x" ? root.nodeWidth : root.nodeHeight
             extent = Math.max(extent, position + size + 80)
         }
@@ -47,7 +67,13 @@ Item {
     }
 
     function nodeById(nodeId: string): var {
-        return root.nodes.find(node => node.id === nodeId) ?? null
+        const node = root.nodes.find(item => item.id === nodeId) ?? null
+        if (!node)
+            return null
+        const resolved = Object.assign({}, node)
+        resolved.x = root.nodeX(node)
+        resolved.y = root.nodeY(node)
+        return resolved
     }
 
     function rawNodeBounds(): var {
@@ -59,8 +85,8 @@ Item {
         let maxX = Number.NEGATIVE_INFINITY
         let maxY = Number.NEGATIVE_INFINITY
         for (const node of root.nodes) {
-            const x = Number(node?.x ?? 0)
-            const y = Number(node?.y ?? 0)
+            const x = root.nodeX(node)
+            const y = root.nodeY(node)
             minX = Math.min(minX, x)
             minY = Math.min(minY, y)
             maxX = Math.max(maxX, x + root.nodeWidth)
@@ -244,10 +270,12 @@ Item {
     }
 
     function routeIntersectsNode(route, node, padding: real): bool {
-        const left = Number(node?.x ?? 0) - padding
-        const top = Number(node?.y ?? 0) - padding
-        const right = Number(node?.x ?? 0) + root.nodeWidth + padding
-        const bottom = Number(node?.y ?? 0) + root.nodeHeight + padding
+        const nodeX = root.nodeX(node)
+        const nodeY = root.nodeY(node)
+        const left = nodeX - padding
+        const top = nodeY - padding
+        const right = nodeX + root.nodeWidth + padding
+        const bottom = nodeY + root.nodeHeight + padding
         const points = route?.points ?? []
         for (let index = 1; index < points.length; ++index) {
             if (root.segmentIntersectsRect(
@@ -732,8 +760,8 @@ Item {
         let maxY = Number.NEGATIVE_INFINITY
 
         for (const node of root.nodes) {
-            const x = Number(node?.x ?? 0)
-            const y = Number(node?.y ?? 0)
+            const x = root.nodeX(node)
+            const y = root.nodeY(node)
             minX = Math.min(minX, x)
             minY = Math.min(minY, y)
             maxX = Math.max(maxX, x + root.nodeWidth)
@@ -925,11 +953,18 @@ Item {
 
     function nodeAtWorld(px: real, py: real): bool {
         return root.nodes.some(node => {
-            const x = Number(node.x ?? 0)
-            const y = Number(node.y ?? 0)
+            const x = root.nodeX(node)
+            const y = root.nodeY(node)
             return px >= x && px <= x + root.nodeWidth
                 && py >= y && py <= y + root.nodeHeight
         })
+    }
+
+    function nodeAtScreen(screenX: real, screenY: real): bool {
+        const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
+        return root.nodeAtWorld(
+            (screenX - CodeWorkflowSession.panX) / zoom,
+            (screenY - CodeWorkflowSession.panY) / zoom)
     }
 
     function viewportContains(screenX: real, screenY: real): bool {
@@ -1019,28 +1054,6 @@ Item {
             emphasized ? 4.5 : 3.0,
             Appearance.colors.colOnLayer0)
         return readable
-    }
-
-    DragHandler {
-        id: pan
-        target: null
-        acceptedButtons: Qt.MiddleButton
-        property real baseX: 0
-        property real baseY: 0
-
-        onActiveChanged: {
-            if (active) {
-                baseX = CodeWorkflowSession.panX
-                baseY = CodeWorkflowSession.panY
-            }
-        }
-        onActiveTranslationChanged: {
-            if (active)
-                CodeWorkflowSession.setViewport(
-                    baseX + activeTranslation.x,
-                    baseY + activeTranslation.y,
-                    CodeWorkflowSession.zoom)
-        }
     }
 
     WheelHandler {
@@ -1147,6 +1160,39 @@ Item {
         anchors.fill: parent
         color: Appearance.colors.colLayer0
         z: -2
+    }
+
+    MouseArea {
+        id: canvasPanArea
+        anchors.fill: parent
+        z: -1
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+        hoverEnabled: true
+        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        property real pressX: 0
+        property real pressY: 0
+        property real basePanX: 0
+        property real basePanY: 0
+
+        onPressed: mouse => {
+            if (root.nodeAtScreen(mouse.x, mouse.y)
+                    || root.edgeAt(mouse.x, mouse.y).length > 0) {
+                mouse.accepted = false
+                return
+            }
+            pressX = mouse.x
+            pressY = mouse.y
+            basePanX = CodeWorkflowSession.panX
+            basePanY = CodeWorkflowSession.panY
+        }
+        onPositionChanged: mouse => {
+            if (!pressed)
+                return
+            CodeWorkflowSession.setViewport(
+                basePanX + mouse.x - pressX,
+                basePanY + mouse.y - pressY,
+                CodeWorkflowSession.zoom)
+        }
     }
 
     Item {
@@ -1386,8 +1432,8 @@ Item {
                         3.0,
                         Appearance.colors.colOnLayer0)
 
-                x: Number(modelData.x ?? 0)
-                y: Number(modelData.y ?? 0)
+                x: root.nodeX(modelData)
+                y: root.nodeY(modelData)
                 width: root.nodeWidth
                 height: root.nodeHeight
                 radius: Appearance.rounding.normal
@@ -1398,8 +1444,22 @@ Item {
                 border.color: selected || activeFocus
                     ? accent
                     : Appearance.colors.colOutlineVariant
-                z: 1
+                z: nodeDrag.active ? 1.4 : 1
+                scale: nodeDrag.active ? 1.025 : 1
+                transformOrigin: Item.Center
                 activeFocusOnTab: true
+
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: 110
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                HoverHandler {
+                    cursorShape: nodeDrag.active
+                        ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                }
 
                 Accessible.role: Accessible.Button
                 Accessible.name: modelData.title
@@ -1409,6 +1469,53 @@ Item {
                 Accessible.focusable: true
                 Accessible.onPressAction: {
                     CodeWorkflowSession.selectNode(node.modelData.id)
+                }
+
+                DragHandler {
+                    id: nodeDrag
+                    target: null
+                    acceptedButtons: Qt.LeftButton
+                    dragThreshold: 3
+                    property real baseOffsetX: 0
+                    property real baseOffsetY: 0
+                    property real startSceneX: 0
+                    property real startSceneY: 0
+
+                    onActiveChanged: {
+                        if (!active)
+                            return
+                        const offset = CodeWorkflowSession.nodeLayoutOffset(
+                            CodeWorkflowSession.subflowTargetId,
+                            String(node.modelData.id ?? ""))
+                        baseOffsetX = Number(offset?.x ?? 0)
+                        baseOffsetY = Number(offset?.y ?? 0)
+                        startSceneX = centroid.scenePosition.x
+                        startSceneY = centroid.scenePosition.y
+                        root.hoveredEdgeLabelId = ""
+                        CodeWorkflowSession.selectNode(node.modelData.id)
+                        node.forceActiveFocus()
+                    }
+                    onCentroidChanged: {
+                        if (!active)
+                            return
+                        const zoom = Math.max(
+                            0.0001, CodeWorkflowSession.zoom)
+                        const baseX = Number(node.modelData.x ?? 0)
+                        const baseY = Number(node.modelData.y ?? 0)
+                        const deltaX =
+                            (centroid.scenePosition.x - startSceneX) / zoom
+                        const deltaY =
+                            (centroid.scenePosition.y - startSceneY) / zoom
+                        const nextX = Math.max(
+                            20, baseX + baseOffsetX + deltaX)
+                        const nextY = Math.max(
+                            20, baseY + baseOffsetY + deltaY)
+                        CodeWorkflowSession.setNodeLayoutOffset(
+                            CodeWorkflowSession.subflowTargetId,
+                            String(node.modelData.id ?? ""),
+                            nextX - baseX,
+                            nextY - baseY)
+                    }
                 }
 
                 TapHandler {

@@ -179,6 +179,8 @@ require(page, "width: splitHandle.horizontalRule\n                ? splitHandle.
         "vertical pane divider must expose an 18px edge hit target")
 require(page, "height: splitHandle.horizontalRule\n                ? 18 : splitHandle.height",
         "horizontal pane divider must expose an 18px edge hit target")
+require(page, "Qt.SizeVerCursor : Qt.SizeHorCursor",
+        "pane divider hover must advertise the correct resize cursor")
 require(page, "routeDiagnostics: canvas.routeDiagnostics()",
         "capture status must expose route quality metrics")
 require(page, "id: workflowHorizontalSplit",

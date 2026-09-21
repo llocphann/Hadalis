@@ -287,6 +287,7 @@ Item {
                 z: 0
 
                 ShapePath {
+                    id: edgePath
                     readonly property real startNodeX:
                         edgeShape.fromNode?.x ?? 0
                     readonly property real startNodeY:
@@ -302,23 +303,23 @@ Item {
                     strokeColor: edgeShape.highlighted
                         ? root.edgeColor(edgeShape.modelData.kind)
                         : ColorUtils.transparentize(
-                            root.edgeColor(edgeShape.modelData.kind), 0.28)
+                            root.edgeColor(edgeShape.modelData.kind), 0.12)
                     strokeWidth: edgeShape.selectedEdge
                         ? 3.4
-                        : edgeShape.highlighted ? 2.6 : 1.6
+                        : edgeShape.highlighted ? 2.8 : 2.0
                     fillColor: "transparent"
                     startX: startNodeX + root.nodeWidth
                     startY: startNodeY + root.nodeHeight / 2
 
                     PathCubic {
-                        x: parent.endNodeX
-                        y: parent.endNodeY + root.nodeHeight / 2
-                        control1X: parent.startNodeX
-                            + root.nodeWidth + parent.bend
-                        control1Y: parent.startNodeY
+                        x: edgePath.endNodeX
+                        y: edgePath.endNodeY + root.nodeHeight / 2
+                        control1X: edgePath.startNodeX
+                            + root.nodeWidth + edgePath.bend
+                        control1Y: edgePath.startNodeY
                             + root.nodeHeight / 2
-                        control2X: parent.endNodeX - parent.bend
-                        control2Y: parent.endNodeY
+                        control2X: edgePath.endNodeX - edgePath.bend
+                        control2Y: edgePath.endNodeY
                             + root.nodeHeight / 2
                     }
                 }
@@ -350,6 +351,7 @@ Item {
                     ? accent
                     : Appearance.colors.colOutlineVariant
                 z: 1
+                clip: true
                 activeFocusOnTab: true
 
                 Accessible.role: Accessible.Button
@@ -448,16 +450,28 @@ Item {
 
                     StyledText {
                         Layout.fillWidth: true
+                        Layout.maximumWidth: node.width - 20
                         text: node.modelData.description ?? ""
-                        color: Appearance.colors.colSubtext
+                        color: node.selected
+                            ? ColorUtils.ensureReadable(
+                                Appearance.colors.colSubtext,
+                                ColorUtils.transparentize(node.accent, 0.78),
+                                4.5)
+                            : Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         elide: Text.ElideRight
                     }
 
                     StyledText {
                         Layout.fillWidth: true
+                        Layout.maximumWidth: node.width - 20
                         text: node.modelData.sourceNeedle ?? ""
-                        color: Appearance.colors.colSubtext
+                        color: node.selected
+                            ? ColorUtils.ensureReadable(
+                                Appearance.colors.colSubtext,
+                                ColorUtils.transparentize(node.accent, 0.78),
+                                4.5)
+                            : Appearance.colors.colSubtext
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         elide: Text.ElideMiddle

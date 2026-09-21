@@ -98,7 +98,11 @@ if "RegExp" in ir_service or ".match(" in ir_service:
 for token in (
     "CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)",
     "Shape.GeometryRenderer",
-    "Repeater {",
+    "id: edgePath",
+    "x: edgePath.endNodeX",
+    "control1X: edgePath.startNodeX",
+    "clip: true",
+    "Layout.maximumWidth: node.width - 20",
     "CodeWorkflowSession.selectNode",
     "CodeWorkflowSession.openSubflow",
 ):

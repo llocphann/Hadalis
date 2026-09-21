@@ -8,6 +8,7 @@ import qs.modules.waffle.regionSelector as WaffleRegion
 import qs.services
 import QtQuick
 import QtQuick.Controls
+import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -551,6 +552,22 @@ PanelWindow {
                     - root.screenshotTopOwnerInset
                     - root.screenshotBottomOwnerInset)
                 clip: true
+                // Match the exact rounded inner workspace hole painted by
+                // ScreenEdges.qml. A rectangular clip protects the straight
+                // edge bands but still lets the screenshot scrim cover the four
+                // rounded frame corners because RegionSelection lives on Overlay.
+                layer.enabled: true
+                layer.smooth: true
+                layer.effect: GE.OpacityMask {
+                    maskSource: Rectangle {
+                        width: selectionVisualViewport.width
+                        height: selectionVisualViewport.height
+                        radius: Math.max(0, Math.min(
+                            PerimeterTokens.frameRadius,
+                            width / 2,
+                            height / 2))
+                    }
+                }
 
                 Loader {
                     x: -selectionVisualViewport.x
@@ -652,6 +669,12 @@ PanelWindow {
                 visible: !regionSelectionControls.useWaffle
                 edge: "bottom"
                 ownerThickness: root.screenEdgeThickness
+                // Same raster seam treatment as the now-validated Sidebar
+                // attachment: only iRiS paint overlaps the physical owner;
+                // toolbar layout/input still stop at the real boundary.
+                paintOverlap: Math.min(
+                    PerimeterTokens.seamOverlap,
+                    Math.max(0, root.screenEdgeThickness - 1))
                 outputRect: Qt.rect(0, 0, width, height)
                 bodyRect: Qt.rect(
                     regionSelectionControls.x,

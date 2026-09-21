@@ -46,8 +46,19 @@ Item {
             interval: onDemandLoader.retainIdleMs
             onTriggered: onDemandLoader.resident = onDemandLoader.open || onDemandLoader.keepLoaded
         }
+        readonly property bool configuredPanelEnabled:
+            (Config.options?.enabledPanels ?? []).includes(identifier)
+        // An explicit open request is authoritative. This keeps IPC/bar actions
+        // functional even when an old enabledPanels snapshot is missing a
+        // transient panel id, while closed disabled panels stay unloaded.
         readonly property bool enabledPanel: Config.ready
-            && (Config.options?.enabledPanels ?? []).includes(identifier)
+            && (configuredPanelEnabled || open)
+
+        onStatusChanged: {
+            if (status === Loader.Error)
+                console.warn("[ii] Failed to load on-demand panel:", identifier,
+                    "open=", open, "configured=", configuredPanelEnabled)
+        }
 
         onOpenChanged: {
             if (open) {

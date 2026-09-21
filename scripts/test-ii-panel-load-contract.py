@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 osd = (ROOT / "modules" / "onScreenDisplay" / "OnScreenDisplay.qml").read_text(encoding="utf-8")
 panels = (ROOT / "modules" / "ii" / "ShellIiPanelsImpl.qml").read_text(encoding="utf-8")
 optional_runtime = (ROOT / "modules" / "ii" / "ShellIiOptionalRuntime.qml").read_text(encoding="utf-8")
+sidebar_host = (ROOT / "modules" / "sidebar" / "SidebarHost.qml").read_text(encoding="utf-8")
+shell_updates = (ROOT / "services" / "ShellUpdates.qml").read_text(encoding="utf-8")
 qmldir = (ROOT / "modules" / "common" / "perimeter" / "qmldir").read_text(encoding="utf-8")
 
 failures = []
@@ -52,6 +54,45 @@ for token in (
     "GlobalShortcut {",
 ):
     require(optional_runtime, token, "ii optional runtime isolation")
+
+
+# Explicit IPC/bar opens must not be suppressed by a stale enabledPanels
+# snapshot. Closed disabled panels remain unloaded.
+for source, content in (
+    ("ShellIiPanelsImpl.qml", panels),
+    ("ShellIiOptionalRuntime.qml", optional_runtime),
+):
+    require(content, "configuredPanelEnabled || open", source)
+
+# SidebarHost owns only geometry/lifecycle. Concrete left/right content stays
+# behind URL loaders so a regression in one content tree cannot invalidate both.
+for token in (
+    'source: root.featureRole',
+    '"../sidebarLeft/SidebarLeftContent.qml"',
+    '"../sidebarRight/CompactSidebarRightContent.qml"',
+    '"../sidebarRight/SidebarRightContent.qml"',
+    "item.screenWidth = Qt.binding",
+    "item.panelVisible = Qt.binding",
+):
+    require(sidebar_host, token, "SidebarHost content isolation")
+for token in (
+    "import qs.modules.sidebarLeft",
+    "import qs.modules.sidebarRight",
+    "SidebarLeftContent {",
+    "SidebarRightContent {",
+    "CompactSidebarRightContent {",
+):
+    forbid(sidebar_host, token, "SidebarHost content isolation")
+
+# Opening Shell Update is also a freshness request: fetch first, then rebuild
+# detail state from the freshly updated origin ref.
+for token in (
+    "property bool _refreshDetailsAfterCheck: false",
+    "root._refreshDetailsAfterCheck = true",
+    "root._completeInteractiveRefresh()",
+    "if (root.repoPathLoaded && root.available && !root.isChecking",
+):
+    require(shell_updates, token, "ShellUpdates interactive refresh")
 
 # Optional panel implementations must stay behind URL boundaries. A parse/type
 # regression in OSD, lock, wallpaper, etc. must not make the shared deferred

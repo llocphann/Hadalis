@@ -22,8 +22,10 @@ Item {
         required property bool open
         property int closeGraceMs: 300
         property bool resident: open
+        readonly property bool configuredPanelEnabled:
+            (Config.options?.enabledPanels ?? []).includes(identifier)
         readonly property bool enabledPanel: Config.ready
-            && (Config.options?.enabledPanels ?? []).includes(identifier)
+            && (configuredPanelEnabled || open)
         property Timer closeGrace: Timer {
             interval: onDemandLoader.closeGraceMs
             onTriggered: onDemandLoader.resident = onDemandLoader.open

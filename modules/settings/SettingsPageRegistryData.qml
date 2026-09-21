@@ -332,6 +332,13 @@ Singleton {
 
         _staticSearchIndex = [
         {
+            pageIndex: 7, pageName: root.pages[7].name,
+            section: Translation.tr("Todo & Obsidian"),
+            label: Translation.tr("Prepare Obsidian"),
+            description: Translation.tr("Hadalis internal Todo is canonical"),
+            keywords: ["todo", "to-do", "obsidian", "tasks", "markdown", "vault", "sync", "data"]
+        },
+        {
             pageIndex: 30, pageName: root.pages[30].name,
             section: Translation.tr("Code Workflow"),
             label: Translation.tr("Read-only workflow"),

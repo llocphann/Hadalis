@@ -14,6 +14,23 @@ ContentPage {
     settingsPageName: Translation.tr("Services")
     property string activeSection: "system"
 
+    function activateSettingsSearchSection(section: string): bool {
+        const parts = String(section ?? "").toLowerCase().split(/[·›]/)
+        const label = parts[parts.length - 1].trim()
+        if (label.includes("todo") || label.includes("obsidian")
+                || label.includes("calendar") || label === "data") {
+            root.activeSection = "data"
+            return true
+        }
+        for (const value of ["system", "network", "search", "updates"]) {
+            if (label.includes(value)) {
+                root.activeSection = value
+                return true
+            }
+        }
+        return false
+    }
+
     SettingsTaskNavigator {
         icon: "settings"
         title: Translation.tr("Services")

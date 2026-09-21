@@ -61,23 +61,33 @@ Singleton {
     property bool clipboardOpen: false
     property bool settingsOverlayOpen: false
     property int settingsOverlayRequestedPage: -1 // Set before opening to navigate to a specific page
+    property string settingsOverlayRequestedSection: "" // Optional deep-link target inside the requested page
     property int settingsOverlayCurrentPage: -1 // Published by whichever overlay chrome is loaded
     property var _settingsNativeDialogs: ({})
     readonly property bool settingsNativeDialogOpen:
         Object.keys(root._settingsNativeDialogs).length > 0
 
     function openSettingsPage(index: int): void {
+        root.openSettingsSection(index, "")
+    }
+
+    function openSettingsSection(index: int, section: string): void {
+        const targetSection = String(section ?? "").trim()
         const isWaffle = Config.options?.panelFamily === "waffle"
             && Config.options?.waffles?.settings?.useMaterialStyle !== true
         if (isWaffle) {
             Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),
                 "waffle-settings-window"])
         } else if (Config.options?.settingsUi?.overlayMode ?? false) {
+            root.settingsOverlayRequestedSection = targetSection
             root.settingsOverlayRequestedPage = index
             root.settingsOverlayOpen = true
         } else {
-            Quickshell.execDetached(["/usr/bin/env", `QS_SETTINGS_PAGE=${index}`,
-                Quickshell.shellPath("scripts/inir"), "settings-window"])
+            const command = ["/usr/bin/env", `QS_SETTINGS_PAGE=${index}`]
+            if (targetSection.length > 0)
+                command.push("QS_SETTINGS_SECTION=" + targetSection)
+            command.push(Quickshell.shellPath("scripts/inir"), "settings-window")
+            Quickshell.execDetached(command)
         }
     }
 

@@ -83,13 +83,8 @@ Scope {
                     root._surfaceReveal = 1;
             });
             root.clearSearch();
-            const requested = GlobalStates.settingsOverlayRequestedPage ?? -1;
-            if (requested >= 0 && requested < root.pages.length) {
-                root.openPage(requested);
-                GlobalStates.settingsOverlayRequestedPage = -1;
-            } else {
+            if (!root.consumeSettingsDeepLink())
                 root.level = 0;
-            }
         } else {
             _surfaceReveal = 0;
             _closeAnimRunning = true;
@@ -113,6 +108,35 @@ Scope {
 
     function goHome(): void {
         root.level = 0;
+    }
+
+    function consumeSettingsDeepLink(): bool {
+        if (!root.settingsOpen)
+            return false
+        const requestedPage = GlobalStates.settingsOverlayRequestedPage ?? -1
+        const requestedSection = String(
+            GlobalStates.settingsOverlayRequestedSection ?? "").trim()
+        if (requestedPage < 0 && requestedSection.length === 0)
+            return false
+
+        GlobalStates.settingsOverlayRequestedPage = -1
+        GlobalStates.settingsOverlayRequestedSection = ""
+
+        if (requestedPage >= 0 && requestedSection.length > 0) {
+            root.openSearchResult({
+                pageIndex: requestedPage,
+                pageName: "",
+                section: requestedSection,
+                label: requestedSection,
+                isSection: true
+            })
+            return true
+        }
+        if (requestedPage >= 0) {
+            root.openPage(requestedPage)
+            return true
+        }
+        return false
     }
 
     function setEasyMode(enabled: bool): void {
@@ -411,13 +435,12 @@ Scope {
     Connections {
         target: GlobalStates
         // Also fires while the panel is already open, which is how
-        // `settingsNav page` navigates instead of only picking the landing page.
+        // settings deep links navigate instead of only picking the landing page.
         function onSettingsOverlayRequestedPageChanged() {
-            const requested = GlobalStates.settingsOverlayRequestedPage ?? -1;
-            if (requested < 0 || !root.settingsOpen)
-                return;
-            root.openPage(requested);
-            GlobalStates.settingsOverlayRequestedPage = -1;
+            root.consumeSettingsDeepLink()
+        }
+        function onSettingsOverlayRequestedSectionChanged() {
+            root.consumeSettingsDeepLink()
         }
     }
 

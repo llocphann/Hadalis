@@ -374,6 +374,35 @@ Scope {
         pendingSpotlightIsSection = false;
     }
 
+    function consumeSettingsDeepLink(): bool {
+        if (!root.settingsOpen)
+            return false
+        const requestedPage = GlobalStates.settingsOverlayRequestedPage ?? -1
+        const requestedSection = String(
+            GlobalStates.settingsOverlayRequestedSection ?? "").trim()
+        if (requestedPage < 0 && requestedSection.length === 0)
+            return false
+
+        GlobalStates.settingsOverlayRequestedPage = -1
+        GlobalStates.settingsOverlayRequestedSection = ""
+
+        if (requestedPage >= 0 && requestedSection.length > 0) {
+            root.openOverlaySearchResult({
+                pageIndex: requestedPage,
+                pageName: "",
+                section: requestedSection,
+                label: requestedSection,
+                isSection: true
+            })
+            return true
+        }
+        if (requestedPage >= 0) {
+            root.overlayCurrentPage = requestedPage
+            return true
+        }
+        return false
+    }
+
     function findParentFlickable(item) {
         var p = item ? item.parent : null;
         while (p) {
@@ -403,12 +432,8 @@ Scope {
     Connections {
         target: GlobalStates
         function onSettingsOverlayOpenChanged() {
-            if (GlobalStates.settingsOverlayOpen) {
-                if (GlobalStates.settingsOverlayRequestedPage >= 0) {
-                    root.overlayCurrentPage = GlobalStates.settingsOverlayRequestedPage
-                    GlobalStates.settingsOverlayRequestedPage = -1
-                }
-            }
+            if (GlobalStates.settingsOverlayOpen)
+                root.consumeSettingsDeepLink()
         }
     }
 
@@ -428,11 +453,10 @@ Scope {
     Connections {
         target: GlobalStates
         function onSettingsOverlayRequestedPageChanged() {
-            const requested = GlobalStates.settingsOverlayRequestedPage ?? -1
-            if (requested < 0 || !root.settingsOpen)
-                return
-            root.overlayCurrentPage = requested
-            GlobalStates.settingsOverlayRequestedPage = -1
+            root.consumeSettingsDeepLink()
+        }
+        function onSettingsOverlayRequestedSectionChanged() {
+            root.consumeSettingsDeepLink()
         }
     }
 

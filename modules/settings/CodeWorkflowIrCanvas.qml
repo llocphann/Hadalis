@@ -276,6 +276,10 @@ Item {
     Connections {
         target: CodeWorkflowSession
 
+        function onSubflowTargetIdChanged(): void {
+            Qt.callLater(root.fitGraph)
+        }
+
         function onSelectedNodeIdChanged(): void {
             Qt.callLater(() => root.revealNode(
                 CodeWorkflowSession.selectedNodeId))

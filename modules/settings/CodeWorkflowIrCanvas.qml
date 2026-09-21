@@ -345,8 +345,11 @@ Item {
                 readonly property bool highlighted:
                     selectedEdge
                     || hoveredEdge
-                    || CodeWorkflowSession.selectedNodeId === modelData.from
-                    || CodeWorkflowSession.selectedNodeId === modelData.to
+                    || (CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                        && (CodeWorkflowSession.selectedNodeId
+                                === modelData.from
+                            || CodeWorkflowSession.selectedNodeId
+                                === modelData.to))
 
                 anchors.fill: parent
                 preferredRendererType: Shape.GeometryRenderer
@@ -486,7 +489,8 @@ Item {
                 required property var modelData
 
                 readonly property bool selected:
-                    CodeWorkflowSession.selectedNodeId === modelData.id
+                    CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                    && CodeWorkflowSession.selectedNodeId === modelData.id
                 readonly property color accent:
                     root.accentForKind(modelData.kind)
                 readonly property color foreground: selected

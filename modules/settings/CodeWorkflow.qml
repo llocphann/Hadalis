@@ -38,6 +38,12 @@ Item {
         root.parsedSemanticEntries.find(entry =>
             String(entry.anchor ?? "") === root.inspectedSemanticAnchor)
             ?? null
+    readonly property string inspectedSemanticRangeText: {
+        const range = root.inspectedSemanticEntry?.range ?? []
+        if (range.length !== 2)
+            return "—"
+        return "bytes " + Number(range[0]) + "–" + Number(range[1])
+    }
     readonly property var inspectTargets: {
         const items = []
         for (const target of CodeWorkflowRuntime.catalog) {
@@ -1025,17 +1031,29 @@ Item {
             }
 
             Rectangle {
-                Layout.preferredWidth: 250
+                Layout.preferredWidth: 280
+                Layout.minimumWidth: 250
                 Layout.fillHeight: true
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
                 border.color: Appearance.colors.colOutlineVariant
+                clip: true
 
-                ColumnLayout {
+                StyledFlickable {
+                    id: inspectorScroll
                     anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 8
+                    anchors.margins: 4
+                    contentWidth: width
+                    contentHeight: inspectorColumn.implicitHeight + 12
+                    clip: true
+
+                    ColumnLayout {
+                        id: inspectorColumn
+                        x: 6
+                        y: 6
+                        width: Math.max(0, inspectorScroll.width - 18)
+                        spacing: 8
 
                     StyledText {
                         text: "Inspector"
@@ -1083,30 +1101,48 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.selectedIrNode?.description ?? ""
+                        text: root.inspectedSemanticEntry
+                            ? "Read-only parser element · "
+                                + root.inspectedSemanticRangeText
+                            : root.selectedIrNode?.description ?? ""
                         visible: text.length > 0
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
                     }
-                    StyledText { text: "Runtime"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        visible: root.inspectedSemanticEntry === null
+                        text: "Runtime"
+                        color: Appearance.colors.colSubtext
+                    }
                     StyledText {
                         Layout.fillWidth: true
+                        visible: root.inspectedSemanticEntry === null
                         text: root.stateLabel(root.record)
                         color: root.record?.state === "resident"
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colSubtext
                     }
-                    StyledText { text: "Output"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        visible: root.inspectedSemanticEntry === null
+                        text: "Output"
+                        color: Appearance.colors.colSubtext
+                    }
                     StyledText {
                         Layout.fillWidth: true
+                        visible: root.inspectedSemanticEntry === null
                         text: root.record?.output || "—"
                         color: Appearance.colors.colOnLayer1
                         elide: Text.ElideRight
                     }
-                    StyledText { text: "Geometry"; color: Appearance.colors.colSubtext }
+                    StyledText {
+                        visible: root.inspectedSemanticEntry === null
+                        text: "Geometry"
+                        color: Appearance.colors.colSubtext
+                    }
                     StyledText {
                         Layout.fillWidth: true
+                        visible: root.inspectedSemanticEntry === null
                         text: root.geometryText(root.record?.rect)
                         color: Appearance.colors.colOnLayer1
                         elide: Text.ElideRight
@@ -1270,9 +1306,11 @@ Item {
                     StyledText { text: "Source anchor"; color: Appearance.colors.colSubtext }
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.sourceNeedle.length > 0
-                            ? root.sourceNeedle
-                            : "No reviewed source anchor"
+                        text: root.inspectedSemanticEntry
+                            ? root.inspectedSemanticRangeText
+                            : root.sourceNeedle.length > 0
+                                ? root.sourceNeedle
+                                : "No reviewed source anchor"
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
@@ -1281,10 +1319,13 @@ Item {
                     StyledText { text: "Semantic ID"; color: Appearance.colors.colSubtext }
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.storedSemanticAnchor.length > 0
-                            ? root.storedSemanticAnchor
-                            : "Not bound"
-                        color: root.storedSemanticAnchor.length > 0
+                        text: root.inspectedSemanticEntry
+                            ? String(root.inspectedSemanticEntry.anchor ?? "")
+                            : root.storedSemanticAnchor.length > 0
+                                ? root.storedSemanticAnchor
+                                : "Not bound"
+                        color: root.inspectedSemanticEntry !== null
+                                || root.storedSemanticAnchor.length > 0
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colSubtext
                         font.family: Appearance.font.family.monospace
@@ -1316,8 +1357,11 @@ Item {
                     StyledText { text: "CST evidence"; color: Appearance.colors.colSubtext }
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.sourceRangeText
-                        color: root.sourceAnchorEvidence?.status === "resolved"
+                        text: root.inspectedSemanticEntry
+                            ? "PARSED · " + root.inspectedSemanticRangeText
+                            : root.sourceRangeText
+                        color: root.inspectedSemanticEntry !== null
+                                || root.sourceAnchorEvidence?.status === "resolved"
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colSubtext
                         font.family: Appearance.font.family.monospace
@@ -1419,7 +1463,6 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
                     }
-                    Item { Layout.fillHeight: true }
                     StyledText {
                         Layout.fillWidth: true
                         text: "Literal-property Apply remains independently qualified. Direct-binding Apply is restricted to reviewed clock.text.time-to-date and requires exact replacement artifacts + explicit authorization. Connect Apply requires its exact prepared + authorized handoff. Disconnect Apply is restricted to reviewed clock.data.time and requires exact deletion artifacts + explicit authorization."
@@ -1428,6 +1471,7 @@ Item {
                         wrapMode: Text.WordWrap
                     }
                 }
+            }
             }
         }
 

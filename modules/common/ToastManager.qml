@@ -220,7 +220,10 @@ Scope {
         PanelWindow {
             id: popup
             visible: root.toasts.length > 0 && !root.suppressOnScreenToasts
-            exclusiveZone: 0
+            // Visual-only Overlay: never set exclusiveZone here. Quickshell's
+            // exclusiveZone setter switches exclusionMode back to Normal,
+            // which made Niri configure this window to the remaining work area
+            // instead of the physical output.
             exclusionMode: ExclusionMode.Ignore
             anchors.top: true
             anchors.bottom: true

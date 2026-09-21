@@ -1715,8 +1715,7 @@ ContentPage {
                 }
 
                 RippleButton {
-                    visible: Todo.obsidianSourceMode !== "daily-note"
-                        && Todo.backend !== "obsidian"
+                    visible: Todo.backend !== "obsidian"
                         && Todo.obsidianSetupActive
                         && Todo.obsidianReady
                         && Todo.internalItemCount > 0
@@ -1752,8 +1751,7 @@ ContentPage {
 
             Rectangle {
                 Layout.fillWidth: true
-                visible: Todo.obsidianSourceMode !== "daily-note"
-                    && Todo.backend !== "obsidian"
+                visible: Todo.backend !== "obsidian"
                     && Todo.obsidianSetupActive
                     && Todo.obsidianMigrationPreview !== null
                 implicitHeight: todoMigrationPreviewColumn.implicitHeight + 20
@@ -1788,7 +1786,9 @@ ContentPage {
                     StyledText {
                         Layout.fillWidth: true
                         visible: Todo.obsidianMigrationPreview?.target?.empty !== true
-                        text: Translation.tr("Import is blocked because the managed Obsidian section is not empty. Use the existing note explicitly or choose an empty managed section.")
+                        text: Todo.obsidianSourceMode === "daily-note"
+                            ? Translation.tr("Import is blocked because today's Day Planner already contains tasks. Use the existing Daily Note explicitly or clear/review its tasks first.")
+                            : Translation.tr("Import is blocked because the managed Obsidian section is not empty. Use the existing note explicitly or choose an empty managed section.")
                         color: Appearance.colors.colError
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -1831,7 +1831,9 @@ ContentPage {
                             }
 
                             StyledToolTip {
-                                text: Translation.tr("Back up the target note, import the preserved internal Todo store, re-scan it, then activate Obsidian only after verification succeeds.")
+                                text: Todo.obsidianSourceMode === "daily-note"
+                                    ? Translation.tr("Back up today's Daily Note, import the preserved internal Todo store into Day Planner, re-scan it, then activate only after verification succeeds.")
+                                    : Translation.tr("Back up the target note, import the preserved internal Todo store, re-scan it, then activate Obsidian only after verification succeeds.")
                             }
                         }
 

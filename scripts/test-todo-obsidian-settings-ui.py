@@ -85,3 +85,7 @@ print("Todo/Obsidian settings UI contract: PASS")
 assert 'enabled: Todo.backend !== "obsidian" && !Todo.obsidianBusy' in services
 assert services.count('visible: Todo.obsidianSourceMode !== "daily-note"') >= 4
 assert 'visible: Todo.obsidianSourceMode === "daily-note"' in services
+
+assert "today's Day Planner already contains tasks" in services
+assert "Back up today's Daily Note" in services
+assert 'visible: Todo.obsidianSourceMode !== "daily-note"\n                        && Todo.backend !== "obsidian"' not in services

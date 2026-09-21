@@ -704,6 +704,8 @@ Item {
                             implicitHeight: 25
                             radius: implicitHeight / 2
                             color: Appearance.colors.colLayer2
+                            border.width: subflowAction.activeFocus ? 1 : 0
+                            border.color: node.accent
 
                             MaterialSymbol {
                                 anchors.centerIn: parent

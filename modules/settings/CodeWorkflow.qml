@@ -1112,6 +1112,7 @@ Item {
             Qt.callLater(root.evaluatePreApplyGate)
         }
         function onHistoryIndexChanged(): void {
+            transactionScroll.contentY = 0
             Qt.callLater(root.evaluatePreApplyGate)
         }
     }

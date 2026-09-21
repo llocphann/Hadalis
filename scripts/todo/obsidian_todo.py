@@ -611,23 +611,10 @@ def delete_task(
     return _mutation_result(vault_path, note_path, "delete")
 
 
-def migrate_internal_json(
-    vault_path: str,
-    note_path: str,
+def _load_internal_tasks(
     internal_json_path: str,
-    expected_document_sha: str,
-    expected_managed_sha: str,
     global_filter: str = "",
-) -> dict[str, Any]:
-    """Copy the preserved internal Todo list into an empty managed section."""
-    doc = _load_document(vault_path, note_path)
-    _require_hashes(doc, expected_document_sha, expected_managed_sha)
-    if _managed_text(doc).strip():
-        raise TodoError(
-            "migration_target_not_empty",
-            "managed Todo section must be empty before importing the internal store",
-        )
-
+) -> tuple[Path, bytes, list[tuple[str, bool]]]:
     try:
         source = Path(internal_json_path).expanduser().resolve(strict=True)
     except (OSError, RuntimeError) as exc:
@@ -636,7 +623,8 @@ def migrate_internal_json(
         raise TodoError("migration_source_missing", "internal Todo store is not a regular file")
 
     try:
-        payload = json.loads(source.read_text(encoding="utf-8"))
+        raw = source.read_bytes()
+        payload = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise TodoError("migration_source_invalid", f"cannot read internal Todo store: {exc}") from exc
     if not isinstance(payload, list):
@@ -658,12 +646,164 @@ def migrate_internal_json(
         if filter_text and filter_text not in content:
             content = filter_text + " " + content
         imported.append((content, item.get("done") is True))
+    return source, raw, imported
+
+
+def preview_internal_migration(
+    vault_path: str,
+    note_path: str,
+    internal_json_path: str,
+    global_filter: str = "",
+) -> dict[str, Any]:
+    doc = _load_document(vault_path, note_path)
+    source, source_raw, imported = _load_internal_tasks(internal_json_path, global_filter)
+    target_tasks = _tasks(doc)
+
+    added = 0
+    duplicates = 0
+    conflicts = 0
+    for content, done in imported:
+        same_content = [task for task in target_tasks if task["content"] == content]
+        if any(task["done"] is done for task in same_content):
+            duplicates += 1
+        elif same_content:
+            conflicts += 1
+        else:
+            added += 1
+
+    return {
+        "ok": True,
+        "mutation": "preview-migration",
+        "source": {
+            "path": str(source),
+            "sha256": _sha256_bytes(source_raw),
+            "taskCount": len(imported),
+        },
+        "target": {
+            "documentSha256": _sha256_bytes(doc["raw"]),
+            "managedSha256": _sha256_text(_managed_text(doc)),
+            "taskCount": len(target_tasks),
+            "empty": not bool(_managed_text(doc).strip()),
+        },
+        "preview": {
+            "added": added,
+            "duplicates": duplicates,
+            "conflicts": conflicts,
+        },
+    }
+
+
+def _create_migration_backup(doc: dict[str, Any]) -> tuple[Path, bool]:
+    path: Path = doc["resolved"]
+    digest = _sha256_bytes(doc["raw"])
+    backup = path.parent / f".{path.name}.hadalis-backup-{digest[:12]}"
+
+    try:
+        current = path.read_bytes()
+    except OSError as exc:
+        raise TodoError("note_read_failed", f"cannot revalidate note before backup: {exc}") from exc
+    if current != doc["raw"]:
+        raise TodoError("conflict", "document changed before migration backup")
+
+    try:
+        original_mode = stat.S_IMODE(path.stat().st_mode)
+    except OSError as exc:
+        raise TodoError("note_write_failed", f"cannot stat note before backup: {exc}") from exc
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
+    try:
+        fd = os.open(backup, flags, original_mode)
+    except FileExistsError:
+        try:
+            if not backup.is_file() or backup.read_bytes() != doc["raw"]:
+                raise TodoError(
+                    "migration_backup_conflict",
+                    "existing migration backup does not match the current target note",
+                )
+        except OSError as exc:
+            raise TodoError("migration_backup_failed", f"cannot verify migration backup: {exc}") from exc
+        return backup, False
+    except OSError as exc:
+        raise TodoError("migration_backup_failed", f"cannot create migration backup: {exc}") from exc
+
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(doc["raw"])
+            stream.flush()
+            os.fsync(stream.fileno())
+        dir_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except OSError as exc:
+        try:
+            backup.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise TodoError("migration_backup_failed", f"cannot persist migration backup: {exc}") from exc
+
+    return backup, True
+
+
+def migrate_internal_json(
+    vault_path: str,
+    note_path: str,
+    internal_json_path: str,
+    expected_document_sha: str,
+    expected_managed_sha: str,
+    global_filter: str = "",
+    expected_internal_sha: str = "",
+) -> dict[str, Any]:
+    """Copy the preserved internal Todo list into an empty managed section."""
+    doc = _load_document(vault_path, note_path)
+    _require_hashes(doc, expected_document_sha, expected_managed_sha)
+    if _managed_text(doc).strip():
+        raise TodoError(
+            "migration_target_not_empty",
+            "managed Todo section must be empty before importing the internal store",
+        )
+
+    source, source_raw, imported = _load_internal_tasks(internal_json_path, global_filter)
+    source_sha = _sha256_bytes(source_raw)
+    if expected_internal_sha and source_sha != expected_internal_sha:
+        raise TodoError("migration_source_conflict", "internal Todo store changed since migration preview")
 
     if not imported:
         result = _scan_payload(doc)
         result["mutation"] = "migrate-internal"
         result["migratedCount"] = 0
+        result["sourceSha256"] = source_sha
+        result["backupPath"] = ""
+        result["backupCreated"] = False
         return result
+
+    # Re-read the dormant internal source immediately before any target write.
+    # Migration must never silently mix a preview from one source revision with
+    # a different source revision.
+    try:
+        if source.read_bytes() != source_raw:
+            raise TodoError(
+                "migration_source_conflict",
+                "internal Todo store changed while preparing migration",
+            )
+    except TodoError:
+        raise
+    except OSError as exc:
+        raise TodoError("migration_source_missing", f"cannot revalidate internal Todo store: {exc}") from exc
+
+    backup, backup_created = _create_migration_backup(doc)
+
+    try:
+        if source.read_bytes() != source_raw:
+            raise TodoError(
+                "migration_source_conflict",
+                "internal Todo store changed after target backup",
+            )
+    except TodoError:
+        raise
+    except OSError as exc:
+        raise TodoError("migration_source_missing", f"cannot revalidate internal Todo store: {exc}") from exc
 
     newline = _preferred_newline(doc)
     lines = list(doc["lines"])
@@ -675,8 +815,10 @@ def migrate_internal_json(
     result = scan_note(vault_path, note_path)
     result["mutation"] = "migrate-internal"
     result["migratedCount"] = len(imported)
+    result["sourceSha256"] = source_sha
+    result["backupPath"] = str(backup)
+    result["backupCreated"] = backup_created
     return result
-
 
 def _add_source_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--vault", required=True, help="physical Obsidian vault path")
@@ -714,6 +856,14 @@ def _build_parser() -> argparse.ArgumentParser:
     delete.add_argument("--id", required=True)
     delete.add_argument("--expected-document-sha", required=True)
 
+    preview = subparsers.add_parser(
+        "preview-migration",
+        help="preview internal Todo import without writing the target note",
+    )
+    _add_source_args(preview)
+    preview.add_argument("--internal-json", required=True)
+    preview.add_argument("--global-filter", default="")
+
     migrate = subparsers.add_parser(
         "migrate-internal",
         help="copy internal Todo JSON into an empty managed section",
@@ -722,6 +872,7 @@ def _build_parser() -> argparse.ArgumentParser:
     migrate.add_argument("--internal-json", required=True)
     migrate.add_argument("--expected-document-sha", required=True)
     migrate.add_argument("--expected-managed-sha", required=True)
+    migrate.add_argument("--expected-internal-sha", default="")
     migrate.add_argument("--global-filter", default="")
 
     return parser
@@ -752,11 +903,15 @@ def main(argv: list[str] | None = None) -> int:
             payload = delete_task(
                 args.vault, args.note, args.id, args.expected_document_sha,
             )
+        elif args.command == "preview-migration":
+            payload = preview_internal_migration(
+                args.vault, args.note, args.internal_json, args.global_filter,
+            )
         elif args.command == "migrate-internal":
             payload = migrate_internal_json(
                 args.vault, args.note, args.internal_json,
                 args.expected_document_sha, args.expected_managed_sha,
-                args.global_filter,
+                args.global_filter, args.expected_internal_sha,
             )
         else:
             raise TodoError("unsupported_command", f"unsupported command: {args.command}")

@@ -242,6 +242,32 @@ not a task
         self.assertEqual(error.exception.code, "invalid_managed_section")
         self.assertEqual(path.read_bytes(), before)
 
+    def test_migration_preview_is_read_only_and_reports_conflicts(self):
+        vault, path, _ = self.scan(
+            "<!-- hadalis:todo:start -->\n- [ ] same\n<!-- hadalis:todo:end -->\n"
+        )
+        internal = path.parent / "internal.json"
+        internal.write_text(
+            json.dumps([
+                {"content": "same", "done": False},
+                {"content": "same", "done": True},
+                {"content": "new", "done": False},
+            ]),
+            encoding="utf-8",
+        )
+        before = path.read_bytes()
+        result = obsidian_todo.preview_internal_migration(
+            str(vault), "Hadalis/Todo.md", str(internal)
+        )
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(result["source"]["sha256"], obsidian_todo._sha256_bytes(internal.read_bytes()))
+        self.assertFalse(result["target"]["empty"])
+        self.assertEqual(result["preview"], {
+            "added": 1,
+            "duplicates": 1,
+            "conflicts": 1,
+        })
+
     def test_migrate_internal_store_requires_empty_managed_section(self):
         vault, path, scan = self.scan(
             "<!-- hadalis:todo:start -->\n- [ ] existing\n<!-- hadalis:todo:end -->\n"
@@ -266,16 +292,40 @@ not a task
             '[{"content":"one","done":false},{"content":"two","done":true}]',
             encoding="utf-8",
         )
+        before = path.read_bytes()
+        source_sha = obsidian_todo._sha256_bytes(internal.read_bytes())
         result = obsidian_todo.migrate_internal_json(
             str(vault), "Hadalis/Todo.md", str(internal),
             scan["document"]["sha256"], scan["managed"]["sha256"], "#task",
+            source_sha,
         )
         text = path.read_text(encoding="utf-8")
         self.assertIn("- [ ] #task one\n- [x] #task two\n", text)
         self.assertTrue(text.startswith("# Before\n"))
         self.assertTrue(text.endswith("# After\n"))
         self.assertEqual(result["migratedCount"], 2)
+        self.assertEqual(result["sourceSha256"], source_sha)
+        backup = Path(result["backupPath"])
+        self.assertTrue(result["backupCreated"])
+        self.assertTrue(backup.name.startswith(".Todo.md.hadalis-backup-"))
+        self.assertEqual(backup.read_bytes(), before)
         self.assertEqual([task["done"] for task in result["tasks"]], [False, True])
+
+    def test_migrate_internal_store_rejects_stale_preview_source_hash(self):
+        vault, path, scan = self.scan(
+            "<!-- hadalis:todo:start -->\n<!-- hadalis:todo:end -->\n"
+        )
+        internal = path.parent / "internal.json"
+        internal.write_text('[{"content":"one","done":false}]', encoding="utf-8")
+        before = path.read_bytes()
+        with self.assertRaises(obsidian_todo.TodoError) as error:
+            obsidian_todo.migrate_internal_json(
+                str(vault), "Hadalis/Todo.md", str(internal),
+                scan["document"]["sha256"], scan["managed"]["sha256"], "",
+                "0" * 64,
+            )
+        self.assertEqual(error.exception.code, "migration_source_conflict")
+        self.assertEqual(path.read_bytes(), before)
 
     def test_migrate_internal_store_rejects_multiline_task(self):
         vault, path, scan = self.scan(

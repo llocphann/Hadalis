@@ -16,6 +16,10 @@ Item {
     property rect outputRect: Qt.rect(0, 0, width, height)
     property real ownerThickness: 10
     property real weldDepth: PerimeterTokens.irisWeldDepth
+    // Paint-only overlap into the primary owner. Keep zero by default so
+    // existing callers preserve exact owner clipping unless they need to cover
+    // a measured antialias seam.
+    property real paintOverlap: 0
     property real bodyRadius: PerimeterTokens.popupRadius
     property real progress: 1
 
@@ -97,6 +101,7 @@ Item {
         borderWidth: root.borderWidth
         fuseDepth: root.fuseDepth
         externalFrameThickness: root.ownerThickness
+        ownerPaintOverlap: root.paintOverlap
         shadowEnabled: root.shadowEnabled
         shadowExtent: root.shadowExtent
         shadowColor: root.shadowColor

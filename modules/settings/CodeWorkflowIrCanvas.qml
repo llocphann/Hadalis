@@ -9,6 +9,10 @@ import qs.modules.common.widgets
 
 Item {
     id: root
+    // The canvas itself is the hard viewport boundary. The transformed graph
+    // may pan beyond it, but nodes, routes, labels and graph-local effects must
+    // never paint into the toolbar or adjacent SplitView panes.
+    clip: true
 
     // Text inside `world` is transformed by graph zoom. Native glyph
     // rasterization becomes visibly thin/hollow at fractional zoom levels,
@@ -921,7 +925,14 @@ Item {
         })
     }
 
+    function viewportContains(screenX: real, screenY: real): bool {
+        return screenX >= 0 && screenY >= 0
+            && screenX <= root.width && screenY <= root.height
+    }
+
     function edgeAt(screenX: real, screenY: real): string {
+        if (!root.viewportContains(screenX, screenY))
+            return ""
         const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
         const worldX = (screenX - CodeWorkflowSession.panX) / zoom
         const worldY = (screenY - CodeWorkflowSession.panY) / zoom

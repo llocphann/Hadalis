@@ -149,6 +149,14 @@ require(canvas, "CodeWorkflowSession.minimumZoom",
         "canvas fit/wheel/pinch must share the session zoom floor")
 require(canvas, "CodeWorkflowSession.maximumZoom",
         "canvas manual zoom must share the session zoom ceiling")
+canvas_root_start = canvas.index("Item {\\n    id: root")
+canvas_root_prefix = canvas[canvas_root_start:canvas_root_start + 320]
+require(canvas_root_prefix, "clip: true",
+        "graph canvas root must hard-clip transformed content to its viewport")
+require(canvas, "function viewportContains(screenX: real, screenY: real): bool",
+        "graph hit testing must expose an explicit viewport guard")
+require(canvas, "if (!root.viewportContains(screenX, screenY))\\n            return \"\"",
+        "edge hit testing must reject pointer coordinates outside the canvas")
 if "Math.max(0.35" in session or "Math.max(0.35" in canvas:
     raise SystemExit("FAIL: Code Workflow must not reintroduce the old 0.35 zoom floor")
 require(page, "CodeWorkflowIrCanvas {", "page must host the semantic IR canvas")

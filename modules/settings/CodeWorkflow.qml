@@ -53,6 +53,7 @@ Item {
         const runtimeItems = []
         const graphItems = []
         const edgeItems = []
+        const connectItems = []
         const semanticItems = []
         const query = root.inspectFilter.trim().toLowerCase()
 
@@ -128,6 +129,26 @@ Item {
             })
         }
 
+        for (const target of CodeWorkflowIr.connectTargetsFor(
+                CodeWorkflowSession.subflowTargetId)) {
+            append(connectItems, {
+                category: "connect",
+                id: String(target.id ?? ""),
+                label: String(target.label ?? target.id
+                    ?? "Connect candidate"),
+                detail: "candidate · "
+                    + String(target.bindingName ?? "binding")
+                    + " · TYPE "
+                    + String(target.typeCompatibility
+                        ?? "unknown").toUpperCase()
+                    + " · CYCLE "
+                    + String(target.cycleStatus
+                        ?? "unknown").toUpperCase(),
+                icon: "add_link",
+                depth: 0
+            })
+        }
+
         for (const entry of root.parsedSemanticEntries) {
             if (!root.semanticEntryVisible(
                     entry,
@@ -170,6 +191,9 @@ Item {
             "graph", "Workflow graph", "account_tree", "nodes", graphItems)
         appendSection(
             "edges", "Connections", "conversion_path", "edges", edgeItems)
+        appendSection(
+            "connect", "Connect candidates", "add_link",
+            "candidates", connectItems)
         appendSection(
             "semantic", "Parsed QML", "code", "elements", semanticItems)
         return items
@@ -656,6 +680,9 @@ Item {
         if (category === "edge")
             return CodeWorkflowSession.selectedEdgeId === id
                 && root.inspectedSemanticAnchor.length === 0
+        if (category === "connect")
+            return CodeWorkflowSession.selectedConnectTargetId === id
+                && root.inspectedSemanticAnchor.length === 0
         if (category === "semantic")
             return root.inspectedSemanticAnchor === id
         return false
@@ -676,6 +703,10 @@ Item {
         }
         if (category === "edge") {
             CodeWorkflowSession.selectEdge(id)
+            return
+        }
+        if (category === "connect") {
+            CodeWorkflowSession.selectConnectTarget(id)
             return
         }
         if (category === "semantic") {
@@ -1032,6 +1063,12 @@ Item {
             Qt.callLater(root.revealSelectedInspectTarget)
         }
 
+        function onSelectedConnectTargetIdChanged(): void {
+            if (CodeWorkflowSession.selectedConnectTargetId.length > 0)
+                root.inspectFilter = ""
+            Qt.callLater(root.revealSelectedInspectTarget)
+        }
+
         function onSelectedSemanticAnchorChanged(): void {
             Qt.callLater(root.revealSelectedInspectTarget)
         }
@@ -1283,7 +1320,7 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Runtime · graph · connections · parsed QML"
+                        text: "Runtime · graph · connections · connect · parsed QML"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -1502,13 +1539,17 @@ Item {
                                 : String(root.inspectedSemanticEntry.name
                                     ?? root.inspectedSemanticEntry.kind
                                     ?? "Element"))
-                            : root.selectedIrEdge !== null
-                                ? String(root.selectedIrEdge.label
-                                    ?? root.selectedIrEdge.id
-                                    ?? "Connection")
-                                : root.selectedIrNode?.title
-                                    ?? root.descriptor?.label
-                                    ?? "Target"
+                            : root.selectedConnectTarget !== null
+                                ? String(root.selectedConnectTarget.label
+                                    ?? root.selectedConnectTarget.id
+                                    ?? "Connect candidate")
+                                : root.selectedIrEdge !== null
+                                    ? String(root.selectedIrEdge.label
+                                        ?? root.selectedIrEdge.id
+                                        ?? "Connection")
+                                    : root.selectedIrNode?.title
+                                        ?? root.descriptor?.label
+                                        ?? "Target"
                         color: Appearance.colors.colPrimary
                         elide: Text.ElideRight
                         maximumLineCount: 1
@@ -1517,6 +1558,8 @@ Item {
                     }
                     Pill {
                         label: String(root.inspectedSemanticEntry?.kind
+                            ?? (root.selectedConnectTarget !== null
+                                ? "connect" : null)
                             ?? root.selectedIrEdge?.kind
                             ?? root.selectedIrNode?.kind
                             ?? "component").toUpperCase()
@@ -1540,7 +1583,9 @@ Item {
                         text: root.inspectedSemanticEntry
                             ? "Read-only parser element · "
                                 + root.inspectedSemanticRangeText
-                            : root.selectedIrNode?.description ?? ""
+                            : root.selectedConnectTarget !== null
+                                ? "Reviewed connect candidate · TYPE/CYCLE proof pending"
+                                : root.selectedIrNode?.description ?? ""
                         visible: text.length > 0
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest

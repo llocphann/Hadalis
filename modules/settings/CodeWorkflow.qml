@@ -253,7 +253,10 @@ Item {
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom,
-            sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible
+            sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible,
+            targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
+            inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
+            sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight
         }
         return JSON.stringify({ ok: true, status: root.captureHarnessStatus() })
     }
@@ -289,6 +292,12 @@ Item {
             Number(baseline.zoom ?? 1))
         CodeWorkflowSession.sourcePreviewVisible =
             baseline.sourcePreviewVisible !== false
+        CodeWorkflowSession.targetsPaneWidth =
+            Number(baseline.targetsPaneWidth ?? 224)
+        CodeWorkflowSession.inspectorPaneWidth =
+            Number(baseline.inspectorPaneWidth ?? 280)
+        CodeWorkflowSession.sourcePreviewHeight =
+            Number(baseline.sourcePreviewHeight ?? 190)
         CodeWorkflowSession.persist()
         root.inspectFilter = ""
         root.inspectShowInternals = false
@@ -327,6 +336,13 @@ Item {
             root.selectTarget("bar/clock")
             CodeWorkflowSession.selectConnectTarget("clock.connect.rootVisible")
             Qt.callLater(canvas.revealPrimarySelection)
+        } else if (scenario === "pane-resize") {
+            root.selectTarget("bar")
+            CodeWorkflowSession.targetsPaneWidth = 300
+            CodeWorkflowSession.inspectorPaneWidth = 380
+            CodeWorkflowSession.sourcePreviewHeight = 260
+            CodeWorkflowSession.sourcePreviewVisible = true
+            Qt.callLater(canvas.fitGraph)
         } else if (scenario === "semantic-source") {
             root.selectTarget("bar")
             root.inspectShowInternals = true

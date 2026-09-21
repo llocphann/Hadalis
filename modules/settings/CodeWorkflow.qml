@@ -402,7 +402,8 @@ Item {
                 && String(command.sourcePath ?? "") === root.sourcePath
         }
         if (String(command.kind ?? "") === "direct-binding") {
-            return String(command.targetId ?? "")
+            return root.directMutationSelectionEligible
+                && String(command.targetId ?? "")
                     === CodeWorkflowSession.subflowTargetId
                 && String(command.sourcePath ?? "") === root.sourcePath
                 && String(command.semanticAnchor ?? "")
@@ -418,7 +419,11 @@ Item {
                 && String(command.semanticAnchor ?? "")
                     === root.storedSemanticAnchor
         }
-        return CodeWorkflowTransaction.sourcePath === root.sourcePath
+        if (String(command.kind ?? "") !== "literal-property")
+            return false
+        return root.selectedIrEdge === null
+            && root.selectedConnectTarget === null
+            && CodeWorkflowTransaction.sourcePath === root.sourcePath
             && CodeWorkflowTransaction.semanticAnchor
                 === root.storedSemanticAnchor
     }
@@ -2404,11 +2409,15 @@ Item {
                                 "user-revoked")
                     }
                     RippleButtonWithIcon {
-                        visible: CodeWorkflowTransaction.preApplyReady
+                        visible: CodeWorkflowTransaction.activeCommand?.kind
+                                === "literal-property"
+                            && CodeWorkflowTransaction.preApplyReady
                             && !CodeWorkflowTransaction.applyArtifactsReady
+                            && root.transactionMatchesSelection
                         materialIcon: "inventory_2"
                         mainText: "Prepare Apply"
                         enabled: CodeWorkflowTransaction.prepareApplyEnabled
+                            && root.transactionMatchesSelection
                         onClicked:
                             CodeWorkflowTransaction.prepareApplyArtifacts()
                     }

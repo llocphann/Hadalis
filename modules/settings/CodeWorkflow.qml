@@ -28,7 +28,8 @@ Item {
     readonly property var record: root.recordFor(CodeWorkflowSession.selectedTargetId)
     readonly property var graph:
         CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)
-    property string inspectedSemanticAnchor: ""
+    readonly property string inspectedSemanticAnchor:
+        CodeWorkflowSession.selectedSemanticAnchor
     readonly property var parsedSemanticEntries:
         root.analyzerMatchesSource
             && CodeWorkflowAnalyzer.status === "ready"
@@ -497,17 +498,15 @@ Item {
         if (id.length === 0)
             return
         if (category === "runtime") {
-            root.inspectedSemanticAnchor = ""
             root.selectTarget(id)
             return
         }
         if (category === "graph") {
-            root.inspectedSemanticAnchor = ""
             CodeWorkflowSession.selectNode(id)
             return
         }
         if (category === "semantic") {
-            root.inspectedSemanticAnchor = id
+            CodeWorkflowSession.selectSemantic(id)
             return
         }
     }
@@ -710,8 +709,76 @@ Item {
         CodeWorkflowTransaction.regenerate(currentSha)
     }
 
+    function textIndexForUtf8ByteOffset(byteOffset: int): int {
+        const target = Math.max(0, Number(byteOffset))
+        let bytes = 0
+        let index = 0
+        while (index < root.sourceText.length && bytes < target) {
+            const first = root.sourceText.charCodeAt(index)
+            if (first <= 0x7f) {
+                bytes += 1
+                index += 1
+            } else if (first <= 0x7ff) {
+                bytes += 2
+                index += 1
+            } else if (first >= 0xd800 && first <= 0xdbff
+                    && index + 1 < root.sourceText.length) {
+                const second = root.sourceText.charCodeAt(index + 1)
+                if (second >= 0xdc00 && second <= 0xdfff) {
+                    bytes += 4
+                    index += 2
+                } else {
+                    bytes += 3
+                    index += 1
+                }
+            } else {
+                bytes += 3
+                index += 1
+            }
+        }
+        return index
+    }
+
+    function revealSourceSelection(start: int, end: int): void {
+        if (start < 0 || end < start || root.sourceText.length === 0)
+            return
+        sourcePreviewText.select(start, end)
+        sourcePreviewText.cursorPosition = start
+        Qt.callLater(() => {
+            const rect = sourcePreviewText.positionToRectangle(start)
+            const margin = 18
+            sourcePreviewFlick.contentX = Math.max(
+                0,
+                Math.min(
+                    Math.max(0,
+                        sourcePreviewFlick.contentWidth
+                            - sourcePreviewFlick.width),
+                    rect.x - margin))
+            sourcePreviewFlick.contentY = Math.max(
+                0,
+                Math.min(
+                    Math.max(0,
+                        sourcePreviewFlick.contentHeight
+                            - sourcePreviewFlick.height),
+                    rect.y - sourcePreviewFlick.height / 3))
+        })
+    }
+
     function focusSourceAnchor(): void {
-        if (root.sourceNeedle.length === 0 || root.sourceText.length === 0)
+        if (root.sourceText.length === 0)
+            return
+
+        const semanticRange = root.inspectedSemanticEntry?.range ?? []
+        if (semanticRange.length === 2) {
+            const start = root.textIndexForUtf8ByteOffset(
+                Number(semanticRange[0]))
+            const end = root.textIndexForUtf8ByteOffset(
+                Number(semanticRange[1]))
+            root.revealSourceSelection(start, end)
+            return
+        }
+
+        if (root.sourceNeedle.length === 0)
             return
         const start = root.sourceText.indexOf(root.sourceNeedle)
         if (start < 0)
@@ -721,12 +788,15 @@ Item {
             start + Math.max(1, root.sourceNeedle.length))
         if (duplicate >= 0)
             return
-        sourcePreviewText.select(start, start + root.sourceNeedle.length)
-        sourcePreviewText.cursorPosition = start
+        root.revealSourceSelection(
+            start, start + root.sourceNeedle.length)
     }
 
+    onInspectedSemanticAnchorChanged:
+        Qt.callLater(root.focusSourceAnchor)
+
     onSourcePathChanged: {
-        root.inspectedSemanticAnchor = ""
+        CodeWorkflowSession.selectSemantic("")
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
@@ -2531,6 +2601,7 @@ Item {
                     clip: true
 
                     Flickable {
+                        id: sourcePreviewFlick
                         anchors.fill: parent
                         anchors.margins: 7
                         contentWidth: Math.max(width, sourcePreviewText.implicitWidth)

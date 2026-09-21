@@ -68,6 +68,8 @@ require(page, "property bool inspectShowInternals: false",
         "Targets must use progressive disclosure for parser internals")
 require(page, "function semanticEntryVisible(entry, discloseInternals: bool): bool",
         "Targets must suppress anonymous parser noise by default")
+require(page, '"pragma", "opaque"',
+        "Show internals/search must expose parser-known unsupported entries")
 require(page, "function semanticEntryDepth(entry): int",
         "Targets must derive parser hierarchy depth")
 require(page, "function textIndexForUtf8ByteOffset(byteOffset: int): int",

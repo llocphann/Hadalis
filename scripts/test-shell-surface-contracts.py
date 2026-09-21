@@ -234,6 +234,23 @@ def main() -> None:
           and "GlobalStates.barOpen" in toast_manager,
           "ToastManager must import root qs before consuming GlobalStates")
     for token in (
+        "property real surfaceOffsetScale: 1",
+        "readonly property real surfaceRevealProgress: 1 - root.surfaceOffsetScale",
+        "Behavior on surfaceOffsetScale",
+        "duration: SurfaceMotion.duration",
+        "easing.type: SurfaceMotion.easingType",
+        "progress: root.surfaceRevealProgress",
+        "onDismissed: root.dismissToast(modelData.id)",
+    ):
+        check(token in toast_manager,
+              f"Reload toast slide-motion contract missing: {token}")
+    check('property: "opacity"' not in toast_manager
+          and 'property: "scale"' not in toast_manager
+          and "ParallelAnimation {" not in toast_manager
+          and "entryAnim" not in toast_manager
+          and "exitAnim" not in toast_manager,
+          "Reload toast must stay slide-only with no fade/scale delegate animation")
+    for token in (
         '"Niri Reloaded"',
         "ConnectedSurfaceGeometry {",
         "id: toastGeometry",

@@ -73,6 +73,21 @@ require(dash, "active: root.presentationActive && root.hasPlayer",
 require(dash, "active: root.presentationActive && root.hasPlayer && root.isPlaying",
         "Dashboard CAVA lifecycle")
 
+# The shared control must remain usable in narrow Dashboard tiles: preserve
+# both time labels and compact the artwork/transport metrics before overflow.
+require(player, "readonly property bool narrowLayout: root.compactLayout && root.width < 340",
+        "Narrow shared-player breakpoint")
+require(player, "root.narrowLayout ? 82 : 96",
+        "Narrow shared-player artwork cap")
+if player.count("Layout.minimumWidth: implicitWidth") < 2:
+    failures.append("Shared-player time labels must reserve their implicit widths")
+for token in (
+    "root.narrowLayout ? 22 : (root.compactLayout ? 26 : 30)",
+    "root.narrowLayout ? 24 : (root.compactLayout ? 28 : 32)",
+    "root.narrowLayout ? 30 : (root.compactLayout ? 34 : 40)",
+):
+    require(player, token, "Narrow shared-player transport metrics")
+
 if failures:
     print("Dashboard shared media contract regression(s):")
     for failure in failures:

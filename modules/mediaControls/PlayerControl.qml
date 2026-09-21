@@ -27,10 +27,16 @@ Item {
     property real visualizerMaxValue: 1000
     property real radius: Appearance.rounding.large
     property bool compactLayout: false
-    readonly property real contentMargin: root.compactLayout ? 9 : 12
-    readonly property real contentSpacing: root.compactLayout ? 8 : 12
+    // Compact media cards can be substantially narrower than the Sidebar/Popup
+    // surface (notably Dashboard tiles). Adapt the same PlayerControl instead
+    // of letting its fixed transport row push duration outside the card.
+    readonly property bool narrowLayout: root.compactLayout && root.width < 340
+    readonly property real contentMargin: root.narrowLayout
+        ? 7 : (root.compactLayout ? 9 : 12)
+    readonly property real contentSpacing: root.narrowLayout
+        ? 6 : (root.compactLayout ? 8 : 12)
     readonly property real artworkExtent: root.compactLayout
-        ? Math.max(72, Math.min(96,
+        ? Math.max(72, Math.min(root.narrowLayout ? 82 : 96,
             root.height - Appearance.sizes.elevationMargin
                 - root.contentMargin * 2))
         : Math.max(0,
@@ -435,9 +441,10 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
-                    spacing: root.compactLayout ? 1 : 4
+                    spacing: root.narrowLayout ? 0 : (root.compactLayout ? 1 : 4)
 
                     StyledText {
+                        Layout.minimumWidth: implicitWidth
                         text: StringUtils.friendlyTimeForSeconds(root.effectivePosition)
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.family: Appearance.font.family.numbers
@@ -451,7 +458,7 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     RippleButton {
-                        implicitWidth: root.compactLayout ? 26 : 30
+                        implicitWidth: root.narrowLayout ? 22 : (root.compactLayout ? 26 : 30)
                         implicitHeight: implicitWidth
                         buttonText: Translation.tr("Shuffle")
                         enabled: root.effectiveShuffleSupported
@@ -468,7 +475,7 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "shuffle"
-                                iconSize: root.compactLayout ? 17 : 19
+                                iconSize: root.narrowLayout ? 15 : (root.compactLayout ? 17 : 19)
                                 fill: root.effectiveShuffleEnabled ? 1 : 0
                                 color: root.effectiveShuffleEnabled
                                     ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
@@ -478,7 +485,7 @@ Item {
                     }
 
                     RippleButton {
-                        implicitWidth: root.compactLayout ? 28 : 32
+                        implicitWidth: root.narrowLayout ? 24 : (root.compactLayout ? 28 : 32)
                         implicitHeight: implicitWidth
                         buttonText: Translation.tr("Previous")
                         enabled: root.effectiveCanGoPrevious
@@ -492,7 +499,7 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "skip_previous"
-                                iconSize: root.compactLayout ? 19 : 22
+                                iconSize: root.narrowLayout ? 17 : (root.compactLayout ? 19 : 22)
                                 fill: 1
                                 color: blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0
                                 Behavior on color {
@@ -505,7 +512,7 @@ Item {
 
                     RippleButton {
                         id: playPauseButton
-                        implicitWidth: root.compactLayout ? 34 : 40
+                        implicitWidth: root.narrowLayout ? 30 : (root.compactLayout ? 34 : 40)
                         implicitHeight: implicitWidth
                         buttonText: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
                         buttonRadius: Appearance.rounding.full
@@ -518,7 +525,7 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: root.player?.isPlaying ? "pause" : "play_arrow"
-                                iconSize: root.compactLayout ? 21 : 24
+                                iconSize: root.narrowLayout ? 19 : (root.compactLayout ? 21 : 24)
                                 fill: 1
                                 color: Appearance.colors.colOnLayer1
                                 Behavior on color {
@@ -530,7 +537,7 @@ Item {
                     }
 
                     RippleButton {
-                        implicitWidth: root.compactLayout ? 28 : 32
+                        implicitWidth: root.narrowLayout ? 24 : (root.compactLayout ? 28 : 32)
                         implicitHeight: implicitWidth
                         buttonText: Translation.tr("Next")
                         enabled: root.effectiveCanGoNext
@@ -544,7 +551,7 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "skip_next"
-                                iconSize: root.compactLayout ? 19 : 22
+                                iconSize: root.narrowLayout ? 17 : (root.compactLayout ? 19 : 22)
                                 fill: 1
                                 color: blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0
                                 Behavior on color {
@@ -556,7 +563,7 @@ Item {
                     }
 
                     RippleButton {
-                        implicitWidth: root.compactLayout ? 26 : 30
+                        implicitWidth: root.narrowLayout ? 22 : (root.compactLayout ? 26 : 30)
                         implicitHeight: implicitWidth
                         buttonText: Translation.tr("Repeat")
                         enabled: root.effectiveRepeatSupported
@@ -573,7 +580,7 @@ Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: root.effectiveRepeatOne ? "repeat_one" : "repeat"
-                                iconSize: root.compactLayout ? 17 : 19
+                                iconSize: root.narrowLayout ? 15 : (root.compactLayout ? 17 : 19)
                                 fill: root.effectiveRepeatActive ? 1 : 0
                                 color: root.effectiveRepeatActive
                                     ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
@@ -585,6 +592,7 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     StyledText {
+                        Layout.minimumWidth: implicitWidth
                         text: StringUtils.friendlyTimeForSeconds(root.effectiveLength)
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.family: Appearance.font.family.numbers

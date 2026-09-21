@@ -604,8 +604,6 @@ PanelWindow {
                 z: 9998
                 anchors.fill: parent
                 visible: !regionSelectionControls.useWaffle
-                    && regionSelectionControls.opacity > 0.001
-                opacity: regionSelectionControls.opacity
                 edge: "bottom"
                 ownerThickness: root.screenEdgeThickness
                 outputRect: Qt.rect(0, 0, width, height)
@@ -618,7 +616,7 @@ PanelWindow {
                 fillColor: Appearance.colors.colLayer0
                 borderColor: Appearance.colors.colLayer0Border
                 borderWidth: 0
-                progress: regionSelectionControls.opacity
+                progress: 1
                 shadowEnabled: root.screenEdgeShadowEnabled
                     && root.screenEdgeShadowSize > 0
                     && root.screenEdgeShadowOpacity > 0

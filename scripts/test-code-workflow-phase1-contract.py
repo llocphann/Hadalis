@@ -96,6 +96,8 @@ require(page, '" · READ ONLY"',
         "Inspector must label mutation-ineligible edges explicitly")
 require(page, "visible: root.selectedIrEdge?.previewable === true",
         "Disconnect affordance must stay gated to reviewed previewable edges")
+require(canvas, "CodeWorkflowSession.selectedSemanticAnchor.length === 0",
+        "graph highlight must yield to finer semantic selection")
 require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")
 require(page, "readOnly: true", "Source Preview must be read-only")
 require(page, "FileView {", "Source Preview must read selected source")

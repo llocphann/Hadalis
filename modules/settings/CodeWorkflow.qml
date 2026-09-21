@@ -1161,7 +1161,7 @@ Item {
                 }
                 RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"
-                    mainText: "Reset view"
+                    mainText: "Fit graph"
                     onClicked: canvas.fitGraph()
                 }
                 RippleButtonWithIcon {

@@ -297,7 +297,9 @@ Item {
         const margin = 28
         const availableWidth = Math.max(1, root.width - margin * 2)
         const availableHeight = Math.max(1, root.height - margin * 2)
-        const nextZoom = Math.max(0.35, Math.min(
+        const nextZoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            Math.min(
             1.4,
             availableWidth / Math.max(1, bounds.width),
             availableHeight / Math.max(1, bounds.height)))
@@ -430,8 +432,11 @@ Item {
             const delta = event.pixelDelta.y !== 0
                 ? event.pixelDelta.y * 3
                 : event.angleDelta.y
-            const nextZoom = Math.max(0.35, Math.min(2.5,
-                oldZoom * Math.pow(1.0015, delta)))
+            const nextZoom = Math.max(
+                CodeWorkflowSession.minimumZoom,
+                Math.min(
+                    CodeWorkflowSession.maximumZoom,
+                    oldZoom * Math.pow(1.0015, delta)))
             const graphX = (event.x - CodeWorkflowSession.panX) / oldZoom
             const graphY = (event.y - CodeWorkflowSession.panY) / oldZoom
             CodeWorkflowSession.setViewport(
@@ -500,8 +505,11 @@ Item {
         function updateViewport(): void {
             if (!active)
                 return
-            const nextZoom = Math.max(0.35,
-                Math.min(2.5, baseZoom * activeScale))
+            const nextZoom = Math.max(
+                CodeWorkflowSession.minimumZoom,
+                Math.min(
+                    CodeWorkflowSession.maximumZoom,
+                    baseZoom * activeScale))
             CodeWorkflowSession.setViewport(
                 centroid.position.x - pivot.x * nextZoom,
                 centroid.position.y - pivot.y * nextZoom,

@@ -193,6 +193,55 @@ desired screen-space width divided by the current zoom. This preserves the
 existing 2.4/3.0/3.6 px visual hierarchy across Fit, manual zoom and subflows
 instead of letting transforms make lines alternately faint or heavy.
 
+### Smart-lane routing and resizable workbench panes
+
+The post-capture routing pass deliberately moved away from a single cubic
+Bezier for every relation. The design references mature node/workflow editors:
+Blender and Unreal both treat rerouting as a first-class way to keep wires away
+from graph content; React Flow exposes `smoothstep`/custom edge routing in
+addition to Bezier; Node-RED treats resizable side panels as part of the editor
+workspace rather than fixed chrome.
+
+Hadalis now uses an automatic `smooth-step-lane-v2` policy without inventing
+synthetic semantic nodes:
+
+- Routes are orthogonal lanes rendered as rounded `PathSvg` corners through
+  `Shape.CurveRenderer`.
+- Candidate scoring is lexicographic in practice: unrelated node collision is
+  dominant, then wire crossing, then non-endpoint collinear overlap, then route
+  length/bend count.
+- Shared source/target endpoint segments are allowed to bundle because the
+  reviewed IR is node-level and does not claim Blender/Blueprint-style pin
+  semantics that it does not actually have.
+- Fan-out lanes are ordered by target position. Horizontal routes preserve a
+  target-side label run, and labels prefer the last horizontal segment so dense
+  lifecycle fan-outs do not pile all labels on the source trunk.
+- Stroke and arrow dimensions remain screen-space stable across zoom.
+- Manual reroute handles are intentionally deferred. They would require an
+  explicit visual-layout persistence model and, for pin-level behavior, richer
+  reviewed IR evidence rather than fabricated sockets.
+
+A deterministic replay of the current 4 graphs / 37 edges reports **0 unrelated
+node collisions, 0 wire crossings and 0 non-endpoint overlap**. Current route
+complexity is: Bar 18 edges / 11,216 Manhattan units / max 2 bends; Media
+6 / 935 / 2; Clock 6 / 957 / 2; Resources 7 / 2,162 / 3. This is static
+geometry evidence; live Niri capture remains the visual acceptance gate.
+
+The workbench is also no longer fixed-width chrome. Targets, Graph and Inspector
+share a horizontal Qt `SplitView`; the graph/source workspace shares a vertical
+`SplitView`. Targets persist at 224px by default (180–420px), Inspector at
+280px (240–520px), and Source Preview at 190px (120–420px). Splitter visuals are
+6px, expose an 18px invisible edge hit target, show the correct horizontal/
+vertical resize cursor, and persist final pane dimensions through
+`CodeWorkflowSession`. The capture harness includes a non-default
+`pane-resize` state and emits `meta/route-diagnostics.json` for visual review.
+
+**Supersession note:** the Phase 0 renderer decision and “no production editor
+UI” statements later in this document are preserved as historical experiment
+evidence. They predate the current scoped Code Workflow implementation above and
+must not be read as a description of the current `dev` UI. Their benchmark and
+qualification limits still apply to the historical experiments they describe.
+
 This pass intentionally does **not** widen source-write allowlists, transaction
 semantics, parser capability, runtime registration scope, or shell-wide inspect
 coverage. GitHub connector status queries for these direct `dev` push commits

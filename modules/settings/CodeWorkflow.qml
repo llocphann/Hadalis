@@ -230,6 +230,10 @@ Item {
             targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
             inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
             sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
+            actualTargetsPaneWidth: targetsPane.width,
+            actualInspectorPaneWidth: inspectorPane.width,
+            actualSourcePreviewHeight: sourcePane.visible
+                ? sourcePane.height : 0,
             routeDiagnostics: canvas.routeDiagnostics(),
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,

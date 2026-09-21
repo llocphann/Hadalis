@@ -1061,7 +1061,7 @@ Item {
                 RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"
                     mainText: "Reset view"
-                    onClicked: CodeWorkflowSession.resetViewport()
+                    onClicked: canvas.fitGraph()
                 }
                 RippleButtonWithIcon {
                     materialIcon: "code"

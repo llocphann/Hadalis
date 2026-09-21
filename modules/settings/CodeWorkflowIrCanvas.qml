@@ -30,6 +30,75 @@ Item {
         return extent
     }
 
+    function nodeById(nodeId: string): var {
+        return root.nodes.find(node => node.id === nodeId) ?? null
+    }
+
+    function edgeRoute(edge): var {
+        const fromNode = root.nodeById(edge?.from ?? "")
+        const toNode = root.nodeById(edge?.to ?? "")
+        if (!fromNode || !toNode)
+            return null
+
+        const fromX = Number(fromNode.x ?? 0)
+        const fromY = Number(fromNode.y ?? 0)
+        const toX = Number(toNode.x ?? 0)
+        const toY = Number(toNode.y ?? 0)
+        const fromRight = fromX + root.nodeWidth
+        const toRight = toX + root.nodeWidth
+        const separatedRight = toX >= fromRight
+        const separatedLeft = toRight <= fromX
+        const vertical = !separatedRight && !separatedLeft
+
+        let x0 = 0
+        let y0 = 0
+        let x1 = 0
+        let y1 = 0
+        let x2 = 0
+        let y2 = 0
+        let x3 = 0
+        let y3 = 0
+        let direction = 1
+        let bend = 48
+
+        if (vertical) {
+            const downward = toY + root.nodeHeight / 2
+                >= fromY + root.nodeHeight / 2
+            direction = downward ? 1 : -1
+            x0 = fromX + root.nodeWidth / 2
+            y0 = fromY + (downward ? root.nodeHeight : 0)
+            x3 = toX + root.nodeWidth / 2
+            y3 = toY + (downward ? 0 : root.nodeHeight)
+            bend = Math.max(48, Math.abs(y3 - y0) / 2)
+            x1 = x0
+            y1 = y0 + direction * bend
+            x2 = x3
+            y2 = y3 - direction * bend
+        } else {
+            const rightward = separatedRight
+            direction = rightward ? 1 : -1
+            x0 = fromX + (rightward ? root.nodeWidth : 0)
+            y0 = fromY + root.nodeHeight / 2
+            x3 = toX + (rightward ? 0 : root.nodeWidth)
+            y3 = toY + root.nodeHeight / 2
+            bend = Math.max(48, Math.abs(x3 - x0) / 2)
+            x1 = x0 + direction * bend
+            y1 = y0
+            x2 = x3 - direction * bend
+            y2 = y3
+        }
+
+        return {
+            vertical: vertical,
+            direction: direction,
+            bend: bend,
+            x0: x0, y0: y0,
+            x1: x1, y1: y1,
+            x2: x2, y2: y2,
+            x3: x3, y3: y3
+        }
+    }
+
     function graphBounds(): var {
         if (root.nodes.length === 0)
             return {
@@ -52,24 +121,19 @@ Item {
             maxY = Math.max(maxY, y + root.nodeHeight)
         }
 
-        // Backward edges route outside the node boxes. Include their horizontal
-        // Bézier controls so Fit graph never clips the real rendered path.
+        // Fit the same geometry that the renderer and hit-test use.
         for (const edge of root.edges) {
-            const fromNode = root.nodeById(edge?.from ?? "")
-            const toNode = root.nodeById(edge?.to ?? "")
-            if (!fromNode || !toNode)
+            const route = root.edgeRoute(edge)
+            if (!route)
                 continue
-            const fromX = Number(fromNode.x ?? 0)
-            const toX = Number(toNode.x ?? 0)
-            const forward = toX >= fromX
-            const direction = forward ? 1 : -1
-            const x0 = fromX + (forward ? root.nodeWidth : 0)
-            const x3 = toX + (forward ? 0 : root.nodeWidth)
-            const bend = Math.max(48, Math.abs(x3 - x0) / 2)
-            const x1 = x0 + direction * bend
-            const x2 = x3 - direction * bend
-            minX = Math.min(minX, x0, x1, x2, x3)
-            maxX = Math.max(maxX, x0, x1, x2, x3)
+            minX = Math.min(
+                minX, route.x0, route.x1, route.x2, route.x3)
+            minY = Math.min(
+                minY, route.y0, route.y1, route.y2, route.y3)
+            maxX = Math.max(
+                maxX, route.x0, route.x1, route.x2, route.x3)
+            maxY = Math.max(
+                maxY, route.y0, route.y1, route.y2, route.y3)
         }
 
         return {
@@ -78,10 +142,6 @@ Item {
             width: Math.max(1, maxX - minX),
             height: Math.max(1, maxY - minY)
         }
-    }
-
-    function nodeById(nodeId: string): var {
-        return root.nodes.find(node => node.id === nodeId) ?? null
     }
 
     function pointSegmentDistance(
@@ -117,33 +177,20 @@ Item {
     }
 
     function edgeDistance(edge, px: real, py: real): real {
-        const fromNode = root.nodeById(edge?.from ?? "")
-        const toNode = root.nodeById(edge?.to ?? "")
-        if (!fromNode || !toNode)
+        const route = root.edgeRoute(edge)
+        if (!route)
             return 1e9
 
-        const fromX = Number(fromNode.x ?? 0)
-        const toX = Number(toNode.x ?? 0)
-        const forward = toX >= fromX
-        const direction = forward ? 1 : -1
-        const x0 = fromX + (forward ? root.nodeWidth : 0)
-        const y0 = Number(fromNode.y ?? 0) + root.nodeHeight / 2
-        const x3 = toX + (forward ? 0 : root.nodeWidth)
-        const y3 = Number(toNode.y ?? 0) + root.nodeHeight / 2
-        const bend = Math.max(48, Math.abs(x3 - x0) / 2)
-        const x1 = x0 + direction * bend
-        const y1 = y0
-        const x2 = x3 - direction * bend
-        const y2 = y3
-
         let best = 1e9
-        let previousX = x0
-        let previousY = y0
+        let previousX = route.x0
+        let previousY = route.y0
         const steps = 20
         for (let step = 1; step <= steps; ++step) {
             const t = step / steps
-            const nextX = root.cubicCoordinate(x0, x1, x2, x3, t)
-            const nextY = root.cubicCoordinate(y0, y1, y2, y3, t)
+            const nextX = root.cubicCoordinate(
+                route.x0, route.x1, route.x2, route.x3, t)
+            const nextY = root.cubicCoordinate(
+                route.y0, route.y1, route.y2, route.y3, t)
             best = Math.min(best, root.pointSegmentDistance(
                 px, py, previousX, previousY, nextX, nextY))
             previousX = nextX
@@ -418,25 +465,8 @@ Item {
 
                 ShapePath {
                     id: edgePath
-                    readonly property real startNodeX:
-                        edgeShape.fromNode?.x ?? 0
-                    readonly property real startNodeY:
-                        edgeShape.fromNode?.y ?? 0
-                    readonly property real endNodeX:
-                        edgeShape.toNode?.x ?? 0
-                    readonly property real endNodeY:
-                        edgeShape.toNode?.y ?? 0
-                    readonly property bool forward:
-                        endNodeX >= startNodeX
-                    readonly property real direction:
-                        forward ? 1 : -1
-                    readonly property real startPortX:
-                        startNodeX + (forward ? root.nodeWidth : 0)
-                    readonly property real endPortX:
-                        endNodeX + (forward ? 0 : root.nodeWidth)
-                    readonly property real bend:
-                        Math.max(48,
-                            Math.abs(endPortX - startPortX) / 2)
+                    readonly property var route:
+                        root.edgeRoute(edgeShape.modelData)
 
                     strokeColor: root.edgeInk(
                         edgeShape.modelData.kind,
@@ -447,30 +477,24 @@ Item {
                     capStyle: ShapePath.RoundCap
                     joinStyle: ShapePath.RoundJoin
                     fillColor: "transparent"
-                    startX: startPortX
-                    startY: startNodeY + root.nodeHeight / 2
+                    startX: route?.x0 ?? 0
+                    startY: route?.y0 ?? 0
 
                     PathCubic {
-                        x: edgePath.endPortX
-                        y: edgePath.endNodeY + root.nodeHeight / 2
-                        control1X: edgePath.startPortX
-                            + edgePath.direction * edgePath.bend
-                        control1Y: edgePath.startNodeY
-                            + root.nodeHeight / 2
-                        control2X: edgePath.endPortX
-                            - edgePath.direction * edgePath.bend
-                        control2Y: edgePath.endNodeY
-                            + root.nodeHeight / 2
+                        x: edgePath.route?.x3 ?? 0
+                        y: edgePath.route?.y3 ?? 0
+                        control1X: edgePath.route?.x1 ?? 0
+                        control1Y: edgePath.route?.y1 ?? 0
+                        control2X: edgePath.route?.x2 ?? 0
+                        control2Y: edgePath.route?.y2 ?? 0
                     }
                 }
 
                 ShapePath {
                     id: arrowPath
-                    readonly property real tipX:
-                        edgePath.endPortX
-                    readonly property real tipY:
-                        Number(edgeShape.toNode?.y ?? 0)
-                            + root.nodeHeight / 2
+                    readonly property var route: edgePath.route
+                    readonly property real tipX: route?.x3 ?? 0
+                    readonly property real tipY: route?.y3 ?? 0
                     readonly property color ink: root.edgeInk(
                         edgeShape.modelData.kind,
                         edgeShape.highlighted)
@@ -481,12 +505,24 @@ Item {
                     startY: tipY
 
                     PathLine {
-                        x: arrowPath.tipX - 10 * edgePath.direction
-                        y: arrowPath.tipY - 5
+                        x: arrowPath.route?.vertical
+                            ? arrowPath.tipX - 5
+                            : arrowPath.tipX
+                                - 10 * (arrowPath.route?.direction ?? 1)
+                        y: arrowPath.route?.vertical
+                            ? arrowPath.tipY
+                                - 10 * (arrowPath.route?.direction ?? 1)
+                            : arrowPath.tipY - 5
                     }
                     PathLine {
-                        x: arrowPath.tipX - 10 * edgePath.direction
-                        y: arrowPath.tipY + 5
+                        x: arrowPath.route?.vertical
+                            ? arrowPath.tipX + 5
+                            : arrowPath.tipX
+                                - 10 * (arrowPath.route?.direction ?? 1)
+                        y: arrowPath.route?.vertical
+                            ? arrowPath.tipY
+                                - 10 * (arrowPath.route?.direction ?? 1)
+                            : arrowPath.tipY + 5
                     }
                     PathLine {
                         x: arrowPath.tipX
@@ -505,30 +541,16 @@ Item {
 
                 readonly property var fromNode: root.nodeById(modelData.from)
                 readonly property var toNode: root.nodeById(modelData.to)
-                readonly property real fromX:
-                    Number(fromNode?.x ?? 0)
-                readonly property real toX:
-                    Number(toNode?.x ?? 0)
-                readonly property bool forward: toX >= fromX
-                readonly property real direction: forward ? 1 : -1
-                readonly property real startX:
-                    fromX + (forward ? root.nodeWidth : 0)
-                readonly property real startY:
-                    Number(fromNode?.y ?? 0) + root.nodeHeight / 2
-                readonly property real endX:
-                    toX + (forward ? 0 : root.nodeWidth)
-                readonly property real endY:
-                    Number(toNode?.y ?? 0) + root.nodeHeight / 2
-                readonly property real bend:
-                    Math.max(48, Math.abs(endX - startX) / 2)
-                readonly property real midX: root.cubicCoordinate(
-                    startX,
-                    startX + direction * bend,
-                    endX - direction * bend,
-                    endX,
-                    0.5)
-                readonly property real midY: root.cubicCoordinate(
-                    startY, startY, endY, endY, 0.5)
+                readonly property var route:
+                    root.edgeRoute(modelData)
+                readonly property real midX: route
+                    ? root.cubicCoordinate(
+                        route.x0, route.x1, route.x2, route.x3, 0.5)
+                    : 0
+                readonly property real midY: route
+                    ? root.cubicCoordinate(
+                        route.y0, route.y1, route.y2, route.y3, 0.5)
+                    : 0
 
                 visible: fromNode !== null
                     && toNode !== null

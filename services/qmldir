@@ -71,6 +71,7 @@ singleton ThemeService 1.0 ThemeService.qml
 singleton TimerService 1.0 TimerService.qml
 InternalTodoBackend 1.0 InternalTodoBackend.qml
 ObsidianTodoBackend 1.0 ObsidianTodoBackend.qml
+DailyNoteTodoBackend 1.0 DailyNoteTodoBackend.qml
 singleton Todo 1.0 Todo.qml
 singleton Translation 1.0 Translation.qml
 singleton TrayService 1.0 TrayService.qml

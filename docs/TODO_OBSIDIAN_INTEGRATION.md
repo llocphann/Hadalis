@@ -1,8 +1,9 @@
-# Todo ↔ Obsidian Integration Design
+# Todo ↔ Obsidian Integration
 
-Status: **implementation design, no runtime behavior change**
+Status: **implemented on `dev`; Internal remains the default backend**
 
 Research baseline: 2026-09-22
+Runtime contract updated: 2026-09-22
 
 This document defines the safe integration boundary between Hadalis' existing
 Todo UI and an Obsidian Markdown task source. It is intentionally conservative:
@@ -89,12 +90,11 @@ TodoWidget / DashTodo
         |
         +-- obsidian backend
               configured Markdown note (canonical)
-              todo-obsidian-cache.json (derived cache only)
+```
 
 The existing todo.json remains the dormant internal store while the Obsidian
 backend is active. It is not reused as an Obsidian cache and is not overwritten
 by Obsidian synchronization.
-```
 
 The default is `internal`. Existing installations therefore change no behavior
 until the user explicitly configures and activates the Obsidian backend.
@@ -103,9 +103,10 @@ There must never be two writable canonical stores at the same time. Backend
 switching changes which store is active; it does not repurpose or destroy the
 inactive store.
 
-## 5. Proposed config schema
+## 5. Config schema
 
-Add a top-level `todo` object to `Config.qml` and `defaults/config.json`.
+The implementation adds a top-level `todo` object to `Config.qml` and
+`defaults/config.json`.
 
 ```json
 {
@@ -521,19 +522,14 @@ obsidian-unavailable
 
 Do not block reading merely because rich mutation is unavailable.
 
-Persist last-known, non-secret integration metadata in a separate derived state
-cache, proposed path:
+V1 deliberately does **not** persist a capability/settings cache. Tasks settings
+are trusted only when obtained from the currently running, physically verified
+vault. When Obsidian or Tasks capability is unavailable, rich classification
+fails closed instead of authorizing a write from stale metadata.
 
-```
-~/.local/state/user/todo-obsidian-cache.json
-```
-
-The cache may contain the verified vault path, plugin version, Global Filter,
-status map and capability timestamp. It must never contain canonical task
-content and must never be treated as proof that Obsidian is currently running.
-Its purpose is conservative offline classification and diagnostics. Invalid or
-stale cache data can only reduce mutation capability; it must not authorize a
-risky write.
+A future diagnostic-only cache may store non-secret metadata, but it must never
+contain canonical task content, prove that Obsidian is currently running, or
+increase mutation capability.
 
 ## 16. Todo.qml facade evolution
 
@@ -621,12 +617,17 @@ and migration/setup transaction succeeds.
 
 Switching canonical stores is a transaction, not a toggle.
 
-If the configured managed section is empty and the internal list contains
-tasks, present:
+The implemented V1 setup offers two ownership-safe paths:
 
-- Use Obsidian tasks as-is
-- Export Hadalis tasks to Obsidian
-- Merge and review
+- **Use Obsidian note**: activate the verified note as-is and preserve the
+  Internal store dormant and unchanged.
+- **Preview import → Import & activate**: available only when the managed target
+  section is empty. Preview reports added/duplicate/conflicting counts, then the
+  import is backed up, copied and verified before activation.
+
+Automatic merge into a non-empty managed section is intentionally deferred.
+V1 fails closed instead of guessing how to reconcile two canonical histories;
+the user can review/edit the note explicitly and then activate it as-is.
 
 Before applying a migration:
 
@@ -642,8 +643,8 @@ Before applying a migration:
    or cannot start, release the freeze and keep Internal canonical.
 
 Never delete or overwrite `todo.json` during migration. It remains the
-inactive internal store and therefore a clean rollback target. Obsidian-derived
-state belongs in `todo-obsidian-cache.json`.
+inactive internal store and therefore a clean rollback target. V1 keeps
+Obsidian runtime capability state in memory only.
 
 Returning to `internal` is also explicit; it reactivates the preserved
 internal store. It must not silently import the current Obsidian state unless
@@ -736,13 +737,19 @@ Parser fixtures must cover at least:
 36. two attempted concurrent mutations;
 37. note symlink escaping vault -> reject;
 38. Dashboard and Sidebar see the same refreshed list;
-39. Obsidian cache corruption reduces capability but never authorizes mutation;
+39. no persisted capability cache exists in V1, so stale cache data cannot
+    authorize mutation;
 40. `backend=internal` regression: existing Todo behavior remains unchanged.
 
 Tests should use temporary directories and fixture Markdown. Unit tests must not
 require a real personal vault.
 
 ## 23. Implementation sequence
+
+The sequence below was used to keep the integration reviewable. The runtime now
+contains each layer; later hardening commits tightened Tasks status semantics,
+Flatpak detection, migration staging, source persistence, and wrong-vault
+guards without changing the default Internal ownership.
 
 Keep commits small and independently reviewable.
 

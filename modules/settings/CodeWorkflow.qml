@@ -940,20 +940,34 @@ Item {
     component Pill: Rectangle {
         required property string label
         property color accent: Appearance.colors.colPrimary
-        implicitWidth: pillText.implicitWidth + 14
+        readonly property color ink: ColorUtils.readableAccentInk(
+            accent,
+            Appearance.colors.colLayer2,
+            4.5,
+            Appearance.colors.colOnLayer1)
+        implicitWidth: Math.min(implicitContentWidth, 180)
+        readonly property real implicitContentWidth:
+            pillText.implicitWidth + 14
         implicitHeight: pillText.implicitHeight + 6
         radius: implicitHeight / 2
-        color: ColorUtils.transparentize(accent, 0.84)
+        color: Appearance.colors.colLayer2
         border.width: 1
-        border.color: ColorUtils.transparentize(accent, 0.5)
+        border.color: ColorUtils.applyAlpha(ink, 0.6)
+        clip: true
 
         StyledText {
             id: pillText
-            anchors.centerIn: parent
+            anchors.fill: parent
+            anchors.leftMargin: 7
+            anchors.rightMargin: 7
+            verticalAlignment: Text.AlignVCenter
+            horizontalAlignment: Text.AlignHCenter
             text: parent.label
-            color: parent.accent
+            color: parent.ink
             font.pixelSize: Appearance.font.pixelSize.smallest
             font.weight: Font.DemiBold
+            elide: Text.ElideRight
+            maximumLineCount: 1
         }
     }
 
@@ -1281,6 +1295,8 @@ Item {
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
+                        maximumLineCount: 3
+                        elide: Text.ElideRight
                     }
                     StyledText {
                         visible: root.inspectedSemanticEntry === null
@@ -1336,6 +1352,8 @@ Item {
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WrapAnywhere
+                        maximumLineCount: 3
+                        elide: Text.ElideRight
                     }
                     RippleButtonWithIcon {
                         visible: root.selectedIrEdge === null
@@ -1392,6 +1410,8 @@ Item {
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WrapAnywhere
+                        maximumLineCount: 3
+                        elide: Text.ElideRight
                     }
                     StyledText {
                         Layout.fillWidth: true
@@ -1473,7 +1493,8 @@ Item {
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smaller
-                        wrapMode: Text.WrapAnywhere
+                        elide: Text.ElideMiddle
+                        maximumLineCount: 1
                     }
                     StyledText { text: "Source anchor"; color: Appearance.colors.colSubtext }
                     StyledText {
@@ -1487,6 +1508,8 @@ Item {
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WrapAnywhere
+                        maximumLineCount: 3
+                        elide: Text.ElideRight
                     }
                     StyledText { text: "Semantic ID"; color: Appearance.colors.colSubtext }
                     StyledText {
@@ -1502,7 +1525,8 @@ Item {
                             : Appearance.colors.colSubtext
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
-                        wrapMode: Text.WrapAnywhere
+                        elide: Text.ElideMiddle
+                        maximumLineCount: 1
                     }
                     StyledText { text: "Semantic rebind"; color: Appearance.colors.colSubtext }
                     StyledText {

@@ -199,6 +199,8 @@ require(page, '"OTHER SELECTION"',
         "transaction panel must label selection mismatch explicitly")
 require(page, '"Preview belongs to another inspect selection. "',
         "transaction panel must explain how to resume guarded controls")
+require(page, '=== "signal-action"\n                                ? 300',
+        "signal/action transaction controls must not be clipped by literal height")
 require(page, "root.selectedIrEdge !== null",
         "Inspector header must treat selected edges as primary inspect objects")
 require(page, "?? root.selectedIrEdge?.kind",

@@ -6,6 +6,7 @@ from __future__ import annotations
 import codecs
 import importlib.util
 import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,7 +18,7 @@ obsidian_todo = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(obsidian_todo)
 
 
-class ObsidianTodoScanTests(unittest.TestCase):
+class ObsidianTodoTests(unittest.TestCase):
     def make_vault(self, data: bytes, note: str = "Hadalis/Todo.md"):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -29,11 +30,11 @@ class ObsidianTodoScanTests(unittest.TestCase):
 
     def scan(self, text: str, newline: str = "\n"):
         body = text.replace("\n", newline).encode("utf-8")
-        vault, _ = self.make_vault(body)
-        return obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")
+        vault, path = self.make_vault(body)
+        return vault, path, obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")
 
     def test_parses_tasks_and_preserves_structure(self):
-        result = self.scan(
+        _, _, result = self.scan(
             """# Tasks
 <!-- hadalis:todo:start -->
 - [ ] plain
@@ -57,7 +58,7 @@ not a task
         self.assertFalse(tasks[3]["done"])
 
     def test_duplicate_text_has_distinct_ephemeral_ids(self):
-        result = self.scan(
+        _, _, result = self.scan(
             """<!-- hadalis:todo:start -->
 - [ ] same
 - [ ] same
@@ -68,7 +69,7 @@ not a task
         self.assertNotEqual(result["tasks"][0]["id"], result["tasks"][1]["id"])
 
     def test_fenced_tasks_and_markers_are_ignored(self):
-        result = self.scan(
+        _, _, result = self.scan(
             """```md
 <!-- hadalis:todo:start -->
 - [ ] fake
@@ -85,7 +86,7 @@ not a task
         self.assertEqual([t["content"] for t in result["tasks"]], ["real"])
 
     def test_blockquote_fence_is_ignored(self):
-        result = self.scan(
+        _, _, result = self.scan(
             """<!-- hadalis:todo:start -->
 > ```
 > - [ ] fake
@@ -110,7 +111,7 @@ not a task
         self.assertEqual(result["tasks"][0]["content"], "café")
 
     def test_no_final_newline_is_reported(self):
-        result = self.scan(
+        _, _, result = self.scan(
             "<!-- hadalis:todo:start -->\n"
             "- [ ] task\n"
             "<!-- hadalis:todo:end -->"
@@ -146,7 +147,7 @@ not a task
         vault, _ = self.make_vault(
             b"<!-- hadalis:todo:start -->\n<!-- hadalis:todo:end -->\n"
         )
-        for bad in ("../outside.md", "/tmp/outside.md", r"..\\outside.md", ""):
+        for bad in ("../outside.md", "/tmp/outside.md", r"..\outside.md", ""):
             with self.subTest(path=bad):
                 with self.assertRaises(obsidian_todo.TodoError):
                     obsidian_todo.resolve_note(str(vault), bad)
@@ -172,6 +173,153 @@ not a task
         with self.assertRaises(obsidian_todo.TodoError) as error:
             obsidian_todo.resolve_note("/", "tmp/example.md")
         self.assertEqual(error.exception.code, "invalid_vault_path")
+
+    def test_basic_toggle_preserves_bom_crlf_spacing_and_outside_bytes(self):
+        original = codecs.BOM_UTF8 + (
+            "# Before\r\n"
+            "<!-- hadalis:todo:start -->\r\n"
+            "  *   [ ]   keep spacing\r\n"
+            "<!-- hadalis:todo:end -->\r\n"
+            "# After\r\n"
+        ).encode("utf-8")
+        vault, path = self.make_vault(original)
+        before = obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")
+        task = before["tasks"][0]
+        result = obsidian_todo.toggle_basic_task(
+            str(vault), "Hadalis/Todo.md", task["id"], before["document"]["sha256"]
+        )
+        raw = path.read_bytes()
+        self.assertTrue(raw.startswith(codecs.BOM_UTF8))
+        self.assertIn(b"  *   [x]   keep spacing\r\n", raw)
+        self.assertTrue(raw.endswith(b"# After\r\n"))
+        self.assertTrue(result["tasks"][0]["done"])
+        self.assertEqual(result["document"]["newline"], "crlf")
+
+    def test_basic_toggle_rejects_rich_metadata_and_custom_status(self):
+        for line in (
+            "- [ ] repeat 🔁 every week",
+            "- [ ] due 📅 2026-09-25",
+            "- [ ] [due:: 2026-09-25]",
+            "- [/] in progress",
+            "- [Q] custom",
+        ):
+            with self.subTest(line=line):
+                vault, _, scan = self.scan(
+                    "<!-- hadalis:todo:start -->\n"
+                    + line + "\n"
+                    + "<!-- hadalis:todo:end -->\n"
+                )
+                with self.assertRaises(obsidian_todo.TodoError) as error:
+                    obsidian_todo.toggle_basic_task(
+                        str(vault), "Hadalis/Todo.md",
+                        scan["tasks"][0]["id"], scan["document"]["sha256"],
+                    )
+                self.assertEqual(error.exception.code, "rich_task_required")
+
+    def test_delete_can_remove_rich_task_without_completion_semantics(self):
+        vault, path, scan = self.scan(
+            """# Before
+<!-- hadalis:todo:start -->
+- [ ] recurring 🔁 every day
+- [ ] keep
+<!-- hadalis:todo:end -->
+# After
+"""
+        )
+        result = obsidian_todo.delete_task(
+            str(vault), "Hadalis/Todo.md",
+            scan["tasks"][0]["id"], scan["document"]["sha256"],
+        )
+        text = path.read_text(encoding="utf-8")
+        self.assertNotIn("recurring", text)
+        self.assertIn("- [ ] keep", text)
+        self.assertIn("# Before", text)
+        self.assertIn("# After", text)
+        self.assertEqual([t["content"] for t in result["tasks"]], ["keep"])
+
+    def test_add_requires_document_and_managed_hashes(self):
+        vault, path, scan = self.scan(
+            """# Before
+<!-- hadalis:todo:start -->
+- [ ] existing
+<!-- hadalis:todo:end -->
+# After
+"""
+        )
+        result = obsidian_todo.add_basic_task(
+            str(vault), "Hadalis/Todo.md", "new task",
+            scan["document"]["sha256"], scan["managed"]["sha256"],
+        )
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("- [ ] existing\n- [ ] new task\n<!-- hadalis:todo:end -->", text)
+        self.assertTrue(text.startswith("# Before\n"))
+        self.assertTrue(text.endswith("# After\n"))
+        self.assertEqual(len(result["tasks"]), 2)
+
+    def test_add_rejects_multiline_text(self):
+        vault, _, scan = self.scan(
+            "<!-- hadalis:todo:start -->\n<!-- hadalis:todo:end -->\n"
+        )
+        with self.assertRaises(obsidian_todo.TodoError) as error:
+            obsidian_todo.add_basic_task(
+                str(vault), "Hadalis/Todo.md", "one\ntwo",
+                scan["document"]["sha256"], scan["managed"]["sha256"],
+            )
+        self.assertEqual(error.exception.code, "invalid_task_text")
+
+    def test_stale_document_hash_fails_without_writing(self):
+        vault, path, scan = self.scan(
+            """<!-- hadalis:todo:start -->
+- [ ] task
+<!-- hadalis:todo:end -->
+"""
+        )
+        path.write_text(
+            """external
+<!-- hadalis:todo:start -->
+- [ ] task
+<!-- hadalis:todo:end -->
+""",
+            encoding="utf-8",
+        )
+        external = path.read_bytes()
+        with self.assertRaises(obsidian_todo.TodoError) as error:
+            obsidian_todo.toggle_basic_task(
+                str(vault), "Hadalis/Todo.md",
+                scan["tasks"][0]["id"], scan["document"]["sha256"],
+            )
+        self.assertEqual(error.exception.code, "conflict")
+        self.assertEqual(path.read_bytes(), external)
+
+    def test_stale_task_id_fails_without_writing(self):
+        vault, path, scan = self.scan(
+            """<!-- hadalis:todo:start -->
+- [ ] task
+<!-- hadalis:todo:end -->
+"""
+        )
+        current = obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")
+        with self.assertRaises(obsidian_todo.TodoError) as error:
+            obsidian_todo.toggle_basic_task(
+                str(vault), "Hadalis/Todo.md",
+                "deadbeef", current["document"]["sha256"],
+            )
+        self.assertEqual(error.exception.code, "conflict")
+        self.assertIn("- [ ] task", path.read_text(encoding="utf-8"))
+
+    def test_atomic_write_preserves_file_mode(self):
+        vault, path, scan = self.scan(
+            """<!-- hadalis:todo:start -->
+- [ ] task
+<!-- hadalis:todo:end -->
+"""
+        )
+        path.chmod(0o640)
+        obsidian_todo.toggle_basic_task(
+            str(vault), "Hadalis/Todo.md",
+            scan["tasks"][0]["id"], scan["document"]["sha256"],
+        )
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o640)
 
 
 if __name__ == "__main__":

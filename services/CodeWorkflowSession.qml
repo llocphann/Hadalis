@@ -168,6 +168,7 @@ Singleton {
             root.outputName = root.selectedInstanceId.slice(split + 1)
 
         if (CodeWorkflowIr.hasGraph(targetId)) {
+            const changedSubflow = root.subflowTargetId !== targetId
             root.subflowTargetId = targetId
             const graph = CodeWorkflowIr.graphFor(targetId)
             root.selectedNodeId = graph.rootNodeId
@@ -176,7 +177,8 @@ Singleton {
             root.selectedConnectTargetId = ""
             root.selectedSemanticAnchor = ""
             root.clearSemanticAnchor()
-            root.resetViewport()
+            if (changedSubflow)
+                root.resetViewport()
         }
         root.persist()
     }

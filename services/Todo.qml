@@ -20,6 +20,12 @@ Singleton {
         String(Config.options?.todo?.backend ?? "internal")
     readonly property bool useObsidian: root.requestedBackend === "obsidian"
     readonly property string backend: root.useObsidian ? "obsidian" : "internal"
+    readonly property string obsidianSourceMode:
+        String(Config.options?.todo?.obsidian?.sourceMode ?? "managed-note")
+    readonly property bool useDailyNote:
+        root.obsidianSourceMode === "daily-note"
+    readonly property var obsidianBackend:
+        root.useDailyNote ? dailyObsidian : obsidian
 
     // Setup is deliberately separate from canonical ownership. While this is
     // true the Obsidian backend may scan/initialize/preview, but public Todo
@@ -28,24 +34,24 @@ Singleton {
     property bool _activateAfterMigration: false
     property bool _migrationInFlight: false
     readonly property bool obsidianSetupActive: root._obsidianSetupActive
-    readonly property bool obsidianConfigured: obsidian.configured
-    readonly property bool obsidianReady: obsidian.ready
-    readonly property bool obsidianBusy: obsidian.busy
-    readonly property string obsidianErrorCode: obsidian.errorCode
-    readonly property string obsidianErrorMessage: obsidian.errorMessage
-    readonly property var obsidianCapabilities: obsidian.capabilities
-    readonly property var obsidianMigrationPreview: obsidian.migrationPreview
-    readonly property var obsidianList: obsidian.list
-    readonly property string obsidianNoteFullPath: obsidian.noteFullPath
+    readonly property bool obsidianConfigured: root.obsidianBackend.configured
+    readonly property bool obsidianReady: root.obsidianBackend.ready
+    readonly property bool obsidianBusy: root.obsidianBackend.busy
+    readonly property string obsidianErrorCode: root.obsidianBackend.errorCode
+    readonly property string obsidianErrorMessage: root.obsidianBackend.errorMessage
+    readonly property var obsidianCapabilities: root.obsidianBackend.capabilities
+    readonly property var obsidianMigrationPreview: root.obsidianBackend.migrationPreview
+    readonly property var obsidianList: root.obsidianBackend.list
+    readonly property string obsidianNoteFullPath: root.obsidianBackend.noteFullPath
     readonly property bool internalPersistenceBusy: internal.persistenceBusy
 
-    readonly property var list: root.useObsidian ? obsidian.list : internal.list
-    readonly property bool ready: root.useObsidian ? obsidian.ready : internal.ready
-    readonly property bool busy: root.useObsidian ? obsidian.busy : root._migrationInFlight
-    readonly property string errorMessage: root.useObsidian ? obsidian.errorMessage : ""
-    readonly property string errorCode: root.useObsidian ? obsidian.errorCode : ""
+    readonly property var list: root.useObsidian ? root.obsidianBackend.list : internal.list
+    readonly property bool ready: root.useObsidian ? root.obsidianBackend.ready : internal.ready
+    readonly property bool busy: root.useObsidian ? root.obsidianBackend.busy : root._migrationInFlight
+    readonly property string errorMessage: root.useObsidian ? root.obsidianBackend.errorMessage : ""
+    readonly property string errorCode: root.useObsidian ? root.obsidianBackend.errorCode : ""
     readonly property var capabilities: root.useObsidian
-        ? obsidian.capabilities
+        ? root.obsidianBackend.capabilities
         : ({
             backend: "internal",
             noteReadable: true,
@@ -53,8 +59,13 @@ Singleton {
             richMutationAvailable: false,
             lastError: ""
         })
-    readonly property string sourceLabel:
-        root.useObsidian ? "Obsidian · " + String(Config.options?.todo?.obsidian?.notePath ?? "") : "Hadalis"
+    readonly property string sourceLabel: {
+        if (!root.useObsidian)
+            return "Hadalis"
+        if (root.useDailyNote)
+            return "Obsidian · Today"
+        return "Obsidian · " + String(Config.options?.todo?.obsidian?.notePath ?? "")
+    }
     readonly property int internalItemCount: internal.list.length
 
     // Compatibility paths remain the internal store paths. New UI must use
@@ -68,7 +79,7 @@ Singleton {
 
     ObsidianTodoBackend {
         id: obsidian
-        active: root.useObsidian || root._obsidianSetupActive
+        active: (root.useObsidian || root._obsidianSetupActive) && !root.useDailyNote
         vaultPath: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
         notePath: String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md")
         preferTasksPlugin: Config.options?.todo?.obsidian?.preferTasksPlugin ?? true
@@ -76,8 +87,24 @@ Singleton {
             Config.options?.todo?.obsidian?.allowBasicOfflineMutation ?? true
     }
 
+    DailyNoteTodoBackend {
+        id: dailyObsidian
+        active: (root.useObsidian || root._obsidianSetupActive) && root.useDailyNote
+        vaultPath: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
+        folder: String(Config.options?.todo?.obsidian?.dailyNote?.folder
+            ?? "00_Capture/01_Journal")
+        noteFormat: String(Config.options?.todo?.obsidian?.dailyNote?.format
+            ?? "YYYY/MMMM/DD-MM-YYYY-dddd")
+        plannerHeading: String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
+            ?? "Day Planner")
+        plannerHeadingLevel: Number(
+            Config.options?.todo?.obsidian?.dailyNote?.plannerHeadingLevel ?? 2)
+        defaultDurationMinutes: Number(
+            Config.options?.todo?.obsidian?.dailyNote?.defaultDurationMinutes ?? 30)
+    }
+
     Connections {
-        target: obsidian
+        target: root.obsidianBackend
 
         function onMigrationFinished(success, payload): void {
             root._migrationInFlight = false
@@ -110,7 +137,7 @@ Singleton {
             return true
         root._activateAfterMigration = false
         root._obsidianSetupActive = true
-        Qt.callLater(() => obsidian.reload())
+        Qt.callLater(() => root.obsidianBackend.reload())
         return true
     }
 
@@ -124,14 +151,14 @@ Singleton {
     function refreshObsidianSetup(): bool {
         if (!root.useObsidian && !root._obsidianSetupActive)
             return false
-        obsidian.reload()
+        root.obsidianBackend.reload()
         return true
     }
 
     function initializeSection() {
         if (!root.useObsidian && !root._obsidianSetupActive)
             return false
-        return obsidian.initializeSection()
+        return root.obsidianBackend.initializeSection()
     }
 
     function previewInternalToObsidian(): bool {
@@ -139,7 +166,7 @@ Singleton {
                 || !internal.ready
                 || internal.persistenceBusy)
             return false
-        return obsidian.previewInternal(internal.filePath)
+        return root.obsidianBackend.previewInternal(internal.filePath)
     }
 
     function migrateInternalToObsidian(expectedInternalSha) {
@@ -151,7 +178,7 @@ Singleton {
 
         const staging = !root.useObsidian
         root._activateAfterMigration = staging
-        const started = obsidian.migrateInternal(
+        const started = root.obsidianBackend.migrateInternal(
             internal.filePath,
             String(expectedInternalSha ?? "")
         )
@@ -165,7 +192,7 @@ Singleton {
     function activateObsidian(): bool {
         if (root.useObsidian)
             return true
-        if (!root._obsidianSetupActive || !obsidian.ready || obsidian.busy)
+        if (!root._obsidianSetupActive || !root.obsidianBackend.ready || root.obsidianBackend.busy)
             return false
 
         Config.setNestedValue("todo.backend", "obsidian")
@@ -191,16 +218,29 @@ Singleton {
             return internal.addItem(item)
         }
         const content = String(item?.content ?? item?.description ?? "")
-        return obsidian.addTask(content)
+        return root.useDailyNote
+            ? dailyObsidian.addTask(content, "", "")
+            : obsidian.addTask(content)
     }
 
     function addTask(desc) {
+        return root.addTaskWithTime(desc, "", "")
+    }
+
+    function addTaskWithTime(desc, startTime, endTime) {
         if (!root.useObsidian) {
             if (root._migrationInFlight)
                 return false
             return internal.addTask(desc)
         }
-        return obsidian.addTask(String(desc ?? ""))
+        const content = String(desc ?? "")
+        if (root.useDailyNote)
+            return dailyObsidian.addTask(
+                content,
+                String(startTime ?? ""),
+                String(endTime ?? "")
+            )
+        return obsidian.addTask(content)
     }
 
     function toggleTask(taskId) {
@@ -217,7 +257,7 @@ Singleton {
             }
             return false
         }
-        return obsidian.toggleTask(String(taskId ?? ""))
+        return root.obsidianBackend.toggleTask(String(taskId ?? ""))
     }
 
     function deleteTask(taskId) {
@@ -231,7 +271,7 @@ Singleton {
             }
             return false
         }
-        return obsidian.deleteTask(String(taskId ?? ""))
+        return root.obsidianBackend.deleteTask(String(taskId ?? ""))
     }
 
     // Compatibility wrappers for the existing TodoWidget/Dashboard delegates.
@@ -247,7 +287,7 @@ Singleton {
             return false
         if (item.done === true)
             return true
-        return obsidian.toggleTask(String(item.id ?? ""))
+        return root.obsidianBackend.toggleTask(String(item.id ?? ""))
     }
 
     function markUnfinished(index) {
@@ -261,7 +301,7 @@ Singleton {
             return false
         if (item.done !== true)
             return true
-        return obsidian.toggleTask(String(item.id ?? ""))
+        return root.obsidianBackend.toggleTask(String(item.id ?? ""))
     }
 
     function deleteItem(index) {
@@ -273,12 +313,12 @@ Singleton {
         const item = root._itemAt(index)
         if (!item)
             return false
-        return obsidian.deleteTask(String(item.id ?? ""))
+        return root.obsidianBackend.deleteTask(String(item.id ?? ""))
     }
 
     function refresh() {
         if (root.useObsidian)
-            obsidian.reload()
+            root.obsidianBackend.reload()
         else
             internal.refresh()
     }
@@ -289,10 +329,10 @@ Singleton {
 
     function openObsidianSource(): bool {
         if ((!root.useObsidian && !root._obsidianSetupActive)
-                || !obsidian.noteFullPath
-                || obsidian.noteFullPath.length === 0)
+                || !root.obsidianBackend.noteFullPath
+                || root.obsidianBackend.noteFullPath.length === 0)
             return false
-        const uri = "obsidian://open?path=" + encodeURIComponent(obsidian.noteFullPath)
+        const uri = "obsidian://open?path=" + encodeURIComponent(root.obsidianBackend.noteFullPath)
         Quickshell.execDetached(["xdg-open", uri])
         return true
     }

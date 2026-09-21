@@ -12,11 +12,15 @@ qmldir = (ROOT / "services" / "qmldir").read_text(encoding="utf-8")
 required_facade = [
     "InternalTodoBackend {",
     "ObsidianTodoBackend {",
+    "DailyNoteTodoBackend {",
+    'Config.options?.todo?.obsidian?.sourceMode ?? "managed-note"',
+    'root.obsidianSourceMode === "daily-note"',
+    "readonly property var obsidianBackend:",
     'Config.options?.todo?.backend ?? "internal"',
     'root.requestedBackend === "obsidian"',
     "active: root.useObsidian || root._obsidianSetupActive",
     "property bool _migrationInFlight: false",
-    "readonly property var list:",
+    "readonly property var list: root.useObsidian ? root.obsidianBackend.list : internal.list",
     "readonly property bool ready:",
     "readonly property bool busy: root.useObsidian ? obsidian.busy : root._migrationInFlight",
     "readonly property string errorMessage:",
@@ -29,8 +33,9 @@ required_facade = [
     "return internal.markDone(index)",
     "return internal.markUnfinished(index)",
     "return internal.deleteItem(index)",
-    "return obsidian.toggleTask(String(item.id ?? \"\"))",
-    "return obsidian.deleteTask(String(item.id ?? \"\"))",
+    "return root.obsidianBackend.toggleTask(String(item.id ?? \"\"))",
+    "return root.obsidianBackend.deleteTask(String(item.id ?? \"\"))",
+    "function addTaskWithTime(desc, startTime, endTime)",
     "readonly property bool obsidianSetupActive: root._obsidianSetupActive",
     "readonly property bool obsidianReady: obsidian.ready",
     "readonly property var obsidianMigrationPreview: obsidian.migrationPreview",
@@ -60,7 +65,7 @@ for snippet in required_facade:
 assert "FileView {" not in facade, "persistence leaked into Todo facade"
 assert "Process {" not in facade, "process implementation leaked into Todo facade"
 assert '"internal"' in facade, "internal backend default/fallback disappeared"
-assert "readonly property var list: root.useObsidian ? obsidian.list : internal.list" in facade
+assert "readonly property var list: root.useObsidian ? root.obsidianBackend.list : internal.list" in facade
 assert "root._obsidianSetupActive ? obsidian.list" not in facade, "staging backend leaked into public canonical list"
 
 required_internal = [
@@ -89,6 +94,7 @@ assert 'root._notifyMigrationFinished(true, payload)' in obsidian
 
 assert "InternalTodoBackend 1.0 InternalTodoBackend.qml" in qmldir
 assert "ObsidianTodoBackend 1.0 ObsidianTodoBackend.qml" in qmldir
+assert "DailyNoteTodoBackend 1.0 DailyNoteTodoBackend.qml" in qmldir
 assert "singleton Todo 1.0 Todo.qml" in qmldir
 
 print("Todo facade/backend contract: PASS")

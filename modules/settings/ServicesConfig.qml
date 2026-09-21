@@ -1513,7 +1513,7 @@ ContentPage {
                     buttonRadius: Appearance.rounding.small
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover
-                    enabled: !Todo.obsidianBusy
+                    enabled: !Todo.obsidianBusy && !Todo.internalPersistenceBusy
                     onClicked: Todo.previewInternalToObsidian()
 
                     contentItem: RowLayout {
@@ -1590,6 +1590,7 @@ ContentPage {
                             colBackground: Appearance.colors.colPrimary
                             colBackgroundHover: Appearance.colors.colPrimaryHover
                             enabled: !Todo.obsidianBusy
+                                && !Todo.internalPersistenceBusy
                                 && Todo.obsidianMigrationPreview?.target?.empty === true
                                 && Number(Todo.obsidianMigrationPreview?.preview?.conflicts ?? 0) === 0
                                 && String(Todo.obsidianMigrationPreview?.source?.sha256 ?? "").length > 0
@@ -1625,7 +1626,7 @@ ContentPage {
                             buttonRadius: Appearance.rounding.small
                             colBackground: Appearance.colors.colLayer1
                             colBackgroundHover: Appearance.colors.colLayer1Hover
-                            enabled: !Todo.obsidianBusy
+                            enabled: !Todo.obsidianBusy && !Todo.internalPersistenceBusy
                             onClicked: Todo.previewInternalToObsidian()
 
                             contentItem: RowLayout {

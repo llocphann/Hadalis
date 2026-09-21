@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 services = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 backend = (ROOT / "services" / "ObsidianTodoBackend.qml").read_text(encoding="utf-8")
 facade = (ROOT / "services" / "Todo.qml").read_text(encoding="utf-8")
+internal = (ROOT / "services" / "InternalTodoBackend.qml").read_text(encoding="utf-8")
 
 required_ui = [
     'title: Translation.tr("Todo & Obsidian")',
@@ -29,6 +30,7 @@ required_ui = [
     "Todo.obsidianBusy",
     "Todo.obsidianCapabilities",
     "Todo.obsidianMigrationPreview",
+    "Todo.internalPersistenceBusy",
     "Todo.obsidianList.length",
     'Translation.tr("Preview import")',
     'Translation.tr("Import & activate")',
@@ -47,6 +49,10 @@ assert 'Config.setNestedValue("todo.backend", "obsidian")' in facade
 assert "function activateObsidian(): bool" in facade
 assert "signal migrationCommitted(var payload)" in backend
 assert 'mutationProc.kind === "preview-migration"' in backend
+assert "readonly property bool persistenceBusy:" in internal
+assert "readonly property bool internalPersistenceBusy: internal.persistenceBusy" in facade
+assert "|| internal.persistenceBusy" in facade
+assert services.count("!Todo.internalPersistenceBusy") >= 3
 
 # Paths are committed on editingFinished, not on every keystroke. This avoids
 # repeatedly retargeting filesystem/CLI operations while a path is incomplete.

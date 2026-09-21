@@ -62,6 +62,11 @@ Scope {
     property bool _jsonSaving: false
     property bool _jsonSaveQueued: false
 
+    // Migration reads the JSON file directly. Expose whether an in-memory edit
+    // is still being persisted so the facade cannot snapshot a stale revision.
+    readonly property bool persistenceBusy:
+        root._storageInitializing || root._jsonSaving || root._jsonSaveQueued
+
     // --- Public API ---
 
     function _normalizeList(value) {

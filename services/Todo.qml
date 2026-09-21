@@ -37,6 +37,7 @@ Singleton {
     readonly property var obsidianMigrationPreview: obsidian.migrationPreview
     readonly property var obsidianList: obsidian.list
     readonly property string obsidianNoteFullPath: obsidian.noteFullPath
+    readonly property bool internalPersistenceBusy: internal.persistenceBusy
 
     readonly property var list: root.useObsidian ? obsidian.list : internal.list
     readonly property bool ready: root.useObsidian ? obsidian.ready : internal.ready
@@ -134,13 +135,17 @@ Singleton {
     }
 
     function previewInternalToObsidian(): bool {
-        if (!root.useObsidian && !root._obsidianSetupActive)
+        if ((!root.useObsidian && !root._obsidianSetupActive)
+                || !internal.ready
+                || internal.persistenceBusy)
             return false
         return obsidian.previewInternal(internal.filePath)
     }
 
     function migrateInternalToObsidian(expectedInternalSha) {
         if ((!root.useObsidian && !root._obsidianSetupActive)
+                || !internal.ready
+                || internal.persistenceBusy
                 || root._migrationInFlight)
             return false
 

@@ -7,9 +7,9 @@ import qs.modules.common.functions
 /**
  * Shared Material card surface for Dashboard modules.
  *
- * Dashboard cards deliberately use the same M3 surface-container vocabulary as
- * existing Weather/Sidebar cards. Global shell-style renderers do not own this
- * background; they may still influence content-specific typography elsewhere.
+ * Dashboard cards use the same Material layer hierarchy as Sidebar surfaces.
+ * The Dashboard shell is layer-0; each module sits one level above it on
+ * layer-1 so cards read as a subtle raised surface rather than detached tiles.
  */
 Rectangle {
     id: root
@@ -41,11 +41,12 @@ Rectangle {
     implicitHeight: contentColumn.implicitHeight + root.pad * 2
 
     radius: Appearance.rounding.small
+    readonly property color sidebarRaisedSurface: Appearance.colors.colLayer1
     color: root.cardOpacity >= 0.999
-        ? Appearance.colors.colSurfaceContainerHigh
+        ? root.sidebarRaisedSurface
         : ColorUtils.applyAlpha(
-            Appearance.colors.colSurfaceContainerHigh,
-            root.cardOpacity * Appearance.colors.colSurfaceContainerHigh.a)
+            root.sidebarRaisedSurface,
+            root.cardOpacity * root.sidebarRaisedSurface.a)
     border.width: 0
     border.color: "transparent"
     clip: true

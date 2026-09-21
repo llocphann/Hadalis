@@ -58,6 +58,12 @@ the parser/transaction safety model or unrelated shell runtime:
   are hidden and toolbar buttons become icon-only while retaining tooltips.
 - Source Preview range reveal clamps parser offsets before selection and does not
   move the cursor afterward, preserving the visible selected evidence range.
+- Selecting a read-only edge that targets a binding/property node no longer
+  inherits that destination node's direct mutation controls. Literal/binding
+  preview eligibility is available with no edge selected, or for an explicitly
+  reviewed `previewable` edge.
+- Compact header buttons retain independent `buttonText` accessibility labels
+  when their visual `mainText` collapses to icon-only mode.
 
 - Static regression contracts in
   `scripts/test-code-workflow-ir-contract.py` and

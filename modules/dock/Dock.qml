@@ -84,6 +84,9 @@ Scope {
                     : (Config.options?.dock?.height ?? 70)
                 readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+                readonly property real screenEdgePaintOverlap: Math.min(
+                    PerimeterTokens.seamOverlap,
+                    Math.max(0, dockRoot.screenEdgeThickness - 1))
                 readonly property bool screenEdgeShadowEnabled:
                     Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
                 readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
@@ -196,6 +199,7 @@ Scope {
                     visible: dockVisualBackground.visible
                     edge: root.position
                     ownerThickness: dockRoot.screenEdgeThickness
+                    paintOverlap: dockRoot.screenEdgePaintOverlap
                     outputRect: Qt.rect(0, 0, dockRoot.width, dockRoot.height)
                     bodyRect: Qt.rect(
                         dockMouseArea.x + dockBackground.x + dockVisualBackground.x,
@@ -325,6 +329,14 @@ Scope {
                                     root.surfaceDialect === "inir"
                                 readonly property bool gameModeMinimal:
                                     Appearance.gameModeMinimal
+                                // In dark non-glass Material/iNiR presentation, use
+                                // the same base surface token as the physical Screen
+                                // Edge so the joined seam cannot read as two colors.
+                                readonly property bool matchDarkPhysicalEdge:
+                                    Appearance.m3colors.darkmode
+                                    && !auroraEverywhere
+                                    && !root.zzzEverywhere
+                                    && !regaliaEverywhere
                                 // The iRiS field owns the connected silhouette. Some
                                 // dialect-specific body plates intentionally use a
                                 // transparent Rectangle base, so expose the effective
@@ -395,7 +407,9 @@ Scope {
                                                 ?? Appearance.colors.colLayer0),
                                             dockRoot.nativeBlurActive ? 0.46 : 1)
                                         : inirEverywhere
-                                            ? Appearance.inir.colLayer1
+                                            ? (matchDarkPhysicalEdge
+                                                ? Appearance.colors.colLayer0
+                                                : Appearance.inir.colLayer1)
                                             : Appearance.colors.colLayer0
                                 border.width: root.zzzEverywhere || regaliaEverywhere
                                     ? 0

@@ -295,8 +295,12 @@ Item {
     readonly property var directBindingValueKinds: [
         "identifier", "member_expression"
     ]
+    readonly property bool directMutationSelectionEligible:
+        root.selectedIrEdge === null
+        || root.selectedIrEdge?.previewable === true
     readonly property bool literalPreviewEligible:
-        root.analyzerMatchesAnchor
+        root.directMutationSelectionEligible
+        && root.analyzerMatchesAnchor
         && CodeWorkflowAnalyzer.status === "ready"
         && root.sourceAnchorEvidence?.status === "resolved"
         && root.sourceAnchorEvidence?.semanticAnchorUnique === true
@@ -305,7 +309,8 @@ Item {
             String(root.sourceAnchorEvidence?.semanticValueKind ?? ""))
         && root.storedSemanticAnchor.length > 0
     readonly property bool bindingPreviewEligible:
-        root.analyzerMatchesAnchor
+        root.directMutationSelectionEligible
+        && root.analyzerMatchesAnchor
         && CodeWorkflowAnalyzer.status === "ready"
         && root.sourceAnchorEvidence?.status === "resolved"
         && root.sourceAnchorEvidence?.semanticAnchorUnique === true

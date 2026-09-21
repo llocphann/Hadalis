@@ -34,6 +34,75 @@ Item {
         return root.nodes.find(node => node.id === nodeId) ?? null
     }
 
+    function routeIntersectsNode(route, node, padding: real): bool {
+        const left = Number(node?.x ?? 0) - padding
+        const top = Number(node?.y ?? 0) - padding
+        const right = Number(node?.x ?? 0) + root.nodeWidth + padding
+        const bottom = Number(node?.y ?? 0) + root.nodeHeight + padding
+
+        const routeLeft = Math.min(
+            route.x0, route.x1, route.x2, route.x3)
+        const routeTop = Math.min(
+            route.y0, route.y1, route.y2, route.y3)
+        const routeRight = Math.max(
+            route.x0, route.x1, route.x2, route.x3)
+        const routeBottom = Math.max(
+            route.y0, route.y1, route.y2, route.y3)
+        if (routeRight < left || routeLeft > right
+                || routeBottom < top || routeTop > bottom)
+            return false
+
+        const steps = 32
+        for (let step = 1; step < steps; ++step) {
+            const t = step / steps
+            const x = root.cubicCoordinate(
+                route.x0, route.x1, route.x2, route.x3, t)
+            const y = root.cubicCoordinate(
+                route.y0, route.y1, route.y2, route.y3, t)
+            if (x >= left && x <= right && y >= top && y <= bottom)
+                return true
+        }
+        return false
+    }
+
+    function routeCollisionCount(route, edge): int {
+        let collisions = 0
+        for (const node of root.nodes) {
+            const nodeId = String(node?.id ?? "")
+            if (nodeId === String(edge?.from ?? "")
+                    || nodeId === String(edge?.to ?? ""))
+                continue
+            if (root.routeIntersectsNode(route, node, 8))
+                collisions += 1
+        }
+        return collisions
+    }
+
+    function detourRoute(route, offset: real): var {
+        const candidate = {
+            vertical: route.vertical,
+            direction: route.direction,
+            bend: route.bend,
+            x0: route.x0, y0: route.y0,
+            x1: route.x1, y1: route.y1,
+            x2: route.x2, y2: route.y2,
+            x3: route.x3, y3: route.y3
+        }
+
+        if (candidate.vertical) {
+            candidate.x1 = candidate.x0 + offset
+            candidate.y1 = candidate.y0
+            candidate.x2 = candidate.x3 + offset
+            candidate.y2 = candidate.y3
+        } else {
+            candidate.x1 = candidate.x0
+            candidate.y1 = candidate.y0 + offset
+            candidate.x2 = candidate.x3
+            candidate.y2 = candidate.y3 + offset
+        }
+        return candidate
+    }
+
     function edgeRoute(edge): var {
         const fromNode = root.nodeById(edge?.from ?? "")
         const toNode = root.nodeById(edge?.to ?? "")
@@ -88,7 +157,7 @@ Item {
             y2 = y3
         }
 
-        return {
+        const route = {
             vertical: vertical,
             direction: direction,
             bend: bend,
@@ -97,6 +166,28 @@ Item {
             x2: x2, y2: y2,
             x3: x3, y3: y3
         }
+
+        let bestRoute = route
+        let bestCollisionCount = root.routeCollisionCount(route, edge)
+        if (bestCollisionCount === 0)
+            return route
+
+        const detourOffsets = [
+            120, -120, 180, -180, 240, -240,
+            320, -320, 420, -420, 520, -520
+        ]
+        for (const offset of detourOffsets) {
+            const candidate = root.detourRoute(route, offset)
+            const collisionCount =
+                root.routeCollisionCount(candidate, edge)
+            if (collisionCount < bestCollisionCount) {
+                bestRoute = candidate
+                bestCollisionCount = collisionCount
+            }
+            if (collisionCount === 0)
+                return candidate
+        }
+        return bestRoute
     }
 
     function graphBounds(): var {

@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 osd = (ROOT / "modules" / "onScreenDisplay" / "OnScreenDisplay.qml").read_text(encoding="utf-8")
 panels = (ROOT / "modules" / "ii" / "ShellIiPanelsImpl.qml").read_text(encoding="utf-8")
+optional_runtime = (ROOT / "modules" / "ii" / "ShellIiOptionalRuntime.qml").read_text(encoding="utf-8")
 qmldir = (ROOT / "modules" / "common" / "perimeter" / "qmldir").read_text(encoding="utf-8")
 
 failures = []
@@ -29,8 +30,28 @@ for token in (
     'source: "../sidebarLeft/SidebarLeft.qml"',
     'identifier: "iiSidebarRight"',
     'source: "../sidebarRight/SidebarRight.qml"',
+    'source: "ShellIiOptionalRuntime.qml"',
 ):
     require(panels, token, "ii panel registry")
+
+for token in (
+    "import qs.modules.common.widgets",
+    "import qs.modules.ii.overlay",
+    "import Quickshell.Hyprland",
+    "FluidRipple {",
+    "ShellLayoutEditorWindow {",
+    "GlobalShortcut {",
+    "OverlayContext.",
+):
+    forbid(panels, token, "ii deferred core host")
+
+for token in (
+    'source: "overlay/Overlay.qml"',
+    "FluidRipple {",
+    "ShellLayoutEditorWindow {",
+    "GlobalShortcut {",
+):
+    require(optional_runtime, token, "ii optional runtime isolation")
 
 # Optional panel implementations must stay behind URL boundaries. A parse/type
 # regression in OSD, lock, wallpaper, etc. must not make the shared deferred

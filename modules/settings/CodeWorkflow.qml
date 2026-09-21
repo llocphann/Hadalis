@@ -1631,6 +1631,24 @@ Item {
                     StyledToolTip { text: "Fit graph to viewport" }
                 }
                 RippleButtonWithIcon {
+                    materialIcon: "restart_alt"
+                    buttonText: "Reset graph layout"
+                    mainText: root.compactHeader ? "" : "Reset layout"
+                    enabled: CodeWorkflowSession.graphLayoutRevision >= 0
+                        && CodeWorkflowSession.hasGraphLayout(
+                            CodeWorkflowSession.subflowTargetId)
+                    onClicked: {
+                        CodeWorkflowSession.resetGraphLayout(
+                            CodeWorkflowSession.subflowTargetId)
+                        Qt.callLater(canvas.fitGraph)
+                    }
+                    StyledToolTip {
+                        text: enabled
+                            ? "Reset moved components to reviewed layout"
+                            : "Graph layout already matches reviewed positions"
+                    }
+                }
+                RippleButtonWithIcon {
                     materialIcon: "code"
                     buttonText: CodeWorkflowSession.sourcePreviewVisible
                         ? "Hide source preview" : "Show source preview"

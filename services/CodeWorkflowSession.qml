@@ -185,6 +185,14 @@ Singleton {
         root.graphLayoutRevision += 1
     }
 
+    function hasGraphLayout(graphId: string): bool {
+        root.graphLayoutRevision
+        const graphKey = String(graphId ?? "")
+        const graphOffsets = root.graphNodeLayoutOffsets[graphKey] ?? null
+        return graphOffsets !== null
+            && Object.keys(graphOffsets).length > 0
+    }
+
     function resetGraphLayout(graphId: string): void {
         const graphKey = String(graphId ?? "")
         if (graphKey.length === 0

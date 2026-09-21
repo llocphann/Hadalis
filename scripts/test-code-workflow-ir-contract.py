@@ -718,6 +718,9 @@ for token in (
     "root.selectedIrNode?.sourcePath",
     "root.selectedIrNode?.sourceNeedle",
     "focusSourceAnchor",
+    'buttonText: "Reset graph layout"',
+    "CodeWorkflowSession.hasGraphLayout(",
+    "CodeWorkflowSession.resetGraphLayout(",
 ):
     if token not in page:
         fail("Code Workflow page missing IR integration " + token)
@@ -746,6 +749,7 @@ for token in (
     "property int graphLayoutRevision: 0",
     "function nodeLayoutOffset(graphId: string, nodeId: string): var",
     "function setNodeLayoutOffset(",
+    "function hasGraphLayout(graphId: string): bool",
     "function resetGraphLayout(graphId: string): void",
     "function setViewportTransient(",
     "function commitViewport(): void",

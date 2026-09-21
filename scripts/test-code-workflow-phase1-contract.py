@@ -226,6 +226,12 @@ require(ripple_button,
         "compact icon buttons must derive accessibility names from buttonText")
 require(page, 'buttonText: "Fit graph"',
         "compact graph control must retain an accessibility label")
+require(page, 'buttonText: "Reset graph layout"',
+        "moved graph layout must expose an explicit reset affordance")
+require(page, "CodeWorkflowSession.hasGraphLayout(",
+        "reset affordance must disable when graph has no visual offsets")
+require(page, "CodeWorkflowSession.resetGraphLayout(",
+        "reset affordance must restore reviewed node positions")
 require(page, 'buttonText: "Back to Bar workflow"',
         "compact subflow navigation must retain an accessibility label")
 require(page, 'text: "Fit graph to viewport"',

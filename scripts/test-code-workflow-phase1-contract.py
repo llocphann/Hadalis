@@ -256,6 +256,8 @@ require(page, 'buttonText: "Open source in Neovim"',
         "Source Editor must expose the Neovim handoff path")
 require(page, '"Use embedded Neovim"',
         "Source Editor must expose an embedded Neovim mode")
+require(page, "&& !CodeWorkflowTransaction.dirty",
+        "embedded Neovim must not start over an active graph transaction")
 require(page, "CodeWorkflowNvimView {",
         "Source Editor must render embedded Neovim through the dedicated view")
 require(page, "active: visible",

@@ -3703,6 +3703,7 @@ Item {
                             && !root.sourceEditorDirty
                             && !root.sourceEditorConflict
                             && !root.sourceEditorSaving
+                            && !CodeWorkflowTransaction.dirty
                         onClicked: {
                             root.sourceEditorUseNvim =
                                 !root.sourceEditorUseNvim
@@ -3713,9 +3714,11 @@ Item {
                         StyledToolTip {
                             text: root.sourceEditorUseNvim
                                 ? "Return to the inline guarded editor"
-                                : root.sourceEditorDirty
-                                    ? "Save or revert the inline draft before starting Neovim"
-                                    : "Run Neovim --embed inside Source Editor"
+                                : CodeWorkflowTransaction.dirty
+                                    ? "Finish or discard the active Code Workflow transaction first"
+                                    : root.sourceEditorDirty
+                                        ? "Save or revert the inline draft before starting Neovim"
+                                        : "Run Neovim --embed inside Source Editor"
                         }
                     }
                     RippleButtonWithIcon {

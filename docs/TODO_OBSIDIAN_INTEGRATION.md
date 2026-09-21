@@ -89,13 +89,19 @@ TodoWidget / DashTodo
         |
         +-- obsidian backend
               configured Markdown note (canonical)
-              todo.json (cache only; never authoritative)
+              todo-obsidian-cache.json (derived cache only)
+
+The existing todo.json remains the dormant internal store while the Obsidian
+backend is active. It is not reused as an Obsidian cache and is not overwritten
+by Obsidian synchronization.
 ```
 
 The default is `internal`. Existing installations therefore change no behavior
 until the user explicitly configures and activates the Obsidian backend.
 
-There must never be two writable canonical stores at the same time.
+There must never be two writable canonical stores at the same time. Backend
+switching changes which store is active; it does not repurpose or destroy the
+inactive store.
 
 ## 5. Proposed config schema
 
@@ -190,6 +196,12 @@ The parser must retain, not discard:
 - 1-based source line
 - hash of the exact raw source line
 - newline convention
+
+V1 does not attempt to strip every Tasks-plugin metadata field out of the
+description. Unless a Tasks-aware enrichment result is available, `content`
+is the checkbox remainder exactly as represented in Markdown (trimmed only at
+the checkbox boundary). This prevents a partial metadata parser from silently
+changing what the user wrote.
 
 The task model exposed by the facade becomes a superset of the old model:
 
@@ -315,10 +327,22 @@ atomic rename/write does not permanently detach synchronization.
 
 ## 11. Basic filesystem mutation
 
-Basic tasks may be mutated without Obsidian running.
+Basic tasks may be mutated without Obsidian running, but "basic" is a proven
+capability, not a guess.
 
 A basic task is one for which Hadalis can safely perform a structural checkbox
-operation without emulating Tasks-plugin behavior.
+operation without emulating Tasks-plugin behavior. In particular:
+
+- if `preferTasksPlugin=false`, ordinary space/x checkbox transitions may use
+  the filesystem path;
+- if last-known Tasks settings say the plugin manages the task (including a
+  non-empty Global Filter that the line contains, or an empty Global Filter
+  that makes all checkbox tasks eligible), toggle is rich and requires the
+  Tasks-aware path;
+- if `preferTasksPlugin=true` and Tasks capability/settings are unknown,
+  offline toggle fails closed instead of assuming plain checkbox semantics;
+- explicit delete remains a line-deletion operation guarded by the same CAS
+  checks; it is not presented as a Tasks completion transition.
 
 The helper must:
 
@@ -426,6 +450,11 @@ When the active vault is verified and Tasks is enabled, use a read-only
 method. Do not read a hardcoded
 `.obsidian/plugins/obsidian-tasks-plugin/data.json` path.
 
+`loadData()` can contain only persisted user values, so the helper must fill
+missing fields with the Tasks defaults that the integration explicitly
+supports and reject/ignore unknown schema shapes conservatively. Do not reach
+into private runtime modules merely to obtain defaults.
+
 Useful settings include:
 
 - `globalFilter`
@@ -441,6 +470,12 @@ second manually configured copy of the filter.
 
 If plugin settings cannot be read, creation remains a plain Markdown task and
 the UI must not claim Tasks-aware behavior.
+
+V1 does not claim to reproduce Tasks' interactive Create/Edit modal. In
+particular, Hadalis Add Task does not synthesize optional created-date or other
+modal-only metadata. When a known non-empty Global Filter is required, Hadalis
+may prepend that exact filter so the new checkbox is recognized by Tasks.
+Subsequent completion/status transitions use the Tasks API when available.
 
 ## 15. Capability state
 
@@ -482,6 +517,20 @@ obsidian-unavailable
 ```
 
 Do not block reading merely because rich mutation is unavailable.
+
+Persist last-known, non-secret integration metadata in a separate derived state
+cache, proposed path:
+
+```
+~/.local/state/user/todo-obsidian-cache.json
+```
+
+The cache may contain the verified vault path, plugin version, Global Filter,
+status map and capability timestamp. It must never contain canonical task
+content and must never be treated as proof that Obsidian is currently running.
+Its purpose is conservative offline classification and diagnostics. Invalid or
+stale cache data can only reduce mutation capability; it must not authorize a
+risky write.
 
 ## 16. Todo.qml facade evolution
 
@@ -587,11 +636,13 @@ Before applying a migration:
 7. rescan;
 8. only then set `todo.backend = "obsidian"`.
 
-Never delete `todo.json` during migration. It becomes a rollback/cache artifact.
+Never delete or overwrite `todo.json` during migration. It remains the
+inactive internal store and therefore a clean rollback target. Obsidian-derived
+state belongs in `todo-obsidian-cache.json`.
 
-Returning to `internal` is also explicit; it must not silently overwrite the
-internal store with the current Obsidian state unless the user selects that
-operation.
+Returning to `internal` is also explicit; it reactivates the preserved
+internal store. It must not silently import the current Obsidian state unless
+the user selects that operation.
 
 ## 19. Conflict behavior
 
@@ -659,25 +710,29 @@ Parser fixtures must cover at least:
 15. CANCELLED `[-]`;
 16. unknown/custom status;
 17. duplicate task text on different lines;
-18. duplicate markers -> fail closed;
-19. missing marker -> fail closed;
-20. stale raw hash -> conflict;
-21. external edit during mutation -> conflict;
-22. add at managed-region end only;
-23. delete one line;
-24. Tasks transform 1 → 2 lines for recurrence;
-25. Tasks transform 1 → 0 lines for on-completion delete;
-26. Global Filter task creation;
-27. Tasks plugin unavailable;
-28. Obsidian closed;
-29. active vault mismatch;
-30. wrong physical vault inside eval;
-31. CLI timeout;
-32. CLI empty stdout after successful mutation;
-33. two attempted concurrent mutations;
-34. note symlink escaping vault -> reject;
-35. Dashboard and Sidebar see the same refreshed list;
-36. `backend=internal` regression: existing Todo behavior remains unchanged.
+18. marker-looking text inside fenced code is ignored;
+19. duplicate markers -> fail closed;
+20. missing marker -> fail closed;
+21. stale raw hash -> conflict;
+22. external edit during mutation -> conflict;
+23. add at managed-region end only;
+24. delete one line;
+25. Tasks transform 1 → 2 lines for recurrence;
+26. Tasks transform 1 → 0 lines for on-completion delete;
+27. Global Filter task creation;
+28. Tasks plugin unavailable;
+29. Obsidian closed;
+30. Tasks settings unknown while `preferTasksPlugin=true` -> offline toggle denied;
+31. last-known Global Filter says task is Tasks-managed -> offline toggle denied;
+32. active vault mismatch;
+33. wrong physical vault inside eval;
+34. CLI timeout;
+35. CLI empty stdout after successful mutation;
+36. two attempted concurrent mutations;
+37. note symlink escaping vault -> reject;
+38. Dashboard and Sidebar see the same refreshed list;
+39. Obsidian cache corruption reduces capability but never authorizes mutation;
+40. `backend=internal` regression: existing Todo behavior remains unchanged.
 
 Tests should use temporary directories and fixture Markdown. Unit tests must not
 require a real personal vault.
@@ -779,6 +834,7 @@ canonical data store or a reliable mutation acknowledgement channel.
 The integration is ready to ship only when all of the following are true:
 
 - Existing users who never enable Obsidian observe no Todo behavior change.
+- Activating Obsidian never overwrites the dormant internal `todo.json`.
 - Editing the managed Markdown region in Obsidian updates both Sidebar and
   Dashboard.
 - Hadalis never modifies bytes outside the managed region.

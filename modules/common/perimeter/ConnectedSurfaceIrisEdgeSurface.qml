@@ -15,6 +15,10 @@ Item {
 
     property rect outputRect: Qt.rect(0, 0, width, height)
     property real ownerThickness: 10
+    // Tangent Screen Edge thickness can differ from the primary owner (for
+    // example a top Bar joined to the right Screen Edge). Existing callers
+    // inherit ownerThickness unless they explicitly provide the tangent frame.
+    property real tangentFrameThickness: ownerThickness
     property real weldDepth: PerimeterTokens.irisWeldDepth
     // Paint-only overlap into the primary owner. Keep zero by default so
     // existing callers preserve exact owner clipping unless they need to cover
@@ -100,7 +104,7 @@ Item {
         borderColor: root.borderColor
         borderWidth: root.borderWidth
         fuseDepth: root.fuseDepth
-        externalFrameThickness: root.ownerThickness
+        externalFrameThickness: root.tangentFrameThickness
         ownerPaintOverlap: root.paintOverlap
         shadowEnabled: root.shadowEnabled
         shadowExtent: root.shadowExtent

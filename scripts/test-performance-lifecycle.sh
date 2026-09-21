@@ -141,7 +141,10 @@ require "$sidebar_right_media" 'GlobalStates.sidebarRightOpen && root.visible &&
 require "$sidebar_right_media" 'GlobalStates.sidebarRightOpen && root.visible && Appearance.effectsEnabled && visible' 'right-sidebar media blur must sleep while closed'
 require "$control_panel_wallpaper" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel wallpaper mask must sleep while closed'
 require "$control_panel_wallpaper" 'mipmap: false' 'Control Panel wallpaper preview must not generate unused mipmaps'
-require "$dash_media" 'GlobalStates.dashboardOpen && root.visible && status === Image.Ready' 'Dashboard media mask must sleep while closed'
+require "$dash_media" 'root.QsWindow.window?.visible ?? false' 'Dashboard media lifecycle must follow the actual presentation window'
+require "$dash_media" 'active: root.presentationActive && root.hasPlayer && root.isPlaying' 'Dashboard Cava must stop while hidden, idle, or playerless'
+require "$dash_media" 'active: root.presentationActive && root.hasPlayer' 'Dashboard shared PlayerControl must release after the presentation window closes'
+require "$dash_media" 'PlayerControl {' 'Dashboard media must reuse the canonical shared player surface'
 require "$dash_welcome" 'layer.enabled: root.visible && status === Image.Ready' 'Dashboard avatar mask must stay circular through the visible exit slide and sleep once hidden'
 require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'
 

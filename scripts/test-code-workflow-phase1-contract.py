@@ -20,6 +20,7 @@ canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
 session = read("services/CodeWorkflowSession.qml")
+ripple_button = read("modules/common/widgets/RippleButton.qml")
 ir = json.loads(read("defaults/code-workflow-ir.json"))
 
 require(registry, 'key: "code-workflow"', "registry missing Code Workflow")
@@ -53,6 +54,13 @@ require(page, "readonly property bool compactHeader:",
         "Code Workflow header must expose a narrow-layout mode")
 require(page, "mainText: root.compactHeader",
         "toolbar buttons must collapse to icon-only in compact mode")
+require(ripple_button,
+        "Accessible.name: root.buttonText.length > 0 ? root.buttonText : root.text",
+        "compact icon buttons must derive accessibility names from buttonText")
+require(page, 'buttonText: "Fit graph"',
+        "compact graph control must retain an accessibility label")
+require(page, 'buttonText: "Back to Bar workflow"',
+        "compact subflow navigation must retain an accessibility label")
 require(page, 'text: "Fit graph to viewport"',
         "compact graph controls must retain discoverable tooltips")
 require(page, "StyledFlickable {", "Inspector must scroll instead of overflowing its panel")

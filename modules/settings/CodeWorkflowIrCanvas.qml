@@ -10,6 +10,13 @@ import qs.modules.common.widgets
 Item {
     id: root
 
+    // Text inside `world` is transformed by graph zoom. Native glyph
+    // rasterization becomes visibly thin/hollow at fractional zoom levels,
+    // while the Qt renderer remains stable under scene transforms.
+    component GraphText: StyledText {
+        renderType: Text.QtRendering
+    }
+
     readonly property var graph:
         CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)
     readonly property var nodes: root.graph?.nodes ?? []
@@ -778,7 +785,7 @@ Item {
                     target: edgeLabel
                 }
 
-                StyledText {
+                GraphText {
                     id: edgeLabelText
                     anchors.fill: parent
                     anchors.leftMargin: 6
@@ -888,7 +895,7 @@ Item {
                             radius: implicitHeight / 2
                             color: Appearance.colors.colLayer2
 
-                            StyledText {
+                            GraphText {
                                 id: kindLabel
                                 anchors.centerIn: parent
                                 text: String(node.modelData.kind ?? "node").toUpperCase()
@@ -902,7 +909,7 @@ Item {
                             }
                         }
 
-                        StyledText {
+                        GraphText {
                             Layout.fillWidth: true
                             text: node.modelData.title ?? node.modelData.id
                             color: node.foreground
@@ -925,6 +932,7 @@ Item {
 
                             MaterialSymbol {
                                 anchors.centerIn: parent
+                                textRenderType: Text.QtRendering
                                 text: "arrow_outward"
                                 iconSize: Appearance.font.pixelSize.small
                                 color: node.portInk
@@ -965,7 +973,7 @@ Item {
                         }
                     }
 
-                    StyledText {
+                    GraphText {
                         Layout.fillWidth: true
                         Layout.maximumWidth: node.width - 20
                         text: node.modelData.description ?? ""
@@ -974,7 +982,7 @@ Item {
                         elide: Text.ElideRight
                     }
 
-                    StyledText {
+                    GraphText {
                         Layout.fillWidth: true
                         Layout.maximumWidth: node.width - 20
                         text: node.modelData.sourceNeedle ?? ""

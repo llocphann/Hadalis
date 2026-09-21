@@ -58,6 +58,12 @@ require(page, "CodeWorkflowSession.selectedSemanticAnchor",
         "page must consume the shared semantic selection")
 require(page, 'placeholderText: "Filter targets"',
         "Targets must expose a search/filter control")
+require(page, 'category: "section"',
+        "Targets must group runtime, graph and parsed QML sources")
+require(page, "appendSection(",
+        "Targets must preserve source grouping after filtering")
+require(page, "enabled: !targetRow.section",
+        "Target section headers must be non-interactive")
 require(page, "property bool inspectShowInternals: false",
         "Targets must use progressive disclosure for parser internals")
 require(page, "function semanticEntryVisible(entry, discloseInternals: bool): bool",

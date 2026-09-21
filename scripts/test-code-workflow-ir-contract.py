@@ -138,8 +138,11 @@ def edge_lane_offset(
     if index < 0:
         return 0.0
     middle = (len(siblings) - 1) / 2.0
+    lane_spacing = 12.0 if len(siblings) >= 8 else (
+        10.0 if len(siblings) >= 4 else 8.0
+    )
     return max(-64.0, min(
-        64.0, (middle - index) * 8.0 * direction))
+        64.0, (middle - index) * lane_spacing * direction))
 
 def segments_cross(
     first_a: dict,
@@ -608,6 +611,7 @@ for token in (
     "function routeIntersectsNode(route, node, padding: real): bool",
     "function routeCollisionCount(route, edge): int",
     "function edgeLaneOffset(",
+    "const laneSpacing = siblings.length >= 8",
     "function segmentsCross(firstA, firstB, secondA, secondB): bool",
     "function routeCrossingCount(route, occupiedRoutes): int",
     "function segmentOverlapLength(firstA, firstB, secondA, secondB): real",

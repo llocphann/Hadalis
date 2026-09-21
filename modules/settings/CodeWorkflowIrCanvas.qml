@@ -309,8 +309,12 @@ Item {
             return 0
 
         const middle = (siblings.length - 1) / 2
+        // Dense fan-out needs more screen-visible separation after Fit.
+        // Keep small groups compact while spreading large lifecycle trees.
+        const laneSpacing = siblings.length >= 8
+            ? 12 : siblings.length >= 4 ? 10 : 8
         return Math.max(-64, Math.min(
-            64, (middle - index) * 8 * direction))
+            64, (middle - index) * laneSpacing * direction))
     }
 
     function segmentsCross(firstA, firstB, secondA, secondB): bool {

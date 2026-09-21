@@ -11,6 +11,17 @@ def require(text, token, message):
     if token not in text:
         raise SystemExit("FAIL: " + message)
 
+def utf16_index_for_utf8_byte_offset(text, byte_offset):
+    target = max(0, int(byte_offset))
+    consumed = 0
+    utf16_index = 0
+    for char in text:
+        if consumed >= target:
+            break
+        consumed += len(char.encode("utf-8"))
+        utf16_index += 2 if ord(char) > 0xFFFF else 1
+    return utf16_index
+
 registry = read("modules/settings/SettingsPageRegistryData.qml")
 arrangement = read("modules/settings/SettingsArrangement.qml")
 persistent = read("modules/common/Persistent.qml")
@@ -152,6 +163,33 @@ require(page, "function semanticEntryDepth(entry): int",
         "Targets must derive parser hierarchy depth")
 require(page, "function textIndexForUtf8ByteOffset(byteOffset: int): int",
         "Source Preview must map parser byte ranges to text positions")
+for token in (
+    "first >= 0xd800 && first <= 0xdbff",
+    "second >= 0xdc00 && second <= 0xdfff",
+    "bytes += 4",
+    "index += 2",
+):
+    require(page, token,
+            "UTF-8 byte mapper must preserve surrogate-pair handling: " + token)
+
+unicode_sample = "Aé中😀Z"
+unicode_boundaries = {
+    0: 0,
+    1: 1,
+    3: 2,
+    6: 3,
+    10: 5,
+    11: 6,
+}
+for byte_offset, expected_utf16_index in unicode_boundaries.items():
+    actual = utf16_index_for_utf8_byte_offset(unicode_sample, byte_offset)
+    if actual != expected_utf16_index:
+        raise SystemExit(
+            "FAIL: UTF-8/UTF-16 source-range fixture drift at byte "
+            + str(byte_offset)
+            + ": expected " + str(expected_utf16_index)
+            + ", got " + str(actual)
+        )
 require(page, "function revealSourceSelection(start: int, end: int): void",
         "Source Preview must reveal selected parser evidence")
 require(page, "const safeStart = Math.min(start, root.sourceText.length)",

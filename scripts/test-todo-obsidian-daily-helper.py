@@ -165,6 +165,65 @@ class DailyTodoTests(unittest.TestCase):
         )
         self.assertEqual(note.read_text(encoding="utf-8").count("- [ ] same"), 1)
 
+    def test_migration_preview_treats_template_divider_as_empty_target(self):
+        vault, note, _ = self.scan(
+            "## Day Planner\n\n---\n\n## Daily Log\n"
+        )
+        internal = note.parent / "todo.json"
+        internal.write_text(
+            '[{"content":"one","done":false},{"content":"two","done":true}]',
+            encoding="utf-8",
+        )
+        before = note.read_bytes()
+        result = daily.preview_internal_migration(
+            str(vault), daily.DEFAULT_FOLDER, daily.DEFAULT_FORMAT,
+            "2026-09-22", daily.DEFAULT_HEADING, 2, 30, str(internal),
+        )
+        self.assertEqual(note.read_bytes(), before)
+        self.assertTrue(result["target"]["empty"])
+        self.assertEqual(result["preview"]["added"], 2)
+
+    def test_migration_backs_up_daily_note_and_inserts_before_divider(self):
+        vault, note, scan = self.scan(
+            "## Day Planner\n\n---\n\n## Daily Log\nkeep\n"
+        )
+        internal = note.parent / "todo.json"
+        internal.write_text(
+            '[{"content":"one","done":false},{"content":"two","done":true}]',
+            encoding="utf-8",
+        )
+        before = note.read_bytes()
+        source_sha = daily.core._sha256_bytes(internal.read_bytes())
+        result = daily.migrate_internal_json(
+            str(vault), daily.DEFAULT_FOLDER, daily.DEFAULT_FORMAT,
+            "2026-09-22", daily.DEFAULT_HEADING, 2, 30, str(internal),
+            scan["document"]["sha256"], scan["managed"]["sha256"], source_sha,
+        )
+        text = note.read_text(encoding="utf-8")
+        self.assertIn(
+            "- [ ] one\n- [x] two\n---\n\n## Daily Log",
+            text,
+        )
+        self.assertEqual(result["migratedCount"], 2)
+        self.assertEqual(Path(result["backupPath"]).read_bytes(), before)
+        self.assertTrue(result["backupCreated"])
+
+    def test_migration_refuses_existing_day_planner_tasks(self):
+        vault, note, scan = self.scan(
+            "## Day Planner\n- [ ] existing\n---\n## Daily Log\n"
+        )
+        internal = note.parent / "todo.json"
+        internal.write_text('[{"content":"new","done":false}]', encoding="utf-8")
+        before = note.read_bytes()
+        with self.assertRaises(daily.core.TodoError) as error:
+            daily.migrate_internal_json(
+                str(vault), daily.DEFAULT_FOLDER, daily.DEFAULT_FORMAT,
+                "2026-09-22", daily.DEFAULT_HEADING, 2, 30, str(internal),
+                scan["document"]["sha256"], scan["managed"]["sha256"],
+            )
+        self.assertEqual(error.exception.code, "migration_target_not_empty")
+        self.assertEqual(note.read_bytes(), before)
+
     def test_stale_document_hash_rejects_mutation(self):
         vault, note, scan = self.scan(
             "## Day Planner\n- [ ] task\n## Daily Log\n"

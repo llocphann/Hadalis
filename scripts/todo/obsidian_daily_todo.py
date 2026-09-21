@@ -447,6 +447,136 @@ def delete_task(
     return _mutation_result(common, "delete")
 
 
+
+def preview_internal_migration(
+    vault_path: str, folder: str, fmt: str, day: str | None, heading: str,
+    heading_level: int, default_duration: int, internal_json_path: str,
+) -> dict[str, Any]:
+    doc = _load_document(vault_path, folder, fmt, day, heading, heading_level)
+    source, source_raw, imported = core._load_internal_tasks(internal_json_path)
+    target_tasks = _tasks(doc, default_duration)
+
+    added = 0
+    duplicates = 0
+    conflicts = 0
+    for content, done in imported:
+        same = [task for task in target_tasks if task["content"] == content]
+        if any(task["done"] is done for task in same):
+            duplicates += 1
+        elif same:
+            conflicts += 1
+        else:
+            added += 1
+
+    return {
+        "ok": True,
+        "mode": "daily-note",
+        "mutation": "preview-migration",
+        "source": {
+            "path": str(source),
+            "sha256": core._sha256_bytes(source_raw),
+            "taskCount": len(imported),
+        },
+        "target": {
+            "documentSha256": core._sha256_bytes(doc["raw"]),
+            "managedSha256": core._sha256_text(_section_text(doc)),
+            "taskCount": len(target_tasks),
+            "empty": len(target_tasks) == 0,
+            "notePath": doc["notePath"],
+            "sourceDate": doc["date"],
+        },
+        "preview": {
+            "added": added,
+            "duplicates": duplicates,
+            "conflicts": conflicts,
+        },
+    }
+
+
+def migrate_internal_json(
+    vault_path: str, folder: str, fmt: str, day: str | None, heading: str,
+    heading_level: int, default_duration: int, internal_json_path: str,
+    expected_document_sha: str, expected_section_sha: str,
+    expected_internal_sha: str = "",
+) -> dict[str, Any]:
+    doc = _load_document(vault_path, folder, fmt, day, heading, heading_level)
+    _require_hashes(doc, expected_document_sha, expected_section_sha)
+    if _tasks(doc, default_duration):
+        raise core.TodoError(
+            "migration_target_not_empty",
+            "Day Planner must contain no tasks before importing the internal store",
+        )
+
+    source, source_raw, imported = core._load_internal_tasks(internal_json_path)
+    source_sha = core._sha256_bytes(source_raw)
+    if expected_internal_sha and source_sha != expected_internal_sha:
+        raise core.TodoError(
+            "migration_source_conflict",
+            "internal Todo store changed since migration preview",
+        )
+
+    if not imported:
+        result = _scan_payload(doc, default_duration)
+        result["mutation"] = "migrate-internal"
+        result["migratedCount"] = 0
+        result["sourceSha256"] = source_sha
+        result["backupPath"] = ""
+        result["backupCreated"] = False
+        return result
+
+    try:
+        if source.read_bytes() != source_raw:
+            raise core.TodoError(
+                "migration_source_conflict",
+                "internal Todo store changed while preparing migration",
+            )
+    except core.TodoError:
+        raise
+    except OSError as exc:
+        raise core.TodoError(
+            "migration_source_missing",
+            f"cannot revalidate internal Todo store: {exc}",
+        ) from exc
+
+    backup, backup_created = core._create_migration_backup(doc)
+
+    try:
+        if source.read_bytes() != source_raw:
+            raise core.TodoError(
+                "migration_source_conflict",
+                "internal Todo store changed after target backup",
+            )
+    except core.TodoError:
+        raise
+    except OSError as exc:
+        raise core.TodoError(
+            "migration_source_missing",
+            f"cannot revalidate internal Todo store: {exc}",
+        ) from exc
+
+    newline = _preferred_newline(doc)
+    lines = list(doc["lines"])
+    index = _section_append_index(doc)
+    lines[index:index] = [
+        "- [" + ("x" if done else " ") + "] " + content + newline
+        for content, done in imported
+    ]
+    core._atomic_replace_if_unchanged(doc, _encode_document(doc, lines))
+
+    common = {
+        "vault_path": vault_path, "folder": folder, "fmt": fmt, "day": day,
+        "heading": heading, "heading_level": heading_level,
+        "default_duration": default_duration,
+    }
+    result = scan_daily_note(**common)
+    result["mutation"] = "migrate-internal"
+    result["migratedCount"] = len(imported)
+    result["sourceSha256"] = source_sha
+    result["backupPath"] = str(backup)
+    result["backupCreated"] = backup_created
+    return result
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
@@ -477,6 +607,17 @@ def _build_parser() -> argparse.ArgumentParser:
     source_args(delete)
     delete.add_argument("--id", required=True)
     delete.add_argument("--expected-document-sha", required=True)
+
+    preview = sub.add_parser("preview-migration")
+    source_args(preview)
+    preview.add_argument("--internal-json", required=True)
+
+    migrate = sub.add_parser("migrate-internal")
+    source_args(migrate)
+    migrate.add_argument("--internal-json", required=True)
+    migrate.add_argument("--expected-document-sha", required=True)
+    migrate.add_argument("--expected-section-sha", required=True)
+    migrate.add_argument("--expected-internal-sha", default="")
     return parser
 
 
@@ -518,6 +659,18 @@ def main(argv: list[str] | None = None) -> int:
             payload = delete_task(
                 **common, task_id=args.id,
                 expected_document_sha=args.expected_document_sha,
+            )
+        elif args.command == "preview-migration":
+            payload = preview_internal_migration(
+                **common, internal_json_path=args.internal_json,
+            )
+        elif args.command == "migrate-internal":
+            payload = migrate_internal_json(
+                **common,
+                internal_json_path=args.internal_json,
+                expected_document_sha=args.expected_document_sha,
+                expected_section_sha=args.expected_section_sha,
+                expected_internal_sha=args.expected_internal_sha,
             )
         else:
             raise core.TodoError("unsupported_command", f"unsupported command: {args.command}")

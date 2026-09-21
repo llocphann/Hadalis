@@ -232,13 +232,23 @@ def main() -> None:
     toast_notification = read("modules/common/widgets/ToastNotification.qml")
     for token in (
         '"Niri Reloaded"',
-        "ConnectedSurfaceIrisEdgeSurface {",
+        "ConnectedSurfaceGeometry {",
+        "id: toastGeometry",
         'edge: "top"',
-        "tangentFrameThickness: root.screenEdgeThickness",
-        "joinTangentEnd: true",
+        'alignment: "end"',
+        "root.topOwnerThickness",
+        "screenMargin: root.screenEdgeThickness",
+        "connectorLength: 0",
+        "seamOverlap: PerimeterTokens.irisWeldDepth",
+        "ConnectedSurfaceRevealClip {",
+        "ConnectedSurfaceIrisFrame {",
+        "externalFrameThickness: root.screenEdgeThickness",
+        "joinTop: true",
+        "joinRight: true",
+        "ConnectedSurfaceContentHost {",
+        "ConnectedSurfaceBodyMask {",
+        "visibleBodyRect: toastFrame.visibleBodyRect",
         "exclusionMode: ExclusionMode.Ignore",
-        "x: popup.width - root.screenEdgeThickness - width",
-        "y: root.topOwnerThickness",
         "connectedSurface: true",
         "physicalShadow?.enabled ?? true",
         "Appearance.m3colors.m3shadow",
@@ -247,10 +257,10 @@ def main() -> None:
               f"Top-right connected reload toast contract missing: {token}")
     check('"Niri config reloaded"' not in toast_manager,
           "Legacy Niri reload toast title must stay retired")
-    check("popup.width - width - root.edgeDecorationMargin" not in toast_manager
-          and "x: Math.max(root.edgeDecorationMargin," not in toast_manager
-          and "paintOverlap: Math.min(" not in toast_manager,
-          "Reload toast must use physical-output placement instead of detached-gap or paint-overlap workarounds")
+    check("ConnectedSurfaceIrisEdgeSurface {" not in toast_manager
+          and "popup.width - width - root.edgeDecorationMargin" not in toast_manager
+          and "x: Math.max(root.edgeDecorationMargin," not in toast_manager,
+          "Reload toast must reuse StyledPopup geometry instead of the detached direct-edge host")
     check("\n    property bool connectedSurface: false\n" in toast_notification
           and "\n    property bool copied: false\n" in toast_notification
           and "layer.enabled: Appearance.effectsEnabled && !root.connectedSurface" in toast_notification
@@ -448,7 +458,11 @@ def main() -> None:
         "edge: root.position",
         "ownerThickness: dockRoot.screenEdgeThickness",
         "exclusionMode: ExclusionMode.Ignore",
-        "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
+        "id: dockConnectedBody",
+        "anchors.fill: dockConnectedBody",
+        "paintOverlap: Math.min(",
+        "PerimeterTokens.seamOverlap",
+        "dockMouseArea.x + dockBackground.x + dockConnectedBody.x",
         "dockRoot.edgeDecorationMargin * 2",
         "? dockRoot.screenEdgeThickness",
         "screenEdge?.physicalShadow?.enabled ?? true",
@@ -478,7 +492,7 @@ def main() -> None:
           "Dock must not retain its detached local shadow after iRiS cutover")
     check("screenEdgePaintOverlap" not in dock
           and "paintOverlap: dockRoot." not in dock,
-          "Dock must not hide compositor double-offset bugs with paint-overlap workarounds")
+          "Dock seam overlap must stay local to the shared connected body, not a second offset state")
     check(dock.count("duration: SurfaceMotion.duration") >= 4
           and "Appearance.animation.elementMoveEnter.duration" not in dock,
           "Dock reveal/retract must use the same immutable slide motion as connected popups")
@@ -656,6 +670,7 @@ def main() -> None:
     dashboard_content = read("modules/dashboard/DashboardContent.qml")
     dashboard_canvas = read("modules/dashboard/DashboardCanvas.qml")
     dashboard_grid = read("modules/dashboard/DashboardEditGrid.qml")
+    dashboard_card = read("modules/dashboard/DashCard.qml")
     check("DashboardCanvas {" in dashboard_content
           and "DashboardHeader {" in dashboard_content
           and "WidgetColumn" not in dashboard_content,
@@ -664,6 +679,9 @@ def main() -> None:
           and 'radius: root.embeddedSurface ? 0 : Appearance.rounding.large' in dashboard_content
           and "border.width: 0" in dashboard_content,
           "Dashboard outer surface must reuse the canonical Material popup/sidebar background")
+    check("readonly property color sidebarRaisedSurface: Appearance.colors.colLayer1" in dashboard_card
+          and "Appearance.colors.colSurfaceContainerHigh" not in dashboard_card,
+          "Dashboard module cards must use Sidebar layer-1 above the layer-0 Dashboard shell")
     for retired_dashboard_surface in (
         "ColorQuantizer {",
         "AdaptedMaterialScheme {",
@@ -733,7 +751,7 @@ def main() -> None:
     iris_field = read("modules/common/perimeter/ConnectedSurfaceIrisField.qml")
     iris_mask = read("modules/common/perimeter/ConnectedSurfaceBodyMask.qml")
     for token in (
-        "function clipExternalOwners(raw)",
+        "function clipExternalOwners(raw, primaryOverlap)",
         "readonly property rect visibleBodyRect:",
         "readonly property rect sdfBodyRect:",
         "x: root.sdfBodyRect.x",

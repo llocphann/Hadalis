@@ -62,13 +62,15 @@ for token in (
         fail("2K-W-D session selection boundary missing " + token)
 
 for token in (
-    "function selectableEdgeAt(",
-    "root.previewableEdgeAt(screenX, screenY)",
-    "CodeWorkflowIr.reviewedSignalActionTargetForEdge(",
+    "function edgeAt(screenX: real, screenY: real): string",
+    "const edgeId = root.edgeAt(",
     "CodeWorkflowSession.selectEdge(edgeId)",
 ):
     if token not in CANVAS:
         fail("2K-W-D canvas selection boundary missing " + token)
+
+if "function selectableEdgeAt(" in CANVAS or "previewableEdgeAt(" in CANVAS:
+    fail("2K-W-D canvas inspection must not hide non-mutation edges")
 
 for token in (
     "readonly property var selectedSignalActionTarget:",

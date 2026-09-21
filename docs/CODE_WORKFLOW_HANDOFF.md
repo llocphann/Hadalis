@@ -147,6 +147,26 @@ The `codeWorkflowCapture` IPC exists only while the Code Workflow page is
 loaded under `QS_CODE_WORKFLOW_CAPTURE=1`. Its harness is contract-checked to
 remain read-only and must not call transaction preview/prepare/apply APIs.
 
+The first real Niri capture bundle (`20260921-213435`, 1920×1200) found two
+runtime/UI regressions that static token replay had missed:
+
+- `CodeWorkflow.qml` and `CodeWorkflowIrCanvas.qml` used `ColorUtils`
+  without importing `qs.modules.common.functions`. The Settings log contained
+  hundreds of `ReferenceError: ColorUtils is not defined` entries, causing edge
+  strokes/labels and other contrast colors to resolve as undefined and appear
+  almost white on the light graph canvas.
+- `ToolbarTextField` defaults to `Layout.fillHeight: true`; the Targets
+  filter did not override that default. It consumed most of the Targets column,
+  leaving the actual inspect list compressed to roughly one row at the bottom.
+  The page now pins that field to its 34px toolbar height and gives it a distinct
+  layer-2 background.
+
+That capture also confirmed the standalone Settings process had
+`grammar-missing` parser capability and `UNLOADED · STATIC SOURCE` runtime
+state. Those are recorded as capture-environment capability limits, not treated
+as graph-rendering regressions. The runner now emits parser capability and a
+focused Code Workflow runtime-warning summary for every future bundle.
+
 This pass intentionally does **not** widen source-write allowlists, transaction
 semantics, parser capability, runtime registration scope, or shell-wide inspect
 coverage. GitHub connector status queries for these direct `dev` push commits

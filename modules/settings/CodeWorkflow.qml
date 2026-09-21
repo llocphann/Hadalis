@@ -905,10 +905,11 @@ Item {
     function revealSourceSelection(start: int, end: int): void {
         if (start < 0 || end < start || root.sourceText.length === 0)
             return
-        sourcePreviewText.select(start, end)
-        sourcePreviewText.cursorPosition = start
+        const safeStart = Math.min(start, root.sourceText.length)
+        const safeEnd = Math.min(end, root.sourceText.length)
+        sourcePreviewText.select(safeStart, safeEnd)
         Qt.callLater(() => {
-            const rect = sourcePreviewText.positionToRectangle(start)
+            const rect = sourcePreviewText.positionToRectangle(safeStart)
             const margin = 18
             sourcePreviewFlick.contentX = Math.max(
                 0,

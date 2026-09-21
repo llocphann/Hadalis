@@ -391,11 +391,11 @@ Item {
                     // beyond that should fan into a distinct visual lane.
                     let allowance = 0
                     if (sharedSource && first === 1 && second === 1)
-                        allowance = 28
+                        allowance = length
                     if (sharedTarget
                             && first === points.length - 1
                             && second === otherPoints.length - 1)
-                        allowance = Math.max(allowance, 28)
+                        allowance = length
                     overlap += Math.max(0, length - allowance)
                 }
             }
@@ -410,9 +410,9 @@ Item {
         const overlap =
             root.routeOverlapLength(route, edge, occupiedRoutes)
         const bends = Math.max(0, (route?.points?.length ?? 2) - 2)
-        return collisions * 1000000
-            + crossings * 10000
-            + overlap * 250
+        return collisions * 1000000000
+            + crossings * 1000000
+            + overlap * 1000
             + root.routeLength(route)
             + bends * 18
     }

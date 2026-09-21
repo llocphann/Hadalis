@@ -64,6 +64,12 @@ require(page, "property string inspectedSemanticAnchor:", "inspect mode must tra
 require(page, "CodeWorkflowAnalyzer.result?.entries", "inspect mode must expose parser semantic entries")
 require(page, "model: root.inspectTargets", "Targets must include runtime, graph and parsed QML elements")
 require(page, "Appearance.colors.colOnPrimaryContainer", "selected inspect targets need contrast-safe foreground")
+require(page, "readonly property bool hovered: pillHover.hovered",
+        "elided status pills must expose a stable hover surface")
+require(page, "id: pillHover",
+        "status pills must reveal full labels through hover")
+require(page, "text: root.label",
+        "status pill tooltip must use the complete unelided label")
 require(page, "readonly property bool compactHeader:",
         "Code Workflow header must expose a narrow-layout mode")
 require(page, "mainText: root.compactHeader",

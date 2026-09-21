@@ -245,6 +245,11 @@ Scope {
                 visible: popup.visible && toastBody.width > 0 && toastBody.height > 0
                 edge: "top"
                 ownerThickness: root.topOwnerThickness
+                tangentFrameThickness: root.screenEdgeThickness
+                paintOverlap: Math.min(
+                    PerimeterTokens.seamOverlap,
+                    Math.max(0, root.topOwnerThickness - 1))
+                joinTangentEnd: true
                 outputRect: Qt.rect(0, 0, popup.width, popup.height)
                 bodyRect: Qt.rect(
                     toastBody.x,
@@ -266,8 +271,11 @@ Scope {
             Item {
                 id: toastBody
                 z: 1
-                x: Math.max(root.edgeDecorationMargin,
-                    popup.width - width - root.edgeDecorationMargin)
+                // Sit on the real top/right owner boundaries: the top
+                // owner is Bar (or Screen Edge fallback), while the right owner
+                // remains the physical Screen Edge. Shadow room is needed only
+                // on the free left/bottom sides.
+                x: popup.width - root.screenEdgeThickness - width
                 y: root.topOwnerThickness
                 width: toastColumn.implicitWidth + root.toastBodyPadding * 2
                 height: toastColumn.implicitHeight + root.toastBodyPadding * 2

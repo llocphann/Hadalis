@@ -338,6 +338,7 @@ Rectangle {
                         Repeater {
                             model: root.tabs
                             NavigationRailButton {
+                                showToggledHighlight: false
                                 toggled: root.selectedTab == index
                                 buttonText: modelData.name
                                 buttonIcon: modelData.icon

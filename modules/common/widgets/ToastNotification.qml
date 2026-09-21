@@ -32,6 +32,7 @@ Item {
         height: contentLayout.implicitHeight + 20
         radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
         fallbackColor: Appearance.colors.colLayer1
+        inirColor: Appearance.inir.colLayer2
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: 1
         border.color: root.isError ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError) : (Appearance.angelEverywhere ? Appearance.angel.colBorder : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : Appearance.colors.colOutlineVariant)

@@ -30,6 +30,10 @@ LazyLoader {
     readonly property bool popupHovered: root._bodyHovered || root._contentHovered
     default property Item contentItem
     property real popupBackgroundMargin: 0
+    // Compatibility knob retained for old callers. Placement is now authoritative:
+    // every popup automatically joins any Screen Edge its body actually reaches.
+    property bool connectAdjacentScreenEdge: false
+
     // Presentation-only handle for the lazily-created connected surface. This is
     // useful to presentation peers such as the tray focus grab; feature/backend
     // state never depends on this window object.

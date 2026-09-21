@@ -9,6 +9,8 @@ import qs.modules.common
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import QtQuick.Effects
+import Qt5Compat.GraphicalEffects as GE
 
 Item {
     id: root
@@ -24,6 +26,7 @@ Item {
     property var screen: root.QsWindow.window?.screen
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property alias backgroundItem: barBackground
+    property bool nativeBlurAllowed: true
 
     property Item barContextMenuSource: null
     property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
@@ -245,7 +248,11 @@ Item {
         compactRequested: false
     }
 
-    readonly property color separatorColor: Appearance.colors.colOutlineVariant
+    readonly property bool cardStyleEverywhere: false
+    readonly property string surfaceDialect: Appearance.surfaceDialectFor("")
+    readonly property bool zzzEverywhere: root.surfaceDialect === "zzz"
+    readonly property color separatorColor: root.zzzEverywhere
+        ? Appearance.zzz.hairlineStrong : Appearance.colors.colOutlineVariant
 
     readonly property string wallpaperUrl: {
         const _dep1 = WallpaperListener.multiMonitorEnabled
@@ -254,10 +261,19 @@ Item {
         return WallpaperListener.wallpaperUrlForScreen(root.screen)
     }
 
-    readonly property bool _useGlobalQuantizer:
-        root.wallpaperUrl === Wallpapers.effectiveWallpaperUrl
+    readonly property bool _useGlobalQuantizer: root.wallpaperUrl === Wallpapers.effectiveWallpaperUrl
+    ColorQuantizer {
+        id: wallpaperColorQuantizer
+        source: root.auroraEverywhere
+            ? (root._useGlobalQuantizer ? "" : root.wallpaperUrl)
+            : ""
+        depth: 0
+        rescaleSize: 10
+    }
+
     readonly property color wallpaperDominantColor: root._useGlobalQuantizer
-        ? Appearance.wallpaperDominantColor : Appearance.colors.colPrimary
+        ? Appearance.wallpaperDominantColor
+        : (wallpaperColorQuantizer?.colors?.[0] ?? Appearance.colors.colPrimary)
     AdaptedMaterialScheme {
         id: _localBlendedColors
         color: ColorUtils.mix(root.wallpaperDominantColor,
@@ -266,6 +282,20 @@ Item {
     }
     readonly property QtObject blendedColors: root._useGlobalQuantizer
         ? Appearance.wallpaperBlendedColors : _localBlendedColors
+
+    readonly property bool inirEverywhere: root.surfaceDialect === "inir"
+    readonly property bool angelEverywhere: root.surfaceDialect === "angel"
+    readonly property bool regaliaEverywhere: root.surfaceDialect === "regalia"
+    readonly property bool auroraEverywhere: root.surfaceDialect === "aurora" || root.angelEverywhere
+
+    readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
+    readonly property bool nativeBlurGeometryExact:
+        Appearance.blurTopologyExact(root.nativeBlurTopology)
+    readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
+            "bar", root.nativeBlurTopology)
+        && root.nativeBlurAllowed
+        && !Appearance.gameModeMinimal
+    readonly property bool zzzDetachedRounded: false
 
     readonly property string leftAction: Config.options?.bar?.leftScrollAction ?? "brightness"
     readonly property string rightAction: Config.options?.bar?.rightScrollAction ?? "volume"
@@ -306,8 +336,10 @@ Item {
         Config.options?.bar?.visualizer?.frequencyProfile ?? "flat"
     readonly property real barSpectrumAccentStrength: Math.max(0,
         Math.min(1, (Config.options?.bar?.visualizer?.accentStrength ?? 70) / 100))
-    readonly property color barSpectrumColor:
-        root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary
+    readonly property color barSpectrumColor: root.inirEverywhere ? Appearance.inir.colPrimary
+        : root.zzzEverywhere ? Appearance.zzz.accent
+        : root.regaliaEverywhere ? Appearance.regalia.hardwarePrimary
+        : (root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
 
     CavaProcess {
         id: barCavaProcess
@@ -380,7 +412,9 @@ Item {
         Layout.bottomMargin: Appearance.sizes.baseBarHeight / 3
         Layout.fillHeight: true
         implicitWidth: 1
-        color: root.separatorColor
+        color: root.zzzEverywhere ? Appearance.zzz.hairlineStrong
+            : root.inirEverywhere ? Appearance.inir.colBorderSubtle
+            : root.separatorColor
         Behavior on implicitWidth {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
@@ -534,7 +568,10 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             buttonPadding: 5
             colBackground: buttonHovered
-                ? Appearance.colors.colLayer1Hover : "transparent"
+                ? (root.auroraEverywhere
+                    ? Appearance.aurora.colSubSurfaceHover
+                    : Appearance.colors.colLayer1Hover)
+                : "transparent"
         }
     }
 
@@ -573,17 +610,43 @@ Item {
         }
     }
 
+    Loader {
+        // Detached Float/Card shadow is retired. The supported Hug Bar uses the
+        // dedicated inward edge shadow owned by Bar.qml.
+        active: false
+        anchors.fill: barBackground
+        sourceComponent: StyledRectangularShadow {
+            anchors.fill: undefined
+            target: barBackground
+        }
+    }
+
     Rectangle {
         id: barBackground
+        readonly property bool auroraEverywhere:
+            root.surfaceDialect === "aurora" || root.angelEverywhere
+        readonly property bool gameModeMinimal: Appearance.gameModeMinimal
+        readonly property int cornerStyle: 0
+        readonly property bool zzzGlassActive: root.zzzEverywhere
+            && Appearance.effectsEnabled
+            && (Config.options?.appearance?.zzz?.glass ?? true)
+        readonly property bool floatingStyle: false
 
-        anchors.fill: parent
+        anchors {
+            fill: parent
+            margins: 0
+        }
+        readonly property real barMargin: 0
+        readonly property bool isBottom: Config.options?.bar?.bottom ?? false
+        readonly property QtObject blendedColors: root.blendedColors
 
         // Hug background is structural connected chrome. Fullscreen/GameMode
         // may disable expensive effects, but it must never hide the Bar body.
         // The PanelWindow remains mapped; compositor stacking covers it while a
         // fullscreen client is active and reveals it again without remapping.
         visible: true
-        opacity: Math.max(0, Math.min(1, Config.options?.bar?.opacity ?? 1))
+        opacity: root.regaliaEverywhere ? 1
+            : Math.max(0, Math.min(1, Config.options?.bar?.opacity ?? 1))
         Behavior on opacity {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
@@ -593,7 +656,32 @@ Item {
             }
         }
 
-        color: Appearance.colors.colLayer0
+        color: {
+            if (root.zzzEverywhere) {
+                const zzzBase = cornerStyle === 3
+                    ? Appearance.zzz.chromeAlt : Appearance.zzz.chrome
+                return barBackground.zzzGlassActive ? "transparent" : zzzBase
+            }
+            if (root.regaliaEverywhere) return "transparent"
+            if (root.angelEverywhere) {
+                const base = blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
+                if (root.nativeBlurActive)
+                    return ColorUtils.transparentize(
+                        base, Appearance.angel.compositorPanelTransparentize)
+                return ColorUtils.applyAlpha(base, 1)
+            }
+            if (root.inirEverywhere) return Appearance.inir.colLayer0
+            if (auroraEverywhere) {
+                const base = blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
+                if (root.nativeBlurActive)
+                    return ColorUtils.transparentize(
+                        base, Appearance.aurora.compositorOverlayTransparentize)
+                return ColorUtils.applyAlpha(base, 1)
+            }
+            if (root.cardStyleEverywhere || cornerStyle === 3)
+                return Appearance.colors.colLayer1
+            return Appearance.colors.colLayer0
+        }
         Behavior on color {
             enabled: Appearance.animationsEnabled
             ColorAnimation {
@@ -603,14 +691,48 @@ Item {
             }
         }
 
-        radius: {
-            const customRounding = Config.options?.bar?.customRounding ?? -1
-            return customRounding >= 0 ? customRounding : 0
+        RegaliaPlate {
+            anchors.fill: parent
+            visible: root.regaliaEverywhere
+            fillColor: barBackground.floatingStyle
+                ? Appearance.regalia.barSurfaceFloating
+                : Appearance.regalia.barSurface
+            radius: barBackground.radius
+            inset: barBackground.floatingStyle
+                ? Appearance.regalia.surfaceInset : Appearance.regalia.controlInset
+            elevated: barBackground.floatingStyle
+            deepFrame: !barBackground.floatingStyle
+            glassEnabled: true
         }
-        topLeftRadius: radius
-        topRightRadius: radius
-        bottomLeftRadius: radius
-        bottomRightRadius: radius
+
+        radius: {
+            if (root.zzzEverywhere) return 0
+            const customRounding = Config.options?.bar?.customRounding ?? -1
+            if (customRounding >= 0) return customRounding
+            if (root.regaliaEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3)
+                    ? Appearance.regalia.roundLarge : 0
+            if (root.angelEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3)
+                    ? Appearance.angel.roundingNormal : 0
+            if (root.inirEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3)
+                    ? Appearance.inir.roundingNormal : 0
+            if (floatingStyle)
+                return cornerStyle === 3
+                    ? Appearance.rounding.normal : Appearance.rounding.windowRounding
+            return 0
+        }
+
+        readonly property real zzzRoundEdge:
+            (root.zzzEverywhere && Appearance.zzz.round)
+                ? Appearance.zzz.panelRadius : -1
+        readonly property bool zzzHugCorners: zzzRoundEdge >= 0 && cornerStyle === 0
+        readonly property bool zzzAllCorners: zzzRoundEdge >= 0 && floatingStyle
+        topLeftRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
+        topRightRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
+        bottomLeftRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
+        bottomRightRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
         Behavior on topLeftRadius {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
@@ -644,9 +766,133 @@ Item {
             }
         }
 
-        border.width: 0
-        border.color: Appearance.colors.colLayer0Border
+        border.width: {
+            if (root.zzzEverywhere) return 1
+            if (root.regaliaEverywhere) return 0
+            if (root.angelEverywhere) return Appearance.angel.panelBorderWidth
+            if (root.inirEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3) ? 1 : 0
+            if (auroraEverywhere) return floatingStyle ? 1 : 0
+            return floatingStyle ? 1 : 0
+        }
+        Behavior on border.width {
+            enabled: Appearance.animationsEnabled
+            NumberAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            }
+        }
+        border.color: {
+            if (root.zzzEverywhere) return Appearance.zzz.hairline
+            if (root.regaliaEverywhere) return "transparent"
+            if (root.angelEverywhere) return Appearance.angel.colPanelBorder
+            if (root.inirEverywhere) return Appearance.inir.colBorder
+            if (auroraEverywhere) return Appearance.aurora.colTooltipBorder
+            return Appearance.colors.colLayer0Border
+        }
+        Behavior on border.color {
+            enabled: Appearance.animationsEnabled
+            ColorAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            }
+        }
+
         clip: true
+
+        ZzzGlassWash {
+            anchors.fill: parent
+            maskRadius: barBackground.zzzRoundEdge >= 0
+                ? barBackground.zzzRoundEdge : barBackground.radius
+            chamfer: 0
+            glassEnabled: barBackground.zzzGlassActive
+            selfBacked: true
+            veilAlpha: Appearance.zzz.dark ? 0.78 : 0.82
+            z: -1
+        }
+
+        layer.enabled: auroraEverywhere && !root.inirEverywhere
+            && !root.zzzEverywhere && !gameModeMinimal
+        layer.effect: GE.OpacityMask {
+            maskSource: Rectangle {
+                width: barBackground.width
+                height: barBackground.height
+                radius: barBackground.radius
+            }
+        }
+
+        Image {
+            id: blurredWallpaper
+            x: -barBackground.barMargin
+            y: barBackground.isBottom
+                ? -(root.screen?.height ?? 1080) + barBackground.height + barBackground.barMargin
+                : -barBackground.barMargin
+            width: root.screen?.width ?? 1920
+            height: root.screen?.height ?? 1080
+            visible: barBackground.auroraEverywhere
+                && !root.inirEverywhere && !root.zzzEverywhere
+                && !barBackground.gameModeMinimal && !root.nativeBlurActive
+            source: visible ? root.wallpaperUrl : ""
+            fillMode: Image.PreserveAspectCrop
+            cache: true
+            sourceSize.width: root.screen?.width ?? 1920
+            sourceSize.height: root.screen?.height ?? 1080
+            asynchronous: true
+
+            layer.enabled: Appearance.effectsEnabled
+                && barBackground.auroraEverywhere
+                && !root.inirEverywhere && !root.nativeBlurActive
+            layer.effect: MultiEffect {
+                source: blurredWallpaper
+                anchors.fill: source
+                saturation: root.angelEverywhere
+                    ? (Appearance.angel.blurSaturation * Appearance.angel.colorStrength)
+                    : (Appearance.effectsEnabled ? 0.2 : 0)
+                blurEnabled: Appearance.effectsEnabled
+                blurMax: 64
+                blur: Appearance.effectsEnabled
+                    ? (root.angelEverywhere ? Appearance.angel.blurIntensity : 1)
+                    : 0
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: root.angelEverywhere
+                    ? ColorUtils.transparentize(
+                        (barBackground.blendedColors?.colLayer0
+                            ?? Appearance.colors.colLayer0Base),
+                        Appearance.angel.overlayOpacity
+                            * Appearance.angel.panelTransparentize)
+                    : ColorUtils.transparentize(
+                        (barBackground.blendedColors?.colLayer0
+                            ?? Appearance.colors.colLayer0Base),
+                        Appearance.aurora.overlayTransparentize)
+            }
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: Appearance.angel.insetGlowHeight
+            visible: root.angelEverywhere
+            color: Appearance.angel.colInsetGlow
+        }
+
+        AngelPartialBorder {
+            targetRadius: barBackground.radius
+        }
+
+        ZzzTechFrame {
+            margin: 6
+            showGrid: false
+            showCornerMarks: false
+            showLabels: false
+            showTicks: false
+            accentColor: Appearance.zzz.chromeStroke
+        }
 
         CavaSpectrum {
             anchors.fill: parent

@@ -210,6 +210,7 @@ Scope {
                     screenY: screenPos.y
 
                     fallbackColor: Appearance.zzzEverywhere ? Appearance.zzz.bg1 : Appearance.colors.colLayer2
+                    inirColor: Appearance.inir.colLayer1
                     auroraTransparency: Appearance.aurora.popupTransparentize
 
                     radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius : Appearance.rounding.large

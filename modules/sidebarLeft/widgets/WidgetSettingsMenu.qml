@@ -133,6 +133,7 @@ Loader {
             implicitHeight: contentCol.implicitHeight + 24
 
             fallbackColor: Appearance.colors.colSurfaceContainer
+            inirColor: Appearance.inir.colLayer2
             auroraTransparency: Appearance.aurora.popupTransparentize
             radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
             border.width: 1

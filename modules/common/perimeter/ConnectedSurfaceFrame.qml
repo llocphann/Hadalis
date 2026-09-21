@@ -8,6 +8,8 @@ Item {
     property color fillColor: "white"
     property color borderColor: "transparent"
     property real borderWidth: geometry.borderWidth ?? 0
+    property real connectorBorderWidth: 0
+    property bool connectorVisible: true
     property bool shadowEnabled: false
     property real shadowExtent: 0
     property color shadowColor: "transparent"
@@ -26,6 +28,7 @@ Item {
     readonly property bool bodyHovered: bodyHover.hovered
 
     readonly property Item bodyItem: body
+    readonly property Item connectorItem: connector
     readonly property Item blurItem: blurBounds
     readonly property rect visualBounds: geometry.visualBounds
     readonly property rect blurRect: geometry.blurRect
@@ -101,4 +104,16 @@ Item {
         }
     }
 
+
+    // Retained only for consumers that explicitly need legacy connector
+    // geometry. Waffle currently keeps connectorVisible=false, so attachment
+    // remains a direct square seam with no auxiliary wedge painter.
+    ConnectedSurfaceConnector {
+        id: connector
+        geometry: root.geometry
+        fillColor: root.fillColor
+        strokeColor: root.borderColor
+        strokeWidth: root.connectorBorderWidth
+        connectorEnabled: root.connectorVisible
+    }
 }

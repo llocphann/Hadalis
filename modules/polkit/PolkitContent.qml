@@ -71,6 +71,11 @@ Item {
         id: dialog
         anchors.centerIn: parent
         backgroundWidth: 460
+        zzzLabel: "AUTH"
+        zzzIndex: "PK"
+        zzzGhostText: "AUTH"
+        zzzAccentColor: Appearance.zzz.secondary
+        zzzShowTicks: true
         show: false
         Component.onCompleted: show = true
 

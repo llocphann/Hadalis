@@ -26,10 +26,21 @@ Item {
         y: root.position === "top" ? root.implicitHeight - implicitHeight
          : root.position === "bottom" ? 0
          : (root.implicitHeight - implicitHeight) / 2
-        color: Appearance.colors.colLayer3
-        radius: Appearance.rounding.verysmall
-        border.width: 1
-        border.color: Appearance.colors.colLayer3Hover
+        color: Appearance.regaliaEverywhere ? "transparent"
+             : Appearance.angelEverywhere ? Appearance.angel.colGlassTooltip
+             : Appearance.inirEverywhere ? Appearance.inir.colLayer2
+             : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipSurface
+             : Appearance.colors.colLayer3
+        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall
+             : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
+             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
+             : Appearance.rounding.verysmall
+        border.width: Appearance.regaliaEverywhere ? 0
+             : Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
+        border.color: Appearance.angelEverywhere ? Appearance.angel.colBorderSubtle
+                    : Appearance.inirEverywhere ? Appearance.inir.colBorder
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder
+                    : Appearance.colors.colLayer3Hover
         opacity: shown ? 1 : 0
         scale: shown ? 1 : 0.94
         transformOrigin: root.position === "top" ? Item.Bottom
@@ -57,13 +68,30 @@ Item {
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
 
+        RegaliaPlate {
+            anchors.fill: parent
+            visible: Appearance.regaliaEverywhere
+            fillColor: Appearance.regalia.bg3
+            radius: backgroundRectangle.radius
+            inset: Appearance.regalia.controlInset
+            elevated: true
+        }
+
+        AngelPartialBorder {
+            targetRadius: backgroundRectangle.radius
+            coverage: 0.45
+        }
+
         StyledText {
             id: tooltipTextObject
             anchors.centerIn: parent
             text: root.text
             font.pixelSize: Appearance.font.pixelSize.smaller
             font.hintingPreference: Font.PreferNoHinting // Prevent shaky text
-            color: Appearance.colors.colOnLayer3
+            color: Appearance.regaliaEverywhere ? Appearance.regalia.onColor
+                : Appearance.angelEverywhere ? Appearance.angel.colText
+                : Appearance.inirEverywhere ? Appearance.inir.colText
+                : Appearance.colors.colOnLayer3
             wrapMode: Text.Wrap
         }
     }   

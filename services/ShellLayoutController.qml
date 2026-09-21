@@ -273,13 +273,10 @@ Singleton {
                 && root._outputEnabled(dockOutputs, outputName)) {
             const dockState = root.currentState("iiDock", outputName)
             result.dockEdge = dockState.ok ? dockState.slot : ""
-            // Match the real pinned reservation/body boundary exactly. Shadow
-            // room is transparent decoration and must not push automatic desktop
-            // zones farther inward than the Dock itself.
             root._applyInset(result, result.dockEdge,
-                (Config.options?.dock?.height ?? 60)
-                    + Math.max(1, Math.min(32,
-                        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10))))
+                (Config.options?.dock?.height ?? 70)
+                    + Appearance.sizes.elevationMargin
+                    + Appearance.sizes.hyprlandGapsOut)
         }
         return result
     }
@@ -534,7 +531,7 @@ Singleton {
             const numeric = Number(value)
             if (!Number.isFinite(numeric))
                 return root._failure("invalid-value", "Invalid dock size")
-            const clamped = Math.round(Math.max(40, Math.min(100, numeric)))
+            const clamped = Math.round(Math.max(40, Math.min(200, numeric)))
             Config.setNestedValue("dock.height", clamped)
             Config.flushWrites()
             return {

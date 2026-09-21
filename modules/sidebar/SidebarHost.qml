@@ -78,9 +78,9 @@ Scope {
     readonly property int customHeight: Math.round(
         root.roleLayoutState?.customHeight ?? 720)
     readonly property bool screenEdgeShadowEnabled:
-        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
     readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
     // Reserve tangent room for the iRiS field and free-side shadow. This is
     // field/shadow extent only; no standalone wedge geometry is painted.
     readonly property real edgeDecorationMargin: Math.max(
@@ -95,11 +95,10 @@ Scope {
             Appearance.sizes.hyprlandGapsOut,
             PerimeterTokens.irisFuseDepth,
             root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0)
-    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
-        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
     readonly property color screenEdgeShadowColor:
-        ColorUtils.applyAlpha(Appearance.colors.colShadow,
-            root.screenEdgeShadowOpacity)
+        Qt.alpha(Appearance.m3colors.m3shadow, root.screenEdgeShadowOpacity)
     readonly property real availableContentHeight: Math.max(0,
         (sidebarRoot.screen?.height ?? 1080)
             - root.edgeDecorationMargin * 2)

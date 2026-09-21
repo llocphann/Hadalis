@@ -40,6 +40,7 @@ Item {
         wallpaperBackdropEnabled: !root.connectedSurface
         fallbackColor: root.connectedSurface ? "transparent"
             : root._zzz ? Appearance.zzz.bg0 : Appearance.colors.colLayer0
+        inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: root.connectedSurface ? 0
             : root._zzz || auroraEverywhere || inirEverywhere ? 1 : 0

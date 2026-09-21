@@ -2,6 +2,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
@@ -14,10 +15,9 @@ DockButton {
     id: root
     property var appToplevel
     property var appListRoot
+    property int listIndex: -1       // set by the DockApps delegate (required property int index)
     property int lastFocused: -1
-    readonly property real iconSize: Math.min(
-        Math.max(20, Number(Config.options?.dock?.iconSize ?? 35)),
-        Math.max(20, root.controlSize - 10))
+    property real iconSize: Config.options?.dock?.iconSize ?? 35
     property real countDotWidth: 10
     property real countDotHeight: 4
     // Toplevels come from the dock-wide reactive map so window-list
@@ -91,6 +91,11 @@ DockButton {
         return false
     }
     property bool hasWindows: toplevels.length > 0
+    surfaceDialect: Appearance.surfaceDialectFor("")
+    property bool pillStyle: false
+    property bool islandStyle: root.surfaceDialect === "island"
+    property bool macosStyle: false
+
     readonly property int notificationCount: {
         if (root.isSeparator || (Config.options?.dock?.notificationBadge ?? true) === false)
             return 0
@@ -130,14 +135,26 @@ DockButton {
         return 0;
     }
 
-    // One scale owner covers both active-app emphasis and drag lift. DockApps
-    // only supplies dragEmphasis; it must not replace this binding from outside.
-    property bool dragEmphasis: false
-    readonly property real activeScale: 1.05
-    scale: root.dragEmphasis ? 1.08 : (root.appIsActive ? root.activeScale : 1.0)
+    // Subtle highlight for active app (disabled in macOS and pill modes —
+    // macOS uses magnify, pill uses its own background highlight)
+    scale: (!macosStyle && !pillStyle && appIsActive)
+        ? (root.regaliaStyle ? 1.0 : root.zzzStyle ? 1.02 : 1.05) : 1.0
     Behavior on scale {
         enabled: Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+    }
+
+    transform: Translate {
+        y: (root.zzzStyle || root.islandStyle) && !root.macosStyle && !root.pillStyle && root.buttonHovered && !root.vertical ? -3 : 0
+        x: (root.zzzStyle || root.islandStyle) && !root.macosStyle && !root.pillStyle && root.buttonHovered && root.vertical ? -3 : 0
+        Behavior on y {
+            enabled: Appearance.animationsEnabled
+            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+        }
+        Behavior on x {
+            enabled: Appearance.animationsEnabled
+            NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+        }
     }
 
     property bool isSeparator: appToplevel.appId === "SEPARATOR"
@@ -176,24 +193,85 @@ DockButton {
         menu: root.appTrayItem?.menu ?? null
     }
 
-    readonly property real separatorSize:
-        Math.max(8, root.dockThickness - root.controlSize)
+    readonly property real dockHeight: Config.options?.dock?.height ?? 70
+    readonly property real separatorSize: dockHeight - 50
 
-    implicitWidth: isSeparator
-        ? (vertical ? separatorSize : 8)
-        : root.controlSize
-    implicitHeight: isSeparator
-        ? (vertical ? 8 : separatorSize)
-        : root.controlSize
+    implicitWidth: isSeparator ? (vertical ? separatorSize : 8) : (vertical ? 50 : (implicitHeight - topInset - bottomInset))
+    implicitHeight: isSeparator ? (vertical ? 8 : separatorSize) : 50
 
-    background.visible: !isSeparator
+    // In pill mode, hide the default RippleButton hover background — DockPillItem provides its own.
+    // In macOS mode, also hide it — DockMacItem provides visual feedback via magnify.
+    background.visible: !isSeparator && !pillStyle && !macosStyle
 
-    colBackgroundHover: Appearance.colors.colLayer0Hover
-    colRipple: Appearance.colors.colLayer0Active
+    // Suppress ripple/hover bg in macOS mode so no colored rect appears under icon
+    // Island mode hovers like a Ricelin row: a faint cream frame fill with a
+    // vermilion-tinted press, instead of the global style's hover chain.
+    colBackgroundHover: macosStyle ? "transparent" : root.islandStyle ? PillTheme.frameBg
+        : (root.regaliaStyle ? Appearance.regalia.hoverPlate
+        : root.zzzStyle ? "transparent"
+        : root.angelStyle ? Appearance.angel.colGlassCard
+        : root.inirStyle ? Appearance.inir.colLayer1Hover
+        : root.auroraStyle ? Appearance.aurora.colSubSurface
+        : Appearance.colors.colLayer0Hover)
+    colRipple: macosStyle ? "transparent" : root.islandStyle ? Qt.alpha(PillTheme.vermLit, 0.18)
+        : (root.regaliaStyle ? Appearance.regalia.pressPlate
+        : root.zzzStyle ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.22)
+        : root.angelStyle ? Appearance.angel.colGlassCardActive
+        : root.inirStyle ? Appearance.inir.colLayer1Active
+        : root.auroraStyle ? Appearance.aurora.colSubSurfaceActive
+        : Appearance.colors.colLayer0Active)
 
+    // Tune the inherited zzz tile (DockButton owns the only ZzzPlate).
+    // Hover lifts the tile with a fuller cut; active keeps a moderate chamfer so
+    // the focused read differs from hover. Whisper-thin console lift: a very
+    // faint paper tint so the icon stays the hero, edged with a soft stroke.
+    zzzPlateVisible: root.zzzStyle && !root.isSeparator && !root.islandStyle
+    zzzPlateChamfer: Appearance.zzz.cutCorner * (root.buttonHovered ? 0.85 : root.appIsActive ? 0.6 : 0.45)
+    zzzPlateFill: root.buttonHovered ? ColorUtils.applyAlpha(Appearance.zzz.paper, 0.14)
+        : root.appIsActive ? ColorUtils.applyAlpha(Appearance.zzz.sticker, 0.08)
+        : "transparent"
+    zzzPlateStroke: root.buttonHovered ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.55)
+        : root.appIsActive ? ColorUtils.applyAlpha(Appearance.zzz.sticker, 0.65)
+        : "transparent"
+
+    // Pill background (replaces shared panel for this item)
+    DockPillItem {
+        id: pillBackground
+        anchors.fill: parent
+        visible: pillStyle && !isSeparator && !Appearance.gameModeMinimal
+        surfaceDialect: root.surfaceDialect
+        appIsActive: root.appIsActive
+        hasWindows: root.hasWindows
+        windowCount: toplevels.length
+        focusedWindowIndex: root.focusedWindowIndex
+        vertical: root.vertical
+        countDotWidth: root.countDotWidth
+        countDotHeight: root.countDotHeight
+    }
+
+    // macOS-style icon wrapper: magnify effect + multi-window indicator dots
+    DockMacItem {
+        id: macItem
+        anchors.fill: parent
+        visible: macosStyle && !isSeparator && !Appearance.gameModeMinimal
+        surfaceDialect: root.surfaceDialect
+        appIsActive: root.appIsActive
+        hasWindows: root.hasWindows
+        buttonHovered: root.buttonHovered
+        previewVisible: root.appListRoot?.previewAnchorItem === root
+        vertical: root.vertical
+        neighborDistance: {
+            const hi = root.appListRoot?.macHoveredIndex ?? -1
+            return (hi < 0 || root.listIndex < 0) ? 99 : Math.abs(root.listIndex - hi)
+        }
+        windowCount: toplevels.length
+        focusedWindowIndex: root.focusedWindowIndex
+    }
+
+    // Hover shadow (disabled for angel — whole dock already has escalonado)
     StyledRectangularShadow {
-        target: root.background
-        visible: !root.isSeparator
+        target: root.pillStyle ? pillBackground : root.background
+        visible: !root.angelStyle && !root.zzzStyle && !root.macosStyle
         opacity: root.buttonHovered && !root.isSeparator
             ? (Appearance.m3colors.darkmode ? 0.18 : 0.35) : 0
         spread: 0
@@ -209,7 +287,10 @@ DockButton {
         sourceComponent: Rectangle {
             width: root.vertical ? root.separatorSize : 1
             height: root.vertical ? 1 : root.separatorSize
-            color: Appearance.colors.colOutlineVariant
+            color: root.inirStyle ? Appearance.inir.colBorderSubtle
+                 : root.zzzStyle ? Appearance.zzz.hairlineStrong
+                 : root.auroraStyle ? ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.7)
+                 : Appearance.colors.colOutlineVariant
         }
     }
 
@@ -307,7 +388,9 @@ DockButton {
                 root.desktopEntry?.name
             ])
         }
-        // No open windows: launch a new instance from the desktop entry or fallbacks.
+        // macOS click micro-pulse
+        if (macosStyle) macItem.clickPulse()
+        // Sin ventanas abiertas: lanzar nueva instancia desde desktop entry o fallbacks
         if (toplevels.length === 0) {
             launchFromDesktopEntry();
             return;
@@ -459,22 +542,11 @@ DockButton {
                 text: appToplevel.pinned ? Translation.tr("Unpin from dock") : Translation.tr("Pin to dock"),
                 monochromeIcon: true,
                 action: () => {
-                    const appId = String(appToplevel.originalAppId
-                        ?? appToplevel.appId ?? "")
-                    if (appId.length === 0)
-                        return
-                    const pinnedApps = [...(Config.options?.dock?.pinnedApps ?? [])]
-                    const appKey = appId.toLowerCase()
-                    const alreadyPinned = pinnedApps.some(id =>
-                        String(id).toLowerCase() === appKey)
-                    if (alreadyPinned) {
-                        // Runtime identity matching is case-insensitive, so the
-                        // mutation must be too. Otherwise a differently-cased
-                        // desktop id can show "Unpin" but append a duplicate.
-                        Config.setNestedValue("dock.pinnedApps", pinnedApps.filter(id =>
-                            String(id).toLowerCase() !== appKey))
+                    const appId = appToplevel.originalAppId ?? appToplevel.appId;
+                    if (Config.options?.dock?.pinnedApps?.indexOf(appId) !== -1) {
+                        Config.setNestedValue("dock.pinnedApps", (Config.options?.dock?.pinnedApps ?? []).filter(id => id !== appId))
                     } else {
-                        Config.setNestedValue("dock.pinnedApps", pinnedApps.concat([appId]))
+                        Config.setNestedValue("dock.pinnedApps", (Config.options?.dock?.pinnedApps ?? []).concat([appId]))
                     }
                 }
             },
@@ -522,8 +594,18 @@ DockButton {
               id: contentRoot
               anchors.centerIn: parent
 
-              // Panel is the sole Dock renderer; icon tinting does not need a
-              // second FBO cache/magnification stage.
+              // Cache the item into an FBO layer if shaders are present AND animating.
+              // This completely eliminates the horrific 100% CPU/GPU spike when macOS
+              // hover magnify continually rescales the Desaturate and ColorOverlay shaders.
+              layer.enabled: root.macosStyle && (Config.options?.dock?.monochromeIcons ?? false)
+              layer.smooth: true
+
+              // macOS magnify: scale around the bottom centre so icons grow upward.
+              // Animation is driven by DockMacItem's own Behavior on _magnifyScale —
+              // no extra Behavior needed here.
+              scale:           root.macosStyle ? macItem.iconScale : 1.0
+              transformOrigin: root.vertical ? Item.Right : Item.Bottom
+
             Loader {
                 id: iconImageLoader
                 anchors {
@@ -617,7 +699,9 @@ DockButton {
                     ColorOverlay {
                         anchors.fill: desaturatedIcon
                         source: desaturatedIcon
-                        color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9)
+                        color: ColorUtils.transparentize(root.inirStyle ? Appearance.inir.colPrimary
+                            : root.zzzStyle ? Appearance.zzz.accent
+                            : Appearance.colors.colPrimary, 0.9)
                     }
                 }
             }
@@ -634,10 +718,12 @@ DockButton {
                   sourceComponent: Rectangle {
                       implicitWidth: Math.max(16, badgeText.implicitWidth + 8)
                       implicitHeight: 16
-                      radius: height / 2
-                      color: Appearance.colors.colError
+                      radius: root.zzzStyle ? Appearance.zzz.controlRadius : height / 2
+                      color: root.zzzStyle ? Appearance.zzz.signal
+                          : root.inirStyle ? Appearance.inir.colError : Appearance.colors.colError
                       border.width: 1
-                      border.color: Appearance.colors.colLayer1
+                      border.color: root.zzzStyle ? Appearance.zzz.paper
+                          : root.inirStyle ? Appearance.inir.colLayer1 : Appearance.colors.colLayer1
 
                       Behavior on implicitWidth {
                           enabled: Appearance.animationsEnabled
@@ -654,19 +740,26 @@ DockButton {
                           text: root.notificationCount > 99 ? "99+" : root.notificationCount
                           font.pixelSize: Appearance.font.pixelSize.smallest
                           font.weight: Font.Bold
-                          color: Appearance.colors.colOnError
+                          color: root.zzzStyle ? Appearance.zzz.onSignal
+                              : root.inirStyle ? Appearance.inir.colOnError : Appearance.colors.colOnError
                       }
                   }
               }
 
-              // Smart indicator: shows window count and which is focused.
+              // Smart indicator: shows window count and which is focused
+              // Hidden in macOS and pill modes — those render their own indicators
               Loader {
-                  active: root.hasWindows && !root.isSeparator
+                  active: root.hasWindows && !root.isSeparator && !root.macosStyle && !root.pillStyle
                 anchors {
                     top: iconImageLoader.bottom
                     topMargin: 2
                     horizontalCenter: parent.horizontalCenter
                 }
+
+                // Config options
+                property bool smartIndicator: Config.options?.dock?.smartIndicator !== false
+                property bool showAllDots: Config.options?.dock?.showAllWindowDots !== false
+                property int maxDots: Config.options?.dock?.maxIndicatorDots ?? 5
 
                 sourceComponent: Row {
                     spacing: 3
@@ -695,14 +788,30 @@ DockButton {
                                 return index === root.focusedWindowIndex;
                             }
 
-                            radius: Math.min(width, height) / 2
-                            implicitWidth: isFocusedWindow
-                                ? root.countDotWidth : root.countDotHeight
-                            implicitHeight: root.countDotHeight
+                            // ZZZ indicators are thin signal pills: accent for the
+                            // focused window, whispered ink for siblings.
+                            radius: root.zzzStyle ? Math.min(width, height) / 2
+                                : root.angelStyle ? 0 : Math.min(width, height) / 2
+                            Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
+                            implicitWidth: (root.islandStyle || root.zzzStyle)
+                                ? (isFocusedWindow ? 16 : 5)
+                                : root.angelStyle
+                                ? (isFocusedWindow ? 14 : 6)
+                                : (isFocusedWindow ? root.countDotWidth : root.countDotHeight)
+                            implicitHeight: (root.islandStyle || root.zzzStyle) ? 3
+                                : root.angelStyle ? 2 : root.countDotHeight
+                            // Island indicators are Ricelin filaments: a lit vermilion
+                            // thread for the focused window, whispered cream siblings.
+                            // Island opt-in outranks the zzz accent chain.
                             color: isFocusedWindow
-                                ? Appearance.colors.colPrimary
-                                : ColorUtils.transparentize(
-                                    Appearance.colors.colOnLayer0, 0.65)
+                                   ? (root.islandStyle ? PillTheme.vermLit
+                                   : root.zzzStyle ? Appearance.zzz.accent
+                                   : root.angelStyle ? Appearance.angel.colPrimary
+                                   : root.inirStyle ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
+                                   : root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
+                                   : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
+                                   : root.angelStyle ? Appearance.angel.colTextSecondary
+                                   : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0, 0.65)
 
                             Behavior on implicitWidth {
                                 enabled: Appearance.animationsEnabled
@@ -723,12 +832,16 @@ DockButton {
                     Rectangle {
                         opacity: (!root.appIsActive && root.hasWindows && Config.options?.dock?.showAllWindowDots === false) ? 1 : 0
                         visible: opacity > 0
-                        width: 5
-                        height: 5
-                        radius: Math.min(width, height) / 2
-                        color: ColorUtils.transparentize(
-                            Appearance.colors.colOnLayer0, 0.5)
-                        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
+                        width: (root.zzzStyle || root.islandStyle) ? 5 : (root.angelStyle ? 6 : 5)
+                        height: (root.zzzStyle || root.islandStyle) ? 3 : (root.angelStyle ? 2 : 5)
+                        radius: root.zzzStyle ? Math.min(width, height) / 2
+                            : root.angelStyle ? 0 : Math.min(width, height) / 2
+                        color: root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
+                            : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
+                            : root.angelStyle ? Appearance.angel.colTextSecondary
+                            : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0,
+                            root.zzzStyle ? 0.65 : 0.5)
+                        Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animationCurves.zzzOvershoot } }
                         Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
 
                         Behavior on opacity {

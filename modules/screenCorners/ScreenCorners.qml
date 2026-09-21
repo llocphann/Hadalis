@@ -125,7 +125,7 @@ Scope {
                             return
                         armed = false
                         orbitDwellTimer.stop()
-                        GlobalStates.openTaskView(cornerPanelWindow.screen?.name ?? "")
+                        GlobalStates.openOrbit(cornerPanelWindow.screen?.name ?? "")
                     }
 
                     onPositionChanged: mouse => {
@@ -151,7 +151,7 @@ Scope {
                     onExited: {
                         atCorner = false
                         orbitDwellTimer.stop()
-                        if (!GlobalStates.overviewOpen || GlobalStates.overviewMode !== "taskview")
+                        if (!GlobalStates.overviewOpen || GlobalStates.overviewMode !== "orbit")
                             armed = true
                     }
 

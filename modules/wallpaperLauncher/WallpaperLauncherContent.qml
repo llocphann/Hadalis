@@ -206,6 +206,7 @@ FocusScope {
         anchors.fill: parent
         fallbackColor: ColorUtils.applyAlpha(
             Appearance.zzzEverywhere ? Appearance.zzz.paper : Appearance.colors.colLayer0, 1)
+        inirColor: Appearance.inir.colLayer0
         auroraTransparency: Appearance.aurora.overlayTransparentize
         radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
             : Appearance.angelEverywhere ? Appearance.angel.roundingLarge

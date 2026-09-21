@@ -537,6 +537,7 @@ Item {
         screenY: { const p = topPill.mapToGlobal(0, 0); return p.y }
         radius: Appearance.rounding.full
         fallbackColor: root.surfaceColor
+        inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
         border.color: root.borderColor
@@ -620,6 +621,7 @@ Item {
             screenY: { const p = leftInfoPanel.mapToGlobal(0, 0); return p.y }
             radius: root.panelRadius
             fallbackColor: root.surfaceColor
+            inirColor: Appearance.inir.colLayer1
             auroraTransparency: Appearance.aurora.popupTransparentize
             border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
             border.color: root.borderColor
@@ -710,6 +712,7 @@ Item {
             screenY: { const p = rightActionsPanel.mapToGlobal(0, 0); return p.y }
             radius: root.panelRadius
             fallbackColor: root.surfaceColor
+            inirColor: Appearance.inir.colLayer1
             auroraTransparency: Appearance.aurora.popupTransparentize
             border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
             border.color: root.borderColor
@@ -1196,6 +1199,7 @@ Item {
         screenY: { const p = filmstripPanel.mapToGlobal(0, 0); return p.y }
         radius: root.panelRadius
         fallbackColor: root.surfaceColor
+        inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
         border.color: root.borderColor

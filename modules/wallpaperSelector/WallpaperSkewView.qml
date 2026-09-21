@@ -1719,6 +1719,7 @@ Item {
             id: filterBarGlass
             anchors.fill: parent
             fallbackColor: Appearance.colors.colSurfaceContainer
+            inirColor: Appearance.inir.colLayer2
             auroraTransparency: Appearance.aurora.overlayTransparentize
             screenX: { const p = filterBar.mapToGlobal(0, 0); return p.x }
             screenY: { const p = filterBar.mapToGlobal(0, 0); return p.y }

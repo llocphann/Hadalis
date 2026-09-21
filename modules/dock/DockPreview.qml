@@ -48,18 +48,7 @@ PopupWindow {
         root.appEntry = appEntry
         root.anchorItem = button
         root.anchor.updateAnchor()
-
-        // Dock hover needs previews only for this app. Passing null asks the
-        // shared service to capture every window on the output/session, which
-        // turns a one-icon hover into unnecessary compositor screenshots.
-        const toplevels = button?.toplevels ?? appEntry?.toplevels ?? []
-        const windowIds = []
-        for (const toplevel of toplevels) {
-            const id = Number(toplevel?.niriWindowId ?? toplevel?.id ?? 0)
-            if (Number.isFinite(id) && id > 0)
-                windowIds.push(id)
-        }
-        WindowPreviewService.captureForTaskView(windowIds)
+        WindowPreviewService.captureForTaskView()
         root.open()
     }
 
@@ -172,17 +161,40 @@ PopupWindow {
                 rightMargin: root.isRight ? sourceEdgeMargin : (root.ambientShadowWidth + root.visualMargin)
             }
 
-            fallbackColor: Appearance.colors.colSurfaceContainer
-            radius: Appearance.rounding.normal
+            fallbackColor: Appearance.regaliaEverywhere ? "transparent"
+                : Appearance.zzzEverywhere ? Appearance.zzz.bg1 : Appearance.colors.colSurfaceContainer
+            inirColor: Appearance.inir?.colLayer2 ?? Appearance.colors.colSurfaceContainer
+            auroraTransparency: Appearance.aurora?.popupTransparentize ?? 0.1
+            radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundLarge
+                : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
+                : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
+                : Appearance.inirEverywhere ? (Appearance.inir?.roundingNormal ?? 12) : Appearance.rounding.normal
             Behavior on radius {
                 enabled: Appearance.animationsEnabled
                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
-            border.width: 1
-            border.color: Appearance.colors.colSurfaceContainerHighest
+            border.width: Appearance.regaliaEverywhere ? 0 : 1
+            border.color: Appearance.regaliaEverywhere ? "transparent"
+                : Appearance.zzzEverywhere ? Appearance.zzz.borderColor
+                : Appearance.angelEverywhere ? Appearance.angel.colBorder
+                : Appearance.inirEverywhere
+                ? (Appearance.inir?.colBorder ?? "transparent")
+                : Appearance.auroraEverywhere
+                    ? (Appearance.aurora?.colTooltipBorder ?? "transparent")
+                    : Appearance.colors.colSurfaceContainerHighest
             Behavior on border.color {
                 enabled: Appearance.animationsEnabled
                 ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+            }
+
+            RegaliaPlate {
+                anchors.fill: parent
+                visible: Appearance.regaliaEverywhere
+                fillColor: Appearance.regalia.bg2
+                radius: contentItem.radius
+                inset: Appearance.regalia.surfaceInset
+                elevated: true
+                glassEnabled: true
             }
 
             layer.enabled: true

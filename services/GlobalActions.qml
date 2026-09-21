@@ -322,6 +322,69 @@ Singleton {
             keywords: ["style", "material", "theme"],
             execute: () => { root.applyGlobalStyle("material") }
         },
+        {
+            id: "style-cards",
+            name: Translation.tr("Style: Cards"),
+            description: Translation.tr("Switch to Cards style"),
+            icon: "dashboard",
+            category: "appearance",
+            keywords: ["style", "cards", "theme"],
+            execute: () => { root.applyGlobalStyle("cards") }
+        },
+        {
+            id: "style-aurora",
+            name: Translation.tr("Style: Aurora"),
+            description: Translation.tr("Switch to Aurora style"),
+            icon: "auto_awesome",
+            category: "appearance",
+            keywords: ["style", "aurora", "theme", "blur"],
+            execute: () => { root.applyGlobalStyle("aurora") }
+        },
+        {
+            id: "style-inir",
+            name: Translation.tr("Style: iNiR"),
+            description: Translation.tr("Switch to iNiR style"),
+            icon: "terminal",
+            category: "appearance",
+            keywords: ["style", "inir", "theme"],
+            execute: () => { root.applyGlobalStyle("inir") }
+        },
+        {
+            id: "style-angel",
+            name: Translation.tr("Style: Angel"),
+            description: Translation.tr("Switch to Angel style"),
+            icon: "stars",
+            category: "appearance",
+            keywords: ["style", "angel", "theme", "glass"],
+            execute: () => { root.applyGlobalStyle("angel") }
+        },
+        {
+            id: "style-regalia",
+            name: Translation.tr("Style: Regalia"),
+            description: Translation.tr("Switch to Regalia style"),
+            icon: "event_seat",
+            category: "appearance",
+            keywords: ["style", "regalia", "secretlab", "ti", "tiles", "ivory", "gold", "black", "theme"],
+            execute: () => { root.applyGlobalStyle("regalia") }
+        },
+        {
+            id: "style-zzz",
+            name: Translation.tr("Style: ZZZ"),
+            description: Translation.tr("Switch to ZZZ style"),
+            icon: "bolt",
+            category: "appearance",
+            keywords: ["style", "zzz", "zenless", "theme", "yellow", "hazard"],
+            execute: () => { root.applyGlobalStyle("zzz") }
+        },
+        {
+            id: "style-cookie",
+            name: Translation.tr("Style: Cookie Shapes"),
+            description: Translation.tr("Switch to Cookie Shapes style"),
+            icon: "cookie",
+            category: "appearance",
+            keywords: ["style", "cookie", "shapes", "theme", "expressive", "morph"],
+            execute: () => { root.applyGlobalStyle("cookie") }
+        },
     ]
 
     // TOOLS: Screenshot, Screen Record, Color Picker, Clipboard

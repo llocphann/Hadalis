@@ -1621,6 +1621,47 @@ ContentPage {
                         ]
                     }
                 }
+                ContentSubsection {
+                    title: Translation.tr("Bar style")
+
+                    ConfigSelectionArray {
+                        currentValue: Config.options?.bar?.cornerStyle ?? 0
+                        onSelected: newValue => {
+                            // HUG mode (0) is incompatible with Angel style — revert to Float
+                            if (newValue === 0 && Appearance.angelEverywhere) {
+                                Config.setNestedValue("bar.cornerStyle", 1);
+                                return;
+                            }
+                            Config.setNestedValue("bar.cornerStyle", newValue);
+                        }
+                        options: [
+                            {
+                                displayName: Translation.tr("Hug"),
+                                icon: "line_curve",
+                                previewKind: "hug",
+                                value: 0
+                            },
+                            {
+                                displayName: Translation.tr("Float"),
+                                icon: "page_header",
+                                previewKind: "float",
+                                value: 1
+                            },
+                            {
+                                displayName: Translation.tr("Rect"),
+                                icon: "toolbar",
+                                previewKind: "rect",
+                                value: 2
+                            },
+                            {
+                                displayName: Translation.tr("Card"),
+                                icon: "branding_watermark",
+                                previewKind: "card",
+                                value: 3
+                            }
+                        ]
+                    }
+                }
             }
 
             ConfigRow {

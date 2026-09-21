@@ -1,6 +1,8 @@
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import qs.services
+import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -17,14 +19,23 @@ Item {
         if (Quickshell.env("QS_DEBUG") === "1") console.log("[DockDrag]", ...args);
     }
 
-    property real dockThickness: Config.options?.dock?.height ?? 60
+    property real maxWindowPreviewHeight: 200
+    property real maxWindowPreviewWidth: 300
+    property real windowControlsHeight: 30
+    property real buttonPadding: 5
     property bool vertical: false
     property string dockPosition: "bottom"
     property var parentWindow: null
+    readonly property string surfaceDialect: Appearance.surfaceDialectFor("")
+    readonly property bool zzzStyle: surfaceDialect === "zzz"
+    readonly property bool inirStyle: surfaceDialect === "inir"
+
     property Item lastHoveredButton
     property bool buttonHovered: false
     property bool contextMenuOpen: false
     property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
+
+    readonly property Item previewAnchorItem: dockPreviewPopup.visible ? dockPreviewPopup.anchorItem : null
 
     signal closeAllContextMenus()
 
@@ -204,7 +215,7 @@ Item {
 
         const fromIsRunning = (fromItem.toplevels?.length ?? 0) > 0
         const toIsRunning = (toItem.toplevels?.length ?? 0) > 0
-        let pinnedApps = root._normalizedPinnedApps()
+        let pinnedApps = [...(Config.options?.dock?.pinnedApps ?? [])]
 
         const fromIsPinned = fromItem.pinned
         const toIsPinned = toItem.pinned
@@ -253,37 +264,12 @@ Item {
     property var _cachedIgnoredRegexes: []
     property var _lastIgnoredRegexStrings: []
 
-    function _normalizedPinnedApps(): list<var> {
-        const raw = Config.options?.dock?.pinnedApps ?? []
-        const seen = new Set()
-        const normalized = []
-        for (const value of raw) {
-            const appId = String(value ?? "").trim()
-            if (appId.length === 0)
-                continue
-            const key = appId.toLowerCase()
-            if (seen.has(key))
-                continue
-            seen.add(key)
-            normalized.push(appId)
-        }
-        return normalized
-    }
-
     function _getIgnoredRegexes(): list<var> {
         const ignoredRegexStrings = Config.options?.dock?.ignoredAppRegexes ?? [];
         if (JSON.stringify(ignoredRegexStrings) !== JSON.stringify(_lastIgnoredRegexStrings)) {
             const systemIgnored = ["^$", "^portal$", "^x-run-dialog$", "^kdialog$", "^org.freedesktop.impl.portal.*"];
             const allIgnored = ignoredRegexStrings.concat(systemIgnored);
-            const compiled = [];
-            for (const pattern of allIgnored) {
-                try {
-                    compiled.push(new RegExp(String(pattern), "i"));
-                } catch (error) {
-                    root._log(`Ignoring invalid ignoredAppRegexes pattern: ${String(pattern)}`);
-                }
-            }
-            _cachedIgnoredRegexes = compiled;
+            _cachedIgnoredRegexes = allIgnored.map(pattern => new RegExp(pattern, "i"));
             _lastIgnoredRegexStrings = ignoredRegexStrings.slice();
         }
         return _cachedIgnoredRegexes;
@@ -328,7 +314,7 @@ Item {
     }
 
     function _doRebuildDockItems() {
-        const pinnedApps = root._normalizedPinnedApps();
+        const pinnedApps = Config.options?.dock?.pinnedApps ?? [];
         const ignoredRegexes = _getIgnoredRegexes();
         const separatePinnedFromRunning = root.separatePinnedFromRunning;
 
@@ -405,10 +391,18 @@ Item {
                 runningAppsMap.delete(lowerAppId);
             }
 
-            // Unified mode intentionally has no separator. Pinned entries keep
-            // their persisted order and unpinned running apps follow them as one
-            // continuous list; the separator belongs only to the explicit
-            // separatePinnedFromRunning mode.
+            if (values.length > 0 && runningAppsMap.size > 0) {
+                values.push({
+                    uniqueId: "separator",
+                    appId: "SEPARATOR",
+                    toplevels: [],
+                    pinned: false,
+                    originalAppId: "SEPARATOR",
+                    section: "separator",
+                    order: order++
+                });
+            }
+
             const running = Array.from(runningAppsMap.entries())
                 .sort((a, b) => root._runningAppOrder.indexOf(a[0])
                     - root._runningAppOrder.indexOf(b[0]));
@@ -593,8 +587,9 @@ Item {
             required property int index
             appToplevel: modelData
             appListRoot: root
+            listIndex: index
             vertical: root.vertical
-            dockThicknessOverride: root.dockThickness
+            dockPosition: root.dockPosition
 
             anchors.verticalCenter: !root.vertical ? parent?.verticalCenter : undefined
             anchors.horizontalCenter: root.vertical ? parent?.horizontalCenter : undefined
@@ -644,7 +639,7 @@ Item {
             }
 
             z: isBeingDragged ? 100 : 0
-            dragEmphasis: isBeingDragged
+            scale: isBeingDragged ? 1.08 : (dockDelegate.appIsActive ? 1.05 : 1.0)
 
             opacity: isBeingDragged ? 0.8
                    : root.dragActive ? 0.85 : 1.0
@@ -676,7 +671,9 @@ Item {
                         : -(listView.spacing + height) / 2)
                     : (parent.height - height) / 2
 
-                color: Appearance.colors.colPrimary
+                color: root.zzzStyle ? Appearance.zzz.tertiary
+                     : root.inirStyle ? Appearance.inir.colPrimary
+                     : Appearance.colors.colPrimary
                 Behavior on color {
                     enabled: Appearance.animationsEnabled
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

@@ -702,6 +702,7 @@ Scope {
                     // the whole panel vanish over a fullscreen window.
                     fallbackColor: Appearance.effectsEnabled
                         ? "transparent" : Appearance.colors.colLayer0Base
+                    inirColor: Appearance.inir.colLayer0
                     auroraTransparency: {
                         const base = Appearance.angelEverywhere
                             ? Appearance.angel.panelTransparentize

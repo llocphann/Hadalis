@@ -1408,6 +1408,40 @@ ContentPage {
                     }
                 }
 
+                RippleButton {
+                    visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
+                        && Todo.ready
+                        && Todo.internalItemCount > 0
+                        && Todo.list.length === 0
+                    Layout.preferredWidth: todoImportRow.implicitWidth + 20
+                    implicitHeight: 34
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    enabled: !Todo.busy
+                    onClicked: Todo.migrateInternalToObsidian()
+
+                    contentItem: RowLayout {
+                        id: todoImportRow
+                        anchors.centerIn: parent
+                        spacing: 5
+                        MaterialSymbol {
+                            text: "move_to_inbox"
+                            iconSize: 16
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            text: Translation.tr("Import internal") + " (" + Todo.internalItemCount + ")"
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Copy the preserved Hadalis Todo store into an empty managed section. The internal store is not deleted or overwritten.")
+                    }
+                }
+
                 Item { Layout.fillWidth: true }
             }
 

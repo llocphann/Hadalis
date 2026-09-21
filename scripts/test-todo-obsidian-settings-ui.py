@@ -22,6 +22,10 @@ required_ui = [
     'Todo.refresh()',
     'Todo.openSource("")',
     "Todo.initializeSection()",
+    "Todo.migrateInternalToObsidian()",
+    "Todo.internalItemCount > 0",
+    "Todo.list.length === 0",
+    'Translation.tr("Import internal")',
     'Translation.tr("Initialize section")',
     'Obsidian 1.13 or newer',
 ]

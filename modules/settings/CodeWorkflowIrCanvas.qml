@@ -72,15 +72,18 @@ Item {
         if (!fromNode || !toNode)
             return 1e9
 
-        const x0 = Number(fromNode.x ?? 0) + root.nodeWidth
+        const fromX = Number(fromNode.x ?? 0)
+        const toX = Number(toNode.x ?? 0)
+        const forward = toX >= fromX
+        const direction = forward ? 1 : -1
+        const x0 = fromX + (forward ? root.nodeWidth : 0)
         const y0 = Number(fromNode.y ?? 0) + root.nodeHeight / 2
-        const x3 = Number(toNode.x ?? 0)
+        const x3 = toX + (forward ? 0 : root.nodeWidth)
         const y3 = Number(toNode.y ?? 0) + root.nodeHeight / 2
-        const bend = Math.max(48, Math.abs(
-            Number(toNode.x ?? 0) - Number(fromNode.x ?? 0)) / 2)
-        const x1 = x0 + bend
+        const bend = Math.max(48, Math.abs(x3 - x0) / 2)
+        const x1 = x0 + direction * bend
         const y1 = y0
-        const x2 = x3 - bend
+        const x2 = x3 - direction * bend
         const y2 = y3
 
         let best = 1e9
@@ -370,9 +373,17 @@ Item {
                         edgeShape.toNode?.x ?? 0
                     readonly property real endNodeY:
                         edgeShape.toNode?.y ?? 0
+                    readonly property bool forward:
+                        endNodeX >= startNodeX
+                    readonly property real direction:
+                        forward ? 1 : -1
+                    readonly property real startPortX:
+                        startNodeX + (forward ? root.nodeWidth : 0)
+                    readonly property real endPortX:
+                        endNodeX + (forward ? 0 : root.nodeWidth)
                     readonly property real bend:
                         Math.max(48,
-                            Math.abs(endNodeX - startNodeX) / 2)
+                            Math.abs(endPortX - startPortX) / 2)
 
                     strokeColor: root.edgeInk(
                         edgeShape.modelData.kind,
@@ -383,17 +394,18 @@ Item {
                     capStyle: ShapePath.RoundCap
                     joinStyle: ShapePath.RoundJoin
                     fillColor: "transparent"
-                    startX: startNodeX + root.nodeWidth
+                    startX: startPortX
                     startY: startNodeY + root.nodeHeight / 2
 
                     PathCubic {
-                        x: edgePath.endNodeX
+                        x: edgePath.endPortX
                         y: edgePath.endNodeY + root.nodeHeight / 2
-                        control1X: edgePath.startNodeX
-                            + root.nodeWidth + edgePath.bend
+                        control1X: edgePath.startPortX
+                            + edgePath.direction * edgePath.bend
                         control1Y: edgePath.startNodeY
                             + root.nodeHeight / 2
-                        control2X: edgePath.endNodeX - edgePath.bend
+                        control2X: edgePath.endPortX
+                            - edgePath.direction * edgePath.bend
                         control2Y: edgePath.endNodeY
                             + root.nodeHeight / 2
                     }
@@ -402,7 +414,7 @@ Item {
                 ShapePath {
                     id: arrowPath
                     readonly property real tipX:
-                        Number(edgeShape.toNode?.x ?? 0)
+                        edgePath.endPortX
                     readonly property real tipY:
                         Number(edgeShape.toNode?.y ?? 0)
                             + root.nodeHeight / 2
@@ -416,11 +428,11 @@ Item {
                     startY: tipY
 
                     PathLine {
-                        x: arrowPath.tipX - 10
+                        x: arrowPath.tipX - 10 * edgePath.direction
                         y: arrowPath.tipY - 5
                     }
                     PathLine {
-                        x: arrowPath.tipX - 10
+                        x: arrowPath.tipX - 10 * edgePath.direction
                         y: arrowPath.tipY + 5
                     }
                     PathLine {
@@ -440,17 +452,28 @@ Item {
 
                 readonly property var fromNode: root.nodeById(modelData.from)
                 readonly property var toNode: root.nodeById(modelData.to)
+                readonly property real fromX:
+                    Number(fromNode?.x ?? 0)
+                readonly property real toX:
+                    Number(toNode?.x ?? 0)
+                readonly property bool forward: toX >= fromX
+                readonly property real direction: forward ? 1 : -1
                 readonly property real startX:
-                    Number(fromNode?.x ?? 0) + root.nodeWidth
+                    fromX + (forward ? root.nodeWidth : 0)
                 readonly property real startY:
                     Number(fromNode?.y ?? 0) + root.nodeHeight / 2
-                readonly property real endX: Number(toNode?.x ?? 0)
+                readonly property real endX:
+                    toX + (forward ? 0 : root.nodeWidth)
                 readonly property real endY:
                     Number(toNode?.y ?? 0) + root.nodeHeight / 2
                 readonly property real bend:
                     Math.max(48, Math.abs(endX - startX) / 2)
                 readonly property real midX: root.cubicCoordinate(
-                    startX, startX + bend, endX - bend, endX, 0.5)
+                    startX,
+                    startX + direction * bend,
+                    endX - direction * bend,
+                    endX,
+                    0.5)
                 readonly property real midY: root.cubicCoordinate(
                     startY, startY, endY, endY, 0.5)
 

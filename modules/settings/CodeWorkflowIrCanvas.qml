@@ -677,7 +677,7 @@ Item {
                         : 150
                 readonly property real labelWidthLimit:
                     route && !route.vertical
-                        ? Math.max(24, horizontalGap - 12)
+                        ? Math.max(24, horizontalGap - 20)
                         : 150
                 readonly property bool hovered:
                     edgeLabelHover.hovered

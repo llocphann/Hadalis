@@ -75,6 +75,9 @@ def main() -> None:
     check("property real paintOverlap: 0" in iris_edge_surface
           and "ownerPaintOverlap: root.paintOverlap" in iris_edge_surface,
           "Direct iRiS edge adapter must expose opt-in paint-only seam overlap")
+    check("property real tangentFrameThickness: ownerThickness" in iris_edge_surface
+          and "externalFrameThickness: root.tangentFrameThickness" in iris_edge_surface,
+          "Direct iRiS edge adapter must separate primary-owner and tangent-frame thickness")
 
     perimeter_tokens = read("modules/common/perimeter/PerimeterTokens.qml")
     for token in (
@@ -193,6 +196,12 @@ def main() -> None:
         "progress: 1",
         "enableShadow: false",
         "transparent: true",
+        "readonly property bool screenshotIiBarActive:",
+        "readonly property string screenshotIiBarEdge:",
+        "id: selectionVisualViewport",
+        "x: root.screenshotLeftOwnerInset",
+        "y: root.screenshotTopOwnerInset",
+        "clip: true",
     ):
         check(token in region_selection,
               f"Region selector connected Screen Edge controls missing: {token}")
@@ -221,8 +230,10 @@ def main() -> None:
         '"Niri Reloaded"',
         "ConnectedSurfaceIrisEdgeSurface {",
         'edge: "top"',
-        "x: Math.max(root.edgeDecorationMargin,",
-        "popup.width - width - root.edgeDecorationMargin",
+        "tangentFrameThickness: root.screenEdgeThickness",
+        "paintOverlap: Math.min(",
+        "joinTangentEnd: true",
+        "x: popup.width - root.screenEdgeThickness - width",
         "y: root.topOwnerThickness",
         "connectedSurface: true",
         "physicalShadow?.enabled ?? true",
@@ -232,6 +243,9 @@ def main() -> None:
               f"Top-right connected reload toast contract missing: {token}")
     check('"Niri config reloaded"' not in toast_manager,
           "Legacy Niri reload toast title must stay retired")
+    check("popup.width - width - root.edgeDecorationMargin" not in toast_manager
+          and "x: Math.max(root.edgeDecorationMargin," not in toast_manager,
+          "Reload toast must not retain a detached right-side decoration gap")
     check("\n    property bool connectedSurface: false\n" in toast_notification
           and "\n    property bool copied: false\n" in toast_notification
           and "layer.enabled: Appearance.effectsEnabled && !root.connectedSurface" in toast_notification
@@ -428,6 +442,8 @@ def main() -> None:
         "id: dockIrisSurface",
         "edge: root.position",
         "ownerThickness: dockRoot.screenEdgeThickness",
+        "paintOverlap: dockRoot.screenEdgePaintOverlap",
+        "readonly property real screenEdgePaintOverlap: Math.min(",
         "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
         "dockRoot.edgeDecorationMargin * 2",
         "? dockRoot.screenEdgeThickness",
@@ -439,6 +455,10 @@ def main() -> None:
         "borderColor: dockVisualBackground.irisBorderColor",
         "borderWidth: dockVisualBackground.irisBorderWidth",
         "readonly property color irisFillColor:",
+        "readonly property bool matchDarkPhysicalEdge:",
+        "Appearance.m3colors.darkmode",
+        "? Appearance.colors.colLayer0",
+        ": Appearance.inir.colLayer1",
     ):
         check(token in dock,
               f"Dock iRiS Screen Edge / shadow contract missing: {token}")

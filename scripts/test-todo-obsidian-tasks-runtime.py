@@ -263,6 +263,11 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         self.assertFalse(result["activeVaultMatches"])
         self.assertFalse(result["richMutationAvailable"])
 
+    def test_tasks_plugin_lookup_prefers_tasks_documented_registry(self):
+        capability_code = obsidian_tasks._capability_eval_code()
+        self.assertIn("app.plugins?.plugins?.[", capability_code)
+        self.assertIn("app.plugins?.getPlugin?.(", capability_code)
+
     def test_toggle_eval_uses_tasks_api_vault_process_and_exact_line_guard(self):
         code = obsidian_tasks._toggle_eval_code(
             "/vault", "Hadalis/Todo.md", 7, "- [ ] café"
@@ -270,6 +275,8 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         self.assertIn("adapter.getBasePath()!==expectedVault", code)
         self.assertIn("app.vault.getFileByPath(notePath)", code)
         self.assertIn("executeToggleTaskDoneCommand", code)
+        self.assertIn("app.plugins?.plugins?.[", code)
+        self.assertIn("app.plugins?.getPlugin?.(", code)
         self.assertIn("app.vault.process(file,(data)=>", code)
         self.assertIn("if(r.raw!==expectedRaw)", code)
         self.assertIn("transformed.split", code)

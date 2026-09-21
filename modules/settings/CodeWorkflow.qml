@@ -1269,6 +1269,18 @@ Item {
                             !root.inspectShowInternals
                     }
 
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.inspectTargets.length === 0
+                        text: root.inspectFilter.trim().length > 0
+                            ? "No targets match the current filter"
+                            : "No inspect targets available"
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                    }
+
                     ListView {
                         id: targetList
                         Layout.fillWidth: true

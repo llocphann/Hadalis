@@ -214,6 +214,9 @@ Item {
             return "MISSING"
         if (evidence?.status === "unavailable")
             return "UNAVAILABLE"
+                + (CodeWorkflowAnalyzer.error.length > 0
+                    ? " · " + CodeWorkflowAnalyzer.error
+                    : "")
         if (evidence?.status === "error")
             return "ERROR"
         if (evidence?.status === "analyzing")
@@ -240,6 +243,9 @@ Item {
             return "MISSING"
         if (evidence?.status === "unavailable")
             return "UNAVAILABLE"
+                + (CodeWorkflowAnalyzer.error.length > 0
+                    ? " · " + CodeWorkflowAnalyzer.error
+                    : "")
         if (evidence?.status === "error")
             return "ERROR"
         if (evidence?.status === "analyzing")
@@ -473,8 +479,14 @@ Item {
                 : "READY · " + CodeWorkflowAnalyzer.entryCount + " semantic entries"
         if (CodeWorkflowAnalyzer.status === "unavailable")
             return "UNAVAILABLE"
+                + (CodeWorkflowAnalyzer.error.length > 0
+                    ? " · " + CodeWorkflowAnalyzer.error
+                    : "")
         if (CodeWorkflowAnalyzer.status === "error")
             return "ERROR"
+                + (CodeWorkflowAnalyzer.error.length > 0
+                    ? " · " + CodeWorkflowAnalyzer.error
+                    : "")
         return "IDLE"
     }
 
@@ -641,7 +653,13 @@ Item {
     }
 
     function stateLabel(item): string {
-        return item?.state === "resident" ? "LIVE" : "STATIC"
+        if (!item)
+            return "RUNTIME TARGET NOT LOADED"
+        if (item.state === "resident")
+            return "LIVE · RESIDENT"
+        if (item.state === "unloaded")
+            return "UNLOADED · STATIC SOURCE"
+        return String(item.state ?? "unknown").toUpperCase()
     }
 
     function n(value): string {

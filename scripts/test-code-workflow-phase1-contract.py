@@ -80,6 +80,8 @@ require(page, "ColorUtils.readableAccentInk(",
         "Code Workflow chips must derive readable foreground ink")
 require(page, '"UNLOADED · STATIC SOURCE"',
         "Inspector must distinguish unloaded runtime from live residency")
+require(page, "readonly property bool selectedLive:",
+        "Header runtime badge must reflect the selected target")
 require(page, '" · " + CodeWorkflowAnalyzer.error',
         "Inspector must expose parser unavailability/error reason")
 require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")

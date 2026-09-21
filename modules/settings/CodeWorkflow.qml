@@ -2017,20 +2017,9 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: CodeWorkflowTransaction.dirty
-                ? (CodeWorkflowTransaction.activeCommand?.kind
-                        === "connect-binding"
-                    ? 316
-                    : CodeWorkflowTransaction.activeCommand?.kind
-                            === "disconnect-binding"
-                        ? 300
-                        : CodeWorkflowTransaction.activeCommand?.kind
-                                === "direct-binding"
-                            ? 300
-                            : CodeWorkflowTransaction.activeCommand?.kind
-                                    === "signal-action"
-                                ? 300
-                                : 118)
-                    + (root.transactionSelectionMismatch ? 44 : 0)
+                ? Math.min(
+                    420,
+                    Math.max(118, transactionColumn.implicitHeight + 16))
                 : 0
             visible: CodeWorkflowTransaction.dirty
             radius: Appearance.rounding.normal
@@ -2041,12 +2030,22 @@ Item {
                 : Appearance.colors.colOutlineVariant
             clip: true
 
-            ColumnLayout {
+            StyledFlickable {
+                id: transactionScroll
                 anchors.fill: parent
-                anchors.margins: 8
-                spacing: 5
+                anchors.margins: 4
+                contentWidth: width
+                contentHeight: transactionColumn.implicitHeight + 8
+                clip: true
 
-                RowLayout {
+                ColumnLayout {
+                    id: transactionColumn
+                    x: 4
+                    y: 4
+                    width: Math.max(0, transactionScroll.width - 8)
+                    spacing: 5
+
+                    RowLayout {
                     Layout.fillWidth: true
                     MaterialSymbol {
                         text: "difference"
@@ -3035,7 +3034,6 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
                     text: CodeWorkflowTransaction.previewText.length > 0
                         ? CodeWorkflowTransaction.previewText
                             + (CodeWorkflowTransaction.status === "conflict"
@@ -3047,6 +3045,7 @@ Item {
                     font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     wrapMode: Text.WrapAnywhere
+                }
                 }
             }
         }

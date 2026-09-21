@@ -183,6 +183,8 @@ Item {
                 : ""
     readonly property bool live:
         root.snapshot.records?.some(item => item.state === "resident") ?? false
+    readonly property bool selectedLive:
+        root.record?.state === "resident"
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
     readonly property bool analyzerMatchesSource:
         CodeWorkflowAnalyzer.sourcePath === root.sourcePath
@@ -1073,8 +1075,14 @@ Item {
                         : Appearance.colors.colTertiary
                 }
                 Pill {
-                    label: root.live ? "LIVE RUNTIME" : "STATIC SOURCE"
-                    accent: root.live ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                    label: root.selectedLive
+                        ? "LIVE · RESIDENT"
+                        : root.record?.state === "unloaded"
+                            ? "UNLOADED · STATIC SOURCE"
+                            : "STATIC SOURCE"
+                    accent: root.selectedLive
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colSubtext
                 }
 
                 RippleButtonWithIcon {

@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.services
 
 Scope {
@@ -14,6 +15,30 @@ Scope {
     property int maxToasts: 5
     property int toastSpacing: 8
     readonly property bool suppressOnScreenToasts: (GameMode?.active ?? false) || (GameMode?.hasAnyFullscreenWindow ?? false)
+    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property bool topBarOwnsEdge:
+        (Config.options?.panelFamily ?? "ii") === "ii"
+        && !(Config.options?.bar?.vertical ?? false)
+        && !(Config.options?.bar?.bottom ?? false)
+        && GlobalStates.barOpen
+        && !(Config.options?.bar?.autoHide?.enable ?? false)
+        && (Config.options?.enabledPanels ?? []).includes("iiBar")
+    readonly property real topOwnerThickness: topBarOwnsEdge
+        ? Appearance.sizes.barHeight : screenEdgeThickness
+    readonly property bool edgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+    readonly property real edgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+    readonly property real edgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
+    readonly property color edgeShadowColor:
+        Qt.alpha(Appearance.m3colors.m3shadow, root.edgeShadowOpacity)
+    readonly property real edgeDecorationMargin: Math.max(
+        8,
+        PerimeterTokens.irisFuseDepth,
+        root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0)
+    readonly property real toastBodyPadding: 8
     
     // Unified reload tracking - only show ONE toast per reload event
     property real _lastReloadToastTime: 0
@@ -100,7 +125,7 @@ Scope {
             )
         } else if (source === "niri") {
             root.addToast(
-                "Niri config reloaded",
+                "Niri Reloaded",
                 "",
                 "settings",
                 false,
@@ -199,40 +224,75 @@ Scope {
             anchors.top: true
             anchors.left: true
             anchors.right: true
-            margins.top: 10
             
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.namespace: "quickshell:toast-manager"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             
             mask: Region {
-                item: toastColumn
+                item: toastBody
+                radius: PerimeterTokens.popupRadius
             }
             
-            implicitHeight: toastColumn.implicitHeight + 20
+            implicitHeight: root.topOwnerThickness
+                + toastBody.height + root.edgeDecorationMargin
             color: "transparent"
-            
-            ColumnLayout {
-                id: toastColumn
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.topMargin: 10
-                spacing: root.toastSpacing
-                
-                Repeater {
-                    model: root.toasts
+
+            ConnectedSurfaceIrisEdgeSurface {
+                id: toastIrisSurface
+                z: 0
+                anchors.fill: parent
+                visible: popup.visible && toastBody.width > 0 && toastBody.height > 0
+                edge: "top"
+                ownerThickness: root.topOwnerThickness
+                outputRect: Qt.rect(0, 0, popup.width, popup.height)
+                bodyRect: Qt.rect(
+                    toastBody.x,
+                    toastBody.y,
+                    toastBody.width,
+                    toastBody.height)
+                bodyRadius: PerimeterTokens.popupRadius
+                fillColor: Appearance.colors.colLayer0
+                borderColor: Appearance.colors.colLayer0Border
+                borderWidth: 0
+                progress: 1
+                shadowEnabled: root.edgeShadowEnabled
+                    && root.edgeShadowSize > 0
+                    && root.edgeShadowOpacity > 0
+                shadowExtent: root.edgeShadowSize
+                shadowColor: root.edgeShadowColor
+            }
+
+            Item {
+                id: toastBody
+                z: 1
+                x: Math.max(root.edgeDecorationMargin,
+                    popup.width - width - root.edgeDecorationMargin)
+                y: root.topOwnerThickness
+                width: toastColumn.implicitWidth + root.toastBodyPadding * 2
+                height: toastColumn.implicitHeight + root.toastBodyPadding * 2
+
+                ColumnLayout {
+                    id: toastColumn
+                    x: root.toastBodyPadding
+                    y: root.toastBodyPadding
+                    spacing: root.toastSpacing
                     
-                    delegate: ToastNotification {
-                        required property var modelData
-                        required property int index
+                    Repeater {
+                        model: root.toasts
                         
-                        title: modelData.title
-                        message: modelData.message
-                        icon: modelData.icon
-                        isError: modelData.isError
-                        duration: modelData.duration
-                        source: modelData.source
-                        accentColor: modelData.accentColor
+                        delegate: ToastNotification {
+                            required property var modelData
+                            required property int index
+                            
+                            connectedSurface: true
+                            title: modelData.title
+                            message: modelData.message
+                            icon: modelData.icon
+                            isError: modelData.isError
+                            duration: modelData.duration
+                            source: modelData.source
+                            accentColor: modelData.accentColor
                         
                         opacity: 1
                         scale: 1
@@ -292,6 +352,7 @@ Scope {
                                 easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
                             }
                             onFinished: root.removeToast(modelData.id)
+                        }
                         }
                     }
                 }

@@ -1092,6 +1092,307 @@ ContentPage {
         settingsTaskSection: "data"
         visible: root.activeSection === "data"
         expanded: true
+        icon: "checklist"
+        title: Translation.tr("Todo & Obsidian")
+
+        SettingsGroup {
+            ContentSubsection {
+                title: Translation.tr("Canonical task store")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.todo?.backend ?? "internal"
+                    onSelected: newValue => Config.setNestedValue("todo.backend", newValue)
+                    options: [
+                        {
+                            displayName: Translation.tr("Hadalis"),
+                            icon: "database",
+                            value: "internal"
+                        },
+                        {
+                            displayName: Translation.tr("Obsidian"),
+                            icon: "description",
+                            value: "obsidian"
+                        }
+                    ]
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Only one backend is writable at a time. Switching to Obsidian preserves the internal Todo store for rollback.")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                StyledText {
+                    text: Translation.tr("Vault path")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+
+                MaterialTextField {
+                    id: todoObsidianVaultPath
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("~/Documents/Obsidian/My Vault")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnSurface
+                    placeholderTextColor: Appearance.colors.colSubtext
+                    text: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
+                    background: Rectangle {
+                        color: Appearance.colors.colLayer1
+                        radius: Appearance.rounding.small
+                        border.width: todoObsidianVaultPath.activeFocus ? 2 : 1
+                        border.color: todoObsidianVaultPath.activeFocus
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colLayer0Border
+                    }
+                    onEditingFinished: {
+                        const value = text.trim()
+                        if (value !== String(Config.options?.todo?.obsidian?.vaultPath ?? ""))
+                            Config.setNestedValue("todo.obsidian.vaultPath", value)
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Use the physical vault folder. Hadalis validates that the managed note cannot escape this directory.")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                StyledText {
+                    text: Translation.tr("Todo note")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+
+                MaterialTextField {
+                    id: todoObsidianNotePath
+                    Layout.fillWidth: true
+                    placeholderText: "Hadalis/Todo.md"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnSurface
+                    placeholderTextColor: Appearance.colors.colSubtext
+                    text: String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md")
+                    background: Rectangle {
+                        color: Appearance.colors.colLayer1
+                        radius: Appearance.rounding.small
+                        border.width: todoObsidianNotePath.activeFocus ? 2 : 1
+                        border.color: todoObsidianNotePath.activeFocus
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colLayer0Border
+                    }
+                    onEditingFinished: {
+                        const value = text.trim()
+                        if (value.length > 0
+                                && value !== String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md"))
+                            Config.setNestedValue("todo.obsidian.notePath", value)
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("The note must contain exactly one Hadalis managed section:")
+                        + "\n<!-- hadalis:todo:start -->"
+                        + "\n<!-- hadalis:todo:end -->"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.family: Appearance.font.family.monospace
+                    wrapMode: Text.WrapAnywhere
+                }
+            }
+
+            SettingsSwitch {
+                buttonIcon: "extension"
+                text: Translation.tr("Prefer Obsidian Tasks semantics")
+                checked: Config.options?.todo?.obsidian?.preferTasksPlugin ?? true
+                onCheckedChanged:
+                    Config.setNestedValue("todo.obsidian.preferTasksPlugin", checked)
+                StyledToolTip {
+                    text: Translation.tr("Use the Tasks API for recurrence, done dates and custom statuses when the active vault can be verified.")
+                }
+            }
+
+            SettingsSwitch {
+                buttonIcon: "offline_bolt"
+                text: Translation.tr("Allow proven basic mutations while Obsidian is closed")
+                checked: Config.options?.todo?.obsidian?.allowBasicOfflineMutation ?? true
+                onCheckedChanged:
+                    Config.setNestedValue("todo.obsidian.allowBasicOfflineMutation", checked)
+                StyledToolTip {
+                    text: Translation.tr("Only plain checkbox operations that do not require Tasks semantics are eligible.")
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: todoObsidianStatusColumn.implicitHeight + 20
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer1
+
+                ColumnLayout {
+                    id: todoObsidianStatusColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.margins: 10
+                    spacing: 4
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        MaterialSymbol {
+                            text: {
+                                if ((Config.options?.todo?.backend ?? "internal") !== "obsidian")
+                                    return "database"
+                                if (Todo.errorCode.length > 0)
+                                    return "error"
+                                if (Todo.capabilities?.richMutationAvailable === true)
+                                    return "verified"
+                                if (Todo.ready)
+                                    return "sync"
+                                return "hourglass"
+                            }
+                            iconSize: 18
+                            color: Todo.errorCode.length > 0
+                                ? Appearance.colors.colError
+                                : Appearance.colors.colPrimary
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: {
+                                if ((Config.options?.todo?.backend ?? "internal") !== "obsidian")
+                                    return Translation.tr("Hadalis internal Todo is active")
+                                if (Todo.errorMessage.length > 0)
+                                    return Todo.errorMessage
+                                if (Todo.capabilities?.richMutationAvailable === true)
+                                    return Translation.tr("Markdown sync ready · Obsidian Tasks connected")
+                                if (Todo.ready && Todo.capabilities?.obsidianRunning !== true)
+                                    return Translation.tr("Markdown sync ready · Obsidian is closed")
+                                if (Todo.ready && Todo.capabilities?.cliRegistered !== true)
+                                    return Translation.tr("Markdown sync ready · Obsidian CLI is not registered")
+                                if (Todo.ready)
+                                    return Translation.tr("Markdown sync ready")
+                                return Translation.tr("Waiting for a valid managed Todo note")
+                            }
+                            color: Todo.errorCode.length > 0
+                                ? Appearance.colors.colError
+                                : Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
+                        text: {
+                            const caps = Todo.capabilities ?? ({})
+                            const parts = []
+                            parts.push(caps.obsidianRunning === true
+                                ? Translation.tr("Obsidian running")
+                                : Translation.tr("Obsidian offline"))
+                            parts.push(caps.cliRegistered === true
+                                ? Translation.tr("CLI registered")
+                                : Translation.tr("CLI unavailable"))
+                            if (caps.tasksPluginEnabled === true)
+                                parts.push(Translation.tr("Tasks") + " " + String(caps.tasksPluginVersion ?? ""))
+                            return parts.join(" · ")
+                        }
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                RippleButton {
+                    Layout.preferredWidth: todoRefreshRow.implicitWidth + 20
+                    implicitHeight: 34
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    onClicked: Todo.refresh()
+
+                    contentItem: RowLayout {
+                        id: todoRefreshRow
+                        anchors.centerIn: parent
+                        spacing: 5
+                        MaterialSymbol {
+                            text: "refresh"
+                            iconSize: 16
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            text: Translation.tr("Refresh")
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+                }
+
+                RippleButton {
+                    visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
+                        && Todo.ready
+                    Layout.preferredWidth: todoOpenRow.implicitWidth + 20
+                    implicitHeight: 34
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    onClicked: Todo.openSource("")
+
+                    contentItem: RowLayout {
+                        id: todoOpenRow
+                        anchors.centerIn: parent
+                        spacing: 5
+                        MaterialSymbol {
+                            text: "open_in_new"
+                            iconSize: 16
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            text: Translation.tr("Open note")
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
+                text: Translation.tr("Flatpak: use Obsidian 1.13 or newer and enable Command line interface in Obsidian Settings → General for Tasks-aware mutations.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "data"
+        visible: root.activeSection === "data"
+        expanded: true
         icon: "calendar_month"
         title: Translation.tr("Calendar Sync")
 

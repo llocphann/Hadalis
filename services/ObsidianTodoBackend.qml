@@ -56,6 +56,11 @@ Scope {
     readonly property string watchPath: {
         if (!root.configured)
             return ""
+        // Once the scanner has canonicalized the note, watch the physical path
+        // it returned. This also makes ~/... vault configuration work even
+        // though FileView itself does not perform shell tilde expansion.
+        if (root.noteFullPath.length > 0)
+            return root.noteFullPath
         const base = root.vaultPath.endsWith("/")
             ? root.vaultPath.slice(0, -1)
             : root.vaultPath

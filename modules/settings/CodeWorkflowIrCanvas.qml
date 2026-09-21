@@ -421,6 +421,34 @@ Item {
                     { x: toCenterX, y: portLane.targetY }
                 ], false, direction))
             }
+
+            // Backward/long connections may still cut across an occupied
+            // corridor even when they avoid every node. Give the router two
+            // full-perimeter candidates that enter the target from the graph's
+            // outer side, matching the "reroute around the tree" pattern used
+            // by mature node editors without inventing a semantic IR node.
+            const outerX = rightward
+                ? bounds.maxX + 52 : bounds.minX - 52
+            const targetOuterX = rightward ? toRight : toX
+            const perimeterPortLanes = [
+                {
+                    sourceY: fromY,
+                    laneY: bounds.minY - 52
+                },
+                {
+                    sourceY: fromY + root.nodeHeight,
+                    laneY: bounds.maxY + 52
+                }
+            ]
+            for (const portLane of perimeterPortLanes) {
+                candidates.push(root.routeFromPoints([
+                    { x: fromCenterX, y: portLane.sourceY },
+                    { x: fromCenterX, y: portLane.laneY },
+                    { x: outerX, y: portLane.laneY },
+                    { x: outerX, y: toCenterY },
+                    { x: targetOuterX, y: toCenterY }
+                ], false, direction))
+            }
         } else {
             const downward = toCenterY >= fromCenterY
             const direction = downward ? 1 : -1

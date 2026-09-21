@@ -86,6 +86,16 @@ require(page, 'if (category === "edge")',
         "Target activation must route connection rows through session selection")
 require(page, "function onSelectedEdgeIdChanged(): void",
         "Targets must reveal graph-driven edge selection")
+require(page, 'category: "connect"',
+        "Targets must expose reviewed connect candidates as inspect rows")
+require(page, '"connect", "Connect candidates", "add_link"',
+        "Targets must group connect candidates separately from graph edges")
+require(page, 'if (category === "connect")',
+        "Target activation must route connect candidates through session selection")
+require(page, "function onSelectedConnectTargetIdChanged(): void",
+        "Targets must reveal selected connect candidates")
+require(page, "root.selectedConnectTarget !== null",
+        "Inspector header must prioritize selected connect candidates")
 require(page, "enabled: !targetRow.section",
         "Target section headers must be non-interactive")
 require(page, "function activateRow(): void",

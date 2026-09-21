@@ -118,6 +118,14 @@ require(capture_script, 'meta/parser-capability.json',
         "capture runner must record parser capability for semantic-source review")
 require(capture_script, 'meta/code-workflow-runtime-warnings.txt',
         "capture runner must summarize Code Workflow runtime warnings")
+require(capture_script, '"actualTargetsPaneWidth": latest.get("actualTargetsPaneWidth")',
+        "capture diagnostics must distinguish requested and actual Targets width")
+require(capture_script, '"actualInspectorPaneWidth": latest.get("actualInspectorPaneWidth")',
+        "capture diagnostics must distinguish requested and actual Inspector width")
+require(capture_script, '"actualSourcePreviewHeight": latest.get("actualSourcePreviewHeight")',
+        "capture diagnostics must distinguish requested and actual Source Preview height")
+require(capture_script, '"Cannot assign to non-existent property" in line',
+        "capture warning summary must catch typed Persistent schema failures")
 require(capture_script, 'meta/route-diagnostics.json',
         "capture runner must summarize smart-route metrics for every screenshot state")
 require(capture_script, '"routeDiagnostics": latest.get("routeDiagnostics", {})',
@@ -189,6 +197,12 @@ require(page, "Qt.SizeVerCursor : Qt.SizeHorCursor",
         "pane divider hover must advertise the correct resize cursor")
 require(page, "routeDiagnostics: canvas.routeDiagnostics()",
         "capture status must expose route quality metrics")
+for token in (
+    "actualTargetsPaneWidth: targetsPane.width",
+    "actualInspectorPaneWidth: inspectorPane.width",
+    "actualSourcePreviewHeight: sourcePane.visible",
+):
+    require(page, token, "capture status missing actual split geometry " + token)
 require(page, "id: workflowHorizontalSplit",
         "Targets, graph and Inspector must share a horizontal SplitView")
 require(page, "id: workflowVerticalSplit",

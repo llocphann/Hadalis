@@ -123,8 +123,7 @@ DashCard {
                             }
 
                             StyledText {
-                                text: Todo.backend === "obsidian"
-                                    ? "Obsidian" : "Hadalis"
+                                text: Todo.sourceLabel
                                 font.pixelSize: Appearance.font.pixelSize.smallest
                                 font.weight: Font.Medium
                                 color: root.colSubtext
@@ -337,6 +336,28 @@ DashCard {
 
                                     HoverHandler {
                                         cursorShape: Qt.PointingHandCursor
+                                    }
+                                }
+
+                                Rectangle {
+                                    visible: String(taskRow.modelData.startTime ?? "").length > 0
+                                    implicitWidth: taskTimeLabel.implicitWidth + 12
+                                    implicitHeight: 24
+                                    radius: height / 2
+                                    color: Appearance.colors.colLayer1
+
+                                    StyledText {
+                                        id: taskTimeLabel
+                                        anchors.centerIn: parent
+                                        text: {
+                                            const start = String(taskRow.modelData.startTime ?? "")
+                                            const end = String(taskRow.modelData.endTime ?? "")
+                                            return end.length > 0 ? start + "–" + end : start
+                                        }
+                                        font.pixelSize: Appearance.font.pixelSize.smallest
+                                        font.family: Appearance.font.family.numbers
+                                        font.weight: Font.DemiBold
+                                        color: root.colAccent
                                     }
                                 }
 
@@ -572,8 +593,14 @@ DashCard {
                         const text = todoInput.text.trim()
                         if (text.length === 0 || Todo.busy)
                             return
-                        if (Todo.addTask(text)) {
+                        const start = Todo.obsidianSourceMode === "daily-note"
+                            ? todoStartTime.text.trim() : ""
+                        const end = Todo.obsidianSourceMode === "daily-note"
+                            ? todoEndTime.text.trim() : ""
+                        if (Todo.addTaskWithTime(text, start, end)) {
                             todoInput.text = ""
+                            todoStartTime.text = ""
+                            todoEndTime.text = ""
                             root.currentTab = 0
                             root.showAddDialog = false
                         }
@@ -586,6 +613,74 @@ DashCard {
                         border.color: todoInput.activeFocus
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colOutline
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: Todo.backend === "obsidian"
+                        && Todo.obsidianSourceMode === "daily-note"
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        StyledText {
+                            text: Translation.tr("Start time")
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: root.colSubtext
+                        }
+
+                        TextField {
+                            id: todoStartTime
+                            Layout.fillWidth: true
+                            placeholderText: "HH:mm"
+                            color: Appearance.colors.colOnSurface
+                            placeholderTextColor: Appearance.colors.colOutline
+                            validator: RegularExpressionValidator {
+                                regularExpression: /^(?:|(?:[01]\d|2[0-3]):[0-5]\d)$/
+                            }
+                            background: Rectangle {
+                                radius: Appearance.rounding.small
+                                color: Appearance.colors.colLayer1
+                                border.width: todoStartTime.activeFocus ? 2 : 1
+                                border.color: todoStartTime.activeFocus
+                                    ? Appearance.colors.colPrimary
+                                    : Appearance.colors.colOutline
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        StyledText {
+                            text: Translation.tr("End time")
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: root.colSubtext
+                        }
+
+                        TextField {
+                            id: todoEndTime
+                            Layout.fillWidth: true
+                            enabled: todoStartTime.text.trim().length > 0
+                            placeholderText: "HH:mm"
+                            color: Appearance.colors.colOnSurface
+                            placeholderTextColor: Appearance.colors.colOutline
+                            validator: RegularExpressionValidator {
+                                regularExpression: /^(?:|(?:[01]\d|2[0-3]):[0-5]\d)$/
+                            }
+                            background: Rectangle {
+                                radius: Appearance.rounding.small
+                                color: Appearance.colors.colLayer1
+                                border.width: todoEndTime.activeFocus ? 2 : 1
+                                border.color: todoEndTime.activeFocus
+                                    ? Appearance.colors.colPrimary
+                                    : Appearance.colors.colOutline
+                            }
+                        }
                     }
                 }
 
@@ -615,8 +710,11 @@ DashCard {
         onVisibleChanged: {
             if (visible)
                 Qt.callLater(() => todoInput.forceActiveFocus())
-            else
+            else {
                 todoInput.text = ""
+                todoStartTime.text = ""
+                todoEndTime.text = ""
+            }
         }
     }
 }

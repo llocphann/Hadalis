@@ -21,6 +21,13 @@ for token in (
     'GlobalStates.openSettingsSection(7, "Todo & Obsidian")',
     'Todo.openSource("")',
     'Todo.backend === "obsidian"',
+    "Todo.sourceLabel",
+    'Todo.obsidianSourceMode === "daily-note"',
+    "Todo.addTaskWithTime(text, start, end)",
+    'Translation.tr("Start time")',
+    'Translation.tr("End time")',
+    "taskRow.modelData.startTime",
+    "taskRow.modelData.endTime",
 ):
     assert token in dash, f"Dashboard Todo lost concept contract: {token}"
 

@@ -28,6 +28,8 @@ if set(graphs or {}) != {"bar", "bar/media", "bar/clock", "bar/resources"}:
 required_kinds = {"component", "service", "binding", "event", "action", "lifecycle"}
 seen_kinds = set()
 seen_edges = set()
+seen_backward_edge = False
+seen_same_column_edge = False
 
 expected_bar_inspect_nodes = {
     "bar.workspaces", "bar.activeWindow", "bar.tray", "bar.battery",
@@ -49,6 +51,7 @@ for graph_id, graph in graphs.items():
         fail(f"{graph_id}: rootNodeId does not resolve")
 
     node_ids = set(ids)
+    node_by_id = {node.get("id"): node for node in nodes}
     for node in nodes:
         seen_kinds.add(node.get("kind"))
         if node.get("editable") is not False:
@@ -81,11 +84,23 @@ for graph_id, graph in graphs.items():
             fail(f"{graph_id}/{edge.get('id')}: edge must be read-only")
         if edge.get("from") not in node_ids or edge.get("to") not in node_ids:
             fail(f"{graph_id}/{edge.get('id')}: unresolved edge endpoint")
+        from_node = node_by_id[edge.get("from")]
+        to_node = node_by_id[edge.get("to")]
+        from_x = float(from_node.get("x") or 0)
+        to_x = float(to_node.get("x") or 0)
+        if from_x > to_x:
+            seen_backward_edge = True
+        if from_x == to_x:
+            seen_same_column_edge = True
 
 if not required_kinds.issubset(seen_kinds):
     fail("IR node-kind coverage missing: " + ", ".join(sorted(required_kinds - seen_kinds)))
 if not {"data", "event", "action", "lifecycle", "structure"}.issubset(seen_edges):
     fail("IR edge-kind coverage is incomplete")
+if not seen_backward_edge:
+    fail("IR fixture must cover a backward edge for direction-aware routing")
+if not seen_same_column_edge:
+    fail("IR fixture must cover a same-column edge for vertical routing")
 
 ir_service = read("services/CodeWorkflowIr.qml")
 canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
@@ -111,13 +126,15 @@ for token in (
     "id: edgePath",
     'root.graphExtent("x", 1050)',
     'root.graphExtent("y", 570)',
-    "readonly property bool forward:",
-    "readonly property real direction:",
-    "readonly property real startPortX:",
-    "readonly property real endPortX:",
-    "x: edgePath.endPortX",
-    "edgePath.direction * edgePath.bend",
-    "arrowPath.tipX - 10 * edgePath.direction",
+    "function edgeRoute(edge): var",
+    "const separatedRight = toX >= fromRight",
+    "const separatedLeft = toRight <= fromX",
+    "const vertical = !separatedRight && !separatedLeft",
+    "if (vertical)",
+    "const route = root.edgeRoute(edge)",
+    "root.edgeRoute(edgeShape.modelData)",
+    "root.edgeRoute(modelData)",
+    "arrowPath.route?.vertical",
     "id: nodeContent",
     "clip: true",
     "id: edgeLabel",
@@ -144,6 +161,9 @@ for token in (
 ):
     if token not in canvas:
         fail("IR canvas missing " + token)
+
+if canvas.count("function edgeRoute(edge): var") != 1:
+    fail("IR canvas must keep one authoritative edgeRoute geometry function")
 
 for token in (
     "CodeWorkflowIrCanvas {",

@@ -96,6 +96,28 @@ the parser/transaction safety model or unrelated shell runtime:
 - Re-selecting the runtime target for the already-open subflow no longer resets
   pan/zoom to `(0,0,1)`; viewport reset remains limited to an actual subflow
   change, after which the canvas schedules Fit graph.
+- Restored semantic inspect state is reconciled with parser readiness: READY
+  discloses/reveals the selected semantic row, while parser UNAVAILABLE/ERROR
+  clears stale semantic inspection so graph context is not suppressed invisibly.
+- Target filtering now preserves the query when selection originates from the
+  filtered Targets list; external graph/picker/session selection still clears
+  the query when necessary to reveal the newly selected object.
+- Edge label hover uses the whole label pill as a stable tooltip surface and
+  keeps extra breathing room from endpoint cards. Generic status pills also
+  expose their complete unelided label on hover.
+- Targets filter and Source Preview have explicit accessibility labels; the
+  read-only source TextEdit is keyboard-focusable for selection/copy workflows.
+- Graph viewport reveal now treats selected edges as primary objects. Selecting
+  a connection reveals/fits its resolved route bounds rather than panning only
+  to the destination node; node/edge signal ordering funnels through one primary
+  reveal path.
+- Source-range regression coverage now includes UTF-8/UTF-16 boundaries for
+  Latin-1, CJK and emoji surrogate pairs. Source Preview clears any previous
+  evidence selection before resolving the next anchor, avoiding stale highlights
+  when the new anchor is absent or non-unique.
+- Session restore re-checks the same previewable-edge binding invariant enforced
+  by live selection, so persisted workspace state cannot bypass mutation
+  selection assumptions after an IR change.
 
 - Static regression contracts in
   `scripts/test-code-workflow-ir-contract.py` and

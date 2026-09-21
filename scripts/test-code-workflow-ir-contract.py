@@ -122,6 +122,8 @@ for token in (
     "function edgeInk(kind: string, emphasized: bool): color",
     "id: arrowPath",
     "root.hoveredEdgeId === modelData.id",
+    "root.edgeInk(modelData.kind, false)",
+    "root.edgeInk(",
     "ShapePath.RoundCap",
     "Appearance.colors.colLayer0",
     "function onSelectedNodeIdChanged(): void",

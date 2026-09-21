@@ -28,6 +28,73 @@ Item {
     readonly property var record: root.recordFor(CodeWorkflowSession.selectedTargetId)
     readonly property var graph:
         CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)
+    property string inspectedSemanticAnchor: ""
+    readonly property var parsedSemanticEntries:
+        root.analyzerMatchesSource
+            && CodeWorkflowAnalyzer.status === "ready"
+            ? (CodeWorkflowAnalyzer.result?.entries ?? [])
+            : []
+    readonly property var inspectedSemanticEntry:
+        root.parsedSemanticEntries.find(entry =>
+            String(entry.anchor ?? "") === root.inspectedSemanticAnchor)
+            ?? null
+    readonly property var inspectTargets: {
+        const items = []
+        for (const target of CodeWorkflowRuntime.catalog) {
+            const rowRecord = root.recordFor(target.targetId)
+            items.push({
+                category: "runtime",
+                id: target.targetId,
+                label: target.label,
+                detail: rowRecord?.state === "resident"
+                    ? String(rowRecord.output ?? "") + " · live"
+                    : "source only",
+                icon: target.icon,
+                depth: 0
+            })
+        }
+        for (const node of (root.graph?.nodes ?? [])) {
+            items.push({
+                category: "graph",
+                id: String(node.id ?? ""),
+                label: String(node.title ?? node.id ?? "Node"),
+                detail: "graph · " + String(node.kind ?? "node"),
+                icon: root.inspectIconForKind(String(node.kind ?? "")),
+                depth: 0
+            })
+        }
+        const visibleKinds = [
+            "object", "component", "inline-component", "lifecycle",
+            "connections", "property", "binding", "explicit-binding",
+            "signal", "function", "handler-candidate", "id", "required"
+        ]
+        for (const entry of root.parsedSemanticEntries) {
+            const kind = String(entry.kind ?? "")
+            if (!visibleKinds.includes(kind))
+                continue
+            const scope = entry.scope ?? []
+            const objectType = String(entry.object_type ?? "")
+            const qmlId = String(entry.qml_id ?? "")
+            const name = String(entry.name ?? "")
+            let label = qmlId.length > 0
+                ? objectType + "#" + qmlId
+                : name
+            if (label.length === 0)
+                label = kind
+            items.push({
+                category: "semantic",
+                id: String(entry.anchor ?? ""),
+                label: label,
+                detail: "qml · " + kind
+                    + (scope.length > 0
+                        ? " · " + String(scope[scope.length - 1])
+                        : ""),
+                icon: root.inspectIconForKind(kind),
+                depth: Math.min(3, Math.max(0, scope.length - 1))
+            })
+        }
+        return items
+    }
     readonly property var selectedIrNode:
         CodeWorkflowIr.nodeFor(
             CodeWorkflowSession.subflowTargetId,
@@ -380,6 +447,65 @@ Item {
         return "IDLE"
     }
 
+    function inspectIconForKind(kind: string): string {
+        if (kind === "service")
+            return "dns"
+        if (kind === "event" || kind === "signal"
+                || kind === "handler-candidate")
+            return "bolt"
+        if (kind === "action" || kind === "function")
+            return "play_arrow"
+        if (kind === "binding" || kind === "explicit-binding"
+                || kind === "property" || kind === "required")
+            return "link"
+        if (kind === "lifecycle")
+            return "hourglass"
+        if (kind === "component" || kind === "inline-component")
+            return "widgets"
+        if (kind === "object")
+            return "deployed_code"
+        if (kind === "connections")
+            return "conversion_path"
+        if (kind === "id")
+            return "tag"
+        return "account_tree"
+    }
+
+    function inspectTargetSelected(item): bool {
+        const category = String(item?.category ?? "")
+        const id = String(item?.id ?? "")
+        if (category === "runtime")
+            return CodeWorkflowSession.selectedTargetId === id
+                && root.inspectedSemanticAnchor.length === 0
+        if (category === "graph")
+            return CodeWorkflowSession.selectedNodeId === id
+                && root.inspectedSemanticAnchor.length === 0
+        if (category === "semantic")
+            return root.inspectedSemanticAnchor === id
+        return false
+    }
+
+    function inspectTarget(item): void {
+        const category = String(item?.category ?? "")
+        const id = String(item?.id ?? "")
+        if (id.length === 0)
+            return
+        if (category === "runtime") {
+            root.inspectedSemanticAnchor = ""
+            root.selectTarget(id)
+            return
+        }
+        if (category === "graph") {
+            root.inspectedSemanticAnchor = ""
+            CodeWorkflowSession.selectNode(id)
+            return
+        }
+        if (category === "semantic") {
+            root.inspectedSemanticAnchor = id
+            return
+        }
+    }
+
     function recordFor(targetId: string): var {
         const records = root.snapshot.records ?? []
         const exact = records.find(item =>
@@ -594,6 +720,7 @@ Item {
     }
 
     onSourcePathChanged: {
+        root.inspectedSemanticAnchor = ""
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
@@ -798,7 +925,7 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Semantic allowlist · no QObject tree walking"
+                        text: "Runtime · graph · parsed QML elements"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -808,54 +935,80 @@ Item {
                         id: targetList
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        spacing: 5
+                        spacing: 3
                         clip: true
-                        model: CodeWorkflowRuntime.catalog
+                        model: root.inspectTargets
 
                         delegate: Rectangle {
                             id: targetRow
                             required property int index
                             required property var modelData
-                            readonly property var rowRecord: root.recordFor(modelData.targetId)
+                            readonly property bool selected:
+                                root.inspectTargetSelected(modelData)
 
                             width: targetList.width
-                            height: 54
+                            height: modelData.category === "runtime" ? 54 : 48
                             radius: Appearance.rounding.small
-                            color: CodeWorkflowSession.selectedTargetId === modelData.targetId
-                                ? Appearance.colors.colPrimaryContainer : "transparent"
-                            border.width: CodeWorkflowSession.selectedTargetId === modelData.targetId ? 1 : 0
+                            color: selected
+                                ? Appearance.colors.colPrimaryContainer
+                                : "transparent"
+                            border.width: selected ? 1 : 0
                             border.color: Appearance.colors.colPrimary
+                            clip: true
 
-                            TapHandler { onTapped: root.selectTarget(targetRow.modelData.targetId) }
+                            TapHandler {
+                                onTapped: root.inspectTarget(targetRow.modelData)
+                            }
 
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: 8
+                                    + Number(targetRow.modelData.depth ?? 0) * 8
                                 anchors.rightMargin: 8
                                 spacing: 7
                                 MaterialSymbol {
                                     text: targetRow.modelData.icon
                                     iconSize: Appearance.font.pixelSize.normal
-                                    color: Appearance.colors.colOnLayer1
+                                    color: targetRow.selected
+                                        ? Appearance.colors.colOnPrimaryContainer
+                                        : Appearance.colors.colOnLayer1
                                 }
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 0
                                     StyledText {
                                         Layout.fillWidth: true
+                                        Layout.maximumWidth: Math.max(0,
+                                            targetRow.width - 44
+                                                - Number(
+                                                    targetRow.modelData.depth
+                                                        ?? 0) * 8)
                                         text: targetRow.modelData.label
-                                        color: Appearance.colors.colOnLayer1
+                                        color: targetRow.selected
+                                            ? Appearance.colors.colOnPrimaryContainer
+                                            : Appearance.colors.colOnLayer1
                                         font.pixelSize: Appearance.font.pixelSize.small
                                         font.weight: Font.Medium
                                         elide: Text.ElideRight
+                                        maximumLineCount: 1
                                     }
                                     StyledText {
                                         Layout.fillWidth: true
-                                        text: targetRow.rowRecord?.state === "resident"
-                                            ? targetRow.rowRecord.output + " · live" : "source only"
-                                        color: Appearance.colors.colSubtext
+                                        Layout.maximumWidth: Math.max(0,
+                                            targetRow.width - 44
+                                                - Number(
+                                                    targetRow.modelData.depth
+                                                        ?? 0) * 8)
+                                        text: targetRow.modelData.detail
+                                        color: targetRow.selected
+                                            ? ColorUtils.ensureReadable(
+                                                Appearance.colors.colSubtext,
+                                                Appearance.colors.colPrimaryContainer,
+                                                4.5)
+                                            : Appearance.colors.colSubtext
                                         font.pixelSize: Appearance.font.pixelSize.smallest
-                                        elide: Text.ElideRight
+                                        elide: Text.ElideMiddle
+                                        maximumLineCount: 1
                                     }
                                 }
                             }
@@ -892,16 +1045,41 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.selectedIrNode?.title
-                            ?? root.descriptor?.label
-                            ?? "Target"
+                        text: root.inspectedSemanticEntry
+                            ? (String(root.inspectedSemanticEntry.qml_id ?? "").length > 0
+                                ? String(root.inspectedSemanticEntry.object_type
+                                    ?? root.inspectedSemanticEntry.name ?? "Element")
+                                    + "#" + String(root.inspectedSemanticEntry.qml_id)
+                                : String(root.inspectedSemanticEntry.name
+                                    ?? root.inspectedSemanticEntry.kind
+                                    ?? "Element"))
+                            : root.selectedIrNode?.title
+                                ?? root.descriptor?.label
+                                ?? "Target"
                         color: Appearance.colors.colPrimary
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
                         font.pixelSize: Appearance.font.pixelSize.large
                         font.weight: Font.DemiBold
                     }
                     Pill {
-                        label: String(root.selectedIrNode?.kind ?? "component").toUpperCase()
+                        label: String(root.inspectedSemanticEntry?.kind
+                            ?? root.selectedIrNode?.kind
+                            ?? "component").toUpperCase()
                         accent: Appearance.colors.colPrimary
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.inspectedSemanticEntry !== null
+                        text: root.inspectedSemanticEntry
+                            ? "Parsed QML element · "
+                                + String(root.inspectedSemanticEntry.anchor ?? "")
+                            : ""
+                        color: Appearance.colors.colSubtext
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        elide: Text.ElideMiddle
+                        maximumLineCount: 1
                     }
                     StyledText {
                         Layout.fillWidth: true

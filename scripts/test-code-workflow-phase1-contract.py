@@ -209,6 +209,8 @@ require(page, "id: transactionScroll",
         "transaction panel must scroll instead of clipping long evidence")
 require(page, "contentHeight: transactionColumn.implicitHeight + 8",
         "transaction scroll extent must follow transaction content")
+require(page, "transactionScroll.contentY = 0",
+        "transaction history navigation must reveal the next command from the top")
 require(page, "Math.min(\n                    420,",
         "transaction panel must cap growth before scrolling")
 require(page, "root.selectedIrEdge !== null",

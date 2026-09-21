@@ -34,6 +34,9 @@ Item {
     property string hoveredEdgeLabelId: ""
     property real edgeLabelHoverX: 0
     property real edgeLabelHoverY: 0
+    property var activeNodeDragHandler: null
+    property real activeNodeDragSceneX: 0
+    property real activeNodeDragSceneY: 0
     readonly property var edgeRouteCache: {
         CodeWorkflowSession.graphLayoutRevision
         return root.buildEdgeRouteCache()
@@ -1002,6 +1005,41 @@ Item {
             root.hoveredEdgeLabelId = ""
     }
 
+    function autoPanStep(position: real, extent: real): real {
+        if (extent <= 0)
+            return 0
+        const margin = Math.min(64, Math.max(36, extent * 0.16))
+        const maxStep = 12
+        const gain = 0.24
+        if (position < margin)
+            return Math.min(maxStep, (margin - position) * gain)
+        if (position > extent - margin)
+            return -Math.min(
+                maxStep, (position - (extent - margin)) * gain)
+        return 0
+    }
+
+    function autoPanDraggedNode(): void {
+        const handler = root.activeNodeDragHandler
+        if (!handler || !handler.active)
+            return
+
+        // handlerPoint.scenePosition uses scene coordinates; mapFromItem(null)
+        // converts them back into this clipped canvas coordinate system.
+        const pointer = root.mapFromItem(
+            null, root.activeNodeDragSceneX, root.activeNodeDragSceneY)
+        const deltaX = root.autoPanStep(pointer.x, root.width)
+        const deltaY = root.autoPanStep(pointer.y, root.height)
+        if (Math.abs(deltaX) < 0.001 && Math.abs(deltaY) < 0.001)
+            return
+
+        CodeWorkflowSession.setViewportTransient(
+            CodeWorkflowSession.panX + deltaX,
+            CodeWorkflowSession.panY + deltaY,
+            CodeWorkflowSession.zoom)
+        handler.updateLayout()
+    }
+
     function edgeAt(screenX: real, screenY: real): string {
         if (!root.viewportContains(screenX, screenY))
             return ""
@@ -1056,8 +1094,23 @@ Item {
         return readable
     }
 
+    Timer {
+        id: viewportCommitTimer
+        interval: 160
+        repeat: false
+        onTriggered: CodeWorkflowSession.commitViewport()
+    }
+
+    Timer {
+        interval: 16
+        repeat: true
+        running: root.activeNodeDragHandler !== null
+        onTriggered: root.autoPanDraggedNode()
+    }
+
     WheelHandler {
         target: null
+        enabled: root.activeNodeDragHandler === null
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         onWheel: event => {
             const oldZoom = CodeWorkflowSession.zoom
@@ -1071,10 +1124,11 @@ Item {
                     oldZoom * Math.pow(1.0015, delta)))
             const graphX = (event.x - CodeWorkflowSession.panX) / oldZoom
             const graphY = (event.y - CodeWorkflowSession.panY) / oldZoom
-            CodeWorkflowSession.setViewport(
+            CodeWorkflowSession.setViewportTransient(
                 event.x - graphX * nextZoom,
                 event.y - graphY * nextZoom,
                 nextZoom)
+            viewportCommitTimer.restart()
             event.accepted = true
         }
     }
@@ -1124,6 +1178,7 @@ Item {
     PinchHandler {
         id: pinch
         target: null
+        enabled: root.activeNodeDragHandler === null
         property real baseZoom: 1
         property point pivot: Qt.point(0, 0)
 
@@ -1135,6 +1190,8 @@ Item {
                         / CodeWorkflowSession.zoom,
                     (centroid.position.y - CodeWorkflowSession.panY)
                         / CodeWorkflowSession.zoom)
+            } else {
+                CodeWorkflowSession.commitViewport()
             }
         }
 
@@ -1146,7 +1203,7 @@ Item {
                 Math.min(
                     CodeWorkflowSession.maximumZoom,
                     baseZoom * activeScale))
-            CodeWorkflowSession.setViewport(
+            CodeWorkflowSession.setViewportTransient(
                 centroid.position.x - pivot.x * nextZoom,
                 centroid.position.y - pivot.y * nextZoom,
                 nextZoom)
@@ -1188,11 +1245,13 @@ Item {
         onPositionChanged: mouse => {
             if (!pressed)
                 return
-            CodeWorkflowSession.setViewport(
+            CodeWorkflowSession.setViewportTransient(
                 basePanX + mouse.x - pressX,
                 basePanY + mouse.y - pressY,
                 CodeWorkflowSession.zoom)
         }
+        onReleased: CodeWorkflowSession.commitViewport()
+        onCanceled: CodeWorkflowSession.commitViewport()
     }
 
     Item {
@@ -1480,32 +1539,26 @@ Item {
                     property real baseOffsetY: 0
                     property real startSceneX: 0
                     property real startSceneY: 0
+                    property real startPanX: 0
+                    property real startPanY: 0
 
-                    onActiveChanged: {
-                        if (!active)
-                            return
-                        const offset = CodeWorkflowSession.nodeLayoutOffset(
-                            CodeWorkflowSession.subflowTargetId,
-                            String(node.modelData.id ?? ""))
-                        baseOffsetX = Number(offset?.x ?? 0)
-                        baseOffsetY = Number(offset?.y ?? 0)
-                        startSceneX = centroid.scenePosition.x
-                        startSceneY = centroid.scenePosition.y
-                        root.hoveredEdgeLabelId = ""
-                        CodeWorkflowSession.selectNode(node.modelData.id)
-                        node.forceActiveFocus()
-                    }
-                    onCentroidChanged: {
+                    function updateLayout(): void {
                         if (!active)
                             return
                         const zoom = Math.max(
                             0.0001, CodeWorkflowSession.zoom)
                         const baseX = Number(node.modelData.x ?? 0)
                         const baseY = Number(node.modelData.y ?? 0)
+                        const panDeltaX =
+                            CodeWorkflowSession.panX - startPanX
+                        const panDeltaY =
+                            CodeWorkflowSession.panY - startPanY
                         const deltaX =
-                            (centroid.scenePosition.x - startSceneX) / zoom
+                            (root.activeNodeDragSceneX - startSceneX
+                                - panDeltaX) / zoom
                         const deltaY =
-                            (centroid.scenePosition.y - startSceneY) / zoom
+                            (root.activeNodeDragSceneY - startSceneY
+                                - panDeltaY) / zoom
                         const nextX = Math.max(
                             20, baseX + baseOffsetX + deltaX)
                         const nextY = Math.max(
@@ -1515,6 +1568,40 @@ Item {
                             String(node.modelData.id ?? ""),
                             nextX - baseX,
                             nextY - baseY)
+                    }
+
+                    onActiveChanged: {
+                        if (!active) {
+                            if (root.activeNodeDragHandler === nodeDrag) {
+                                root.activeNodeDragHandler = null
+                                CodeWorkflowSession.commitViewport()
+                            }
+                            return
+                        }
+                        const offset = CodeWorkflowSession.nodeLayoutOffset(
+                            CodeWorkflowSession.subflowTargetId,
+                            String(node.modelData.id ?? ""))
+                        baseOffsetX = Number(offset?.x ?? 0)
+                        baseOffsetY = Number(offset?.y ?? 0)
+                        startSceneX = centroid.scenePosition.x
+                        startSceneY = centroid.scenePosition.y
+                        startPanX = CodeWorkflowSession.panX
+                        startPanY = CodeWorkflowSession.panY
+                        root.activeNodeDragSceneX = startSceneX
+                        root.activeNodeDragSceneY = startSceneY
+                        root.activeNodeDragHandler = nodeDrag
+                        root.hoveredEdgeLabelId = ""
+                        CodeWorkflowSession.selectNode(node.modelData.id)
+                        node.forceActiveFocus()
+                    }
+                    onCentroidChanged: {
+                        if (!active)
+                            return
+                        root.activeNodeDragSceneX =
+                            centroid.scenePosition.x
+                        root.activeNodeDragSceneY =
+                            centroid.scenePosition.y
+                        updateLayout()
                     }
                 }
 

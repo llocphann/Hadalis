@@ -373,12 +373,22 @@ Singleton {
         root.persist()
     }
 
-    function setViewport(x: real, y: real, nextZoom: real): void {
+    function setViewportTransient(
+        x: real, y: real, nextZoom: real
+    ): void {
         root.panX = Number(x)
         root.panY = Number(y)
         root.zoom = Math.max(root.minimumZoom, Math.min(
             root.maximumZoom, Number(nextZoom)))
+    }
+
+    function commitViewport(): void {
         root.persist()
+    }
+
+    function setViewport(x: real, y: real, nextZoom: real): void {
+        root.setViewportTransient(x, y, nextZoom)
+        root.commitViewport()
     }
 
     function resetViewport(): void {

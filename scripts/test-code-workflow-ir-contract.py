@@ -611,6 +611,17 @@ for token in (
     "CodeWorkflowSession.setNodeLayoutOffset(",
     "z: nodeDrag.active ? 1.4 : 1",
     "Behavior on scale {",
+    "function autoPanStep(position: real, extent: real): real",
+    "function autoPanDraggedNode(): void",
+    "root.mapFromItem(",
+    "null, root.activeNodeDragSceneX, root.activeNodeDragSceneY",
+    "CodeWorkflowSession.setViewportTransient(",
+    "handler.updateLayout()",
+    "id: viewportCommitTimer",
+    "onReleased: CodeWorkflowSession.commitViewport()",
+    "function updateLayout(): void",
+    "CodeWorkflowSession.panX - startPanX",
+    "CodeWorkflowSession.panY - startPanY",
     "Shape.CurveRenderer",
     "antialiasing: true",
     "z: selectedEdge ? 0.4 : hoveredEdge ? 0.3 : 0",
@@ -736,6 +747,9 @@ for token in (
     "function nodeLayoutOffset(graphId: string, nodeId: string): var",
     "function setNodeLayoutOffset(",
     "function resetGraphLayout(graphId: string): void",
+    "function setViewportTransient(",
+    "function commitViewport(): void",
+    "root.setViewportTransient(x, y, nextZoom)",
 ):
     if token not in session:
         fail("session missing " + token)

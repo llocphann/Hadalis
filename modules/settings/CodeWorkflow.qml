@@ -33,6 +33,7 @@ Item {
         CodeWorkflowSession.selectedSemanticAnchor
     property string inspectFilter: ""
     property bool inspectShowInternals: false
+    property bool inspectSelectionFromTargets: false
     readonly property var parsedSemanticEntries:
         root.analyzerMatchesSource
             && CodeWorkflowAnalyzer.status === "ready"
@@ -714,27 +715,33 @@ Item {
         const id = String(item?.id ?? "")
         if (id.length === 0)
             return
-        if (category === "runtime") {
-            root.selectTarget(id)
-            return
-        }
-        if (category === "graph") {
-            CodeWorkflowSession.selectNode(id)
-            return
-        }
-        if (category === "edge") {
-            CodeWorkflowSession.selectEdge(id)
-            return
-        }
-        if (category === "connect") {
-            CodeWorkflowSession.selectConnectTarget(id)
-            return
-        }
-        if (category === "semantic") {
-            root.inspectShowInternals = true
-            CodeWorkflowSession.selectSemantic(id)
-            Qt.callLater(root.revealSelectedInspectTarget)
-            return
+
+        root.inspectSelectionFromTargets = true
+        try {
+            if (category === "runtime") {
+                root.selectTarget(id)
+                return
+            }
+            if (category === "graph") {
+                CodeWorkflowSession.selectNode(id)
+                return
+            }
+            if (category === "edge") {
+                CodeWorkflowSession.selectEdge(id)
+                return
+            }
+            if (category === "connect") {
+                CodeWorkflowSession.selectConnectTarget(id)
+                return
+            }
+            if (category === "semantic") {
+                root.inspectShowInternals = true
+                CodeWorkflowSession.selectSemantic(id)
+                Qt.callLater(root.revealSelectedInspectTarget)
+                return
+            }
+        } finally {
+            root.inspectSelectionFromTargets = false
         }
     }
 
@@ -742,7 +749,8 @@ Item {
         if (root.inspectedSemanticAnchor.length === 0)
             return
 
-        root.inspectFilter = ""
+        if (!root.inspectSelectionFromTargets)
+            root.inspectFilter = ""
         const entry = root.inspectedSemanticEntry
         if (entry !== null
                 && !root.semanticEntryVisible(
@@ -1080,24 +1088,28 @@ Item {
         target: CodeWorkflowSession
 
         function onSelectedTargetIdChanged(): void {
-            root.inspectFilter = ""
+            if (!root.inspectSelectionFromTargets)
+                root.inspectFilter = ""
             Qt.callLater(root.revealSelectedInspectTarget)
         }
 
         function onSelectedNodeIdChanged(): void {
-            if (CodeWorkflowSession.selectedSemanticAnchor.length === 0)
+            if (!root.inspectSelectionFromTargets
+                    && CodeWorkflowSession.selectedSemanticAnchor.length === 0)
                 root.inspectFilter = ""
             Qt.callLater(root.revealSelectedInspectTarget)
         }
 
         function onSelectedEdgeIdChanged(): void {
-            if (CodeWorkflowSession.selectedEdgeId.length > 0)
+            if (!root.inspectSelectionFromTargets
+                    && CodeWorkflowSession.selectedEdgeId.length > 0)
                 root.inspectFilter = ""
             Qt.callLater(root.revealSelectedInspectTarget)
         }
 
         function onSelectedConnectTargetIdChanged(): void {
-            if (CodeWorkflowSession.selectedConnectTargetId.length > 0)
+            if (!root.inspectSelectionFromTargets
+                    && CodeWorkflowSession.selectedConnectTargetId.length > 0)
                 root.inspectFilter = ""
             Qt.callLater(root.revealSelectedInspectTarget)
         }

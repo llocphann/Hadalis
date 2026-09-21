@@ -119,6 +119,7 @@ for token in (
     "function revealNode(nodeId: string): void",
     "function fitGraph(): void",
     "function edgeAt(screenX: real, screenY: real): string",
+    "const edgeId = root.edgeAt(",
     "function edgeInk(kind: string, emphasized: bool): color",
     "id: arrowPath",
     "root.hoveredEdgeId === modelData.id",
@@ -143,6 +144,17 @@ for token in (
 ):
     if token not in page:
         fail("Code Workflow page missing IR integration " + token)
+
+for token in (
+    "Inspection and mutation eligibility are separate concerns.",
+    "if (edge.previewable === true && target.kind !== \"binding\")",
+    "root.selectedEdgeId = edge.id",
+):
+    if token not in session:
+        fail("session missing read-only edge inspection contract " + token)
+
+if "function selectableEdgeAt(" in canvas or "function previewableEdgeAt(" in canvas:
+    fail("canvas must not restrict inspect hit-testing to mutation-eligible edges")
 
 for token in (
     'property string subflowTargetId: "bar"',

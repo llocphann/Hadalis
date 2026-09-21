@@ -2756,6 +2756,17 @@ Singleton {
                     property bool closeOnSelect: false
                 }
             }
+            property JsonObject todo: JsonObject {
+                property string backend: "internal"
+                property JsonObject obsidian: JsonObject {
+                    property string vaultPath: ""
+                    property string notePath: "Hadalis/Todo.md"
+                    property string scope: "managed-section"
+                    property bool preferTasksPlugin: true
+                    property bool allowBasicOfflineMutation: true
+                }
+            }
+
             property JsonObject workSafety: JsonObject {
                 property JsonObject enable: JsonObject {
                     property bool wallpaper: false

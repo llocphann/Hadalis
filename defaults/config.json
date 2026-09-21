@@ -2074,6 +2074,16 @@
             "performance": 0
         }
     },
+    "todo": {
+        "backend": "internal",
+        "obsidian": {
+            "vaultPath": "",
+            "notePath": "Hadalis/Todo.md",
+            "scope": "managed-section",
+            "preferTasksPlugin": true,
+            "allowBasicOfflineMutation": true
+        }
+    },
     "voiceSearch": {
         "duration": 5,
         "provider": "auto",

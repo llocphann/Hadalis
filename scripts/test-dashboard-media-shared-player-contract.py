@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 dash = (ROOT / "modules" / "dashboard" / "DashMedia.qml").read_text(encoding="utf-8")
 player = (ROOT / "modules" / "mediaControls" / "PlayerControl.qml").read_text(encoding="utf-8")
 popup = (ROOT / "modules" / "mediaControls" / "BarMediaPopup.qml").read_text(encoding="utf-8")
+canvas = (ROOT / "modules" / "dashboard" / "DashboardCanvas.qml").read_text(encoding="utf-8")
 failures = []
 
 def require(source: str, token: str, label: str) -> None:
@@ -58,10 +59,15 @@ for token in (
 ):
     forbid(dash, token, "Dashboard duplicate media UI")
 
-# The real window stays visible through the exit slide; dashboardOpen alone
-# must not tear down the media card before that animation completes.
-require(dash, "root.QsWindow.window?.visible ?? false",
-        "Dashboard presentation lifecycle")
+# DashboardCanvas owns the host lifecycle because DashMedia is reused by both
+# standalone Dashboard and embedded Overview. The child property must remain
+# writable; making it readonly is a QML compile error at the binding site.
+require(dash, "property bool presentationActive:",
+        "Dashboard writable presentation lifecycle")
+forbid(dash, "readonly property bool presentationActive:",
+       "Dashboard writable presentation lifecycle")
+require(canvas, "presentationActive: root.presentationActive",
+        "DashboardCanvas media lifecycle binding")
 require(dash, "active: root.presentationActive && root.hasPlayer",
         "Dashboard shared-player lifecycle")
 require(dash, "active: root.presentationActive && root.hasPlayer && root.isPlaying",

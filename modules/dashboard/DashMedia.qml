@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import Quickshell.Services.Mpris
 import qs
 import qs.services
@@ -17,11 +16,12 @@ import qs.modules.mediaControls
 DashCard {
     id: root
 
-    // Follow the real presentation window rather than dashboardOpen alone.
-    // This keeps the shared player intact through the Dashboard exit slide and
-    // releases the CAVA/PlayerControl consumers once the window is unmapped.
-    readonly property bool presentationActive:
-        root.QsWindow.window?.visible ?? false
+    // Lifecycle is owned by DashboardContent/DashboardCanvas because this card
+    // is hosted both by the standalone Dashboard and the embedded Overview.
+    // Keep this writable: DashboardCanvas binds its host-specific presentation
+    // state into every DashMedia instance.
+    property bool presentationActive:
+        GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool hasPlayer: root.player !== null

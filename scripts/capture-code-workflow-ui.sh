@@ -310,16 +310,17 @@ fi
 capture_step "05" "edge-detour" "edge-detour"
 capture_step "06" "edge-readonly-binding" "edge-readonly-binding"
 capture_step "07" "connect-candidate" "connect-candidate"
+capture_step "08" "pane-resize" "pane-resize"
 
 # Parser/source scenario may need a short analysis cycle. Re-issue the idempotent
 # scenario until analyzer READY has had enough time to select an entry.
 for _ in $(seq 1 12); do
     ipc scenario semantic-source \
-        >"$BUNDLE_DIR/state/08-semantic-source-attempt.txt" \
+        >"$BUNDLE_DIR/state/09-semantic-source-attempt.txt" \
         2>>"$BUNDLE_DIR/logs/ipc-errors.log" || true
     sleep 0.25
 done
-capture_step "08" "semantic-source"
+capture_step "09" "semantic-source"
 ipc status >"$BUNDLE_DIR/meta/parser-capability.json" \
     2>>"$BUNDLE_DIR/logs/ipc-errors.log" || true
 PARSER_STATUS="$(jq -r '.analyzerStatus // "unknown"' \
@@ -357,7 +358,10 @@ Screenshots:
       media.data.player selected; exercises read-only edge -> binding context.
   07-connect-candidate
       clock.connect.rootVisible selected.
-  08-semantic-source
+  08-pane-resize
+      Targets/Inspector/Source Preview expanded to persisted non-default sizes;
+      validates both horizontal and vertical split handles.
+  09-semantic-source
       Source Preview after parser polling.
       Parser status: $PARSER_STATUS
       Parser detail: $PARSER_ERROR

@@ -1026,6 +1026,12 @@ Item {
             Qt.callLater(root.revealSelectedInspectTarget)
         }
 
+        function onSelectedEdgeIdChanged(): void {
+            if (CodeWorkflowSession.selectedEdgeId.length > 0)
+                root.inspectFilter = ""
+            Qt.callLater(root.revealSelectedInspectTarget)
+        }
+
         function onSelectedSemanticAnchorChanged(): void {
             Qt.callLater(root.revealSelectedInspectTarget)
         }

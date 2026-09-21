@@ -1378,9 +1378,13 @@ Item {
                                 : String(root.inspectedSemanticEntry.name
                                     ?? root.inspectedSemanticEntry.kind
                                     ?? "Element"))
-                            : root.selectedIrNode?.title
-                                ?? root.descriptor?.label
-                                ?? "Target"
+                            : root.selectedIrEdge !== null
+                                ? String(root.selectedIrEdge.label
+                                    ?? root.selectedIrEdge.id
+                                    ?? "Connection")
+                                : root.selectedIrNode?.title
+                                    ?? root.descriptor?.label
+                                    ?? "Target"
                         color: Appearance.colors.colPrimary
                         elide: Text.ElideRight
                         maximumLineCount: 1
@@ -1389,6 +1393,7 @@ Item {
                     }
                     Pill {
                         label: String(root.inspectedSemanticEntry?.kind
+                            ?? root.selectedIrEdge?.kind
                             ?? root.selectedIrNode?.kind
                             ?? "component").toUpperCase()
                         accent: Appearance.colors.colPrimary

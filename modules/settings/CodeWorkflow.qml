@@ -550,7 +550,8 @@ Item {
         const visibleKinds = [
             "object", "component", "inline-component", "lifecycle",
             "connections", "property", "binding", "explicit-binding",
-            "signal", "function", "handler-candidate", "id", "required"
+            "signal", "function", "handler-candidate", "id", "required",
+            "pragma", "opaque"
         ]
         if (!visibleKinds.includes(kind))
             return false
@@ -604,6 +605,10 @@ Item {
             return "conversion_path"
         if (kind === "id")
             return "tag"
+        if (kind === "pragma")
+            return "tune"
+        if (kind === "opaque")
+            return "warning"
         return "account_tree"
     }
 

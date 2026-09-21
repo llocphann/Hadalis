@@ -95,6 +95,19 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         self.assertFalse(result["cliResponsive"])
         self.assertFalse(result["richMutationAvailable"])
 
+    def test_cli_timeout_maps_to_runtime_error(self):
+        original = obsidian_tasks.subprocess.run
+
+        def timeout(*_args, **_kwargs):
+            raise subprocess.TimeoutExpired(["obsidian"], 0.01)
+
+        obsidian_tasks.subprocess.run = timeout
+        self.addCleanup(lambda: setattr(obsidian_tasks.subprocess, "run", original))
+
+        with self.assertRaises(obsidian_tasks.RuntimeErrorInfo) as error:
+            obsidian_tasks._run_cli("/fake/obsidian", ["eval", "code=1"], 0.01)
+        self.assertEqual(error.exception.code, "cli_timeout")
+
     def test_eval_json_parser_handles_cli_prefix_and_quoted_json(self):
         self.assertEqual(
             obsidian_tasks._parse_eval_json('noise\n=> {"vaultPath":"/v"}\n'),

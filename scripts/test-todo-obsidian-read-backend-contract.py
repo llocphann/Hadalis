@@ -16,6 +16,8 @@ required = [
     "property var list: []",
     "property bool ready: false",
     "property bool busy: false",
+    'property string _scanVaultPath: ""',
+    'property string _scanNotePath: ""',
     'Quickshell.shellPath("scripts/todo/obsidian_todo.py")',
     '"/usr/bin/python3"',
     '"scan"',
@@ -27,6 +29,8 @@ required = [
     "scanDebounce.restart()",
     "interval: 5000",
     "JSON.parse(output)",
+    "root._scanVaultPath !== root.vaultPath",
+    "root._scanNotePath !== root.notePath",
 ]
 for snippet in required:
     assert snippet in backend, f"Obsidian read backend lost contract: {snippet}"

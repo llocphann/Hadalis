@@ -29,6 +29,8 @@ Scope {
     property var managedMeta: ({})
 
     property bool _refreshQueued: false
+    property string _scanVaultPath: ""
+    property string _scanNotePath: ""
 
     readonly property bool configured:
         root.active
@@ -84,6 +86,8 @@ Scope {
         root.busy = true
         root.errorCode = ""
         root.errorMessage = ""
+        root._scanVaultPath = root.vaultPath
+        root._scanNotePath = root.notePath
         scanProc.command = [
             "/usr/bin/python3",
             root.helperPath,
@@ -200,6 +204,14 @@ Scope {
 
         onExited: (exitCode, exitStatus) => {
             scanTimeout.stop()
+
+            if (!root.configured
+                    || root._scanVaultPath !== root.vaultPath
+                    || root._scanNotePath !== root.notePath) {
+                root._refreshQueued = root.configured
+                root._finishScan()
+                return
+            }
 
             if (scanProc.timedOut) {
                 root._clearUnavailable(

@@ -680,7 +680,8 @@ Item {
                         ? Math.max(24, horizontalGap - 12)
                         : 150
                 readonly property bool hovered:
-                    root.hoveredEdgeId === String(modelData.id ?? "")
+                    edgeLabelHover.hovered
+                    || root.hoveredEdgeId === String(modelData.id ?? "")
 
                 visible: fromNode !== null
                     && toNode !== null
@@ -698,6 +699,11 @@ Item {
                 border.color: ColorUtils.applyAlpha(
                     root.edgeInk(modelData.kind, false), 0.72)
                 z: 0.5
+
+                HoverHandler {
+                    id: edgeLabelHover
+                    target: edgeLabel
+                }
 
                 StyledText {
                     id: edgeLabelText

@@ -219,10 +219,14 @@ def main() -> None:
               f"Top-right connected reload toast contract missing: {token}")
     check('"Niri config reloaded"' not in toast_manager,
           "Legacy Niri reload toast title must stay retired")
-    check("property bool connectedSurface: false" in toast_notification
+    check("\n    property bool connectedSurface: false\n" in toast_notification
+          and "\n    property bool copied: false\n" in toast_notification
           and "layer.enabled: Appearance.effectsEnabled && !root.connectedSurface" in toast_notification
           and "wallpaperBackdropEnabled: !root.connectedSurface" in toast_notification,
-          "Toast content must support a host-owned connected outer surface")
+          "Toast content must expose real host-owned connected-surface properties")
+    check("\\\\n    property bool connectedSurface: false" not in toast_notification
+          and "\\\\n    property bool copied: false" not in toast_notification,
+          "Toast connected-surface properties must not be escaped into a line comment")
 
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,

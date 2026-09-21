@@ -98,6 +98,86 @@ float smoothUnion(float a, float b, float k) {
     return mix(b, a, h) - k * h * (1.0 - h);
 }
 
+float roundedBoxCorners(
+    vec2 p,
+    vec2 centre,
+    vec2 halfSize,
+    vec4 radii)
+{
+    vec2 local = p - centre;
+    float limit = min(halfSize.x, halfSize.y);
+    vec4 r = clamp(radii, vec4(0.0), vec4(limit));
+
+    r.xy = local.x > 0.0 ? r.xy : r.zw;
+
+    float radius =
+        local.y > 0.0 ? r.x : r.y;
+
+    vec2 q =
+        abs(local)
+        - halfSize
+        + vec2(radius);
+
+    return min(max(q.x, q.y), 0.0)
+        + length(max(q, vec2(0.0)))
+        - radius;
+}
+
+float tangentAwareBody(
+    vec2 p,
+    vec4 body,
+    vec4 primaryOwner,
+    vec4 tangentOwner,
+    float radius)
+{
+    vec4 r = vec4(radius);
+
+    bool primaryHorizontal =
+        primaryOwner.z >= primaryOwner.w;
+
+    bool tangentVertical =
+        tangentOwner.w >= tangentOwner.z;
+
+    if (primaryHorizontal != tangentVertical)
+        return roundedBox(
+            p, body.xy, body.zw, radius);
+
+    if (primaryHorizontal) {
+        bool above =
+            primaryOwner.y < body.y;
+
+        bool right =
+            tangentOwner.x > body.x;
+
+        if (above && right)
+            r.x = 0.0;
+        else if (!above && right)
+            r.y = 0.0;
+        else if (above && !right)
+            r.z = 0.0;
+        else
+            r.w = 0.0;
+    } else {
+        bool left =
+            primaryOwner.x < body.x;
+
+        bool bottom =
+            tangentOwner.y > body.y;
+
+        if (left && bottom)
+            r.x = 0.0;
+        else if (left && !bottom)
+            r.y = 0.0;
+        else if (!left && bottom)
+            r.z = 0.0;
+        else
+            r.w = 0.0;
+    }
+
+    return roundedBoxCorners(
+        p, body.xy, body.zw, r);
+}
+
 vec4 shapeAt(int i) {
     if (i < 8) {
         if (i < 4) return i == 0 ? u.shape0 : i == 1 ? u.shape1 : i == 2 ? u.shape2 : u.shape3;
@@ -151,7 +231,39 @@ void main() {
         int block = i / 4;
         int slot = i - block * 4;
         float radius = blockValue(block, slot, u.radiiA, u.radiiB, u.radiiC, u.radiiD, u.radiiE);
-        bodies[i] = roundedBox(p, s.xy, s.zw, radius);
+
+        float primaryRelation =
+            blockValue(
+                block, slot,
+                u.joinA, u.joinB,
+                u.joinC, u.joinD, u.joinE);
+
+        float tangentRelation =
+            blockValue(
+                block, slot,
+                u.alsoA, u.alsoB,
+                u.alsoC, u.alsoD, u.alsoE);
+
+        if (primaryRelation > 0.5 && tangentRelation > 0.5) {
+            int primaryIndex =
+                int(primaryRelation + 0.5) - 1;
+
+            int tangentIndex =
+                int(tangentRelation + 0.5) - 1;
+
+            bodies[i] =
+                tangentAwareBody(
+                    p,
+                    s,
+                    shapeAt(primaryIndex),
+                    shapeAt(tangentIndex),
+                    radius);
+        } else {
+            bodies[i] =
+                roundedBox(
+                    p, s.xy, s.zw, radius);
+        }
+
         united = min(united, bodies[i]);
         float m = blockValue(block, slot, u.glassA, u.glassB, u.glassC, u.glassD, u.glassE);
         float w = exp(-clamp(bodies[i], -40.0, 40.0) / 2.0);
@@ -174,9 +286,16 @@ void main() {
                 united = min(united, smoothUnion(other, bodies[i], k));
         }
         if (also < -0.5 || also > 0.5) {
-            float other = also < 0.0 ? frameDistance : bodies[int(also + 0.5) - 1];
-            if (other < FAR)
-                united = min(united, smoothUnion(other, bodies[i], k));
+            float other = also < 0.0
+                ? frameDistance
+                : bodies[int(also + 0.5) - 1];
+
+            // A two-owner tangent body is already connected by the hard
+            // body/frame union. Do not grow the old metaball shoulder.
+            if (other < FAR && !(join > 0.5 && also > 0.5))
+                united = min(
+                    united,
+                    smoothUnion(other, bodies[i], k));
         }
     }
 

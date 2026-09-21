@@ -253,9 +253,7 @@ Item {
             Appearance.colors.colLayer0,
             emphasized ? 4.5 : 3.0,
             Appearance.colors.colOnLayer0)
-        return emphasized
-            ? readable
-            : ColorUtils.applyAlpha(readable, 0.86)
+        return readable
     }
 
     DragHandler {

@@ -125,6 +125,28 @@ the parser/transaction safety model or unrelated shell runtime:
   hierarchy/disclosure, unified selection, source-range reveal, fit behavior and
   availability-state semantics.
 
+### Automated live capture bundle
+
+For compositor-qualified review, the repo now includes an opt-in capture runner:
+
+```bash
+bash scripts/capture-code-workflow-ui.sh
+```
+
+It launches the repo's standalone Settings directly on page 30 with
+`QS_CODE_WORKFLOW_CAPTURE=1`, fullscreens only that Settings window on Niri,
+then captures deterministic Code Workflow states: overview, real TextField filter
+typing/focus traversal when `wtype` is available, obstacle-detoured edge,
+read-only edge-to-binding context, Connect candidate, and parser semantic +
+Source Preview. It stores PNGs together with per-step IPC state, the selected
+Settings window's Niri record, output/workspace metadata, Settings logs, source
+snapshots and SHA256 manifests, restores the pre-capture Code Workflow session,
+and emits `hadalis-code-workflow-capture-<timestamp>.tar.gz`.
+
+The `codeWorkflowCapture` IPC exists only while the Code Workflow page is
+loaded under `QS_CODE_WORKFLOW_CAPTURE=1`. Its harness is contract-checked to
+remain read-only and must not call transaction preview/prepare/apply APIs.
+
 This pass intentionally does **not** widen source-write allowlists, transaction
 semantics, parser capability, runtime registration scope, or shell-wide inspect
 coverage. GitHub connector status queries for these direct `dev` push commits

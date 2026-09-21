@@ -754,6 +754,15 @@ if "acceptedButtons: Qt.MiddleButton\n" in canvas:
 if "Qt.OpenHandCursor" in canvas:
     fail("Code Workflow cursor must stay normal until a drag is actually active")
 
+drag_update_start = canvas.index("function updateLayout(): void")
+drag_update_end = canvas.index("onActiveChanged:", drag_update_start)
+drag_update_block = canvas[drag_update_start:drag_update_end]
+if "CodeWorkflowSession.setNodeLayoutOffset(" in drag_update_block:
+    fail("node drag update must remain transient; commit layout only after drag ends")
+if "root.activeNodeDragOffsetX = nextX - baseX" not in drag_update_block \
+        or "root.dragRoutesDirty = true" not in drag_update_block:
+    fail("node drag update must move local preview state and schedule coalesced routing")
+
 for token in (
     'property string subflowTargetId: "bar"',
     'property string selectedNodeId: "bar.component"',

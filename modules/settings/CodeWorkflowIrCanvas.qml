@@ -19,6 +19,7 @@ Item {
     readonly property real worldWidth: root.graphExtent("x", 1050)
     readonly property real worldHeight: root.graphExtent("y", 570)
     property string hoveredEdgeId: ""
+    readonly property var edgeRouteCache: root.buildEdgeRouteCache()
 
     function graphExtent(axis: string, minimum: real): real {
         let extent = minimum
@@ -190,6 +191,24 @@ Item {
         return bestRoute
     }
 
+    function buildEdgeRouteCache(): var {
+        const cache = ({})
+        const graph = root.graph
+        for (const edge of (graph?.edges ?? [])) {
+            const edgeId = String(edge?.id ?? "")
+            if (edgeId.length > 0)
+                cache[edgeId] = root.edgeRoute(edge)
+        }
+        return cache
+    }
+
+    function routeForEdge(edge): var {
+        const edgeId = String(edge?.id ?? "")
+        if (edgeId.length === 0)
+            return root.edgeRoute(edge)
+        return root.edgeRouteCache?.[edgeId] ?? root.edgeRoute(edge)
+    }
+
     function graphBounds(): var {
         if (root.nodes.length === 0)
             return {
@@ -214,7 +233,7 @@ Item {
 
         // Fit the same geometry that the renderer and hit-test use.
         for (const edge of root.edges) {
-            const route = root.edgeRoute(edge)
+            const route = root.routeForEdge(edge)
             if (!route)
                 continue
             minX = Math.min(
@@ -268,7 +287,7 @@ Item {
     }
 
     function edgeDistance(edge, px: real, py: real): real {
-        const route = root.edgeRoute(edge)
+        const route = root.routeForEdge(edge)
         if (!route)
             return 1e9
 
@@ -566,7 +585,7 @@ Item {
                 ShapePath {
                     id: edgePath
                     readonly property var route:
-                        root.edgeRoute(edgeShape.modelData)
+                        root.routeForEdge(edgeShape.modelData)
 
                     strokeColor: root.edgeInk(
                         edgeShape.modelData.kind,
@@ -642,7 +661,7 @@ Item {
                 readonly property var fromNode: root.nodeById(modelData.from)
                 readonly property var toNode: root.nodeById(modelData.to)
                 readonly property var route:
-                    root.edgeRoute(modelData)
+                    root.routeForEdge(modelData)
                 readonly property real midX: route
                     ? root.cubicCoordinate(
                         route.x0, route.x1, route.x2, route.x3, 0.5)

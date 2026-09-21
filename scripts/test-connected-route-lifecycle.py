@@ -26,7 +26,7 @@ def main() -> None:
         "property bool requestedVisible",
         "property bool _lingerVisible",
         "property real revealProgress",
-        "readonly property bool visualVisible",
+        "active: root._anchorReady && (root.requestedVisible || root._lingerVisible)",
         "retractTimer",
         "progress: root.revealProgress",
         "mask: connectedMask",

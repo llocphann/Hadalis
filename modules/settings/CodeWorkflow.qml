@@ -220,6 +220,12 @@ Item {
             analyzerStatus: CodeWorkflowAnalyzer.status,
             analyzerError: CodeWorkflowAnalyzer.error,
             sourcePath: root.sourcePath,
+            runtimeState: String(root.record?.state ?? "missing"),
+            selectedLive: root.selectedLive,
+            inspectTargetCount: root.inspectTargets.length,
+            parserEntryCount: root.parsedSemanticEntries.length,
+            pageWidth: root.width,
+            pageHeight: root.height,
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom

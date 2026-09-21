@@ -148,6 +148,38 @@ Item {
             : root.escapeInputText(base)
     }
 
+    function mouseButtonName(button: int): string {
+        if (button === Qt.RightButton)
+            return "right"
+        if (button === Qt.MiddleButton)
+            return "middle"
+        return "left"
+    }
+
+    function mouseModifier(modifiers: int): string {
+        const parts = []
+        if ((modifiers & Qt.ControlModifier) !== 0)
+            parts.push("C")
+        if ((modifiers & Qt.AltModifier) !== 0)
+            parts.push("A")
+        if ((modifiers & Qt.ShiftModifier) !== 0)
+            parts.push("S")
+        if ((modifiers & Qt.MetaModifier) !== 0)
+            parts.push("D")
+        return parts.length > 0 ? parts.join("-") + "-" : ""
+    }
+
+    function mouseCell(x: real, y: real): var {
+        return {
+            row: Math.max(0, Math.min(
+                CodeWorkflowNvim.rows - 1,
+                Math.floor(y / Math.max(1, root.cellHeight)))),
+            col: Math.max(0, Math.min(
+                CodeWorkflowNvim.cols - 1,
+                Math.floor(x / Math.max(1, root.cellWidth))))
+        }
+    }
+
     function updateNvimSize(): void {
         if (!root.active || root.width <= 0 || root.height <= 0)
             return
@@ -247,9 +279,65 @@ Item {
                     event.accepted = true
             }
 
-            TapHandler {
-                acceptedButtons: Qt.LeftButton
-                onTapped: editorSurface.forceActiveFocus()
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: CodeWorkflowNvim.mouseEnabled
+                acceptedButtons:
+                    Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+
+                onPressed: mouse => {
+                    editorSurface.forceActiveFocus()
+                    if (!CodeWorkflowNvim.mouseEnabled)
+                        return
+                    const cell = root.mouseCell(mouse.x, mouse.y)
+                    CodeWorkflowNvim.mouse(
+                        root.mouseButtonName(mouse.button),
+                        "press",
+                        root.mouseModifier(mouse.modifiers),
+                        cell.row, cell.col)
+                    mouse.accepted = true
+                }
+
+                onReleased: mouse => {
+                    if (!CodeWorkflowNvim.mouseEnabled)
+                        return
+                    const cell = root.mouseCell(mouse.x, mouse.y)
+                    CodeWorkflowNvim.mouse(
+                        root.mouseButtonName(mouse.button),
+                        "release",
+                        root.mouseModifier(mouse.modifiers),
+                        cell.row, cell.col)
+                    mouse.accepted = true
+                }
+
+                onPositionChanged: mouse => {
+                    if (!CodeWorkflowNvim.mouseEnabled
+                            || mouse.buttons === Qt.NoButton)
+                        return
+                    const cell = root.mouseCell(mouse.x, mouse.y)
+                    const button = (mouse.buttons & Qt.LeftButton)
+                        ? Qt.LeftButton
+                        : (mouse.buttons & Qt.RightButton)
+                            ? Qt.RightButton : Qt.MiddleButton
+                    CodeWorkflowNvim.mouse(
+                        root.mouseButtonName(button),
+                        "drag",
+                        root.mouseModifier(mouse.modifiers),
+                        cell.row, cell.col)
+                }
+
+                onWheel: wheel => {
+                    editorSurface.forceActiveFocus()
+                    if (!CodeWorkflowNvim.mouseEnabled)
+                        return
+                    const cell = root.mouseCell(wheel.x, wheel.y)
+                    const action = wheel.angleDelta.y >= 0 ? "up" : "down"
+                    CodeWorkflowNvim.mouse(
+                        "wheel", action,
+                        root.mouseModifier(wheel.modifiers),
+                        cell.row, cell.col)
+                    wheel.accepted = true
+                }
             }
 
             Canvas {

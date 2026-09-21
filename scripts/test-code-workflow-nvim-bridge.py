@@ -60,6 +60,14 @@ assert meta_frame["dirtyRows"] == []
 assert meta_frame["cursorRow"] == 2 and meta_frame["cursorCol"] == 4
 assert meta_frame["mode"] == "normal"
 
+ui.event("mouse_on", [])
+assert ui.event("flush", [])
+mouse_frame = ui.frame()
+assert mouse_frame is not None and mouse_frame["mouseEnabled"] is True
+ui.event("mouse_off", [])
+assert ui.event("flush", [])
+assert ui.frame()["mouseEnabled"] is False
+
 # Positive row scroll copies cells upward inside the end-exclusive region.
 ui = mod.UiState(3, 4)
 for row, char in enumerate(("a", "b", "c", "d")):

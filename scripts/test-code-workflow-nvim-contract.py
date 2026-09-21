@@ -23,12 +23,14 @@ for token in (
     "function resize(nextCols: int, nextRows: int): bool",
     "function input(keys: string): bool",
     "function save(): bool",
+    "function mouse(",
     "function stop(): void",
     'Quickshell.shellPath("scripts/code-workflow-nvim-bridge.py")',
     'op: "open"',
     'op: "resize"',
     'op: "input"',
     'op: "save"',
+    'op: "mouse"',
 ):
     if token not in service:
         fail("CodeWorkflowNvim service missing " + token)
@@ -42,6 +44,9 @@ for token in (
     'name == "grid_cursor_goto"',
     'name == "hl_attr_define"',
     'name == "default_colors_set"',
+    'name == "mouse_on"',
+    'name == "mouse_off"',
+    '"nvim_input_mouse"',
     '"type": "frame"',
 ):
     if token not in bridge:

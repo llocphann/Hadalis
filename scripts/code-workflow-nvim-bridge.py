@@ -267,6 +267,7 @@ class UiState:
         self.cursor_row = 0
         self.cursor_col = 0
         self.mode = "normal"
+        self.mouse_enabled = False
         self.default_fg = -1
         self.default_bg = -1
         self.default_sp = -1
@@ -366,6 +367,12 @@ class UiState:
         elif name == "mode_change" and args:
             self.mode = str(args[0])
             self.meta_dirty = True
+        elif name == "mouse_on":
+            self.mouse_enabled = True
+            self.meta_dirty = True
+        elif name == "mouse_off":
+            self.mouse_enabled = False
+            self.meta_dirty = True
         return name == "flush"
 
     def frame(self) -> dict[str, Any] | None:
@@ -388,6 +395,7 @@ class UiState:
             "cursorRow": self.cursor_row,
             "cursorCol": self.cursor_col,
             "mode": self.mode,
+            "mouseEnabled": self.mouse_enabled,
             "dirtyRows": rows,
         }
         if self.changed_highlights:
@@ -516,6 +524,16 @@ class Bridge:
             self.request("nvim_exec_lua", [lua, [str(target)]], "open")
         elif op == "save":
             self.request("nvim_command", ["write"], "save")
+        elif op == "mouse":
+            button = str(payload.get("button", "left"))
+            action = str(payload.get("action", "press"))
+            modifier = str(payload.get("modifier", ""))
+            row = max(0, int(payload.get("row", 0)))
+            col = max(0, int(payload.get("col", 0)))
+            self.request(
+                "nvim_input_mouse",
+                [button, action, modifier, 0, row, col],
+                "mouse")
         elif op == "stop":
             self.stopping = True
         elif op == "ping":

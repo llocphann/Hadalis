@@ -19,6 +19,7 @@ Singleton {
     property int cursorRow: 0
     property int cursorCol: 0
     property string mode: "normal"
+    property bool mouseEnabled: false
     property int revision: 0
     property var gridRows: []
     property var highlights: ({})
@@ -79,6 +80,7 @@ Singleton {
         root.cursorCol = Math.max(
             0, Math.min(root.cols - 1, Number(frame?.cursorCol ?? 0)))
         root.mode = String(frame?.mode ?? root.mode)
+        root.mouseEnabled = frame?.mouseEnabled === true
         root.gridRows = nextRows
         root.revision += 1
     }
@@ -142,6 +144,7 @@ Singleton {
         root.cursorRow = 0
         root.cursorCol = 0
         root.mode = "normal"
+        root.mouseEnabled = false
         root.gridRows = root._blankGrid(safeRows)
         root.highlights = ({})
         root.defaultColors = ({
@@ -199,6 +202,20 @@ Singleton {
 
     function save(): bool {
         return root._send({ op: "save" })
+    }
+
+    function mouse(
+        button: string, action: string, modifier: string,
+        row: int, col: int
+    ): bool {
+        return root._send({
+            op: "mouse",
+            button: String(button ?? "left"),
+            action: String(action ?? "press"),
+            modifier: String(modifier ?? ""),
+            row: Math.max(0, Number(row ?? 0)),
+            col: Math.max(0, Number(col ?? 0))
+        })
     }
 
     function stop(): void {

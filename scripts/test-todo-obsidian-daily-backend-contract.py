@@ -20,7 +20,13 @@ for token in (
     "function addTask(text: string, startTime: string, endTime: string): bool",
     "function toggleTask(taskId: string): bool",
     "function deleteTask(taskId: string): bool",
+    "function previewInternal(internalJsonPath: string): bool",
+    "function migrateInternal(internalJsonPath: string, expectedInternalSha: string): bool",
+    '"preview-migration"',
+    '"migrate-internal"',
     "expected-section-sha",
+    "root.migrationFinished(success, payload)",
+    "root.migrationCommitted(payload)",
 ):
     assert token in backend, f"Daily Note backend lost contract: {token}"
 

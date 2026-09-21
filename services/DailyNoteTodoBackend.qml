@@ -151,19 +151,30 @@ Scope {
     }
 
     function previewInternal(internalJsonPath: string): bool {
-        root._setError(
-            "migration_not_supported",
-            "Daily Note import preview is not available yet; activate the Daily Note as-is"
+        if (!root.ready)
+            return false
+        return root._startMutation(
+            "preview-migration",
+            ["/usr/bin/python3", root.helperPath, "preview-migration"]
+                .concat(root._sourceArgs())
+                .concat(["--internal-json", String(internalJsonPath ?? "")])
         )
-        return false
     }
 
     function migrateInternal(internalJsonPath: string, expectedInternalSha: string): bool {
-        root._setError(
-            "migration_not_supported",
-            "Daily Note import is not available yet; activate the Daily Note as-is"
+        if (!root.ready)
+            return false
+        return root._startMutation(
+            "migrate-internal",
+            ["/usr/bin/python3", root.helperPath, "migrate-internal"]
+                .concat(root._sourceArgs())
+                .concat([
+                    "--internal-json", String(internalJsonPath ?? ""),
+                    "--expected-document-sha", String(root.documentMeta?.sha256 ?? ""),
+                    "--expected-section-sha", String(root.managedMeta?.sha256 ?? ""),
+                    "--expected-internal-sha", String(expectedInternalSha ?? "")
+                ])
         )
-        return false
     }
 
     function addTask(text: string, startTime: string, endTime: string): bool {
@@ -280,6 +291,11 @@ Scope {
             root._refreshQueued = false
             Qt.callLater(() => root.refresh())
         }
+    }
+
+    function _notifyMigrationFinished(success: bool, payload): void {
+        if (mutationProc.kind === "migrate-internal")
+            root.migrationFinished(success, payload)
     }
 
     onActiveChanged: root._scheduleRefresh()
@@ -425,6 +441,7 @@ Scope {
                 return
             mutationTimeout.stop()
             root._setError("mutation_start_failed", "Failed to start Daily Note Todo mutation helper")
+            root._notifyMigrationFinished(false, null)
             root._finishMutation()
         }
 
@@ -438,33 +455,51 @@ Scope {
             mutationTimeout.stop()
             if (!root.configured || root._mutationSourceKey !== root._sourceKey()) {
                 root._refreshQueued = root.configured
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
             if (mutationProc.timedOut) {
                 root._setError("mutation_timeout", "Daily Note Todo mutation timed out")
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
             const output = String(mutationCollector.text ?? "").trim()
             if (output.length === 0) {
                 root._setError("mutation_failed", "Daily Note Todo mutation returned no result")
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
             try {
                 const payload = JSON.parse(output)
-                if (payload?.ok === true)
+                if (payload?.ok === true) {
+                    if (mutationProc.kind === "preview-migration") {
+                        root.migrationPreview = payload
+                        root._clearError()
+                        root._finishMutation()
+                        return
+                    }
+                    const committedMigration = mutationProc.kind === "migrate-internal"
                     root._applyPayload(payload)
-                else {
-                    const error = payload?.error ?? ({})
-                    const code = String(error.code ?? "mutation_failed")
-                    root._setError(code, String(error.message ?? "Daily Note Todo mutation failed"))
-                    if (code === "conflict")
-                        root._refreshQueued = true
+                    root._finishMutation()
+                    if (committedMigration) {
+                        root._notifyMigrationFinished(true, payload)
+                        root.migrationCommitted(payload)
+                    }
+                    return
                 }
+
+                const error = payload?.error ?? ({})
+                const code = String(error.code ?? "mutation_failed")
+                root._setError(code, String(error.message ?? "Daily Note Todo mutation failed"))
+                root._notifyMigrationFinished(false, payload)
+                if (code === "conflict" || code === "migration_source_conflict")
+                    root._refreshQueued = true
             } catch (error) {
                 root._setError("mutation_invalid_output", "Daily Note Todo mutation returned invalid JSON")
+                root._notifyMigrationFinished(false, null)
             }
             root._finishMutation()
         }

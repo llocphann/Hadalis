@@ -609,7 +609,7 @@ Scope {
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
                 readonly property color surfaceFillColor: CF.ColorUtils.applyAlpha(
-                    Appearance.colors.colLayer0Base, settingsCard.panelBgOpacity)
+                    Appearance.colors.colLayer0, settingsCard.panelBgOpacity)
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: settingsPanel.height - root._screenEdgeThickness - height

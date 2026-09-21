@@ -670,6 +670,12 @@ def main() -> None:
           and "settingsPanel.width * 0.88" in settings_focus
           and "settingsPanel.height * 0.92" in settings_focus,
           "Focus Settings overlay must use the enlarged bottom-connected footprint")
+    check("Appearance.colors.colLayer0" in settings_overlay
+          and "Appearance.colors.colLayer0" in settings_focus,
+          "Connected Settings body fill must share the Material Screen Edge/Bar colLayer0 family")
+    check("Appearance.colors.colLayer0Base" not in settings_overlay,
+          "Rail Settings overlay must not use the detached base tone for its connected body")
+
     for settings_surface in (settings_overlay, settings_focus):
         check("SurfaceMotion.duration" in settings_surface
               and "SurfaceMotion.easingType" in settings_surface,

@@ -1182,7 +1182,7 @@ def main() -> None:
         forbid(settings_card, token, "SettingsOverlay.qml outer Settings card")
     for token in (
         "radius: Appearance.rounding.windowRounding",
-        "Appearance.colors.colLayer0Base",
+        "Appearance.colors.colLayer0",
         "border.width: 0",
         'border.color: "transparent"',
     ):

@@ -617,7 +617,7 @@ Scope {
                 readonly property color surfaceFillColor: CF.ColorUtils.applyAlpha(
                     Appearance.inirEverywhere ? Appearance.inir.colLayer0
                   : Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                  : Appearance.colors.colLayer0Base,
+                  : Appearance.colors.colLayer0,
                     card.panelBgOpacity)
 
                 anchors.horizontalCenter: parent.horizontalCenter

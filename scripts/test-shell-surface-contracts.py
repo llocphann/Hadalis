@@ -167,6 +167,63 @@ def main() -> None:
           and "hoverTransferTimer.restart()" in styled_popup,
           "StyledPopup must debounce the compositor leave/enter hand-off across Bar and popup windows")
 
+    # Auxiliary edge-attached surfaces refined after the iRiS migration must
+    # keep using the same production connected-surface vocabulary. These guards
+    # intentionally check presentation ownership only; feature/IPC lifecycle
+    # remains owned by each subsystem.
+    region_selection = read("modules/regionSelector/RegionSelection.qml")
+    for token in (
+        "ConnectedSurfaceIrisEdgeSurface {",
+        'edge: "bottom"',
+        "ownerThickness: root.screenEdgeThickness",
+        "physicalShadow?.enabled ?? true",
+        "progress: 1",
+        "enableShadow: false",
+        "transparent: true",
+    ):
+        check(token in region_selection,
+              f"Region selector connected Screen Edge controls missing: {token}")
+    check("opacity: regionSelectionControls.opacity" not in region_selection,
+          "Region selector outer iRiS shell must not fade with toolbar content")
+
+    osd = read("modules/onScreenDisplay/OnScreenDisplay.qml")
+    for token in (
+        "ConnectedSurfaceIrisFrame {",
+        "ConnectedSurfaceBodyMask {",
+        "seamOverlap: PerimeterTokens.irisWeldDepth",
+        "fuseDepth: PerimeterTokens.irisFuseDepth",
+        "visibleBodyRect: statusFrame.visibleBodyRect",
+        "physicalShadow?.enabled ?? true",
+        "Appearance.m3colors.m3shadow",
+    ):
+        check(token in osd,
+              f"Compact IPC/OSD popup iRiS contract missing: {token}")
+    check("ConnectedSurfaceFrame {" not in osd
+          and "ConnectedSurfaceMask {" not in osd,
+          "Compact IPC/OSD popups must not restore the legacy connected frame/mask")
+
+    toast_manager = read("modules/common/ToastManager.qml")
+    toast_notification = read("modules/common/widgets/ToastNotification.qml")
+    for token in (
+        '"Niri Reloaded"',
+        "ConnectedSurfaceIrisEdgeSurface {",
+        'edge: "top"',
+        "x: Math.max(root.edgeDecorationMargin,",
+        "popup.width - width - root.edgeDecorationMargin",
+        "y: root.topOwnerThickness",
+        "connectedSurface: true",
+        "physicalShadow?.enabled ?? true",
+        "Appearance.m3colors.m3shadow",
+    ):
+        check(token in toast_manager,
+              f"Top-right connected reload toast contract missing: {token}")
+    check('"Niri config reloaded"' not in toast_manager,
+          "Legacy Niri reload toast title must stay retired")
+    check("property bool connectedSurface: false" in toast_notification
+          and "layer.enabled: Appearance.effectsEnabled && !root.connectedSurface" in toast_notification
+          and "wallpaperBackdropEnabled: !root.connectedSurface" in toast_notification,
+          "Toast content must support a host-owned connected outer surface")
+
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")

@@ -570,7 +570,7 @@ for token in (
     if token not in canvas:
         fail("IR canvas missing " + token)
 
-if canvas.count("function edgeRoute(edge): var") != 1:
+if canvas.count("function edgeRoute(edge, occupiedRoutes = []): var") != 1:
     fail("IR canvas must keep one authoritative edgeRoute geometry function")
 
 for token in (

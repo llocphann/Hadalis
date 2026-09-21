@@ -19,6 +19,8 @@ Singleton {
     property string semanticAnchorNodeId: ""
     property real panX: 32
     property real panY: 28
+    readonly property real minimumZoom: 0.20
+    readonly property real maximumZoom: 2.5
     property real zoom: 1
     property bool sourcePreviewVisible: true
     property bool _restoring: false
@@ -107,7 +109,9 @@ Singleton {
         }
         root.panX = Number(state.codeWorkflowPanX ?? 32)
         root.panY = Number(state.codeWorkflowPanY ?? 28)
-        root.zoom = Math.max(0.35, Math.min(2.5, Number(state.codeWorkflowZoom ?? 1)))
+        root.zoom = Math.max(root.minimumZoom, Math.min(
+            root.maximumZoom,
+            Number(state.codeWorkflowZoom ?? 1)))
         root.sourcePreviewVisible = state.codeWorkflowSourcePreview !== false
         root._restoring = false
         root._ready = true
@@ -313,7 +317,8 @@ Singleton {
     function setViewport(x: real, y: real, nextZoom: real): void {
         root.panX = Number(x)
         root.panY = Number(y)
-        root.zoom = Math.max(0.35, Math.min(2.5, Number(nextZoom)))
+        root.zoom = Math.max(root.minimumZoom, Math.min(
+            root.maximumZoom, Number(nextZoom)))
         root.persist()
     }
 

@@ -503,7 +503,7 @@ def main() -> None:
     check("StyledRectangularShadow {" not in dock,
           "Dock must not retain its detached local shadow after iRiS cutover")
     dock_visual_start = dock.index("sourceComponent: PanelWindow {")
-    dock_reservation_start = dock.index('WlrLayershell.namespace: "quickshell:dock-reservation"')
+    dock_reservation_start = dock.index("PanelWindow {\n            id: dockReservationWindow")
     check(dock_visual_start >= 0 and dock_reservation_start > dock_visual_start,
           "Dock must keep visual and reservation layer-shell roles separate")
     dock_visual_block = dock[dock_visual_start:dock_reservation_start]

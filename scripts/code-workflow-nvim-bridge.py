@@ -463,6 +463,7 @@ class Bridge:
         self.selector = selectors.DefaultSelector()
         self.next_msgid = 1
         self.pending: dict[int, str] = {}
+        self.pending_open: dict[int, Path] = {}
         self.command_buffer = bytearray()
         self.ready = False
         self.stopping = False
@@ -483,9 +484,23 @@ class Bridge:
     def response(self, msgid: int, error: Any, result: Any) -> None:
         tag = self.pending.pop(msgid, "")
         if error not in (None, False):
+            if tag == "open":
+                self.pending_open.pop(msgid, None)
             emit({"type": "rpc-error", "request": tag, "error": error})
             if tag == "attach":
                 self.stopping = True
+            return
+        if tag == "open":
+            opened = self.pending_open.pop(msgid, None)
+            if opened is not None:
+                self.target = opened
+                emit({
+                    "type": "state",
+                    "state": "ready",
+                    "path": str(opened),
+                    "cols": self.ui.cols,
+                    "rows": self.ui.rows,
+                })
             return
         if tag == "attach":
             self.ready = True
@@ -547,9 +562,10 @@ class Bridge:
             self.request("nvim_ui_try_resize", [cols, rows], "resize")
         elif op == "open":
             target = safe_target(self.root, str(payload.get("path", "")))
-            self.target = target
             lua = "local p=...; vim.cmd.edit(vim.fn.fnameescape(p)); return true"
-            self.request("nvim_exec_lua", [lua, [str(target)]], "open")
+            msgid = self.request(
+                "nvim_exec_lua", [lua, [str(target)]], "open")
+            self.pending_open[msgid] = target
         elif op == "save":
             self.request("nvim_command", ["write"], "save")
         elif op == "mouse":

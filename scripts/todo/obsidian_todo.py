@@ -21,7 +21,7 @@ START_MARKER = "<!-- hadalis:todo:start -->"
 END_MARKER = "<!-- hadalis:todo:end -->"
 
 _TASK_RE = re.compile(
-    r"^([\\s\\t>]*)([-*+]|[0-9]+[.)]) +\\[(.)\\] *(.*)$",
+    r"^([\s\t>]*)([-*+]|[0-9]+[.)]) +\[(.)\] *(.*)$",
     re.UNICODE,
 )
 _FENCE_OPEN_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
@@ -67,7 +67,7 @@ def _outside_fence_flags(lines: list[str]) -> list[bool]:
         if fence_char:
             flags.append(False)
             close_re = re.compile(
-                r"^ {0,3}" + re.escape(fence_char) + "{" + str(fence_len) + r",}[ \\t]*$"
+                r"^ {0,3}" + re.escape(fence_char) + "{" + str(fence_len) + r",}[ \t]*$"
             )
             if close_re.match(candidate):
                 fence_char = ""

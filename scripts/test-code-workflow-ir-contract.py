@@ -11,6 +11,134 @@ def read(path: str) -> str:
 def fail(message: str) -> None:
     raise SystemExit("FAIL: " + message)
 
+NODE_WIDTH = 190.0
+NODE_HEIGHT = 88.0
+ROUTE_PADDING = 8.0
+DETOUR_OFFSETS = (
+    120.0, -120.0, 180.0, -180.0, 240.0, -240.0,
+    320.0, -320.0, 420.0, -420.0, 520.0, -520.0,
+)
+
+def cubic(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
+    inv = 1.0 - t
+    return (
+        inv * inv * inv * p0
+        + 3.0 * inv * inv * t * p1
+        + 3.0 * inv * t * t * p2
+        + t * t * t * p3
+    )
+
+def base_route(from_node: dict, to_node: dict) -> dict:
+    from_x = float(from_node.get("x") or 0)
+    from_y = float(from_node.get("y") or 0)
+    to_x = float(to_node.get("x") or 0)
+    to_y = float(to_node.get("y") or 0)
+    from_right = from_x + NODE_WIDTH
+    to_right = to_x + NODE_WIDTH
+    separated_right = to_x >= from_right
+    separated_left = to_right <= from_x
+    vertical = not separated_right and not separated_left
+
+    if vertical:
+        downward = (
+            to_y + NODE_HEIGHT / 2.0
+            >= from_y + NODE_HEIGHT / 2.0
+        )
+        direction = 1.0 if downward else -1.0
+        x0 = from_x + NODE_WIDTH / 2.0
+        y0 = from_y + (NODE_HEIGHT if downward else 0.0)
+        x3 = to_x + NODE_WIDTH / 2.0
+        y3 = to_y + (0.0 if downward else NODE_HEIGHT)
+        bend = max(48.0, abs(y3 - y0) / 2.0)
+        return {
+            "vertical": True, "direction": direction, "bend": bend,
+            "x0": x0, "y0": y0,
+            "x1": x0, "y1": y0 + direction * bend,
+            "x2": x3, "y2": y3 - direction * bend,
+            "x3": x3, "y3": y3,
+        }
+
+    rightward = separated_right
+    direction = 1.0 if rightward else -1.0
+    x0 = from_x + (NODE_WIDTH if rightward else 0.0)
+    y0 = from_y + NODE_HEIGHT / 2.0
+    x3 = to_x + (0.0 if rightward else NODE_WIDTH)
+    y3 = to_y + NODE_HEIGHT / 2.0
+    bend = max(48.0, abs(x3 - x0) / 2.0)
+    return {
+        "vertical": False, "direction": direction, "bend": bend,
+        "x0": x0, "y0": y0,
+        "x1": x0 + direction * bend, "y1": y0,
+        "x2": x3 - direction * bend, "y2": y3,
+        "x3": x3, "y3": y3,
+    }
+
+def detour_route(route: dict, offset: float) -> dict:
+    candidate = dict(route)
+    if candidate["vertical"]:
+        candidate["x1"] = candidate["x0"] + offset
+        candidate["y1"] = candidate["y0"]
+        candidate["x2"] = candidate["x3"] + offset
+        candidate["y2"] = candidate["y3"]
+    else:
+        candidate["x1"] = candidate["x0"]
+        candidate["y1"] = candidate["y0"] + offset
+        candidate["x2"] = candidate["x3"]
+        candidate["y2"] = candidate["y3"] + offset
+    return candidate
+
+def route_intersects_node(route: dict, node: dict) -> bool:
+    left = float(node.get("x") or 0) - ROUTE_PADDING
+    top = float(node.get("y") or 0) - ROUTE_PADDING
+    right = float(node.get("x") or 0) + NODE_WIDTH + ROUTE_PADDING
+    bottom = float(node.get("y") or 0) + NODE_HEIGHT + ROUTE_PADDING
+
+    route_left = min(route[f"x{i}"] for i in range(4))
+    route_top = min(route[f"y{i}"] for i in range(4))
+    route_right = max(route[f"x{i}"] for i in range(4))
+    route_bottom = max(route[f"y{i}"] for i in range(4))
+    if (
+        route_right < left or route_left > right
+        or route_bottom < top or route_top > bottom
+    ):
+        return False
+
+    for step in range(1, 32):
+        t = step / 32.0
+        x = cubic(route["x0"], route["x1"], route["x2"], route["x3"], t)
+        y = cubic(route["y0"], route["y1"], route["y2"], route["y3"], t)
+        if left <= x <= right and top <= y <= bottom:
+            return True
+    return False
+
+def route_collision_count(route: dict, edge: dict, nodes: list[dict]) -> int:
+    return sum(
+        1
+        for node in nodes
+        if node.get("id") not in {edge.get("from"), edge.get("to")}
+        and route_intersects_node(route, node)
+    )
+
+def resolved_route(edge: dict, node_by_id: dict, nodes: list[dict]) -> dict:
+    route = base_route(
+        node_by_id[edge.get("from")],
+        node_by_id[edge.get("to")],
+    )
+    best = route
+    best_count = route_collision_count(route, edge, nodes)
+    if best_count == 0:
+        return route
+
+    for offset in DETOUR_OFFSETS:
+        candidate = detour_route(route, offset)
+        count = route_collision_count(candidate, edge, nodes)
+        if count < best_count:
+            best = candidate
+            best_count = count
+        if count == 0:
+            return candidate
+    return best
+
 data = json.loads(MANIFEST.read_text(encoding="utf-8"))
 if data.get("schema") != 1:
     fail("IR schema must be 1")
@@ -93,6 +221,14 @@ for graph_id, graph in graphs.items():
         if from_x == to_x:
             seen_same_column_edge = True
 
+        route = resolved_route(edge, node_by_id, nodes)
+        collisions = route_collision_count(route, edge, nodes)
+        if collisions != 0:
+            fail(
+                f"{graph_id}/{edge.get('id')}: routed edge still intersects "
+                f"{collisions} unrelated node(s)"
+            )
+
 if not required_kinds.issubset(seen_kinds):
     fail("IR node-kind coverage missing: " + ", ".join(sorted(required_kinds - seen_kinds)))
 if not {"data", "event", "action", "lifecycle", "structure"}.issubset(seen_edges):
@@ -126,7 +262,11 @@ for token in (
     "id: edgePath",
     'root.graphExtent("x", 1050)',
     'root.graphExtent("y", 570)',
+    "function routeIntersectsNode(route, node, padding: real): bool",
+    "function routeCollisionCount(route, edge): int",
+    "function detourRoute(route, offset: real): var",
     "function edgeRoute(edge): var",
+    "const detourOffsets = [",
     "const separatedRight = toX >= fromRight",
     "const separatedLeft = toRight <= fromX",
     "const vertical = !separatedRight && !separatedLeft",

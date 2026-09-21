@@ -1385,6 +1385,9 @@ Item {
                         Layout.preferredHeight: 34
                         text: root.inspectFilter
                         placeholderText: "Filter targets"
+                        Accessible.name: "Filter inspect targets"
+                        Accessible.description:
+                            "Search runtime, graph, connection, connect candidate, and parsed QML targets"
                         onTextChanged: root.inspectFilter = text
                     }
 
@@ -3137,6 +3140,10 @@ Item {
                             text: root.sourceText
                             readOnly: true
                             selectByMouse: true
+                            activeFocusOnTab: true
+                            Accessible.name: "Source preview"
+                            Accessible.description:
+                                "Read-only source for the current inspect selection"
                             wrapMode: TextEdit.NoWrap
                             color: Appearance.colors.colOnLayer1
                             selectionColor: Appearance.colors.colPrimaryContainer

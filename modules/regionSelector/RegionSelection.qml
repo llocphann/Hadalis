@@ -36,6 +36,30 @@ PanelWindow {
     readonly property bool useNiri: CompositorService.isNiri
     readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    // Screenshot selection stays full-output for hit testing/crop coordinates,
+    // but its dim/guide visuals must not repaint the persistent Bar/Screen Edge.
+    readonly property bool screenshotIiBarActive:
+        (Config.options?.panelFamily ?? "ii") === "ii"
+        && GlobalStates.barOpen
+        && !(Config.options?.bar?.autoHide?.enable ?? false)
+        && (Config.options?.enabledPanels ?? []).includes(
+            (Config.options?.bar?.vertical ?? false) ? "iiVerticalBar" : "iiBar")
+    readonly property string screenshotIiBarEdge:
+        (Config.options?.bar?.vertical ?? false)
+            ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
+            : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
+    readonly property real screenshotTopOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "top"
+            ? Appearance.sizes.barHeight : screenEdgeThickness
+    readonly property real screenshotBottomOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "bottom"
+            ? Appearance.sizes.barHeight : screenEdgeThickness
+    readonly property real screenshotLeftOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "left"
+            ? Appearance.sizes.verticalBarWidth : screenEdgeThickness
+    readonly property real screenshotRightOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "right"
+            ? Appearance.sizes.verticalBarWidth : screenEdgeThickness
     readonly property bool screenEdgeShadowEnabled:
         Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
     readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
@@ -511,30 +535,52 @@ PanelWindow {
                 root.points.push({ x: mouse.x, y: mouse.y });
             }
             
-            Loader {
+            // Clip only the dim/selection-guide rendering to the workspace
+            // interior. The MouseArea and snip coordinates remain full-output,
+            // so Bar/Screen Edge pixels stay visually unchanged without
+            // changing what the user can select or capture.
+            Item {
+                id: selectionVisualViewport
                 z: 2
-                anchors.fill: parent
-                active: root.selectionMode === RegionSelection.SelectionMode.RectCorners
-                sourceComponent: RectCornersSelectionDetails {
-                    regionX: root.regionX
-                    regionY: root.regionY
-                    regionWidth: root.regionWidth
-                    regionHeight: root.regionHeight
-                    mouseX: mouseArea.mouseX
-                    mouseY: mouseArea.mouseY
-                    color: root.selectionBorderColor
-                    overlayColor: root.overlayColor
-                }
-            }
+                x: root.screenshotLeftOwnerInset
+                y: root.screenshotTopOwnerInset
+                width: Math.max(0, mouseArea.width
+                    - root.screenshotLeftOwnerInset
+                    - root.screenshotRightOwnerInset)
+                height: Math.max(0, mouseArea.height
+                    - root.screenshotTopOwnerInset
+                    - root.screenshotBottomOwnerInset)
+                clip: true
 
-            Loader {
-                z: 2
-                anchors.fill: parent
-                active: root.selectionMode === RegionSelection.SelectionMode.Circle
-                sourceComponent: CircleSelectionDetails {
-                    color: root.selectionBorderColor
-                    overlayColor: root.overlayColor
-                    points: root.points
+                Loader {
+                    x: -selectionVisualViewport.x
+                    y: -selectionVisualViewport.y
+                    width: mouseArea.width
+                    height: mouseArea.height
+                    active: root.selectionMode === RegionSelection.SelectionMode.RectCorners
+                    sourceComponent: RectCornersSelectionDetails {
+                        regionX: root.regionX
+                        regionY: root.regionY
+                        regionWidth: root.regionWidth
+                        regionHeight: root.regionHeight
+                        mouseX: mouseArea.mouseX
+                        mouseY: mouseArea.mouseY
+                        color: root.selectionBorderColor
+                        overlayColor: root.overlayColor
+                    }
+                }
+
+                Loader {
+                    x: -selectionVisualViewport.x
+                    y: -selectionVisualViewport.y
+                    width: mouseArea.width
+                    height: mouseArea.height
+                    active: root.selectionMode === RegionSelection.SelectionMode.Circle
+                    sourceComponent: CircleSelectionDetails {
+                        color: root.selectionBorderColor
+                        overlayColor: root.overlayColor
+                        points: root.points
+                    }
                 }
             }
 

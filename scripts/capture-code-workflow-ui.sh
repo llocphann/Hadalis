@@ -328,6 +328,48 @@ PARSER_STATUS="$(jq -r '.analyzerStatus // "unknown"' \
 PARSER_ERROR="$(jq -r '.analyzerError // ""' \
     "$BUNDLE_DIR/meta/parser-capability.json" 2>/dev/null || true)"
 
+python3 - "$BUNDLE_DIR/state" \
+    "$BUNDLE_DIR/meta/route-diagnostics.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+state_dir = Path(sys.argv[1])
+output = Path(sys.argv[2])
+rows = []
+for path in sorted(state_dir.glob("[0-9][0-9]-*.txt")):
+    latest = None
+    for line in path.read_text(
+        encoding="utf-8", errors="replace"
+    ).splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        candidate = payload.get("status", payload)
+        if isinstance(candidate, dict) and "routeDiagnostics" in candidate:
+            latest = candidate
+    if latest is None:
+        continue
+    rows.append({
+        "step": path.stem,
+        "subflowTargetId": latest.get("subflowTargetId", ""),
+        "zoom": latest.get("zoom"),
+        "targetsPaneWidth": latest.get("targetsPaneWidth"),
+        "inspectorPaneWidth": latest.get("inspectorPaneWidth"),
+        "sourcePreviewHeight": latest.get("sourcePreviewHeight"),
+        "routeDiagnostics": latest.get("routeDiagnostics", {}),
+    })
+
+output.write_text(
+    json.dumps({"steps": rows}, indent=2, ensure_ascii=False) + "\n",
+    encoding="utf-8",
+)
+PY
+
 ipc restore >"$BUNDLE_DIR/state/99-restored.txt" \
     2>>"$BUNDLE_DIR/logs/ipc-errors.log"
 RESTORED=1
@@ -367,6 +409,11 @@ Screenshots:
       Parser detail: $PARSER_ERROR
       READY includes semantic selection; UNAVAILABLE/ERROR intentionally records
       the read-only source fallback instead.
+
+Routing diagnostics:
+  meta/route-diagnostics.json summarizes smart-lane style, collisions,
+  crossings, non-endpoint overlap, bends, zoom and persisted pane dimensions
+  for every captured state.
 
 Privacy:
   grim captures only the Niri output containing the Settings window, after the

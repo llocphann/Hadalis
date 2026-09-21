@@ -51,9 +51,10 @@ the parser/transaction safety model or unrelated shell runtime:
 - Edge selection is the primary Inspector object when an edge is selected: the
   header follows the edge label/kind while the destination node/runtime remains
   supporting context.
-- Edge geometry is direction-aware. The reviewed IR currently contains backward
-  edges in Media and Resources; renderer endpoints, cubic controls, hit-testing,
-  arrowheads and labels now use the same left/right routing convention.
+- Edge geometry uses one authoritative `edgeRoute()` across rendering,
+  hit-testing, labels and graph fitting. Separated nodes route left/right,
+  horizontally-overlapping nodes route top/bottom, and the reviewed IR currently
+  covers both three backward edges and three same-column vertical edges.
 - Narrow Settings layouts use a compact toolbar mode: nonessential status pills
   are hidden and toolbar buttons become icon-only while retaining tooltips.
 - Source Preview range reveal clamps parser offsets before selection and does not

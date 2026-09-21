@@ -226,12 +226,9 @@ def source_contract_failures() -> list[str]:
     require(media, "function restoreInitialFocus(): void", str(MEDIA_PATH), failures)
     require(media, "onRequestedVisibleChanged:", str(MEDIA_PATH), failures)
     require(media, "onPresentationWindowChanged:", str(MEDIA_PATH), failures)
-    require(
-        media,
-        "barMediaPopup.requestedVisible && barMediaPopup.presentationWindow",
-        str(MEDIA_PATH),
-        failures,
-    )
+    require(media, "root.barMediaPopupVisible", str(MEDIA_PATH), failures)
+    require(media, "&& barMediaPopup.requestedVisible", str(MEDIA_PATH), failures)
+    require(media, "&& barMediaPopup.presentationWindow", str(MEDIA_PATH), failures)
     require(media, "mediaPopupContent.focusInitialControl()", str(MEDIA_PATH), failures)
     forbid(
         media,

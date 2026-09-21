@@ -50,6 +50,37 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         self.assertFalse(obsidian_tasks._looks_like_obsidian_app("obsidian-cli", ["/home/u/.local/bin/obsidian-cli"]))
         self.assertFalse(obsidian_tasks._looks_like_obsidian_app("python3", ["python3", "obsidian_tasks.py"]))
 
+    def test_process_classifier_accepts_verified_obsidian_flatpak_identity(self):
+        self.assertTrue(obsidian_tasks._looks_like_obsidian_app(
+            "zypak-wrapper",
+            ["zypak-wrapper", "/app/obsidian"],
+            "md.obsidian.Obsidian",
+        ))
+        self.assertFalse(obsidian_tasks._looks_like_obsidian_app(
+            "zypak-wrapper",
+            ["zypak-wrapper", "/app/other"],
+            "org.example.Other",
+        ))
+
+    def test_flatpak_identity_reads_only_application_metadata(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        process_dir = Path(tmp.name) / "123"
+        info = process_dir / "root" / ".flatpak-info"
+        info.parent.mkdir(parents=True)
+        info.write_text(
+            "[Application]\n"
+            "name=md.obsidian.Obsidian\n"
+            "runtime=org.freedesktop.Platform/x86_64/25.08\n"
+            "\n[Instance]\n"
+            "instance-id=123\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            obsidian_tasks._flatpak_app_id(process_dir),
+            "md.obsidian.Obsidian",
+        )
+
     def test_stopped_probe_never_invokes_cli(self):
         vault, _ = self.make_vault()
         self.patch("_obsidian_running", lambda: False)

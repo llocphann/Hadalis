@@ -27,6 +27,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import obsidian_todo  # noqa: E402
 
 TASKS_PLUGIN_ID = "obsidian-tasks-plugin"
+OBSIDIAN_FLATPAK_ID = "md.obsidian.Obsidian"
 CLI_TIMEOUT_SECONDS = 4.0
 MUTATION_TIMEOUT_SECONDS = 8.0
 LOCK_TIMEOUT_SECONDS = 5.0
@@ -62,7 +63,31 @@ def _find_cli() -> str | None:
     return None
 
 
-def _iter_process_identities() -> Iterator[tuple[str, list[str]]]:
+def _flatpak_app_id(process_dir: Path) -> str:
+    """Return the Flatpak application ID for one /proc entry, if readable."""
+    info = process_dir / "root" / ".flatpak-info"
+    try:
+        text = info.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+    in_application = False
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_application = line[1:-1].strip() == "Application"
+            continue
+        if not in_application or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip().lower() == "name":
+            return value.strip()
+    return ""
+
+
+def _iter_process_identities() -> Iterator[tuple[str, list[str], str]]:
     proc = Path("/proc")
     try:
         entries = list(proc.iterdir())
@@ -84,33 +109,36 @@ def _iter_process_identities() -> Iterator[tuple[str, list[str]]]:
             ]
         except OSError:
             argv = []
-        yield exe, argv
+        yield exe, argv, _flatpak_app_id(entry)
 
 
-def _looks_like_obsidian_app(exe: str, argv: list[str]) -> bool:
+def _looks_like_obsidian_app(
+    exe: str,
+    argv: list[str],
+    flatpak_app_id: str = "",
+) -> bool:
     candidates = [Path(exe).name] if exe else []
     candidates.extend(Path(arg).name for arg in argv[:4] if arg and not arg.startswith("-"))
     lowered = {name.lower() for name in candidates}
     if any("obsidian-cli" in name for name in lowered):
         return False
+
+    # Flatpak's exported launcher ultimately runs through zypak-wrapper and
+    # executable names are not a stable host-side identity. Flatpak exposes
+    # the effective app metadata at /.flatpak-info inside a running sandbox;
+    # reading it through /proc/<pid>/root is detection-only and never launches
+    # the Flatpak application.
+    if flatpak_app_id == OBSIDIAN_FLATPAK_ID:
+        return True
+
     return bool(lowered.intersection({"obsidian", "obsidian-bin", "obsidian.appimage"}))
 
 
 def _obsidian_running() -> bool:
-    return any(_looks_like_obsidian_app(exe, argv) for exe, argv in _iter_process_identities())
-
-
-def runtime_probe() -> dict[str, Any]:
-    cli = _find_cli()
-    running = _obsidian_running()
-    return {
-        "ok": True,
-        "obsidianInstalled": bool(cli or running),
-        "obsidianRunning": running,
-        "cliRegistered": bool(cli),
-        "cliResponsive": False,
-        "cliPath": cli or "",
-    }
+    return any(
+        _looks_like_obsidian_app(exe, argv, flatpak_app_id)
+        for exe, argv, flatpak_app_id in _iter_process_identities()
+    )
 
 
 def _resolve_vault(vault_path: str) -> Path:

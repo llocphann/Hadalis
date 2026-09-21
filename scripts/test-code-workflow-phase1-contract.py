@@ -167,6 +167,32 @@ require(page, 'text: "Fit graph to viewport"',
         "compact graph controls must retain discoverable tooltips")
 require(page, "StyledFlickable {", "Inspector must scroll instead of overflowing its panel")
 require(page, "contentHeight: inspectorColumn.implicitHeight + 12", "Inspector scroll extent must follow content")
+require(page, "import QtQuick.Controls",
+        "resizable Code Workflow panes must use Qt Quick Controls SplitView")
+require(page, "component WorkflowSplitHandle: Rectangle",
+        "Code Workflow must expose a visible edge resize handle")
+require(page, "id: workflowHorizontalSplit",
+        "Targets, graph and Inspector must share a horizontal SplitView")
+require(page, "id: workflowVerticalSplit",
+        "graph workspace and Source Preview must share a vertical SplitView")
+require(page, "SplitView.preferredWidth: CodeWorkflowSession.targetsPaneWidth",
+        "Targets width must restore from session state")
+require(page, "SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneWidth",
+        "Inspector width must restore from session state")
+require(page, "SplitView.preferredHeight: CodeWorkflowSession.sourcePreviewHeight",
+        "Source Preview height must restore from session state")
+for token in (
+    'property real targetsPaneWidth: 224',
+    'property real inspectorPaneWidth: 280',
+    'property real sourcePreviewHeight: 190',
+    'state.codeWorkflowTargetsPaneWidth = root.targetsPaneWidth',
+    'state.codeWorkflowInspectorPaneWidth = root.inspectorPaneWidth',
+    'state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight',
+    'onTargetsPaneWidthChanged: root.persist()',
+    'onInspectorPaneWidthChanged: root.persist()',
+    'onSourcePreviewHeightChanged: root.persist()',
+):
+    require(session, token, "resizable pane state missing " + token)
 require(page, "inspectedSemanticRangeText", "parsed QML targets must expose source range evidence")
 require(session, 'property string selectedSemanticAnchor: ""',
         "semantic inspect selection must live in the session singleton")

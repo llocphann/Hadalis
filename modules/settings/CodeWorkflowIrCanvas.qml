@@ -930,6 +930,15 @@ Item {
             && screenX <= root.width && screenY <= root.height
     }
 
+    function itemPointInsideViewport(
+        item, localX: real, localY: real
+    ): bool {
+        if (!item)
+            return false
+        const mapped = item.mapToItem(root, localX, localY)
+        return root.viewportContains(mapped.x, mapped.y)
+    }
+
     function edgeAt(screenX: real, screenY: real): string {
         if (!root.viewportContains(screenX, screenY))
             return ""
@@ -1247,7 +1256,11 @@ Item {
                         ? Math.max(24, Number(route?.labelSpan ?? 150) - 20)
                         : 150
                 readonly property bool hovered:
-                    edgeLabelHover.hovered
+                    (edgeLabelHover.hovered
+                        && root.itemPointInsideViewport(
+                            edgeLabel,
+                            edgeLabelHover.point.position.x,
+                            edgeLabelHover.point.position.y))
                     || root.hoveredEdgeId === String(modelData.id ?? "")
 
                 visible: fromNode !== null
@@ -1347,7 +1360,12 @@ Item {
                 }
 
                 TapHandler {
-                    onTapped: {
+                    onTapped: (eventPoint, button) => {
+                        if (!root.itemPointInsideViewport(
+                                node,
+                                eventPoint.position.x,
+                                eventPoint.position.y))
+                            return
                         CodeWorkflowSession.selectNode(node.modelData.id)
                         node.forceActiveFocus()
                     }
@@ -1441,6 +1459,10 @@ Item {
 
                                 onClicked: mouse => {
                                     mouse.accepted = true
+                                    if (!root.itemPointInsideViewport(
+                                            subflowAction,
+                                            mouse.x, mouse.y))
+                                        return
                                     CodeWorkflowSession.openSubflow(
                                         node.modelData.subflowTargetId)
                                 }

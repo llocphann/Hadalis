@@ -167,6 +167,16 @@ require(canvas, "function viewportContains(screenX: real, screenY: real): bool",
         "graph hit testing must expose an explicit viewport guard")
 require(canvas, "if (!root.viewportContains(screenX, screenY))\\n            return \"\"",
         "edge hit testing must reject pointer coordinates outside the canvas")
+require(canvas, "function itemPointInsideViewport(",
+        "transformed graph children must map pointer coordinates back to the canvas")
+for token in (
+    "edgeLabelHover.point.position.x",
+    "eventPoint.position.x",
+    "subflowAction,",
+    "mouse.x, mouse.y",
+):
+    require(canvas, token,
+            "graph child pointer containment missing token " + token)
 if "Math.max(0.35" in session or "Math.max(0.35" in canvas:
     raise SystemExit("FAIL: Code Workflow must not reintroduce the old 0.35 zoom floor")
 require(page, "CodeWorkflowIrCanvas {", "page must host the semantic IR canvas")

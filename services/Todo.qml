@@ -63,6 +63,12 @@ Singleton {
         return root.list[index]
     }
 
+    function initializeSection() {
+        if (!root.useObsidian)
+            return false
+        return obsidian.initializeSection()
+    }
+
     function addItem(item) {
         if (!root.useObsidian)
             return internal.addItem(item)

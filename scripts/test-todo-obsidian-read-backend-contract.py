@@ -41,6 +41,8 @@ required = [
     '"toggle-basic"',
     '"toggle-tasks"',
     '"delete"',
+    "function initializeSection(): bool",
+    '"initialize-section"',
     "function toggleTask(taskId: string)",
     "function deleteTask(taskId: string)",
     "function refreshCapabilities(): void",

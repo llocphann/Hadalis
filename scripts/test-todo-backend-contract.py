@@ -29,6 +29,7 @@ required_facade = [
     "return internal.deleteItem(index)",
     "return obsidian.toggleTask(String(item.id ?? \"\"))",
     "return obsidian.deleteTask(String(item.id ?? \"\"))",
+    "function initializeSection()",
     "function toggleTask(taskId)",
     "function deleteTask(taskId)",
     "function openSource(taskId)",

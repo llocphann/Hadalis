@@ -251,6 +251,24 @@ Scope {
         return true
     }
 
+    function initializeSection(): bool {
+        if (!root.configured) {
+            root._setError("not_configured", "Obsidian Todo source is not configured")
+            return false
+        }
+        if (mutationProc.running || root._pendingMutation !== null) {
+            root._setError("busy", "Another Todo mutation is already in progress")
+            return false
+        }
+        root._startMutation("initialize-section", [
+            "/usr/bin/python3", root.helperPath,
+            "initialize-section",
+            "--vault", root.vaultPath,
+            "--note", root.notePath
+        ], "")
+        return true
+    }
+
     function addTask(text: string): bool {
         const clean = String(text ?? "").trim()
         if (clean.length === 0) {

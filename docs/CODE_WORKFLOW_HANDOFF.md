@@ -292,6 +292,21 @@ qualifies moved-node rendering and automatic rerouting deterministically; real
 mouse drag/pan ergonomics still require a live Niri input run before being
 called compositor-qualified.
 
+Direct node drag now uses a two-tier routing path during direct manipulation.
+The committed `edgeRouteCache` stays stable while a node is held; only edges
+touching the active node are recomputed into `dragEdgeRouteCache`, coalesced at
+a 16 ms frame cadence. Node position itself still follows pointer samples
+immediately. The final visual offset is written to `CodeWorkflowSession` only
+when drag ends, then the full smart-lane graph is rebuilt once. This avoids the
+old per-pointer full-router + layout-map mutation path that caused visible lag.
+Idle graph/node cursors remain `ArrowCursor`; closed-hand feedback appears only
+while a pan/node drag is active.
+
+Source Preview now reuses the production `org.kde.syntaxhighlighting` backend
+already used by AI code blocks. It selects QML/JavaScript/JSON/Python/Bash from
+the reviewed source path and follows `Appearance.syntaxHighlightingTheme` while
+remaining read-only/selectable. Runtime visual verification is still required.
+
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment
 evidence. They predate the current scoped Code Workflow implementation above and

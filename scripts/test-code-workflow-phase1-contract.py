@@ -177,6 +177,23 @@ for token in (
 ):
     require(canvas, token,
             "graph child pointer containment missing token " + token)
+require(canvas, 'property string hoveredEdgeLabelId: ""',
+        "edge-label tooltip state must live on the clipped canvas")
+require(canvas, "function setEdgeLabelHover(",
+        "edge-label tooltip pointer state must map back to the canvas")
+require(canvas, "id: edgeLabelTooltip",
+        "edge labels must use one canvas-local tooltip HUD")
+require(canvas, "root.width - width - viewportMargin",
+        "edge-label tooltip HUD must clamp horizontally to the canvas")
+require(canvas, "root.height - height - viewportMargin",
+        "edge-label tooltip HUD must clamp vertically to the canvas")
+edge_label_start = canvas.index("id: edgeLabel")
+edge_label_end = canvas.index("Repeater {\n            model: root.nodes", edge_label_start)
+edge_label_block = canvas[edge_label_start:edge_label_end]
+if "StyledToolTip {" in edge_label_block:
+    raise SystemExit(
+        "FAIL: graph edge-label tooltip must not escape the clipped canvas"
+    )
 if "Math.max(0.35" in session or "Math.max(0.35" in canvas:
     raise SystemExit("FAIL: Code Workflow must not reintroduce the old 0.35 zoom floor")
 require(page, "CodeWorkflowIrCanvas {", "page must host the semantic IR canvas")

@@ -31,6 +31,9 @@ Item {
     readonly property real worldWidth: root.graphExtent("x", 1050)
     readonly property real worldHeight: root.graphExtent("y", 570)
     property string hoveredEdgeId: ""
+    property string hoveredEdgeLabelId: ""
+    property real edgeLabelHoverX: 0
+    property real edgeLabelHoverY: 0
     readonly property var edgeRouteCache: root.buildEdgeRouteCache()
 
     function graphExtent(axis: string, minimum: real): real {
@@ -939,6 +942,27 @@ Item {
         return root.viewportContains(mapped.x, mapped.y)
     }
 
+    function setEdgeLabelHover(
+        edgeId: string, item, localX: real, localY: real
+    ): void {
+        if (!item)
+            return
+        const mapped = item.mapToItem(root, localX, localY)
+        if (!root.viewportContains(mapped.x, mapped.y)) {
+            if (root.hoveredEdgeLabelId === edgeId)
+                root.hoveredEdgeLabelId = ""
+            return
+        }
+        root.hoveredEdgeLabelId = edgeId
+        root.edgeLabelHoverX = mapped.x
+        root.edgeLabelHoverY = mapped.y
+    }
+
+    function clearEdgeLabelHover(edgeId: string): void {
+        if (root.hoveredEdgeLabelId === edgeId)
+            root.hoveredEdgeLabelId = ""
+    }
+
     function edgeAt(screenX: real, screenY: real): string {
         if (!root.viewportContains(screenX, screenY))
             return ""
@@ -1067,6 +1091,7 @@ Item {
         target: CodeWorkflowSession
 
         function onSubflowTargetIdChanged(): void {
+            root.hoveredEdgeLabelId = ""
             Qt.callLater(root.fitGraph)
         }
 
@@ -1283,6 +1308,29 @@ Item {
                 HoverHandler {
                     id: edgeLabelHover
                     target: edgeLabel
+
+                    onPointChanged: {
+                        if (!hovered)
+                            return
+                        root.setEdgeLabelHover(
+                            String(edgeLabel.modelData.id ?? ""),
+                            edgeLabel,
+                            point.position.x,
+                            point.position.y)
+                    }
+                    onHoveredChanged: {
+                        const edgeId = String(
+                            edgeLabel.modelData.id ?? "")
+                        if (!hovered) {
+                            root.clearEdgeLabelHover(edgeId)
+                            return
+                        }
+                        root.setEdgeLabelHover(
+                            edgeId,
+                            edgeLabel,
+                            point.position.x,
+                            point.position.y)
+                    }
                 }
 
                 GraphText {
@@ -1299,9 +1347,6 @@ Item {
                     maximumLineCount: 1
                 }
 
-                StyledToolTip {
-                    text: String(edgeLabel.modelData.label ?? "")
-                }
             }
         }
 
@@ -1520,6 +1565,61 @@ Item {
                     color: node.portInk
                 }
             }
+        }
+    }
+
+    Rectangle {
+        id: edgeLabelTooltip
+        readonly property var hoveredEdge: root.edges.find(edge =>
+            String(edge?.id ?? "") === root.hoveredEdgeLabelId) ?? null
+        readonly property string labelText:
+            String(hoveredEdge?.label ?? "")
+        readonly property real viewportMargin: 6
+        readonly property real desiredWidth:
+            edgeLabelTooltipText.implicitWidth + 16
+
+        visible: root.hoveredEdgeLabelId.length > 0
+            && labelText.length > 0
+        width: Math.max(0, Math.min(
+            240,
+            Math.max(0, root.width - viewportMargin * 2),
+            desiredWidth))
+        height: edgeLabelTooltipText.implicitHeight + 8
+        x: Math.max(
+            viewportMargin,
+            Math.min(
+                root.edgeLabelHoverX - width / 2,
+                Math.max(
+                    viewportMargin,
+                    root.width - width - viewportMargin)))
+        y: {
+            const above = root.edgeLabelHoverY - height - 10
+            if (above >= viewportMargin)
+                return above
+            return Math.min(
+                root.edgeLabelHoverY + 10,
+                Math.max(
+                    viewportMargin,
+                    root.height - height - viewportMargin))
+        }
+        radius: height / 2
+        color: Appearance.colors.colLayer2
+        border.width: 1
+        border.color: Appearance.colors.colOutlineVariant
+        z: 100
+        clip: true
+
+        StyledText {
+            id: edgeLabelTooltipText
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            verticalAlignment: Text.AlignVCenter
+            text: edgeLabelTooltip.labelText
+            color: Appearance.colors.colOnLayer2
+            font.pixelSize: Appearance.font.pixelSize.smallest
+            elide: Text.ElideRight
+            maximumLineCount: 1
         }
     }
 

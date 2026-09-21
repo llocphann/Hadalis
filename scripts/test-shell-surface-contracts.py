@@ -305,8 +305,38 @@ def main() -> None:
         check(f'ReservationWindow {{ edge: "{edge}" }}' in screen_edge,
               f"Screen Edge must retain transparent {edge} work-area reservation")
 
+    # The deferred ii router and SidebarHost were restored to the last known-good
+    # pre-optimization composition after source-isolation experiments made the
+    # whole interaction tree disappear. Keep the proven component boundaries
+    # stable until a replacement is validated on the live Niri desktop.
+    ii_panels = read("modules/ii/ShellIiPanelsImpl.qml")
+    for token in (
+        "import qs.modules.notificationPopup",
+        "import qs.modules.onScreenDisplay",
+        "import qs.modules.screenCorners",
+        'PanelLoader { identifier: "iiNotificationPopup"; component: NotificationPopup {} }',
+        'PanelLoader { identifier: "iiOnScreenDisplay"; component: OnScreenDisplay {} }',
+        'DeferredPanelLoader { identifier: "iiScreenCorners"; component: ScreenCorners {} }',
+        'source: "../dashboard/Dashboard.qml"',
+        'source: "../overview/Overview.qml"',
+        'source: "../sidebarLeft/SidebarLeft.qml"',
+        'source: "../sidebarRight/SidebarRight.qml"',
+    ):
+        check(token in ii_panels,
+              f"Restored ii deferred runtime route changed: {token}")
+    check("onStatusChanged:" not in ii_panels,
+          "LazyLoader-based ii panel routes must not use Qt Loader.status handlers")
+    check(not (ROOT / "modules/ii/ShellIiOptionalRuntime.qml").exists(),
+          "Failed optional-runtime isolation experiment must stay retired")
+
     sidebar_host = read("modules/sidebar/SidebarHost.qml")
     for token in (
+        "import qs.modules.sidebarLeft",
+        "import qs.modules.sidebarRight",
+        "id: featureContentComponent",
+        "id: systemContentComponent",
+        "sourceComponent: root.featureRole",
+        "? featureContentComponent : systemContentComponent",
         "GlobalStates.sidebarLeftPresentationOutput",
         "GlobalStates.sidebarRightPresentationOutput",
         "PanelWindow {",
@@ -322,6 +352,8 @@ def main() -> None:
     ):
         check(token in sidebar_host,
               f"Sidebar Screen Edge boundary contract missing: {token}")
+    check("source: root.featureRole" not in sidebar_host,
+          "SidebarHost must not restore the failed URL-switched content loader")
     for retired in (
         "ConnectedSurfaceConnector",
         "sidebarBridgeGeometry",

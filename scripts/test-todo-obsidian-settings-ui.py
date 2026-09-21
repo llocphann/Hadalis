@@ -6,31 +6,47 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 services = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 backend = (ROOT / "services" / "ObsidianTodoBackend.qml").read_text(encoding="utf-8")
+facade = (ROOT / "services" / "Todo.qml").read_text(encoding="utf-8")
 
 required_ui = [
     'title: Translation.tr("Todo & Obsidian")',
-    'currentValue: Config.options?.todo?.backend ?? "internal"',
-    'Config.setNestedValue("todo.backend", newValue)',
     'Config.setNestedValue("todo.obsidian.vaultPath", value)',
     'Config.setNestedValue("todo.obsidian.notePath", value)',
     'Config.setNestedValue("todo.obsidian.preferTasksPlugin", checked)',
     'Config.setNestedValue("todo.obsidian.allowBasicOfflineMutation", checked)',
     '<!-- hadalis:todo:start -->',
     '<!-- hadalis:todo:end -->',
-    'Todo.capabilities?.richMutationAvailable === true',
-    'Todo.capabilities?.obsidianRunning',
-    'Todo.refresh()',
-    'Todo.openSource("")',
+    "Todo.beginObsidianSetup()",
+    "Todo.cancelObsidianSetup()",
+    "Todo.reactivateInternal()",
     "Todo.initializeSection()",
-    "Todo.migrateInternalToObsidian()",
-    "Todo.internalItemCount > 0",
-    "Todo.list.length === 0",
-    'Translation.tr("Import internal")',
-    'Translation.tr("Initialize section")',
-    'Obsidian 1.13 or newer',
+    "Todo.previewInternalToObsidian()",
+    "Todo.migrateInternalToObsidian(",
+    "Todo.activateObsidian()",
+    "Todo.openObsidianSource()",
+    "Todo.obsidianSetupActive",
+    "Todo.obsidianReady",
+    "Todo.obsidianBusy",
+    "Todo.obsidianCapabilities",
+    "Todo.obsidianMigrationPreview",
+    "Todo.obsidianList.length",
+    'Translation.tr("Preview import")',
+    'Translation.tr("Import & activate")',
+    'Translation.tr("Use Obsidian note")',
 ]
 for snippet in required_ui:
     assert snippet in services, f"Todo settings UI lost contract: {snippet}"
+
+# Settings must never switch canonical ownership merely because the user picked
+# a backend. Setup is staged through Todo and activation happens only after a
+# verified note or committed migration.
+assert 'Config.setNestedValue("todo.backend", newValue)' not in services
+assert 'currentValue: Config.options?.todo?.backend ?? "internal"' not in services
+assert 'Config.setNestedValue("todo.backend", "obsidian")' not in services
+assert 'Config.setNestedValue("todo.backend", "obsidian")' in facade
+assert "function activateObsidian(): bool" in facade
+assert "signal migrationCommitted(var payload)" in backend
+assert 'mutationProc.kind === "preview-migration"' in backend
 
 # Paths are committed on editingFinished, not on every keystroke. This avoids
 # repeatedly retargeting filesystem/CLI operations while a path is incomplete.

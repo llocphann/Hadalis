@@ -1099,29 +1099,121 @@ ContentPage {
             ContentSubsection {
                 title: Translation.tr("Canonical task store")
 
-                ConfigSelectionArray {
-                    currentValue: Config.options?.todo?.backend ?? "internal"
-                    onSelected: newValue => Config.setNestedValue("todo.backend", newValue)
-                    options: [
-                        {
-                            displayName: Translation.tr("Hadalis"),
-                            icon: "database",
-                            value: "internal"
-                        },
-                        {
-                            displayName: Translation.tr("Obsidian"),
-                            icon: "description",
-                            value: "obsidian"
-                        }
-                    ]
-                }
-
-                StyledText {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: Translation.tr("Only one backend is writable at a time. Switching to Obsidian preserves the internal Todo store for rollback.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    wrapMode: Text.WordWrap
+                    spacing: 8
+
+                    MaterialSymbol {
+                        text: Todo.backend === "obsidian" ? "description" : "database"
+                        iconSize: 20
+                        color: Appearance.colors.colPrimary
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        StyledText {
+                            text: Todo.backend === "obsidian"
+                                ? Translation.tr("Obsidian is canonical")
+                                : Translation.tr("Hadalis internal Todo is canonical")
+                            color: Appearance.colors.colOnSurface
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.DemiBold
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Todo.backend === "obsidian"
+                                ? Translation.tr("The preserved Hadalis store is dormant and available for rollback.")
+                                : Translation.tr("Preparing Obsidian does not switch the writable canonical store.")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    RippleButton {
+                        visible: Todo.backend !== "obsidian" && !Todo.obsidianSetupActive
+                        Layout.preferredWidth: todoPrepareRow.implicitWidth + 20
+                        implicitHeight: 34
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: Appearance.colors.colLayer1
+                        colBackgroundHover: Appearance.colors.colLayer1Hover
+                        onClicked: Todo.beginObsidianSetup()
+
+                        contentItem: RowLayout {
+                            id: todoPrepareRow
+                            anchors.centerIn: parent
+                            spacing: 5
+                            MaterialSymbol {
+                                text: "settings"
+                                iconSize: 16
+                                color: Appearance.colors.colPrimary
+                            }
+                            StyledText {
+                                text: Translation.tr("Prepare Obsidian")
+                                color: Appearance.colors.colOnLayer1
+                                font.pixelSize: Appearance.font.pixelSize.small
+                            }
+                        }
+                    }
+
+                    RippleButton {
+                        visible: Todo.backend !== "obsidian" && Todo.obsidianSetupActive
+                        Layout.preferredWidth: todoCancelSetupRow.implicitWidth + 20
+                        implicitHeight: 34
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: Appearance.colors.colLayer1
+                        colBackgroundHover: Appearance.colors.colLayer1Hover
+                        onClicked: Todo.cancelObsidianSetup()
+
+                        contentItem: RowLayout {
+                            id: todoCancelSetupRow
+                            anchors.centerIn: parent
+                            spacing: 5
+                            MaterialSymbol {
+                                text: "close"
+                                iconSize: 16
+                                color: Appearance.colors.colSubtext
+                            }
+                            StyledText {
+                                text: Translation.tr("Cancel setup")
+                                color: Appearance.colors.colOnLayer1
+                                font.pixelSize: Appearance.font.pixelSize.small
+                            }
+                        }
+                    }
+
+                    RippleButton {
+                        visible: Todo.backend === "obsidian"
+                        Layout.preferredWidth: todoRollbackRow.implicitWidth + 20
+                        implicitHeight: 34
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: Appearance.colors.colLayer1
+                        colBackgroundHover: Appearance.colors.colLayer1Hover
+                        onClicked: Todo.reactivateInternal()
+
+                        contentItem: RowLayout {
+                            id: todoRollbackRow
+                            anchors.centerIn: parent
+                            spacing: 5
+                            MaterialSymbol {
+                                text: "undo"
+                                iconSize: 16
+                                color: Appearance.colors.colPrimary
+                            }
+                            StyledText {
+                                text: Translation.tr("Use Hadalis")
+                                color: Appearance.colors.colOnLayer1
+                                font.pixelSize: Appearance.font.pixelSize.small
+                            }
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Reactivate the preserved internal store. No Obsidian tasks are copied or deleted.")
+                        }
+                    }
                 }
             }
 
@@ -1255,18 +1347,18 @@ ContentPage {
 
                         MaterialSymbol {
                             text: {
-                                if ((Config.options?.todo?.backend ?? "internal") !== "obsidian")
+                                if (Todo.backend !== "obsidian" && !Todo.obsidianSetupActive)
                                     return "database"
-                                if (Todo.errorCode.length > 0)
+                                if (Todo.obsidianErrorCode.length > 0)
                                     return "error"
-                                if (Todo.capabilities?.richMutationAvailable === true)
+                                if (Todo.obsidianCapabilities?.richMutationAvailable === true)
                                     return "verified"
-                                if (Todo.ready)
+                                if (Todo.obsidianReady)
                                     return "sync"
                                 return "hourglass"
                             }
                             iconSize: 18
-                            color: Todo.errorCode.length > 0
+                            color: Todo.obsidianErrorCode.length > 0
                                 ? Appearance.colors.colError
                                 : Appearance.colors.colPrimary
                         }
@@ -1274,21 +1366,21 @@ ContentPage {
                         StyledText {
                             Layout.fillWidth: true
                             text: {
-                                if ((Config.options?.todo?.backend ?? "internal") !== "obsidian")
-                                    return Translation.tr("Hadalis internal Todo is active")
-                                if (Todo.errorMessage.length > 0)
-                                    return Todo.errorMessage
-                                if (Todo.capabilities?.richMutationAvailable === true)
+                                if (Todo.backend !== "obsidian" && !Todo.obsidianSetupActive)
+                                    return Translation.tr("Obsidian setup is inactive")
+                                if (Todo.obsidianErrorMessage.length > 0)
+                                    return Todo.obsidianErrorMessage
+                                if (Todo.obsidianCapabilities?.richMutationAvailable === true)
                                     return Translation.tr("Markdown sync ready · Obsidian Tasks connected")
-                                if (Todo.ready && Todo.capabilities?.obsidianRunning !== true)
+                                if (Todo.obsidianReady && Todo.obsidianCapabilities?.obsidianRunning !== true)
                                     return Translation.tr("Markdown sync ready · Obsidian is closed")
-                                if (Todo.ready && Todo.capabilities?.cliRegistered !== true)
+                                if (Todo.obsidianReady && Todo.obsidianCapabilities?.cliRegistered !== true)
                                     return Translation.tr("Markdown sync ready · Obsidian CLI is not registered")
-                                if (Todo.ready)
+                                if (Todo.obsidianReady)
                                     return Translation.tr("Markdown sync ready")
                                 return Translation.tr("Waiting for a valid managed Todo note")
                             }
-                            color: Todo.errorCode.length > 0
+                            color: Todo.obsidianErrorCode.length > 0
                                 ? Appearance.colors.colError
                                 : Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
@@ -1298,9 +1390,9 @@ ContentPage {
 
                     StyledText {
                         Layout.fillWidth: true
-                        visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
+                        visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
                         text: {
-                            const caps = Todo.capabilities ?? ({})
+                            const caps = Todo.obsidianCapabilities ?? ({})
                             const parts = []
                             parts.push(caps.obsidianRunning === true
                                 ? Translation.tr("Obsidian running")
@@ -1322,6 +1414,7 @@ ContentPage {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
+                visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
 
                 RippleButton {
                     Layout.preferredWidth: todoRefreshRow.implicitWidth + 20
@@ -1329,7 +1422,8 @@ ContentPage {
                     buttonRadius: Appearance.rounding.small
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover
-                    onClicked: Todo.refresh()
+                    enabled: !Todo.obsidianBusy
+                    onClicked: Todo.refreshObsidianSetup()
 
                     contentItem: RowLayout {
                         id: todoRefreshRow
@@ -1349,8 +1443,7 @@ ContentPage {
                 }
 
                 RippleButton {
-                    visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
-                        && !Todo.ready
+                    visible: !Todo.obsidianReady
                         && String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim().length > 0
                         && String(Config.options?.todo?.obsidian?.notePath ?? "").trim().length > 0
                     Layout.preferredWidth: todoInitRow.implicitWidth + 20
@@ -1358,6 +1451,7 @@ ContentPage {
                     buttonRadius: Appearance.rounding.small
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover
+                    enabled: !Todo.obsidianBusy
                     onClicked: Todo.initializeSection()
 
                     contentItem: RowLayout {
@@ -1382,14 +1476,13 @@ ContentPage {
                 }
 
                 RippleButton {
-                    visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
-                        && Todo.ready
+                    visible: Todo.obsidianReady
                     Layout.preferredWidth: todoOpenRow.implicitWidth + 20
                     implicitHeight: 34
                     buttonRadius: Appearance.rounding.small
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover
-                    onClicked: Todo.openSource("")
+                    onClicked: Todo.openObsidianSource()
 
                     contentItem: RowLayout {
                         id: todoOpenRow
@@ -1409,46 +1502,202 @@ ContentPage {
                 }
 
                 RippleButton {
-                    visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
-                        && Todo.ready
+                    visible: Todo.backend !== "obsidian"
+                        && Todo.obsidianSetupActive
+                        && Todo.obsidianReady
                         && Todo.internalItemCount > 0
-                        && Todo.list.length === 0
-                    Layout.preferredWidth: todoImportRow.implicitWidth + 20
+                        && Todo.obsidianList.length === 0
+                        && Todo.obsidianMigrationPreview === null
+                    Layout.preferredWidth: todoPreviewRow.implicitWidth + 20
                     implicitHeight: 34
                     buttonRadius: Appearance.rounding.small
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover
-                    enabled: !Todo.busy
-                    onClicked: Todo.migrateInternalToObsidian()
+                    enabled: !Todo.obsidianBusy
+                    onClicked: Todo.previewInternalToObsidian()
 
                     contentItem: RowLayout {
-                        id: todoImportRow
+                        id: todoPreviewRow
                         anchors.centerIn: parent
                         spacing: 5
                         MaterialSymbol {
-                            text: "move_to_inbox"
+                            text: "fact_check"
                             iconSize: 16
                             color: Appearance.colors.colPrimary
                         }
                         StyledText {
-                            text: Translation.tr("Import internal") + " (" + Todo.internalItemCount + ")"
+                            text: Translation.tr("Preview import")
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
-                    }
-
-                    StyledToolTip {
-                        text: Translation.tr("Copy the preserved Hadalis Todo store into an empty managed section. The internal store is not deleted or overwritten.")
                     }
                 }
 
                 Item { Layout.fillWidth: true }
             }
 
+            Rectangle {
+                Layout.fillWidth: true
+                visible: Todo.backend !== "obsidian"
+                    && Todo.obsidianSetupActive
+                    && Todo.obsidianMigrationPreview !== null
+                implicitHeight: todoMigrationPreviewColumn.implicitHeight + 20
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer1
+
+                ColumnLayout {
+                    id: todoMigrationPreviewColumn
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 8
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("Migration preview")
+                        color: Appearance.colors.colOnLayer1
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("Add %1 · duplicates %2 · conflicts %3")
+                            .arg(Number(Todo.obsidianMigrationPreview?.preview?.added ?? 0))
+                            .arg(Number(Todo.obsidianMigrationPreview?.preview?.duplicates ?? 0))
+                            .arg(Number(Todo.obsidianMigrationPreview?.preview?.conflicts ?? 0))
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: Todo.obsidianMigrationPreview?.target?.empty !== true
+                        text: Translation.tr("Import is blocked because the managed Obsidian section is not empty. Use the existing note explicitly or choose an empty managed section.")
+                        color: Appearance.colors.colError
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        RippleButton {
+                            Layout.preferredWidth: todoImportRow.implicitWidth + 20
+                            implicitHeight: 34
+                            buttonRadius: Appearance.rounding.small
+                            colBackground: Appearance.colors.colPrimary
+                            colBackgroundHover: Appearance.colors.colPrimaryHover
+                            enabled: !Todo.obsidianBusy
+                                && Todo.obsidianMigrationPreview?.target?.empty === true
+                                && Number(Todo.obsidianMigrationPreview?.preview?.conflicts ?? 0) === 0
+                                && String(Todo.obsidianMigrationPreview?.source?.sha256 ?? "").length > 0
+                            onClicked: Todo.migrateInternalToObsidian(
+                                String(Todo.obsidianMigrationPreview?.source?.sha256 ?? "")
+                            )
+
+                            contentItem: RowLayout {
+                                id: todoImportRow
+                                anchors.centerIn: parent
+                                spacing: 5
+                                MaterialSymbol {
+                                    text: "move_to_inbox"
+                                    iconSize: 16
+                                    color: Appearance.colors.colOnPrimary
+                                }
+                                StyledText {
+                                    text: Translation.tr("Import & activate")
+                                    color: Appearance.colors.colOnPrimary
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    font.weight: Font.DemiBold
+                                }
+                            }
+
+                            StyledToolTip {
+                                text: Translation.tr("Back up the target note, import the preserved internal Todo store, re-scan it, then activate Obsidian only after verification succeeds.")
+                            }
+                        }
+
+                        RippleButton {
+                            Layout.preferredWidth: todoRepreviewRow.implicitWidth + 20
+                            implicitHeight: 34
+                            buttonRadius: Appearance.rounding.small
+                            colBackground: Appearance.colors.colLayer1
+                            colBackgroundHover: Appearance.colors.colLayer1Hover
+                            enabled: !Todo.obsidianBusy
+                            onClicked: Todo.previewInternalToObsidian()
+
+                            contentItem: RowLayout {
+                                id: todoRepreviewRow
+                                anchors.centerIn: parent
+                                spacing: 5
+                                MaterialSymbol {
+                                    text: "refresh"
+                                    iconSize: 16
+                                    color: Appearance.colors.colPrimary
+                                }
+                                StyledText {
+                                    text: Translation.tr("Refresh preview")
+                                    color: Appearance.colors.colOnLayer1
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                visible: Todo.backend !== "obsidian"
+                    && Todo.obsidianSetupActive
+                    && Todo.obsidianReady
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Todo.internalItemCount > 0
+                        ? Translation.tr("Activating without import keeps the current Hadalis Todo store dormant and unchanged.")
+                        : Translation.tr("Activate this verified Obsidian note as the canonical Todo store.")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+
+                RippleButton {
+                    Layout.preferredWidth: todoActivateRow.implicitWidth + 20
+                    implicitHeight: 34
+                    buttonRadius: Appearance.rounding.small
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    enabled: !Todo.obsidianBusy
+                    onClicked: Todo.activateObsidian()
+
+                    contentItem: RowLayout {
+                        id: todoActivateRow
+                        anchors.centerIn: parent
+                        spacing: 5
+                        MaterialSymbol {
+                            text: "check_circle"
+                            iconSize: 16
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            text: Translation.tr("Use Obsidian note")
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+                }
+            }
+
             StyledText {
                 Layout.fillWidth: true
-                visible: (Config.options?.todo?.backend ?? "internal") === "obsidian"
-                text: Translation.tr("Flatpak: use Obsidian 1.13 or newer and enable Command line interface in Obsidian Settings → General for Tasks-aware mutations.")
+                visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
+                text: Translation.tr("Tasks-aware mutations require a registered Obsidian CLI and an already-running Obsidian instance. Hadalis never invokes the CLI to detect whether Obsidian is running.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 wrapMode: Text.WordWrap

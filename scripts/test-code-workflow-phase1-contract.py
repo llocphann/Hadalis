@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
 session = read("services/CodeWorkflowSession.qml")
+ir = json.loads(read("defaults/code-workflow-ir.json"))
 
 require(registry, 'key: "code-workflow"', "registry missing Code Workflow")
 require(registry, 'pages: [30, 9, 13]', "Reference ordering must be Code Workflow, Shortcuts, About")
@@ -110,6 +112,23 @@ require(page, "readonly property bool selectedLive:",
         "Header runtime badge must reflect the selected target")
 require(page, '" · " + CodeWorkflowAnalyzer.error',
         "Inspector must expose parser unavailability/error reason")
+read_only_binding_edges = []
+for graph_id, graph in (ir.get("graphs") or {}).items():
+    nodes = {node.get("id"): node for node in (graph.get("nodes") or [])}
+    for edge in graph.get("edges") or []:
+        target_node = nodes.get(edge.get("to")) or {}
+        if target_node.get("kind") == "binding" and edge.get("previewable") is not True:
+            read_only_binding_edges.append((graph_id, edge.get("id")))
+if not read_only_binding_edges:
+    raise SystemExit(
+        "FAIL: fixture must cover read-only edges targeting binding nodes")
+
+require(page, "readonly property bool directMutationSelectionEligible:",
+        "read-only edge inspection must gate destination-node edits")
+require(page, "root.selectedIrEdge === null",
+        "direct node edits must remain available when no edge is selected")
+require(page, "root.selectedIrEdge?.previewable === true",
+        "only reviewed previewable edges may expose edge mutation controls")
 require(page, "readonly property bool selectedEdgeReadOnly:",
         "Inspector must distinguish read-only edge inspection")
 require(page, "root.selectedIrEdge !== null",

@@ -232,6 +232,10 @@ require(page, "CodeWorkflowSession.hasGraphLayout(",
         "reset affordance must disable when graph has no visual offsets")
 require(page, "CodeWorkflowSession.resetGraphLayout(",
         "reset affordance must restore reviewed node positions")
+require(canvas, "cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor",
+        "empty canvas must keep the normal pointer until pan drag starts")
+require(canvas, "? Qt.ClosedHandCursor : Qt.ArrowCursor",
+        "graph nodes must keep the normal pointer until node drag starts")
 require(page, 'buttonText: "Back to Bar workflow"',
         "compact subflow navigation must retain an accessibility label")
 require(page, 'text: "Fit graph to viewport"',

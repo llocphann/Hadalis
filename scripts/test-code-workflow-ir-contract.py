@@ -620,6 +620,11 @@ for token in (
     "id: viewportCommitTimer",
     "onReleased: CodeWorkflowSession.commitViewport()",
     "function updateLayout(): void",
+    "root.activeNodeDragOffsetX = nextX - baseX",
+    "root.activeNodeDragOffsetY = nextY - baseY",
+    "root.dragRoutesDirty = true",
+    "id: dragFrameTimer",
+    "root.rebuildDragEdgeRouteCache()",
     "CodeWorkflowSession.panX - startPanX",
     "CodeWorkflowSession.panY - startPanY",
     "Shape.CurveRenderer",
@@ -652,10 +657,14 @@ for token in (
     "const horizontalPortLanes = [",
     "const perimeterPortLanes = [",
     "const verticalPortLanes = [",
-    "readonly property var edgeRouteCache: {",
-    "CodeWorkflowSession.graphLayoutRevision",
-    "return root.buildEdgeRouteCache()",
+    "property var edgeRouteCache: ({})",
+    "property var dragEdgeRouteCache: ({})",
     "function buildEdgeRouteCache(): var",
+    "function rebuildEdgeRouteCache(): void",
+    "root.edgeRouteCache = root.buildEdgeRouteCache()",
+    "function edgeTouchesNode(edge, nodeId: string): bool",
+    "function rebuildDragEdgeRouteCache(): void",
+    "root.dragEdgeRouteCache = cache",
     "function routeForEdge(edge): var",
     "function routeDiagnostics(): var",
     'style: "smooth-step-lane-v2"',
@@ -737,6 +746,8 @@ if "function selectableEdgeAt(" in canvas or "function previewableEdgeAt(" in ca
     fail("canvas must not restrict inspect hit-testing to mutation-eligible edges")
 if "acceptedButtons: Qt.MiddleButton\n" in canvas:
     fail("empty-space pan must not regress to middle-button-only interaction")
+if "Qt.OpenHandCursor" in canvas:
+    fail("Code Workflow cursor must stay normal until a drag is actually active")
 
 for token in (
     'property string subflowTargetId: "bar"',

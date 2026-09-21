@@ -35,17 +35,27 @@ Item {
     property real edgeLabelHoverX: 0
     property real edgeLabelHoverY: 0
     property var activeNodeDragHandler: null
+    property string activeNodeDragId: ""
     property real activeNodeDragSceneX: 0
     property real activeNodeDragSceneY: 0
-    readonly property var edgeRouteCache: {
-        CodeWorkflowSession.graphLayoutRevision
-        return root.buildEdgeRouteCache()
-    }
+    property real activeNodeDragOffsetX: 0
+    property real activeNodeDragOffsetY: 0
+    property bool dragRoutesDirty: false
+    // Full smart routing is committed only when layout state changes. During a
+    // pointer drag we keep this cache stable and recompute only attached edges.
+    property var edgeRouteCache: ({})
+    property var dragEdgeRouteCache: ({})
 
     function nodeLayoutOffset(node): var {
+        const nodeId = String(node?.id ?? "")
+        if (nodeId.length > 0 && nodeId === root.activeNodeDragId) {
+            return {
+                x: root.activeNodeDragOffsetX,
+                y: root.activeNodeDragOffsetY
+            }
+        }
         return CodeWorkflowSession.nodeLayoutOffset(
-            CodeWorkflowSession.subflowTargetId,
-            String(node?.id ?? ""))
+            CodeWorkflowSession.subflowTargetId, nodeId)
     }
 
     function nodeX(node): real {
@@ -704,10 +714,70 @@ Item {
         return cache
     }
 
+    function rebuildEdgeRouteCache(): void {
+        if (root.activeNodeDragId.length > 0)
+            return
+        root.edgeRouteCache = root.buildEdgeRouteCache()
+    }
+
+    function edgeTouchesNode(edge, nodeId: string): bool {
+        const id = String(nodeId ?? "")
+        return id.length > 0
+            && (String(edge?.from ?? "") === id
+                || String(edge?.to ?? "") === id)
+    }
+
+    function rebuildDragEdgeRouteCache(): void {
+        const nodeId = root.activeNodeDragId
+        if (nodeId.length === 0) {
+            root.dragEdgeRouteCache = ({})
+            root.dragRoutesDirty = false
+            return
+        }
+
+        const cache = ({})
+        const occupiedRoutes = []
+        // Reuse stable routes for unrelated edges. They do not need expensive
+        // candidate scoring for every pointer sample.
+        for (const edge of root.edges) {
+            if (root.edgeTouchesNode(edge, nodeId))
+                continue
+            const edgeId = String(edge?.id ?? "")
+            const route = root.edgeRouteCache[edgeId] ?? null
+            if (route)
+                occupiedRoutes.push(route)
+        }
+
+        // Attached edges still use the full smart-lane scorer, including
+        // obstacle/crossing/overlap penalties, against stable unrelated routes.
+        for (const edge of root.edges) {
+            if (!root.edgeTouchesNode(edge, nodeId))
+                continue
+            const edgeId = String(edge?.id ?? "")
+            if (edgeId.length === 0)
+                continue
+            const route = root.edgeRoute(edge, occupiedRoutes)
+            cache[edgeId] = route
+            if (route)
+                occupiedRoutes.push(route)
+        }
+        root.dragEdgeRouteCache = cache
+        root.dragRoutesDirty = false
+    }
+
     function routeForEdge(edge): var {
         const edgeId = String(edge?.id ?? "")
         if (edgeId.length === 0)
             return root.edgeRoute(edge)
+
+        const dragNodeId = root.activeNodeDragId
+        if (dragNodeId.length > 0
+                && root.edgeTouchesNode(edge, dragNodeId)) {
+            const preview = root.dragEdgeRouteCache[edgeId]
+            if (preview)
+                return preview
+        }
+
         const cached = root.edgeRouteCache[edgeId]
         return cached ?? root.edgeRoute(edge)
     }
@@ -1102,10 +1172,15 @@ Item {
     }
 
     Timer {
+        id: dragFrameTimer
         interval: 16
         repeat: true
         running: root.activeNodeDragHandler !== null
-        onTriggered: root.autoPanDraggedNode()
+        onTriggered: {
+            root.autoPanDraggedNode()
+            if (root.dragRoutesDirty)
+                root.rebuildDragEdgeRouteCache()
+        }
     }
 
     WheelHandler {
@@ -1163,7 +1238,16 @@ Item {
 
         function onSubflowTargetIdChanged(): void {
             root.hoveredEdgeLabelId = ""
+            root.activeNodeDragId = ""
+            root.activeNodeDragHandler = null
+            root.dragEdgeRouteCache = ({})
+            Qt.callLater(root.rebuildEdgeRouteCache)
             Qt.callLater(root.fitGraph)
+        }
+
+        function onGraphLayoutRevisionChanged(): void {
+            if (root.activeNodeDragId.length === 0)
+                Qt.callLater(root.rebuildEdgeRouteCache)
         }
 
         function onSelectedNodeIdChanged(): void {
@@ -1213,6 +1297,8 @@ Item {
         onActiveTranslationChanged: updateViewport()
     }
 
+    Component.onCompleted: Qt.callLater(root.rebuildEdgeRouteCache)
+
     Rectangle {
         anchors.fill: parent
         color: Appearance.colors.colLayer0
@@ -1225,7 +1311,7 @@ Item {
         z: -1
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         hoverEnabled: true
-        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
         property real pressX: 0
         property real pressY: 0
         property real basePanX: 0
@@ -1517,7 +1603,7 @@ Item {
 
                 HoverHandler {
                     cursorShape: nodeDrag.active
-                        ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                        ? Qt.ClosedHandCursor : Qt.ArrowCursor
                 }
 
                 Accessible.role: Accessible.Button
@@ -1563,33 +1649,50 @@ Item {
                             20, baseX + baseOffsetX + deltaX)
                         const nextY = Math.max(
                             20, baseY + baseOffsetY + deltaY)
-                        CodeWorkflowSession.setNodeLayoutOffset(
-                            CodeWorkflowSession.subflowTargetId,
-                            String(node.modelData.id ?? ""),
-                            nextX - baseX,
-                            nextY - baseY)
+                        root.activeNodeDragOffsetX = nextX - baseX
+                        root.activeNodeDragOffsetY = nextY - baseY
+                        root.dragRoutesDirty = true
                     }
 
                     onActiveChanged: {
                         if (!active) {
                             if (root.activeNodeDragHandler === nodeDrag) {
+                                const graphId =
+                                    CodeWorkflowSession.subflowTargetId
+                                const nodeId = root.activeNodeDragId
+                                const finalOffsetX =
+                                    root.activeNodeDragOffsetX
+                                const finalOffsetY =
+                                    root.activeNodeDragOffsetY
+                                CodeWorkflowSession.setNodeLayoutOffset(
+                                    graphId, nodeId,
+                                    finalOffsetX, finalOffsetY)
                                 root.activeNodeDragHandler = null
+                                root.activeNodeDragId = ""
+                                root.dragRoutesDirty = false
+                                root.dragEdgeRouteCache = ({})
+                                root.rebuildEdgeRouteCache()
                                 CodeWorkflowSession.commitViewport()
                             }
                             return
                         }
+                        const nodeId = String(node.modelData.id ?? "")
                         const offset = CodeWorkflowSession.nodeLayoutOffset(
-                            CodeWorkflowSession.subflowTargetId,
-                            String(node.modelData.id ?? ""))
+                            CodeWorkflowSession.subflowTargetId, nodeId)
                         baseOffsetX = Number(offset?.x ?? 0)
                         baseOffsetY = Number(offset?.y ?? 0)
                         startSceneX = centroid.scenePosition.x
                         startSceneY = centroid.scenePosition.y
                         startPanX = CodeWorkflowSession.panX
                         startPanY = CodeWorkflowSession.panY
+                        root.activeNodeDragId = nodeId
+                        root.activeNodeDragOffsetX = baseOffsetX
+                        root.activeNodeDragOffsetY = baseOffsetY
                         root.activeNodeDragSceneX = startSceneX
                         root.activeNodeDragSceneY = startSceneY
                         root.activeNodeDragHandler = nodeDrag
+                        root.dragRoutesDirty = true
+                        root.rebuildDragEdgeRouteCache()
                         root.hoveredEdgeLabelId = ""
                         CodeWorkflowSession.selectNode(node.modelData.id)
                         node.forceActiveFocus()

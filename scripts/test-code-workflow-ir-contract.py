@@ -244,6 +244,9 @@ page = read("modules/settings/CodeWorkflow.qml")
 session = read("services/CodeWorkflowSession.qml")
 persistent = read("modules/common/Persistent.qml")
 
+if "import qs.modules.common.functions" not in canvas:
+    fail("IR canvas must import ColorUtils helpers used by graph contrast")
+
 for token in (
     "defaults/code-workflow-ir.json",
     'parsed?.mode !== "reviewed-source-projection"',

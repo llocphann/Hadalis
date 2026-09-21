@@ -162,8 +162,16 @@ require(session, "function selectSemantic(anchor: string): bool",
         "session must own semantic inspect selection")
 require(page, "CodeWorkflowSession.selectedSemanticAnchor",
         "page must consume the shared semantic selection")
+require(page, 'import qs.modules.common.functions',
+        "Code Workflow page must import ColorUtils helpers used by pills and target contrast")
 require(page, 'placeholderText: "Filter targets"',
         "Targets must expose a search/filter control")
+require(page, "id: targetFilter",
+        "Targets filter must retain a stable QML id")
+require(page, "Layout.fillHeight: false",
+        "Targets filter must not consume the flexible height reserved for the inspect list")
+require(page, "colBackground: Appearance.colors.colLayer2",
+        "Targets filter must remain visually distinct from the Targets panel")
 require(page, "property bool inspectSelectionFromTargets: false",
         "Targets must distinguish list-originated selection from external selection")
 require(page, "root.inspectSelectionFromTargets = true",

@@ -14,6 +14,7 @@ Item {
     property int settingsPageIndex: 30
     property string settingsPageName: Translation.tr("Code Workflow")
     property string sourceText: ""
+    readonly property bool compactHeader: root.width < 1080
 
     readonly property int runtimeRevision: CodeWorkflowRuntime.revision
     readonly property var snapshot: {
@@ -1115,7 +1116,11 @@ Item {
                     }
                 }
 
-                Pill { label: "LITERAL APPLY"; accent: Appearance.colors.colPrimary }
+                Pill {
+                    visible: !root.compactHeader
+                    label: "LITERAL APPLY"
+                    accent: Appearance.colors.colPrimary
+                }
                 Pill {
                     visible: CodeWorkflowTransaction.dirty
                     label: CodeWorkflowTransaction.status === "preview"
@@ -1126,6 +1131,7 @@ Item {
                         : Appearance.colors.colTertiary
                 }
                 Pill {
+                    visible: !root.compactHeader
                     label: root.selectedLive
                         ? "LIVE · RESIDENT"
                         : root.record?.state === "unloaded"
@@ -1138,22 +1144,33 @@ Item {
 
                 RippleButtonWithIcon {
                     materialIcon: "monitor"
-                    mainText: CodeWorkflowSession.outputName.length > 0
-                        ? CodeWorkflowSession.outputName : "Output"
+                    mainText: root.compactHeader
+                        ? ""
+                        : CodeWorkflowSession.outputName.length > 0
+                            ? CodeWorkflowSession.outputName : "Output"
                     enabled: (root.snapshot.outputs?.length ?? 0) > 0
                     onClicked: root.cycleOutput()
+                    StyledToolTip {
+                        text: "Output · "
+                            + (CodeWorkflowSession.outputName.length > 0
+                                ? CodeWorkflowSession.outputName
+                                : "none")
+                    }
                 }
                 RippleButtonWithIcon {
                     visible: CodeWorkflowSession.subflowTargetId !== "bar"
                     materialIcon: "arrow_back"
-                    mainText: "Bar"
+                    mainText: root.compactHeader ? "" : "Bar"
                     onClicked: CodeWorkflowSession.openSubflow("bar")
+                    StyledToolTip { text: "Back to Bar workflow" }
                 }
 
                 RippleButtonWithIcon {
                     materialIcon: "ads_click"
-                    mainText: CodeWorkflowPicker.phase === "idle"
-                        ? "Pick component" : "Picking…"
+                    mainText: root.compactHeader
+                        ? ""
+                        : CodeWorkflowPicker.phase === "idle"
+                            ? "Pick component" : "Picking…"
                     enabled: root.pickerAvailable
                     onClicked: CodeWorkflowPicker.begin()
                     StyledToolTip {
@@ -1166,14 +1183,22 @@ Item {
                 }
                 RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"
-                    mainText: "Fit graph"
+                    mainText: root.compactHeader ? "" : "Fit graph"
                     onClicked: canvas.fitGraph()
+                    StyledToolTip { text: "Fit graph to viewport" }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "code"
-                    mainText: CodeWorkflowSession.sourcePreviewVisible ? "Hide source" : "Show source"
+                    mainText: root.compactHeader
+                        ? ""
+                        : CodeWorkflowSession.sourcePreviewVisible
+                            ? "Hide source" : "Show source"
                     onClicked: CodeWorkflowSession.sourcePreviewVisible =
                         !CodeWorkflowSession.sourcePreviewVisible
+                    StyledToolTip {
+                        text: CodeWorkflowSession.sourcePreviewVisible
+                            ? "Hide source preview" : "Show source preview"
+                    }
                 }
             }
         }

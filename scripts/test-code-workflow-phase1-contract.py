@@ -142,8 +142,18 @@ require(page, "function revealSelectedInspectTarget(): void",
         "Targets must reveal the unified selected item")
 require(page, "function reconcileSemanticInspectSelection(): void",
         "semantic inspect selection must clear after parser anchor drift")
+require(page, "function prepareSelectedSemanticInspectTarget(): void",
+        "restored semantic selection must become revealable after analyzer readiness")
+require(page, "root.prepareSelectedSemanticInspectTarget()",
+        "semantic selection and analyzer readiness must prepare Targets disclosure")
 require(page, "Qt.callLater(root.reconcileSemanticInspectSelection)",
         "analyzer READY must reconcile semantic inspect selection")
+require(page, 'CodeWorkflowAnalyzer.status === "unavailable"',
+        "parser unavailability must drop stale semantic inspect selection")
+require(page, 'CodeWorkflowAnalyzer.status === "error"',
+        "parser error must drop stale semantic inspect selection")
+require(page, 'CodeWorkflowSession.selectSemantic("")',
+        "parser failure must restore graph-level inspect context")
 require(page, "target: CodeWorkflowSession",
         "Targets must react to shared session selection changes")
 require(page, "targetList.positionViewAtIndex(index, ListView.Contain)",

@@ -116,6 +116,10 @@ require(capture_script, 'meta/parser-capability.json',
         "capture runner must record parser capability for semantic-source review")
 require(capture_script, 'meta/code-workflow-runtime-warnings.txt',
         "capture runner must summarize Code Workflow runtime warnings")
+require(capture_script, 'meta/route-diagnostics.json',
+        "capture runner must summarize smart-route metrics for every screenshot state")
+require(capture_script, '"routeDiagnostics": latest.get("routeDiagnostics", {})',
+        "capture route summary must preserve renderer diagnostics")
 require(capture_script, 'settings_window_json >"$BUNDLE_DIR/meta/niri-settings-window.json"',
         "capture runner must retain only the selected Settings window geometry record")
 

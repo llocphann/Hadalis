@@ -193,6 +193,12 @@ require(page, '=== "literal-property"\n                            && CodeWorkfl
         "generic Prepare Apply must stay scoped to literal-property transactions")
 require(page, "&& root.transactionMatchesSelection",
         "transaction mutation controls must remain selection-bound")
+require(page, "readonly property bool transactionSelectionMismatch:",
+        "transaction panel must detect when preview belongs to another selection")
+require(page, '"OTHER SELECTION"',
+        "transaction panel must label selection mismatch explicitly")
+require(page, '"Preview belongs to another inspect selection. "',
+        "transaction panel must explain how to resume guarded controls")
 require(page, "root.selectedIrEdge !== null",
         "Inspector header must treat selected edges as primary inspect objects")
 require(page, "?? root.selectedIrEdge?.kind",

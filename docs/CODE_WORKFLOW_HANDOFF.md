@@ -87,8 +87,9 @@ the parser/transaction safety model or unrelated shell runtime:
 - Transaction UI is selection-bound end-to-end. A dirty preview belonging to a
   different inspect object is labeled `OTHER SELECTION` and mutation controls
   stay gated until its target/connection/candidate is re-selected. The
-  Signal/Action transaction panel also uses the full multi-step height instead
-  of the literal-only 118px clipped layout.
+  transaction surface now derives height from visible content, grows from a
+  118px floor to a 420px cap, then scrolls longer preparation/lifecycle evidence
+  instead of clipping command-specific rows.
 - Re-selecting the runtime target for the already-open subflow no longer resets
   pan/zoom to `(0,0,1)`; viewport reset remains limited to an actual subflow
   change, after which the canvas schedules Fit graph.

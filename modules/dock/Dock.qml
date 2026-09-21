@@ -148,12 +148,10 @@ Scope {
                     right: !root.isLeft || !root.isVertical
                 }
 
-                exclusiveZone: root.pinned ? (dockHeight + Appearance.sizes.elevationMargin) : 0
-                // Dock is an edge-attached iRiS surface. The native window
-                // retains transparent room for the SDF shoulder/shadow, while
-                // the visible body stops at the real Screen Edge inner boundary.
-                // The Dock exclusive zone remains unchanged; Screen Edge keeps
-                // owning its own physical reservation.
+                // Visual-only edge surface. Reservation is owned by the
+                // separate transparent dock-reservation window below so setting
+                // an exclusiveZone can never switch this visual back to Normal
+                // exclusion/work-area coordinates.
                 implicitWidth: root.isVertical
                     ? (dockHeight + Appearance.sizes.elevationMargin
                         + dockRoot.screenEdgeThickness)
@@ -166,9 +164,10 @@ Scope {
                         + dockRoot.screenEdgeThickness)
 
                 WlrLayershell.namespace: "quickshell:dock"
-                // Screen Edge reservation windows are compositor-only work-area
-                // owners. Dock geometry is already expressed in physical output
-                // coordinates and applies the Screen Edge inset itself.
+                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+                // Physical-output coordinates are required by the connected
+                // iRiS geometry. Never assign exclusiveZone on this window.
                 exclusionMode: ExclusionMode.Ignore
                 color: "transparent"
 
@@ -752,4 +751,79 @@ Scope {
             }
         }
     }
+
+    // Work-area reservation is intentionally decoupled from Dock rendering.
+    // Quickshell's exclusiveZone setter switches a layer surface back to
+    // Normal exclusion; keeping it on a transparent Top-layer window lets the
+    // visual Dock remain an Overlay/Ignore surface in physical-output space.
+    Variants {
+        model: {
+            const screens = Quickshell.screens;
+            const list = Config.options?.dock?.screenList ?? [];
+            if (!list || list.length === 0)
+                return screens;
+            const matchedScreens = screens.filter(screen => {
+                const screenName = screen?.name ?? "";
+                return screenName.length > 0 && list.includes(screenName);
+            });
+            return matchedScreens.length > 0 ? matchedScreens : screens;
+        }
+
+        PanelWindow {
+            id: dockReservationWindow
+            required property var modelData
+
+            readonly property bool horizontal:
+                root.position === "top" || root.position === "bottom"
+            readonly property real reservationThickness:
+                Math.max(0, Number(Config.options?.dock?.height ?? 70)
+                    + Appearance.sizes.elevationMargin)
+            readonly property bool mapped:
+                root.pinned
+                && !GlobalStates.screenLocked
+                && !GlobalStates.widgetEditMode
+
+            screen: modelData
+            visible: mapped
+            updatesEnabled: mapped
+            color: "transparent"
+
+            // This window paints nothing. Its only responsibility is preserving
+            // the Dock's existing pinned work-area reservation.
+            exclusiveZone: mapped ? reservationThickness : 0
+            implicitWidth: horizontal ? 1 : reservationThickness
+            implicitHeight: horizontal ? reservationThickness : 1
+
+            WlrLayershell.namespace: "quickshell:dock-reservation"
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors {
+                top: root.position === "top"
+                    || root.position === "left"
+                    || root.position === "right"
+                bottom: root.position === "bottom"
+                    || root.position === "left"
+                    || root.position === "right"
+                left: root.position === "left"
+                    || root.position === "top"
+                    || root.position === "bottom"
+                right: root.position === "right"
+                    || root.position === "top"
+                    || root.position === "bottom"
+            }
+
+            Item {
+                id: emptyDockReservationInput
+                width: 0
+                height: 0
+                visible: false
+            }
+
+            mask: Region {
+                item: emptyDockReservationInput
+            }
+        }
+    }
+
 }

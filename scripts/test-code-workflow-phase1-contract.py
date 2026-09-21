@@ -70,6 +70,7 @@ for scenario in (
     "edge-detour",
     "edge-readonly-binding",
     "connect-candidate",
+    "pane-resize",
     "semantic-source",
 ):
     require(page, f'scenario === "{scenario}"',
@@ -100,7 +101,8 @@ for token in (
     'capture_step "05" "edge-detour" "edge-detour"',
     'capture_step "06" "edge-readonly-binding" "edge-readonly-binding"',
     'capture_step "07" "connect-candidate" "connect-candidate"',
-    'capture_step "08" "semantic-source"',
+    'capture_step "08" "pane-resize" "pane-resize"',
+    'capture_step "09" "semantic-source"',
     'tar -C "$OUT_PARENT" -czf "$ARCHIVE" "$BUNDLE_NAME"',
 ):
     require(capture_script, token,
@@ -171,6 +173,14 @@ require(page, "import QtQuick.Controls",
         "resizable Code Workflow panes must use Qt Quick Controls SplitView")
 require(page, "component WorkflowSplitHandle: Rectangle",
         "Code Workflow must expose a visible edge resize handle")
+require(page, "containmentMask: Item {",
+        "pane divider must provide a larger invisible drag target")
+require(page, "width: splitHandle.horizontalRule\n                ? splitHandle.width : 18",
+        "vertical pane divider must expose an 18px edge hit target")
+require(page, "height: splitHandle.horizontalRule\n                ? 18 : splitHandle.height",
+        "horizontal pane divider must expose an 18px edge hit target")
+require(page, "routeDiagnostics: canvas.routeDiagnostics()",
+        "capture status must expose route quality metrics")
 require(page, "id: workflowHorizontalSplit",
         "Targets, graph and Inspector must share a horizontal SplitView")
 require(page, "id: workflowVerticalSplit",

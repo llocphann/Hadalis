@@ -240,6 +240,12 @@ require(page, 'buttonText: "Back to Bar workflow"',
         "compact subflow navigation must retain an accessibility label")
 require(page, 'text: "Fit graph to viewport"',
         "compact graph controls must retain discoverable tooltips")
+require(page, "import org.kde.syntaxhighlighting",
+        "Source Preview must load the shared KDE syntax-highlighting backend")
+require(page, "id: sourcePreviewHighlighter",
+        "Source Preview must attach syntax highlighting to its read-only TextEdit")
+require(page, "theme: Appearance.syntaxHighlightingTheme",
+        "Source Preview syntax colors must follow the shell highlighting theme")
 require(page, "StyledFlickable {", "Inspector must scroll instead of overflowing its panel")
 require(page, "contentHeight: inspectorColumn.implicitHeight + 12", "Inspector scroll extent must follow content")
 require(page, "import QtQuick.Controls",

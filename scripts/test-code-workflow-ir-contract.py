@@ -730,6 +730,11 @@ for token in (
     'buttonText: "Reset graph layout"',
     "CodeWorkflowSession.hasGraphLayout(",
     "CodeWorkflowSession.resetGraphLayout(",
+    "import org.kde.syntaxhighlighting",
+    "readonly property string sourceHighlightDefinition:",
+    "id: sourcePreviewHighlighter",
+    "definition: Repository.definitionForName(",
+    "theme: Appearance.syntaxHighlightingTheme",
 ):
     if token not in page:
         fail("Code Workflow page missing IR integration " + token)

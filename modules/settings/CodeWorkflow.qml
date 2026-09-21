@@ -5,6 +5,7 @@ import QtQuick.Controls
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
+import org.kde.syntaxhighlighting
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
@@ -17,6 +18,20 @@ Item {
     property string settingsPageName: Translation.tr("Code Workflow")
     property string sourceText: ""
     readonly property bool compactHeader: root.width < 1080
+    readonly property string sourceHighlightDefinition: {
+        const path = String(root.sourcePath ?? "").toLowerCase()
+        if (path.endsWith(".qml"))
+            return "QML"
+        if (path.endsWith(".js") || path.endsWith(".mjs"))
+            return "JavaScript"
+        if (path.endsWith(".json"))
+            return "JSON"
+        if (path.endsWith(".py"))
+            return "Python"
+        if (path.endsWith(".sh"))
+            return "Bash"
+        return "plaintext"
+    }
 
     readonly property int runtimeRevision: CodeWorkflowRuntime.revision
     readonly property var snapshot: {
@@ -3492,6 +3507,15 @@ Item {
                             selectedTextColor: Appearance.colors.colOnPrimaryContainer
                             font.family: Appearance.font.family.monospace
                             font.pixelSize: Appearance.font.pixelSize.small
+
+                            SyntaxHighlighter {
+                                id: sourcePreviewHighlighter
+                                textEdit: sourcePreviewText
+                                repository: Repository
+                                definition: Repository.definitionForName(
+                                    root.sourceHighlightDefinition)
+                                theme: Appearance.syntaxHighlightingTheme
+                            }
                         }
                     }
                 }

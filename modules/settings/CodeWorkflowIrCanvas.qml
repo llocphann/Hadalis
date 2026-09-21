@@ -18,6 +18,7 @@ Item {
     readonly property real nodeHeight: 88
     readonly property real worldWidth: root.graphExtent("x", 1050)
     readonly property real worldHeight: root.graphExtent("y", 570)
+    property string hoveredEdgeId: ""
 
     function graphExtent(axis: string, minimum: real): real {
         let extent = minimum
@@ -98,6 +99,21 @@ Item {
         return best
     }
 
+    function fitGraph(): void {
+        if (root.width <= 0 || root.height <= 0)
+            return
+        const margin = 28
+        const availableWidth = Math.max(1, root.width - margin * 2)
+        const availableHeight = Math.max(1, root.height - margin * 2)
+        const nextZoom = Math.max(0.35, Math.min(
+            1.4,
+            availableWidth / Math.max(1, root.worldWidth),
+            availableHeight / Math.max(1, root.worldHeight)))
+        const nextX = (root.width - root.worldWidth * nextZoom) / 2
+        const nextY = (root.height - root.worldHeight * nextZoom) / 2
+        CodeWorkflowSession.setViewport(nextX, nextY, nextZoom)
+    }
+
     function revealNode(nodeId: string): void {
         const node = root.nodeById(nodeId)
         if (!node || root.width <= 0 || root.height <= 0)
@@ -136,6 +152,26 @@ Item {
             return px >= x && px <= x + root.nodeWidth
                 && py >= y && py <= y + root.nodeHeight
         })
+    }
+
+    function edgeAt(screenX: real, screenY: real): string {
+        const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
+        const worldX = (screenX - CodeWorkflowSession.panX) / zoom
+        const worldY = (screenY - CodeWorkflowSession.panY) / zoom
+        if (root.nodeAtWorld(worldX, worldY))
+            return ""
+
+        const tolerance = 8 / zoom
+        let bestId = ""
+        let bestDistance = tolerance
+        for (const edge of root.edges) {
+            const distance = root.edgeDistance(edge, worldX, worldY)
+            if (distance <= bestDistance) {
+                bestDistance = distance
+                bestId = String(edge.id ?? "")
+            }
+        }
+        return bestId
     }
 
     function previewableEdgeAt(screenX: real, screenY: real): string {
@@ -264,6 +300,18 @@ Item {
         }
     }
 
+    HoverHandler {
+        id: edgeHover
+        target: null
+
+        onPointChanged: root.hoveredEdgeId = root.edgeAt(
+            point.position.x, point.position.y)
+        onHoveredChanged: {
+            if (!hovered)
+                root.hoveredEdgeId = ""
+        }
+    }
+
     TapHandler {
         id: edgeTap
         target: null
@@ -344,8 +392,11 @@ Item {
                 readonly property var toNode: root.nodeById(modelData.to)
                 readonly property bool selectedEdge:
                     CodeWorkflowSession.selectedEdgeId === modelData.id
+                readonly property bool hoveredEdge:
+                    root.hoveredEdgeId === modelData.id
                 readonly property bool highlighted:
                     selectedEdge
+                    || hoveredEdge
                     || CodeWorkflowSession.selectedNodeId === modelData.from
                     || CodeWorkflowSession.selectedNodeId === modelData.to
 
@@ -390,6 +441,36 @@ Item {
                         control2X: edgePath.endNodeX - edgePath.bend
                         control2Y: edgePath.endNodeY
                             + root.nodeHeight / 2
+                    }
+                }
+
+                ShapePath {
+                    id: arrowPath
+                    readonly property real tipX:
+                        Number(edgeShape.toNode?.x ?? 0)
+                    readonly property real tipY:
+                        Number(edgeShape.toNode?.y ?? 0)
+                            + root.nodeHeight / 2
+                    readonly property color ink: root.edgeInk(
+                        edgeShape.modelData.kind,
+                        edgeShape.highlighted)
+
+                    strokeColor: "transparent"
+                    fillColor: ink
+                    startX: tipX
+                    startY: tipY
+
+                    PathLine {
+                        x: arrowPath.tipX - 10
+                        y: arrowPath.tipY - 5
+                    }
+                    PathLine {
+                        x: arrowPath.tipX - 10
+                        y: arrowPath.tipY + 5
+                    }
+                    PathLine {
+                        x: arrowPath.tipX
+                        y: arrowPath.tipY
                     }
                 }
             }

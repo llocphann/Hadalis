@@ -84,9 +84,6 @@ Scope {
                     : (Config.options?.dock?.height ?? 70)
                 readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-                readonly property real screenEdgePaintOverlap: Math.min(
-                    PerimeterTokens.seamOverlap,
-                    Math.max(0, dockRoot.screenEdgeThickness - 1))
                 readonly property bool screenEdgeShadowEnabled:
                     Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
                 readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
@@ -169,6 +166,10 @@ Scope {
                         + dockRoot.screenEdgeThickness)
 
                 WlrLayershell.namespace: "quickshell:dock"
+                // Screen Edge reservation windows are compositor-only work-area
+                // owners. Dock geometry is already expressed in physical output
+                // coordinates and applies the Screen Edge inset itself.
+                exclusionMode: ExclusionMode.Ignore
                 color: "transparent"
 
                 readonly property string nativeBlurTopology:
@@ -199,7 +200,6 @@ Scope {
                     visible: dockVisualBackground.visible
                     edge: root.position
                     ownerThickness: dockRoot.screenEdgeThickness
-                    paintOverlap: dockRoot.screenEdgePaintOverlap
                     outputRect: Qt.rect(0, 0, dockRoot.width, dockRoot.height)
                     bodyRect: Qt.rect(
                         dockMouseArea.x + dockBackground.x + dockVisualBackground.x,

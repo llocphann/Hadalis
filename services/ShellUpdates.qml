@@ -82,7 +82,6 @@ Singleton {
     property string installedDate: ""     // Install/update date from manifest
     property string recentLocalLog: ""    // Recent local commit history
     property int _openOverlayDelayMs: 0
-    property bool _refreshDetailsAfterCheck: false
 
     // Derived
     readonly property bool enabled: Config.options?.shellUpdates?.enabled ?? true
@@ -157,19 +156,11 @@ Singleton {
         fetchProc.running = true
     }
 
-    function _completeInteractiveRefresh(): void {
-        if (!root._refreshDetailsAfterCheck || !root.overlayOpen)
-            return
-        root._refreshDetailsAfterCheck = false
-        root.fetchDetails()
-    }
-
     function _failCheckStart(stage: string): void {
         const message = "Update check failed to start (" + stage + ")."
         root.lastError = message
         root.isChecking = false
         console.warn("[ShellUpdates] " + message)
-        root._completeInteractiveRefresh()
     }
 
     function _finishCountFallback(): void {
@@ -177,13 +168,11 @@ Singleton {
         root.commitsBehind = root.hasUpdate ? 1 : 0
         root.isChecking = false
         root.initialUpdateCheckDone = true
-        root._completeInteractiveRefresh()
     }
 
     function _finishCheck(): void {
         root.isChecking = false
         root.initialUpdateCheckDone = true
-        root._completeInteractiveRefresh()
     }
 
     // Fetch detailed info for the overlay (commit log, changelog, local mods)
@@ -207,18 +196,8 @@ Singleton {
         const settingsWasOpen = GlobalStates.settingsOverlayOpen ?? false
         GlobalStates.controlPanelOpen = false
         GlobalStates.settingsOverlayOpen = false
-
-        // Opening the details surface is an explicit freshness request. Refresh
-        // origin first when the repository is ready, then rebuild details from
-        // the newly fetched remote ref instead of the last periodic snapshot.
-        if (root.repoPathLoaded && root.available && !root.isChecking
-                && !root.isUpdating && !root.managedExternally) {
-            root._refreshDetailsAfterCheck = true
-            root.check()
-        }
-
         // Always use a minimum delay to ensure other overlays fully close
-        // and release keyboard focus before we open.
+        // and release keyboard focus before we open
         root._openOverlayDelayMs = (panelWasOpen || settingsWasOpen) ? 600 : 150
         openOverlayTimer.restart()
     }
@@ -229,17 +208,11 @@ Singleton {
         repeat: false
         onTriggered: {
             root.overlayOpen = true
-            if (root.isChecking) {
-                root._refreshDetailsAfterCheck = true
-            } else {
-                root._refreshDetailsAfterCheck = false
-                root.fetchDetails()
-            }
+            root.fetchDetails()
         }
     }
 
     function closeOverlay(): void {
-        root._refreshDetailsAfterCheck = false
         root.overlayOpen = false
     }
 

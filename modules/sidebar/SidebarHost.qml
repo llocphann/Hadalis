@@ -6,6 +6,8 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.perimeter
+import qs.modules.sidebarLeft
+import qs.modules.sidebarRight
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -76,9 +78,9 @@ Scope {
     readonly property int customHeight: Math.round(
         root.roleLayoutState?.customHeight ?? 720)
     readonly property bool screenEdgeShadowEnabled:
-        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
     readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 12)))
     // Reserve tangent room for the iRiS field and free-side shadow. This is
     // field/shadow extent only; no standalone wedge geometry is painted.
     readonly property real edgeDecorationMargin: Math.max(
@@ -93,10 +95,11 @@ Scope {
             Appearance.sizes.hyprlandGapsOut,
             PerimeterTokens.irisFuseDepth,
             root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0)
-    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
-        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(0.60,
+        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.24)))
     readonly property color screenEdgeShadowColor:
-        Qt.alpha(Appearance.m3colors.m3shadow, root.screenEdgeShadowOpacity)
+        ColorUtils.applyAlpha(Appearance.colors.colShadow,
+            root.screenEdgeShadowOpacity)
     readonly property real availableContentHeight: Math.max(0,
         (sidebarRoot.screen?.height ?? 1080)
             - root.edgeDecorationMargin * 2)
@@ -440,6 +443,113 @@ Scope {
         onTriggered: root.tryPresent()
     }
 
+    Component {
+        id: featureContentComponent
+
+        SidebarLeftContent {
+            outerSizeMode: root.sizeMode
+            screenWidth: sidebarRoot.screen?.width ?? 1920
+            screenHeight: sidebarRoot.screen?.height ?? 1080
+            panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
+            panelVisible: root.presentationOpen || sidebarContentLoader.animating
+            geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
+            externalConnectedSurface: true
+            onPluginViewActiveChanged: root.pluginViewActive = pluginViewActive
+        }
+    }
+
+    Component {
+        id: defaultSystemContentComponent
+
+        SidebarRightContent {
+            screenWidth: sidebarRoot.screen?.width ?? 1920
+            screenHeight: sidebarRoot.screen?.height ?? 1080
+            panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
+            panelVisible: root.presentationOpen || sidebarContentLoader.animating
+            geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
+            externalConnectedSurface: true
+        }
+    }
+
+    Component {
+        id: compactSystemContentComponent
+
+        CompactSidebarRightContent {
+            screenWidth: sidebarRoot.screen?.width ?? 1920
+            screenHeight: sidebarRoot.screen?.height ?? 1080
+            panelScreen: sidebarRoot.screen ?? null
+            panelScreenY: root.edgeDecorationMargin
+            panelVisible: root.presentationOpen || sidebarContentLoader.animating
+            geometryPreviewActive: root.widthPreview >= 0 || root.heightPreview >= 0
+            attachedEdge: root.edge
+            externalConnectedSurface: true
+        }
+    }
+
+    Component {
+        id: systemContentComponent
+
+        Item {
+            id: systemContentStack
+            readonly property bool isCompact:
+                (Config.options?.sidebar?.layout ?? "default") === "compact"
+            readonly property var activeContentItem: isCompact
+                ? compactSystemLoader.item : defaultSystemLoader.item
+            readonly property real preferredContentHeight:
+                activeContentItem?.preferredContentHeight ?? -1
+            readonly property real minimumUsefulHeight:
+                activeContentItem?.minimumUsefulHeight ?? 320
+            readonly property real minimumUsefulWidth:
+                activeContentItem?.minimumUsefulWidth ?? 320
+            readonly property real maximumUsefulWidth:
+                activeContentItem?.maximumUsefulWidth ?? 900
+            readonly property bool contentFitActive:
+                activeContentItem?.notifsCollapsed ?? false
+            readonly property bool bottomCollapsed:
+                activeContentItem?.bottomGroupCollapsed ?? false
+            readonly property color connectedSurfaceColor:
+                activeContentItem?.connectedSurfaceColor
+                    ?? Appearance.colors.colLayer0
+
+            FadeLoader {
+                id: defaultSystemLoader
+                anchors.fill: parent
+                shown: !systemContentStack.isCompact
+                scale: systemContentStack.isCompact ? 0.96 : 1
+                transformOrigin: Item.Center
+                Behavior on scale {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation {
+                        duration: Appearance.animation.elementResize.duration
+                        easing.type: Appearance.animation.elementResize.type
+                        easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
+                    }
+                }
+                sourceComponent: defaultSystemContentComponent
+            }
+
+            FadeLoader {
+                id: compactSystemLoader
+                anchors.fill: parent
+                shown: systemContentStack.isCompact
+                scale: systemContentStack.isCompact ? 1 : 0.96
+                transformOrigin: Item.Center
+                Behavior on scale {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation {
+                        duration: Appearance.animation.elementResize.duration
+                        easing.type: Appearance.animation.elementResize.type
+                        easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
+                    }
+                }
+                sourceComponent: compactSystemContentComponent
+            }
+        }
+    }
 
     PanelWindow {
         id: sidebarRoot
@@ -850,56 +960,8 @@ Scope {
                         width: contentHost.width
                         height: contentHost.height
                         x: root.isLeftEdge ? 0 : revealViewport.width - width
-                        source: root.featureRole
-                            ? "../sidebarLeft/SidebarLeftContent.qml"
-                            : ((Config.options?.sidebar?.layout ?? "default") === "compact"
-                                ? "../sidebarRight/CompactSidebarRightContent.qml"
-                                : "../sidebarRight/SidebarRightContent.qml")
-
-                        onStatusChanged: {
-                            if (status === Loader.Error) {
-                                console.warn("[SidebarHost] Concrete content failed:",
-                                    source, "role=", root.roleId, "edge=", root.edge)
-                                ShellEditSession.reportSurfaceFailure(root.roleId,
-                                    "Sidebar content failed to load")
-                            }
-                        }
-
-                        Connections {
-                            target: root.featureRole ? roleContentLoader.item : null
-                            ignoreUnknownSignals: true
-                            function onPluginViewActiveChanged(): void {
-                                root.pluginViewActive =
-                                    roleContentLoader.item?.pluginViewActive ?? false
-                            }
-                        }
-
-                        onLoaded: {
-                            if (!item)
-                                return
-                            item.screenWidth = Qt.binding(() =>
-                                sidebarRoot.screen?.width ?? 1920)
-                            item.screenHeight = Qt.binding(() =>
-                                sidebarRoot.screen?.height ?? 1080)
-                            item.panelScreen = Qt.binding(() =>
-                                sidebarRoot.screen ?? null)
-                            item.panelScreenY = Qt.binding(() =>
-                                root.edgeDecorationMargin)
-                            item.panelVisible = Qt.binding(() =>
-                                root.presentationOpen || sidebarContentLoader.animating)
-                            item.geometryPreviewActive = Qt.binding(() =>
-                                root.widthPreview >= 0 || root.heightPreview >= 0)
-                            item.attachedEdge = Qt.binding(() => root.edge)
-                            item.externalConnectedSurface = true
-                            if (root.featureRole) {
-                                item.outerSizeMode = Qt.binding(() => root.sizeMode)
-                                root.pluginViewActive = item.pluginViewActive ?? false
-                            } else {
-                                root.pluginViewActive = false
-                            }
-                            root.tryPresent()
-                            Qt.callLater(root.reportRuntime)
-                        }
+                        sourceComponent: root.featureRole
+                            ? featureContentComponent : systemContentComponent
                     }
                 }
             }

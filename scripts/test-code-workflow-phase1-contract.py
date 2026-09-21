@@ -84,6 +84,12 @@ require(page, "readonly property bool selectedLive:",
         "Header runtime badge must reflect the selected target")
 require(page, '" · " + CodeWorkflowAnalyzer.error',
         "Inspector must expose parser unavailability/error reason")
+require(page, "readonly property bool selectedEdgeReadOnly:",
+        "Inspector must distinguish read-only edge inspection")
+require(page, '" · READ ONLY"',
+        "Inspector must label mutation-ineligible edges explicitly")
+require(page, "visible: root.selectedIrEdge?.previewable === true",
+        "Disconnect affordance must stay gated to reviewed previewable edges")
 require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")
 require(page, "readOnly: true", "Source Preview must be read-only")
 require(page, "FileView {", "Source Preview must read selected source")

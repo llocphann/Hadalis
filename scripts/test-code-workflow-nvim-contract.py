@@ -19,7 +19,10 @@ for token in (
     "stdout: SplitParser {",
     "nvimBridgeProcess.write(JSON.stringify(payload) + \"\\n\")",
     "function start(targetPath: string, nextCols: int, nextRows: int): bool",
+    "property string pendingPath: \"\"",
     "function open(targetPath: string): bool",
+    "root.pendingPath = requestedPath",
+    "if (root.path === requestedPath || root.pendingPath === requestedPath)",
     "function resize(nextCols: int, nextRows: int): bool",
     "function input(keys: string): bool",
     "function save(): bool",
@@ -52,6 +55,9 @@ for token in (
     'name == "mouse_on"',
     'name == "mouse_off"',
     '"nvim_input_mouse"',
+    "self.pending_open: dict[int, Path]",
+    'if tag == "open":',
+    "self.pending_open[msgid] = target",
     '"type": "frame"',
 ):
     if token not in bridge:

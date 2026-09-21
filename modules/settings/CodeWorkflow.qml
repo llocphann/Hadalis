@@ -381,6 +381,11 @@ Item {
         root.bindingPreviewEligible
             ? String(root.sourceAnchorEvidence?.semanticValueText ?? "")
             : ""
+    readonly property bool transactionSelectionMismatch:
+        CodeWorkflowTransaction.dirty
+        && CodeWorkflowTransaction.activeCommand !== null
+        && !root.transactionMatchesSelection
+
     readonly property bool transactionMatchesSelection: {
         const command = CodeWorkflowTransaction.activeCommand
         if (!command)
@@ -2022,6 +2027,7 @@ Item {
                                 === "direct-binding"
                             ? 300
                             : 118)
+                    + (root.transactionSelectionMismatch ? 44 : 0)
                 : 0
             visible: CodeWorkflowTransaction.dirty
             radius: Appearance.rounding.normal
@@ -2078,7 +2084,9 @@ Item {
                         accent: Appearance.colors.colSubtext
                     }
                     Pill {
-                        label: CodeWorkflowTransaction.activeCommand?.kind
+                        label: root.transactionSelectionMismatch
+                            ? "OTHER SELECTION"
+                            : CodeWorkflowTransaction.activeCommand?.kind
                                 === "connect-binding"
                             ? CodeWorkflowTransaction.connectLifecycleBusy
                                 ? "CONNECT APPLY · "
@@ -2166,7 +2174,9 @@ Item {
                                     : CodeWorkflowTransaction.preApplyReady
                                         ? "PRE-APPLY READY"
                                         : "PRE-APPLY BLOCKED"
-                        accent: CodeWorkflowTransaction.activeCommand?.kind
+                        accent: root.transactionSelectionMismatch
+                            ? Appearance.colors.colTertiary
+                            : CodeWorkflowTransaction.activeCommand?.kind
                                 === "connect-binding"
                                 && (CodeWorkflowTransaction.connectArtifactsReady
                                     || CodeWorkflowTransaction
@@ -2206,6 +2216,16 @@ Item {
                                     : CodeWorkflowTransaction.preApplyReady
                                         ? Appearance.colors.colPrimary
                                         : Appearance.colors.colTertiary
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.transactionSelectionMismatch
+                        text: "Preview belongs to another inspect selection. "
+                            + "Re-select its target, connection, or candidate "
+                            + "to resume guarded transaction controls."
+                        color: Appearance.colors.colTertiary
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
                     }
                     RippleButtonWithIcon {
                         visible: CodeWorkflowTransaction.activeCommand?.kind

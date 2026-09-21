@@ -183,6 +183,16 @@ The Pill had no local id, so `root.label` resolved to the page root rather than
 the inline component. It now owns `id: pill`; hover and tooltip bindings target
 `pill`/`pill.label`, eliminating the undefined QString path.
 
+The third real capture (`20260921-220357`) confirmed the warning summary was
+clean and text rendering had improved, but edge sharpness still varied with zoom.
+The overview fit rendered at about 50%, so a 2.4 world-unit stroke became roughly
+1.2 screen pixels; the Resources subflow rendered near 128%, making the same
+stroke roughly 3.1 screen pixels. Edge rendering now uses
+`Shape.CurveRenderer` with antialiasing and computes world stroke width as the
+desired screen-space width divided by the current zoom. This preserves the
+existing 2.4/3.0/3.6 px visual hierarchy across Fit, manual zoom and subflows
+instead of letting transforms make lines alternately faint or heavy.
+
 This pass intentionally does **not** widen source-write allowlists, transaction
 semantics, parser capability, runtime registration scope, or shell-wide inspect
 coverage. GitHub connector status queries for these direct `dev` push commits

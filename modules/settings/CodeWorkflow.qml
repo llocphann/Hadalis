@@ -3716,6 +3716,20 @@ Item {
                     }
                 }
 
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: root.sourceEditorStatus.length > 0
+                    text: root.sourceEditorStatus
+                    color: root.sourceEditorConflict
+                        || root.sourceEditorStatus.startsWith("Save failed")
+                        || root.sourceEditorStatus.includes("failed")
+                            ? Appearance.colors.colError
+                            : Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                }
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -3743,8 +3757,12 @@ Item {
                             Accessible.description:
                                 "Editable source draft for the current inspect selection"
                             onTextChanged: {
-                                if (root.sourceDraft !== text)
+                                if (root.sourceDraft !== text) {
                                     root.sourceDraft = text
+                                    if (!root.sourceEditorSaving
+                                            && !root.sourceEditorConflict)
+                                        root.sourceEditorStatus = ""
+                                }
                             }
                             Keys.onPressed: event => {
                                 if (event.key === Qt.Key_S

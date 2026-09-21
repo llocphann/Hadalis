@@ -243,9 +243,9 @@ require(page, 'text: "Fit graph to viewport"',
 require(page, "import org.kde.syntaxhighlighting",
         "Source Preview must load the shared KDE syntax-highlighting backend")
 require(page, "id: sourcePreviewHighlighter",
-        "Source Preview must attach syntax highlighting to its read-only TextEdit")
+        "Source Editor must attach shared syntax highlighting to its TextEdit")
 require(page, "theme: Appearance.syntaxHighlightingTheme",
-        "Source Preview syntax colors must follow the shell highlighting theme")
+        "Source Editor syntax colors must follow the shell highlighting theme")
 require(page, 'text: "Source Editor · " + root.sourcePath',
         "Source pane must present an editor rather than a read-only preview")
 require(page, "readOnly: false",
@@ -256,6 +256,8 @@ require(page, 'buttonText: "Open source in Neovim"',
         "Source Editor must expose the Neovim handoff path")
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
+require(page, "visible: root.sourceEditorStatus.length > 0",
+        "Source Editor must show save/conflict status instead of failing silently")
 require(page, "sourceDraftWriter.setText(root.sourceDraft)",
         "Source Editor must stage draft text before atomic compare-and-swap")
 require(page, 'Quickshell.shellPath("scripts/code-workflow-editor-save.py")',

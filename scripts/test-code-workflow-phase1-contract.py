@@ -192,6 +192,8 @@ for byte_offset, expected_utf16_index in unicode_boundaries.items():
         )
 require(page, "function revealSourceSelection(start: int, end: int): void",
         "Source Preview must reveal selected parser evidence")
+require(page, "sourcePreviewText.deselect()",
+        "Source Preview must clear stale evidence before resolving a new anchor")
 require(page, "const safeStart = Math.min(start, root.sourceText.length)",
         "Source Preview must clamp parser ranges before selection")
 if "sourcePreviewText.cursorPosition = start" in page:

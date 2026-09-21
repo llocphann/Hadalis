@@ -230,6 +230,7 @@ Item {
             targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
             inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
             sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
+            routeDiagnostics: canvas.routeDiagnostics(),
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom
@@ -1428,12 +1429,25 @@ Item {
 
     component WorkflowSplitHandle: Rectangle {
         id: splitHandle
-        implicitWidth: 10
-        implicitHeight: 10
+        implicitWidth: 6
+        implicitHeight: 6
         color: "transparent"
         readonly property bool handleHovered: SplitHandle.hovered
         readonly property bool handlePressed: SplitHandle.pressed
         readonly property bool horizontalRule: width > height
+
+        // Keep the visual divider compact while providing a forgiving 18px
+        // drag target on either side of the pane edge.
+        containmentMask: Item {
+            x: splitHandle.horizontalRule
+                ? 0 : (splitHandle.width - width) / 2
+            y: splitHandle.horizontalRule
+                ? (splitHandle.height - height) / 2 : 0
+            width: splitHandle.horizontalRule
+                ? splitHandle.width : 18
+            height: splitHandle.horizontalRule
+                ? 18 : splitHandle.height
+        }
 
         Rectangle {
             anchors.centerIn: parent

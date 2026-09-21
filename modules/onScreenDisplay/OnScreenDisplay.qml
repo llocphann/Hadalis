@@ -52,13 +52,13 @@ Scope {
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property bool _edgeShadowEnabled:
-        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
     readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
     readonly property real _edgeShadowOpacity: Math.max(0, Math.min(1.0,
-        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
     readonly property color _edgeShadowColor:
-        ColorUtils.applyAlpha(Appearance.colors.colShadow, root._edgeShadowOpacity)
+        Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)
 
     property var indicators: [
         {
@@ -426,7 +426,7 @@ Scope {
                     outerRadius: PerimeterTokens.popupRadius
                     screenMargin: root._screenEdgeThickness
                     connectorLength: 0
-                    seamOverlap: 0
+                    seamOverlap: PerimeterTokens.irisWeldDepth
                     progress: 1 - root.connectedOffsetScale
                     devicePixelRatio: osdRoot.devicePixelRatio
                 }
@@ -435,15 +435,15 @@ Scope {
                     geometry: connectedGeometry
                     visible: root.connectedIndicator
 
-                    ConnectedSurfaceFrame {
+                    ConnectedSurfaceIrisFrame {
                         id: statusFrame
                         anchors.fill: parent
                         geometry: connectedGeometry
                         fillColor: Appearance.colors.colLayer0
                         borderColor: Appearance.colors.colLayer0Border
                         borderWidth: 0
-                        connectorBorderWidth: 0
-                        connectorVisible: false
+                        fuseDepth: PerimeterTokens.irisFuseDepth
+                        externalFrameThickness: root._screenEdgeThickness
                         shadowEnabled: root._edgeShadowEnabled
                             && root._edgeShadowExtent > 0
                             && root._edgeShadowOpacity > 0
@@ -453,10 +453,6 @@ Scope {
                         joinBottom: connectedGeometry.edge === "bottom"
                         joinLeft: connectedGeometry.edge === "left"
                         joinRight: connectedGeometry.edge === "right"
-                        shadowTop: !statusFrame.joinTop
-                        shadowBottom: !statusFrame.joinBottom
-                        shadowLeft: !statusFrame.joinLeft
-                        shadowRight: !statusFrame.joinRight
                     }
 
                     ConnectedSurfaceContentHost {
@@ -547,11 +543,11 @@ Scope {
                     }
                 }
 
-                ConnectedSurfaceMask {
+                ConnectedSurfaceBodyMask {
                     id: connectedMask
                     geometry: connectedGeometry
                     bodyItem: statusFrame.bodyItem
-                    connectorItem: statusFrame.connectorItem
+                    visibleBodyRect: statusFrame.visibleBodyRect
                     inputEnabled: root.connectedIndicator && root._visualOpen
                 }
 

@@ -320,6 +320,12 @@ for _ in $(seq 1 12); do
     sleep 0.25
 done
 capture_step "08" "semantic-source"
+ipc status >"$BUNDLE_DIR/meta/parser-capability.json" \
+    2>>"$BUNDLE_DIR/logs/ipc-errors.log" || true
+PARSER_STATUS="$(jq -r '.analyzerStatus // "unknown"' \
+    "$BUNDLE_DIR/meta/parser-capability.json" 2>/dev/null || printf 'unknown')"
+PARSER_ERROR="$(jq -r '.analyzerError // ""' \
+    "$BUNDLE_DIR/meta/parser-capability.json" 2>/dev/null || true)"
 
 ipc restore >"$BUNDLE_DIR/state/99-restored.txt" \
     2>>"$BUNDLE_DIR/logs/ipc-errors.log"
@@ -352,7 +358,11 @@ Screenshots:
   07-connect-candidate
       clock.connect.rootVisible selected.
   08-semantic-source
-      Parser semantic selection + Source Preview, after repeated analysis polling.
+      Source Preview after parser polling.
+      Parser status: $PARSER_STATUS
+      Parser detail: $PARSER_ERROR
+      READY includes semantic selection; UNAVAILABLE/ERROR intentionally records
+      the read-only source fallback instead.
 
 Privacy:
   grim captures only the Niri output containing the Settings window, after the
@@ -374,6 +384,31 @@ EOF
     printf '  "settleSeconds": %s\n' "$(printf '%s' "$SETTLE_SECONDS" | jq -R .)"
     printf '}\n'
 } >"$BUNDLE_DIR/meta/capture.json"
+
+python3 - "$BUNDLE_DIR/logs/settings-window.log" \
+    "$BUNDLE_DIR/meta/code-workflow-runtime-warnings.txt" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+source = re.sub(r"\x1b\[[0-9;]*m", "", source)
+matches = []
+for line in source.splitlines():
+    if (
+        "CodeWorkflow" in line
+        and (
+            "ReferenceError:" in line
+            or "TypeError:" in line
+            or "Unable to assign [undefined]" in line
+        )
+    ):
+        matches.append(line)
+Path(sys.argv[2]).write_text(
+    "\n".join(matches) + ("\n" if matches else ""),
+    encoding="utf-8",
+)
+PY
 
 (
     cd "$BUNDLE_DIR"

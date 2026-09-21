@@ -270,6 +270,23 @@ def resolved_route(
                 {"x": to_center_x, "y": lane_y},
                 {"x": to_center_x, "y": target_y},
             ], False, direction))
+
+        outer_x = (
+            bounds["maxX"] + 52
+            if rightward else bounds["minX"] - 52
+        )
+        target_outer_x = to_right if rightward else to_x
+        for source_y, lane_y in (
+            (from_y, bounds["minY"] - 52),
+            (from_y + NODE_HEIGHT, bounds["maxY"] + 52),
+        ):
+            candidates.append(make_route([
+                {"x": from_center_x, "y": source_y},
+                {"x": from_center_x, "y": lane_y},
+                {"x": outer_x, "y": lane_y},
+                {"x": outer_x, "y": to_center_y},
+                {"x": target_outer_x, "y": to_center_y},
+            ], False, direction))
     else:
         downward = to_center_y >= from_center_y
         direction = 1.0 if downward else -1.0
@@ -498,6 +515,7 @@ for token in (
     "function edgeRoute(edge, occupiedRoutes = []): var",
     "const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]",
     "const horizontalPortLanes = [",
+    "const perimeterPortLanes = [",
     "const verticalPortLanes = [",
     "readonly property var edgeRouteCache: root.buildEdgeRouteCache()",
     "function buildEdgeRouteCache(): var",

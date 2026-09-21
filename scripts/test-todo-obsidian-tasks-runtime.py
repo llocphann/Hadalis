@@ -225,7 +225,7 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         def fake_cli(_cli, args, _timeout):
             code = next(arg[5:] for arg in args if arg.startswith("code="))
             calls.append(code)
-            if "executeToggleTaskDoneCommand" not in code:
+            if "app.vault.process(file" not in code:
                 return subprocess.CompletedProcess(
                     ["obsidian"], 0,
                     stdout="=> " + json.dumps(capability),
@@ -262,7 +262,7 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
 
         def fake_cli(_cli, args, _timeout):
             code = next(arg[5:] for arg in args if arg.startswith("code="))
-            if "executeToggleTaskDoneCommand" not in code:
+            if "app.vault.process(file" not in code:
                 return subprocess.CompletedProcess(
                     ["obsidian"], 0,
                     stdout="=> " + json.dumps(capability), stderr=""

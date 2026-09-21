@@ -205,9 +205,21 @@ Item {
             return Appearance.colors.colTertiary
         if (kind === "action")
             return Appearance.colors.colSecondary
-        if (kind === "data")
+        if (kind === "data" || kind === "lifecycle")
             return Appearance.colors.colPrimary
         return Appearance.colors.colOutlineVariant
+    }
+
+    function edgeInk(kind: string, emphasized: bool): color {
+        const base = root.edgeColor(kind)
+        const readable = ColorUtils.readableAccentInk(
+            base,
+            Appearance.colors.colLayer0,
+            emphasized ? 4.5 : 3.0,
+            Appearance.colors.colOnLayer0)
+        return emphasized
+            ? readable
+            : ColorUtils.applyAlpha(readable, 0.86)
     }
 
     DragHandler {
@@ -306,6 +318,12 @@ Item {
         onActiveTranslationChanged: updateViewport()
     }
 
+    Rectangle {
+        anchors.fill: parent
+        color: Appearance.colors.colLayer0
+        z: -2
+    }
+
     Item {
         id: world
         width: root.worldWidth
@@ -350,13 +368,14 @@ Item {
                         Math.max(48,
                             Math.abs(endNodeX - startNodeX) / 2)
 
-                    strokeColor: edgeShape.highlighted
-                        ? root.edgeColor(edgeShape.modelData.kind)
-                        : ColorUtils.transparentize(
-                            root.edgeColor(edgeShape.modelData.kind), 0.12)
+                    strokeColor: root.edgeInk(
+                        edgeShape.modelData.kind,
+                        edgeShape.highlighted)
                     strokeWidth: edgeShape.selectedEdge
-                        ? 3.4
-                        : edgeShape.highlighted ? 2.8 : 2.0
+                        ? 3.6
+                        : edgeShape.highlighted ? 3.0 : 2.4
+                    capStyle: ShapePath.RoundCap
+                    joinStyle: ShapePath.RoundJoin
                     fillColor: "transparent"
                     startX: startNodeX + root.nodeWidth
                     startY: startNodeY + root.nodeHeight / 2

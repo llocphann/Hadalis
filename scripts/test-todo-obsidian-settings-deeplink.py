@@ -20,6 +20,8 @@ for token in (
 
 assert 'Quickshell.env("QS_SETTINGS_SECTION")' in window
 assert "function activateSettingsSearchSection(section: string): bool" in services
+assert overlay.count("if (requestedPage < 0)") >= 1
+assert focus.count("if (requestedPage < 0)") >= 1
 assert 'label.includes("todo") || label.includes("obsidian")' in services
 assert 'root.activeSection = "data"' in services
 

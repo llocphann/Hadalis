@@ -380,7 +380,11 @@ Scope {
         const requestedPage = GlobalStates.settingsOverlayRequestedPage ?? -1
         const requestedSection = String(
             GlobalStates.settingsOverlayRequestedSection ?? "").trim()
-        if (requestedPage < 0 && requestedSection.length === 0)
+        // Section and page are written as two property changes. While the
+        // overlay is already open, the section signal can arrive first; keep
+        // it pending until the page target is available so the deep link is
+        // consumed atomically.
+        if (requestedPage < 0)
             return false
 
         GlobalStates.settingsOverlayRequestedPage = -1

@@ -203,9 +203,9 @@ Scope {
                         dockVisualBackground.width,
                         dockVisualBackground.height)
                     bodyRadius: dockVisualBackground.radius
-                    fillColor: dockVisualBackground.color
-                    borderColor: dockVisualBackground.border.color
-                    borderWidth: dockVisualBackground.border.width
+                    fillColor: dockVisualBackground.irisFillColor
+                    borderColor: dockVisualBackground.irisBorderColor
+                    borderWidth: dockVisualBackground.irisBorderWidth
                     progress: 1
                     shadowEnabled: dockRoot.screenEdgeShadowEnabled
                         && dockRoot.screenEdgeShadowSize > 0
@@ -325,6 +325,28 @@ Scope {
                                     root.surfaceDialect === "inir"
                                 readonly property bool gameModeMinimal:
                                     Appearance.gameModeMinimal
+                                // The iRiS field owns the connected silhouette. Some
+                                // dialect-specific body plates intentionally use a
+                                // transparent Rectangle base, so expose the effective
+                                // shell paint separately instead of making the weld
+                                // disappear while the body remains visible.
+                                readonly property color irisFillColor: root.zzzEverywhere
+                                    ? ColorUtils.applyAlpha(
+                                        Appearance.zzz.chromeAlt,
+                                        zzzGlassActive
+                                            ? (Appearance.zzz.dark ? 0.66 : 0.72)
+                                            : 1)
+                                    : regaliaEverywhere
+                                        ? Appearance.regalia.barSurfaceFloating
+                                        : color
+                                readonly property color irisBorderColor: root.zzzEverywhere
+                                    ? Appearance.zzz.hairline
+                                    : regaliaEverywhere
+                                        ? "transparent"
+                                        : border.color
+                                readonly property real irisBorderWidth: root.zzzEverywhere
+                                    ? 1
+                                    : regaliaEverywhere ? 0 : border.width
                                 readonly property string wallpaperUrl: {
                                     const _dep1 = WallpaperListener.multiMonitorEnabled
                                     const _dep2 = WallpaperListener.effectivePerMonitor
@@ -395,12 +417,11 @@ Scope {
                                             : inirEverywhere
                                                 ? Appearance.inir.roundingNormal
                                                 : Appearance.rounding.large
-                                // The edge-facing corners belong to the
-                                // shared Screen Edge seam and must stay square.
-                                topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius
-                                topRightRadius: (root.isTop || root.position === "right") ? 0 : radius
-                                bottomLeftRadius: (root.position === "bottom" || root.isLeft) ? 0 : radius
-                                bottomRightRadius: (root.position === "bottom" || root.position === "right") ? 0 : radius
+                                // Keep the body plate on the same rounded
+                                // rectangle as the iRiS SDF record. Squaring the
+                                // edge-facing corners here overpaints the smooth
+                                // union fillets and makes Dock read as a detached
+                                // island even though the SDF weld is present.
 
                                 Behavior on color {
                                     enabled: Appearance.animationsEnabled

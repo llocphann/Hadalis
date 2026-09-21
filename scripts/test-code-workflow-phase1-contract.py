@@ -246,6 +246,20 @@ require(page, "id: sourcePreviewHighlighter",
         "Source Preview must attach syntax highlighting to its read-only TextEdit")
 require(page, "theme: Appearance.syntaxHighlightingTheme",
         "Source Preview syntax colors must follow the shell highlighting theme")
+require(page, 'text: "Source Editor · " + root.sourcePath',
+        "Source pane must present an editor rather than a read-only preview")
+require(page, "readOnly: false",
+        "Source Editor must accept direct text edits")
+require(page, 'buttonText: "Save source editor"',
+        "Source Editor must expose an explicit guarded save control")
+require(page, 'buttonText: "Open source in Neovim"',
+        "Source Editor must expose the Neovim handoff path")
+require(page, "root.sourceEditorConflict",
+        "Source Editor must surface external-write conflicts")
+require(page, "sourceDraftWriter.setText(root.sourceDraft)",
+        "Source Editor must stage draft text before atomic compare-and-swap")
+require(page, 'Quickshell.shellPath("scripts/code-workflow-editor-save.py")',
+        "Source Editor save must use the dedicated atomic helper")
 require(page, "StyledFlickable {", "Inspector must scroll instead of overflowing its panel")
 require(page, "contentHeight: inspectorColumn.implicitHeight + 12", "Inspector scroll extent must follow content")
 require(page, "import QtQuick.Controls",

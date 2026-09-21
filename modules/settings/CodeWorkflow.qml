@@ -17,6 +17,31 @@ Item {
     property int settingsPageIndex: 30
     property string settingsPageName: Translation.tr("Code Workflow")
     property string sourceText: ""
+    property string sourceDraft: ""
+    property string sourceEditorPath: ""
+    property string sourceEditorBaseText: ""
+    property bool sourceEditorConflict: false
+    property bool sourceEditorSaving: false
+    property bool sourceEditorStagePending: false
+    property string sourceEditorStatus: ""
+    property var sourceEditorBuffers: ({})
+    readonly property bool sourceEditorDirty:
+        root.sourceDraft !== root.sourceEditorBaseText
+    readonly property bool sourceEditorCanSave:
+        root.sourcePath.length > 0
+        && root.sourceEditorDirty
+        && !root.sourceEditorConflict
+        && !root.sourceEditorSaving
+        && !CodeWorkflowTransaction.dirty
+    readonly property string sourceEditorShellRoot:
+        FileUtils.trimFileProtocol(Quickshell.shellPath("."))
+    readonly property string sourceEditorTargetPath:
+        root.sourcePath.length > 0
+            ? FileUtils.trimFileProtocol(Quickshell.shellPath(root.sourcePath))
+            : ""
+    readonly property string sourceEditorTempPath:
+        "/tmp/hadalis-code-workflow-editor-"
+            + String(Quickshell.processId) + ".tmp"
     readonly property bool compactHeader: root.width < 1080
     readonly property string sourceHighlightDefinition: {
         const path = String(root.sourcePath ?? "").toLowerCase()
@@ -485,6 +510,100 @@ Item {
             ?? root.selectedIrNode?.sourcePath
             ?? root.descriptor?.sourcePath
             ?? ""
+    onSourcePathChanged: {
+        root.stashSourceEditorBuffer()
+        root.sourceEditorStatus = ""
+    }
+
+    function stashSourceEditorBuffer(): void {
+        const path = String(root.sourceEditorPath ?? "")
+        if (path.length === 0)
+            return
+        const next = Object.assign({}, root.sourceEditorBuffers)
+        next[path] = {
+            draft: root.sourceDraft,
+            base: root.sourceEditorBaseText,
+            conflict: root.sourceEditorConflict
+        }
+        root.sourceEditorBuffers = next
+    }
+
+    function activateSourceEditorBuffer(path: string, diskText: string): void {
+        const source = String(path ?? "")
+        root.stashSourceEditorBuffer()
+        root.sourceEditorPath = source
+        const stored = root.sourceEditorBuffers[source] ?? null
+        if (stored) {
+            root.sourceDraft = String(stored.draft ?? "")
+            root.sourceEditorBaseText = String(stored.base ?? "")
+            root.sourceEditorConflict = stored.conflict === true
+                || diskText !== root.sourceEditorBaseText
+            if (root.sourceEditorConflict)
+                root.sourceEditorStatus = "Source changed outside this editor"
+            return
+        }
+        root.sourceDraft = diskText
+        root.sourceEditorBaseText = diskText
+        root.sourceEditorConflict = false
+        root.sourceEditorStatus = ""
+    }
+
+    function syncSourceEditorFromDisk(force: bool): void {
+        const diskText = String(root.sourceText ?? "")
+        if (root.sourceEditorPath !== root.sourcePath) {
+            root.activateSourceEditorBuffer(root.sourcePath, diskText)
+            return
+        }
+        if (root.sourceEditorSaving)
+            return
+        if (force || !root.sourceEditorDirty) {
+            root.sourceDraft = diskText
+            root.sourceEditorBaseText = diskText
+            root.sourceEditorConflict = false
+            root.sourceEditorStatus = force ? "Reverted to disk" : ""
+            root.stashSourceEditorBuffer()
+            return
+        }
+        if (diskText !== root.sourceEditorBaseText) {
+            root.sourceEditorConflict = true
+            root.sourceEditorStatus = "Source changed outside this editor"
+            root.stashSourceEditorBuffer()
+        }
+    }
+
+    function revertSourceEditor(): void {
+        root.syncSourceEditorFromDisk(true)
+        Qt.callLater(root.focusSourceAnchor)
+    }
+
+    function saveSourceEditor(): bool {
+        if (!root.sourceEditorCanSave)
+            return false
+        root.sourceEditorSaving = true
+        root.sourceEditorStagePending = true
+        root.sourceEditorStatus = "Staging source draft"
+        sourceDraftWriter.setText(root.sourceDraft)
+        return true
+    }
+
+    function openSourceInNeovim(): bool {
+        const target = root.sourceEditorTargetPath
+        if (target.length === 0)
+            return false
+        const configured = String(
+            AppLauncher.commandFor("terminal") ?? "kitty").trim()
+        const terminal = configured.length > 0
+            ? configured.split(/\\s+/)[0] : "kitty"
+        const terminalName = terminal.split("/").pop()
+        const command = terminalName === "wezterm"
+            ? [terminal, "start", "--always-new-process", "--", "nvim", target]
+            : [terminal, "-e", "nvim", target]
+        ShellExec.execDetachedArgs(
+            command, "Open Code Workflow source in Neovim",
+            root.sourceEditorShellRoot)
+        return true
+    }
+
     readonly property string sourceNeedle:
         root.selectedSignalActionTarget?.parentObjectNeedle
             ?? root.selectedConnectTarget?.parentObjectNeedle
@@ -1422,6 +1541,7 @@ Item {
         printErrors: false
         onLoaded: {
             root.sourceText = String(sourceReader.text() ?? "")
+            root.syncSourceEditorFromDisk(false)
             Qt.callLater(root.focusSourceAnchor)
         }
         onFileChanged: {
@@ -1429,7 +1549,85 @@ Item {
             sourceReader.reload()
             root.requestAnalysis(true)
         }
-        onLoadFailed: root.sourceText = ""
+        onLoadFailed: {
+            root.sourceText = ""
+            if (root.sourceEditorPath === root.sourcePath
+                    && !root.sourceEditorDirty)
+                root.syncSourceEditorFromDisk(true)
+            root.sourceEditorStatus = "Source unavailable"
+        }
+    }
+
+    FileView {
+        id: sourceDraftWriter
+        path: root.sourceEditorTempPath
+        printErrors: false
+
+        onLoaded: {
+            if (!root.sourceEditorStagePending)
+                return
+            root.sourceEditorStagePending = false
+            sourceEditorCommitProcess.command = [
+                "/usr/bin/python3",
+                Quickshell.shellPath("scripts/code-workflow-editor-save.py"),
+                root.sourceEditorShellRoot,
+                root.sourceEditorTargetPath,
+                String(Qt.md5(root.sourceEditorBaseText)),
+                root.sourceEditorTempPath
+            ]
+            sourceEditorCommitProcess.running = true
+        }
+
+        onLoadFailed: {
+            if (!root.sourceEditorStagePending)
+                return
+            root.sourceEditorStagePending = false
+            root.sourceEditorSaving = false
+            root.sourceEditorStatus = "Failed to stage source draft"
+        }
+    }
+
+    Process {
+        id: sourceEditorCommitProcess
+        running: false
+        property bool startObserved: false
+
+        onStarted: sourceEditorCommitProcess.startObserved = true
+        onRunningChanged: {
+            if (running) {
+                sourceEditorCommitProcess.startObserved = false
+                return
+            }
+            if (!sourceEditorCommitProcess.startObserved
+                    && root.sourceEditorSaving) {
+                root.sourceEditorSaving = false
+                root.sourceEditorStatus = "Source save process failed to start"
+            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0) {
+                root.sourceEditorBaseText = root.sourceDraft
+                root.sourceText = root.sourceDraft
+                root.sourceEditorConflict = false
+                root.sourceEditorSaving = false
+                root.sourceEditorStatus = "Saved"
+                root.stashSourceEditorBuffer()
+                sourceReader.reload()
+                root.requestAnalysis(true)
+                return
+            }
+            root.sourceEditorSaving = false
+            if (exitCode === 3) {
+                root.sourceEditorConflict = true
+                root.sourceEditorStatus =
+                    "Conflict: source changed before save"
+                root.stashSourceEditorBuffer()
+                sourceReader.reload()
+                return
+            }
+            root.sourceEditorStatus =
+                "Save failed · exit " + String(exitCode)
+        }
     }
 
     component Pill: Rectangle {
@@ -3465,13 +3663,57 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Source Preview · " + root.sourcePath
+                        text: "Source Editor · " + root.sourcePath
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                         elide: Text.ElideMiddle
                     }
-                    Pill { label: "READ ONLY"; accent: Appearance.colors.colTertiary }
+                    Pill {
+                        label: root.sourceEditorConflict
+                            ? "CONFLICT"
+                            : root.sourceEditorSaving
+                                ? "SAVING"
+                                : root.sourceEditorDirty
+                                    ? "MODIFIED" : "SYNCED"
+                        accent: root.sourceEditorConflict
+                            ? Appearance.colors.colError
+                            : root.sourceEditorDirty
+                                ? Appearance.colors.colTertiary
+                                : Appearance.colors.colPrimary
+                    }
+                    RippleButtonWithIcon {
+                        buttonText: "Revert source editor"
+                        mainText: ""
+                        materialIcon: "restart_alt"
+                        enabled: (root.sourceEditorDirty
+                                || root.sourceEditorConflict)
+                            && !root.sourceEditorSaving
+                        onClicked: root.revertSourceEditor()
+                        StyledToolTip { text: "Discard draft and reload from disk" }
+                    }
+                    RippleButtonWithIcon {
+                        buttonText: "Save source editor"
+                        mainText: ""
+                        materialIcon: "save"
+                        enabled: root.sourceEditorCanSave
+                        onClicked: root.saveSourceEditor()
+                        StyledToolTip {
+                            text: CodeWorkflowTransaction.dirty
+                                ? "Finish or discard the active Code Workflow transaction first"
+                                : root.sourceEditorConflict
+                                    ? "Reload or reconcile the external change before saving"
+                                    : "Save source · Ctrl+S"
+                        }
+                    }
+                    RippleButtonWithIcon {
+                        buttonText: "Open source in Neovim"
+                        mainText: ""
+                        materialIcon: "terminal"
+                        enabled: root.sourcePath.length > 0
+                        onClicked: root.openSourceInNeovim()
+                        StyledToolTip { text: "Open this source in Neovim" }
+                    }
                 }
 
                 Rectangle {
@@ -3493,13 +3735,25 @@ Item {
                         TextEdit {
                             id: sourcePreviewText
                             width: Math.max(parent.width, implicitWidth)
-                            text: root.sourceText
-                            readOnly: true
+                            text: root.sourceDraft
+                            readOnly: false
                             selectByMouse: true
                             activeFocusOnTab: true
-                            Accessible.name: "Source preview"
+                            Accessible.name: "Source editor"
                             Accessible.description:
-                                "Read-only source for the current inspect selection"
+                                "Editable source draft for the current inspect selection"
+                            onTextChanged: {
+                                if (root.sourceDraft !== text)
+                                    root.sourceDraft = text
+                            }
+                            Keys.onPressed: event => {
+                                if (event.key === Qt.Key_S
+                                        && (event.modifiers
+                                            & Qt.ControlModifier)) {
+                                    root.saveSourceEditor()
+                                    event.accepted = true
+                                }
+                            }
                             wrapMode: TextEdit.NoWrap
                             renderType: Text.QtRendering
                             color: Appearance.colors.colOnLayer1

@@ -735,6 +735,20 @@ for token in (
     "id: sourcePreviewHighlighter",
     "definition: Repository.definitionForName(",
     "theme: Appearance.syntaxHighlightingTheme",
+    "property string sourceDraft:",
+    "readonly property bool sourceEditorDirty:",
+    "readonly property bool sourceEditorCanSave:",
+    "function syncSourceEditorFromDisk(force: bool): void",
+    "function saveSourceEditor(): bool",
+    "function openSourceInNeovim(): bool",
+    'AppLauncher.commandFor("terminal")',
+    '"nvim", target',
+    'text: "Source Editor · " + root.sourcePath',
+    'buttonText: "Save source editor"',
+    'buttonText: "Open source in Neovim"',
+    "text: root.sourceDraft",
+    "readOnly: false",
+    "Keys.onPressed: event =>",
 ):
     if token not in page:
         fail("Code Workflow page missing IR integration " + token)
@@ -789,7 +803,10 @@ for token in ("codeWorkflowSubflowTargetId", "codeWorkflowNodeId"):
 
 if 'Node { targetId: "bar/media"' in page:
     fail("page still contains the old fixed component projection")
-if "setText(" in page or "setText(" in ir_service:
-    fail("read-only IR milestone must not write source")
+if "setText(" in ir_service:
+    fail("semantic IR service must remain source-read-only")
+if page.count("setText(") != 1 \
+        or "sourceDraftWriter.setText(root.sourceDraft)" not in page:
+    fail("Code Workflow editor may only stage its draft through sourceDraftWriter")
 
 print("ok - Code Workflow source-backed semantic IR contract")

@@ -12,7 +12,13 @@ internal = (ROOT / "services" / "InternalTodoBackend.qml").read_text(encoding="u
 required_ui = [
     'title: Translation.tr("Todo & Obsidian")',
     'Config.setNestedValue("todo.obsidian.vaultPath", value)',
+    'Config.setNestedValue("todo.obsidian.sourceMode", newValue)',
     'Config.setNestedValue("todo.obsidian.notePath", value)',
+    'Config.setNestedValue("todo.obsidian.dailyNote.folder", value)',
+    'Config.setNestedValue("todo.obsidian.dailyNote.format", value)',
+    'Config.setNestedValue("todo.obsidian.dailyNote.plannerHeading", value)',
+    'Config.setNestedValue("todo.obsidian.dailyNote.plannerHeadingLevel", value)',
+    'Config.setNestedValue("todo.obsidian.dailyNote.defaultDurationMinutes", value)',
     'Config.setNestedValue("todo.obsidian.preferTasksPlugin", checked)',
     'Config.setNestedValue("todo.obsidian.allowBasicOfflineMutation", checked)',
     '<!-- hadalis:todo:start -->',
@@ -35,6 +41,11 @@ required_ui = [
     'Translation.tr("Preview import")',
     'Translation.tr("Import & activate")',
     'Translation.tr("Use Obsidian note")',
+    'Translation.tr("Use Daily Notes")',
+    'Translation.tr("Daily Notes")',
+    'Translation.tr("Managed note")',
+    'Todo.obsidianSourceMode === "daily-note"',
+    'Translation.tr("Plugin independent · filesystem CAS · Day Planner-compatible Markdown")',
 ]
 for snippet in required_ui:
     assert snippet in services, f"Todo settings UI lost contract: {snippet}"
@@ -70,3 +81,7 @@ assert "if (root.noteFullPath.length > 0)" in backend
 assert "return root.noteFullPath" in backend
 
 print("Todo/Obsidian settings UI contract: PASS")
+
+assert 'enabled: Todo.backend !== "obsidian" && !Todo.obsidianBusy' in services
+assert services.count('visible: Todo.obsidianSourceMode !== "daily-note"') >= 4
+assert 'visible: Todo.obsidianSourceMode === "daily-note"' in services

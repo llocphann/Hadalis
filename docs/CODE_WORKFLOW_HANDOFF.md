@@ -310,13 +310,29 @@ External edits (including Neovim) therefore become explicit conflicts instead
 of silent overwrites. `Ctrl+S`, Revert and `Open in Neovim` are available in
 the pane header; Save is disabled while a Code Workflow transaction is dirty.
 
-Neovim-native editor direction: do not grow a parallel Vim implementation in
-QML. The current TextEdit editor is the bridge/fallback. A future embedded
-Neovim UI should launch `nvim --embed`, speak msgpack-RPC, attach through the
-Neovim UI protocol, and render/input the resulting editor grid in the Source
-pane. Until a PTY/RPC bridge and redraw-grid renderer exist, `Open in Neovim`
-uses Hadalis' configured terminal and the inline editor remains the safe local
-fallback.
+Neovim-native editor direction is now implemented as an initial embedded UI,
+not merely a roadmap. `CodeWorkflowNvim.qml` owns a long-lived bridge process
+that launches `nvim --embed`; `code-workflow-nvim-bridge.py` implements the
+required MessagePack-RPC subset without external Python dependencies, attaches
+with `ext_linegrid`, normalizes redraw batches, and streams JSONL frames back
+to Quickshell. `CodeWorkflowNvimView.qml` renders the grid with Canvas, forwards
+keyboard input and Neovim-authorized mouse events, resizes with the pane, honors
+highlight/default colors plus cursor shape/busy state, and preserves the nvim
+session when the user temporarily switches back to the inline guarded editor.
+Source switches are committed only after the nvim `:edit` RPC succeeds, so an
+unsaved buffer cannot silently desynchronize the source label from the actual
+buffer. Starting embedded nvim is also blocked while an inline draft/conflict
+or Code Workflow transaction is active.
+
+The dependency-free bridge has unit/static contracts plus
+`test-code-workflow-nvim-runtime.py`: on hosts with `nvim` installed it starts
+a hermetic embedded instance, waits for UI attach/frame delivery, sends real
+input, verifies a write, and verifies grid resize. This repository session has
+not executed those tests or a live Niri Settings run, so embedded nvim remains
+runtime-unqualified here. Current deliberate gaps are IME/composed-text handling,
+a dedicated host-clipboard paste path, blink timing, and Neovim extensions such
+as multigrid/externalized popupmenu/messages. The existing external
+`Open in Neovim` terminal action and inline editor remain fallbacks.
 
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment

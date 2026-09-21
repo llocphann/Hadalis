@@ -212,6 +212,10 @@ Item {
             outputName: CodeWorkflowSession.outputName,
             subflowTargetId: CodeWorkflowSession.subflowTargetId,
             nodeId: CodeWorkflowSession.selectedNodeId,
+            nodeLayoutOffset: CodeWorkflowSession.nodeLayoutOffset(
+                CodeWorkflowSession.subflowTargetId,
+                CodeWorkflowSession.selectedNodeId),
+            graphLayoutRevision: CodeWorkflowSession.graphLayoutRevision,
             edgeId: CodeWorkflowSession.selectedEdgeId,
             connectTargetId: CodeWorkflowSession.selectedConnectTargetId,
             semanticAnchor: CodeWorkflowSession.selectedSemanticAnchor,
@@ -263,7 +267,9 @@ Item {
             sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible,
             targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
             inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
-            sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight
+            sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
+            graphNodeLayoutOffsets: JSON.parse(JSON.stringify(
+                CodeWorkflowSession.graphNodeLayoutOffsets ?? ({})))
         }
         return JSON.stringify({ ok: true, status: root.captureHarnessStatus() })
     }
@@ -305,6 +311,9 @@ Item {
             Number(baseline.inspectorPaneWidth ?? 280)
         CodeWorkflowSession.sourcePreviewHeight =
             Number(baseline.sourcePreviewHeight ?? 190)
+        CodeWorkflowSession.graphNodeLayoutOffsets = JSON.parse(
+            JSON.stringify(baseline.graphNodeLayoutOffsets ?? ({})))
+        CodeWorkflowSession.graphLayoutRevision += 1
         CodeWorkflowSession.persist()
         root.inspectFilter = ""
         root.inspectShowInternals = false
@@ -349,6 +358,12 @@ Item {
             CodeWorkflowSession.inspectorPaneWidth = 380
             CodeWorkflowSession.sourcePreviewHeight = 260
             CodeWorkflowSession.sourcePreviewVisible = true
+            Qt.callLater(canvas.fitGraph)
+        } else if (scenario === "node-layout") {
+            root.selectTarget("bar/clock")
+            CodeWorkflowSession.setNodeLayoutOffset(
+                "bar/clock", "clock.hover", -120, 90)
+            CodeWorkflowSession.selectNode("clock.hover")
             Qt.callLater(canvas.fitGraph)
         } else if (scenario === "viewport-boundary") {
             root.selectTarget("bar")

@@ -73,6 +73,7 @@ for scenario in (
     "edge-readonly-binding",
     "connect-candidate",
     "pane-resize",
+    "node-layout",
     "viewport-boundary",
     "semantic-source",
 ):
@@ -105,8 +106,9 @@ for token in (
     'capture_step "06" "edge-readonly-binding" "edge-readonly-binding"',
     'capture_step "07" "connect-candidate" "connect-candidate"',
     'capture_step "08" "pane-resize" "pane-resize"',
-    'capture_step "09" "viewport-boundary" "viewport-boundary"',
-    'capture_step "10" "semantic-source"',
+    'capture_step "09" "node-layout" "node-layout"',
+    'capture_step "10" "viewport-boundary" "viewport-boundary"',
+    'capture_step "11" "semantic-source"',
     'tar -C "$OUT_PARENT" -czf "$ARCHIVE" "$BUNDLE_NAME"',
 ):
     require(capture_script, token,
@@ -133,6 +135,8 @@ require(capture_script, 'meta/route-diagnostics.json',
 require(capture_script, '"routeDiagnostics": latest.get("routeDiagnostics", {})',
         "capture route summary must preserve renderer diagnostics")
 for token in (
+    '"nodeLayoutOffset": latest.get("nodeLayoutOffset", {})',
+    '"graphLayoutRevision": latest.get("graphLayoutRevision")',
     '"canvasWidth": latest.get("canvasWidth")',
     '"canvasHeight": latest.get("canvasHeight")',
     '"panX": latest.get("panX")',
@@ -242,6 +246,14 @@ require(page, "Qt.SizeVerCursor : Qt.SizeHorCursor",
         "pane divider hover must advertise the correct resize cursor")
 require(page, "routeDiagnostics: canvas.routeDiagnostics()",
         "capture status must expose route quality metrics")
+require(page, "nodeLayoutOffset: CodeWorkflowSession.nodeLayoutOffset(",
+        "capture status must expose the selected node visual offset")
+require(page, "graphLayoutRevision: CodeWorkflowSession.graphLayoutRevision",
+        "capture status must expose visual layout revision")
+require(page, "graphNodeLayoutOffsets: JSON.parse(JSON.stringify(",
+        "capture baseline must snapshot session-only graph layout")
+require(page, "CodeWorkflowSession.graphLayoutRevision += 1",
+        "capture restore must invalidate graph layout bindings")
 for token in (
     "canvasWidth: canvas.width",
     "canvasHeight: canvas.height",

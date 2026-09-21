@@ -334,6 +334,29 @@ Item {
                     { x: x3, y: y3 }
                 ], false, direction))
             }
+
+            // If an intervening node blocks both horizontal stubs, switch to
+            // top/bottom ports and route through an outer horizontal lane.
+            const horizontalPortLanes = [
+                {
+                    sourceY: fromY,
+                    targetY: toY,
+                    laneY: bounds.minY - 52 - Math.abs(laneOffset) * 0.25
+                },
+                {
+                    sourceY: fromY + root.nodeHeight,
+                    targetY: toY + root.nodeHeight,
+                    laneY: bounds.maxY + 52 + Math.abs(laneOffset) * 0.25
+                }
+            ]
+            for (const portLane of horizontalPortLanes) {
+                candidates.push(root.routeFromPoints([
+                    { x: fromCenterX, y: portLane.sourceY },
+                    { x: fromCenterX, y: portLane.laneY },
+                    { x: toCenterX, y: portLane.laneY },
+                    { x: toCenterX, y: portLane.targetY }
+                ], false, direction))
+            }
         } else {
             const downward = toCenterY >= fromCenterY
             const direction = downward ? 1 : -1
@@ -373,6 +396,30 @@ Item {
                     { x: laneX, y: toStub },
                     { x: x3, y: toStub },
                     { x: x3, y: y3 }
+                ], true, direction))
+            }
+
+            // Same-column stacks can have an intermediate node directly in
+            // front of the top/bottom port. In that case, switch to a side
+            // port before taking the outer lane instead of drawing through it.
+            const verticalPortLanes = [
+                {
+                    sourceX: fromX,
+                    targetX: toX,
+                    laneX: bounds.minX - 52 - Math.abs(laneOffset) * 0.25
+                },
+                {
+                    sourceX: fromRight,
+                    targetX: toRight,
+                    laneX: bounds.maxX + 52 + Math.abs(laneOffset) * 0.25
+                }
+            ]
+            for (const portLane of verticalPortLanes) {
+                candidates.push(root.routeFromPoints([
+                    { x: portLane.sourceX, y: fromCenterY },
+                    { x: portLane.laneX, y: fromCenterY },
+                    { x: portLane.laneX, y: toCenterY },
+                    { x: portLane.targetX, y: toCenterY }
                 ], true, direction))
             }
         }

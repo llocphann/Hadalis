@@ -419,9 +419,21 @@ def main() -> None:
         "screenEdge?.physicalShadow?.size ?? 15",
         "screenEdge?.physicalShadow?.opacity ?? 0.70",
         "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
+        "fillColor: dockVisualBackground.irisFillColor",
+        "borderColor: dockVisualBackground.irisBorderColor",
+        "borderWidth: dockVisualBackground.irisBorderWidth",
+        "readonly property color irisFillColor:",
     ):
         check(token in dock,
               f"Dock iRiS Screen Edge / shadow contract missing: {token}")
+    for stale_corner_override in (
+        'topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius',
+        'topRightRadius: (root.isTop || root.position === "right") ? 0 : radius',
+        'bottomLeftRadius: (root.position === "bottom" || root.isLeft) ? 0 : radius',
+        'bottomRightRadius: (root.position === "bottom" || root.position === "right") ? 0 : radius',
+    ):
+        check(stale_corner_override not in dock,
+              f"Dock body must not overpaint iRiS weld fillets: {stale_corner_override}")
     check("StyledRectangularShadow {" not in dock,
           "Dock must not retain its detached local shadow after iRiS cutover")
     check(dock.count("duration: SurfaceMotion.duration") >= 4

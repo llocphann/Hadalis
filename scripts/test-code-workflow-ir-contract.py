@@ -272,7 +272,10 @@ if "RegExp" in ir_service or ".match(" in ir_service:
 
 for token in (
     "CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)",
-    "Shape.GeometryRenderer",
+    "Shape.CurveRenderer",
+    "antialiasing: true",
+    "function edgeStrokeWidth(selected: bool, highlighted: bool): real",
+    "return screenWidth / zoom",
     "id: edgePath",
     'root.graphExtent("x", 1050)',
     'root.graphExtent("y", 570)',

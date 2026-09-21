@@ -246,6 +246,17 @@ persistent = read("modules/common/Persistent.qml")
 
 if "import qs.modules.common.functions" not in canvas:
     fail("IR canvas must import ColorUtils helpers used by graph contrast")
+if "component GraphText: StyledText {" not in canvas:
+    fail("IR canvas must route transformed graph text through GraphText")
+if "renderType: Text.QtRendering" not in canvas:
+    fail("IR canvas GraphText must use Qt rendering under fractional zoom")
+world_start = canvas.index("    Item {\n        id: world")
+world_end = canvas.index("\n    Rectangle {\n        anchors.left: parent.left", world_start)
+world_block = canvas[world_start:world_end]
+if "StyledText {" in world_block:
+    fail("transformed graph world must not use Native-rendered StyledText directly")
+if "textRenderType: Text.QtRendering" not in world_block:
+    fail("graph MaterialSymbol text must use Qt rendering under world transforms")
 
 for token in (
     "defaults/code-workflow-ir.json",

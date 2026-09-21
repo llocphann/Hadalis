@@ -248,6 +248,25 @@ status also records requested *and actual* SplitView geometry, and the warning
 extractor now treats `Cannot assign to non-existent property` as a focused Code
 Workflow runtime failure so this class of regression cannot be reported clean.
 
+On `2026-09-22`, a follow-up P0 containment pass fixed graph content escaping
+the Code Workflow viewport. `CodeWorkflowIrCanvas` now hard-clips its root;
+edge hit testing rejects out-of-viewport coordinates; node/subflow pointer
+activation maps transformed coordinates back to the canvas; and the old
+edge-label `StyledToolTip` was replaced by one canvas-local, viewport-clamped
+HUD so tooltip fallback reparenting cannot paint into the toolbar or Source
+Preview. The capture harness now includes a deliberate `viewport-boundary`
+scenario and records canvas width/height plus pan/zoom state. Static contracts
+were updated to lock those invariants. A new live Niri capture is still required
+before calling this compositor-qualified.
+
+The same pass refined dense fan-out readability without changing IR semantics:
+lane spacing now scales from 8 to 10/12 world units for progressively denser
+source fan-outs, while keeping the existing lane cap and scoring order. Selected
+and hovered edges also render above sibling wires but below edge labels and
+nodes, preserving readable shared endpoint trunks. These changes remain within
+the existing `smooth-step-lane-v2` policy; manual reroute semantics are still
+deferred.
+
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment
 evidence. They predate the current scoped Code Workflow implementation above and

@@ -19,6 +19,10 @@ Item {
     property real fuseDepth: PerimeterTokens.irisFuseDepth
     property real externalFrameThickness: 10
     property real aaReach: 2
+    // Optional raster-only overlap into the primary owner. Geometry, input and
+    // shadow clipping stay on the real owner boundary; this only lets the iRiS
+    // field cover fractional-scale/antialias seams for callers that opt in.
+    property real ownerPaintOverlap: 0
 
     property bool joinTop: false
     property bool joinBottom: false
@@ -52,7 +56,7 @@ Item {
     visible: root.geometry?.valid === true
         && Number(root.geometry?.revealProgress ?? root.geometry?.progress ?? 0) > 0
 
-    function clipExternalOwners(raw) {
+    function clipExternalOwners(raw, primaryOverlap) {
         let left = Math.max(root.output.x, raw.x)
         let top = Math.max(root.output.y, raw.y)
         let right = Math.min(root.output.x + root.output.width,
@@ -61,14 +65,15 @@ Item {
             raw.y + raw.height)
 
         const seam = Number(root.geometry?.attachmentBoundary ?? 0)
+        const overlap = Math.max(0, Number(primaryOverlap ?? 0))
         if (root.geometry?.edge === "top")
-            top = Math.max(top, seam)
+            top = Math.max(top, seam - overlap)
         else if (root.geometry?.edge === "bottom")
-            bottom = Math.min(bottom, seam)
+            bottom = Math.min(bottom, seam + overlap)
         else if (root.geometry?.edge === "left")
-            left = Math.max(left, seam)
+            left = Math.max(left, seam - overlap)
         else if (root.geometry?.edge === "right")
-            right = Math.min(right, seam)
+            right = Math.min(right, seam + overlap)
 
         if (root.horizontal && root.tangentStartJoined)
             left = Math.max(left, root.output.x + root.frameThickness)
@@ -104,15 +109,17 @@ Item {
     }
 
     readonly property rect paintBounds:
-        root.clipExternalOwners(root.rawPaintBounds)
-    // Use the same owner exclusion for compositor input. At tangent clamps the
-    // SDF body deliberately welds underneath the physical Screen Edge.
+        root.clipExternalOwners(root.rawPaintBounds, root.ownerPaintOverlap)
+    // Input ownership never follows raster seam overlap. At tangent clamps the
+    // SDF body deliberately welds underneath the physical Screen Edge, while
+    // compositor input remains clipped to the real owner boundary.
     readonly property rect visibleBodyRect:
-        root.clipExternalOwners(root.body)
+        root.clipExternalOwners(root.body, 0)
 
     // Tangent joins use the same weld rule as direct edge adapters: only the
-    // SDF record extends underneath a physical Screen Edge. The visible body,
-    // content, input region and shadow all remain on the real inner boundary.
+    // SDF record extends underneath a physical Screen Edge. Content, input and
+    // shadow remain on the real inner boundary; opted-in field paint may cover
+    // only a tiny antialias seam at the primary owner.
     // This fixes corner-clamped Bar popups where moving the whole body under the
     // owner clipped away one of the two visible contact fillets.
     readonly property rect sdfBodyRect: {
@@ -264,7 +271,7 @@ Item {
         root.body.width + root.shadowTextureExtent * 2,
         root.body.height + root.shadowTextureExtent * 2)
     readonly property rect shadowPaintBounds:
-        root.clipExternalOwners(root.rawShadowBounds)
+        root.clipExternalOwners(root.rawShadowBounds, 0)
 
     Item {
         id: shadowTextureSource

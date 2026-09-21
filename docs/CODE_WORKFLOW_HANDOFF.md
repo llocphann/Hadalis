@@ -33,8 +33,10 @@ the parser/transaction safety model or unrelated shell runtime:
   `LIVE · RESIDENT`, unloaded targets report `UNLOADED · STATIC SOURCE`, and
   parser `UNAVAILABLE`/`ERROR` state includes the analyzer reason such as
   `grammar-missing`.
-- The **Fit graph** control uses actual canvas/world extents instead of one
-  hard-coded pan/zoom tuple, and entering a new subflow schedules the same fit.
+- The **Fit graph** control uses actual node/edge bounds instead of the minimum
+  pannable world size or one hard-coded pan/zoom tuple. Backward-edge Bézier
+  controls are included in the fit bounds, and entering a new subflow schedules
+  the same fit.
 - Every valid source-backed IR edge is now selectable for inspection. This does
   not widen mutation authority: preview/write affordances remain gated to the
   existing reviewed edge subsets, while ordinary structure/lifecycle/action/data
@@ -49,6 +51,13 @@ the parser/transaction safety model or unrelated shell runtime:
 - Edge selection is the primary Inspector object when an edge is selected: the
   header follows the edge label/kind while the destination node/runtime remains
   supporting context.
+- Edge geometry is direction-aware. The reviewed IR currently contains backward
+  edges in Media and Resources; renderer endpoints, cubic controls, hit-testing,
+  arrowheads and labels now use the same left/right routing convention.
+- Narrow Settings layouts use a compact toolbar mode: nonessential status pills
+  are hidden and toolbar buttons become icon-only while retaining tooltips.
+- Source Preview range reveal clamps parser offsets before selection and does not
+  move the cursor afterward, preserving the visible selected evidence range.
 
 - Static regression contracts in
   `scripts/test-code-workflow-ir-contract.py` and

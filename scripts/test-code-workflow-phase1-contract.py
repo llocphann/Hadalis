@@ -144,6 +144,12 @@ require(page, "target: CodeWorkflowSession",
         "Targets must react to shared session selection changes")
 require(page, "targetList.positionViewAtIndex(index, ListView.Contain)",
         "Targets must scroll the selected item into view")
+require(page, "const targetGraph = CodeWorkflowIr.graphFor(id)",
+        "runtime target selection must resolve its graph root explicitly")
+require(page, "const runtimeOwnsRoot = id === rootNodeId",
+        "graph root and runtime row must not both claim primary selection")
+require(page, "&& !runtimeOwnsRoot",
+        "child graph selection must remain uniquely revealable in Targets")
 require(page, 'mainText: "Fit graph"',
         "graph fit control must describe its actual behavior")
 require(page, "onClicked: canvas.fitGraph()",

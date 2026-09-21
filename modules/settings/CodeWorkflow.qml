@@ -49,21 +49,39 @@ Item {
     }
     readonly property var inspectTargets: {
         const items = []
+        const runtimeItems = []
+        const graphItems = []
+        const semanticItems = []
         const query = root.inspectFilter.trim().toLowerCase()
 
-        const append = item => {
+        const append = (bucket, item) => {
             const haystack = (
                 String(item.label ?? "") + " "
                 + String(item.detail ?? "") + " "
                 + String(item.id ?? "")
             ).toLowerCase()
             if (query.length === 0 || haystack.includes(query))
+                bucket.push(item)
+        }
+
+        const appendSection = (id, label, icon, detail, bucket) => {
+            if (bucket.length === 0)
+                return
+            items.push({
+                category: "section",
+                id: "section/" + id,
+                label: label,
+                detail: String(bucket.length) + " " + detail,
+                icon: icon,
+                depth: 0
+            })
+            for (const item of bucket)
                 items.push(item)
         }
 
         for (const target of CodeWorkflowRuntime.catalog) {
             const rowRecord = root.recordFor(target.targetId)
-            append({
+            append(runtimeItems, {
                 category: "runtime",
                 id: target.targetId,
                 label: target.label,
@@ -77,7 +95,7 @@ Item {
         }
 
         for (const node of (root.graph?.nodes ?? [])) {
-            append({
+            append(graphItems, {
                 category: "graph",
                 id: String(node.id ?? ""),
                 label: String(node.title ?? node.id ?? "Node"),
@@ -111,7 +129,7 @@ Item {
             else
                 label = kind
 
-            append({
+            append(semanticItems, {
                 category: "semantic",
                 id: String(entry.anchor ?? ""),
                 label: label,
@@ -124,6 +142,13 @@ Item {
                 depth: root.semanticEntryDepth(entry)
             })
         }
+
+        appendSection(
+            "runtime", "Runtime", "memory", "targets", runtimeItems)
+        appendSection(
+            "graph", "Workflow graph", "account_tree", "nodes", graphItems)
+        appendSection(
+            "semantic", "Parsed QML", "code", "elements", semanticItems)
         return items
     }
     readonly property var selectedIrNode:
@@ -1199,25 +1224,36 @@ Item {
                             required property var modelData
                             readonly property bool selected:
                                 root.inspectTargetSelected(modelData)
+                            readonly property bool section:
+                                modelData.category === "section"
 
                             width: targetList.width
-                            height: modelData.category === "runtime" ? 54 : 48
+                            height: section
+                                ? 44
+                                : modelData.category === "runtime" ? 54 : 48
                             radius: Appearance.rounding.small
                             color: selected
                                 ? Appearance.colors.colPrimaryContainer
-                                : "transparent"
+                                : section
+                                    ? Appearance.colors.colLayer2
+                                    : "transparent"
                             border.width: selected ? 1 : 0
                             border.color: Appearance.colors.colPrimary
                             clip: true
 
                             TapHandler {
+                                enabled: !targetRow.section
                                 onTapped: root.inspectTarget(targetRow.modelData)
                             }
 
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: 8
-                                    + Number(targetRow.modelData.depth ?? 0) * 12
+                                    + (targetRow.section
+                                        ? 0
+                                        : Number(
+                                            targetRow.modelData.depth ?? 0)
+                                            * 12)
                                 anchors.rightMargin: 8
                                 spacing: 7
                                 MaterialSymbol {
@@ -1225,7 +1261,9 @@ Item {
                                     iconSize: Appearance.font.pixelSize.normal
                                     color: targetRow.selected
                                         ? Appearance.colors.colOnPrimaryContainer
-                                        : Appearance.colors.colOnLayer1
+                                        : targetRow.section
+                                            ? Appearance.colors.colSubtext
+                                            : Appearance.colors.colOnLayer1
                                 }
                                 ColumnLayout {
                                     Layout.fillWidth: true
@@ -1242,7 +1280,9 @@ Item {
                                             ? Appearance.colors.colOnPrimaryContainer
                                             : Appearance.colors.colOnLayer1
                                         font.pixelSize: Appearance.font.pixelSize.small
-                                        font.weight: Font.Medium
+                                        font.weight: targetRow.section
+                                            ? Font.DemiBold
+                                            : Font.Medium
                                         elide: Text.ElideRight
                                         maximumLineCount: 1
                                     }

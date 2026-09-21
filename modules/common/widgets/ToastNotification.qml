@@ -16,14 +16,14 @@ Item {
     property int duration: 3000
     property string source: "system" // "quickshell" or "niri"
     property color accentColor: Appearance.colors.colPrimary
-    property bool copied: false
+    // Connected hosts provide the outer iRiS plate/shadow. Keep this component\n    // as the interactive/content layer so reload toasts can become one attached block.\n    property bool connectedSurface: false\n    property bool copied: false
 
     signal dismissed()
     signal copyRequested()
 
     implicitWidth: card.width
     implicitHeight: card.height
-    layer.enabled: Appearance.effectsEnabled
+    layer.enabled: Appearance.effectsEnabled && !root.connectedSurface
 
     GlassBackground {
         id: card
@@ -31,10 +31,11 @@ Item {
         width: contentLayout.implicitWidth + 32
         height: contentLayout.implicitHeight + 20
         radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-        fallbackColor: Appearance.colors.colLayer1
-        inirColor: Appearance.inir.colLayer2
+        fallbackColor: root.connectedSurface ? "transparent" : Appearance.colors.colLayer1
+        inirColor: root.connectedSurface ? "transparent" : Appearance.inir.colLayer2
         auroraTransparency: Appearance.aurora.popupTransparentize
-        border.width: 1
+        wallpaperBackdropEnabled: !root.connectedSurface
+        border.width: root.connectedSurface ? 0 : 1
         border.color: root.isError ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError) : (Appearance.angelEverywhere ? Appearance.angel.colBorder : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : Appearance.colors.colOutlineVariant)
         Component.onCompleted: progressAnim.start()
 

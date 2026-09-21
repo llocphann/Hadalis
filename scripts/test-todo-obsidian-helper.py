@@ -58,6 +58,17 @@ not a task
         self.assertTrue(tasks[1]["done"])
         self.assertFalse(tasks[3]["done"])
 
+    def test_plus_marker_and_uppercase_done_status_are_supported(self):
+        _, _, result = self.scan(
+            "<!-- hadalis:todo:start -->\n"
+            "+ [ ] plus marker\n"
+            "- [X] uppercase done\n"
+            "<!-- hadalis:todo:end -->\n"
+        )
+        self.assertEqual([task["listMarker"] for task in result["tasks"]], ["+", "-"])
+        self.assertEqual([task["done"] for task in result["tasks"]], [False, True])
+        self.assertEqual([task["statusType"] for task in result["tasks"]], ["TODO", "DONE"])
+
     def test_duplicate_text_has_distinct_ephemeral_ids(self):
         _, _, result = self.scan(
             """<!-- hadalis:todo:start -->

@@ -743,6 +743,18 @@ Item {
             anchor)
     }
 
+    function reconcileSemanticInspectSelection(): void {
+        const selectedAnchor = CodeWorkflowSession.selectedSemanticAnchor
+        if (selectedAnchor.length === 0
+                || !root.analyzerMatchesSource
+                || CodeWorkflowAnalyzer.status !== "ready")
+            return
+        const stillExists = root.parsedSemanticEntries.some(entry =>
+            String(entry.anchor ?? "") === selectedAnchor)
+        if (!stillExists)
+            CodeWorkflowSession.selectSemantic("")
+    }
+
     function previewLiteral(nextValue: string): void {
         if (!root.literalPreviewEligible)
             return
@@ -977,8 +989,10 @@ Item {
     Connections {
         target: CodeWorkflowAnalyzer
         function onStatusChanged(): void {
-            if (CodeWorkflowAnalyzer.status === "ready")
+            if (CodeWorkflowAnalyzer.status === "ready") {
+                Qt.callLater(root.reconcileSemanticInspectSelection)
                 Qt.callLater(root.captureSemanticAnchor)
+            }
             Qt.callLater(root.evaluatePreApplyGate)
         }
     }

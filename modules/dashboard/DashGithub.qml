@@ -82,7 +82,9 @@ DashCard {
         visible: root.username.length > 0
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: root.compact ? 4 : 6
+        // The contribution map is the primary visual. Keep chrome and summary
+        // compact so resized Dashboard slots give most of their height to it.
+        spacing: root.compact ? 2 : 4
 
         readonly property bool roomy: root.height >= 150
 
@@ -92,14 +94,14 @@ DashCard {
         RowLayout {
             visible: contributionContent.roomy
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 6
 
             RowLayout {
-                spacing: 7
+                spacing: 6
 
                 Rectangle {
-                    implicitWidth: 28
-                    implicitHeight: 28
+                    implicitWidth: 24
+                    implicitHeight: 24
                     radius: Appearance.rounding.full
                     color: ColorUtils.applyAlpha(root.colAccent, 0.10)
                     border.width: 1
@@ -124,8 +126,8 @@ DashCard {
             Item { Layout.fillWidth: true }
 
             Rectangle {
-                implicitWidth: periodLabel.implicitWidth + 20
-                implicitHeight: 26
+                implicitWidth: periodLabel.implicitWidth + 16
+                implicitHeight: 22
                 radius: Appearance.rounding.full
                 color: ColorUtils.applyAlpha(Appearance.colors.colLayer2, 0.72)
                 border.width: 1
@@ -152,7 +154,7 @@ DashCard {
                     ? root.total.toLocaleString(Qt.locale(), 'f', 0)
                     : (root.fetching ? "…" : "—")
                 font.pixelSize: Appearance.font.pixelSize.title
-                    * (contributionContent.roomy ? 1.65 : 1.35)
+                    * (contributionContent.roomy ? 1.20 : 1.05)
                 font.family: Appearance.font.family.numbers
                 font.weight: Font.DemiBold
                 color: root.colAccent
@@ -162,11 +164,9 @@ DashCard {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
                 horizontalAlignment: Text.AlignHCenter
-                text: Translation.tr("contributions in the last year")
+                text: Translation.tr("contributions · last year")
                     + "  ·  @" + root.username
-                font.pixelSize: contributionContent.roomy
-                    ? Appearance.font.pixelSize.small
-                    : Appearance.font.pixelSize.smaller
+                font.pixelSize: Appearance.font.pixelSize.smaller
                 font.weight: Font.Medium
                 color: root.colSubtext
                 elide: Text.ElideRight
@@ -178,9 +178,9 @@ DashCard {
             visible: root.hasData
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 34
-            Layout.preferredHeight: contributionContent.roomy ? 82 : 54
-            Layout.topMargin: contributionContent.roomy ? 4 : 2
+            Layout.minimumHeight: 48
+            Layout.preferredHeight: contributionContent.roomy ? 112 : 72
+            Layout.topMargin: contributionContent.roomy ? 2 : 1
 
             radius: Math.max(Appearance.rounding.small, 8)
             color: ColorUtils.applyAlpha(Appearance.colors.colLayer2, 0.28)
@@ -191,7 +191,7 @@ DashCard {
             Canvas {
                 id: heatmap
                 anchors.fill: parent
-                anchors.margins: contributionContent.roomy ? 10 : 7
+                anchors.margins: contributionContent.roomy ? 6 : 4
 
                 readonly property color cellColor: root.colAccent
                 readonly property color emptyColor: root.inirEverywhere
@@ -221,7 +221,7 @@ DashCard {
                         contributionContent.roomy ? 11 : 9,
                         width / Math.max(1, cols),
                         height / 7))
-                    const gap = Math.max(1, Math.min(2, pitch * 0.22))
+                    const gap = Math.max(0.75, Math.min(1.5, pitch * 0.18))
                     const cell = Math.max(1.5, pitch - gap)
                     const gridWidth = cols * pitch - gap
                     const gridHeight = 7 * pitch - gap

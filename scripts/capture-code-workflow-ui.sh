@@ -369,6 +369,13 @@ Privacy:
   script fullscreens that Settings window. The bundle stores only the selected
   Settings window's Niri window record rather than the full window list.
 
+Runtime scope:
+  This runner launches standalone settings.qml. That process has isolated
+  Quickshell singletons, so live shell runtime records/picker can legitimately
+  appear as UNLOADED / STATIC SOURCE. The bundle validates rendering, target
+  navigation, graph geometry, source preview and parser capability; live picker
+  acceptance still requires an in-shell/overlay run.
+
 State safety:
   Code Workflow session state is snapshotted through the opt-in capture harness
   and restored before packaging. No source mutation or Apply action is invoked.

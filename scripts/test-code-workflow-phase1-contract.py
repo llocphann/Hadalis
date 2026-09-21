@@ -47,6 +47,12 @@ require(page, "property string inspectedSemanticAnchor:", "inspect mode must tra
 require(page, "CodeWorkflowAnalyzer.result?.entries", "inspect mode must expose parser semantic entries")
 require(page, "model: root.inspectTargets", "Targets must include runtime, graph and parsed QML elements")
 require(page, "Appearance.colors.colOnPrimaryContainer", "selected inspect targets need contrast-safe foreground")
+require(page, "readonly property bool compactHeader:",
+        "Code Workflow header must expose a narrow-layout mode")
+require(page, "mainText: root.compactHeader",
+        "toolbar buttons must collapse to icon-only in compact mode")
+require(page, 'text: "Fit graph to viewport"',
+        "compact graph controls must retain discoverable tooltips")
 require(page, "StyledFlickable {", "Inspector must scroll instead of overflowing its panel")
 require(page, "contentHeight: inspectorColumn.implicitHeight + 12", "Inspector scroll extent must follow content")
 require(page, "inspectedSemanticRangeText", "parsed QML targets must expose source range evidence")

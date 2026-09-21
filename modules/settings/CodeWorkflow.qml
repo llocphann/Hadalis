@@ -1286,6 +1286,12 @@ Item {
                             readonly property bool section:
                                 modelData.category === "section"
 
+                            function activateRow(): void {
+                                if (targetRow.section)
+                                    return
+                                root.inspectTarget(targetRow.modelData)
+                            }
+
                             width: targetList.width
                             height: section
                                 ? 44
@@ -1296,13 +1302,40 @@ Item {
                                 : section
                                     ? Appearance.colors.colLayer2
                                     : "transparent"
-                            border.width: selected ? 1 : 0
+                            border.width: selected
+                                ? 1
+                                : activeFocus && !section ? 1 : 0
                             border.color: Appearance.colors.colPrimary
                             clip: true
+                            activeFocusOnTab: !section
+
+                            Accessible.role: section
+                                ? Accessible.StaticText
+                                : Accessible.Button
+                            Accessible.name: String(modelData.label ?? "")
+                            Accessible.description:
+                                String(modelData.detail ?? "")
+                            Accessible.focusable: !section
+                            Accessible.onPressAction: targetRow.activateRow()
 
                             TapHandler {
                                 enabled: !targetRow.section
-                                onTapped: root.inspectTarget(targetRow.modelData)
+                                onTapped: {
+                                    targetRow.activateRow()
+                                    targetRow.forceActiveFocus()
+                                }
+                            }
+
+                            Keys.onPressed: event => {
+                                if (targetRow.section
+                                        || (event.key !== Qt.Key_Return
+                                            && event.key !== Qt.Key_Enter
+                                            && event.key !== Qt.Key_Space)) {
+                                    event.accepted = false
+                                    return
+                                }
+                                targetRow.activateRow()
+                                event.accepted = true
                             }
 
                             RowLayout {

@@ -401,6 +401,92 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         self.assertTrue(result["tasks"][0]["done"])
         self.assertEqual(len(calls), 2)
 
+    def test_recurring_tasks_transform_can_expand_one_line_to_two(self):
+        vault, note = self.make_vault(
+            "<!-- hadalis:todo:start -->\n"
+            "- [ ] repeat 🔁 every day\n"
+            "<!-- hadalis:todo:end -->\n"
+        )
+        scan = obsidian_tasks.obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")
+        self.patch("_obsidian_running", lambda: True)
+        self.patch("_find_cli", lambda: "/fake/obsidian")
+        capability = {
+            "vaultPath": str(vault.resolve()),
+            "tasksPluginEnabled": True,
+            "tasksApiAvailable": True,
+            "settings": {},
+        }
+
+        def fake_cli(_cli, args, _timeout):
+            code = next(arg[5:] for arg in args if arg.startswith("code="))
+            if "app.vault.process(file" not in code:
+                return subprocess.CompletedProcess(
+                    ["obsidian"], 0,
+                    stdout="=> " + json.dumps(capability), stderr=""
+                )
+            current = note.read_text(encoding="utf-8")
+            note.write_text(
+                current.replace(
+                    "- [ ] repeat 🔁 every day",
+                    "- [x] repeat 🔁 every day ✅ 2026-09-22\n"
+                    "- [ ] repeat 🔁 every day 📅 2026-09-23",
+                ),
+                encoding="utf-8",
+            )
+            return subprocess.CompletedProcess(["obsidian"], 0, stdout="", stderr="")
+
+        self.patch("_run_cli", fake_cli)
+        result = obsidian_tasks.toggle_tasks_task(
+            str(vault),
+            "Hadalis/Todo.md",
+            scan["tasks"][0]["id"],
+            scan["document"]["sha256"],
+        )
+        self.assertTrue(result["verified"])
+        self.assertEqual(len(result["tasks"]), 2)
+        self.assertTrue(result["tasks"][0]["done"])
+        self.assertFalse(result["tasks"][1]["done"])
+
+    def test_on_completion_delete_can_transform_one_line_to_zero(self):
+        vault, note = self.make_vault(
+            "<!-- hadalis:todo:start -->\n"
+            "- [ ] delete me 🏁 delete\n"
+            "<!-- hadalis:todo:end -->\n"
+        )
+        scan = obsidian_tasks.obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")
+        self.patch("_obsidian_running", lambda: True)
+        self.patch("_find_cli", lambda: "/fake/obsidian")
+        capability = {
+            "vaultPath": str(vault.resolve()),
+            "tasksPluginEnabled": True,
+            "tasksApiAvailable": True,
+            "settings": {},
+        }
+
+        def fake_cli(_cli, args, _timeout):
+            code = next(arg[5:] for arg in args if arg.startswith("code="))
+            if "app.vault.process(file" not in code:
+                return subprocess.CompletedProcess(
+                    ["obsidian"], 0,
+                    stdout="=> " + json.dumps(capability), stderr=""
+                )
+            current = note.read_text(encoding="utf-8")
+            note.write_text(
+                current.replace("- [ ] delete me 🏁 delete\n", ""),
+                encoding="utf-8",
+            )
+            return subprocess.CompletedProcess(["obsidian"], 0, stdout="", stderr="")
+
+        self.patch("_run_cli", fake_cli)
+        result = obsidian_tasks.toggle_tasks_task(
+            str(vault),
+            "Hadalis/Todo.md",
+            scan["tasks"][0]["id"],
+            scan["document"]["sha256"],
+        )
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["tasks"], [])
+
     def test_unchanged_file_is_not_accepted_as_mutation_success(self):
         vault, _ = self.make_vault()
         scan = obsidian_tasks.obsidian_todo.scan_note(str(vault), "Hadalis/Todo.md")

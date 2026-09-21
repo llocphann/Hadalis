@@ -34,6 +34,14 @@ Scope {
         Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
     readonly property color edgeShadowColor:
         Qt.alpha(Appearance.m3colors.m3shadow, root.edgeShadowOpacity)
+    // When a real top Bar owns the attachment edge, keep the toast's right
+    // side free instead of welding it into the physical right Screen Edge.
+    // Leave enough room for the iRiS fuse/AA reach so it cannot visually touch
+    // that tangent owner. If the Bar is elsewhere, the toast falls back to the
+    // top-right Screen Edge corner and intentionally joins the right frame.
+    readonly property real topBarFreeRightInset: Math.max(
+        PerimeterTokens.irisFuseDepth + 2,
+        root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0)
     readonly property real edgeDecorationMargin: Math.max(
         8,
         PerimeterTokens.irisFuseDepth,
@@ -245,7 +253,11 @@ Scope {
                 alignment: "end"
                 outputRect: Qt.rect(0, 0, popup.width, popup.height)
                 anchorRect: Qt.rect(
-                    Math.max(0, popup.width - root.screenEdgeThickness - 1),
+                    Math.max(0,
+                        popup.width
+                        - root.screenEdgeThickness
+                        - (root.topBarOwnsEdge ? root.topBarFreeRightInset : 0)
+                        - 1),
                     0,
                     1,
                     root.topOwnerThickness)
@@ -280,8 +292,12 @@ Scope {
                         && root.edgeShadowOpacity > 0
                     shadowExtent: root.edgeShadowSize
                     shadowColor: root.edgeShadowColor
+                    // Primary top owner is Bar when it is actually
+                    // present at the top; otherwise it is the top Screen Edge.
+                    // Only the Screen-Edge fallback is allowed to weld into the
+                    // tangent right frame.
                     joinTop: true
-                    joinRight: true
+                    joinRight: !root.topBarOwnsEdge
                 }
 
                 ConnectedSurfaceContentHost {

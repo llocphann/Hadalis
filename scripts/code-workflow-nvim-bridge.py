@@ -483,7 +483,8 @@ class Bridge:
             if not isinstance(packed_event, list) or not packed_event:
                 continue
             name = str(packed_event[0])
-            calls = packed_event[1:] or ([[]] if name == "flush" else [])
+            calls = packed_event[1:] or (
+                [[]] if name in ("flush", "mouse_on", "mouse_off") else [])
             for args in calls:
                 if not isinstance(args, list):
                     args = []

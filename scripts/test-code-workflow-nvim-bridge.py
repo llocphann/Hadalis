@@ -60,6 +60,19 @@ assert meta_frame["dirtyRows"] == []
 assert meta_frame["cursorRow"] == 2 and meta_frame["cursorCol"] == 4
 assert meta_frame["mode"] == "normal"
 
+# No-argument redraw events must still be dispatched by the batched protocol.
+bridge_ui = mod.UiState(6, 4)
+batch = [["mouse_on"], ["flush"]]
+flush_seen = False
+for packed_event in batch:
+    name = str(packed_event[0])
+    calls = packed_event[1:] or (
+        [[]] if name in ("flush", "mouse_on", "mouse_off") else [])
+    for args in calls:
+        flush_seen = bridge_ui.event(name, args) or flush_seen
+assert flush_seen is True
+assert bridge_ui.frame()["mouseEnabled"] is True
+
 ui.event("mouse_on", [])
 assert ui.event("flush", [])
 mouse_frame = ui.frame()

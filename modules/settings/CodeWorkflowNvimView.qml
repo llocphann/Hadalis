@@ -63,7 +63,7 @@ Item {
     }
 
     function escapeInputText(text: string): string {
-        return String(text ?? "").replaceAll("<", "<lt>")
+        return String(text ?? "").replace(/</g, "<lt>")
     }
 
     function eventKeyName(key: int): string {

@@ -274,6 +274,7 @@ class UiState:
         self.changed_highlights: dict[int, dict[str, Any]] = {}
         self.dirty_rows: set[int] = set(range(self.rows))
         self.defaults_dirty = True
+        self.meta_dirty = True
         self.revision = 0
 
     def resize(self, cols: int, rows: int) -> None:
@@ -290,6 +291,7 @@ class UiState:
         self.cursor_row = min(self.cursor_row, rows - 1)
         self.cursor_col = min(self.cursor_col, cols - 1)
         self.dirty_rows.update(range(rows))
+        self.meta_dirty = True
 
     def clear(self) -> None:
         self.grid = [_blank_row(self.cols) for _ in range(self.rows)]
@@ -350,6 +352,7 @@ class UiState:
         elif name == "grid_cursor_goto" and len(args) >= 3 and int(args[0]) == 1:
             self.cursor_row = max(0, min(self.rows - 1, int(args[1])))
             self.cursor_col = max(0, min(self.cols - 1, int(args[2])))
+            self.meta_dirty = True
         elif name == "hl_attr_define" and len(args) >= 2:
             hl_id = int(args[0])
             attrs = dict(args[1] or {})
@@ -362,10 +365,14 @@ class UiState:
             self.defaults_dirty = True
         elif name == "mode_change" and args:
             self.mode = str(args[0])
+            self.meta_dirty = True
         return name == "flush"
 
     def frame(self) -> dict[str, Any] | None:
-        if not self.dirty_rows and not self.changed_highlights and not self.defaults_dirty:
+        if (not self.dirty_rows
+                and not self.changed_highlights
+                and not self.defaults_dirty
+                and not self.meta_dirty):
             return None
         self.revision += 1
         rows = [
@@ -396,6 +403,7 @@ class UiState:
         self.dirty_rows.clear()
         self.changed_highlights.clear()
         self.defaults_dirty = False
+        self.meta_dirty = False
         return frame
 
 
@@ -422,6 +430,7 @@ class Bridge:
         self.selector = selectors.DefaultSelector()
         self.next_msgid = 1
         self.pending: dict[int, str] = {}
+        self.command_buffer = bytearray()
         self.ready = False
         self.stopping = False
 
@@ -548,8 +557,11 @@ class Bridge:
                     if not raw:
                         self.stopping = True
                         break
-                    for line in raw.decode("utf-8", "replace").splitlines():
-                        line = line.strip()
+                    self.command_buffer.extend(raw)
+                    while b"\n" in self.command_buffer:
+                        raw_line, _, remainder = self.command_buffer.partition(b"\n")
+                        self.command_buffer = bytearray(remainder)
+                        line = raw_line.decode("utf-8", "replace").strip()
                         if not line:
                             continue
                         try:

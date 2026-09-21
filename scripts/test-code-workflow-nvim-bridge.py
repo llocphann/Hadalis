@@ -50,6 +50,16 @@ row1 = next(row for row in frame["dirtyRows"] if row["row"] == 1)
 assert row1["cells"][:4] == [["a", 7], ["b", 7], [" ", 0], [" ", 0]]
 assert frame["highlights"]["7"]["foreground"] == 0x00FF00
 
+# Cursor/mode-only flushes still need a frame even when no cells changed.
+ui.event("grid_cursor_goto", [1, 2, 4])
+ui.event("mode_change", ["normal", 0])
+assert ui.event("flush", [])
+meta_frame = ui.frame()
+assert meta_frame is not None
+assert meta_frame["dirtyRows"] == []
+assert meta_frame["cursorRow"] == 2 and meta_frame["cursorCol"] == 4
+assert meta_frame["mode"] == "normal"
+
 # Positive row scroll copies cells upward inside the end-exclusive region.
 ui = mod.UiState(3, 4)
 for row, char in enumerate(("a", "b", "c", "d")):

@@ -3730,18 +3730,28 @@ Item {
                         StyledToolTip { text: "Discard draft and reload from disk" }
                     }
                     RippleButtonWithIcon {
-                        buttonText: "Save source editor"
-                        visible: !root.sourceEditorUseNvim
+                        buttonText: root.sourceEditorUseNvim
+                            ? "Save Neovim buffer"
+                            : "Save source editor"
                         mainText: ""
                         materialIcon: "save"
-                        enabled: root.sourceEditorCanSave
-                        onClicked: root.saveSourceEditor()
+                        enabled: root.sourceEditorUseNvim
+                            ? CodeWorkflowNvim.ready
+                            : root.sourceEditorCanSave
+                        onClicked: {
+                            if (root.sourceEditorUseNvim)
+                                CodeWorkflowNvim.save()
+                            else
+                                root.saveSourceEditor()
+                        }
                         StyledToolTip {
-                            text: CodeWorkflowTransaction.dirty
-                                ? "Finish or discard the active Code Workflow transaction first"
-                                : root.sourceEditorConflict
-                                    ? "Reload or reconcile the external change before saving"
-                                    : "Save source · Ctrl+S"
+                            text: root.sourceEditorUseNvim
+                                ? "Write the active Neovim buffer"
+                                : CodeWorkflowTransaction.dirty
+                                    ? "Finish or discard the active Code Workflow transaction first"
+                                    : root.sourceEditorConflict
+                                        ? "Reload or reconcile the external change before saving"
+                                        : "Save source · Ctrl+S"
                         }
                     }
                     RippleButtonWithIcon {

@@ -34,6 +34,9 @@ Item {
     property string inspectFilter: ""
     property bool inspectShowInternals: false
     property bool inspectSelectionFromTargets: false
+    readonly property bool captureHarnessEnabled:
+        Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"
+    property var captureHarnessBaseline: null
     readonly property var parsedSemanticEntries:
         root.analyzerMatchesSource
             && CodeWorkflowAnalyzer.status === "ready"
@@ -199,6 +202,161 @@ Item {
             "semantic", "Parsed QML", "code", "elements", semanticItems)
         return items
     }
+    function captureHarnessStatus(): var {
+        return {
+            enabled: root.captureHarnessEnabled,
+            targetId: CodeWorkflowSession.selectedTargetId,
+            instanceId: CodeWorkflowSession.selectedInstanceId,
+            outputName: CodeWorkflowSession.outputName,
+            subflowTargetId: CodeWorkflowSession.subflowTargetId,
+            nodeId: CodeWorkflowSession.selectedNodeId,
+            edgeId: CodeWorkflowSession.selectedEdgeId,
+            connectTargetId: CodeWorkflowSession.selectedConnectTargetId,
+            semanticAnchor: CodeWorkflowSession.selectedSemanticAnchor,
+            filter: root.inspectFilter,
+            showInternals: root.inspectShowInternals,
+            sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible,
+            analyzerStatus: CodeWorkflowAnalyzer.status,
+            analyzerError: CodeWorkflowAnalyzer.error,
+            sourcePath: root.sourcePath,
+            panX: CodeWorkflowSession.panX,
+            panY: CodeWorkflowSession.panY,
+            zoom: CodeWorkflowSession.zoom
+        }
+    }
+
+    function captureHarnessBegin(): string {
+        if (!root.captureHarnessEnabled)
+            return JSON.stringify({ ok: false, error: "capture-harness-disabled" })
+        root.captureHarnessBaseline = {
+            selectedTargetId: CodeWorkflowSession.selectedTargetId,
+            selectedInstanceId: CodeWorkflowSession.selectedInstanceId,
+            outputName: CodeWorkflowSession.outputName,
+            subflowTargetId: CodeWorkflowSession.subflowTargetId,
+            selectedNodeId: CodeWorkflowSession.selectedNodeId,
+            selectedEdgeId: CodeWorkflowSession.selectedEdgeId,
+            selectedConnectTargetId: CodeWorkflowSession.selectedConnectTargetId,
+            selectedSemanticAnchor: CodeWorkflowSession.selectedSemanticAnchor,
+            semanticAnchor: CodeWorkflowSession.semanticAnchor,
+            semanticAnchorNodeId: CodeWorkflowSession.semanticAnchorNodeId,
+            panX: CodeWorkflowSession.panX,
+            panY: CodeWorkflowSession.panY,
+            zoom: CodeWorkflowSession.zoom,
+            sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible
+        }
+        return JSON.stringify({ ok: true, status: root.captureHarnessStatus() })
+    }
+
+    function captureHarnessRestore(): string {
+        const baseline = root.captureHarnessBaseline
+        if (!root.captureHarnessEnabled || baseline === null)
+            return JSON.stringify({ ok: false, error: "capture-baseline-missing" })
+
+        CodeWorkflowSession.selectedTargetId =
+            String(baseline.selectedTargetId ?? "bar")
+        CodeWorkflowSession.selectedInstanceId =
+            String(baseline.selectedInstanceId ?? "")
+        CodeWorkflowSession.outputName =
+            String(baseline.outputName ?? "")
+        CodeWorkflowSession.subflowTargetId =
+            String(baseline.subflowTargetId ?? "bar")
+        CodeWorkflowSession.selectedNodeId =
+            String(baseline.selectedNodeId ?? "")
+        CodeWorkflowSession.selectedEdgeId =
+            String(baseline.selectedEdgeId ?? "")
+        CodeWorkflowSession.selectedConnectTargetId =
+            String(baseline.selectedConnectTargetId ?? "")
+        CodeWorkflowSession.selectedSemanticAnchor =
+            String(baseline.selectedSemanticAnchor ?? "")
+        CodeWorkflowSession.semanticAnchor =
+            String(baseline.semanticAnchor ?? "")
+        CodeWorkflowSession.semanticAnchorNodeId =
+            String(baseline.semanticAnchorNodeId ?? "")
+        CodeWorkflowSession.setViewport(
+            Number(baseline.panX ?? 32),
+            Number(baseline.panY ?? 28),
+            Number(baseline.zoom ?? 1))
+        CodeWorkflowSession.sourcePreviewVisible =
+            baseline.sourcePreviewVisible !== false
+        CodeWorkflowSession.persist()
+        root.inspectFilter = ""
+        root.inspectShowInternals = false
+        root.captureHarnessBaseline = null
+        return JSON.stringify({ ok: true, status: root.captureHarnessStatus() })
+    }
+
+    function captureHarnessScenario(name: string): string {
+        if (!root.captureHarnessEnabled)
+            return JSON.stringify({ ok: false, error: "capture-harness-disabled" })
+
+        const scenario = String(name ?? "")
+        root.inspectFilter = ""
+        root.inspectShowInternals = false
+        CodeWorkflowSession.sourcePreviewVisible = false
+
+        if (scenario === "overview") {
+            root.selectTarget("bar")
+            Qt.callLater(canvas.fitGraph)
+        } else if (scenario === "filter-input") {
+            root.selectTarget("bar")
+            Qt.callLater(() => targetFilter.forceActiveFocus())
+        } else if (scenario === "filter-sidebar") {
+            root.selectTarget("bar")
+            root.inspectFilter = "sidebar"
+            Qt.callLater(root.revealSelectedInspectTarget)
+        } else if (scenario === "edge-detour") {
+            root.selectTarget("bar/resources")
+            CodeWorkflowSession.selectEdge("resources.action.keepAlive")
+            Qt.callLater(canvas.revealPrimarySelection)
+        } else if (scenario === "edge-readonly-binding") {
+            root.selectTarget("bar/media")
+            CodeWorkflowSession.selectEdge("media.data.player")
+            Qt.callLater(canvas.revealPrimarySelection)
+        } else if (scenario === "connect-candidate") {
+            root.selectTarget("bar/clock")
+            CodeWorkflowSession.selectConnectTarget("clock.connect.rootVisible")
+            Qt.callLater(canvas.revealPrimarySelection)
+        } else if (scenario === "semantic-source") {
+            root.selectTarget("bar")
+            root.inspectShowInternals = true
+            CodeWorkflowSession.sourcePreviewVisible = true
+            if (CodeWorkflowAnalyzer.status !== "ready") {
+                root.requestAnalysis(true)
+                return JSON.stringify({
+                    ok: true,
+                    pending: true,
+                    status: root.captureHarnessStatus()
+                })
+            }
+            const entries = root.parsedSemanticEntries
+            const entry = entries.find(item =>
+                    String(item?.kind ?? "") === "opaque")
+                ?? entries.find(item =>
+                    String(item?.kind ?? "") === "pragma")
+                ?? entries.find(item =>
+                    String(item?.kind ?? "") === "binding")
+                ?? entries[0]
+                ?? null
+            if (entry !== null) {
+                CodeWorkflowSession.selectSemantic(
+                    String(entry.anchor ?? ""))
+                Qt.callLater(root.focusSourceAnchor)
+            }
+        } else {
+            return JSON.stringify({
+                ok: false,
+                error: "unknown-scenario",
+                scenario: scenario
+            })
+        }
+
+        return JSON.stringify({
+            ok: true,
+            scenario: scenario,
+            status: root.captureHarnessStatus()
+        })
+    }
+
     readonly property var selectedIrNode:
         CodeWorkflowIr.nodeFor(
             CodeWorkflowSession.subflowTargetId,
@@ -1083,6 +1241,25 @@ Item {
     onStoredSemanticAnchorChanged: {
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
+    }
+
+    Loader {
+        active: root.captureHarnessEnabled
+        sourceComponent: IpcHandler {
+            target: "codeWorkflowCapture"
+            function begin(): string {
+                return root.captureHarnessBegin()
+            }
+            function status(): string {
+                return JSON.stringify(root.captureHarnessStatus())
+            }
+            function scenario(name: string): string {
+                return root.captureHarnessScenario(name)
+            }
+            function restore(): string {
+                return root.captureHarnessRestore()
+            }
+        }
     }
 
     Connections {

@@ -611,6 +611,73 @@ def delete_task(
     return _mutation_result(vault_path, note_path, "delete")
 
 
+def migrate_internal_json(
+    vault_path: str,
+    note_path: str,
+    internal_json_path: str,
+    expected_document_sha: str,
+    expected_managed_sha: str,
+    global_filter: str = "",
+) -> dict[str, Any]:
+    """Copy the preserved internal Todo list into an empty managed section."""
+    doc = _load_document(vault_path, note_path)
+    _require_hashes(doc, expected_document_sha, expected_managed_sha)
+    if _managed_text(doc).strip():
+        raise TodoError(
+            "migration_target_not_empty",
+            "managed Todo section must be empty before importing the internal store",
+        )
+
+    try:
+        source = Path(internal_json_path).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise TodoError("migration_source_missing", f"cannot resolve internal Todo store: {exc}") from exc
+    if not source.is_file():
+        raise TodoError("migration_source_missing", "internal Todo store is not a regular file")
+
+    try:
+        payload = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise TodoError("migration_source_invalid", f"cannot read internal Todo store: {exc}") from exc
+    if not isinstance(payload, list):
+        raise TodoError("migration_source_invalid", "internal Todo store must contain a JSON list")
+
+    filter_text = str(global_filter or "").strip()
+    imported: list[tuple[str, bool]] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        if "\n" in content or "\r" in content or "\0" in content:
+            raise TodoError(
+                "migration_source_invalid",
+                "internal Todo contains a task that cannot be represented as one Markdown line",
+            )
+        if filter_text and filter_text not in content:
+            content = filter_text + " " + content
+        imported.append((content, item.get("done") is True))
+
+    if not imported:
+        result = _scan_payload(doc)
+        result["mutation"] = "migrate-internal"
+        result["migratedCount"] = 0
+        return result
+
+    newline = _preferred_newline(doc)
+    lines = list(doc["lines"])
+    lines[doc["endIndex"]:doc["endIndex"]] = [
+        "- [" + ("x" if done else " ") + "] " + content + newline
+        for content, done in imported
+    ]
+    _atomic_replace_if_unchanged(doc, _encode_document(doc, lines))
+    result = scan_note(vault_path, note_path)
+    result["mutation"] = "migrate-internal"
+    result["migratedCount"] = len(imported)
+    return result
+
+
 def _add_source_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--vault", required=True, help="physical Obsidian vault path")
     parser.add_argument("--note", required=True, help="Markdown path relative to vault")
@@ -647,6 +714,16 @@ def _build_parser() -> argparse.ArgumentParser:
     delete.add_argument("--id", required=True)
     delete.add_argument("--expected-document-sha", required=True)
 
+    migrate = subparsers.add_parser(
+        "migrate-internal",
+        help="copy internal Todo JSON into an empty managed section",
+    )
+    _add_source_args(migrate)
+    migrate.add_argument("--internal-json", required=True)
+    migrate.add_argument("--expected-document-sha", required=True)
+    migrate.add_argument("--expected-managed-sha", required=True)
+    migrate.add_argument("--global-filter", default="")
+
     return parser
 
 
@@ -674,6 +751,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "delete":
             payload = delete_task(
                 args.vault, args.note, args.id, args.expected_document_sha,
+            )
+        elif args.command == "migrate-internal":
+            payload = migrate_internal_json(
+                args.vault, args.note, args.internal_json,
+                args.expected_document_sha, args.expected_managed_sha,
+                args.global_filter,
             )
         else:
             raise TodoError("unsupported_command", f"unsupported command: {args.command}")

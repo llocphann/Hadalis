@@ -651,13 +651,23 @@ Item {
                     ? root.cubicCoordinate(
                         route.y0, route.y1, route.y2, route.y3, 0.5)
                     : 0
+                readonly property real horizontalGap:
+                    route && !route.vertical
+                        ? Math.abs(route.x3 - route.x0)
+                        : 150
+                readonly property real labelWidthLimit:
+                    route && !route.vertical
+                        ? Math.max(24, horizontalGap - 12)
+                        : 150
 
                 visible: fromNode !== null
                     && toNode !== null
                     && String(modelData.label ?? "").length > 0
                 x: midX - width / 2
                 y: midY - height / 2
-                implicitWidth: Math.min(150,
+                implicitWidth: Math.min(
+                    150,
+                    edgeLabel.labelWidthLimit,
                     edgeLabelText.implicitWidth + 12)
                 implicitHeight: edgeLabelText.implicitHeight + 6
                 radius: implicitHeight / 2

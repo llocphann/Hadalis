@@ -43,32 +43,182 @@ Item {
         return root.nodes.find(node => node.id === nodeId) ?? null
     }
 
+    function rawNodeBounds(): var {
+        if (root.nodes.length === 0)
+            return { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+
+        let minX = Number.POSITIVE_INFINITY
+        let minY = Number.POSITIVE_INFINITY
+        let maxX = Number.NEGATIVE_INFINITY
+        let maxY = Number.NEGATIVE_INFINITY
+        for (const node of root.nodes) {
+            const x = Number(node?.x ?? 0)
+            const y = Number(node?.y ?? 0)
+            minX = Math.min(minX, x)
+            minY = Math.min(minY, y)
+            maxX = Math.max(maxX, x + root.nodeWidth)
+            maxY = Math.max(maxY, y + root.nodeHeight)
+        }
+        return { minX, minY, maxX, maxY }
+    }
+
+    function normalizeRoutePoints(points): var {
+        const compact = []
+        for (const point of points) {
+            const next = {
+                x: Number(point?.x ?? 0),
+                y: Number(point?.y ?? 0)
+            }
+            const previous = compact[compact.length - 1]
+            if (previous
+                    && Math.abs(previous.x - next.x) < 0.001
+                    && Math.abs(previous.y - next.y) < 0.001)
+                continue
+            compact.push(next)
+        }
+
+        let changed = true
+        while (changed && compact.length > 2) {
+            changed = false
+            for (let index = 1; index < compact.length - 1; ++index) {
+                const before = compact[index - 1]
+                const point = compact[index]
+                const after = compact[index + 1]
+                const sameX = Math.abs(before.x - point.x) < 0.001
+                    && Math.abs(point.x - after.x) < 0.001
+                const sameY = Math.abs(before.y - point.y) < 0.001
+                    && Math.abs(point.y - after.y) < 0.001
+                if (sameX || sameY) {
+                    compact.splice(index, 1)
+                    changed = true
+                    break
+                }
+            }
+        }
+        return compact
+    }
+
+    function pointToward(fromPoint, toPoint, distance: real): var {
+        if (Math.abs(fromPoint.x - toPoint.x) < 0.001) {
+            return {
+                x: fromPoint.x,
+                y: fromPoint.y
+                    + Math.sign(toPoint.y - fromPoint.y) * distance
+            }
+        }
+        return {
+            x: fromPoint.x
+                + Math.sign(toPoint.x - fromPoint.x) * distance,
+            y: fromPoint.y
+        }
+    }
+
+    function smoothStepSvg(points): string {
+        if (!points || points.length < 2)
+            return ""
+
+        const radius = 14
+        let path = "M " + points[0].x + " " + points[0].y
+        for (let index = 1; index < points.length - 1; ++index) {
+            const previous = points[index - 1]
+            const point = points[index]
+            const next = points[index + 1]
+            const incoming = Math.abs(point.x - previous.x)
+                + Math.abs(point.y - previous.y)
+            const outgoing = Math.abs(next.x - point.x)
+                + Math.abs(next.y - point.y)
+            const corner = Math.min(radius, incoming / 2, outgoing / 2)
+            if (corner < 0.5) {
+                path += " L " + point.x + " " + point.y
+                continue
+            }
+            const before = root.pointToward(point, previous, corner)
+            const after = root.pointToward(point, next, corner)
+            path += " L " + before.x + " " + before.y
+                + " Q " + point.x + " " + point.y
+                + " " + after.x + " " + after.y
+        }
+        const last = points[points.length - 1]
+        path += " L " + last.x + " " + last.y
+        return path
+    }
+
+    function routeFromPoints(points, vertical: bool, direction: real): var {
+        const normalized = root.normalizeRoutePoints(points)
+        if (normalized.length < 2)
+            return null
+
+        const first = normalized[0]
+        const last = normalized[normalized.length - 1]
+        const middleSegment = Math.floor((normalized.length - 2) / 2)
+        const labelFrom = normalized[middleSegment]
+        const labelTo = normalized[middleSegment + 1]
+        return {
+            points: normalized,
+            vertical: vertical,
+            direction: direction,
+            x0: first.x,
+            y0: first.y,
+            x3: last.x,
+            y3: last.y,
+            labelX: (labelFrom.x + labelTo.x) / 2,
+            labelY: (labelFrom.y + labelTo.y) / 2,
+            labelSpan: Math.abs(labelTo.x - labelFrom.x)
+                + Math.abs(labelTo.y - labelFrom.y),
+            labelHorizontal:
+                Math.abs(labelTo.y - labelFrom.y) < 0.001,
+            svg: root.smoothStepSvg(normalized)
+        }
+    }
+
+    function routeBounds(route): var {
+        if (!route?.points || route.points.length === 0)
+            return { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+
+        let minX = Number.POSITIVE_INFINITY
+        let minY = Number.POSITIVE_INFINITY
+        let maxX = Number.NEGATIVE_INFINITY
+        let maxY = Number.NEGATIVE_INFINITY
+        for (const point of route.points) {
+            minX = Math.min(minX, point.x)
+            minY = Math.min(minY, point.y)
+            maxX = Math.max(maxX, point.x)
+            maxY = Math.max(maxY, point.y)
+        }
+        return { minX, minY, maxX, maxY }
+    }
+
+    function segmentIntersectsRect(
+        fromPoint, toPoint,
+        left: real, top: real, right: real, bottom: real
+    ): bool {
+        if (Math.abs(fromPoint.x - toPoint.x) < 0.001) {
+            const x = fromPoint.x
+            const minY = Math.min(fromPoint.y, toPoint.y)
+            const maxY = Math.max(fromPoint.y, toPoint.y)
+            return x >= left && x <= right
+                && maxY >= top && minY <= bottom
+        }
+        if (Math.abs(fromPoint.y - toPoint.y) < 0.001) {
+            const y = fromPoint.y
+            const minX = Math.min(fromPoint.x, toPoint.x)
+            const maxX = Math.max(fromPoint.x, toPoint.x)
+            return y >= top && y <= bottom
+                && maxX >= left && minX <= right
+        }
+        return false
+    }
+
     function routeIntersectsNode(route, node, padding: real): bool {
         const left = Number(node?.x ?? 0) - padding
         const top = Number(node?.y ?? 0) - padding
         const right = Number(node?.x ?? 0) + root.nodeWidth + padding
         const bottom = Number(node?.y ?? 0) + root.nodeHeight + padding
-
-        const routeLeft = Math.min(
-            route.x0, route.x1, route.x2, route.x3)
-        const routeTop = Math.min(
-            route.y0, route.y1, route.y2, route.y3)
-        const routeRight = Math.max(
-            route.x0, route.x1, route.x2, route.x3)
-        const routeBottom = Math.max(
-            route.y0, route.y1, route.y2, route.y3)
-        if (routeRight < left || routeLeft > right
-                || routeBottom < top || routeTop > bottom)
-            return false
-
-        const steps = 32
-        for (let step = 1; step < steps; ++step) {
-            const t = step / steps
-            const x = root.cubicCoordinate(
-                route.x0, route.x1, route.x2, route.x3, t)
-            const y = root.cubicCoordinate(
-                route.y0, route.y1, route.y2, route.y3, t)
-            if (x >= left && x <= right && y >= top && y <= bottom)
+        const points = route?.points ?? []
+        for (let index = 1; index < points.length; ++index) {
+            if (root.segmentIntersectsRect(
+                    points[index - 1], points[index],
+                    left, top, right, bottom))
                 return true
         }
         return false
@@ -81,35 +231,43 @@ Item {
             if (nodeId === String(edge?.from ?? "")
                     || nodeId === String(edge?.to ?? ""))
                 continue
-            if (root.routeIntersectsNode(route, node, 8))
+            if (root.routeIntersectsNode(route, node, 10))
                 collisions += 1
         }
         return collisions
     }
 
-    function detourRoute(route, offset: real): var {
-        const candidate = {
-            vertical: route.vertical,
-            direction: route.direction,
-            bend: route.bend,
-            x0: route.x0, y0: route.y0,
-            x1: route.x1, y1: route.y1,
-            x2: route.x2, y2: route.y2,
-            x3: route.x3, y3: route.y3
+    function routeLength(route): real {
+        const points = route?.points ?? []
+        let length = 0
+        for (let index = 1; index < points.length; ++index) {
+            length += Math.abs(points[index].x - points[index - 1].x)
+                + Math.abs(points[index].y - points[index - 1].y)
         }
+        return length
+    }
 
-        if (candidate.vertical) {
-            candidate.x1 = candidate.x0 + offset
-            candidate.y1 = candidate.y0
-            candidate.x2 = candidate.x3 + offset
-            candidate.y2 = candidate.y3
-        } else {
-            candidate.x1 = candidate.x0
-            candidate.y1 = candidate.y0 + offset
-            candidate.x2 = candidate.x3
-            candidate.y2 = candidate.y3 + offset
-        }
-        return candidate
+    function edgeLaneOffset(edge): real {
+        const fromId = String(edge?.from ?? "")
+        const siblings = root.edges.filter(candidate =>
+            String(candidate?.from ?? "") === fromId)
+        if (siblings.length <= 1)
+            return 0
+        const edgeId = String(edge?.id ?? "")
+        const index = siblings.findIndex(candidate =>
+            String(candidate?.id ?? "") === edgeId)
+        if (index < 0)
+            return 0
+        return Math.max(-72, Math.min(
+            72, (index - (siblings.length - 1) / 2) * 12))
+    }
+
+    function routeScore(route, edge): real {
+        const collisions = root.routeCollisionCount(route, edge)
+        const bends = Math.max(0, (route?.points?.length ?? 2) - 2)
+        return collisions * 1000000
+            + root.routeLength(route)
+            + bends * 18
     }
 
     function edgeRoute(edge): var {
@@ -124,77 +282,111 @@ Item {
         const toY = Number(toNode.y ?? 0)
         const fromRight = fromX + root.nodeWidth
         const toRight = toX + root.nodeWidth
+        const fromCenterX = fromX + root.nodeWidth / 2
+        const fromCenterY = fromY + root.nodeHeight / 2
+        const toCenterX = toX + root.nodeWidth / 2
+        const toCenterY = toY + root.nodeHeight / 2
         const separatedRight = toX >= fromRight
         const separatedLeft = toRight <= fromX
         const vertical = !separatedRight && !separatedLeft
+        const laneOffset = root.edgeLaneOffset(edge)
+        const candidates = []
+        const bounds = root.rawNodeBounds()
 
-        let x0 = 0
-        let y0 = 0
-        let x1 = 0
-        let y1 = 0
-        let x2 = 0
-        let y2 = 0
-        let x3 = 0
-        let y3 = 0
-        let direction = 1
-        let bend = 48
-
-        if (vertical) {
-            const downward = toY + root.nodeHeight / 2
-                >= fromY + root.nodeHeight / 2
-            direction = downward ? 1 : -1
-            x0 = fromX + root.nodeWidth / 2
-            y0 = fromY + (downward ? root.nodeHeight : 0)
-            x3 = toX + root.nodeWidth / 2
-            y3 = toY + (downward ? 0 : root.nodeHeight)
-            bend = Math.max(48, Math.abs(y3 - y0) / 2)
-            x1 = x0
-            y1 = y0 + direction * bend
-            x2 = x3
-            y2 = y3 - direction * bend
-        } else {
+        if (!vertical) {
             const rightward = separatedRight
-            direction = rightward ? 1 : -1
-            x0 = fromX + (rightward ? root.nodeWidth : 0)
-            y0 = fromY + root.nodeHeight / 2
-            x3 = toX + (rightward ? 0 : root.nodeWidth)
-            y3 = toY + root.nodeHeight / 2
-            bend = Math.max(48, Math.abs(x3 - x0) / 2)
-            x1 = x0 + direction * bend
-            y1 = y0
-            x2 = x3 - direction * bend
-            y2 = y3
-        }
-
-        const route = {
-            vertical: vertical,
-            direction: direction,
-            bend: bend,
-            x0: x0, y0: y0,
-            x1: x1, y1: y1,
-            x2: x2, y2: y2,
-            x3: x3, y3: y3
-        }
-
-        let bestRoute = route
-        let bestCollisionCount = root.routeCollisionCount(route, edge)
-        if (bestCollisionCount === 0)
-            return route
-
-        const detourOffsets = [
-            120, -120, 180, -180, 240, -240,
-            320, -320, 420, -420, 520, -520
-        ]
-        for (const offset of detourOffsets) {
-            const candidate = root.detourRoute(route, offset)
-            const collisionCount =
-                root.routeCollisionCount(candidate, edge)
-            if (collisionCount < bestCollisionCount) {
-                bestRoute = candidate
-                bestCollisionCount = collisionCount
+            const direction = rightward ? 1 : -1
+            const x0 = fromX + (rightward ? root.nodeWidth : 0)
+            const y0 = fromCenterY
+            const x3 = toX + (rightward ? 0 : root.nodeWidth)
+            const y3 = toCenterY
+            const baseCorridor = (x0 + x3) / 2 + laneOffset
+            const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]
+            for (const offset of corridorOffsets) {
+                const corridor = baseCorridor + offset
+                candidates.push(root.routeFromPoints([
+                    { x: x0, y: y0 },
+                    { x: corridor, y: y0 },
+                    { x: corridor, y: y3 },
+                    { x: x3, y: y3 }
+                ], false, direction))
             }
-            if (collisionCount === 0)
-                return candidate
+
+            const stub = 36
+            const fromStub = x0 + direction * stub
+            const toStub = x3 - direction * stub
+            const middleY = (y0 + y3) / 2
+            const yLanes = [
+                bounds.minY - 52 - Math.abs(laneOffset) * 0.25,
+                bounds.maxY + 52 + Math.abs(laneOffset) * 0.25,
+                middleY + 120,
+                middleY - 120,
+                middleY + 220,
+                middleY - 220
+            ]
+            for (const laneY of yLanes) {
+                candidates.push(root.routeFromPoints([
+                    { x: x0, y: y0 },
+                    { x: fromStub, y: y0 },
+                    { x: fromStub, y: laneY },
+                    { x: toStub, y: laneY },
+                    { x: toStub, y: y3 },
+                    { x: x3, y: y3 }
+                ], false, direction))
+            }
+        } else {
+            const downward = toCenterY >= fromCenterY
+            const direction = downward ? 1 : -1
+            const x0 = fromCenterX
+            const y0 = fromY + (downward ? root.nodeHeight : 0)
+            const x3 = toCenterX
+            const y3 = toY + (downward ? 0 : root.nodeHeight)
+            const baseCorridor = (y0 + y3) / 2 + laneOffset
+            const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]
+            for (const offset of corridorOffsets) {
+                const corridor = baseCorridor + offset
+                candidates.push(root.routeFromPoints([
+                    { x: x0, y: y0 },
+                    { x: x0, y: corridor },
+                    { x: x3, y: corridor },
+                    { x: x3, y: y3 }
+                ], true, direction))
+            }
+
+            const stub = 36
+            const fromStub = y0 + direction * stub
+            const toStub = y3 - direction * stub
+            const middleX = (x0 + x3) / 2
+            const xLanes = [
+                bounds.minX - 52 - Math.abs(laneOffset) * 0.25,
+                bounds.maxX + 52 + Math.abs(laneOffset) * 0.25,
+                middleX + 120,
+                middleX - 120,
+                middleX + 220,
+                middleX - 220
+            ]
+            for (const laneX of xLanes) {
+                candidates.push(root.routeFromPoints([
+                    { x: x0, y: y0 },
+                    { x: x0, y: fromStub },
+                    { x: laneX, y: fromStub },
+                    { x: laneX, y: toStub },
+                    { x: x3, y: toStub },
+                    { x: x3, y: y3 }
+                ], true, direction))
+            }
+        }
+
+        let bestRoute = null
+        let bestScore = Number.POSITIVE_INFINITY
+        for (const candidate of candidates) {
+            if (!candidate)
+                continue
+            const score = root.routeScore(candidate, edge)
+            if (score < bestScore) {
+                bestRoute = candidate
+                bestScore = score
+            }
         }
         return bestRoute
     }
@@ -245,14 +437,11 @@ Item {
             const route = root.routeForEdge(edge)
             if (!route)
                 continue
-            minX = Math.min(
-                minX, route.x0, route.x1, route.x2, route.x3)
-            minY = Math.min(
-                minY, route.y0, route.y1, route.y2, route.y3)
-            maxX = Math.max(
-                maxX, route.x0, route.x1, route.x2, route.x3)
-            maxY = Math.max(
-                maxY, route.y0, route.y1, route.y2, route.y3)
+            const bounds = root.routeBounds(route)
+            minX = Math.min(minX, bounds.minX)
+            minY = Math.min(minY, bounds.minY)
+            maxX = Math.max(maxX, bounds.maxX)
+            maxY = Math.max(maxY, bounds.maxY)
         }
 
         return {
@@ -285,35 +474,18 @@ Item {
         return Math.sqrt(sx * sx + sy * sy)
     }
 
-    function cubicCoordinate(
-        p0: real, p1: real, p2: real, p3: real, t: real
-    ): real {
-        const inv = 1 - t
-        return inv * inv * inv * p0
-            + 3 * inv * inv * t * p1
-            + 3 * inv * t * t * p2
-            + t * t * t * p3
-    }
-
     function edgeDistance(edge, px: real, py: real): real {
         const route = root.routeForEdge(edge)
-        if (!route)
+        const points = route?.points ?? []
+        if (points.length < 2)
             return 1e9
 
         let best = 1e9
-        let previousX = route.x0
-        let previousY = route.y0
-        const steps = 20
-        for (let step = 1; step <= steps; ++step) {
-            const t = step / steps
-            const nextX = root.cubicCoordinate(
-                route.x0, route.x1, route.x2, route.x3, t)
-            const nextY = root.cubicCoordinate(
-                route.y0, route.y1, route.y2, route.y3, t)
+        for (let index = 1; index < points.length; ++index) {
             best = Math.min(best, root.pointSegmentDistance(
-                px, py, previousX, previousY, nextX, nextY))
-            previousX = nextX
-            previousY = nextY
+                px, py,
+                points[index - 1].x, points[index - 1].y,
+                points[index].x, points[index].y))
         }
         return best
     }
@@ -376,14 +548,11 @@ Item {
         if (!edge || !route || root.width <= 0 || root.height <= 0)
             return
 
-        const minX = Math.min(
-            route.x0, route.x1, route.x2, route.x3)
-        const minY = Math.min(
-            route.y0, route.y1, route.y2, route.y3)
-        const maxX = Math.max(
-            route.x0, route.x1, route.x2, route.x3)
-        const maxY = Math.max(
-            route.y0, route.y1, route.y2, route.y3)
+        const routeBounds = root.routeBounds(route)
+        const minX = routeBounds.minX
+        const minY = routeBounds.minY
+        const maxX = routeBounds.maxX
+        const maxY = routeBounds.maxY
         const boundsWidth = Math.max(1, maxX - minX)
         const boundsHeight = Math.max(1, maxY - minY)
         const margin = 40
@@ -686,36 +855,45 @@ Item {
                     capStyle: ShapePath.RoundCap
                     joinStyle: ShapePath.RoundJoin
                     fillColor: "transparent"
-                    startX: route?.x0 ?? 0
-                    startY: route?.y0 ?? 0
-
-                    PathCubic {
-                        x: edgePath.route?.x3 ?? 0
-                        y: edgePath.route?.y3 ?? 0
-                        control1X: edgePath.route?.x1 ?? 0
-                        control1Y: edgePath.route?.y1 ?? 0
-                        control2X: edgePath.route?.x2 ?? 0
-                        control2Y: edgePath.route?.y2 ?? 0
+                    PathSvg {
+                        path: edgePath.route?.svg ?? ""
                     }
                 }
 
                 ShapePath {
                     id: arrowPath
                     readonly property var route: edgePath.route
-                    readonly property real tipX: route?.x3 ?? 0
-                    readonly property real tipY: route?.y3 ?? 0
+                    readonly property var points: route?.points ?? []
+                    readonly property var tipPoint: points.length > 0
+                        ? points[points.length - 1] : ({ x: 0, y: 0 })
+                    readonly property var previousPoint: points.length > 1
+                        ? points[points.length - 2] : ({ x: -1, y: 0 })
+                    readonly property real tipX: Number(tipPoint.x ?? 0)
+                    readonly property real tipY: Number(tipPoint.y ?? 0)
                     readonly property real tangentX:
-                        tipX - Number(route?.x2 ?? tipX - 1)
+                        tipX - Number(previousPoint.x ?? tipX - 1)
                     readonly property real tangentY:
-                        tipY - Number(route?.y2 ?? tipY)
+                        tipY - Number(previousPoint.y ?? tipY)
                     readonly property real tangentLength:
                         Math.max(0.001, Math.sqrt(
                             tangentX * tangentX
                             + tangentY * tangentY))
                     readonly property real unitX: tangentX / tangentLength
                     readonly property real unitY: tangentY / tangentLength
-                    readonly property real backX: tipX - unitX * 10
-                    readonly property real backY: tipY - unitY * 10
+                    readonly property real screenArrowLength: 10
+                    readonly property real screenArrowHalfWidth: 5
+                    readonly property real worldArrowLength:
+                        screenArrowLength / Math.max(
+                            CodeWorkflowSession.minimumZoom,
+                            CodeWorkflowSession.zoom)
+                    readonly property real worldArrowHalfWidth:
+                        screenArrowHalfWidth / Math.max(
+                            CodeWorkflowSession.minimumZoom,
+                            CodeWorkflowSession.zoom)
+                    readonly property real backX:
+                        tipX - unitX * worldArrowLength
+                    readonly property real backY:
+                        tipY - unitY * worldArrowLength
                     readonly property color ink: root.edgeInk(
                         edgeShape.modelData.kind,
                         edgeShape.highlighted)
@@ -726,12 +904,12 @@ Item {
                     startY: tipY
 
                     PathLine {
-                        x: arrowPath.backX - arrowPath.unitY * 5
-                        y: arrowPath.backY + arrowPath.unitX * 5
+                        x: arrowPath.backX - arrowPath.unitY * arrowPath.worldArrowHalfWidth
+                        y: arrowPath.backY + arrowPath.unitX * arrowPath.worldArrowHalfWidth
                     }
                     PathLine {
-                        x: arrowPath.backX + arrowPath.unitY * 5
-                        y: arrowPath.backY - arrowPath.unitX * 5
+                        x: arrowPath.backX + arrowPath.unitY * arrowPath.worldArrowHalfWidth
+                        y: arrowPath.backY - arrowPath.unitX * arrowPath.worldArrowHalfWidth
                     }
                     PathLine {
                         x: arrowPath.tipX
@@ -752,21 +930,13 @@ Item {
                 readonly property var toNode: root.nodeById(modelData.to)
                 readonly property var route:
                     root.routeForEdge(modelData)
-                readonly property real midX: route
-                    ? root.cubicCoordinate(
-                        route.x0, route.x1, route.x2, route.x3, 0.5)
-                    : 0
-                readonly property real midY: route
-                    ? root.cubicCoordinate(
-                        route.y0, route.y1, route.y2, route.y3, 0.5)
-                    : 0
-                readonly property real horizontalGap:
-                    route && !route.vertical
-                        ? Math.abs(route.x3 - route.x0)
-                        : 150
+                readonly property real midX:
+                    Number(route?.labelX ?? 0)
+                readonly property real midY:
+                    Number(route?.labelY ?? 0)
                 readonly property real labelWidthLimit:
-                    route && !route.vertical
-                        ? Math.max(24, horizontalGap - 20)
+                    route?.labelHorizontal === true
+                        ? Math.max(24, Number(route?.labelSpan ?? 150) - 20)
                         : 150
                 readonly property bool hovered:
                     edgeLabelHover.hovered

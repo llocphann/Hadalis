@@ -63,6 +63,8 @@ for token in \
     'Appearance.m3colors.m3shadow'; do
     grep -Fq "$token" "$dock" || fail "Dock iRiS edge contract missing: $token"
 done
+! grep -Fq 'surfaceBorderColor' "$dock" || fail 'Dock restored a decorative surface border color'
+! grep -Fq 'surfaceBorderWidth' "$dock" || fail 'Dock restored a decorative surface border width'
 
 for file in "$search" "$osk" "$common/ConnectedSurfaceFrame.qml"; do
     ! grep -Fq 'ConnectedSurfaceJoinFlares' "$file" || fail "${file#$root/} restored JoinFlares"

@@ -376,6 +376,11 @@ def main() -> None:
     check("fillColor: dockVisualBackground.color" not in dock
           and "borderColor: dockVisualBackground.border.color" not in dock,
           "Dock iRiS field must be the sole body painter; duplicate Rectangle paint changes alpha")
+    check("surfaceBorderColor" not in dock
+          and "surfaceBorderWidth" not in dock
+          and "borderColor: dockVisualBackground" not in dock
+          and "borderWidth: dockVisualBackground" not in dock,
+          "Dock connected plate must remain borderless like the other ii popup surfaces")
     check(dock.count("duration: SurfaceMotion.duration") >= 4
           and "Appearance.animation.elementMoveEnter.duration" not in dock,
           "Dock reveal/retract must use the same immutable slide motion as connected popups")

@@ -204,8 +204,8 @@ Scope {
                         dockVisualBackground.height)
                     bodyRadius: dockVisualBackground.radius
                     fillColor: dockVisualBackground.surfaceColor
-                    borderColor: dockVisualBackground.surfaceBorderColor
-                    borderWidth: dockVisualBackground.surfaceBorderWidth
+                    // Match the other connected popup plates: the iRiS field
+                    // owns shape/AA, but the Dock has no decorative outline.
                     progress: 1
                     shadowEnabled: dockRoot.screenEdgeShadowEnabled
                         && dockRoot.screenEdgeShadowSize > 0
@@ -319,9 +319,6 @@ Scope {
                                 // made transparent Material settings too opaque.
                                 property color surfaceColor:
                                     Appearance.colors.colLayer0
-                                property color surfaceBorderColor:
-                                    Appearance.colors.colLayer0Border
-                                readonly property real surfaceBorderWidth: 1
 
                                 anchors.fill: parent
                                 anchors.topMargin: root.isTop
@@ -358,15 +355,6 @@ Scope {
                                         easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                                     }
                                 }
-                                Behavior on surfaceBorderColor {
-                                    enabled: Appearance.animationsEnabled
-                                    ColorAnimation {
-                                        duration: Appearance.animation.elementMoveFast.duration
-                                        easing.type: Appearance.animation.elementMoveFast.type
-                                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                                    }
-                                }
-
                             }
 
                             RowLayout {

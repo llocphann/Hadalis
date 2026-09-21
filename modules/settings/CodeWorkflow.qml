@@ -1118,6 +1118,10 @@ Item {
                     root.prepareSelectedSemanticInspectTarget()
                     root.revealSelectedInspectTarget()
                 })
+            } else if ((CodeWorkflowAnalyzer.status === "unavailable"
+                        || CodeWorkflowAnalyzer.status === "error")
+                    && CodeWorkflowSession.selectedSemanticAnchor.length > 0) {
+                CodeWorkflowSession.selectSemantic("")
             }
             Qt.callLater(root.evaluatePreApplyGate)
         }

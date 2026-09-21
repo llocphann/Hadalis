@@ -73,6 +73,7 @@ for scenario in (
     "edge-readonly-binding",
     "connect-candidate",
     "pane-resize",
+    "viewport-boundary",
     "semantic-source",
 ):
     require(page, f'scenario === "{scenario}"',
@@ -104,7 +105,8 @@ for token in (
     'capture_step "06" "edge-readonly-binding" "edge-readonly-binding"',
     'capture_step "07" "connect-candidate" "connect-candidate"',
     'capture_step "08" "pane-resize" "pane-resize"',
-    'capture_step "09" "semantic-source"',
+    'capture_step "09" "viewport-boundary" "viewport-boundary"',
+    'capture_step "10" "semantic-source"',
     'tar -C "$OUT_PARENT" -czf "$ARCHIVE" "$BUNDLE_NAME"',
 ):
     require(capture_script, token,
@@ -130,6 +132,14 @@ require(capture_script, 'meta/route-diagnostics.json',
         "capture runner must summarize smart-route metrics for every screenshot state")
 require(capture_script, '"routeDiagnostics": latest.get("routeDiagnostics", {})',
         "capture route summary must preserve renderer diagnostics")
+for token in (
+    '"canvasWidth": latest.get("canvasWidth")',
+    '"canvasHeight": latest.get("canvasHeight")',
+    '"panX": latest.get("panX")',
+    '"panY": latest.get("panY")',
+):
+    require(capture_script, token,
+            "capture route summary missing viewport evidence " + token)
 require(capture_script, 'settings_window_json >"$BUNDLE_DIR/meta/niri-settings-window.json"',
         "capture runner must retain only the selected Settings window geometry record")
 
@@ -206,11 +216,13 @@ require(page, "Qt.SizeVerCursor : Qt.SizeHorCursor",
 require(page, "routeDiagnostics: canvas.routeDiagnostics()",
         "capture status must expose route quality metrics")
 for token in (
+    "canvasWidth: canvas.width",
+    "canvasHeight: canvas.height",
     "actualTargetsPaneWidth: targetsPane.width",
     "actualInspectorPaneWidth: inspectorPane.width",
     "actualSourcePreviewHeight: sourcePane.visible",
 ):
-    require(page, token, "capture status missing actual split geometry " + token)
+    require(page, token, "capture status missing canvas/split geometry " + token)
 require(page, "id: workflowHorizontalSplit",
         "Targets, graph and Inspector must share a horizontal SplitView")
 require(page, "id: workflowVerticalSplit",

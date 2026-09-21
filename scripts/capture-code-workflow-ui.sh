@@ -311,16 +311,17 @@ capture_step "05" "edge-detour" "edge-detour"
 capture_step "06" "edge-readonly-binding" "edge-readonly-binding"
 capture_step "07" "connect-candidate" "connect-candidate"
 capture_step "08" "pane-resize" "pane-resize"
+capture_step "09" "viewport-boundary" "viewport-boundary"
 
 # Parser/source scenario may need a short analysis cycle. Re-issue the idempotent
 # scenario until analyzer READY has had enough time to select an entry.
 for _ in $(seq 1 12); do
     ipc scenario semantic-source \
-        >"$BUNDLE_DIR/state/09-semantic-source-attempt.txt" \
+        >"$BUNDLE_DIR/state/10-semantic-source-attempt.txt" \
         2>>"$BUNDLE_DIR/logs/ipc-errors.log" || true
     sleep 0.25
 done
-capture_step "09" "semantic-source"
+capture_step "10" "semantic-source"
 ipc status >"$BUNDLE_DIR/meta/parser-capability.json" \
     2>>"$BUNDLE_DIR/logs/ipc-errors.log" || true
 PARSER_STATUS="$(jq -r '.analyzerStatus // "unknown"' \
@@ -357,6 +358,10 @@ for path in sorted(state_dir.glob("[0-9][0-9]-*.txt")):
     rows.append({
         "step": path.stem,
         "subflowTargetId": latest.get("subflowTargetId", ""),
+        "canvasWidth": latest.get("canvasWidth"),
+        "canvasHeight": latest.get("canvasHeight"),
+        "panX": latest.get("panX"),
+        "panY": latest.get("panY"),
         "zoom": latest.get("zoom"),
         "targetsPaneWidth": latest.get("targetsPaneWidth"),
         "inspectorPaneWidth": latest.get("inspectorPaneWidth"),
@@ -406,7 +411,10 @@ Screenshots:
   08-pane-resize
       Targets/Inspector/Source Preview expanded to persisted non-default sizes;
       validates both horizontal and vertical split handles.
-  09-semantic-source
+  09-viewport-boundary
+      Deliberately pans the Bar graph above the canvas top edge; nodes, routes
+      and labels must remain clipped inside the graph pane.
+  10-semantic-source
       Source Preview after parser polling.
       Parser status: $PARSER_STATUS
       Parser detail: $PARSER_ERROR
@@ -415,7 +423,8 @@ Screenshots:
 
 Routing diagnostics:
   meta/route-diagnostics.json summarizes smart-lane style, collisions,
-  crossings, non-endpoint overlap, bends, zoom and persisted pane dimensions
+  crossings, non-endpoint overlap, bends, canvas geometry, viewport state and
+  persisted pane dimensions
   for every captured state.
 
 Privacy:

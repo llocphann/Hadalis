@@ -227,6 +227,8 @@ Item {
             parserEntryCount: root.parsedSemanticEntries.length,
             pageWidth: root.width,
             pageHeight: root.height,
+            canvasWidth: canvas.width,
+            canvasHeight: canvas.height,
             targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
             inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
             sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
@@ -348,6 +350,21 @@ Item {
             CodeWorkflowSession.sourcePreviewHeight = 260
             CodeWorkflowSession.sourcePreviewVisible = true
             Qt.callLater(canvas.fitGraph)
+        } else if (scenario === "viewport-boundary") {
+            root.selectTarget("bar")
+            Qt.callLater(() => {
+                const bounds = canvas.rawNodeBounds()
+                const zoom = Math.max(
+                    CodeWorkflowSession.minimumZoom,
+                    Math.min(1.0, CodeWorkflowSession.maximumZoom))
+                const graphWidth = Math.max(
+                    1, bounds.maxX - bounds.minX)
+                const panX =
+                    (canvas.width - graphWidth * zoom) / 2
+                    - bounds.minX * zoom
+                const panY = -bounds.minY * zoom - 34
+                CodeWorkflowSession.setViewport(panX, panY, zoom)
+            })
         } else if (scenario === "semantic-source") {
             root.selectTarget("bar")
             root.inspectShowInternals = true

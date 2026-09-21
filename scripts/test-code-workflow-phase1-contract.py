@@ -68,6 +68,12 @@ require(page, "function textIndexForUtf8ByteOffset(byteOffset: int): int",
         "Source Preview must map parser byte ranges to text positions")
 require(page, "function revealSourceSelection(start: int, end: int): void",
         "Source Preview must reveal selected parser evidence")
+require(page, "function revealSelectedInspectTarget(): void",
+        "Targets must reveal the unified selected item")
+require(page, "target: CodeWorkflowSession",
+        "Targets must react to shared session selection changes")
+require(page, "targetList.positionViewAtIndex(index, ListView.Contain)",
+        "Targets must scroll the selected item into view")
 require(page, "onClicked: canvas.fitGraph()",
         "Reset view must fit the actual graph")
 require(page, "ColorUtils.readableAccentInk(",

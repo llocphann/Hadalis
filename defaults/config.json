@@ -2078,8 +2078,16 @@
         "backend": "internal",
         "obsidian": {
             "vaultPath": "",
+            "sourceMode": "managed-note",
             "notePath": "Hadalis/Todo.md",
             "scope": "managed-section",
+            "dailyNote": {
+                "folder": "00_Capture/01_Journal",
+                "format": "YYYY/MMMM/DD-MM-YYYY-dddd",
+                "plannerHeading": "Day Planner",
+                "plannerHeadingLevel": 2,
+                "defaultDurationMinutes": 30
+            },
             "preferTasksPlugin": true,
             "allowBasicOfflineMutation": true
         }

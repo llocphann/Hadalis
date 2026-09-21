@@ -1180,6 +1180,12 @@ Item {
         border.width: 1
         border.color: ColorUtils.applyAlpha(ink, 0.6)
         clip: true
+        readonly property bool hovered: pillHover.hovered
+
+        HoverHandler {
+            id: pillHover
+            target: root
+        }
 
         StyledText {
             id: pillText
@@ -1194,6 +1200,10 @@ Item {
             font.weight: Font.DemiBold
             elide: Text.ElideRight
             maximumLineCount: 1
+        }
+
+        StyledToolTip {
+            text: root.label
         }
     }
 

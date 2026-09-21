@@ -261,6 +261,15 @@ def main() -> None:
           and "popup.width - width - root.edgeDecorationMargin" not in toast_manager
           and "x: Math.max(root.edgeDecorationMargin," not in toast_manager,
           "Reload toast must reuse StyledPopup geometry instead of the detached direct-edge host")
+    toast_popup_start = toast_manager.index("PanelWindow {\n            id: popup")
+    toast_geometry_start = toast_manager.index("ConnectedSurfaceGeometry {", toast_popup_start)
+    check(toast_popup_start >= 0 and toast_geometry_start > toast_popup_start,
+          "Reload toast visual PanelWindow must exist before its connected geometry")
+    toast_popup_contract = toast_manager[toast_popup_start:toast_geometry_start]
+    check("exclusiveZone:" not in toast_popup_contract
+          and "exclusionMode: ExclusionMode.Ignore" in toast_popup_contract
+          and "WlrLayershell.layer: WlrLayer.Overlay" in toast_popup_contract,
+          "Reload toast visual window must stay full-output Overlay/Ignore with no exclusive-zone setter")
     check("\n    property bool connectedSurface: false\n" in toast_notification
           and "\n    property bool copied: false\n" in toast_notification
           and "layer.enabled: Appearance.effectsEnabled && !root.connectedSurface" in toast_notification
@@ -458,6 +467,9 @@ def main() -> None:
         "edge: root.position",
         "ownerThickness: dockRoot.screenEdgeThickness",
         "exclusionMode: ExclusionMode.Ignore",
+        'WlrLayershell.layer: WlrLayer.Overlay',
+        'WlrLayershell.namespace: "quickshell:dock-reservation"',
+        "exclusiveZone: mapped ? reservationThickness : 0",
         "id: dockConnectedBody",
         "anchors.fill: dockConnectedBody",
         "paintOverlap: Math.min(",
@@ -490,6 +502,15 @@ def main() -> None:
               f"Dock body must not overpaint iRiS weld fillets: {stale_corner_override}")
     check("StyledRectangularShadow {" not in dock,
           "Dock must not retain its detached local shadow after iRiS cutover")
+    dock_visual_start = dock.index("sourceComponent: PanelWindow {")
+    dock_reservation_start = dock.index('WlrLayershell.namespace: "quickshell:dock-reservation"')
+    check(dock_visual_start >= 0 and dock_reservation_start > dock_visual_start,
+          "Dock must keep visual and reservation layer-shell roles separate")
+    dock_visual_block = dock[dock_visual_start:dock_reservation_start]
+    check("exclusiveZone:" not in dock_visual_block
+          and 'WlrLayershell.layer: WlrLayer.Overlay' in dock_visual_block
+          and "exclusionMode: ExclusionMode.Ignore" in dock_visual_block,
+          "Dock visual window must remain Overlay/Ignore with no exclusive-zone setter")
     check("screenEdgePaintOverlap" not in dock
           and "paintOverlap: dockRoot." not in dock,
           "Dock seam overlap must stay local to the shared connected body, not a second offset state")

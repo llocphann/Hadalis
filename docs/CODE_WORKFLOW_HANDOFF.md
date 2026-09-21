@@ -5,6 +5,50 @@ complete evidence**, not the production editor. Refetch current `dev` before
 audit and every write, read AGENTS.md, work directly on `dev`, preserve concurrent
 work, commit atomic milestones, never mutate `stable`. This handoff is requested.
 
+## Production UI refinement continuation — 2026-09-21
+
+A focused Code Workflow UI pass was applied on current `dev` without changing
+the parser/transaction safety model or unrelated shell runtime:
+
+- The existing IR `graph.edges` pipeline remains authoritative. Geometry Shape
+  edges now render on a controlled `colLayer0` canvas surface with contrast-safe
+  `edgeInk()`, round caps/joins, visible direction arrowheads, hover emphasis and
+  matching edge-label ink/borders. No second/fake graph model was introduced.
+- Node selected-state text, kind chips and ports now use semantic Material
+  foreground/background pairs instead of raw accent-on-accent combinations.
+  Long Inspector/source/semantic fields are capped or elided instead of expanding
+  the side panel indefinitely.
+- Targets now support filtering plus progressive disclosure. Runtime targets retain
+  catalog depth, graph nodes expose root/child depth, and parser-derived QML entries
+  use semantic scope depth. Anonymous generic visual primitives are hidden by
+  default but remain available through search or **Show internals**.
+- Parser semantic selection now lives in `CodeWorkflowSession.selectedSemanticAnchor`
+  instead of page-local state. Runtime, graph-node and semantic selection share the
+  same session boundary; the Targets list reveals the selected item and picker
+  selection still commits through `CodeWorkflowSession.selectTarget()`.
+- Selecting a parser semantic entry uses its current parser byte range to highlight
+  and scroll Source Preview. UTF-8 byte offsets are translated to TextEdit
+  positions; reviewed source-needle fallback remains for IR-node selection.
+- Runtime and parser capability states are explicit: resident targets report
+  `LIVE · RESIDENT`, unloaded targets report `UNLOADED · STATIC SOURCE`, and
+  parser `UNAVAILABLE`/`ERROR` state includes the analyzer reason such as
+  `grammar-missing`.
+- Reset view now performs a graph fit using actual canvas/world extents rather than
+  restoring one hard-coded pan/zoom tuple.
+- Static regression contracts in
+  `scripts/test-code-workflow-ir-contract.py` and
+  `scripts/test-code-workflow-phase1-contract.py` lock the renderer visibility,
+  hierarchy/disclosure, unified selection, source-range reveal, fit behavior and
+  availability-state semantics.
+
+This pass intentionally does **not** widen source-write allowlists, transaction
+semantics, parser capability, runtime registration scope, or shell-wide inspect
+coverage. GitHub connector status queries for these direct `dev` push commits
+currently return no exposed status/check records; do not describe that as CI
+verified. Live visual acceptance should still be performed in the real Settings
+surface on the shipped desktop before treating light/dark rendering and picker
+ergonomics as compositor-qualified.
+
 ## Decision
 
 **The scoped A–E experiments are complete. Geometry is viable for a read-only

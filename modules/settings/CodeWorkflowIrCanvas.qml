@@ -619,8 +619,8 @@ Item {
                 color: selected
                     ? Appearance.colors.colPrimaryContainer
                     : Appearance.colors.colLayer1
-                border.width: selected ? 2 : 1
-                border.color: selected
+                border.width: selected || activeFocus ? 2 : 1
+                border.color: selected || activeFocus
                     ? accent
                     : Appearance.colors.colOutlineVariant
                 z: 1
@@ -631,6 +631,10 @@ Item {
                     + " · " + modelData.kind
                 Accessible.description:
                     modelData.description ?? "Read-only workflow node"
+                Accessible.focusable: true
+                Accessible.onPressAction: {
+                    CodeWorkflowSession.selectNode(node.modelData.id)
+                }
 
                 TapHandler {
                     onTapped: {
@@ -647,13 +651,7 @@ Item {
                         return
                     }
 
-                    if ((node.modelData.subflowTargetId ?? "").length > 0
-                            && node.modelData.subflowTargetId
-                                !== CodeWorkflowSession.subflowTargetId)
-                        CodeWorkflowSession.openSubflow(
-                            node.modelData.subflowTargetId)
-                    else
-                        CodeWorkflowSession.selectNode(node.modelData.id)
+                    CodeWorkflowSession.selectNode(node.modelData.id)
                     event.accepted = true
                 }
 
@@ -715,12 +713,35 @@ Item {
                             }
 
                             MouseArea {
+                                id: subflowAction
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
+                                activeFocusOnTab: parent.visible
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Open "
+                                    + String(node.modelData.title ?? "node")
+                                    + " subflow"
+                                Accessible.focusable: parent.visible
+                                Accessible.onPressAction:
+                                    CodeWorkflowSession.openSubflow(
+                                        node.modelData.subflowTargetId)
+
                                 onClicked: mouse => {
                                     mouse.accepted = true
                                     CodeWorkflowSession.openSubflow(
                                         node.modelData.subflowTargetId)
+                                }
+
+                                Keys.onPressed: event => {
+                                    if (event.key !== Qt.Key_Return
+                                            && event.key !== Qt.Key_Enter
+                                            && event.key !== Qt.Key_Space) {
+                                        event.accepted = false
+                                        return
+                                    }
+                                    CodeWorkflowSession.openSubflow(
+                                        node.modelData.subflowTargetId)
+                                    event.accepted = true
                                 }
                             }
                         }

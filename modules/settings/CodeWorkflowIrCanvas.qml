@@ -371,12 +371,10 @@ Item {
         let overlap = 0
         for (const occupied of (occupiedRoutes ?? [])) {
             const otherPoints = occupied?.points ?? []
-            const sharedSource =
-                String(occupied?.fromId ?? "")
-                    === String(edge?.from ?? "")
-            const sharedTarget =
-                String(occupied?.toId ?? "")
-                    === String(edge?.to ?? "")
+            const currentFrom = String(edge?.from ?? "")
+            const currentTo = String(edge?.to ?? "")
+            const occupiedFrom = String(occupied?.fromId ?? "")
+            const occupiedTo = String(occupied?.toId ?? "")
             for (let first = 1; first < points.length; ++first) {
                 for (let second = 1;
                         second < otherPoints.length; ++second) {
@@ -386,17 +384,27 @@ Item {
                     if (length <= 0)
                         continue
 
-                    // A short shared trunk immediately leaving/entering the
-                    // same semantic node is intentional bundling. Everything
-                    // beyond that should fan into a distinct visual lane.
-                    let allowance = 0
-                    if (sharedSource && first === 1 && second === 1)
-                        allowance = length
-                    if (sharedTarget
-                            && first === points.length - 1
-                            && second === otherPoints.length - 1)
-                        allowance = length
-                    overlap += Math.max(0, length - allowance)
+                    // Node-level IR has one abstract port per side rather than
+                    // Blender/Blueprint-style semantic sockets. Segments that
+                    // overlap only while touching the same endpoint are
+                    // therefore intentional bundling, regardless of whether
+                    // one edge enters and the other leaves that node.
+                    const currentAtSource = first === 1
+                    const currentAtTarget =
+                        first === points.length - 1
+                    const occupiedAtSource = second === 1
+                    const occupiedAtTarget =
+                        second === otherPoints.length - 1
+                    const sharedEndpoint =
+                        (currentAtSource && occupiedAtSource
+                            && currentFrom === occupiedFrom)
+                        || (currentAtSource && occupiedAtTarget
+                            && currentFrom === occupiedTo)
+                        || (currentAtTarget && occupiedAtSource
+                            && currentTo === occupiedFrom)
+                        || (currentAtTarget && occupiedAtTarget
+                            && currentTo === occupiedTo)
+                    overlap += sharedEndpoint ? 0 : length
                 }
             }
         }

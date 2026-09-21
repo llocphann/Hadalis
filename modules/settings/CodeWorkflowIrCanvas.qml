@@ -30,6 +30,56 @@ Item {
         return extent
     }
 
+    function graphBounds(): var {
+        if (root.nodes.length === 0)
+            return {
+                x: 0, y: 0,
+                width: root.worldWidth,
+                height: root.worldHeight
+            }
+
+        let minX = Number.POSITIVE_INFINITY
+        let minY = Number.POSITIVE_INFINITY
+        let maxX = Number.NEGATIVE_INFINITY
+        let maxY = Number.NEGATIVE_INFINITY
+
+        for (const node of root.nodes) {
+            const x = Number(node?.x ?? 0)
+            const y = Number(node?.y ?? 0)
+            minX = Math.min(minX, x)
+            minY = Math.min(minY, y)
+            maxX = Math.max(maxX, x + root.nodeWidth)
+            maxY = Math.max(maxY, y + root.nodeHeight)
+        }
+
+        // Backward edges route outside the node boxes. Include their horizontal
+        // Bézier controls so Fit graph never clips the real rendered path.
+        for (const edge of root.edges) {
+            const fromNode = root.nodeById(edge?.from ?? "")
+            const toNode = root.nodeById(edge?.to ?? "")
+            if (!fromNode || !toNode)
+                continue
+            const fromX = Number(fromNode.x ?? 0)
+            const toX = Number(toNode.x ?? 0)
+            const forward = toX >= fromX
+            const direction = forward ? 1 : -1
+            const x0 = fromX + (forward ? root.nodeWidth : 0)
+            const x3 = toX + (forward ? 0 : root.nodeWidth)
+            const bend = Math.max(48, Math.abs(x3 - x0) / 2)
+            const x1 = x0 + direction * bend
+            const x2 = x3 - direction * bend
+            minX = Math.min(minX, x0, x1, x2, x3)
+            maxX = Math.max(maxX, x0, x1, x2, x3)
+        }
+
+        return {
+            x: minX,
+            y: minY,
+            width: Math.max(1, maxX - minX),
+            height: Math.max(1, maxY - minY)
+        }
+    }
+
     function nodeById(nodeId: string): var {
         return root.nodes.find(node => node.id === nodeId) ?? null
     }
@@ -105,15 +155,18 @@ Item {
     function fitGraph(): void {
         if (root.width <= 0 || root.height <= 0)
             return
+        const bounds = root.graphBounds()
         const margin = 28
         const availableWidth = Math.max(1, root.width - margin * 2)
         const availableHeight = Math.max(1, root.height - margin * 2)
         const nextZoom = Math.max(0.35, Math.min(
             1.4,
-            availableWidth / Math.max(1, root.worldWidth),
-            availableHeight / Math.max(1, root.worldHeight)))
-        const nextX = (root.width - root.worldWidth * nextZoom) / 2
-        const nextY = (root.height - root.worldHeight * nextZoom) / 2
+            availableWidth / Math.max(1, bounds.width),
+            availableHeight / Math.max(1, bounds.height)))
+        const nextX = (root.width - bounds.width * nextZoom) / 2
+            - bounds.x * nextZoom
+        const nextY = (root.height - bounds.height * nextZoom) / 2
+            - bounds.y * nextZoom
         CodeWorkflowSession.setViewport(nextX, nextY, nextZoom)
     }
 

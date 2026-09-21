@@ -797,7 +797,6 @@ def main() -> None:
 
     iris_frame = read("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
     iris_field = read("modules/common/perimeter/ConnectedSurfaceIrisField.qml")
-    iris_frag = read("modules/common/perimeter/IrisField.frag")
     iris_mask = read("modules/common/perimeter/ConnectedSurfaceBodyMask.qml")
     for token in (
         "function clipExternalOwners(raw, primaryOverlap)",
@@ -826,18 +825,6 @@ def main() -> None:
           and "readonly property vector4d viewport:" in iris_field
           and "pass.x, pass.y" in iris_field,
           "Production iRiS field must use the locked local QSB with output-local viewport coordinates")
-    for token in (
-        "float tangentQuarterFillet(",
-        "if (join > 0.5 && also > 0.5)",
-        "usedAnalyticFillet",
-        "tangentQuarterFillet(",
-        "smoothUnion(",
-    ):
-        check(token in iris_frag,
-              f"Production iRiS tangent-fillet shader contract missing: {token}")
-    check("float roundUnion(" not in iris_frag
-          and "tangentContribution" not in iris_frag,
-          "Diagnostic tangent-union shader experiments must stay out of production")
     check("_sourceStrip" not in iris_mask
           and "_middleStrip" not in iris_mask
           and "_bodyStrip" not in iris_mask

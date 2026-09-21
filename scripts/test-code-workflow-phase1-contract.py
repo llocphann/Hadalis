@@ -32,6 +32,7 @@ runtime = read("services/CodeWorkflowRuntime.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
 session = read("services/CodeWorkflowSession.qml")
 ripple_button = read("modules/common/widgets/RippleButton.qml")
+capture_script = read("scripts/capture-code-workflow-ui.sh")
 ir = json.loads(read("defaults/code-workflow-ir.json"))
 
 require(registry, 'key: "code-workflow"', "registry missing Code Workflow")
@@ -51,6 +52,64 @@ for token in ("singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml",
 for token in ('targetId: "bar"', 'targetId: "bar/media"',
               'targetId: "bar/clock"', 'targetId: "bar/resources"'):
     require(runtime, token, "runtime catalog missing " + token)
+
+require(page, 'Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"',
+        "capture harness must be opt-in through an explicit environment gate")
+require(page, "active: root.captureHarnessEnabled",
+        "capture IPC must not load outside capture mode")
+require(page, 'target: "codeWorkflowCapture"',
+        "capture mode must expose one dedicated standalone Settings IPC target")
+require(page, "function captureHarnessBegin(): string",
+        "capture harness must snapshot pre-capture session state")
+require(page, "function captureHarnessRestore(): string",
+        "capture harness must restore pre-capture session state")
+for scenario in (
+    "overview",
+    "filter-input",
+    "filter-sidebar",
+    "edge-detour",
+    "edge-readonly-binding",
+    "connect-candidate",
+    "semantic-source",
+):
+    require(page, f'scenario === "{scenario}"',
+            "capture harness missing scenario " + scenario)
+
+capture_start = page.index("function captureHarnessStatus(): var")
+capture_end = page.index("readonly property var selectedIrNode:", capture_start)
+capture_block = page[capture_start:capture_end]
+for forbidden in (
+    "CodeWorkflowTransaction.",
+    "previewLiteral(",
+    "previewBinding(",
+    "beginAuthorized",
+    "prepareApplyArtifacts(",
+):
+    if forbidden in capture_block:
+        raise SystemExit(
+            "FAIL: capture harness must remain read-only; found " + forbidden
+        )
+
+for token in (
+    'QS_SETTINGS_PAGE=30',
+    'QS_CODE_WORKFLOW_CAPTURE=1',
+    'niri msg action focus-window --id "$WINDOW_ID"',
+    'niri msg action fullscreen-window --id "$WINDOW_ID"',
+    'grim -o "$OUTPUT_NAME" "$png_file"',
+    'ipc restore >"$BUNDLE_DIR/state/99-restored.txt"',
+    'capture_step "05" "edge-detour" "edge-detour"',
+    'capture_step "06" "edge-readonly-binding" "edge-readonly-binding"',
+    'capture_step "07" "connect-candidate" "connect-candidate"',
+    'capture_step "08" "semantic-source"',
+    'tar -C "$OUT_PARENT" -czf "$ARCHIVE" "$BUNDLE_NAME"',
+):
+    require(capture_script, token,
+            "Code Workflow capture runner missing contract token: " + token)
+
+require(capture_script, '"$WTYPE_BIN" "sidebar"',
+        "capture runner must exercise the real target filter input path when wtype is available")
+require(capture_script, 'settings_window_json >"$BUNDLE_DIR/meta/niri-settings-window.json"',
+        "capture runner must retain only the selected Settings window geometry record")
 
 require(target, "horizontal ii Bar", "runtime geometry scope must remain explicit")
 require(target, "Explicit allowlist", "runtime values must stay allowlisted")

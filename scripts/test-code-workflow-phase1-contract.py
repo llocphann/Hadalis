@@ -177,6 +177,16 @@ require(page, "root.selectedIrEdge?.previewable === true",
         "only reviewed previewable edges may expose edge mutation controls")
 require(page, "readonly property bool selectedEdgeReadOnly:",
         "Inspector must distinguish read-only edge inspection")
+require(page, "return root.directMutationSelectionEligible",
+        "direct-binding transaction matching must honor the inspect mutation gate")
+require(page, 'String(command.kind ?? "") !== "literal-property"',
+        "transaction matching must reject unknown/non-literal fallback commands")
+require(page, "return root.selectedIrEdge === null",
+        "literal transaction controls must not follow edge inspection")
+require(page, '=== "literal-property"\n                            && CodeWorkflowTransaction.preApplyReady',
+        "generic Prepare Apply must stay scoped to literal-property transactions")
+require(page, "&& root.transactionMatchesSelection",
+        "transaction mutation controls must remain selection-bound")
 require(page, "root.selectedIrEdge !== null",
         "Inspector header must treat selected edges as primary inspect objects")
 require(page, "?? root.selectedIrEdge?.kind",

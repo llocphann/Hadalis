@@ -361,6 +361,9 @@ for path in sorted(state_dir.glob("[0-9][0-9]-*.txt")):
         "targetsPaneWidth": latest.get("targetsPaneWidth"),
         "inspectorPaneWidth": latest.get("inspectorPaneWidth"),
         "sourcePreviewHeight": latest.get("sourcePreviewHeight"),
+        "actualTargetsPaneWidth": latest.get("actualTargetsPaneWidth"),
+        "actualInspectorPaneWidth": latest.get("actualInspectorPaneWidth"),
+        "actualSourcePreviewHeight": latest.get("actualSourcePreviewHeight"),
         "routeDiagnostics": latest.get("routeDiagnostics", {}),
     })
 
@@ -459,6 +462,7 @@ for line in source.splitlines():
             "ReferenceError:" in line
             or "TypeError:" in line
             or "Unable to assign [undefined]" in line
+            or "Cannot assign to non-existent property" in line
         )
     ):
         matches.append(line)

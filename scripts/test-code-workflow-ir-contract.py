@@ -13,103 +13,86 @@ def fail(message: str) -> None:
 
 NODE_WIDTH = 190.0
 NODE_HEIGHT = 88.0
-ROUTE_PADDING = 8.0
-DETOUR_OFFSETS = (
-    120.0, -120.0, 180.0, -180.0, 240.0, -240.0,
-    320.0, -320.0, 420.0, -420.0, 520.0, -520.0,
-)
+ROUTE_PADDING = 10.0
 
-def cubic(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
-    inv = 1.0 - t
-    return (
-        inv * inv * inv * p0
-        + 3.0 * inv * inv * t * p1
-        + 3.0 * inv * t * t * p2
-        + t * t * t * p3
-    )
-
-def base_route(from_node: dict, to_node: dict) -> dict:
-    from_x = float(from_node.get("x") or 0)
-    from_y = float(from_node.get("y") or 0)
-    to_x = float(to_node.get("x") or 0)
-    to_y = float(to_node.get("y") or 0)
-    from_right = from_x + NODE_WIDTH
-    to_right = to_x + NODE_WIDTH
-    separated_right = to_x >= from_right
-    separated_left = to_right <= from_x
-    vertical = not separated_right and not separated_left
-
-    if vertical:
-        downward = (
-            to_y + NODE_HEIGHT / 2.0
-            >= from_y + NODE_HEIGHT / 2.0
-        )
-        direction = 1.0 if downward else -1.0
-        x0 = from_x + NODE_WIDTH / 2.0
-        y0 = from_y + (NODE_HEIGHT if downward else 0.0)
-        x3 = to_x + NODE_WIDTH / 2.0
-        y3 = to_y + (0.0 if downward else NODE_HEIGHT)
-        bend = max(48.0, abs(y3 - y0) / 2.0)
-        return {
-            "vertical": True, "direction": direction, "bend": bend,
-            "x0": x0, "y0": y0,
-            "x1": x0, "y1": y0 + direction * bend,
-            "x2": x3, "y2": y3 - direction * bend,
-            "x3": x3, "y3": y3,
-        }
-
-    rightward = separated_right
-    direction = 1.0 if rightward else -1.0
-    x0 = from_x + (NODE_WIDTH if rightward else 0.0)
-    y0 = from_y + NODE_HEIGHT / 2.0
-    x3 = to_x + (0.0 if rightward else NODE_WIDTH)
-    y3 = to_y + NODE_HEIGHT / 2.0
-    bend = max(48.0, abs(x3 - x0) / 2.0)
+def raw_node_bounds(nodes: list[dict]) -> dict:
     return {
-        "vertical": False, "direction": direction, "bend": bend,
-        "x0": x0, "y0": y0,
-        "x1": x0 + direction * bend, "y1": y0,
-        "x2": x3 - direction * bend, "y2": y3,
-        "x3": x3, "y3": y3,
+        "minX": min(float(node.get("x") or 0) for node in nodes),
+        "minY": min(float(node.get("y") or 0) for node in nodes),
+        "maxX": max(float(node.get("x") or 0) + NODE_WIDTH for node in nodes),
+        "maxY": max(float(node.get("y") or 0) + NODE_HEIGHT for node in nodes),
     }
 
-def detour_route(route: dict, offset: float) -> dict:
-    candidate = dict(route)
-    if candidate["vertical"]:
-        candidate["x1"] = candidate["x0"] + offset
-        candidate["y1"] = candidate["y0"]
-        candidate["x2"] = candidate["x3"] + offset
-        candidate["y2"] = candidate["y3"]
-    else:
-        candidate["x1"] = candidate["x0"]
-        candidate["y1"] = candidate["y0"] + offset
-        candidate["x2"] = candidate["x3"]
-        candidate["y2"] = candidate["y3"] + offset
-    return candidate
+def normalize_points(points: list[dict]) -> list[dict]:
+    compact = []
+    for point in points:
+        next_point = {"x": float(point["x"]), "y": float(point["y"])}
+        if compact and all(
+            abs(compact[-1][axis] - next_point[axis]) < 0.001
+            for axis in ("x", "y")
+        ):
+            continue
+        compact.append(next_point)
+
+    changed = True
+    while changed and len(compact) > 2:
+        changed = False
+        for index in range(1, len(compact) - 1):
+            before, point, after = (
+                compact[index - 1],
+                compact[index],
+                compact[index + 1],
+            )
+            same_x = (
+                abs(before["x"] - point["x"]) < 0.001
+                and abs(point["x"] - after["x"]) < 0.001
+            )
+            same_y = (
+                abs(before["y"] - point["y"]) < 0.001
+                and abs(point["y"] - after["y"]) < 0.001
+            )
+            if same_x or same_y:
+                compact.pop(index)
+                changed = True
+                break
+    return compact
+
+def make_route(points: list[dict], vertical: bool, direction: float) -> dict:
+    return {
+        "points": normalize_points(points),
+        "vertical": vertical,
+        "direction": direction,
+    }
+
+def segment_intersects_rect(
+    start: dict,
+    end: dict,
+    left: float,
+    top: float,
+    right: float,
+    bottom: float,
+) -> bool:
+    if abs(start["x"] - end["x"]) < 0.001:
+        low, high = sorted((start["y"], end["y"]))
+        return left <= start["x"] <= right and high >= top and low <= bottom
+    if abs(start["y"] - end["y"]) < 0.001:
+        low, high = sorted((start["x"], end["x"]))
+        return top <= start["y"] <= bottom and high >= left and low <= right
+    return False
 
 def route_intersects_node(route: dict, node: dict) -> bool:
     left = float(node.get("x") or 0) - ROUTE_PADDING
     top = float(node.get("y") or 0) - ROUTE_PADDING
     right = float(node.get("x") or 0) + NODE_WIDTH + ROUTE_PADDING
     bottom = float(node.get("y") or 0) + NODE_HEIGHT + ROUTE_PADDING
-
-    route_left = min(route[f"x{i}"] for i in range(4))
-    route_top = min(route[f"y{i}"] for i in range(4))
-    route_right = max(route[f"x{i}"] for i in range(4))
-    route_bottom = max(route[f"y{i}"] for i in range(4))
-    if (
-        route_right < left or route_left > right
-        or route_bottom < top or route_top > bottom
-    ):
-        return False
-
-    for step in range(1, 32):
-        t = step / 32.0
-        x = cubic(route["x0"], route["x1"], route["x2"], route["x3"], t)
-        y = cubic(route["y0"], route["y1"], route["y2"], route["y3"], t)
-        if left <= x <= right and top <= y <= bottom:
-            return True
-    return False
+    points = route["points"]
+    return any(
+        segment_intersects_rect(
+            points[index - 1], points[index],
+            left, top, right, bottom,
+        )
+        for index in range(1, len(points))
+    )
 
 def route_collision_count(route: dict, edge: dict, nodes: list[dict]) -> int:
     return sum(
@@ -119,25 +102,176 @@ def route_collision_count(route: dict, edge: dict, nodes: list[dict]) -> int:
         and route_intersects_node(route, node)
     )
 
-def resolved_route(edge: dict, node_by_id: dict, nodes: list[dict]) -> dict:
-    route = base_route(
-        node_by_id[edge.get("from")],
-        node_by_id[edge.get("to")],
+def route_length(route: dict) -> float:
+    points = route["points"]
+    return sum(
+        abs(points[index]["x"] - points[index - 1]["x"])
+        + abs(points[index]["y"] - points[index - 1]["y"])
+        for index in range(1, len(points))
     )
-    best = route
-    best_count = route_collision_count(route, edge, nodes)
-    if best_count == 0:
-        return route
 
-    for offset in DETOUR_OFFSETS:
-        candidate = detour_route(route, offset)
-        count = route_collision_count(candidate, edge, nodes)
-        if count < best_count:
-            best = candidate
-            best_count = count
-        if count == 0:
-            return candidate
-    return best
+def edge_lane_offset(edge: dict, edges: list[dict]) -> float:
+    siblings = [
+        candidate for candidate in edges
+        if candidate.get("from") == edge.get("from")
+    ]
+    if len(siblings) <= 1:
+        return 0.0
+    index = next(
+        (
+            index for index, candidate in enumerate(siblings)
+            if candidate.get("id") == edge.get("id")
+        ),
+        -1,
+    )
+    if index < 0:
+        return 0.0
+    return max(-72.0, min(
+        72.0, (index - (len(siblings) - 1) / 2.0) * 12.0))
+
+def resolved_route(
+    edge: dict,
+    node_by_id: dict,
+    nodes: list[dict],
+    edges: list[dict],
+) -> dict:
+    from_node = node_by_id[edge.get("from")]
+    to_node = node_by_id[edge.get("to")]
+    from_x = float(from_node.get("x") or 0)
+    from_y = float(from_node.get("y") or 0)
+    to_x = float(to_node.get("x") or 0)
+    to_y = float(to_node.get("y") or 0)
+    from_right = from_x + NODE_WIDTH
+    to_right = to_x + NODE_WIDTH
+    from_center_x = from_x + NODE_WIDTH / 2.0
+    from_center_y = from_y + NODE_HEIGHT / 2.0
+    to_center_x = to_x + NODE_WIDTH / 2.0
+    to_center_y = to_y + NODE_HEIGHT / 2.0
+    separated_right = to_x >= from_right
+    separated_left = to_right <= from_x
+    vertical = not separated_right and not separated_left
+    lane_offset = edge_lane_offset(edge, edges)
+    bounds = raw_node_bounds(nodes)
+    candidates = []
+
+    if not vertical:
+        rightward = separated_right
+        direction = 1.0 if rightward else -1.0
+        x0 = from_x + (NODE_WIDTH if rightward else 0.0)
+        y0 = from_center_y
+        x3 = to_x + (0.0 if rightward else NODE_WIDTH)
+        y3 = to_center_y
+        base_corridor = (x0 + x3) / 2.0 + lane_offset
+        for offset in (0, 48, -48, 96, -96, 160, -160):
+            corridor = base_corridor + offset
+            candidates.append(make_route([
+                {"x": x0, "y": y0},
+                {"x": corridor, "y": y0},
+                {"x": corridor, "y": y3},
+                {"x": x3, "y": y3},
+            ], False, direction))
+
+        stub = 36.0
+        from_stub = x0 + direction * stub
+        to_stub = x3 - direction * stub
+        middle_y = (y0 + y3) / 2.0
+        for lane_y in (
+            bounds["minY"] - 52 - abs(lane_offset) * 0.25,
+            bounds["maxY"] + 52 + abs(lane_offset) * 0.25,
+            middle_y + 120, middle_y - 120,
+            middle_y + 220, middle_y - 220,
+        ):
+            candidates.append(make_route([
+                {"x": x0, "y": y0},
+                {"x": from_stub, "y": y0},
+                {"x": from_stub, "y": lane_y},
+                {"x": to_stub, "y": lane_y},
+                {"x": to_stub, "y": y3},
+                {"x": x3, "y": y3},
+            ], False, direction))
+
+        for source_y, target_y, lane_y in (
+            (
+                from_y,
+                to_y,
+                bounds["minY"] - 52 - abs(lane_offset) * 0.25,
+            ),
+            (
+                from_y + NODE_HEIGHT,
+                to_y + NODE_HEIGHT,
+                bounds["maxY"] + 52 + abs(lane_offset) * 0.25,
+            ),
+        ):
+            candidates.append(make_route([
+                {"x": from_center_x, "y": source_y},
+                {"x": from_center_x, "y": lane_y},
+                {"x": to_center_x, "y": lane_y},
+                {"x": to_center_x, "y": target_y},
+            ], False, direction))
+    else:
+        downward = to_center_y >= from_center_y
+        direction = 1.0 if downward else -1.0
+        x0 = from_center_x
+        y0 = from_y + (NODE_HEIGHT if downward else 0.0)
+        x3 = to_center_x
+        y3 = to_y + (0.0 if downward else NODE_HEIGHT)
+        base_corridor = (y0 + y3) / 2.0 + lane_offset
+        for offset in (0, 48, -48, 96, -96, 160, -160):
+            corridor = base_corridor + offset
+            candidates.append(make_route([
+                {"x": x0, "y": y0},
+                {"x": x0, "y": corridor},
+                {"x": x3, "y": corridor},
+                {"x": x3, "y": y3},
+            ], True, direction))
+
+        stub = 36.0
+        from_stub = y0 + direction * stub
+        to_stub = y3 - direction * stub
+        middle_x = (x0 + x3) / 2.0
+        for lane_x in (
+            bounds["minX"] - 52 - abs(lane_offset) * 0.25,
+            bounds["maxX"] + 52 + abs(lane_offset) * 0.25,
+            middle_x + 120, middle_x - 120,
+            middle_x + 220, middle_x - 220,
+        ):
+            candidates.append(make_route([
+                {"x": x0, "y": y0},
+                {"x": x0, "y": from_stub},
+                {"x": lane_x, "y": from_stub},
+                {"x": lane_x, "y": to_stub},
+                {"x": x3, "y": to_stub},
+                {"x": x3, "y": y3},
+            ], True, direction))
+
+        for source_x, target_x, lane_x in (
+            (
+                from_x,
+                to_x,
+                bounds["minX"] - 52 - abs(lane_offset) * 0.25,
+            ),
+            (
+                from_right,
+                to_right,
+                bounds["maxX"] + 52 + abs(lane_offset) * 0.25,
+            ),
+        ):
+            candidates.append(make_route([
+                {"x": source_x, "y": from_center_y},
+                {"x": lane_x, "y": from_center_y},
+                {"x": lane_x, "y": to_center_y},
+                {"x": target_x, "y": to_center_y},
+            ], True, direction))
+
+    return min(
+        candidates,
+        key=lambda route: (
+            route_collision_count(route, edge, nodes) * 1_000_000
+            + route_length(route)
+            + max(0, len(route["points"]) - 2) * 18,
+            route_length(route),
+        ),
+    )
 
 data = json.loads(MANIFEST.read_text(encoding="utf-8"))
 if data.get("schema") != 1:
@@ -221,7 +355,7 @@ for graph_id, graph in graphs.items():
         if from_x == to_x:
             seen_same_column_edge = True
 
-        route = resolved_route(edge, node_by_id, nodes)
+        route = resolved_route(edge, node_by_id, nodes, edges)
         collisions = route_collision_count(route, edge, nodes)
         if collisions != 0:
             fail(
@@ -279,15 +413,18 @@ for token in (
     "id: edgePath",
     'root.graphExtent("x", 1050)',
     'root.graphExtent("y", 570)',
+    "function normalizeRoutePoints(points): var",
+    "function smoothStepSvg(points): string",
+    "function routeFromPoints(points, vertical: bool, direction: real): var",
+    "function segmentIntersectsRect(",
     "function routeIntersectsNode(route, node, padding: real): bool",
     "function routeCollisionCount(route, edge): int",
-    "function detourRoute(route, offset: real): var",
+    "function edgeLaneOffset(edge): real",
+    "function routeScore(route, edge): real",
     "function edgeRoute(edge): var",
-    "const detourOffsets = [",
-    "const separatedRight = toX >= fromRight",
-    "const separatedLeft = toRight <= fromX",
-    "const vertical = !separatedRight && !separatedLeft",
-    "if (vertical)",
+    "const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]",
+    "const horizontalPortLanes = [",
+    "const verticalPortLanes = [",
     "readonly property var edgeRouteCache: root.buildEdgeRouteCache()",
     "function buildEdgeRouteCache(): var",
     "function routeForEdge(edge): var",
@@ -295,6 +432,9 @@ for token in (
     "const route = root.routeForEdge(edge)",
     "root.routeForEdge(edgeShape.modelData)",
     "root.routeForEdge(modelData)",
+    "PathSvg {",
+    "path: edgePath.route?.svg ?? \"\"",
+    "readonly property var previousPoint:",
     "readonly property real tangentX:",
     "readonly property real tangentY:",
     "readonly property real tangentLength:",
@@ -328,7 +468,6 @@ for token in (
     "ShapePath.RoundCap",
     "Appearance.colors.colLayer0",
     "function onSelectedNodeIdChanged(): void",
-    "root.cubicCoordinate(",
     "Layout.maximumWidth: node.width - 20",
     "CodeWorkflowSession.selectNode",
     "CodeWorkflowSession.openSubflow",

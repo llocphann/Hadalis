@@ -635,9 +635,11 @@ Before applying a migration:
 3. show added/duplicate/conflicting counts;
 4. back up the target note once;
 5. revalidate source hashes immediately before write;
-6. apply the managed-section patch atomically;
-7. rescan;
-8. only then set `todo.backend = "obsidian"`.
+6. freeze Hadalis-side mutations of the internal store while the copy is in flight;
+7. apply the managed-section patch atomically;
+8. rescan;
+9. only then set `todo.backend = "obsidian"`. If migration fails, times out,
+   or cannot start, release the freeze and keep Internal canonical.
 
 Never delete or overwrite `todo.json` during migration. It remains the
 inactive internal store and therefore a clean rollback target. Obsidian-derived

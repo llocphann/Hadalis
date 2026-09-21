@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 facade = (ROOT / "services" / "Todo.qml").read_text(encoding="utf-8")
 internal = (ROOT / "services" / "InternalTodoBackend.qml").read_text(encoding="utf-8")
+obsidian = (ROOT / "services" / "ObsidianTodoBackend.qml").read_text(encoding="utf-8")
 qmldir = (ROOT / "services" / "qmldir").read_text(encoding="utf-8")
 
 required_facade = [
@@ -14,9 +15,10 @@ required_facade = [
     'Config.options?.todo?.backend ?? "internal"',
     'root.requestedBackend === "obsidian"',
     "active: root.useObsidian || root._obsidianSetupActive",
+    "property bool _migrationInFlight: false",
     "readonly property var list:",
     "readonly property bool ready:",
-    "readonly property bool busy:",
+    "readonly property bool busy: root.useObsidian ? obsidian.busy : root._migrationInFlight",
     "readonly property string errorMessage:",
     "readonly property var capabilities:",
     "readonly property string sourceLabel:",
@@ -39,6 +41,8 @@ required_facade = [
     "readonly property int internalItemCount: internal.list.length",
     "function migrateInternalToObsidian(expectedInternalSha)",
     "root._activateAfterMigration = staging",
+    "root._migrationInFlight = staging",
+    "function onMigrationFinished(success, payload): void",
     "obsidian.migrateInternal(",
     "function activateObsidian(): bool",
     "function reactivateInternal(): bool",
@@ -78,6 +82,11 @@ for snippet in required_internal:
     assert snippet in internal, f"internal Todo backend lost behavior: {snippet}"
 
 assert "pragma Singleton" not in internal, "internal backend must not become a second singleton"
+assert facade.count("if (root._migrationInFlight)") >= 7, "internal mutations must freeze during migration"
+assert "signal migrationFinished(bool success, var payload)" in obsidian
+assert 'root._notifyMigrationFinished(false, null)' in obsidian
+assert 'root._notifyMigrationFinished(true, payload)' in obsidian
+
 assert "InternalTodoBackend 1.0 InternalTodoBackend.qml" in qmldir
 assert "ObsidianTodoBackend 1.0 ObsidianTodoBackend.qml" in qmldir
 assert "singleton Todo 1.0 Todo.qml" in qmldir

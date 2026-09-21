@@ -36,6 +36,7 @@ Scope {
     property var migrationPreview: null
 
     signal migrationCommitted(var payload)
+    signal migrationFinished(bool success, var payload)
 
     property bool _refreshQueued: false
     property string _scanVaultPath: ""
@@ -540,6 +541,11 @@ Scope {
         }
     }
 
+    function _notifyMigrationFinished(success: bool, payload): void {
+        if (mutationProc.kind === "migrate-internal")
+            root.migrationFinished(success, payload)
+    }
+
     function _handleMutationPayload(payload): void {
         if (payload?.ok === true) {
             if (mutationProc.kind === "preview-migration") {
@@ -552,8 +558,10 @@ Scope {
             const committedMigration = mutationProc.kind === "migrate-internal"
             root._applyScanPayload(payload)
             root._finishMutation()
-            if (committedMigration)
+            if (committedMigration) {
+                root._notifyMigrationFinished(true, payload)
                 root.migrationCommitted(payload)
+            }
             return
         }
 
@@ -576,6 +584,7 @@ Scope {
         }
 
         root._setError(code, message)
+        root._notifyMigrationFinished(false, payload)
         root._finishMutation()
         if (code === "conflict")
             root.refresh()
@@ -820,10 +829,12 @@ Scope {
             mutationTimeout.stop()
             if (!root._mutationSourceCurrent()) {
                 root._refreshQueued = root.configured
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
             root._setError("mutation_start_failed", "Failed to start Todo mutation helper")
+            root._notifyMigrationFinished(false, null)
             root._finishMutation()
         }
 
@@ -842,12 +853,14 @@ Scope {
             // authoritative for whichever backend is currently active.
             if (!root._mutationSourceCurrent()) {
                 root._refreshQueued = root.configured
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
 
             if (mutationProc.timedOut) {
                 root._setError("mutation_timeout", "Todo mutation timed out")
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
@@ -855,6 +868,7 @@ Scope {
             const output = String(mutationCollector.text ?? "").trim()
             if (output.length === 0) {
                 root._setError("mutation_failed", "Todo mutation helper returned no result")
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
@@ -863,6 +877,7 @@ Scope {
                 root._handleMutationPayload(JSON.parse(output))
             } catch (error) {
                 root._setError("mutation_invalid_output", "Todo mutation helper returned invalid JSON")
+                root._notifyMigrationFinished(false, null)
                 root._finishMutation()
             }
         }

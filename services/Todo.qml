@@ -26,6 +26,7 @@ Singleton {
     // consumers continue to see the internal backend until activation commits.
     property bool _obsidianSetupActive: false
     property bool _activateAfterMigration: false
+    property bool _migrationInFlight: false
     readonly property bool obsidianSetupActive: root._obsidianSetupActive
     readonly property bool obsidianConfigured: obsidian.configured
     readonly property bool obsidianReady: obsidian.ready
@@ -39,7 +40,7 @@ Singleton {
 
     readonly property var list: root.useObsidian ? obsidian.list : internal.list
     readonly property bool ready: root.useObsidian ? obsidian.ready : internal.ready
-    readonly property bool busy: root.useObsidian ? obsidian.busy : false
+    readonly property bool busy: root.useObsidian ? obsidian.busy : root._migrationInFlight
     readonly property string errorMessage: root.useObsidian ? obsidian.errorMessage : ""
     readonly property string errorCode: root.useObsidian ? obsidian.errorCode : ""
     readonly property var capabilities: root.useObsidian
@@ -77,7 +78,14 @@ Singleton {
     Connections {
         target: obsidian
 
+        function onMigrationFinished(success, payload): void {
+            root._migrationInFlight = false
+            if (!success)
+                root._activateAfterMigration = false
+        }
+
         function onMigrationCommitted(payload): void {
+            root._migrationInFlight = false
             if (!root._activateAfterMigration)
                 return
             root._activateAfterMigration = false
@@ -106,7 +114,7 @@ Singleton {
     }
 
     function cancelObsidianSetup(): void {
-        if (root.useObsidian)
+        if (root.useObsidian || root._migrationInFlight)
             return
         root._activateAfterMigration = false
         root._obsidianSetupActive = false
@@ -132,7 +140,8 @@ Singleton {
     }
 
     function migrateInternalToObsidian(expectedInternalSha) {
-        if (!root.useObsidian && !root._obsidianSetupActive)
+        if ((!root.useObsidian && !root._obsidianSetupActive)
+                || root._migrationInFlight)
             return false
 
         const staging = !root.useObsidian
@@ -141,7 +150,9 @@ Singleton {
             internal.filePath,
             String(expectedInternalSha ?? "")
         )
-        if (!started)
+        if (started)
+            root._migrationInFlight = staging
+        else
             root._activateAfterMigration = false
         return started
     }
@@ -159,6 +170,8 @@ Singleton {
     }
 
     function reactivateInternal(): bool {
+        if (root._migrationInFlight)
+            return false
         root._activateAfterMigration = false
         root._obsidianSetupActive = false
         Config.setNestedValue("todo.backend", "internal")
@@ -167,20 +180,28 @@ Singleton {
 
 
     function addItem(item) {
-        if (!root.useObsidian)
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
             return internal.addItem(item)
+        }
         const content = String(item?.content ?? item?.description ?? "")
         return obsidian.addTask(content)
     }
 
     function addTask(desc) {
-        if (!root.useObsidian)
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
             return internal.addTask(desc)
+        }
         return obsidian.addTask(String(desc ?? ""))
     }
 
     function toggleTask(taskId) {
         if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
             const id = String(taskId ?? "")
             for (let i = 0; i < internal.list.length; ++i) {
                 if (String(internal.list[i]?.id ?? "") === id) {
@@ -196,6 +217,8 @@ Singleton {
 
     function deleteTask(taskId) {
         if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
             const id = String(taskId ?? "")
             for (let i = 0; i < internal.list.length; ++i) {
                 if (String(internal.list[i]?.id ?? "") === id)
@@ -209,8 +232,11 @@ Singleton {
     // Compatibility wrappers for the existing TodoWidget/Dashboard delegates.
     // They resolve the current item first so Obsidian never mutates by index.
     function markDone(index) {
-        if (!root.useObsidian)
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
             return internal.markDone(index)
+        }
         const item = root._itemAt(index)
         if (!item)
             return false
@@ -220,8 +246,11 @@ Singleton {
     }
 
     function markUnfinished(index) {
-        if (!root.useObsidian)
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
             return internal.markUnfinished(index)
+        }
         const item = root._itemAt(index)
         if (!item)
             return false
@@ -231,8 +260,11 @@ Singleton {
     }
 
     function deleteItem(index) {
-        if (!root.useObsidian)
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
             return internal.deleteItem(index)
+        }
         const item = root._itemAt(index)
         if (!item)
             return false
@@ -270,6 +302,7 @@ Singleton {
 
     onUseObsidianChanged: {
         if (root.useObsidian) {
+            root._migrationInFlight = false
             root._activateAfterMigration = false
             root._obsidianSetupActive = false
         }

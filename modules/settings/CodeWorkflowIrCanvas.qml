@@ -150,9 +150,25 @@ Item {
 
         const first = normalized[0]
         const last = normalized[normalized.length - 1]
-        const middleSegment = Math.floor((normalized.length - 2) / 2)
-        const labelFrom = normalized[middleSegment]
-        const labelTo = normalized[middleSegment + 1]
+        let labelFrom = normalized[0]
+        let labelTo = normalized[1]
+        let bestLabelScore = -1
+        for (let index = 1; index < normalized.length; ++index) {
+            const segmentFrom = normalized[index - 1]
+            const segmentTo = normalized[index]
+            const span = Math.abs(segmentTo.x - segmentFrom.x)
+                + Math.abs(segmentTo.y - segmentFrom.y)
+            const horizontal =
+                Math.abs(segmentTo.y - segmentFrom.y) < 0.001
+            // Prefer a long horizontal "wire run" for labels. If a route has
+            // no horizontal run, fall back to its longest segment.
+            const score = span + (horizontal ? 10000 : 0)
+            if (score > bestLabelScore) {
+                bestLabelScore = score
+                labelFrom = segmentFrom
+                labelTo = segmentTo
+            }
+        }
         return {
             points: normalized,
             vertical: vertical,
@@ -553,6 +569,39 @@ Item {
             return root.edgeRoute(edge)
         const cached = root.edgeRouteCache[edgeId]
         return cached ?? root.edgeRoute(edge)
+    }
+
+    function routeDiagnostics(): var {
+        const occupiedRoutes = []
+        let collisions = 0
+        let crossings = 0
+        let maxBends = 0
+        let totalLength = 0
+        let routedEdges = 0
+
+        for (const edge of root.edges) {
+            const route = root.routeForEdge(edge)
+            if (!route)
+                continue
+            routedEdges += 1
+            collisions += root.routeCollisionCount(route, edge)
+            crossings += root.routeCrossingCount(route, occupiedRoutes)
+            maxBends = Math.max(
+                maxBends,
+                Math.max(0, (route.points?.length ?? 2) - 2))
+            totalLength += root.routeLength(route)
+            occupiedRoutes.push(route)
+        }
+
+        return {
+            style: "smooth-step-lane-v1",
+            edges: root.edges.length,
+            routedEdges: routedEdges,
+            collisions: collisions,
+            crossings: crossings,
+            maxBends: maxBends,
+            totalLength: Math.round(totalLength)
+        }
     }
 
     function graphBounds(): var {

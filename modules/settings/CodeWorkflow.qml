@@ -1361,6 +1361,7 @@ Item {
     }
 
     component Pill: Rectangle {
+        id: pill
         required property string label
         property color accent: Appearance.colors.colPrimary
         readonly property color ink: ColorUtils.readableAccentInk(
@@ -1381,7 +1382,7 @@ Item {
 
         HoverHandler {
             id: pillHover
-            target: root
+            target: pill
         }
 
         StyledText {
@@ -1400,7 +1401,7 @@ Item {
         }
 
         StyledToolTip {
-            text: root.label
+            text: pill.label
         }
     }
 
@@ -3344,6 +3345,7 @@ Item {
                             Accessible.description:
                                 "Read-only source for the current inspect selection"
                             wrapMode: TextEdit.NoWrap
+                            renderType: Text.QtRendering
                             color: Appearance.colors.colOnLayer1
                             selectionColor: Appearance.colors.colPrimaryContainer
                             selectedTextColor: Appearance.colors.colOnPrimaryContainer

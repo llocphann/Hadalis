@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 
 Item {

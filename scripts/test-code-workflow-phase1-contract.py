@@ -255,6 +255,10 @@ require(page, "root.selectedIrEdge === null",
         "direct node edits must remain available when no edge is selected")
 require(page, "root.selectedIrEdge?.previewable === true",
         "only reviewed previewable edges may expose edge mutation controls")
+require(session, "restoredEdge.previewable === true",
+        "session restore must re-check previewable edge mutation invariants")
+require(session, 'edgeTarget.kind !== "binding"',
+        "restored previewable edges must still target reviewed binding nodes")
 require(page, "readonly property bool selectedEdgeReadOnly:",
         "Inspector must distinguish read-only edge inspection")
 require(page, "return root.directMutationSelectionEligible",

@@ -228,6 +228,10 @@ Scope {
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.namespace: "quickshell:toast-manager"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            // This full-width Overlay is positioned in physical output
+            // coordinates. Bar/Screen Edge reservation windows must not offset
+            // it before topOwnerThickness/screenEdgeThickness are applied.
+            exclusionMode: ExclusionMode.Ignore
             
             mask: Region {
                 item: toastBody
@@ -246,9 +250,6 @@ Scope {
                 edge: "top"
                 ownerThickness: root.topOwnerThickness
                 tangentFrameThickness: root.screenEdgeThickness
-                paintOverlap: Math.min(
-                    PerimeterTokens.seamOverlap,
-                    Math.max(0, root.topOwnerThickness - 1))
                 joinTangentEnd: true
                 outputRect: Qt.rect(0, 0, popup.width, popup.height)
                 bodyRect: Qt.rect(

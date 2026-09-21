@@ -326,9 +326,9 @@ def _probe_tasks_locked(cli: str, configured_vault: Path) -> dict[str, Any]:
         except (OSError, RuntimeError):
             active_path = active_raw
 
-    settings = _settings_summary(payload.get("settings"))
     plugin_enabled = payload.get("tasksPluginEnabled") is True
     api_available = payload.get("tasksApiAvailable") is True
+    settings = _settings_summary(payload.get("settings")) if plugin_enabled else None
     return {
         "cliResponsive": True,
         "activeVaultPath": active_path,

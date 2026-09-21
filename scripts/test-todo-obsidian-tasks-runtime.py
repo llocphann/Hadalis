@@ -189,6 +189,31 @@ class ObsidianTasksRuntimeTests(unittest.TestCase):
         self.assertTrue(result["richMutationAvailable"])
         self.assertEqual(result["tasksSettings"]["globalFilter"], "#task")
 
+    def test_capability_probe_does_not_invent_settings_when_tasks_is_disabled(self):
+        vault, _ = self.make_vault()
+        self.patch("_obsidian_running", lambda: True)
+        self.patch("_find_cli", lambda: "/fake/obsidian")
+
+        payload = {
+            "vaultPath": str(vault.resolve()),
+            "tasksPluginEnabled": False,
+            "tasksApiAvailable": False,
+            "settings": None,
+        }
+        self.patch(
+            "_run_cli",
+            lambda *_args: subprocess.CompletedProcess(
+                ["obsidian"], 0, stdout="=> " + json.dumps(payload), stderr=""
+            ),
+        )
+        result = obsidian_tasks.probe_capabilities(str(vault))
+        self.assertTrue(result["cliResponsive"])
+        self.assertTrue(result["activeVaultMatches"])
+        self.assertFalse(result["tasksPluginEnabled"])
+        self.assertFalse(result["tasksApiAvailable"])
+        self.assertFalse(result["richMutationAvailable"])
+        self.assertIsNone(result["tasksSettings"])
+
     def test_capability_probe_fails_closed_on_other_vault(self):
         vault, _ = self.make_vault()
         other_tmp = tempfile.TemporaryDirectory()

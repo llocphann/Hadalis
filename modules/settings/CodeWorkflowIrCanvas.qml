@@ -452,7 +452,8 @@ Item {
                 readonly property bool highlighted:
                     selectedEdge
                     || hoveredEdge
-                    || (CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                    || (CodeWorkflowSession.selectedEdgeId.length === 0
+                        && CodeWorkflowSession.selectedSemanticAnchor.length === 0
                         && (CodeWorkflowSession.selectedNodeId
                                 === modelData.from
                             || CodeWorkflowSession.selectedNodeId
@@ -591,7 +592,8 @@ Item {
                 required property var modelData
 
                 readonly property bool selected:
-                    CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                    CodeWorkflowSession.selectedEdgeId.length === 0
+                    && CodeWorkflowSession.selectedSemanticAnchor.length === 0
                     && CodeWorkflowSession.selectedNodeId === modelData.id
                 readonly property color accent:
                     root.accentForKind(modelData.kind)

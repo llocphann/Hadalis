@@ -254,6 +254,12 @@ require(page, 'buttonText: "Save source editor"',
         "Source Editor must expose an explicit guarded save control")
 require(page, 'buttonText: "Open source in Neovim"',
         "Source Editor must expose the Neovim handoff path")
+require(page, '"Use embedded Neovim"',
+        "Source Editor must expose an embedded Neovim mode")
+require(page, "CodeWorkflowNvimView {",
+        "Source Editor must render embedded Neovim through the dedicated view")
+require(page, "active: visible",
+        "embedded Neovim lifecycle must follow its visible editor surface")
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
 require(page, "visible: root.sourceEditorStatus.length > 0",

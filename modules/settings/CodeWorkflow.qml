@@ -25,6 +25,7 @@ Item {
     property bool sourceEditorStagePending: false
     property string sourceEditorStatus: ""
     property var sourceEditorBuffers: ({})
+    property bool sourceEditorUseNvim: false
     readonly property bool sourceEditorDirty:
         root.sourceDraft !== root.sourceEditorBaseText
     readonly property bool sourceEditorCanSave:
@@ -513,6 +514,9 @@ Item {
     onSourcePathChanged: {
         root.stashSourceEditorBuffer()
         root.sourceEditorStatus = ""
+        if (root.sourceEditorUseNvim
+                && root.sourceEditorTargetPath.length > 0)
+            Qt.callLater(() => embeddedNvimEditor.ensureSession())
     }
 
     function stashSourceEditorBuffer(): void {
@@ -3663,27 +3667,60 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Source Editor · " + root.sourcePath
+                        text: (root.sourceEditorUseNvim
+                            ? "Neovim · " : "Source Editor · ")
+                            + root.sourcePath
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                         elide: Text.ElideMiddle
                     }
                     Pill {
-                        label: root.sourceEditorConflict
-                            ? "CONFLICT"
-                            : root.sourceEditorSaving
-                                ? "SAVING"
+                        label: root.sourceEditorUseNvim
+                            ? "NVIM · " + CodeWorkflowNvim.mode.toUpperCase()
+                            : root.sourceEditorConflict
+                                ? "CONFLICT"
+                                : root.sourceEditorSaving
+                                    ? "SAVING"
+                                    : root.sourceEditorDirty
+                                        ? "MODIFIED" : "SYNCED"
+                        accent: root.sourceEditorUseNvim
+                            ? Appearance.colors.colPrimary
+                            : root.sourceEditorConflict
+                                ? Appearance.colors.colError
                                 : root.sourceEditorDirty
-                                    ? "MODIFIED" : "SYNCED"
-                        accent: root.sourceEditorConflict
-                            ? Appearance.colors.colError
-                            : root.sourceEditorDirty
-                                ? Appearance.colors.colTertiary
-                                : Appearance.colors.colPrimary
+                                    ? Appearance.colors.colTertiary
+                                    : Appearance.colors.colPrimary
+                    }
+                    RippleButtonWithIcon {
+                        buttonText: root.sourceEditorUseNvim
+                            ? "Use inline source editor"
+                            : "Use embedded Neovim"
+                        mainText: ""
+                        materialIcon: root.sourceEditorUseNvim
+                            ? "edit_note" : "terminal"
+                        enabled: root.sourcePath.length > 0
+                            && !root.sourceEditorDirty
+                            && !root.sourceEditorConflict
+                            && !root.sourceEditorSaving
+                        onClicked: {
+                            root.sourceEditorUseNvim =
+                                !root.sourceEditorUseNvim
+                            if (root.sourceEditorUseNvim)
+                                Qt.callLater(() =>
+                                    embeddedNvimEditor.ensureSession())
+                        }
+                        StyledToolTip {
+                            text: root.sourceEditorUseNvim
+                                ? "Return to the inline guarded editor"
+                                : root.sourceEditorDirty
+                                    ? "Save or revert the inline draft before starting Neovim"
+                                    : "Run Neovim --embed inside Source Editor"
+                        }
                     }
                     RippleButtonWithIcon {
                         buttonText: "Revert source editor"
+                        visible: !root.sourceEditorUseNvim
                         mainText: ""
                         materialIcon: "restart_alt"
                         enabled: (root.sourceEditorDirty
@@ -3694,6 +3731,7 @@ Item {
                     }
                     RippleButtonWithIcon {
                         buttonText: "Save source editor"
+                        visible: !root.sourceEditorUseNvim
                         mainText: ""
                         materialIcon: "save"
                         enabled: root.sourceEditorCanSave
@@ -3718,7 +3756,8 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    visible: root.sourceEditorStatus.length > 0
+                    visible: !root.sourceEditorUseNvim
+                        && root.sourceEditorStatus.length > 0
                     text: root.sourceEditorStatus
                     color: root.sourceEditorConflict
                         || root.sourceEditorStatus.startsWith("Save failed")
@@ -3737,8 +3776,17 @@ Item {
                     color: Appearance.colors.colLayer0
                     clip: true
 
+                    CodeWorkflowNvimView {
+                        id: embeddedNvimEditor
+                        anchors.fill: parent
+                        visible: root.sourceEditorUseNvim
+                        active: visible
+                        sourcePath: root.sourceEditorTargetPath
+                    }
+
                     Flickable {
                         id: sourcePreviewFlick
+                        visible: !root.sourceEditorUseNvim
                         anchors.fill: parent
                         anchors.margins: 7
                         contentWidth: Math.max(width, sourcePreviewText.implicitWidth)

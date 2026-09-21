@@ -749,6 +749,13 @@ for token in (
     "text: root.sourceDraft",
     "readOnly: false",
     "Keys.onPressed: event =>",
+    "property bool sourceEditorUseNvim: false",
+    'buttonText: root.sourceEditorUseNvim',
+    '"Use embedded Neovim"',
+    "CodeWorkflowNvim.mode.toUpperCase()",
+    "CodeWorkflowNvimView {",
+    "id: embeddedNvimEditor",
+    "active: visible",
 ):
     if token not in page:
         fail("Code Workflow page missing IR integration " + token)

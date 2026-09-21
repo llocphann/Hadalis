@@ -84,8 +84,12 @@ require(page, "target: CodeWorkflowSession",
         "Targets must react to shared session selection changes")
 require(page, "targetList.positionViewAtIndex(index, ListView.Contain)",
         "Targets must scroll the selected item into view")
+require(page, 'mainText: "Fit graph"',
+        "graph fit control must describe its actual behavior")
 require(page, "onClicked: canvas.fitGraph()",
-        "Reset view must fit the actual graph")
+        "Fit graph control must use actual graph extents")
+require(canvas, "function onSubflowTargetIdChanged(): void",
+        "subflow navigation must refit the graph")
 require(page, "ColorUtils.readableAccentInk(",
         "Code Workflow chips must derive readable foreground ink")
 require(page, '"UNLOADED · STATIC SOURCE"',

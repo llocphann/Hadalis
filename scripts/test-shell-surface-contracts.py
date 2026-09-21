@@ -230,6 +230,9 @@ def main() -> None:
 
     toast_manager = read("modules/common/ToastManager.qml")
     toast_notification = read("modules/common/widgets/ToastNotification.qml")
+    check("\nimport qs\n" in toast_manager
+          and "GlobalStates.barOpen" in toast_manager,
+          "ToastManager must import root qs before consuming GlobalStates")
     for token in (
         '"Niri Reloaded"',
         "ConnectedSurfaceGeometry {",

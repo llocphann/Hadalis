@@ -65,6 +65,33 @@ the parser/transaction safety model or unrelated shell runtime:
   reviewed `previewable` edge.
 - Compact header buttons retain independent `buttonText` accessibility labels
   when their visual `mainText` collapses to icon-only mode.
+- Targets now expose **Connections** and reviewed **Connect candidates** as
+  first-class inspect rows instead of leaving those session selections implicit.
+  Runtime-root vs graph-node selection is disambiguated so only one row owns the
+  primary highlight/reveal at a time.
+- Target rows follow the existing Settings keyboard/accessibility convention:
+  non-section rows are tab-focusable, Enter/Space and accessibility press use one
+  activation path, and visible focus borders distinguish keyboard focus. Graph
+  subflow drill-down is a separate keyboard/screen-reader action from node
+  selection.
+- Edge routing is obstacle-aware. `edgeRoute()` detects unrelated node
+  intersections, searches reviewed detour corridors, and all renderer/hit-test/
+  fit/label consumers use one cached resolved route. The current IR has two
+  crossing cases and both resolve to zero unrelated-node intersections.
+- Horizontal edge labels cap their width to the actual inter-node gap and elide
+  instead of overlapping node cards; hovering the edge reveals the full label.
+- Graph zoom bounds now live in `CodeWorkflowSession` (`0.20–2.5`) and are
+  shared by restore, Fit graph, wheel and pinch. This lets tall graphs genuinely
+  fit smaller Settings viewports instead of being clipped by the old `0.35`
+  floor.
+- Transaction UI is selection-bound end-to-end. A dirty preview belonging to a
+  different inspect object is labeled `OTHER SELECTION` and mutation controls
+  stay gated until its target/connection/candidate is re-selected. The
+  Signal/Action transaction panel also uses the full multi-step height instead
+  of the literal-only 118px clipped layout.
+- Re-selecting the runtime target for the already-open subflow no longer resets
+  pan/zoom to `(0,0,1)`; viewport reset remains limited to an actual subflow
+  change, after which the canvas schedules Fit graph.
 
 - Static regression contracts in
   `scripts/test-code-workflow-ir-contract.py` and

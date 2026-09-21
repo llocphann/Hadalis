@@ -78,70 +78,179 @@ DashCard {
     }
 
     ColumnLayout {
+        id: contributionContent
         visible: root.username.length > 0
         Layout.fillWidth: true
-        spacing: 4
+        Layout.fillHeight: true
+        spacing: root.compact ? 4 : 6
 
-        StyledText {
-            Layout.alignment: Qt.AlignHCenter
-            text: root.hasData ? root.total.toLocaleString(Qt.locale(), 'f', 0) : (root.fetching ? "…" : "—")
-            font.pixelSize: Appearance.font.pixelSize.title * 1.5
-            font.family: Appearance.font.family.numbers
-            font.weight: Font.DemiBold
-            color: root.colAccent
-        }
-        StyledText {
-            Layout.alignment: Qt.AlignHCenter
-            text: Translation.tr("contributions in the last year")
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            color: root.colSubtext
-        }
+        readonly property bool roomy: root.height >= 150
 
-        Canvas {
-            id: heatmap
+        // A compact identity row gives the card some visual character when
+        // there is enough vertical room, but yields entirely to the heatmap in
+        // smaller/resized Dashboard slots.
+        RowLayout {
+            visible: contributionContent.roomy
             Layout.fillWidth: true
-            Layout.topMargin: 8
-            implicitHeight: 7 * 9 // 7 rows, 9px pitch (7px cell + 2px gap)
-            visible: root.hasData
+            spacing: 8
 
-            readonly property color cellColor: root.colAccent
-            readonly property color emptyColor: root.inirEverywhere ? Appearance.inir.colLayer2
-                : Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                : Appearance.colors.colLayer2
-            onCellColorChanged: requestPaint()
-            onWidthChanged: requestPaint()
+            RowLayout {
+                spacing: 7
 
-            onPaint: {
-                const ctx = getContext("2d")
-                ctx.clearRect(0, 0, width, height)
-                const wk = root.weeks
-                if (!wk.length) return
-                const pitch = 9
-                const cell = 7
-                const cols = Math.min(wk.length, Math.floor(width / pitch))
-                const start = wk.length - cols
-                const xOff = Math.max(0, (width - cols * pitch) / 2)
-                for (let c = 0; c < cols; c++) {
-                    const week = wk[start + c]
-                    for (let r = 0; r < week.length; r++) {
-                        const level = week[r]
-                        ctx.fillStyle = level === 0
-                            ? emptyColor
-                            : Qt.alpha(cellColor, 0.25 + 0.75 * Math.min(level, 4) / 4)
-                        ctx.beginPath()
-                        ctx.roundedRect(xOff + c * pitch, r * pitch, cell, cell, 2, 2)
-                        ctx.fill()
+                Rectangle {
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    radius: Appearance.rounding.full
+                    color: ColorUtils.applyAlpha(root.colAccent, 0.10)
+                    border.width: 1
+                    border.color: ColorUtils.applyAlpha(root.colAccent, 0.16)
+
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "deployed_code"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: root.colAccent
                     }
+                }
+
+                StyledText {
+                    text: "GitHub"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.Medium
+                    color: root.colText
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Rectangle {
+                implicitWidth: periodLabel.implicitWidth + 20
+                implicitHeight: 26
+                radius: Appearance.rounding.full
+                color: ColorUtils.applyAlpha(Appearance.colors.colLayer2, 0.72)
+                border.width: 1
+                border.color: ColorUtils.applyAlpha(
+                    Appearance.colors.colOutlineVariant, 0.32)
+
+                StyledText {
+                    id: periodLabel
+                    anchors.centerIn: parent
+                    text: "1Y"
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
                 }
             }
         }
 
-        StyledText {
-            Layout.alignment: Qt.AlignHCenter
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 0
+
+            StyledText {
+                Layout.alignment: Qt.AlignHCenter
+                text: root.hasData
+                    ? root.total.toLocaleString(Qt.locale(), 'f', 0)
+                    : (root.fetching ? "…" : "—")
+                font.pixelSize: Appearance.font.pixelSize.title
+                    * (contributionContent.roomy ? 1.65 : 1.35)
+                font.family: Appearance.font.family.numbers
+                font.weight: Font.DemiBold
+                color: root.colAccent
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: Translation.tr("contributions in the last year")
+                    + "  ·  @" + root.username
+                font.pixelSize: contributionContent.roomy
+                    ? Appearance.font.pixelSize.small
+                    : Appearance.font.pixelSize.smaller
+                font.weight: Font.Medium
+                color: root.colSubtext
+                elide: Text.ElideRight
+            }
+        }
+
+        Rectangle {
+            id: heatmapSurface
             visible: root.hasData
-            text: `@${root.username}`
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            color: root.colSubtext
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumHeight: 34
+            Layout.preferredHeight: contributionContent.roomy ? 82 : 54
+            Layout.topMargin: contributionContent.roomy ? 4 : 2
+
+            radius: Math.max(Appearance.rounding.small, 8)
+            color: ColorUtils.applyAlpha(Appearance.colors.colLayer2, 0.28)
+            border.width: 1
+            border.color: ColorUtils.applyAlpha(
+                Appearance.colors.colOutlineVariant, 0.18)
+
+            Canvas {
+                id: heatmap
+                anchors.fill: parent
+                anchors.margins: contributionContent.roomy ? 10 : 7
+
+                readonly property color cellColor: root.colAccent
+                readonly property color emptyColor: root.inirEverywhere
+                    ? Appearance.inir.colLayer2
+                    : Appearance.angelEverywhere
+                        ? Appearance.angel.colGlassCardHover
+                        : Appearance.colors.colLayer2
+
+                onCellColorChanged: requestPaint()
+                onEmptyColorChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.clearRect(0, 0, width, height)
+
+                    const wk = root.weeks
+                    if (!wk.length || width <= 0 || height <= 0)
+                        return
+
+                    // Prefer the complete rolling year. Cell pitch scales down
+                    // with narrow cards instead of silently dropping old weeks.
+                    const cols = Math.min(wk.length, 53)
+                    const start = Math.max(0, wk.length - cols)
+                    const pitch = Math.max(2.5, Math.min(
+                        contributionContent.roomy ? 11 : 9,
+                        width / Math.max(1, cols),
+                        height / 7))
+                    const gap = Math.max(1, Math.min(2, pitch * 0.22))
+                    const cell = Math.max(1.5, pitch - gap)
+                    const gridWidth = cols * pitch - gap
+                    const gridHeight = 7 * pitch - gap
+                    const xOff = Math.max(0, (width - gridWidth) / 2)
+                    const yOff = Math.max(0, (height - gridHeight) / 2)
+                    const radius = Math.max(1, Math.min(2.5, cell * 0.28))
+
+                    for (let col = 0; col < cols; ++col) {
+                        const week = wk[start + col] ?? []
+                        for (let row = 0; row < 7; ++row) {
+                            const level = week[row] ?? 0
+                            ctx.fillStyle = level === 0
+                                ? emptyColor
+                                : Qt.alpha(cellColor,
+                                    0.22 + 0.78 * Math.min(level, 4) / 4)
+                            ctx.beginPath()
+                            ctx.roundedRect(
+                                xOff + col * pitch,
+                                yOff + row * pitch,
+                                cell,
+                                cell,
+                                radius,
+                                radius)
+                            ctx.fill()
+                        }
+                    }
+                }
+            }
         }
     }
+
 }

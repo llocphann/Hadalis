@@ -679,6 +679,8 @@ Item {
                     route && !route.vertical
                         ? Math.max(24, horizontalGap - 12)
                         : 150
+                readonly property bool hovered:
+                    root.hoveredEdgeId === String(modelData.id ?? "")
 
                 visible: fromNode !== null
                     && toNode !== null
@@ -709,6 +711,10 @@ Item {
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     elide: Text.ElideRight
                     maximumLineCount: 1
+                }
+
+                StyledToolTip {
+                    text: String(edgeLabel.modelData.label ?? "")
                 }
             }
         }

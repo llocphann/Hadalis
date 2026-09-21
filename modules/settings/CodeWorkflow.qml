@@ -1039,6 +1039,7 @@ Item {
     }
 
     function focusSourceAnchor(): void {
+        sourcePreviewText.deselect()
         if (root.sourceText.length === 0)
             return
 

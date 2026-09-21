@@ -267,6 +267,25 @@ nodes, preserving readable shared endpoint trunks. These changes remain within
 the existing `smooth-step-lane-v2` policy; manual reroute semantics are still
 deferred.
 
+Graph navigation now supports direct manipulation without changing reviewed IR.
+Left-button drag on a node writes only a session-local visual offset keyed by
+graph/node ID; the node follows scene-space pointer motion adjusted for current
+zoom, receives a small pickup-scale animation, and invalidates the route cache
+on each layout revision so connected smart-lane edges reroute live. Dragging
+empty canvas space pans the viewport with either left or middle mouse button;
+node and edge hit areas are excluded so selection/drag gestures keep priority.
+The visual offsets survive Settings page eviction through
+`CodeWorkflowSession` but intentionally do not mutate source/IR and are not yet
+persisted across a full shell restart. `resetGraphLayout()` exists as the
+session API for later UI affordances.
+
+The capture harness now snapshots/restores visual layout state and includes a
+`node-layout` scenario that moves `clock.hover`, fits the graph and records the
+selected node offset plus layout revision alongside route diagnostics. This
+qualifies moved-node rendering and automatic rerouting deterministically; real
+mouse drag/pan ergonomics still require a live Niri input run before being
+called compositor-qualified.
+
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment
 evidence. They predate the current scoped Code Workflow implementation above and

@@ -696,7 +696,7 @@ Item {
         }
 
         return {
-            style: "smooth-step-lane-v1",
+            style: "smooth-step-lane-v2",
             edges: root.edges.length,
             routedEdges: routedEdges,
             collisions: collisions,

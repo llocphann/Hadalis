@@ -78,6 +78,8 @@ the parser/transaction safety model or unrelated shell runtime:
   intersections, searches reviewed detour corridors, and all renderer/hit-test/
   fit/label consumers use one cached resolved route. The current IR has two
   crossing cases and both resolve to zero unrelated-node intersections.
+  Arrowheads derive orientation from the resolved endpoint tangent rather than
+  the original route class, so detoured edges keep correct direction markers.
 - Horizontal edge labels cap their width to the actual inter-node gap and elide
   instead of overlapping node cards; hovering the edge reveals the full label.
 - Graph zoom bounds now live in `CodeWorkflowSession` (`0.20–2.5`) and are
@@ -89,7 +91,8 @@ the parser/transaction safety model or unrelated shell runtime:
   stay gated until its target/connection/candidate is re-selected. The
   transaction surface now derives height from visible content, grows from a
   118px floor to a 420px cap, then scrolls longer preparation/lifecycle evidence
-  instead of clipping command-specific rows.
+  instead of clipping command-specific rows. Undo/Redo/history changes reset the
+  transaction scroll to the top of the newly selected command.
 - Re-selecting the runtime target for the already-open subflow no longer resets
   pan/zoom to `(0,0,1)`; viewport reset remains limited to an actual subflow
   change, after which the canvas schedules Fit graph.

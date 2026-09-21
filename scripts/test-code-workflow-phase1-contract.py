@@ -78,6 +78,10 @@ require(page, "onClicked: canvas.fitGraph()",
         "Reset view must fit the actual graph")
 require(page, "ColorUtils.readableAccentInk(",
         "Code Workflow chips must derive readable foreground ink")
+require(page, '"UNLOADED · STATIC SOURCE"',
+        "Inspector must distinguish unloaded runtime from live residency")
+require(page, '" · " + CodeWorkflowAnalyzer.error',
+        "Inspector must expose parser unavailability/error reason")
 require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")
 require(page, "readOnly: true", "Source Preview must be read-only")
 require(page, "FileView {", "Source Preview must read selected source")

@@ -335,13 +335,84 @@ Item {
         return crossings
     }
 
+    function segmentOverlapLength(firstA, firstB, secondA, secondB): real {
+        const firstVertical =
+            Math.abs(firstA.x - firstB.x) < 0.001
+        const secondVertical =
+            Math.abs(secondA.x - secondB.x) < 0.001
+        if (firstVertical !== secondVertical)
+            return 0
+
+        if (firstVertical) {
+            if (Math.abs(firstA.x - secondA.x) >= 0.001)
+                return 0
+            const start = Math.max(
+                Math.min(firstA.y, firstB.y),
+                Math.min(secondA.y, secondB.y))
+            const end = Math.min(
+                Math.max(firstA.y, firstB.y),
+                Math.max(secondA.y, secondB.y))
+            return Math.max(0, end - start)
+        }
+
+        if (Math.abs(firstA.y - secondA.y) >= 0.001)
+            return 0
+        const start = Math.max(
+            Math.min(firstA.x, firstB.x),
+            Math.min(secondA.x, secondB.x))
+        const end = Math.min(
+            Math.max(firstA.x, firstB.x),
+            Math.max(secondA.x, secondB.x))
+        return Math.max(0, end - start)
+    }
+
+    function routeOverlapLength(route, edge, occupiedRoutes): real {
+        const points = route?.points ?? []
+        let overlap = 0
+        for (const occupied of (occupiedRoutes ?? [])) {
+            const otherPoints = occupied?.points ?? []
+            const sharedSource =
+                String(occupied?.fromId ?? "")
+                    === String(edge?.from ?? "")
+            const sharedTarget =
+                String(occupied?.toId ?? "")
+                    === String(edge?.to ?? "")
+            for (let first = 1; first < points.length; ++first) {
+                for (let second = 1;
+                        second < otherPoints.length; ++second) {
+                    const length = root.segmentOverlapLength(
+                        points[first - 1], points[first],
+                        otherPoints[second - 1], otherPoints[second])
+                    if (length <= 0)
+                        continue
+
+                    // A short shared trunk immediately leaving/entering the
+                    // same semantic node is intentional bundling. Everything
+                    // beyond that should fan into a distinct visual lane.
+                    let allowance = 0
+                    if (sharedSource && first === 1 && second === 1)
+                        allowance = 28
+                    if (sharedTarget
+                            && first === points.length - 1
+                            && second === otherPoints.length - 1)
+                        allowance = Math.max(allowance, 28)
+                    overlap += Math.max(0, length - allowance)
+                }
+            }
+        }
+        return overlap
+    }
+
     function routeScore(route, edge, occupiedRoutes): real {
         const collisions = root.routeCollisionCount(route, edge)
         const crossings =
             root.routeCrossingCount(route, occupiedRoutes)
+        const overlap =
+            root.routeOverlapLength(route, edge, occupiedRoutes)
         const bends = Math.max(0, (route?.points?.length ?? 2) - 2)
         return collisions * 1000000
             + crossings * 10000
+            + overlap * 250
             + root.routeLength(route)
             + bends * 18
     }
@@ -544,6 +615,11 @@ Item {
                 bestScore = score
             }
         }
+        if (bestRoute) {
+            bestRoute.edgeId = String(edge?.id ?? "")
+            bestRoute.fromId = String(edge?.from ?? "")
+            bestRoute.toId = String(edge?.to ?? "")
+        }
         return bestRoute
     }
 
@@ -575,6 +651,7 @@ Item {
         const occupiedRoutes = []
         let collisions = 0
         let crossings = 0
+        let overlapLength = 0
         let maxBends = 0
         let totalLength = 0
         let routedEdges = 0
@@ -586,6 +663,8 @@ Item {
             routedEdges += 1
             collisions += root.routeCollisionCount(route, edge)
             crossings += root.routeCrossingCount(route, occupiedRoutes)
+            overlapLength += root.routeOverlapLength(
+                route, edge, occupiedRoutes)
             maxBends = Math.max(
                 maxBends,
                 Math.max(0, (route.points?.length ?? 2) - 2))
@@ -599,6 +678,7 @@ Item {
             routedEdges: routedEdges,
             collisions: collisions,
             crossings: crossings,
+            overlapLength: Math.round(overlapLength),
             maxBends: maxBends,
             totalLength: Math.round(totalLength)
         }

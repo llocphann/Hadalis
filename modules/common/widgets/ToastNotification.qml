@@ -16,7 +16,10 @@ Item {
     property int duration: 3000
     property string source: "system" // "quickshell" or "niri"
     property color accentColor: Appearance.colors.colPrimary
-    // Connected hosts provide the outer iRiS plate/shadow. Keep this component\n    // as the interactive/content layer so reload toasts can become one attached block.\n    property bool connectedSurface: false\n    property bool copied: false
+    // Connected hosts provide the outer iRiS plate/shadow. Keep this component
+    // as the interactive/content layer so reload toasts can become one attached block.
+    property bool connectedSurface: false
+    property bool copied: false
 
     signal dismissed()
     signal copyRequested()

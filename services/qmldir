@@ -69,6 +69,7 @@ singleton SystemInfo 1.0 SystemInfo.qml
 singleton TaskbarApps 1.0 TaskbarApps.qml
 singleton ThemeService 1.0 ThemeService.qml
 singleton TimerService 1.0 TimerService.qml
+InternalTodoBackend 1.0 InternalTodoBackend.qml
 singleton Todo 1.0 Todo.qml
 singleton Translation 1.0 Translation.qml
 singleton TrayService 1.0 TrayService.qml

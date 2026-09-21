@@ -236,6 +236,18 @@ vertical resize cursor, and persist final pane dimensions through
 `CodeWorkflowSession`. The capture harness includes a non-default
 `pane-resize` state and emits `meta/route-diagnostics.json` for visual review.
 
+The fourth live capture (`20260921-234057`) compositor-qualified the smart-lane
+geometry itself: every captured graph reported zero unrelated-node collisions,
+zero wire crossings and zero non-endpoint overlap, and the Resources perimeter
+route rendered cleanly at ~132% zoom. It also found that pane persistence had
+only been added to `CodeWorkflowSession`, not to the typed
+`Persistent.states.settings` schema. QML therefore rejected
+`codeWorkflowTargetsPaneWidth` repeatedly and the pane-resize capture remained
+at 224/280/190. The typed schema now declares all three pane dimensions. Capture
+status also records requested *and actual* SplitView geometry, and the warning
+extractor now treats `Cannot assign to non-existent property` as a focused Code
+Workflow runtime failure so this class of regression cannot be reported clean.
+
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment
 evidence. They predate the current scoped Code Workflow implementation above and

@@ -24,6 +24,7 @@ def main() -> None:
 
     styled_popup = read("modules/bar/StyledPopup.qml")
     iris_frame = read("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
+    iris_edge_surface = read("modules/common/perimeter/ConnectedSurfaceIrisEdgeSurface.qml")
     for token in (
         "qs.modules.common.perimeter",
         "ConnectedSurfaceGeometry",
@@ -62,6 +63,18 @@ def main() -> None:
     check("Appearance.zzz.chromeAlt" not in styled_popup
           and "Appearance.regalia.barSurfaceFloating" not in styled_popup,
           "Connected bar popouts must use the Hug surface family only")
+
+    for token in (
+        "property real ownerPaintOverlap: 0",
+        "root.clipExternalOwners(root.rawPaintBounds, root.ownerPaintOverlap)",
+        "root.clipExternalOwners(root.body, 0)",
+        "root.clipExternalOwners(root.rawShadowBounds, 0)",
+    ):
+        check(token in iris_frame,
+              f"iRiS paint-only owner overlap contract missing: {token}")
+    check("property real paintOverlap: 0" in iris_edge_surface
+          and "ownerPaintOverlap: root.paintOverlap" in iris_edge_surface,
+          "Direct iRiS edge adapter must expose opt-in paint-only seam overlap")
 
     perimeter_tokens = read("modules/common/perimeter/PerimeterTokens.qml")
     for token in (
@@ -386,6 +399,9 @@ def main() -> None:
         "leftMargin: root.isLeftEdge",
         "? root.screenEdgeHoverWidth",
         ": Appearance.sizes.elevationMargin",
+        "readonly property real screenEdgePaintOverlap: Math.min(",
+        "PerimeterTokens.seamOverlap",
+        "paintOverlap: root.screenEdgePaintOverlap",
     ):
         check(token in sidebar_host,
               f"Sidebar Screen Edge boundary contract missing: {token}")
@@ -496,6 +512,7 @@ def main() -> None:
         "ConnectedSurfaceIrisEdgeSurface {",
         "id: sidebarIrisSurface",
         "ownerThickness: root.screenEdgeHoverWidth",
+        "paintOverlap: root.screenEdgePaintOverlap",
         "exclusionMode: ExclusionMode.Ignore",
     ):
         check(token in sidebar_host, f"Sidebar iRiS/full-hide contract missing: {token}")

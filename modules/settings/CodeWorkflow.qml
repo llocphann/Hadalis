@@ -1150,6 +1150,9 @@ Item {
 
                 RippleButtonWithIcon {
                     materialIcon: "monitor"
+                    buttonText: "Output · "
+                        + (CodeWorkflowSession.outputName.length > 0
+                            ? CodeWorkflowSession.outputName : "none")
                     mainText: root.compactHeader
                         ? ""
                         : CodeWorkflowSession.outputName.length > 0
@@ -1166,6 +1169,7 @@ Item {
                 RippleButtonWithIcon {
                     visible: CodeWorkflowSession.subflowTargetId !== "bar"
                     materialIcon: "arrow_back"
+                    buttonText: "Back to Bar workflow"
                     mainText: root.compactHeader ? "" : "Bar"
                     onClicked: CodeWorkflowSession.openSubflow("bar")
                     StyledToolTip { text: "Back to Bar workflow" }
@@ -1173,6 +1177,8 @@ Item {
 
                 RippleButtonWithIcon {
                     materialIcon: "ads_click"
+                    buttonText: CodeWorkflowPicker.phase === "idle"
+                        ? "Pick component" : "Picking component"
                     mainText: root.compactHeader
                         ? ""
                         : CodeWorkflowPicker.phase === "idle"
@@ -1189,12 +1195,15 @@ Item {
                 }
                 RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"
+                    buttonText: "Fit graph"
                     mainText: root.compactHeader ? "" : "Fit graph"
                     onClicked: canvas.fitGraph()
                     StyledToolTip { text: "Fit graph to viewport" }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "code"
+                    buttonText: CodeWorkflowSession.sourcePreviewVisible
+                        ? "Hide source preview" : "Show source preview"
                     mainText: root.compactHeader
                         ? ""
                         : CodeWorkflowSession.sourcePreviewVisible

@@ -183,6 +183,89 @@ def route_crossing_count(route: dict, occupied_routes: list[dict]) -> int:
                     crossings += 1
     return crossings
 
+def segment_overlap_length(
+    first_a: dict,
+    first_b: dict,
+    second_a: dict,
+    second_b: dict,
+) -> float:
+    first_vertical = abs(first_a["x"] - first_b["x"]) < 0.001
+    second_vertical = abs(second_a["x"] - second_b["x"]) < 0.001
+    if first_vertical != second_vertical:
+        return 0.0
+
+    if first_vertical:
+        if abs(first_a["x"] - second_a["x"]) >= 0.001:
+            return 0.0
+        start = max(
+            min(first_a["y"], first_b["y"]),
+            min(second_a["y"], second_b["y"]),
+        )
+        end = min(
+            max(first_a["y"], first_b["y"]),
+            max(second_a["y"], second_b["y"]),
+        )
+        return max(0.0, end - start)
+
+    if abs(first_a["y"] - second_a["y"]) >= 0.001:
+        return 0.0
+    start = max(
+        min(first_a["x"], first_b["x"]),
+        min(second_a["x"], second_b["x"]),
+    )
+    end = min(
+        max(first_a["x"], first_b["x"]),
+        max(second_a["x"], second_b["x"]),
+    )
+    return max(0.0, end - start)
+
+def route_overlap_length(
+    route: dict,
+    edge: dict,
+    occupied_routes: list[dict],
+) -> float:
+    overlap = 0.0
+    points = route["points"]
+    current_from = str(edge.get("from") or "")
+    current_to = str(edge.get("to") or "")
+    for occupied in occupied_routes:
+        other = occupied["points"]
+        occupied_from = str(occupied.get("fromId") or "")
+        occupied_to = str(occupied.get("toId") or "")
+        for first in range(1, len(points)):
+            for second in range(1, len(other)):
+                length = segment_overlap_length(
+                    points[first - 1], points[first],
+                    other[second - 1], other[second],
+                )
+                if length <= 0.0:
+                    continue
+
+                current_at_source = first == 1
+                current_at_target = first == len(points) - 1
+                occupied_at_source = second == 1
+                occupied_at_target = second == len(other) - 1
+                shared_endpoint = (
+                    current_at_source
+                    and occupied_at_source
+                    and current_from == occupied_from
+                ) or (
+                    current_at_source
+                    and occupied_at_target
+                    and current_from == occupied_to
+                ) or (
+                    current_at_target
+                    and occupied_at_source
+                    and current_to == occupied_from
+                ) or (
+                    current_at_target
+                    and occupied_at_target
+                    and current_to == occupied_to
+                )
+                if not shared_endpoint:
+                    overlap += length
+    return overlap
+
 def resolved_route(
     edge: dict,
     node_by_id: dict,
@@ -342,16 +425,21 @@ def resolved_route(
                 {"x": target_x, "y": to_center_y},
             ], True, direction))
 
-    return min(
+    best = min(
         candidates,
         key=lambda route: (
-            route_collision_count(route, edge, nodes) * 1_000_000
-            + route_crossing_count(route, occupied_routes) * 10_000
+            route_collision_count(route, edge, nodes) * 1_000_000_000
+            + route_crossing_count(route, occupied_routes) * 1_000_000
+            + route_overlap_length(route, edge, occupied_routes) * 1_000
             + route_length(route)
             + max(0, len(route["points"]) - 2) * 18,
             route_length(route),
         ),
     )
+    best["edgeId"] = str(edge.get("id") or "")
+    best["fromId"] = str(edge.get("from") or "")
+    best["toId"] = str(edge.get("to") or "")
+    return best
 
 data = json.loads(MANIFEST.read_text(encoding="utf-8"))
 if data.get("schema") != 1:
@@ -450,6 +538,12 @@ for graph_id, graph in graphs.items():
                 f"{graph_id}/{edge.get('id')}: routed edge still crosses "
                 f"{crossings} previously routed segment(s)"
             )
+        overlap = route_overlap_length(route, edge, occupied_routes)
+        if overlap != 0:
+            fail(
+                f"{graph_id}/{edge.get('id')}: routed edge still overlaps "
+                f"{overlap:.1f}px away from a shared endpoint"
+            )
         occupied_routes.append(route)
 
 if not required_kinds.issubset(seen_kinds):
@@ -511,7 +605,11 @@ for token in (
     "function edgeLaneOffset(",
     "function segmentsCross(firstA, firstB, secondA, secondB): bool",
     "function routeCrossingCount(route, occupiedRoutes): int",
+    "function segmentOverlapLength(firstA, firstB, secondA, secondB): real",
+    "function routeOverlapLength(route, edge, occupiedRoutes): real",
     "function routeScore(route, edge, occupiedRoutes): real",
+    "+ crossings * 1000000",
+    "+ overlap * 1000",
     "function edgeRoute(edge, occupiedRoutes = []): var",
     "const corridorOffsets = [0, 48, -48, 96, -96, 160, -160]",
     "const horizontalPortLanes = [",

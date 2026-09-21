@@ -45,6 +45,10 @@ require(target, "horizontal ii Bar", "runtime geometry scope must remain explici
 require(target, "Explicit allowlist", "runtime values must stay allowlisted")
 require(session, "import Quickshell", "Singleton session must import Quickshell for staged-runtime startup")
 require(session, "Persistent.states", "session must survive Settings page eviction")
+require(session, "const changedSubflow = root.subflowTargetId !== targetId",
+        "reselecting the current runtime target must preserve graph viewport")
+require(session, "if (changedSubflow)\n                root.resetViewport()",
+        "viewport reset must occur only when runtime selection changes subflow")
 require(session, "readonly property real minimumZoom: 0.20",
         "session must allow low enough overview zoom for Fit graph")
 require(session, "readonly property real maximumZoom: 2.5",

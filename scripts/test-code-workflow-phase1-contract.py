@@ -76,6 +76,10 @@ require(page, "function revealSourceSelection(start: int, end: int): void",
         "Source Preview must reveal selected parser evidence")
 require(page, "function revealSelectedInspectTarget(): void",
         "Targets must reveal the unified selected item")
+require(page, "function reconcileSemanticInspectSelection(): void",
+        "semantic inspect selection must clear after parser anchor drift")
+require(page, "Qt.callLater(root.reconcileSemanticInspectSelection)",
+        "analyzer READY must reconcile semantic inspect selection")
 require(page, "target: CodeWorkflowSession",
         "Targets must react to shared session selection changes")
 require(page, "targetList.positionViewAtIndex(index, ListView.Contain)",

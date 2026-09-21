@@ -33,6 +33,9 @@ Scope {
     property var documentMeta: ({})
     property var managedMeta: ({})
     property var capabilities: root._emptyCapabilities()
+    property var migrationPreview: null
+
+    signal migrationCommitted(var payload)
 
     property bool _refreshQueued: false
     property string _scanVaultPath: ""
@@ -119,6 +122,7 @@ Scope {
         // the user invoked it. Never carry it across backend activation, vault
         // or note changes (especially Add, which has no task-id CAS guard).
         root._pendingMutation = null
+        root.migrationPreview = null
 
         if (!root.configured) {
             configDebounce.stop()
@@ -210,6 +214,7 @@ Scope {
             return false
         }
 
+        root.migrationPreview = null
         root.list = Array.isArray(payload.tasks) ? payload.tasks : []
         root.noteFullPath = String(payload.noteFullPath ?? "")
         root.documentMeta = payload.document ?? ({})
@@ -269,7 +274,37 @@ Scope {
         return true
     }
 
-    function migrateInternal(internalJsonPath: string): bool {
+    function _migrationGlobalFilter(): string {
+        if (!root.preferTasksPlugin || !root._tasksSettingsKnown())
+            return ""
+        return String(root.capabilities.tasksSettings?.globalFilter ?? "").trim()
+    }
+
+    function previewInternal(internalJsonPath: string): bool {
+        if (!root.configured || !root.ready) {
+            root._setError("not_ready", "Obsidian Todo source is not ready")
+            return false
+        }
+        if (mutationProc.running || root._pendingMutation !== null) {
+            root._setError("busy", "Another Todo operation is already in progress")
+            return false
+        }
+
+        const command = [
+            "/usr/bin/python3", root.helperPath,
+            "preview-migration",
+            "--vault", root.vaultPath,
+            "--note", root.notePath,
+            "--internal-json", String(internalJsonPath ?? "")
+        ]
+        const filter = root._migrationGlobalFilter()
+        if (filter.length > 0)
+            command.push("--global-filter", filter)
+        root._startMutation("preview-migration", command, "")
+        return true
+    }
+
+    function migrateInternal(internalJsonPath: string, expectedInternalSha: string): bool {
         if (!root.configured || !root.ready) {
             root._setError("not_ready", "Obsidian Todo source is not ready")
             return false
@@ -288,11 +323,12 @@ Scope {
             "--expected-document-sha", String(root.documentMeta?.sha256 ?? ""),
             "--expected-managed-sha", String(root.managedMeta?.sha256 ?? "")
         ]
-        if (root.preferTasksPlugin && root._tasksSettingsKnown()) {
-            const filter = String(root.capabilities.tasksSettings?.globalFilter ?? "").trim()
-            if (filter.length > 0)
-                command.push("--global-filter", filter)
-        }
+        const sourceSha = String(expectedInternalSha ?? "").trim()
+        if (sourceSha.length > 0)
+            command.push("--expected-internal-sha", sourceSha)
+        const filter = root._migrationGlobalFilter()
+        if (filter.length > 0)
+            command.push("--global-filter", filter)
         root._startMutation("migrate-internal", command, "")
         return true
     }
@@ -505,8 +541,18 @@ Scope {
 
     function _handleMutationPayload(payload): void {
         if (payload?.ok === true) {
+            if (mutationProc.kind === "preview-migration") {
+                root.migrationPreview = payload
+                root._clearError()
+                root._finishMutation()
+                return
+            }
+
+            const committedMigration = mutationProc.kind === "migrate-internal"
             root._applyScanPayload(payload)
             root._finishMutation()
+            if (committedMigration)
+                root.migrationCommitted(payload)
             return
         }
 

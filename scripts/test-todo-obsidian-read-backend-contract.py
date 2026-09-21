@@ -42,7 +42,12 @@ required = [
     '"toggle-tasks"',
     '"delete"',
     "function initializeSection(): bool",
-    "function migrateInternal(internalJsonPath: string): bool",
+    "function previewInternal(internalJsonPath: string): bool",
+    '"preview-migration"',
+    "property var migrationPreview: null",
+    "signal migrationCommitted(var payload)",
+    "function migrateInternal(internalJsonPath: string, expectedInternalSha: string): bool",
+    '"--expected-internal-sha"',
     '"migrate-internal"',
     '"--internal-json"',
     '"initialize-section"',
@@ -60,6 +65,9 @@ required = [
     'item.done = statusType === "DONE"',
     "root.capabilities?.richMutationAvailable === true",
     'code === "rich_task_required"',
+    "mutationProc.kind === \"preview-migration\"",
+    "root.migrationPreview = payload",
+    "root.migrationCommitted(payload)",
     "JSON.parse(output)",
 ]
 for snippet in required:

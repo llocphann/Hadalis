@@ -45,6 +45,16 @@ require(target, "horizontal ii Bar", "runtime geometry scope must remain explici
 require(target, "Explicit allowlist", "runtime values must stay allowlisted")
 require(session, "import Quickshell", "Singleton session must import Quickshell for staged-runtime startup")
 require(session, "Persistent.states", "session must survive Settings page eviction")
+require(session, "readonly property real minimumZoom: 0.20",
+        "session must allow low enough overview zoom for Fit graph")
+require(session, "readonly property real maximumZoom: 2.5",
+        "session must centralize the graph zoom ceiling")
+require(canvas, "CodeWorkflowSession.minimumZoom",
+        "canvas fit/wheel/pinch must share the session zoom floor")
+require(canvas, "CodeWorkflowSession.maximumZoom",
+        "canvas manual zoom must share the session zoom ceiling")
+if "Math.max(0.35" in session or "Math.max(0.35" in canvas:
+    raise SystemExit("FAIL: Code Workflow must not reintroduce the old 0.35 zoom floor")
 require(page, "CodeWorkflowIrCanvas {", "page must host the semantic IR canvas")
 require(page, "property string inspectedSemanticAnchor:", "inspect mode must track parsed QML element selection")
 require(page, "CodeWorkflowAnalyzer.result?.entries", "inspect mode must expose parser semantic entries")

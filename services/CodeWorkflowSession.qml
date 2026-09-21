@@ -23,6 +23,9 @@ Singleton {
     readonly property real maximumZoom: 2.5
     property real zoom: 1
     property bool sourcePreviewVisible: true
+    property real targetsPaneWidth: 224
+    property real inspectorPaneWidth: 280
+    property real sourcePreviewHeight: 190
     property bool _restoring: false
     property bool _ready: false
 
@@ -116,6 +119,12 @@ Singleton {
             root.maximumZoom,
             Number(state.codeWorkflowZoom ?? 1)))
         root.sourcePreviewVisible = state.codeWorkflowSourcePreview !== false
+        root.targetsPaneWidth = Math.max(180, Math.min(
+            420, Number(state.codeWorkflowTargetsPaneWidth ?? 224)))
+        root.inspectorPaneWidth = Math.max(240, Math.min(
+            520, Number(state.codeWorkflowInspectorPaneWidth ?? 280)))
+        root.sourcePreviewHeight = Math.max(120, Math.min(
+            420, Number(state.codeWorkflowSourcePreviewHeight ?? 190)))
         root._restoring = false
         root._ready = true
     }
@@ -140,6 +149,9 @@ Singleton {
         state.codeWorkflowPanY = root.panY
         state.codeWorkflowZoom = root.zoom
         state.codeWorkflowSourcePreview = root.sourcePreviewVisible
+        state.codeWorkflowTargetsPaneWidth = root.targetsPaneWidth
+        state.codeWorkflowInspectorPaneWidth = root.inspectorPaneWidth
+        state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight
     }
 
     function clearSemanticAnchor(): void {
@@ -341,6 +353,9 @@ Singleton {
     onSemanticAnchorChanged: root.persist()
     onSemanticAnchorNodeIdChanged: root.persist()
     onSourcePreviewVisibleChanged: root.persist()
+    onTargetsPaneWidthChanged: root.persist()
+    onInspectorPaneWidthChanged: root.persist()
+    onSourcePreviewHeightChanged: root.persist()
     Component.onCompleted: root.restore()
 
     Connections {

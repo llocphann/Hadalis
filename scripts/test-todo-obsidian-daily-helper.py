@@ -45,7 +45,7 @@ class DailyTodoTests(unittest.TestCase):
         self.assertEqual(resolved, note.resolve())
 
     def test_resolves_real_vault_daily_note_pattern(self):
-        vault, note, day = self.make_vault("## Tasks\n\n## Daily Log\n")
+        vault, note, day = self.make_vault("## Day Planner\n\n## Daily Log\n")
         _, path, resolved, parsed = daily.resolve_daily_note(str(vault), day=day)
         self.assertEqual(path, "00_Capture/01_Journal/2026/September/22-09-2026-Tuesday.md")
         self.assertEqual(resolved, note.resolve())
@@ -53,8 +53,8 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_scans_only_exact_task_heading_section(self):
         _, _, result = self.scan(
-            "~~~md\n## Tasks\n- [ ] fake\n~~~\n"
-            "## Tasks\n- [ ] real\n### Child heading\n- [x] child\n"
+            "~~~md\n## Day Planner\n- [ ] fake\n~~~\n"
+            "## Day Planner\n- [ ] real\n### Child heading\n- [x] child\n"
             "## Daily Log\n- [ ] outside\n"
         )
         self.assertEqual([task["content"] for task in result["tasks"]], ["real", "child"])
@@ -62,7 +62,7 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_parses_groups_time_blocks_and_unscheduled_tasks(self):
         _, _, result = self.scan(
-            "## Tasks\n"
+            "## Day Planner\n"
             "**In the morning,**\n"
             "- [ ] 08:30 - 10:00 Reading vocabulary\n"
             "- [ ] Buy coffee\n"
@@ -82,7 +82,7 @@ class DailyTodoTests(unittest.TestCase):
         self.assertEqual(done["group"], "In the afternoon")
 
     def test_missing_or_duplicate_planner_heading_fails_closed(self):
-        for body in ("## Daily Log\n", "## Tasks\n## Tasks\n"):
+        for body in ("## Daily Log\n", "## Day Planner\n## Day Planner\n"):
             with self.subTest(body=body):
                 vault, _, day = self.make_vault(body)
                 with self.assertRaises(daily.core.TodoError) as error:
@@ -101,7 +101,7 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_add_uses_real_template_position_before_thematic_break(self):
         vault, note, scan = self.scan(
-            "## Tasks\n\n---\n\n## Daily Log\n\n---\n"
+            "## Day Planner\n\n---\n\n## Daily Log\n\n---\n"
         )
         daily.add_task(
             str(vault), daily.DEFAULT_FOLDER, daily.DEFAULT_FORMAT,
@@ -111,13 +111,13 @@ class DailyTodoTests(unittest.TestCase):
         )
         text = note.read_text(encoding="utf-8")
         self.assertIn(
-            "## Tasks\n\n- [ ] Buy coffee\n---\n\n## Daily Log",
+            "## Day Planner\n\n- [ ] Buy coffee\n---\n\n## Daily Log",
             text,
         )
 
     def test_add_unscheduled_task_preserves_other_sections(self):
         vault, note, scan = self.scan(
-            "# Before\n## Tasks\n\n## Daily Log\nkeep me\n"
+            "# Before\n## Day Planner\n\n## Daily Log\nkeep me\n"
         )
         result = daily.add_task(
             str(vault), daily.DEFAULT_FOLDER, daily.DEFAULT_FORMAT,
@@ -126,13 +126,13 @@ class DailyTodoTests(unittest.TestCase):
             scan["document"]["sha256"], scan["managed"]["sha256"],
         )
         text = note.read_text(encoding="utf-8")
-        self.assertIn("## Tasks\n\n- [ ] Buy coffee\n## Daily Log", text)
+        self.assertIn("## Day Planner\n\n- [ ] Buy coffee\n## Daily Log", text)
         self.assertTrue(text.endswith("keep me\n"))
         self.assertEqual(result["tasks"][0]["content"], "Buy coffee")
 
     def test_add_timed_task_uses_matching_legacy_group(self):
         vault, note, scan = self.scan(
-            "## Tasks\n"
+            "## Day Planner\n"
             "**In the morning,**\n- [ ] Breakfast\n"
             "**In the afternoon,**\n- [ ] Lunch\n"
             "**In the evening,**\n- [ ] Sleep\n"
@@ -151,7 +151,7 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_toggle_preserves_metadata_suffix_and_spacing(self):
         vault, note, scan = self.scan(
-            "## Tasks\n"
+            "## Day Planner\n"
             " - [ ] 08:30 Study  [due:: 2026-09-22] ✅ 2026-09-21\n"
             "## Daily Log\n"
         )
@@ -169,7 +169,7 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_delete_removes_only_exact_duplicate_line(self):
         vault, note, scan = self.scan(
-            "## Tasks\n- [ ] same\n- [ ] same\n## Daily Log\n"
+            "## Day Planner\n- [ ] same\n- [ ] same\n## Daily Log\n"
         )
         daily.delete_task(
             str(vault), daily.DEFAULT_FOLDER, daily.DEFAULT_FORMAT,
@@ -180,7 +180,7 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_migration_preview_treats_template_divider_as_empty_target(self):
         vault, note, _ = self.scan(
-            "## Tasks\n\n---\n\n## Daily Log\n"
+            "## Day Planner\n\n---\n\n## Daily Log\n"
         )
         internal = note.parent / "todo.json"
         internal.write_text(
@@ -198,7 +198,7 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_migration_backs_up_daily_note_and_inserts_before_divider(self):
         vault, note, scan = self.scan(
-            "## Tasks\n\n---\n\n## Daily Log\nkeep\n"
+            "## Day Planner\n\n---\n\n## Daily Log\nkeep\n"
         )
         internal = note.parent / "todo.json"
         internal.write_text(
@@ -223,7 +223,7 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_migration_refuses_existing_task_heading_tasks(self):
         vault, note, scan = self.scan(
-            "## Tasks\n- [ ] existing\n---\n## Daily Log\n"
+            "## Day Planner\n- [ ] existing\n---\n## Daily Log\n"
         )
         internal = note.parent / "todo.json"
         internal.write_text('[{"content":"new","done":false}]', encoding="utf-8")
@@ -239,10 +239,10 @@ class DailyTodoTests(unittest.TestCase):
 
     def test_stale_document_hash_rejects_mutation(self):
         vault, note, scan = self.scan(
-            "## Tasks\n- [ ] task\n## Daily Log\n"
+            "## Day Planner\n- [ ] task\n## Daily Log\n"
         )
         note.write_text(
-            "## Tasks\n- [ ] external edit\n## Daily Log\n", encoding="utf-8"
+            "## Day Planner\n- [ ] external edit\n## Daily Log\n", encoding="utf-8"
         )
         with self.assertRaises(daily.core.TodoError) as error:
             daily.toggle_task(

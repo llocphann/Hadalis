@@ -24,6 +24,7 @@ SettingsOverlay 1.0 SettingsOverlay.qml
 SettingsFocus 1.0 SettingsFocus.qml
 CodeWorkflowPickerHost 1.0 CodeWorkflowPickerHost.qml
 CodeWorkflowIrCanvas 1.0 CodeWorkflowIrCanvas.qml
+CodeWorkflowNvimView 1.0 CodeWorkflowNvimView.qml
 SettingsPageHost 1.0 SettingsPageHost.qml
 SettingsNavEditPane 1.0 SettingsNavEditPane.qml
 SettingsChromeEditFrame 1.0 SettingsChromeEditFrame.qml

@@ -5,6 +5,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SERVICE = ROOT / "services" / "CodeWorkflowNvim.qml"
 BRIDGE = ROOT / "scripts" / "code-workflow-nvim-bridge.py"
+SERVICES_QMLDIR = ROOT / "services" / "qmldir"
+SETTINGS_QMLDIR = ROOT / "modules" / "settings" / "qmldir"
 
 def fail(message):
     print("FAIL:", message)
@@ -12,6 +14,8 @@ def fail(message):
 
 service = SERVICE.read_text(encoding="utf-8")
 bridge = BRIDGE.read_text(encoding="utf-8")
+services_qmldir = SERVICES_QMLDIR.read_text(encoding="utf-8")
+settings_qmldir = SETTINGS_QMLDIR.read_text(encoding="utf-8")
 
 for token in (
     "pragma Singleton",
@@ -81,6 +85,11 @@ for token in (
 ):
     if token not in bridge:
         fail("Neovim bridge missing " + token)
+
+if "singleton CodeWorkflowNvim 1.0 CodeWorkflowNvim.qml" not in services_qmldir:
+    fail("CodeWorkflowNvim singleton must be exported by qs.services")
+if "CodeWorkflowNvimView 1.0 CodeWorkflowNvimView.qml" not in settings_qmldir:
+    fail("CodeWorkflowNvimView must be exported by qs.modules.settings")
 
 if "pynvim" in bridge or "import msgpack" in bridge:
     fail("Neovim bridge must remain dependency-free")

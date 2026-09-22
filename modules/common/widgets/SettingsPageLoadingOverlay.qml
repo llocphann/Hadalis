@@ -70,8 +70,10 @@ Item {
 
     Rectangle {
         anchors.centerIn: parent
-        width: loadingLabel.implicitWidth + 28
-        height: 48
+        // Fixed-size square plate: the former label-measured width could
+        // collapse to an empty pill before text/font metrics became available.
+        width: 92
+        height: width
         radius: SettingsMaterialPreset.cardRadius
         color: SettingsMaterialPreset.cardColor
         border.width: 1
@@ -87,9 +89,13 @@ Item {
             }
         }
 
-        LoadingText {
-            id: loadingLabel
+        // Gear-only Settings page load. Keep the glyph prominent and centered
+        // regardless of the current page's asynchronous text lifecycle.
+        MaterialLoadingIndicator {
             anchors.centerIn: parent
+            implicitSize: 76
+            color: Appearance.colors.colOnSurface
+            loading: root._shown
         }
     }
 }

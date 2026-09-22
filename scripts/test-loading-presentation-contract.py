@@ -31,14 +31,28 @@ assert "MaterialLoadingIndicator {" not in label
 assert "LoadingText 1.0 LoadingText.qml" in qmldir
 assert '"Loading": "Loading"' in locale
 
-for path in (
-    "modules/common/widgets/SettingsTaskLoadingState.qml",
-    "modules/common/widgets/SettingsPageLoadingOverlay.qml",
-):
-    content = read(path)
-    assert "LoadingText {" in content, path
-    assert "MaterialLoadingIndicator {" not in content, path
-    assert "property string text:" not in content, path
+# Text-bearing task rows retain the animated Loading label; Settings page
+# navigation is gear-only, with a fixed square plate and centered large glyph.
+task = read("modules/common/widgets/SettingsTaskLoadingState.qml")
+assert "LoadingText {" in task
+assert "MaterialLoadingIndicator {" not in task
+assert "property string text:" not in task
+
+page = read("modules/common/widgets/SettingsPageLoadingOverlay.qml")
+assert "MaterialLoadingIndicator {" in page
+assert "LoadingText {" not in page
+assert "property string text:" not in page
+assert "loadingLabel.implicitWidth" not in page
+assert "anchors.centerIn: parent" in page
+assert "color: Appearance.colors.colOnSurface" in page
+assert "loading: root._shown" in page
+import re
+plate = re.search(r"width:\s*(\d+)\s*height:\s*width", page)
+glyph = re.search(r"MaterialLoadingIndicator\s*\{[^}]*implicitSize:\s*(\d+)", page, re.S)
+assert plate and glyph, "Settings page must size both plate and gear"
+plate_size, gear_size = int(plate[1]), int(glyph[1])
+assert plate_size >= gear_size + 16
+assert gear_size * 0.8 >= 56, "Settings gear glyph must remain visually prominent"
 
 for path in (
     "settings.qml",

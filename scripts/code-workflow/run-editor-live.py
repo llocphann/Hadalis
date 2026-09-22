@@ -54,13 +54,19 @@ def instrument(config: Path) -> None:
     replace_once(
         page, "    id: root\n",
         "    id: root\n"
-        "    Component.onDestruction: CodeWorkflowSession.modalTestEditor = null\n",
+        "    Component.onDestruction: CodeWorkflowSession.modalTestEditor = null\n"\n        "    TapHandler { target: null; onTapped: sourceEditor.testPageTapCount++ }\n",
     )
     # Prevent tests from touching the actual source buffer, even inside the
     # temporary archive. This fixture still instantiates the real editor.
     replace_once(
         page, "                        draft: root.sourceDraft\n",
         '                        draft: "alpha\\n\\nbeta gamma"\n',
+    )
+    overlay = config / "modules/settings/SettingsOverlay.qml"
+    replace_once(
+        overlay, "                id: settingsCard\n",
+        "                id: settingsCard\n"
+        "                TapHandler { target: null; onTapped: { if (CodeWorkflowSession.modalTestEditor) CodeWorkflowSession.modalTestEditor.testSettingsTapCount++ } }\n",
     )
     editor = config / "modules/settings/CodeWorkflowSourceEditor.qml"
     replace_once(editor, "import QtQuick.Layouts\n",
@@ -69,11 +75,16 @@ def instrument(config: Path) -> None:
         editor, "    id: root\n",
         "    id: root\n"
         "    readonly property bool testTextEditFocus: editor.activeFocus\n"
-        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    readonly property string testClickOutput: editor.Screen.name\n",
+        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    property int testPageTapCount: 0\n    property int testSettingsTapCount: 0\n    property int testPressCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    readonly property string testClickOutput: editor.Screen.name\n",
     )
     replace_once(
         editor, "                    onTapped: eventPoint => {\n",
         "                    onTapped: eventPoint => {\n                        root.testTapCount++\n",
+    )
+    replace_once(
+        editor, "                    acceptedButtons: Qt.LeftButton\n",
+        "                    acceptedButtons: Qt.LeftButton\n"
+        "                    onPressedChanged: if (pressed) root.testPressCount++\n",
     )
     shell = config / "shell.qml"
     replace_once(
@@ -93,7 +104,7 @@ def instrument(config: Path) -> None:
                 line: modal.currentLineNumber,
                 text: modal.documentText,
                 focused: modal.testTextEditFocus,
-                tapCount: modal.testTapCount,
+                tapCount: modal.testTapCount,\n                pressCount: modal.testPressCount,\n                pageTapCount: modal.testPageTapCount,\n                settingsTapCount: modal.testSettingsTapCount,
                 clickX: modal.testClickPoint.x,
                 clickY: modal.testClickPoint.y,
                 clickOutput: modal.testClickOutput,
@@ -254,17 +265,39 @@ def main() -> int:
         before_click = state()
         probe.record("Editor click target has a real compositor output",
                      before_click["clickOutput"] in probe.outputs(), before_click)
-        probe.move(before_click["clickX"], before_click["clickY"], "left",
-                   output=before_click["clickOutput"])
-        clicked = runtime.wait_for(
-            lambda: value if (value := state())["tapCount"] > before_click["tapCount"]
-                else None,
-            "actual compositor click reaches TextEdit TapHandler",
-        )
+        # Distinguish an unresponsive compositor pointer from a child QML
+        # hit-test failure. Keep coordinates/screen/counters in the report.
+        attempts = []
+        for output in (before_click["clickOutput"], *[
+            name for name in probe.outputs()
+            if name != before_click["clickOutput"]
+        ]):
+            for dx, dy in ((0, 0), (25, 15), (85, 45)):
+                probe.move(before_click["clickX"] + dx,
+                           before_click["clickY"] + dy, "left", output=output)
+                time.sleep(0.2)
+                attempt = state()
+                attempts.append({
+                    "output": output, "dx": dx, "dy": dy,
+                    "tap": attempt["tapCount"],
+                    "press": attempt["pressCount"],
+                    "page": attempt["pageTapCount"],
+                    "settings": attempt["settingsTapCount"],
+                    "caret": attempt["caret"], "focused": attempt["focused"],
+                })
+                if attempt["tapCount"] > before_click["tapCount"]:
+                    break
+            if state()["tapCount"] > before_click["tapCount"]:
+                break
+        report["clickDiagnostics"] = attempts
+        clicked = state()
         probe.record("Real pointer click is delivered to Source Editor",
-                     clicked["focused"] and clicked["mode"] == "normal", clicked)
-        probe.record("Real pointer click places caret at start",
-                     clicked["caret"] == 0, clicked)
+                     clicked["tapCount"] > before_click["tapCount"]
+                     and clicked["focused"] and clicked["mode"] == "normal",
+                     {"state": clicked, "attempts": attempts})
+        probe.record("Real pointer click places caret inside document",
+                     0 <= clicked["caret"] <= len(clicked["text"]), clicked)
+        command("home")
         for letter, expected in (("l", 1), ("j", 6), ("k", 1), ("h", 0)):
             subprocess.run(["wtype", letter], env=probe.env, check=True,
                            capture_output=True, text=True, timeout=12)

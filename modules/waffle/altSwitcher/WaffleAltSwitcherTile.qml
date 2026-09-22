@@ -84,7 +84,9 @@ Item {
             WPopupToolTip {
                 // The parent is a plain Item; hover belongs to compactMouse.
                 useParentHover: false
-                extraVisibleCondition: compactMouse.containsMouse && !root.selected
+                externalHoverState: compactMouse.containsMouse
+                externalPressedState: compactMouse.pressed
+                extraVisibleCondition: !root.selected
                 text: root.item?.appName ?? root.item?.title ?? ""
             }
         }

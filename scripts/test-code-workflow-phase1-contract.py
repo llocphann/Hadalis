@@ -92,6 +92,11 @@ settings_qmldir = read("modules/settings/qmldir")
 page = read("modules/settings/CodeWorkflow.qml")
 require_balanced_qml_braces(
     page, "CodeWorkflow.qml must remain structurally balanced")
+require(
+    page,
+    "            }\n        }\n\n        onResizingChanged: {\n"
+    "            if (!resizing && sourcePane.visible)",
+    "sourcePane must close before workflowVerticalSplit resize handling")
 source_editor = read("modules/settings/CodeWorkflowSourceEditor.qml")
 canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 shell = read("shell.qml")

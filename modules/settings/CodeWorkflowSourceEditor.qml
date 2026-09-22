@@ -271,7 +271,9 @@ Item {
             if (start === 0)
                 return pos
             const previousEnd = start - 1
-            const previousStart = root.lineStart(Math.max(0, previousEnd - 1))
+            // previousEnd is the newline before the current line. Using
+            // previousEnd - 1 skips an empty previous line entirely.
+            const previousStart = root.lineStart(previousEnd)
             return Math.min(previousStart + column, previousEnd)
         }
 

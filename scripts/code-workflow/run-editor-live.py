@@ -38,7 +38,7 @@ def replace_once(path: Path, original: str, replacement: str) -> None:
     path.write_text(text.replace(original, replacement, 1), encoding="utf-8")
 
 
-def instrument(config: Path) -> None:
+def instrument(config: Path, surface: str = "rail") -> None:
     session = config / "services/CodeWorkflowSession.qml"
     replace_once(
         session, '    property string selectedTargetId: "bar"\n',
@@ -97,6 +97,18 @@ def instrument(config: Path) -> None:
         "                    onPressedChanged: if (pressed) root.testPressCount++\n",
     )
     shell = config / "shell.qml"
+    if surface == "focus":
+        replace_once(
+            shell, "    SettingsOverlay { id: settings }",
+            "    SettingsFocus { id: settings }",
+        )
+        replace_once(shell, "report.settingsPage = settings.overlayCurrentPage",
+                     "report.settingsPage = settings.currentPage")
+        replace_once(shell, "report.editorNavigationInitialized = settings._navigationInitialized",
+                     "report.editorNavigationInitialized = Config.ready")
+        replace_once(shell,
+                     '"runtime/settings-overlay/page/code-workflow"',
+                     '"runtime/settings-focus/page/code-workflow"')
     replace_once(
         shell,
         "            report.settingsPublishedPage = GlobalStates.settingsOverlayCurrentPage\n",
@@ -189,17 +201,18 @@ def main() -> int:
     parser.add_argument("--revision", default="HEAD")
     parser.add_argument("--sway", type=Path, default=None)
     parser.add_argument("--pointer", type=Path, required=True)
+    parser.add_argument("--surface", choices=("rail", "focus"), default="rail")
     args = parser.parse_args()
     directory = args.work_dir.resolve()
     if directory.exists():
         raise SystemExit("work directory must not exist")
     manifest = prepare_runtime.prepare(directory, args.revision)
-    instrument(directory / "config")
+    instrument(directory / "config", args.surface)
     report = {
         "schema": 1,
         "manifest": manifest,
         "environment": ("headless Sway" if args.sway else "nested Niri")
-                       + ", private bus/XDG, staged page 30 QML",
+                       + ", " + args.surface + " Settings, private bus/XDG, staged page 30 QML",
         "checks": [],
         "limitations": [
             "Virtual keyboard tests only the isolated compositor, not user hardware/IME.",

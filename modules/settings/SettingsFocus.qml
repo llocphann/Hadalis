@@ -2154,7 +2154,6 @@ Scope {
                             SettingsPageLoadingOverlay {
                                 anchors.fill: parent
                                 loading: pageHost.loading
-                                text: Translation.tr("Loading page…")
                                 z: 15
                             }
                         }

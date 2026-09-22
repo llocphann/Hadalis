@@ -1495,7 +1495,6 @@ ApplicationWindow {
                     SettingsPageLoadingOverlay {
                         anchors.fill: parent
                         loading: pagesStack.loading
-                        text: Translation.tr("Loading page…")
                         z: 15
                     }
 

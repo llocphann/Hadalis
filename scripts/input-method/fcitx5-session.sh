@@ -17,7 +17,9 @@ if command -v systemctl >/dev/null 2>&1; then
     manager_env="$(systemctl --user show-environment 2>/dev/null || true)"
 fi
 manager_qt_im="$(printf '%s\n' "$manager_env" | sed -n 's/^QT_IM_MODULE=//p' | head -n 1)"
-if { [[ -n "${QT_IM_MODULE:-}" && "$QT_IM_MODULE" != "fcitx" ]] || [[ -n "$manager_qt_im" && "$manager_qt_im" != "fcitx" ]]; }; then
+if [[ -n "${QT_IM_MODULE:-}" ]]; then
+    [[ "$QT_IM_MODULE" == "fcitx" ]] || exit 0
+elif [[ -n "$manager_qt_im" && "$manager_qt_im" != "fcitx" ]]; then
     exit 0
 fi
 

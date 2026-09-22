@@ -51,15 +51,19 @@ forbid(data, 'label: Translation.tr("Corner style")',
 forbid(data, 'description: Translation.tr("Bar corner style: hug, float or rectangle")',
        "static search still describes retired Float/Rectangle Bar surfaces")
 
-# Quick Settings must continue hiding its retired Bar style card.
-require(quick, 'Translation.tr("Bar style")',
-        "Quick Settings Hug facade lost its retired-control filter")
-require(quick, 'item.visible = false',
-        "Quick Settings no longer hides the retired Bar style card")
-forbid(quick, 'opacity: root._hugUiReady ? 1 : 0',
-       "Quick Settings must not hide the whole page behind a zero-delay compatibility timer")
-forbid(quick, 'property bool _hugUiReady:',
-       "Quick Settings retained the blank-page readiness gate")
+# Quick has one job: shortcuts. Bar position and backdrop are owned by
+# their dedicated pages; the public facade no longer hides stale controls.
+require(quick, 'QuickConfig {',
+        "Quick Settings lost its lightweight public facade")
+forbid(quick, 'Translation.tr("Bar style")',
+       "Quick Settings still carries a retired style workaround")
+forbid(quick, 'Timer {',
+       "Quick Settings should not traverse controls after load")
+quick_impl = (ROOT / "modules/settings/QuickConfig.qml").read_text(encoding="utf-8")
+forbid(quick_impl, 'settingsTaskSection: "screen"',
+       "Quick reintroduced duplicate Bar/backdrop settings")
+forbid(quick_impl, 'Config.setNestedValue("bar.vertical"',
+       "Quick still writes the canonical Bar position")
 
 # Fan Control must remain reachable from the real System page and static search.
 require(system, '{ displayName: Translation.tr("Fan Control"), icon: "mode_fan", value: "fan" }',

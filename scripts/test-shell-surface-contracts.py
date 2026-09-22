@@ -382,6 +382,9 @@ def main() -> None:
           and "layer.effect: MultiEffect {" in screen_edge
           and "shadowEnabled: frameShape.physicalShadowActive" in screen_edge
           and "blurMax: Math.max(1, root.physicalShadowSize)" in screen_edge
+          and "shadowBlur: 1.0" in screen_edge
+          and "shadowHorizontalOffset: 0" in screen_edge
+          and "shadowVerticalOffset: 0" in screen_edge
           and "Appearance.m3colors.m3shadow" in screen_edge,
           "Physical Screen Edge must own one dedicated Caelestia-style shadow effect")
     check("component FrameWindow: PanelWindow" in screen_edge
@@ -707,7 +710,7 @@ def main() -> None:
         check("SurfaceMotion.duration" in settings_surface
               and "SurfaceMotion.easingType" in settings_surface,
               "Connected Settings overlays must use the immutable slide-only SurfaceMotion contract")
-        check("Appearance.colors.colShadow" in settings_surface
+        check("Appearance.m3colors.m3shadow" in settings_surface
               and "screenEdge?.shadow?.size" in settings_surface
               and "screenEdge?.shadow?.opacity" in settings_surface
               and "shadowExtent:" in settings_surface,
@@ -904,8 +907,8 @@ def main() -> None:
     generic_shadow = read("modules/common/widgets/StyledRectangularShadow.qml")
     check("property color color: Appearance.colors.colShadow" in generic_shadow,
           "Shared rectangular shadow must use the proven themed shell shadow source")
-    check("cached: true" in generic_shadow,
-          "Shared rectangular shadow must retain the prior stable cached renderer")
+    check("cached: !(root.joinTop || root.joinBottom" in generic_shadow,
+          "Connected moving shadows must remain live; stationary cards may cache")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):

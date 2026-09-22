@@ -183,6 +183,33 @@ def main() -> None:
           and "hoverTransferTimer.restart()" in styled_popup,
           "StyledPopup must debounce the compositor leave/enter hand-off across Bar and popup windows")
 
+    check("root.hoverTarget.visible" in styled_popup
+          and "onActiveChanged: {" in styled_popup
+          and "root._bodyHovered = false" in styled_popup
+          and "root._contentHovered = false" in styled_popup
+          and "onHoverTargetChanged: {" in styled_popup,
+          "Connected popup must drop stale hover when anchor or presentation is evicted")
+    for indicator in (
+        "modules/bar/weather/WeatherBar.qml",
+        "modules/bar/ShellUpdateIndicator.qml",
+        "modules/bar/TimerIndicator.qml",
+    ):
+        source = read(indicator)
+        check("property bool _pointerFocused: false" in source
+              and "onPressed: root._pointerFocused = true" in source
+              and "onActiveFocusChanged:" in source
+              and "alternativeVisibleCondition: root.activeFocus && !root._pointerFocused" in source,
+              f"{indicator} must distinguish keyboard focus from sticky pointer focus")
+    tooltip = read("modules/common/widgets/PopupToolTip.qml")
+    check("property bool useParentHover: true" in tooltip
+          and "if (parent.containsMouse !== undefined)" in tooltip
+          and "return false" in tooltip,
+          "Shared tooltip must fail closed for unknown parent hover state")
+    waffle_tile = read("modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml")
+    check("useParentHover: false" in waffle_tile
+          and "extraVisibleCondition: compactMouse.containsMouse" in waffle_tile,
+          "Waffle compact tile must explicitly own hover on its child MouseArea")
+
     # Auxiliary edge-attached surfaces refined after the iRiS migration must
     # keep using the same production connected-surface vocabulary. These guards
     # intentionally check presentation ownership only; feature/IPC lifecycle

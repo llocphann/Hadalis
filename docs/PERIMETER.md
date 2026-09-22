@@ -49,7 +49,15 @@ an iRiS adapter.
 renderer. Each output has one full-screen `FrameWindow`, one odd-even
 `ShapePath`, exactly four circular `PathArc` segments for the rounded
 workspace hole, and transparent reservation windows. Bar ownership changes only
-the matching inner-frame inset.
+the matching inner-frame inset. The physical frame's `MultiEffect` must
+set both `blurMax` (kernel size) and nonzero `shadowBlur` (actual falloff),
+with zero shadow offset so its four rounded inner corners cast inward depth.
+Do not add a Bar-local shadow or another Screen Edge painter.
+
+Transparent Material surfaces still use independent Material shadow ink:
+surface alpha must never turn `Appearance.colors.colShadow` transparent.
+Connected iRiS shadows remain owner-clipped at the physical seam, while
+Dashboard cards draw their elevation outside the card content clip.
 
 `ScreenCorners.qml` is interaction-only: Sidebar hot corners, Orbit and
 brightness/volume gestures. It must not paint fake rounded corners.

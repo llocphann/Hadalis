@@ -12,6 +12,10 @@ Item {
 
     property string sourcePath: ""
     property bool active: false
+    readonly property string nvimPath: CodeWorkflowNvim.path
+    readonly property bool bufferModified: CodeWorkflowNvim.bufferModified
+    readonly property string nvimMode: CodeWorkflowNvim.mode
+    readonly property bool nvimReady: CodeWorkflowNvim.ready
     property bool cursorBlinkVisible: true
     property string cursorBlinkPhase: "steady"
     property int lastPaintCursorRow: 0
@@ -315,6 +319,10 @@ Item {
 
     function forceEditorFocus(): void {
         nvimImeProxy.forceActiveFocus()
+    }
+
+    function saveBuffer(): bool {
+        return CodeWorkflowNvim.save()
     }
 
     onActiveChanged: {

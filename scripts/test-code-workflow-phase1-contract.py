@@ -240,12 +240,14 @@ require(page, 'buttonText: "Back to Bar workflow"',
         "compact subflow navigation must retain an accessibility label")
 require(page, 'text: "Fit graph to viewport"',
         "compact graph controls must retain discoverable tooltips")
-require(page, "import org.kde.syntaxhighlighting",
-        "Source Preview must load the shared KDE syntax-highlighting backend")
-require(page, "id: sourcePreviewHighlighter",
-        "Source Editor must attach shared syntax highlighting to its TextEdit")
-require(page, "theme: Appearance.syntaxHighlightingTheme",
-        "Source Editor syntax colors must follow the shell highlighting theme")
+require(page, 'source: active\n                                ? "CodeWorkflowSyntaxHighlighter.qml" : ""',
+        "Source Editor syntax highlighting must be isolated behind a lazy loader")
+require(page, '"Syntax highlighting unavailable · plain editor active"',
+        "missing syntax-highlighting backend must fall back to the plain editor")
+if "import org.kde.syntaxhighlighting" in page:
+    fail("CodeWorkflow base page must not hard-depend on KDE syntax highlighting")
+if "CodeWorkflowNvim." in page:
+    fail("CodeWorkflow base page must not hard-depend on embedded Neovim service")
 require(page, 'text: "Source Editor · " + root.sourcePath',
         "Source pane must present an editor rather than a read-only preview")
 require(page, "readOnly: false",

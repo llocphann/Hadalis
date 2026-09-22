@@ -24,6 +24,11 @@ for token in (
     "onPaint: region =>",
     "const firstRow =",
     "const lastRow =",
+    "readonly property string nvimPath: CodeWorkflowNvim.path",
+    "readonly property bool bufferModified: CodeWorkflowNvim.bufferModified",
+    "readonly property string nvimMode: CodeWorkflowNvim.mode",
+    "readonly property bool nvimReady: CodeWorkflowNvim.ready",
+    "function saveBuffer(): bool",
     "CodeWorkflowNvim.gridRows",
     "CodeWorkflowNvim.highlights",
     "CodeWorkflowNvim.defaultColors",
@@ -76,7 +81,7 @@ for token in (
     "item.sourcePath = root.sourceEditorTargetPath",
     '"Embedded Neovim failed to load · using inline editor"',
     '"Save Neovim buffer"',
-    "CodeWorkflowNvim.save()",
+    "root.saveEmbeddedNvim()",
 ):
     if token not in page:
         fail("Code Workflow page missing embedded Neovim integration " + token)

@@ -5,7 +5,6 @@ import QtQuick.Controls
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
-import org.kde.syntaxhighlighting
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
@@ -43,8 +42,18 @@ Item {
     readonly property string sourceEditorTempPath:
         "/tmp/hadalis-code-workflow-editor-"
             + String(Quickshell.processId) + ".tmp"
+    readonly property var embeddedNvimView:
+        embeddedNvimLoader.item ?? null
+    readonly property string embeddedNvimPath:
+        String(root.embeddedNvimView?.nvimPath ?? "")
+    readonly property bool embeddedNvimBufferModified:
+        root.embeddedNvimView?.bufferModified === true
+    readonly property string embeddedNvimMode:
+        String(root.embeddedNvimView?.nvimMode ?? "normal")
+    readonly property bool embeddedNvimReady:
+        root.embeddedNvimView?.nvimReady === true
     readonly property string sourceEditorNvimDisplayPath: {
-        const activePath = String(CodeWorkflowNvim.path ?? "")
+        const activePath = root.embeddedNvimPath
         if (activePath.length === 0)
             return root.sourcePath
         const prefix = root.sourceEditorShellRoot.endsWith("/")
@@ -532,11 +541,25 @@ Item {
             item.ensureSession()
     }
 
+    function saveEmbeddedNvim(): bool {
+        const item = embeddedNvimLoader.item
+        return item ? item.saveBuffer() : false
+    }
+
+    function syncSourceSyntaxHighlighter(): void {
+        const item = sourceSyntaxLoader.item
+        if (!item)
+            return
+        item.targetTextEdit = sourcePreviewText
+        item.definitionName = root.sourceHighlightDefinition
+    }
+
     onSourcePathChanged: {
         root.stashSourceEditorBuffer()
         root.sourceEditorStatus = ""
         if (root.sourceEditorUseNvim)
             Qt.callLater(root.syncEmbeddedNvimView)
+        Qt.callLater(root.syncSourceSyntaxHighlighter)
     }
 
     function stashSourceEditorBuffer(): void {
@@ -3697,9 +3720,9 @@ Item {
                     }
                     Pill {
                         label: root.sourceEditorUseNvim
-                            ? (CodeWorkflowNvim.bufferModified
+                            ? (root.embeddedNvimBufferModified
                                 ? "NVIM · MODIFIED"
-                                : "NVIM · " + CodeWorkflowNvim.mode.toUpperCase())
+                                : "NVIM · " + root.embeddedNvimMode.toUpperCase())
                             : root.sourceEditorConflict
                                 ? "CONFLICT"
                                 : root.sourceEditorSaving
@@ -3707,7 +3730,7 @@ Item {
                                     : root.sourceEditorDirty
                                         ? "MODIFIED" : "SYNCED"
                         accent: root.sourceEditorUseNvim
-                            ? (CodeWorkflowNvim.bufferModified
+                            ? (root.embeddedNvimBufferModified
                                 ? Appearance.colors.colTertiary
                                 : Appearance.colors.colPrimary)
                             : root.sourceEditorConflict
@@ -3762,12 +3785,12 @@ Item {
                         mainText: ""
                         materialIcon: "save"
                         enabled: root.sourceEditorUseNvim
-                            ? CodeWorkflowNvim.ready
-                                && CodeWorkflowNvim.bufferModified
+                            ? root.embeddedNvimReady
+                                && root.embeddedNvimBufferModified
                             : root.sourceEditorCanSave
                         onClicked: {
                             if (root.sourceEditorUseNvim)
-                                CodeWorkflowNvim.save()
+                                root.saveEmbeddedNvim()
                             else
                                 root.saveSourceEditor()
                         }
@@ -3875,14 +3898,24 @@ Item {
                             selectedTextColor: Appearance.colors.colOnPrimaryContainer
                             font.family: Appearance.font.family.monospace
                             font.pixelSize: Appearance.font.pixelSize.small
+                        }
 
-                            SyntaxHighlighter {
-                                id: sourcePreviewHighlighter
-                                textEdit: sourcePreviewText
-                                repository: Repository
-                                definition: Repository.definitionForName(
-                                    root.sourceHighlightDefinition)
-                                theme: Appearance.syntaxHighlightingTheme
+                        Loader {
+                            id: sourceSyntaxLoader
+                            active: !root.sourceEditorUseNvim
+                            source: active
+                                ? "CodeWorkflowSyntaxHighlighter.qml" : ""
+                            asynchronous: true
+                            visible: false
+
+                            onLoaded:
+                                Qt.callLater(root.syncSourceSyntaxHighlighter)
+
+                            onStatusChanged: {
+                                if (status !== Loader.Error)
+                                    return
+                                root.sourceEditorStatus =
+                                    "Syntax highlighting unavailable · plain editor active"
                             }
                         }
                     }

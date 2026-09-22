@@ -84,7 +84,11 @@ Singleton {
             0, Math.min(root.cols - 1, Number(frame?.cursorCol ?? 0)))
         root.mode = String(frame?.mode ?? root.mode)
         root.cursorVisible = frame?.cursorVisible !== false
-        root.cursorStyle = Object.assign({}, frame?.cursorStyle ?? ({}))
+        const nextCursorStyle =
+            Object.assign({}, frame?.cursorStyle ?? ({}))
+        if (JSON.stringify(nextCursorStyle)
+                !== JSON.stringify(root.cursorStyle))
+            root.cursorStyle = nextCursorStyle
         root.mouseEnabled = frame?.mouseEnabled === true
         root.gridRows = nextRows
         root.revision += 1

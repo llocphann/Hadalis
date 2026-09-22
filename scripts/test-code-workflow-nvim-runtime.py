@@ -127,6 +127,20 @@ with tempfile.TemporaryDirectory() as tmp:
             time.sleep(0.05)
         assert source.read_text(encoding="utf-8").startswith("HELLO")
 
+        # GUI clipboard paste uses nvim_paste(), not mapped/raw nvim_input().
+        send(proc, {"op": "input", "keys": "Go"})
+        send(proc, {"op": "paste", "text": "PASTED\nBLOCK"})
+        send(proc, {"op": "input", "keys": "<Esc>:w<CR>"})
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline:
+            written = source.read_text(encoding="utf-8")
+            if "PASTED\nBLOCK" in written:
+                break
+            if proc.poll() is not None:
+                break
+            time.sleep(0.05)
+        assert "PASTED\nBLOCK" in source.read_text(encoding="utf-8")
+
         send(proc, {"op": "resize", "cols": 52, "rows": 10})
         resized = wait_message(
             proc,

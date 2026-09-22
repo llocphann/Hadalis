@@ -29,6 +29,8 @@ for token in (
     "function paste(text: string): bool",
     "property bool cursorVisible: true",
     "property var cursorStyle: ({})",
+    "const nextCursorStyle =",
+    "JSON.stringify(nextCursorStyle)",
     "function mouse(",
     "function stop(): void",
     'Quickshell.shellPath("scripts/code-workflow-nvim-bridge.py")',

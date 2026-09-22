@@ -49,8 +49,11 @@ Item {
     // hover state for a frame (or until the pointer moves). Keep that tooltip
     // closed until the pointer genuinely leaves the control.
     property bool suppressUntilHoverExit: false
+    readonly property bool parentVisibleState:
+        parent ? parent.visible : true
     readonly property bool hasContent: root.text.trim().length > 0
     readonly property bool internalVisibleCondition: root.enabled && root.hasContent
+        && root.parentVisibleState
         && !root.suppressUntilHoverExit
         && ((extraVisibleCondition && parentHoverState) || alternativeVisibleCondition)
 

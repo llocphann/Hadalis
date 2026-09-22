@@ -990,22 +990,17 @@ Scope {
                                             }
                                         }
 
-                                        Keys.onPressed: (event) => {
+                                        Keys.onPressed: event => {
                                             if (event.key === Qt.Key_Down && root.overlaySearchResults.length > 0) {
-                                                overlayResultsList.forceActiveFocus();
-                                                if (overlayResultsList.currentIndex < 0) {
-                                                    overlayResultsList.currentIndex = 0;
-                                                }
-                                                event.accepted = true;
-                                            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.overlaySearchResults.length > 0) {
-                                                var idx = (overlayResultsList.currentIndex >= 0 && overlayResultsList.currentIndex < root.overlaySearchResults.length)
-                                                    ? overlayResultsList.currentIndex
-                                                    : 0;
-                                                root.openOverlaySearchResult(root.overlaySearchResults[idx]);
-                                                event.accepted = true;
+                                                overlayLiveSearch.focusResults()
+                                                event.accepted = true
+                                            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                                                    && root.overlaySearchResults.length > 0) {
+                                                overlayLiveSearch.activateCurrent()
+                                                event.accepted = true
                                             } else if (event.key === Qt.Key_Escape) {
-                                                root.openOverlaySearchResult({});
-                                                event.accepted = true;
+                                                root.openOverlaySearchResult({})
+                                                event.accepted = true
                                             }
                                         }
                                     }
@@ -1586,8 +1581,8 @@ Scope {
                                 readonly property var meta: root.overlayPages[root.overlayCurrentPage] ?? {}
                                 readonly property bool delegatedToPage:
                                     String(meta.key ?? "") === "code-workflow"
-                                height: delegatedToPage ? 0 : 48
-                                visible: !delegatedToPage
+                                height: delegatedToPage || root.overlaySearchText.trim().length > 0 ? 0 : 48
+                                visible: !delegatedToPage && root.overlaySearchText.trim().length === 0
 
                                 RowLayout {
                                     id: overlayPageHeaderRow
@@ -1646,6 +1641,8 @@ Scope {
                                 anchors { top: overlayPageHeader.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
                                 pages: root.overlayPages
                                 requestedIndex: root.overlayCurrentPage
+                                visible: root.overlaySearchText.trim().length === 0
+                                enabled: visible
                                 workflowHostId: "settings-overlay"
                                 workflowDiscoveryEnabled: true
                                 loadEnabled: Config.ready && root.settingsOpen
@@ -1657,275 +1654,21 @@ Scope {
                                 z: 15
                             }
 
-                        }
-                    }
-                }
-
-                // ── Search results overlay ──
-                Rectangle {
-                    id: overlaySearchResultsOverlay
-                    anchors.fill: parent
-                    visible: root.overlaySearchText.length > 0 || overlaySearchResultsCard._cardOpacity > 0 || noResultsPill._pillOpacity > 0
-                    color: "transparent"
-                    z: 100
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: root.openOverlaySearchResult({})
-                    }
-
-                    // No-results pill (morphs in when search has no matches)
-                    Rectangle {
-                        id: noResultsPill
-                        readonly property bool showPill: root.overlaySearchText.length > 0 && root.overlaySearchResults.length === 0
-                        property real _pillOpacity: showPill ? 1 : 0
-                        property real _pillScale: showPill ? 1 : 0.85
-
-                        visible: _pillOpacity > 0
-                        opacity: _pillOpacity
-                        scale: _pillScale
-                        transformOrigin: Item.Top
-
-                        x: {
-                            var dep = overlaySearchContainer.x + overlaySearchContainer.width + settingsCard.width;
-                            var p = overlaySearchContainer.mapToItem(overlaySearchResultsOverlay, 0, 0);
-                            return p.x + (overlaySearchContainer.width - width) / 2;
-                        }
-                        anchors.top: parent.top
-                        anchors.topMargin: 56
-                        width: noResultsRow.implicitWidth + 32
-                        height: 44
-                        radius: Math.min(width, height) / 2
-                        color: Appearance.colors.colSurfaceContainerHigh
-                        border.width: 0
-                        border.color: "transparent"
-
-                        Behavior on _pillOpacity {
-                            enabled: Appearance.animationsEnabled
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                        }
-                        Behavior on _pillScale {
-                            enabled: Appearance.animationsEnabled
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Appearance.animationCurves.emphasizedDecel }
-                        }
-                        Behavior on width {
-                            enabled: Appearance.animationsEnabled
-                            animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
-                        }
-
-                        Row {
-                            id: noResultsRow
-                            anchors.centerIn: parent
-                            spacing: 8
-
-                            MaterialSymbol {
-                                text: "search_off"
-                                iconSize: 18
-                                color: Appearance.colors.colSubtext
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                            StyledText {
-                                text: Translation.tr("No results")
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                color: Appearance.colors.colSubtext
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-                    }
-
-                    // Results card
-                    StyledRectangularShadow {
-                        target: overlaySearchResultsCard
-                        opacity: overlaySearchResultsCard._cardOpacity
-                    }
-                    Rectangle {
-                        id: overlaySearchResultsCard
-                        property real _cardOpacity: root.overlaySearchResults.length > 0 ? 1 : 0
-                        property real _cardScale: root.overlaySearchResults.length > 0 ? 1 : 0.92
-                        visible: _cardOpacity > 0 || root.overlaySearchResults.length > 0
-                        opacity: _cardOpacity
-                        scale: _cardScale
-                        transformOrigin: Item.Top
-
-                        Behavior on _cardOpacity {
-                            enabled: Appearance.animationsEnabled
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
-                        }
-                        Behavior on _cardScale {
-                            enabled: Appearance.animationsEnabled
-                            animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Easing.BezierSpline; easing.bezierCurve: Appearance.animationCurves.emphasizedDecel }
-                        }
-
-                        width: Math.max(overlaySearchContainer.width, Math.min(parent.width - 40, 460))
-                        height: Math.min(overlayResultsList.contentHeight + 16, 380)
-                        // Centered under the search box, not the whole card
-                        x: {
-                            var dep = overlaySearchContainer.x + overlaySearchContainer.width + settingsCard.width;
-                            var p = overlaySearchContainer.mapToItem(overlaySearchResultsOverlay, 0, 0);
-                            return Math.max(8, Math.min(p.x + (overlaySearchContainer.width - width) / 2, parent.width - width - 8));
-                        }
-                        anchors.top: parent.top
-                        anchors.topMargin: 56
-                        radius: Appearance.rounding.normal
-                        color: Appearance.colors.colLayer1
-                        border.width: 1
-                        border.color: Appearance.colors.colOutlineVariant
-
-                        ListView {
-                            id: overlayResultsList
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 2
-                            model: root.overlaySearchResults
-                            clip: true
-                            currentIndex: 0
-                            boundsBehavior: Flickable.StopAtBounds
-
-                            Keys.onPressed: (event) => {
-                                if (event.key === Qt.Key_Up) {
-                                    if (overlayResultsList.currentIndex > 0) {
-                                        overlayResultsList.currentIndex--;
-                                    } else {
-                                        overlaySearchField.forceActiveFocus();
-                                    }
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Down) {
-                                    if (overlayResultsList.currentIndex < overlayResultsList.count - 1) {
-                                        overlayResultsList.currentIndex++;
-                                    }
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    if (overlayResultsList.currentIndex >= 0) {
-                                        root.openOverlaySearchResult(root.overlaySearchResults[overlayResultsList.currentIndex]);
-                                    }
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Escape) {
-                                    root.openOverlaySearchResult({});
-                                    overlaySearchField.forceActiveFocus();
-                                    event.accepted = true;
-                                }
+                            // Results occupy the same canvas as the selected page.
+                            // Hidden pages stay cached and reappear when search clears.
+                            SettingsLiveSearchResults {
+                                id: overlayLiveSearch
+                                anchors.fill: parent
+                                z: 20
+                                query: root.overlaySearchText
+                                results: root.overlaySearchResults
+                                searchField: overlaySearchField
+                                iconForPage: index => SettingsPageRegistry.iconForPage(index)
+                                onActivated: entry => root.openOverlaySearchResult(entry)
+                                onCloseRequested: root.openOverlaySearchResult({})
                             }
 
-                            delegate: Column {
-                                id: resultDelegate
-                                required property var modelData
-                                required property int index
-                                
-                                width: overlayResultsList.width
-                                spacing: 0
-                                
-                                // Section header - show when page changes from previous result
-                                Rectangle {
-                                    id: sectionHeader
-                                    width: parent.width
-                                    height: visible ? 24 : 0
-                                    color: "transparent"
-                                    visible: {
-                                        if (resultDelegate.index === 0) return true;
-                                        var prev = root.overlaySearchResults[resultDelegate.index - 1];
-                                        return prev && prev.pageIndex !== resultDelegate.modelData.pageIndex;
-                                    }
-                                    
-                                    Row {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 8
-                                        spacing: 6
-                                        
-                                        MaterialSymbol {
-                                            text: SettingsPageRegistry.iconForPage(resultDelegate.modelData.pageIndex)
-                                            iconSize: 12
-                                            color: Appearance.colors.colPrimary
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-                                        StyledText {
-                                            text: resultDelegate.modelData.pageName || ""
-                                            font.pixelSize: Appearance.font.pixelSize.smaller
-                                            font.weight: Font.DemiBold
-                                            color: Appearance.colors.colPrimary
-                                        }
-                                    }
-                                }
-                                
-                                RippleButton {
-                                    id: resultItem
-                                    
-                                    width: parent.width
-                                    implicitHeight: 48
-                                    buttonRadius: Appearance.rounding.small
-
-                                    colBackground: resultDelegate.ListView.isCurrentItem
-                                        ? Appearance.colors.colLayer2
-                                        : "transparent"
-                                    colBackgroundHover: Appearance.colors.colLayer2
-
-                                    Keys.forwardTo: [overlayResultsList]
-                                    onClicked: root.openOverlaySearchResult(resultDelegate.modelData)
-
-                                    contentItem: RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: 12
-                                        anchors.rightMargin: 12
-                                        spacing: 8
-
-                                        // Section indicator
-                                        Rectangle {
-                                            width: 4
-                                            height: 20
-                                            radius: 2
-                                            color: Appearance.colors.colPrimary
-                                            opacity: resultDelegate.ListView.isCurrentItem ? 1 : 0.5
-                                        }
-
-                                        // Text content
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 1
-
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: resultDelegate.modelData.labelHighlighted || resultDelegate.modelData.label || resultDelegate.modelData.pageName || ""
-                                                textFormat: Text.StyledText
-                                                font {
-                                                    family: Appearance.font.family.main
-                                                    pixelSize: Appearance.font.pixelSize.small
-                                                    weight: Font.Medium
-                                                }
-                                                color: Appearance.colors.colOnLayer1
-                                                elide: Text.ElideRight
-                                            }
-
-                                            // Section breadcrumb (page is in header); drop a
-                                            // leading "<pageName> ·/›" prefix to avoid "Panels › Panels · Dock"
-                                            StyledText {
-                                                readonly property string sectionDisplay: {
-                                                    var sect = resultDelegate.modelData.section || "";
-                                                    var page = resultDelegate.modelData.pageName || "";
-                                                    var parts = sect.split(/\s*[·›]\s*/).filter(t => t.length > 0);
-                                                    if (parts.length > 1 && parts[0] === page) parts.shift();
-                                                    return parts.join(" › ");
-                                                }
-                                                visible: sectionDisplay.length > 0 && sectionDisplay !== resultDelegate.modelData.pageName
-                                                text: sectionDisplay
-                                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                                color: Appearance.colors.colSubtext
-                                                opacity: 0.8
-                                            }
-                                        }
-
-                                        // Arrow
-                                        MaterialSymbol {
-                                            text: "arrow_forward"
-                                            iconSize: 16
-                                            color: Appearance.colors.colSubtext
-                                            opacity: resultItem.hovered || resultDelegate.ListView.isCurrentItem ? 1 : 0
-                                        }
-                                    }
-                                }
-                            }
                         }
-
-                        Item { Layout.fillWidth: true }
                     }
                 }
 

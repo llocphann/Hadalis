@@ -55,8 +55,8 @@ assert "border.color: SettingsMaterialPreset.accentColor" in page
 assert "color: SettingsMaterialPreset.accentColor" in page
 assert "anchors.centerIn: parent" in page
 import re
-ring = re.search(r"Item\\s*\\{\\s*anchors.centerIn: parent\\s*width: (\\d+)\\s*height: width", page)
-glyph = re.search(r"MaterialLoadingIndicator\\s*\\{[^}]*implicitSize: (\\d+)", page, re.S)
+ring = re.search(r"Item\s*\{\s*anchors.centerIn: parent\s*width: (\d+)\s*height: width", page)
+glyph = re.search(r"MaterialLoadingIndicator\s*\{[^}]*implicitSize: (\d+)", page, re.S)
 assert ring and glyph, "Floating Gear must size the ring and glyph"
 ring_size, indicator_size = int(ring[1]), int(glyph[1])
 assert 60 <= ring_size <= 68

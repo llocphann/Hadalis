@@ -12,6 +12,14 @@ import qs.services
  */
 MouseArea {
     id: root
+    // A pointer click can retain activeFocus after hover ends. Keep popup
+    // keyboard focus affordance without treating pointer focus as hover.
+    property bool _pointerFocused: false
+    onPressed: root._pointerFocused = true
+    onActiveFocusChanged: {
+        if (!root.activeFocus)
+            root._pointerFocused = false
+    }
     property bool vertical: false
 
     readonly property bool pinnedToBar: Persistent.states?.timer?.pinnedToBar ?? false
@@ -263,7 +271,7 @@ MouseArea {
     // Tooltip
     TimerIndicatorTooltip {
         hoverTarget: root
-        alternativeVisibleCondition: root.activeFocus
+        alternativeVisibleCondition: root.activeFocus && !root._pointerFocused
         pomodoroActive: root.pomodoroActive
         countdownActive: root.countdownActive
         stopwatchActive: root.stopwatchActive

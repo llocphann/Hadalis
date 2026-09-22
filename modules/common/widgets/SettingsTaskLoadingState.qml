@@ -5,38 +5,34 @@ import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
 
+// Text-only activity for lazily incubated Settings sections. Delay very short
+// operations, but never keep a stale Loading label after the section is Ready.
 Item {
     id: root
 
     property bool loading: false
     property int showDelay: 90
-    property int minimumVisibleDuration: 180
-
     property bool _shown: false
-    property bool _hidePending: false
 
     Layout.fillWidth: true
-    Layout.preferredHeight: root._shown ? 48 : 0
-    opacity: root._shown ? 1 : 0
-    visible: root._shown || opacity > 0.001
+    Layout.preferredHeight: root.loading && root._shown ? 48 : 0
+    opacity: root.loading && root._shown ? 1 : 0
+    visible: root.loading && root._shown
     clip: true
 
     onLoadingChanged: {
-        if (loading) {
-            root._hidePending = false
+        if (root.loading) {
             if (!root._shown)
                 showDelayTimer.restart()
-            return
-        }
-
-        showDelayTimer.stop()
-        if (!root._shown)
-            return
-
-        if (minimumVisibleTimer.running)
-            root._hidePending = true
-        else
+        } else {
+            showDelayTimer.stop()
             root._shown = false
+        }
+    }
+
+    Component.onCompleted: {
+        if (root.loading && !root._shown)
+            showDelayTimer.restart()
     }
 
     Timer {
@@ -44,22 +40,8 @@ Item {
         interval: root.showDelay
         repeat: false
         onTriggered: {
-            if (!root.loading)
-                return
-            root._shown = true
-            root._hidePending = false
-            minimumVisibleTimer.restart()
-        }
-    }
-
-    Timer {
-        id: minimumVisibleTimer
-        interval: root.minimumVisibleDuration
-        repeat: false
-        onTriggered: {
-            if (!root.loading || root._hidePending)
-                root._shown = false
-            root._hidePending = false
+            if (root.loading)
+                root._shown = true
         }
     }
 

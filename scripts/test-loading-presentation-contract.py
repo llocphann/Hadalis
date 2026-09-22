@@ -36,6 +36,15 @@ task = read("modules/common/widgets/SettingsTaskLoadingState.qml")
 assert "LoadingText {" in task
 assert "MaterialLoadingIndicator {" not in task
 assert "property string text:" not in task
+assert "visible: root.loading && root._shown" in task
+assert "root._shown = false" in task
+assert "minimumVisibleTimer" not in task
+assert "_hidePending" not in task
+assert "Component.onCompleted:" in task
+desktop = read("modules/settings/DesktopWidgetsConfig.qml")
+assert "const shouldCount = requested && resident" in desktop
+assert "(status === Loader.Null || status === Loader.Loading)" in desktop
+assert "onResidentChanged: syncLoadingState()" in desktop
 
 page = read("modules/common/widgets/SettingsPageLoadingOverlay.qml")
 assert "MaterialLoadingIndicator {" in page

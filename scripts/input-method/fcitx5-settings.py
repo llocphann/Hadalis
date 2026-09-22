@@ -88,6 +88,7 @@ def snapshot() -> dict[str, object]:
     return {
         "installed": installed,
         "engineInstalled": ENGINE.is_file(),
+        "configtoolInstalled": shutil.which("fcitx5-configtool") is not None,
         "running": running_state != 0,
         "state": running_state,
         "current": name,

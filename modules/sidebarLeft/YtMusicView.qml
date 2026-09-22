@@ -1041,26 +1041,9 @@ Item {
                 spacing: 10
                 
                 MaterialSymbol {
-                    id: searchIcon
-                    text: YtMusic.searching ? "progress_activity" : "search"
+                    text: "search"
                     iconSize: 20
                     color: root.colTextSecondary
-                    rotation: 0
-
-                    RotationAnimation on rotation {
-                        from: 0; to: 360; duration: 1000
-                        loops: Animation.Infinite
-                        running: YtMusic.searching && GlobalStates.sidebarLeftOpen
-                    }
-
-                    // Reset rotation to 0 when search ends so icon doesn't stay tilted
-                    Connections {
-                        target: YtMusic
-                        function onSearchingChanged() {
-                            if (!YtMusic.searching)
-                                searchIcon.rotation = 0
-                        }
-                    }
                 }
                 
                 TextField {
@@ -1327,15 +1310,19 @@ Item {
                             Layout.fillWidth: true
                         }
 
+                        LoadingText {
+                            visible: YtMusic.googleChecking
+                            color: root.colPrimary
+                        }
                         StyledText {
-                            text: YtMusic.googleChecking ? Translation.tr("Connecting...")
-                                : YtMusic.googleConnected
-                                    ? (YtMusic.syncingLiked ? Translation.tr("Syncing...")
-                                        : YtMusic.lastLikedSync ? Translation.tr("Synced %1").arg(YtMusic.lastLikedSync)
-                                        : Translation.tr("Not synced yet"))
-                                    : Translation.tr("Access liked songs & playlists")
+                            visible: !YtMusic.googleChecking
+                            text: YtMusic.googleConnected
+                                ? (YtMusic.syncingLiked ? Translation.tr("Syncing...")
+                                    : YtMusic.lastLikedSync ? Translation.tr("Synced %1").arg(YtMusic.lastLikedSync)
+                                    : Translation.tr("Not synced yet"))
+                                : Translation.tr("Access liked songs & playlists")
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: YtMusic.googleChecking || YtMusic.syncingLiked ? root.colPrimary : root.colTextSecondary
+                            color: YtMusic.syncingLiked ? root.colPrimary : root.colTextSecondary
                         }
                     }
 
@@ -1394,12 +1381,7 @@ Item {
                         onClicked: YtMusic.quickConnect()
                     }
 
-                    // Checking: loading indicator
-                    MaterialLoadingIndicator {
-                        visible: YtMusic.googleChecking
-                        implicitSize: 20
-                        loading: visible
-                    }
+                    // The status line displays Loading; no duplicate icon.
                 }
 
                 // Error row - shows inline when connection fails

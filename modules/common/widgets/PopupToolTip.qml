@@ -55,9 +55,14 @@ Item {
     // Callers with an explicit external hover source may opt out and supply
     // extraVisibleCondition instead (e.g. a compact tile's child MouseArea).
     property bool useParentHover: true
+    // Explicit MouseArea-backed anchors can supply their own hover/press truth.
+    // Defaulting external hover to the existing condition preserves callers
+    // that already opt out of parent-hover introspection.
+    property bool externalHoverState: root.extraVisibleCondition
+    property bool externalPressedState: false
     readonly property bool parentHoverState: {
         if (!root.useParentHover)
-            return true
+            return root.externalHoverState
         if (!parent)
             return false
         if (parent.buttonHovered !== undefined)
@@ -69,6 +74,8 @@ Item {
         return false
     }
     readonly property bool parentPressedState: {
+        if (root.externalPressedState)
+            return true
         if (!parent)
             return false
         if (parent.down !== undefined)
@@ -82,17 +89,19 @@ Item {
     // closed until the pointer genuinely leaves the control.
     property bool suppressUntilHoverExit: false
     readonly property bool parentVisibleState:
-        parent ? parent.visible : true
+        parent ? parent.visible : false
     readonly property bool hasContent: root.text.trim().length > 0
     readonly property bool internalVisibleCondition: root.enabled && root.hasContent
         && root.parentVisibleState
-        && !root.suppressUntilHoverExit
+        && !root.suppressUntilHoverExit && !root.parentPressedState
         && ((extraVisibleCondition && parentHoverState) || alternativeVisibleCondition)
 
     onParentPressedStateChanged: {
         if (!root.parentPressedState)
             return
-        root.suppressUntilHoverExit = true
+        // Keyboard activation without pointer hover must not permanently
+        // suppress focus-driven tooltips.
+        root.suppressUntilHoverExit = root.parentHoverState
         _showDelayTimer.stop()
         root.setContentShown(false)
     }
@@ -100,6 +109,32 @@ Item {
         if (!root.parentHoverState)
             root.suppressUntilHoverExit = false
     }
+    // Cancel delayed show on every hide path, not only Loader deactivation.
+    // This also covers a parent becoming hidden or a component being unloaded.
+    onInternalVisibleConditionChanged: {
+        if (!root.internalVisibleCondition) {
+            _showDelayTimer.stop()
+            root.setContentShown(false)
+        }
+    }
+    onVisibleChanged: {
+        if (!root.visible) {
+            root.suppressUntilHoverExit = root.parentHoverState
+            _showDelayTimer.stop()
+            root.setContentShown(false)
+        }
+    }
+    property bool _anchorInitialized: false
+    Component.onCompleted: root._anchorInitialized = true
+    onParentChanged: {
+        if (!root._anchorInitialized)
+            return
+        root.suppressUntilHoverExit = root.parentHoverState
+        root.anchorRevision += 1
+        _showDelayTimer.stop()
+        root.setContentShown(false)
+    }
+
     property var anchorEdges: Edges.Top
     property var anchorGravity: anchorEdges
 
@@ -122,7 +157,10 @@ Item {
     Timer {
         id: _showDelayTimer
         interval: root.delay
-        onTriggered: root.setContentShown(true)
+        onTriggered: {
+            if (root.visible && root.internalVisibleCondition)
+                root.setContentShown(true)
+        }
     }
 
     Timer {

@@ -110,6 +110,18 @@ Scope {
         root.level = 0;
     }
 
+    Connections {
+        target: SettingsPageRegistry
+        function onNavigateRequested(pageIndex, section) {
+            if (!root.settingsOpen) return
+            if (section.length > 0)
+                root.openSearchResult({ pageIndex: pageIndex,
+                    section: section, label: section, isSection: true })
+            else
+                root.openPage(pageIndex)
+        }
+    }
+
     function consumeSettingsDeepLink(): bool {
         if (!root.settingsOpen)
             return false

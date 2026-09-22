@@ -423,6 +423,10 @@ require(session, "const changedSubflow = root.subflowTargetId !== targetId",
         "reselecting the current runtime target must preserve graph viewport")
 require(session, "function selectUnifiedNode(node): bool",
         "shared graph nodes must preserve their own inspector source scope")
+require(session, 'const runtimeId = String(node.runtimeTargetId ?? "")',
+        "nested reviewed nodes must retain their runtime target identity")
+require(session, "root.selectedTargetId = runtimeId",
+        "nested runtime node selection must not substitute the source graph ID")
 require(session, "function selectUnifiedEdge(edge): bool",
         "shared graph edges must preserve their own source scope")
 require(session, "Selection changes inspector context, not the unified board viewport.",

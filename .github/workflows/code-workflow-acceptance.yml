@@ -117,6 +117,20 @@ jobs:
       - name: Exercise atomic source editor CAS helper
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-editor-save.py'
 
+      - name: Exercise live Settings Source Editor modal keys
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-editor
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            command -v wtype
+            python3 scripts/code-workflow/run-editor-live.py \
+              --work-dir "$WORK_DIR" \
+              --revision "${GITHUB_SHA}" \
+              --sway "$(command -v sway)"
+          '
+
       - name: Prove deterministic Connect preview coordinator
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-preview-coordinator.py'
 
@@ -286,6 +300,9 @@ jobs:
         with:
           name: code-workflow-apply-lifecycle-${{ github.sha }}
           path: |
+            ${{ runner.temp }}/hadalis-workflow-editor/editor-live-report.json
+            ${{ runner.temp }}/hadalis-workflow-editor/manifest.json
+            ${{ runner.temp }}/hadalis-workflow-editor/*.log
             ${{ runner.temp }}/hadalis-workflow-apply/apply-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-apply/manifest.json
             ${{ runner.temp }}/hadalis-workflow-apply/*.log

@@ -35,7 +35,7 @@ class InputMethodError(RuntimeError):
 
 def command(*argv: str) -> subprocess.CompletedProcess[str]:
     try:
-        return subprocess.run(argv, capture_output=True, text=True, timeout=3, check=False)
+        return subprocess.run(argv, capture_output=True, text=True, timeout=8 if argv[0] == "bash" else 3, check=False)
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         raise InputMethodError(f"{argv[0]} is unavailable or timed out.") from exc
 

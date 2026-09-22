@@ -73,6 +73,9 @@ def instrument(config: Path) -> None:
         shell,
         "            report.settingsPublishedPage = GlobalStates.settingsOverlayCurrentPage\n",
         """            report.settingsPublishedPage = GlobalStates.settingsOverlayCurrentPage
+            report.editorConfigReady = Config.ready
+            report.editorPersistenceReady = Persistent.ready
+            report.editorNavigationInitialized = settings._navigationInitialized
             report.codeWorkflowPage = CodeWorkflowRuntime.descriptor(
                 "runtime/settings-overlay/page/code-workflow")
             const modal = CodeWorkflowSession.modalTestEditor
@@ -155,6 +158,15 @@ def main() -> int:
     probe.env["QT_QUICK_BACKEND"] = "software"
     try:
         probe.launch()
+        runtime.wait_for(
+            lambda: value if (
+                (value := probe.snapshot())["editorConfigReady"]
+                and value["editorPersistenceReady"]
+                and value["editorNavigationInitialized"]
+            ) else None,
+            "Config, persistence and Settings navigation initialized",
+            timeout=45,
+        )
         probe.ipc("settingsOpen", 30)
         ready = runtime.wait_for(
             lambda: (
@@ -187,6 +199,13 @@ def main() -> int:
             subprocess.run(["wtype", "-k", name], env=probe.env,
                            check=True, capture_output=True, text=True, timeout=12)
 
+        # Assert the deep link survives the first Settings layout/config cycle.
+        stable = probe.snapshot()
+        probe.record("Page 30 remains selected after navigation initialization",
+                     stable["settingsPage"] == 30
+                     and stable["codeWorkflowPage"]["state"] == "visible",
+                     {"page": stable["settingsPage"],
+                      "lifecycle": stable["codeWorkflowPage"]["state"]})
         command("home")
         command("focus")
         runtime.wait_for(lambda: state() if state()["focused"] else None,

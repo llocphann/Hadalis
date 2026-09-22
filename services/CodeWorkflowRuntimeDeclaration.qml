@@ -32,23 +32,22 @@ Scope {
 
     function lifecycleState(): string {
         if (!root.configured)
-            return "disabled"
+            return "unloaded"
         if (root.loader?.loading === true)
             return "loading"
         if (root.loader?.active !== true)
-            return "inactive"
+            return "unloaded"
         if (!root.presented)
             return "loaded-hidden"
-        return "loaded"
+        return "visible"
     }
 
     function stateRank(state: string): int {
         switch (state) {
-        case "loaded": return 5
+        case "visible": return 5
         case "loaded-hidden": return 4
         case "loading": return 3
-        case "inactive": return 2
-        case "disabled": return 1
+        case "unloaded": return 1
         default: return 0
         }
     }
@@ -65,7 +64,10 @@ Scope {
             parentId: root.parentId,
             depth: root.depth,
             sourcePath: root.resolvedSourcePath,
+            configured: root.configured,
+            presented: root.presented,
             state: state,
+            lifecycle: state,
             stateRank: root.stateRank(state)
         }
     }

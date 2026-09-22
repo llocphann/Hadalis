@@ -34,6 +34,7 @@ DashCard {
         root.height > 0 && root.height < 210
     readonly property int tabControlHeight:
         root.veryShallowLayout ? 34 : (root.narrowLayout ? 36 : 38)
+    readonly property int safeEdgeInset: 2
 
     readonly property var indexedTasks: Todo.list.map(function(item, index) {
         return Object.assign({}, item, { originalIndex: index })
@@ -185,25 +186,30 @@ DashCard {
         Rectangle {
             id: tabShell
             Layout.fillWidth: true
+            Layout.leftMargin: root.safeEdgeInset
+            Layout.rightMargin: root.safeEdgeInset
             implicitHeight: root.tabControlHeight
             radius: height / 2
             color: Appearance.colors.colLayer2
-            clip: true
+            clip: false
 
             readonly property real halfWidth: width / 2
             readonly property real inset: 3
-            readonly property real notch: Math.min(9, height * 0.24)
-            readonly property real outerRadius: height / 2
+            readonly property real innerHeight: height - inset * 2
+            readonly property real innerRadius: innerHeight / 2
+            readonly property real seamRadius: innerRadius
 
-            // The inactive half is not another ordinary pill. Its seam recedes
-            // around the focused inner pill with inverse-rounded shoulders,
-            // while the outer edge remains part of the single parent pill.
+            // Both halves use the same pill-height and outer radius. The only
+            // asymmetry is the contact edge: the inactive tab turns that same
+            // radius inward, producing a true inverse-rounded seam.
             Shape {
                 id: inactiveRightShape
                 visible: root.currentTab === 0
-                x: tabShell.halfWidth - tabShell.notch
-                width: tabShell.halfWidth + tabShell.notch
-                height: tabShell.height
+                x: tabShell.halfWidth - tabShell.inset
+                y: tabShell.inset
+                width: tabShell.halfWidth
+                height: tabShell.innerHeight
+                z: 1
                 preferredRendererType: Shape.CurveRenderer
 
                 ShapePath {
@@ -211,41 +217,47 @@ DashCard {
                     fillColor: rightTabHover.hovered
                         ? Appearance.colors.colLayer1Hover
                         : Appearance.colors.colLayer1
-                    startX: 0
+                    startX: tabShell.seamRadius
                     startY: 0
                     PathLine {
-                        x: inactiveRightShape.width - tabShell.outerRadius
+                        x: inactiveRightShape.width - tabShell.innerRadius
                         y: 0
                     }
                     PathQuad {
                         x: inactiveRightShape.width
-                        y: tabShell.outerRadius
+                        y: tabShell.innerRadius
                         controlX: inactiveRightShape.width
                         controlY: 0
                     }
                     PathLine {
                         x: inactiveRightShape.width
-                        y: inactiveRightShape.height - tabShell.outerRadius
+                        y: inactiveRightShape.height - tabShell.innerRadius
                     }
                     PathQuad {
-                        x: inactiveRightShape.width - tabShell.outerRadius
+                        x: inactiveRightShape.width - tabShell.innerRadius
                         y: inactiveRightShape.height
                         controlX: inactiveRightShape.width
                         controlY: inactiveRightShape.height
                     }
-                    PathLine { x: 0; y: inactiveRightShape.height }
-                    PathQuad {
-                        x: tabShell.notch
-                        y: inactiveRightShape.height - tabShell.notch
-                        controlX: tabShell.notch
-                        controlY: inactiveRightShape.height
+                    PathLine {
+                        x: tabShell.seamRadius
+                        y: inactiveRightShape.height
                     }
-                    PathLine { x: tabShell.notch; y: tabShell.notch }
                     PathQuad {
                         x: 0
+                        y: inactiveRightShape.height - tabShell.seamRadius
+                        controlX: tabShell.seamRadius
+                        controlY: inactiveRightShape.height - tabShell.seamRadius
+                    }
+                    PathLine {
+                        x: 0
+                        y: tabShell.seamRadius
+                    }
+                    PathQuad {
+                        x: tabShell.seamRadius
                         y: 0
-                        controlX: tabShell.notch
-                        controlY: 0
+                        controlX: tabShell.seamRadius
+                        controlY: tabShell.seamRadius
                     }
                 }
             }
@@ -253,9 +265,11 @@ DashCard {
             Shape {
                 id: inactiveLeftShape
                 visible: root.currentTab === 1
-                x: 0
-                width: tabShell.halfWidth + tabShell.notch
-                height: tabShell.height
+                x: tabShell.inset
+                y: tabShell.inset
+                width: tabShell.halfWidth
+                height: tabShell.innerHeight
+                z: 1
                 preferredRendererType: Shape.CurveRenderer
 
                 ShapePath {
@@ -263,38 +277,44 @@ DashCard {
                     fillColor: leftTabHover.hovered
                         ? Appearance.colors.colLayer1Hover
                         : Appearance.colors.colLayer1
-                    startX: tabShell.outerRadius
+                    startX: tabShell.innerRadius
                     startY: 0
-                    PathLine { x: inactiveLeftShape.width; y: 0 }
-                    PathQuad {
-                        x: inactiveLeftShape.width - tabShell.notch
-                        y: tabShell.notch
-                        controlX: inactiveLeftShape.width - tabShell.notch
-                        controlY: 0
-                    }
                     PathLine {
-                        x: inactiveLeftShape.width - tabShell.notch
-                        y: inactiveLeftShape.height - tabShell.notch
+                        x: inactiveLeftShape.width - tabShell.seamRadius
+                        y: 0
                     }
                     PathQuad {
                         x: inactiveLeftShape.width
-                        y: inactiveLeftShape.height
-                        controlX: inactiveLeftShape.width - tabShell.notch
-                        controlY: inactiveLeftShape.height
+                        y: tabShell.seamRadius
+                        controlX: inactiveLeftShape.width - tabShell.seamRadius
+                        controlY: tabShell.seamRadius
                     }
                     PathLine {
-                        x: tabShell.outerRadius
+                        x: inactiveLeftShape.width
+                        y: inactiveLeftShape.height - tabShell.seamRadius
+                    }
+                    PathQuad {
+                        x: inactiveLeftShape.width - tabShell.seamRadius
+                        y: inactiveLeftShape.height
+                        controlX: inactiveLeftShape.width - tabShell.seamRadius
+                        controlY: inactiveLeftShape.height - tabShell.seamRadius
+                    }
+                    PathLine {
+                        x: tabShell.innerRadius
                         y: inactiveLeftShape.height
                     }
                     PathQuad {
                         x: 0
-                        y: inactiveLeftShape.height - tabShell.outerRadius
+                        y: inactiveLeftShape.height - tabShell.innerRadius
                         controlX: 0
                         controlY: inactiveLeftShape.height
                     }
-                    PathLine { x: 0; y: tabShell.outerRadius }
+                    PathLine {
+                        x: 0
+                        y: tabShell.innerRadius
+                    }
                     PathQuad {
-                        x: tabShell.outerRadius
+                        x: tabShell.innerRadius
                         y: 0
                         controlX: 0
                         controlY: 0

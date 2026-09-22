@@ -2777,6 +2777,8 @@ Singleton {
 
             property JsonObject notes: JsonObject {
                 property JsonObject zettelkasten: JsonObject {
+                    // Legacy Quick Notes override, read only as fallback when the
+                    // shared Todo vault is empty. Do not add a second UI field.
                     property string vaultPath: ""
                     property string folder: "00_Capture/03_Zettelkasten"
                     property string defaultType: "Fleeting"

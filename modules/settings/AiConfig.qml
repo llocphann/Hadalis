@@ -15,6 +15,20 @@ ContentPage {
     settingsPageName: Translation.tr("AI")
     property string activeSection: "setup"
 
+    function activateSettingsSearchSection(section: string): bool {
+        const label = String(section ?? "").toLowerCase()
+        if (label.includes("privacy") || label.includes("polic"))
+            root.activeSection = "privacy"
+        else if (label.includes("provider") || label.includes("model"))
+            root.activeSection = "providers"
+        else if (label.includes("behavior") || label.includes("prompt"))
+            root.activeSection = "behavior"
+        else if (label.includes("voice"))
+            root.activeSection = "voice"
+        else root.activeSection = "setup"
+        return true
+    }
+
     SettingsTaskNavigator {
         icon: "neurology"
         title: Translation.tr("AI")

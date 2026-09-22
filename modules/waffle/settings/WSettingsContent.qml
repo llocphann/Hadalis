@@ -775,15 +775,13 @@ Item {
                                         visible: root.navExpanded
                                         anchors.left: parent.left
                                         anchors.leftMargin: Looks.dp(12)
-                                        anchors.bottom: parent.bottom
-                                        anchors.bottomMargin: Looks.dp(5)
+                                        anchors.verticalCenter: parent.verticalCenter
                                         text: navEntry.modelData.label ?? ""
                                         width: Math.max(0, parent.width - Looks.dp(42))
                                         elide: Text.ElideRight
                                         font.pixelSize: Looks.font.pixelSize.small
                                         font.weight: Looks.font.weight.strong
                                         color: Looks.colors.subfg
-                                        elide: Text.ElideRight
                                     }
 
                                     Rectangle {

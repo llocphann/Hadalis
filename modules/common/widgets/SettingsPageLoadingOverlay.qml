@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
 
@@ -9,7 +8,6 @@ Item {
     id: root
 
     property bool loading: false
-    property string text: ""
     property int showDelay: 90
     property int minimumVisibleDuration: 180
 
@@ -72,7 +70,7 @@ Item {
 
     Rectangle {
         anchors.centerIn: parent
-        width: loadingRow.implicitWidth + 28
+        width: loadingLabel.implicitWidth + 28
         height: 48
         radius: SettingsMaterialPreset.cardRadius
         color: SettingsMaterialPreset.cardColor
@@ -89,20 +87,9 @@ Item {
             }
         }
 
-        RowLayout {
-            id: loadingRow
+        LoadingText {
+            id: loadingLabel
             anchors.centerIn: parent
-            spacing: 8
-
-            MaterialLoadingIndicator {
-                implicitSize: 26
-            }
-
-            StyledText {
-                text: root.text
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colSubtext
-            }
         }
     }
 }

@@ -1144,8 +1144,8 @@ ContentPage {
                             text: Todo.backend === "obsidian"
                                 ? Translation.tr("The preserved Hadalis store is dormant and available for rollback.")
                                 : Translation.tr("Preparing Obsidian does not switch the writable canonical store.")
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colOnSurfaceVariant
+                            font.pixelSize: Appearance.font.pixelSize.small
                             wrapMode: Text.WordWrap
                         }
                     }
@@ -1192,7 +1192,7 @@ ContentPage {
                             MaterialSymbol {
                                 text: "close"
                                 iconSize: 16
-                                color: Appearance.colors.colSubtext
+                                color: Appearance.colors.colOnSurfaceVariant
                             }
                             StyledText {
                                 text: Translation.tr("Cancel setup")
@@ -1235,46 +1235,22 @@ ContentPage {
             }
 
             ContentSubsection {
-                title: Translation.tr("Obsidian task source")
-
-                ConfigSelectionArray {
-                    Layout.fillWidth: true
-                    enabled: Todo.backend !== "obsidian" && !Todo.obsidianBusy
-                    currentValue: Config.options?.todo?.obsidian?.sourceMode ?? "managed-note"
-                    onSelected: newValue => {
-                        if (Todo.backend !== "obsidian")
-                            Config.setNestedValue("todo.obsidian.sourceMode", newValue)
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Daily Notes"),
-                            icon: "today",
-                            value: "daily-note"
-                        },
-                        {
-                            displayName: Translation.tr("Managed note"),
-                            icon: "description",
-                            value: "managed-note"
-                        }
-                    ]
-                }
+                title: Translation.tr("Obsidian Markdown task source")
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Todo.obsidianSourceMode === "daily-note"
-                        ? Translation.tr("Use the Day Planner-compatible Markdown section in today's Daily Note. Hadalis reads and writes it directly without depending on the Day Planner plugin.")
-                        : Translation.tr("Use one dedicated Markdown note with a Hadalis-managed section.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    text: Translation.tr("Use one Markdown note source. The path may be fixed or contain date tokens, and Heading is any Markdown heading you choose. Other Obsidian plugins can use the same file independently.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
                 }
 
                 StyledText {
                     Layout.fillWidth: true
-                    visible: Todo.backend === "obsidian"
-                    text: Translation.tr("Switch back to Hadalis before changing the active Obsidian source mode.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    visible: Todo.useLegacyManagedNote
+                    text: Translation.tr("A legacy managed-marker source is still active for compatibility. Editing the unified source below switches future setup to the heading-based Markdown source.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
                 }
             }
@@ -1292,10 +1268,9 @@ ContentPage {
                 MaterialTextField {
                     id: todoObsidianVaultPath
                     Layout.fillWidth: true
-                    placeholderText: Translation.tr("~/Documents/Obsidian/My Vault")
+                    placeholderText: ""
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurface
-                    placeholderTextColor: Appearance.colors.colSubtext
                     text: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
                     background: Rectangle {
                         color: Appearance.colors.colLayer1
@@ -1314,9 +1289,9 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Use the physical vault folder. Hadalis validates that the managed note cannot escape this directory.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    text: Translation.tr("Physical Obsidian vault folder. Hadalis resolves the configured note strictly inside this directory.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
                 }
             }
@@ -1324,93 +1299,86 @@ ContentPage {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                visible: Todo.obsidianSourceMode === "daily-note"
 
                 StyledText {
-                    text: Translation.tr("Daily Notes folder")
+                    text: Translation.tr("Note path pattern")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                 }
 
                 MaterialTextField {
-                    id: todoDailyFolder
+                    id: todoMarkdownNotePattern
                     Layout.fillWidth: true
-                    placeholderText: "00_Capture/01_Journal"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurface
-                    placeholderTextColor: Appearance.colors.colSubtext
-                    text: String(Config.options?.todo?.obsidian?.dailyNote?.folder
-                        ?? "00_Capture/01_Journal")
-                    background: Rectangle {
-                        color: Appearance.colors.colLayer1
-                        radius: Appearance.rounding.small
-                        border.width: todoDailyFolder.activeFocus ? 2 : 1
-                        border.color: todoDailyFolder.activeFocus
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colLayer0Border
-                    }
-                    onEditingFinished: {
-                        const value = text.trim()
-                        if (value.length > 0
-                                && value !== String(Config.options?.todo?.obsidian?.dailyNote?.folder
-                                    ?? "00_Capture/01_Journal"))
-                            Config.setNestedValue("todo.obsidian.dailyNote.folder", value)
-                    }
-                }
-
-                StyledText {
-                    text: Translation.tr("Daily Note path format")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                }
-
-                MaterialTextField {
-                    id: todoDailyFormat
-                    Layout.fillWidth: true
-                    placeholderText: "YYYY/MMMM/DD-MM-YYYY-dddd"
+                    placeholderText: ""
                     font.pixelSize: Appearance.font.pixelSize.small
                     font.family: Appearance.font.family.monospace
                     color: Appearance.colors.colOnSurface
-                    placeholderTextColor: Appearance.colors.colSubtext
-                    text: String(Config.options?.todo?.obsidian?.dailyNote?.format
-                        ?? "YYYY/MMMM/DD-MM-YYYY-dddd")
+                    text: {
+                        const folder = String(Config.options?.todo?.obsidian?.dailyNote?.folder
+                            ?? "00_Capture/01_Journal").trim().replace(/^\\/+|\\/+$/g, "")
+                        let format = String(Config.options?.todo?.obsidian?.dailyNote?.format
+                            ?? "YYYY/MMMM/DD-MM-YYYY-dddd").trim().replace(/^\\/+|\\/+$/g, "")
+                        if (!format.toLowerCase().endsWith(".md"))
+                            format += ".md"
+                        return folder.length > 0 ? folder + "/" + format : format
+                    }
                     background: Rectangle {
                         color: Appearance.colors.colLayer1
                         radius: Appearance.rounding.small
-                        border.width: todoDailyFormat.activeFocus ? 2 : 1
-                        border.color: todoDailyFormat.activeFocus
+                        border.width: todoMarkdownNotePattern.activeFocus ? 2 : 1
+                        border.color: todoMarkdownNotePattern.activeFocus
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colLayer0Border
                     }
                     onEditingFinished: {
-                        const value = text.trim()
-                        if (value.length > 0
-                                && value !== String(Config.options?.todo?.obsidian?.dailyNote?.format
-                                    ?? "YYYY/MMMM/DD-MM-YYYY-dddd"))
-                            Config.setNestedValue("todo.obsidian.dailyNote.format", value)
+                        let value = text.trim().replace(/^\\/+|\\/+$/g, "")
+                        if (value.length === 0)
+                            return
+                        const slash = value.lastIndexOf("/")
+                        const folder = slash >= 0 ? value.slice(0, slash) : ""
+                        const format = slash >= 0 ? value.slice(slash + 1) : value
+                        if (format.length === 0)
+                            return
+                        Config.setNestedValue("todo.obsidian.dailyNote.folder", folder)
+                        Config.setNestedValue("todo.obsidian.dailyNote.format", format)
+                        if (Todo.backend !== "obsidian"
+                                && Todo.obsidianSourceMode !== "markdown-note")
+                            Config.setNestedValue("todo.obsidian.sourceMode", "markdown-note")
                     }
                 }
 
                 StyledText {
-                    text: Translation.tr("Planner heading")
+                    Layout.fillWidth: true
+                    text: Translation.tr("Examples: Hadalis/Todo.md or 00_Capture/01_Journal/YYYY/MMMM/DD-MM-YYYY-dddd.md. Date tokens are resolved for the current day.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                StyledText {
+                    text: Translation.tr("Heading")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                 }
 
                 MaterialTextField {
-                    id: todoDailyHeading
+                    id: todoMarkdownHeading
                     Layout.fillWidth: true
-                    placeholderText: "Day Planner"
+                    placeholderText: ""
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurface
-                    placeholderTextColor: Appearance.colors.colSubtext
                     text: String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-                        ?? "Day Planner")
+                        ?? "Tasks")
                     background: Rectangle {
                         color: Appearance.colors.colLayer1
                         radius: Appearance.rounding.small
-                        border.width: todoDailyHeading.activeFocus ? 2 : 1
-                        border.color: todoDailyHeading.activeFocus
+                        border.width: todoMarkdownHeading.activeFocus ? 2 : 1
+                        border.color: todoMarkdownHeading.activeFocus
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colLayer0Border
                     }
@@ -1418,7 +1386,7 @@ ContentPage {
                         const value = text.trim()
                         if (value.length > 0
                                 && value !== String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-                                    ?? "Day Planner"))
+                                    ?? "Tasks"))
                             Config.setNestedValue("todo.obsidian.dailyNote.plannerHeading", value)
                     }
                 }
@@ -1454,81 +1422,10 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Hadalis resolves today's note from this pattern and only reads/writes checkbox items under the configured heading. Missing Daily Notes are never created automatically.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                    wrapMode: Text.WordWrap
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                visible: Todo.obsidianSourceMode !== "daily-note"
-
-                StyledText {
-                    text: Translation.tr("Todo note")
+                    text: Translation.tr("Hadalis only reads and writes checkbox items under this exact heading. The heading is plain Markdown and does not imply any plugin dependency.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
-                }
-
-                MaterialTextField {
-                    id: todoObsidianNotePath
-                    Layout.fillWidth: true
-                    placeholderText: "Hadalis/Todo.md"
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurface
-                    placeholderTextColor: Appearance.colors.colSubtext
-                    text: String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md")
-                    background: Rectangle {
-                        color: Appearance.colors.colLayer1
-                        radius: Appearance.rounding.small
-                        border.width: todoObsidianNotePath.activeFocus ? 2 : 1
-                        border.color: todoObsidianNotePath.activeFocus
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colLayer0Border
-                    }
-                    onEditingFinished: {
-                        const value = text.trim()
-                        if (value.length > 0
-                                && value !== String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md"))
-                            Config.setNestedValue("todo.obsidian.notePath", value)
-                    }
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("The note must contain exactly one Hadalis managed section:")
-                        + "\n<!-- hadalis:todo:start -->"
-                        + "\n<!-- hadalis:todo:end -->"
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                    font.family: Appearance.font.family.monospace
-                    wrapMode: Text.WrapAnywhere
-                }
-            }
-
-            SettingsSwitch {
-                visible: Todo.obsidianSourceMode !== "daily-note"
-                buttonIcon: "extension"
-                text: Translation.tr("Prefer Obsidian Tasks semantics")
-                checked: Config.options?.todo?.obsidian?.preferTasksPlugin ?? true
-                onCheckedChanged:
-                    Config.setNestedValue("todo.obsidian.preferTasksPlugin", checked)
-                StyledToolTip {
-                    text: Translation.tr("Use the Tasks API for recurrence, done dates and custom statuses when the active vault can be verified.")
-                }
-            }
-
-            SettingsSwitch {
-                visible: Todo.obsidianSourceMode !== "daily-note"
-                buttonIcon: "offline_bolt"
-                text: Translation.tr("Allow proven basic mutations while Obsidian is closed")
-                checked: Config.options?.todo?.obsidian?.allowBasicOfflineMutation ?? true
-                onCheckedChanged:
-                    Config.setNestedValue("todo.obsidian.allowBasicOfflineMutation", checked)
-                StyledToolTip {
-                    text: Translation.tr("Only plain checkbox operations that do not require Tasks semantics are eligible.")
+                    wrapMode: Text.WordWrap
                 }
             }
 
@@ -1575,20 +1472,9 @@ ContentPage {
                                     return Translation.tr("Obsidian setup is inactive")
                                 if (Todo.obsidianErrorMessage.length > 0)
                                     return Todo.obsidianErrorMessage
-                                if (Todo.obsidianSourceMode === "daily-note") {
-                                    if (Todo.obsidianReady)
-                                        return Translation.tr("Today's Day Planner is ready")
-                                    return Translation.tr("Waiting for today's Daily Note")
-                                }
-                                if (Todo.obsidianCapabilities?.richMutationAvailable === true)
-                                    return Translation.tr("Markdown sync ready · Obsidian Tasks connected")
-                                if (Todo.obsidianReady && Todo.obsidianCapabilities?.obsidianRunning !== true)
-                                    return Translation.tr("Markdown sync ready · Obsidian is closed")
-                                if (Todo.obsidianReady && Todo.obsidianCapabilities?.cliRegistered !== true)
-                                    return Translation.tr("Markdown sync ready · Obsidian CLI is not registered")
                                 if (Todo.obsidianReady)
-                                    return Translation.tr("Markdown sync ready")
-                                return Translation.tr("Waiting for a valid managed Todo note")
+                                    return Translation.tr("Markdown task source ready")
+                                return Translation.tr("Waiting for the configured Markdown note and heading")
                             }
                             color: Todo.obsidianErrorCode.length > 0
                                 ? Appearance.colors.colError
@@ -1601,23 +1487,11 @@ ContentPage {
                     StyledText {
                         Layout.fillWidth: true
                         visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
-                        text: {
-                            if (Todo.obsidianSourceMode === "daily-note")
-                                return Translation.tr("Plugin independent · filesystem CAS · Day Planner-compatible Markdown")
-                            const caps = Todo.obsidianCapabilities ?? ({})
-                            const parts = []
-                            parts.push(caps.obsidianRunning === true
-                                ? Translation.tr("Obsidian running")
-                                : Translation.tr("Obsidian offline"))
-                            parts.push(caps.cliRegistered === true
-                                ? Translation.tr("CLI registered")
-                                : Translation.tr("CLI unavailable"))
-                            if (caps.tasksPluginEnabled === true)
-                                parts.push(Translation.tr("Tasks") + " " + String(caps.tasksPluginVersion ?? ""))
-                            return parts.join(" · ")
-                        }
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        text: Todo.useLegacyManagedNote
+                            ? Translation.tr("Legacy managed-marker compatibility mode")
+                            : Translation.tr("Filesystem CAS · plugin independent · shared Markdown")
+                        color: Appearance.colors.colOnSurfaceVariant
+                        font.pixelSize: Appearance.font.pixelSize.small
                         wrapMode: Text.WordWrap
                     }
                 }
@@ -1655,7 +1529,7 @@ ContentPage {
                 }
 
                 RippleButton {
-                    visible: Todo.obsidianSourceMode !== "daily-note"
+                    visible: Todo.useLegacyManagedNote
                         && !Todo.obsidianReady
                         && String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim().length > 0
                         && String(Config.options?.todo?.obsidian?.notePath ?? "").trim().length > 0
@@ -1778,19 +1652,17 @@ ContentPage {
                             .arg(Number(Todo.obsidianMigrationPreview?.preview?.added ?? 0))
                             .arg(Number(Todo.obsidianMigrationPreview?.preview?.duplicates ?? 0))
                             .arg(Number(Todo.obsidianMigrationPreview?.preview?.conflicts ?? 0))
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colOnSurfaceVariant
+                        font.pixelSize: Appearance.font.pixelSize.small
                         wrapMode: Text.WordWrap
                     }
 
                     StyledText {
                         Layout.fillWidth: true
                         visible: Todo.obsidianMigrationPreview?.target?.empty !== true
-                        text: Todo.obsidianSourceMode === "daily-note"
-                            ? Translation.tr("Import is blocked because today's Day Planner already contains tasks. Use the existing Daily Note explicitly or clear/review its tasks first.")
-                            : Translation.tr("Import is blocked because the managed Obsidian section is not empty. Use the existing note explicitly or choose an empty managed section.")
+                        text: Translation.tr("Import is blocked because the configured task heading already contains tasks. Use the existing Markdown source or clear/review those tasks first.")
                         color: Appearance.colors.colError
-                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.pixelSize: Appearance.font.pixelSize.small
                         wrapMode: Text.WordWrap
                     }
 
@@ -1831,9 +1703,7 @@ ContentPage {
                             }
 
                             StyledToolTip {
-                                text: Todo.obsidianSourceMode === "daily-note"
-                                    ? Translation.tr("Back up today's Daily Note, import the preserved internal Todo store into Day Planner, re-scan it, then activate only after verification succeeds.")
-                                    : Translation.tr("Back up the target note, import the preserved internal Todo store, re-scan it, then activate Obsidian only after verification succeeds.")
+                                text: Translation.tr("Back up the target Markdown note, import the preserved internal Todo store into the configured heading, re-scan it, then activate only after verification succeeds.")
                             }
                         }
 
@@ -1877,13 +1747,11 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Todo.obsidianSourceMode === "daily-note"
-                        ? Translation.tr("Activate today's verified Day Planner as the canonical Todo source. The Hadalis store remains dormant and unchanged.")
-                        : Todo.internalItemCount > 0
-                            ? Translation.tr("Activating without import keeps the current Hadalis Todo store dormant and unchanged.")
-                            : Translation.tr("Activate this verified Obsidian note as the canonical Todo store.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    text: Todo.internalItemCount > 0
+                        ? Translation.tr("Activating without import keeps the current Hadalis Todo store dormant and unchanged.")
+                        : Translation.tr("Activate this verified Markdown note as the canonical Todo store.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
                 }
 
@@ -1906,9 +1774,7 @@ ContentPage {
                             color: Appearance.colors.colPrimary
                         }
                         StyledText {
-                            text: Todo.obsidianSourceMode === "daily-note"
-                                ? Translation.tr("Use Daily Notes")
-                                : Translation.tr("Use Obsidian note")
+                            text: Translation.tr("Use Obsidian source")
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
@@ -1919,11 +1785,11 @@ ContentPage {
             StyledText {
                 Layout.fillWidth: true
                 visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
-                text: Todo.obsidianSourceMode === "daily-note"
-                    ? Translation.tr("Daily Note mode reads and writes the Day Planner Markdown directly. Day Planner, Templater and Obsidian do not need to be running for synchronization.")
-                    : Translation.tr("Tasks-aware mutations require a registered Obsidian CLI and an already-running Obsidian instance. Hadalis never invokes the CLI to detect whether Obsidian is running.")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smallest
+                text: Todo.useLegacyManagedNote
+                    ? Translation.tr("Legacy managed-marker mode keeps its existing Tasks-aware behavior for compatibility.")
+                    : Translation.tr("Hadalis reads and writes the configured Markdown heading directly. Obsidian and third-party plugins do not need to be running for synchronization.")
+                color: Appearance.colors.colOnSurfaceVariant
+                font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap
             }
         }

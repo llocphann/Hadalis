@@ -1525,7 +1525,6 @@ ContentPage {
 
     SettingsTaskLoadingState {
         loading: root._taskLoadingCount > 0
-        text: Translation.tr("Loading section…")
     }
 
     SettingsCardSection {

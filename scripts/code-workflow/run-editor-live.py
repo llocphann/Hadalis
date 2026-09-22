@@ -271,49 +271,95 @@ def main() -> int:
         before_click = state()
         probe.record("Editor click target has a real compositor output",
                      before_click["clickOutput"] in probe.outputs(), before_click)
-        # Distinguish an unresponsive compositor pointer from a child QML
-        # hit-test failure. Keep coordinates/screen/counters in the report.
-        attempts = []
-        for output in (before_click["clickOutput"], *[
-            name for name in probe.outputs()
-            if name != before_click["clickOutput"]
-        ]):
-            for dx, dy in ((0, 0), (25, 15), (85, 45)):
-                probe.move(before_click["clickX"] + dx,
-                           before_click["clickY"] + dy, "left", output=output)
-                time.sleep(0.2)
-                attempt = state()
-                attempts.append({
-                    "output": output, "dx": dx, "dy": dy,
-                    "tap": attempt["tapCount"],
-                    "press": attempt["pressCount"],
-                    "page": attempt["pageTapCount"],
-                    "settings": attempt["settingsTapCount"],
-                    "caret": attempt["caret"], "focused": attempt["focused"],
-                })
-                if attempt["tapCount"] > before_click["tapCount"]:
-                    break
-            if state()["tapCount"] > before_click["tapCount"]:
-                break
-        report["clickDiagnostics"] = attempts
-        clicked = state()
-        probe.record("Real pointer click is delivered to Source Editor",
-                     clicked["tapCount"] > before_click["tapCount"]
-                     and clicked["focused"] and clicked["mode"] == "normal",
-                     {"state": clicked, "attempts": attempts})
-        probe.record("Real pointer click places caret inside document",
-                     0 <= clicked["caret"] <= len(clicked["text"]), clicked)
-        command("home")
+        # Compute the location at event time, after the asynchronous page Loader
+        # and parent layouts have settled; the original bound mapToItem point
+        # was frozen at (152,169) while the real editor moved to (324,801).
+        probe.move(before_click["clickX"], before_click["clickY"], "left",
+                   output=before_click["clickOutput"])
+        clicked = runtime.wait_for(
+            lambda: value if (value := state())["tapCount"] > before_click["tapCount"]
+                else None,
+            "real compositor pointer click reaches Source Editor",
+        )
+        probe.record("Real pointer click focuses Source Editor in NORMAL",
+                     clicked["focused"] and clicked["mode"] == "normal"
+                     and probe.snapshot()["settingsPage"] == 30, clicked)
+        probe.record("Real pointer click sets caret at first character",
+                     clicked["caret"] == 0, clicked)
+
+        # No editorCommand/home/focus/setMode before or during this entire
+        # user journey: use literal unmodified letters over the real seat.
         for letter, expected in (("l", 1), ("j", 6), ("k", 1), ("h", 0)):
             subprocess.run(["wtype", letter], env=probe.env, check=True,
                            capture_output=True, text=True, timeout=12)
             moved = runtime.wait_for(
                 lambda: value if (value := state())["caret"] == expected else None,
-                "lowercase " + letter + " after actual click moves modal cursor",
+                "lowercase " + letter + " after real click moves modal cursor",
             )
-            probe.record("Click then literal lowercase " + letter + " navigates",
-                         moved["focused"] and moved["mode"] == "normal", moved)
+            probe.record("Real click then literal lowercase " + letter,
+                         moved["focused"] and moved["mode"] == "normal"
+                         and moved["text"] == "alpha\\n\\nbeta gamma", moved)
+        subprocess.run(["wtype", "v"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        entered_visual = runtime.wait_for(
+            lambda: value if (value := state())["mode"] == "visual" else None,
+            "physical v after pointer click enters VISUAL",
+        )
+        probe.record("Physical v enters VISUAL with true editor focus",
+                     entered_visual["focused"] and entered_visual["visualAnchor"] == 0,
+                     entered_visual)
+        for letter, expected in (("l", 1), ("j", 6), ("k", 1), ("h", 0)):
+            subprocess.run(["wtype", letter], env=probe.env, check=True,
+                           capture_output=True, text=True, timeout=12)
+            moved = runtime.wait_for(
+                lambda: value if (value := state())["visualCursor"] == expected
+                    else None,
+                "literal " + letter + " moves VISUAL cursor",
+            )
+            probe.record("Physical VISUAL " + letter + " selection",
+                         moved["mode"] == "visual" and moved["focused"], moved)
+        key("Escape")
+        runtime.wait_for(lambda: state() if state()["mode"] == "normal" else None,
+                         "physical Escape returns to NORMAL from VISUAL")
+        subprocess.run(["wtype", "i"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        runtime.wait_for(lambda: state() if state()["mode"] == "insert" else None,
+                         "physical i enters INSERT")
+        subprocess.run(["wtype", "hjkl"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        inserted = runtime.wait_for(
+            lambda: value if (value := state())["text"].startswith("hjklalpha")
+                else None, "literal hjkl are inserted as text in INSERT")
+        probe.record("INSERT accepts all literal hjkl without modal motion",
+                     inserted["mode"] == "insert", inserted)
+        key("Escape")
+        runtime.wait_for(lambda: state() if state()["mode"] == "normal" else None,
+                         "physical Escape returns to NORMAL from INSERT")
+        subprocess.run(["wtype", "-M", "ctrl", "-k", "f", "-m", "ctrl"],
+                       env=probe.env, check=True, capture_output=True,
+                       text=True, timeout=12)
+        found = runtime.wait_for(
+            lambda: value if (value := state())["findFocused"] else None,
+            "physical Ctrl+F focuses Source Find, not global Settings search")
+        subprocess.run(["wtype", "hjkl"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        found = runtime.wait_for(
+            lambda: value if (value := state())["findText"] == "hjkl" else None,
+            "Find accepts literal hjkl without modal motion")
+        probe.record("Find accepts all literal hjkl as a query",
+                     found["findVisible"] and found["text"].startswith("hjklalpha"),
+                     found)
+        key("Escape")
+        back = runtime.wait_for(
+            lambda: value if (value := state())["focused"]
+                and not value["findVisible"] else None,
+            "physical Escape closes Find and returns to editor")
+        probe.record("Escape from Find restores editor focus without closing Settings",
+                     probe.snapshot()["settingsOpen"], back)
 
+        # The remaining historical modal regression tests use deterministic
+        # IPC document resets only after the physical user journey succeeds.
+        command("reset")
         command("home")
         key("l")
         runtime.wait_for(lambda: state() if state()["caret"] == 1 else None,

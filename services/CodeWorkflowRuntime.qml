@@ -6,6 +6,118 @@ import qs.modules.common
 Singleton {
     id: root
 
+    // Runtime declarations are owned by the shell loaders that actually decide
+    // whether a surface exists. This registry is the migration path away from
+    // the temporary static catalog below; it deliberately records lifecycle
+    // truth without forcing LazyLoader.item while asynchronous loading is active.
+    property var declarations: ({})
+    property int declarationSerial: 0
+
+    function _kebabCase(value: string): string {
+        return String(value ?? "")
+            .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+            .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+            .replace(/[_\\s]+/g, "-")
+            .toLowerCase()
+    }
+
+    function targetIdForPanel(panelId: string): string {
+        const id = String(panelId ?? "")
+        if (id === "iiSidebarLeft")
+            return "sidebar/left"
+        if (id === "iiSidebarRight")
+            return "sidebar/right"
+        if (id.startsWith("ii"))
+            return root._kebabCase(id.slice(2))
+        if (id.startsWith("w"))
+            return "waffle/" + root._kebabCase(id.slice(1))
+        return root._kebabCase(id)
+    }
+
+    function labelForPanel(panelId: string): string {
+        const id = String(panelId ?? "")
+        const waffle = id.startsWith("w") && !id.startsWith("ii")
+        const bare = id.startsWith("ii") ? id.slice(2)
+            : waffle ? id.slice(1) : id
+        const spaced = bare
+            .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+            .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+            .trim()
+        return waffle ? "Waffle " + spaced : spaced
+    }
+
+    function relativeSourcePath(rawSource): string {
+        let source = String(rawSource ?? "")
+        if (source.length === 0)
+            return ""
+        source = source.replace(/^file:\/\//, "")
+        let shellRoot = String(Quickshell.shellPath(".") ?? "")
+            .replace(/^file:\/\//, "")
+            .replace(/\/$/, "")
+        if (source.startsWith(shellRoot + "/"))
+            return source.slice(shellRoot.length + 1)
+        return source
+    }
+
+    function registerDeclaration(registration): string {
+        if (!registration)
+            return ""
+        const token = root.epoch + ":declaration:" + (++root.declarationSerial)
+        const next = Object.assign({}, root.declarations)
+        next[token] = registration
+        root.declarations = next
+        root._event(
+            "declared",
+            String(registration.targetId ?? registration.panelId ?? ""),
+            token)
+        return token
+    }
+
+    function unregisterDeclaration(
+        token: string, registration
+    ): void {
+        if (String(token ?? "").length === 0
+                || root.declarations[token] !== registration)
+            return
+        const targetId = String(registration?.targetId ?? "")
+        const next = Object.assign({}, root.declarations)
+        delete next[token]
+        root.declarations = next
+        root._event("declaration-stale", targetId, token)
+    }
+
+    function touchDeclaration(token: string): void {
+        if (String(token ?? "").length === 0
+                || !root.declarations[token])
+            return
+        root.revision++
+    }
+
+    function discoveredDescriptors(): var {
+        const byTarget = ({})
+        for (const token of Object.keys(root.declarations)) {
+            const declaration = root.declarations[token]
+            const descriptor = declaration?.descriptorSnapshot?.() ?? null
+            if (!descriptor || String(descriptor.targetId ?? "").length === 0)
+                continue
+            const current = byTarget[descriptor.targetId]
+            const nextRank = Number(descriptor.stateRank ?? 0)
+            const currentRank = Number(current?.stateRank ?? -1)
+            if (!current || nextRank > currentRank)
+                byTarget[descriptor.targetId] = descriptor
+        }
+        return Object.keys(byTarget)
+            .map(key => byTarget[key])
+            .sort((a, b) => String(a.label).localeCompare(String(b.label)))
+    }
+
+    readonly property var discoveredCatalog: {
+        const dependency = root.revision
+        if (dependency < 0)
+            return []
+        return root.discoveredDescriptors()
+    }
+
     // Shell-surface inventory. Reviewed IR can add deeper semantic graphs, but
     // every configured top-level panel/component still appears in Code Workflow
     // and gets a source-backed fallback graph.

@@ -29,6 +29,7 @@ qmldir = read("services/qmldir")
 page = read("modules/settings/CodeWorkflow.qml")
 canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
+runtime_declaration = read("services/CodeWorkflowRuntimeDeclaration.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
 session = read("services/CodeWorkflowSession.qml")
 ripple_button = read("modules/common/widgets/RippleButton.qml")
@@ -48,8 +49,31 @@ for token in ("codeWorkflowTargetId", "codeWorkflowInstanceId", "codeWorkflowOut
 
 for token in ("singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml",
               "singleton CodeWorkflowSession 1.0 CodeWorkflowSession.qml",
+              "CodeWorkflowRuntimeDeclaration 1.0 CodeWorkflowRuntimeDeclaration.qml",
               "CodeWorkflowRuntimeTarget 1.0 CodeWorkflowRuntimeTarget.qml"):
     require(qmldir, token, "services/qmldir missing " + token)
+
+for token in (
+    "property var declarations: ({})",
+    "function registerDeclaration(registration): string",
+    "function unregisterDeclaration(",
+    "function touchDeclaration(token: string): void",
+    "readonly property var discoveredCatalog:",
+    "function targetIdForPanel(panelId: string): string",
+    "function relativeSourcePath(rawSource): string",
+):
+    require(runtime, token, "runtime declaration registry missing " + token)
+for token in (
+    "required property var loader",
+    "required property string panelId",
+    'return "loaded-hidden"',
+    'return "loading"',
+    'return "inactive"',
+    "function descriptorSnapshot(): var",
+    "ignoreUnknownSignals: true",
+):
+    require(runtime_declaration, token,
+            "runtime loader declaration missing " + token)
 
 for token in (
     'targetId: "bar"', 'targetId: "bar/media"',

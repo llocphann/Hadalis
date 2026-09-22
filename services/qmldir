@@ -23,6 +23,7 @@ singleton CodeWorkflowPicker 1.0 CodeWorkflowPicker.qml
 singleton CodeWorkflowSession 1.0 CodeWorkflowSession.qml
 singleton CodeWorkflowTransaction 1.0 CodeWorkflowTransaction.qml
 CodeWorkflowReloadBridge 1.0 CodeWorkflowReloadBridge.qml
+CodeWorkflowRuntimeDeclaration 1.0 CodeWorkflowRuntimeDeclaration.qml
 CodeWorkflowRuntimeTarget 1.0 CodeWorkflowRuntimeTarget.qml
 singleton CustomWidgets 1.0 CustomWidgets.qml
 DankSocket 1.0 DankSocket.qml

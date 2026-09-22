@@ -140,6 +140,20 @@ for token in (
 ):
     require(shell, token, "shell runtime snapshot IPC missing " + token)
 
+for token in (
+    'targetId: "runtime/alt-switcher-router"',
+    'targetId: "runtime/region-selector-router"',
+    'targetId: "runtime/tiling-overlay-router"',
+    'targetId: "runtime/wallpaper-selector-router"',
+    'targetId: "runtime/ii-critical-host"',
+    'targetId: "runtime/ii-deferred-host"',
+    'targetId: "runtime/waffle-critical-host"',
+    'targetId: "runtime/waffle-deferred-host"',
+    'targetId: "close-confirm"',
+    "internal: true",
+):
+    require(shell, token, "shell runtime host discovery missing " + token)
+
 if "readonly property var catalog: [" in runtime:
     raise SystemExit("FAIL: runtime discovery must not use a hard-coded target catalog")
 for token in (

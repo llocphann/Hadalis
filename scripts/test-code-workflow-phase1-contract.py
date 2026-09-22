@@ -201,6 +201,10 @@ for token in (
     require(runtime, token, "dynamic runtime inventory missing " + token)
 require(page, "for (const target of CodeWorkflowRuntime.activeCatalog)",
         "Targets must enumerate discovered runtime surfaces")
+require(page, 'let detail = "unloaded · source"',
+        "runtime target lifecycle detail must be computed before the row object")
+if "detail: {\n                    const state =" in page:
+    fail("runtime target detail must not use an executable block as an object value")
 
 require(page, 'Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"',
         "capture harness must be opt-in through an explicit environment gate")

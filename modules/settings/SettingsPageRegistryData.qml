@@ -825,8 +825,8 @@ Singleton {
             keywords: ["theme", "schedule", "day", "night", "auto", "switch", "time"]
         },
         {
-            pageIndex: 10, pageName: root.pages[10].name,
-            section: Translation.tr("Display scaling"),
+            pageIndex: 4, pageName: root.pages[4].name,
+            section: Translation.tr("Typography"),
             label: Translation.tr("UI scale (%)"),
             description: Translation.tr("Scale the entire shell UI for HiDPI / 4K monitors"),
             keywords: ["scale", "dpi", "hidpi", "4k", "zoom", "size", "display", "monitor", "resolution"]

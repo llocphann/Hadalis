@@ -79,12 +79,6 @@ Scope {
     // Navigation target for search results (no visual spotlight)
     property var searchTargetControl: null
 
-    Timer {
-        id: searchDebounceTimer
-        interval: 200
-        onTriggered: root.recomputeOverlaySearchResults()
-    }
-
     function getWaffleSettingsPageIndex() {
         for (var i = 0; i < overlayPages.length; i++) {
             var componentPath = String(overlayPages[i].component || "");
@@ -981,13 +975,9 @@ Scope {
 
                                         text: root.overlaySearchText
                                         onTextChanged: {
-                                            root.overlaySearchText = text;
-                                            if (text.length > 0) {
-                                                searchDebounceTimer.restart();
-                                            } else {
-                                                // Clear immediately for clean exit morph (no debounce)
-                                                root.overlaySearchResults = [];
-                                            }
+                                            root.overlaySearchText = text
+                                            // Keep content results synchronized with each keystroke.
+                                            root.recomputeOverlaySearchResults()
                                         }
 
                                         Keys.onPressed: event => {

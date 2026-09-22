@@ -177,6 +177,10 @@ for settings in (settings_overlay, settings_focus):
         'edge: "bottom"',
         "ownerThickness: root._screenEdgeThickness",
         "settingsPanel.height - root._screenEdgeThickness - height",
+        "screenEdge?.physicalShadow?.enabled ?? true",
+        "screenEdge?.physicalShadow?.size ?? 15",
+        "screenEdge?.physicalShadow?.opacity ?? 0.70",
+        "Appearance.m3colors.m3shadow",
     ):
         require(settings, token, "Settings iRiS edge cutover")
 

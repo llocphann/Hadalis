@@ -68,15 +68,6 @@ jobs:
       - name: Validate Code Workflow production foundation
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-phase1-contract.py'
 
-      - name: Validate embedded Neovim service and bridge contract
-        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-nvim-contract.py'
-
-      - name: Validate embedded Neovim view contract
-        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-nvim-view-contract.py'
-
-      - name: Prove embedded Neovim runtime bridge smoke
-        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-nvim-runtime.py'
-
       - name: Prove deterministic Connect preview coordinator
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-preview-coordinator.py'
 

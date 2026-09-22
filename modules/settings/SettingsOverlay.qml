@@ -1604,6 +1604,8 @@ Scope {
                                 anchors { top: overlayPageHeader.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
                                 pages: root.overlayPages
                                 requestedIndex: root.overlayCurrentPage
+                                workflowHostId: "settings-overlay"
+                                workflowDiscoveryEnabled: true
                                 loadEnabled: Config.ready && root.settingsOpen
                             }
 

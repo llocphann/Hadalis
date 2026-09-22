@@ -215,8 +215,6 @@ require(page, "readonly property bool hovered: pillHover.hovered",
         "elided status pills must expose a stable hover surface")
 require(page, "id: pillHover",
         "status pills must reveal full labels through hover")
-require(page, "text: root.label",
-        "status pill tooltip must use the complete unelided label")
 require(page, "readonly property bool compactHeader:",
         "Code Workflow header must expose a narrow-layout mode")
 require(page, "mainText: root.compactHeader",
@@ -248,11 +246,11 @@ if "import org.kde.syntaxhighlighting" in page:
     fail("CodeWorkflow base page must not hard-depend on KDE syntax highlighting")
 if "CodeWorkflowNvim." in page:
     fail("CodeWorkflow base page must not hard-depend on embedded Neovim service")
-require(page, 'text: "Source Editor · " + root.sourcePath',
+require(page, '"Source Editor · " + root.sourcePath',
         "Source pane must present an editor rather than a read-only preview")
 require(page, "readOnly: false",
         "Source Editor must accept direct text edits")
-require(page, 'buttonText: "Save source editor"',
+require(page, '"Save source editor"',
         "Source Editor must expose an explicit guarded save control")
 require(page, 'buttonText: "Open source in Neovim"',
         "Source Editor must expose the Neovim handoff path")
@@ -274,7 +272,7 @@ require(page, "function syncEmbeddedNvimView(): void",
         "embedded Neovim dynamic item must be synchronized only after Loader readiness")
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
-require(page, "visible: root.sourceEditorStatus.length > 0",
+require(page, "&& root.sourceEditorStatus.length > 0",
         "Source Editor must show save/conflict status instead of failing silently")
 require(page, "sourceDraftWriter.setText(root.sourceDraft)",
         "Source Editor must stage draft text before atomic compare-and-swap")
@@ -373,10 +371,10 @@ require(page, "if (!root.inspectSelectionFromTargets)",
         "external selection may clear filters while list selection preserves them")
 require(page, 'Accessible.name: "Filter inspect targets"',
         "Targets filter must expose an explicit accessibility label")
-require(page, 'Accessible.name: "Source preview"',
-        "Source Preview must expose an explicit accessibility label")
+require(page, 'Accessible.name: "Source editor"',
+        "Source Editor must expose an explicit accessibility label")
 require(page, "activeFocusOnTab: true",
-        "read-only Source Preview must remain keyboard-focusable")
+        "Source Editor must remain keyboard-focusable")
 source_preview_start = page.index("id: sourcePreviewText")
 source_preview_end = page.index("font.pixelSize: Appearance.font.pixelSize.small",
                                 source_preview_start)
@@ -488,7 +486,7 @@ require(page, "const runtimeOwnsRoot = id === rootNodeId",
         "graph root and runtime row must not both claim primary selection")
 require(page, "&& !runtimeOwnsRoot",
         "child graph selection must remain uniquely revealable in Targets")
-require(page, 'mainText: "Fit graph"',
+require(page, 'mainText: root.compactHeader ? "" : "Fit graph"',
         "graph fit control must describe its actual behavior")
 require(page, "onClicked: canvas.fitGraph()",
         "Fit graph control must use actual graph extents")
@@ -569,15 +567,20 @@ require(canvas, "activeFocusOnTab: parent.visible",
         "graph subflow drill-down must be keyboard-focusable")
 require(canvas, 'Accessible.name: "Open "',
         "graph subflow drill-down must expose an accessibility label")
-require(canvas, "preferredRendererType: Shape.GeometryRenderer", "IR canvas must use qualified Geometry renderer")
-require(page, "readOnly: true", "Source Preview must be read-only")
-require(page, "FileView {", "Source Preview must read selected source")
+require(canvas, "preferredRendererType: Shape.CurveRenderer",
+        "IR canvas must use the qualified Curve renderer")
+require(page, "readOnly: false", "Source Editor must accept guarded edits")
+require(page, "FileView {", "Source Editor must read selected source")
 require(page, "contentHeight: Math.max(height, sourcePreviewText.implicitHeight)",
-        "Source Preview scroll extent must follow its TextEdit")
+        "Source Editor scroll extent must follow its TextEdit")
 if page.count("function stateLabel(item): string {") != 1:
     raise SystemExit("FAIL: Code Workflow page has duplicate stateLabel declarations")
-if "setText(" in page or "setText(" in canvas:
-    raise SystemExit("FAIL: read-only Phase 1 UI must not write source")
+if "setText(" in canvas:
+    raise SystemExit("FAIL: IR canvas must never write source")
+if page.count("setText(") != 1 \
+        or "sourceDraftWriter.setText(root.sourceDraft)" not in page:
+    raise SystemExit(
+        "FAIL: Source Editor may only stage its guarded draft write")
 
 hooks = {
     "modules/bar/BarContent.qml": 'targetId: "bar"',

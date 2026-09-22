@@ -17,9 +17,14 @@ for token in (
     'Translation.tr("Save as Zettelkasten quick note")',
     "Zettelkasten.capture(title, textArea.text)",
     "function saveAsZettel(): bool",
+    "function captureQuickNote(): bool",
+    "function _clearCapturedDraft(snapshot): void",
+    "property var _pendingZettelCapture: null",
     "readonly property bool canSaveZettel:",
     'Translation.tr("Saved to Zettelkasten")',
     '/^Note \\d+$/.test(tabTitle)',
+    "snapshot.clearDraft !== true",
+    "Notepad.removeTab(index)",
 ):
     assert token in widget, f"Notepad Zettelkasten UI contract lost: {token}"
 
@@ -36,11 +41,26 @@ for token in (
     assert token in service, f"Zettelkasten service contract lost: {token}"
 
 for token in (
-    'Translation.tr("Quick note → Zettelkasten")',
+    'Translation.tr("Quick Notes")',
+    'Translation.tr("Zettelkasten capture")',
+    'Translation.tr("Fleeting note · draft clears after verified save")',
     "enabled: notepad.canSaveZettel",
-    "onClicked: notepad.saveAsZettel()",
+    "onClicked: notepad.captureQuickNote()",
 ):
     assert token in dash, f"Dashboard Notes Zettelkasten contract lost: {token}"
+
+for token in (
+    'ALLOWED_TYPES = ("Permanent", "Literature", "Fleeting")',
+    'DEFAULT_FOLDER = "00_Capture/03_Zettelkasten"',
+    'DEFAULT_TYPE = "Fleeting"',
+    '"## Core Idea"',
+    '"## Content"',
+    '"## Context & Connections"',
+    '"## Sources & References"',
+    '"aliases: []"',
+    '"templateCompatible": True',
+):
+    assert token in helper, f"Zettelkasten helper lost vault-template contract: {token}"
 
 assert "singleton Zettelkasten 1.0 Zettelkasten.qml" in qmldir
 assert "property JsonObject notes: JsonObject {" in config

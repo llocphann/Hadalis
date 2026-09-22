@@ -335,7 +335,11 @@ Item {
                         root._sourceFor(pageLoader.index))
                     internal: true
                     configured: root.loadEnabled
-                    presented: pageLoader.visible && root.visible
+                    // A ready pending Loader starts fully transparent while
+                    // the previous page is still onscreen. It is resident,
+                    // but not presented until the transition actually paints it.
+                    presented: pageLoader.visible && pageLoader.opacity > 0.01
+                        && root.visible
                     registrationEnabled: root.workflowDiscoveryEnabled
                 }
 

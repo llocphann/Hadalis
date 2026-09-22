@@ -506,15 +506,47 @@ ShellRoot {
     // conditional `component:` so only the selected one is ever constructed.
     // Any unrecognised style falls back to the nav rail.
     LazyLoader {
-        active: Config.ready && (Config.options?.settingsUi?.overlayMode ?? false)
+        id: settingsRailLoader
+        readonly property bool workflowConfigured:
+            Config.ready
+            && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") !== "focus"
+        active: workflowConfigured
         component: SettingsOverlay {}
+        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
+            CodeWorkflowRuntimeDeclaration {
+                loader: settingsRailLoader
+                panelId: "settingsRail"
+                targetId: "settings"
+                label: "Settings"
+                icon: "settings"
+                family: "shared"
+                sourcePath: "modules/settings/SettingsOverlay.qml"
+                configured: settingsRailLoader.workflowConfigured
+                presented: settingsRailLoader.active
+            }
     }
 
     LazyLoader {
-        active: Config.ready && (Config.options?.settingsUi?.overlayMode ?? false)
+        id: settingsFocusLoader
+        readonly property bool workflowConfigured:
+            Config.ready
+            && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") === "focus"
+        active: workflowConfigured
         component: SettingsFocus {}
+        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
+            CodeWorkflowRuntimeDeclaration {
+                loader: settingsFocusLoader
+                panelId: "settingsFocus"
+                targetId: "settings"
+                label: "Settings"
+                icon: "settings"
+                family: "shared"
+                sourcePath: "modules/settings/SettingsFocus.qml"
+                configured: settingsFocusLoader.workflowConfigured
+                presented: settingsFocusLoader.active
+            }
     }
 
     // === Panel Loaders ===

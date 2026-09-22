@@ -7,7 +7,7 @@ import qs.modules.common
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 6
+    readonly property int layoutSchemaVersion: 7
     readonly property int retiredTlpPageIndex: 28
     readonly property int overviewPageIndex: 29
     readonly property int codeWorkflowPageIndex: 30
@@ -184,6 +184,43 @@ QtObject {
                 }
                 pages.splice(insertIndex, 0, root.codeWorkflowPageIndex)
             }
+        }
+
+        // Old stock navigation should adopt the six intent-based groups.
+        // Compare only page order: translated labels can differ by locale.
+        // Explicitly rearranged/hidden pages and renamed groups are preserved.
+        const previousStock = [
+            [0],
+            [4, 25, 3, 14],
+            [2, 26, 5, 29, 22, 23, 16, 10, 11, 20],
+            [1, 24, 7, 6, 12, 15, 8, 17],
+            [30, 9, 13]
+        ]
+        const stockPages = previousStock.every((pages, index) => {
+            const actual = migratedGroups[index]?.pages ?? []
+            const visibleStock = pages.filter(page => !migratedHidden.includes(page))
+            return actual.length === visibleStock.length
+                && actual.every((page, offset) => page === visibleStock[offset])
+        })
+        const stockLabels = [
+            Translation.tr("Essentials"), Translation.tr("Appearance"),
+            Translation.tr("Shell"), Translation.tr("System"),
+            Translation.tr("Reference")
+        ]
+        const stockGroupNames = migratedGroups.every((group, index) =>
+            group?.label === stockLabels[index])
+        const untouchedStock = migratedGroups.length === previousStock.length
+            && stockPages && stockGroupNames
+            && migratedHidden.every(page => page === root.retiredTlpPageIndex)
+
+        if (sourceVersion < 7 && untouchedStock) {
+            root.save({
+                groups: SettingsPageRegistry.defaultCategories.map(group => ({
+                    label: group.label, pages: group.pages.slice()
+                })),
+                hidden: migratedHidden
+            })
+            return
         }
 
         root.save({ groups: migratedGroups, hidden: migratedHidden })

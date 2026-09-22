@@ -292,6 +292,8 @@ for token in (
     'targetId: "runtime/waffle-critical-host"',
     'targetId: "runtime/waffle-deferred-host"',
     'targetId: "close-confirm"',
+    'targetId: "runtime/family-transition-overlay"',
+    'sourcePath: "FamilyTransitionOverlay.qml"',
     "internal: true",
 ):
     require(shell, token, "shell runtime host discovery missing " + token)

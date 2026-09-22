@@ -10,6 +10,31 @@ The helper creates an initial English-US + Unikey profile and Unicode Telex sett
 
 The updater patches preserved Niri configurations only when their relevant values/commands are missing. Existing IME values remain authoritative. For currently running sessions, setup invokes the helper immediately if possible. Log out/in and restart already-running applications to adopt new desktop environment variables.
 
+## Hadalis Keyboard Settings
+
+Open Hadalis Settings → Compositor → Input → Keyboard, then expand
+**Vietnamese input · Fcitx5**. This is an embedded settings section, not a
+second Fcitx tray app.
+
+- Read the live Fcitx5 status and start it if necessary.
+- Add Unikey to an existing default group on explicit request, preserving other
+  input methods and the rest of the profile. Custom profiles that cannot be
+  edited safely direct you to Advanced Settings.
+- Switch the current input context between English and Unikey, choose Telex
+  or VNI, and restore Unicode (UTF-8) output.
+- Type directly into the test field, refresh status, or open the upstream
+  Fcitx5 configuration UI for global shortcuts and advanced engine options.
+
+Changes are written to the user's Fcitx configuration under
+~/.config/fcitx5/ only; Niri's physical XKB layout stays independent.
+The backend updates only the targeted option and requests a D-Bus reload
+without killing the daemon or replacing the rest of the Unikey preferences.
+If the reload is unavailable, Settings reports that the saved change needs
+a later reload. A missing package is displayed in place rather than
+silently presenting an inactive toggle.
+
+Focused regression: python3 scripts/test-fcitx5-settings-integration.py
+
 ## Bar icon and operation
 
 The icon is the single native Fcitx5 StatusNotifierItem in Hadalis's existing System Tray, pinned inline with neighboring status indicators. The ii Bar tints it monochrome; Waffle pins the same native item in its own tray. Click/right-click uses Fcitx's real actions and menu, not a separate simulated icon. The normal Ctrl+Space shortcut switches between English and Unikey; customize it and the engine in fcitx5-configtool.

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Create one filesystem-canonical Zettelkasten note for a Hadalis quick note."""
+"""Create filesystem-canonical Zettelkasten notes for Hadalis quick capture.
+
+The format mirrors the user's Obsidian Zettelkasten template but does not invoke
+Templater or Obsidian. Filesystem Markdown is canonical.
+"""
 from __future__ import annotations
 
 import argparse
@@ -7,9 +11,13 @@ import json
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
+
+ALLOWED_TYPES = ("Permanent", "Literature", "Fleeting")
+DEFAULT_FOLDER = "00_Capture/03_Zettelkasten"
+DEFAULT_TYPE = "Fleeting"
 
 
 class ZettelError(Exception):
@@ -48,8 +56,8 @@ def _resolve_folder(vault: Path, folder: str) -> tuple[str, Path]:
     normalized = _normalize_folder(folder)
     target = vault.joinpath(*PurePosixPath(normalized).parts)
     try:
-        unresolved_parent = target.resolve(strict=False)
-        if os.path.commonpath((str(vault), str(unresolved_parent))) != str(vault):
+        unresolved = target.resolve(strict=False)
+        if os.path.commonpath((str(vault), str(unresolved))) != str(vault):
             raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
         target.mkdir(parents=True, exist_ok=True)
         resolved = target.resolve(strict=True)
@@ -85,28 +93,70 @@ def _filename_title(title: str) -> str:
     return (value or "Quick note")[:80]
 
 
-def _render_markdown(note_id: str, title: str, body: str, note_type: str, created: datetime) -> str:
-    clean_type = re.sub(r"[\r\n\x00]+", " ", str(note_type or "Fleeting")).strip() or "Fleeting"
-    clean_body = str(body or "").replace("\x00", "").rstrip()
-    created_iso = created.isoformat(timespec="seconds")
-    yaml_title = json.dumps(title, ensure_ascii=False)
-    yaml_type = json.dumps(clean_type, ensure_ascii=False)
+def _normalize_type(note_type: str) -> str:
+    value = str(note_type or DEFAULT_TYPE).strip() or DEFAULT_TYPE
+    if value not in ALLOWED_TYPES:
+        raise ZettelError(
+            "invalid_note_type",
+            "Zettelkasten type must be Permanent, Literature or Fleeting",
+        )
+    return value
+
+
+def _clean_body(body: str) -> str:
+    return str(body or "").replace("\x00", "").replace("\r\n", "\n").replace("\r", "\n").strip()
+
+
+def _render_markdown(
+    note_id: str,
+    title: str,
+    body: str,
+    note_type: str,
+    created: datetime,
+) -> str:
+    """Render the static structure of 90_System/91_Templates/Zettelkasten_Template.md."""
+
+    clean_body = _clean_body(body)
+    core_idea = title
+    content = clean_body if clean_body else title
+
     parts = [
         "---",
-        f"id: {json.dumps(note_id)}",
-        f"type: {yaml_type}",
-        f"created: {json.dumps(created_iso)}",
-        "aliases:",
-        f"  - {yaml_title}",
+        f"id: {note_id}",
+        f"date: {created.strftime('%Y-%m-%d')}",
+        f"type: {note_type}",
         "tags:",
         "  - zettelkasten",
+        "aliases: []",
         "---",
+        "",
         f"# {title}",
         "",
+        "## Core Idea",
+        core_idea,
+        "",
+        "## Content",
+        content,
+        "",
+        "## Context & Connections",
+        "*Link to existing notes using [[]] with explicit context on how they relate:*",
+        "- **Parent / Overview:** [[ ]]",
+        "- **Supporting / Extension:** [[ ]]",
+        "- **Contradiction / Alternative:** [[ ]]",
+        "",
+        "## Sources & References",
+        "- **Author / Source:** ",
+        "- **Link / Reference:**",
+        "",
     ]
-    if clean_body:
-        parts.extend([clean_body, ""])
     return "\n".join(parts)
+
+
+def _id_in_use(target_dir: Path, note_id: str) -> bool:
+    try:
+        return next(target_dir.glob(f"{note_id} - *.md"), None) is not None
+    except OSError as exc:
+        raise ZettelError("folder_read_failed", f"cannot inspect Zettelkasten folder: {exc}") from exc
 
 
 def capture(
@@ -114,22 +164,34 @@ def capture(
     folder: str,
     title: str,
     body: str,
-    note_type: str = "Fleeting",
+    note_type: str = DEFAULT_TYPE,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     vault = _resolve_vault(vault_path)
     normalized_folder, target_dir = _resolve_folder(vault, folder)
-    created = now or datetime.now().astimezone()
-    note_id = created.strftime("%Y%m%d%H%M%S")
+    requested_time = now or datetime.now().astimezone()
     clean_title = _clean_title(title, body)
-    stem = f"{note_id} - {_filename_title(clean_title)}"
-    markdown = _render_markdown(note_id, clean_title, body, note_type, created)
-    payload = markdown.encode("utf-8")
+    clean_type = _normalize_type(note_type)
+    filename_title = _filename_title(clean_title)
 
     created_path: Path | None = None
-    for attempt in range(1, 101):
-        suffix = "" if attempt == 1 else f"-{attempt}"
-        candidate = target_dir / f"{stem}{suffix}.md"
+    allocated_time: datetime | None = None
+    allocated_id = ""
+
+    # Zettelkasten IDs are second-resolution timestamps. Never reuse an ID just
+    # because a different title would make the filename distinct; advance to
+    # the next free second instead.
+    for attempt in range(0, 100):
+        candidate_time = requested_time + timedelta(seconds=attempt)
+        note_id = candidate_time.strftime("%Y%m%d%H%M%S")
+        if _id_in_use(target_dir, note_id):
+            continue
+
+        candidate = target_dir / f"{note_id} - {filename_title}.md"
+        markdown = _render_markdown(
+            note_id, clean_title, body, clean_type, candidate_time
+        )
+        payload = markdown.encode("utf-8")
         try:
             fd = os.open(
                 candidate,
@@ -157,20 +219,25 @@ def capture(
             except OSError:
                 pass
             raise ZettelError("note_write_failed", f"cannot persist Zettelkasten note: {exc}") from exc
+
         created_path = candidate
+        allocated_time = candidate_time
+        allocated_id = note_id
         break
 
-    if created_path is None:
-        raise ZettelError("note_collision", "could not allocate a unique Zettelkasten filename")
+    if created_path is None or allocated_time is None:
+        raise ZettelError("note_collision", "could not allocate a unique Zettelkasten ID")
 
     relative = PurePosixPath(normalized_folder, created_path.name).as_posix()
     return {
         "ok": True,
-        "id": note_id,
+        "id": allocated_id,
+        "date": allocated_time.strftime("%Y-%m-%d"),
         "title": clean_title,
-        "type": str(note_type or "Fleeting"),
+        "type": clean_type,
         "notePath": relative,
         "noteFullPath": str(created_path),
+        "templateCompatible": True,
     }
 
 
@@ -182,10 +249,10 @@ def _emit(payload: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--vault", required=True)
-    parser.add_argument("--folder", default="00_Capture/03_Zettelkasten")
+    parser.add_argument("--folder", default=DEFAULT_FOLDER)
     parser.add_argument("--title", default="")
     parser.add_argument("--body", default="")
-    parser.add_argument("--type", default="Fleeting")
+    parser.add_argument("--type", default=DEFAULT_TYPE)
     args = parser.parse_args(argv)
     try:
         _emit(capture(args.vault, args.folder, args.title, args.body, args.type))

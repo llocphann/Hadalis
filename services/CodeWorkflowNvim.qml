@@ -24,6 +24,8 @@ Singleton {
     property var cursorStyle: ({})
     property bool mouseEnabled: false
     property int revision: 0
+    property var lastDirtyRows: []
+    property bool fullRepaintRequested: true
     property var gridRows: []
     property var highlights: ({})
     property var defaultColors: ({
@@ -51,8 +53,12 @@ Singleton {
     }
 
     function _applyFrame(frame): void {
+        const previousCols = root.cols
+        const previousRows = root.rows
         const nextRows = root.gridRows.slice()
         const rowCount = Math.max(2, Number(frame?.rows ?? root.rows))
+        const nextCols = Math.max(2, Number(frame?.cols ?? root.cols))
+        const dirtyRowIndexes = []
         while (nextRows.length < rowCount)
             nextRows.push([])
         if (nextRows.length > rowCount)
@@ -63,6 +69,7 @@ Singleton {
             if (row < 0 || row >= rowCount)
                 continue
             nextRows[row] = Array.from(patch?.cells ?? [])
+            dirtyRowIndexes.push(row)
         }
 
         const highlightPatch = frame?.highlights ?? null
@@ -76,7 +83,7 @@ Singleton {
         if (frame?.defaults)
             root.defaultColors = Object.assign({}, frame.defaults)
 
-        root.cols = Math.max(2, Number(frame?.cols ?? root.cols))
+        root.cols = nextCols
         root.rows = rowCount
         root.cursorRow = Math.max(
             0, Math.min(root.rows - 1, Number(frame?.cursorRow ?? 0)))
@@ -91,6 +98,11 @@ Singleton {
             root.cursorStyle = nextCursorStyle
         root.mouseEnabled = frame?.mouseEnabled === true
         root.gridRows = nextRows
+        root.lastDirtyRows = dirtyRowIndexes
+        root.fullRepaintRequested =
+            nextCols !== previousCols
+            || rowCount !== previousRows
+            || frame?.defaults !== undefined
         root.revision += 1
     }
 

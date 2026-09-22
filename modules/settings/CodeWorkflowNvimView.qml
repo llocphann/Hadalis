@@ -14,6 +14,7 @@ Item {
     property bool active: false
     property bool cursorBlinkVisible: true
     property string cursorBlinkPhase: "steady"
+    property int lastPaintCursorRow: 0
     readonly property real cellWidth: Math.max(1, Math.ceil(cellMetrics.width))
     readonly property real cellHeight: Math.max(1, Math.ceil(fontMetrics.height))
     readonly property int requestedCols:
@@ -232,6 +233,36 @@ Item {
         clipboardPasteProcess.running = true
     }
 
+    function markRowDirty(row: int): void {
+        if (!editorCanvas.available || editorCanvas.width <= 0
+                || editorCanvas.height <= 0)
+            return
+        const safeRow = Math.max(
+            0, Math.min(CodeWorkflowNvim.rows - 1, Number(row ?? 0)))
+        editorCanvas.markDirty(Qt.rect(
+            0,
+            safeRow * root.cellHeight,
+            editorCanvas.width,
+            root.cellHeight))
+    }
+
+    function markCursorRowsDirty(): void {
+        root.markRowDirty(root.lastPaintCursorRow)
+        root.markRowDirty(CodeWorkflowNvim.cursorRow)
+        root.lastPaintCursorRow = CodeWorkflowNvim.cursorRow
+    }
+
+    function markFrameDirty(): void {
+        if (!editorCanvas.available)
+            return
+        if (CodeWorkflowNvim.fullRepaintRequested) {
+            root.markCursorRowsDirty()
+            return
+        }
+        for (const row of (CodeWorkflowNvim.lastDirtyRows ?? []))
+            root.markRowDirty(Number(row))
+    }
+
     function resetCursorBlink(): void {
         cursorBlinkTimer.stop()
         root.cursorBlinkVisible = true
@@ -239,7 +270,7 @@ Item {
 
         if (!root.active || !CodeWorkflowNvim.ready
                 || !CodeWorkflowNvim.cursorVisible) {
-            editorCanvas.requestPaint()
+            root.markCursorRowsDirty()
             return
         }
 
@@ -252,7 +283,7 @@ Item {
             0, Number(style.blinkoff ?? 0))
 
         if (blinkOn <= 0 || blinkOff <= 0) {
-            editorCanvas.requestPaint()
+            root.markCursorRowsDirty()
             return
         }
 
@@ -260,7 +291,7 @@ Item {
         cursorBlinkTimer.interval = Math.max(
             1, blinkWait > 0 ? blinkWait : blinkOn)
         cursorBlinkTimer.restart()
-        editorCanvas.requestPaint()
+        root.markCursorRowsDirty()
     }
 
     function updateNvimSize(): void {
@@ -344,7 +375,7 @@ Item {
                 root.cursorBlinkPhase = "off"
                 interval = blinkOff
             }
-            editorCanvas.requestPaint()
+            root.markCursorRowsDirty()
             restart()
         }
     }
@@ -367,7 +398,7 @@ Item {
         target: CodeWorkflowNvim
 
         function onRevisionChanged(): void {
-            editorCanvas.requestPaint()
+            root.markFrameDirty()
         }
 
         function onStateChanged(): void {
@@ -542,10 +573,18 @@ Item {
                 anchors.fill: parent
                 antialiasing: false
 
-                onPaint: {
+                onPaint: region => {
                     const ctx = getContext("2d")
                     const widthPx = editorCanvas.width
                     const heightPx = editorCanvas.height
+                    const dirty = region ?? Qt.rect(
+                        0, 0, widthPx, heightPx)
+                    const dirtyX = Math.max(0, dirty.x)
+                    const dirtyY = Math.max(0, dirty.y)
+                    const dirtyWidth = Math.max(
+                        0, Math.min(widthPx - dirtyX, dirty.width))
+                    const dirtyHeight = Math.max(
+                        0, Math.min(heightPx - dirtyY, dirty.height))
                     const defaultBackground = root.rgbColor(
                         CodeWorkflowNvim.defaultColors.background,
                         Appearance.colors.colLayer0)
@@ -553,17 +592,26 @@ Item {
                         CodeWorkflowNvim.defaultColors.foreground,
                         Appearance.colors.colOnLayer1)
 
-                    ctx.clearRect(0, 0, widthPx, heightPx)
+                    ctx.clearRect(
+                        dirtyX, dirtyY, dirtyWidth, dirtyHeight)
                     ctx.fillStyle = defaultBackground
-                    ctx.fillRect(0, 0, widthPx, heightPx)
+                    ctx.fillRect(
+                        dirtyX, dirtyY, dirtyWidth, dirtyHeight)
                     ctx.textBaseline = "alphabetic"
 
                     const rows = CodeWorkflowNvim.gridRows
                     const maxRows = Math.min(
                         rows.length,
                         Math.ceil(heightPx / root.cellHeight))
+                    const firstRow = Math.max(
+                        0, Math.floor(dirtyY / root.cellHeight))
+                    const lastRow = Math.min(
+                        maxRows,
+                        Math.ceil(
+                            (dirtyY + dirtyHeight)
+                                / root.cellHeight))
 
-                    for (let row = 0; row < maxRows; ++row) {
+                    for (let row = firstRow; row < lastRow; ++row) {
                         const cells = rows[row] ?? []
                         const maxCols = Math.min(
                             cells.length,
@@ -623,7 +671,8 @@ Item {
                     if (CodeWorkflowNvim.ready
                             && CodeWorkflowNvim.cursorVisible
                             && root.cursorBlinkVisible
-                            && CodeWorkflowNvim.cursorRow >= 0
+                            && CodeWorkflowNvim.cursorRow >= firstRow
+                            && CodeWorkflowNvim.cursorRow < lastRow
                             && CodeWorkflowNvim.cursorCol >= 0) {
                         const cursorX =
                             CodeWorkflowNvim.cursorCol * root.cellWidth

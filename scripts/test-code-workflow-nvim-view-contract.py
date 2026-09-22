@@ -14,6 +14,14 @@ page = PAGE.read_text(encoding="utf-8")
 
 for token in (
     "Canvas {",
+    "function markRowDirty(row: int): void",
+    "editorCanvas.markDirty(Qt.rect(",
+    "function markFrameDirty(): void",
+    "CodeWorkflowNvim.lastDirtyRows",
+    "CodeWorkflowNvim.fullRepaintRequested",
+    "onPaint: region =>",
+    "const firstRow =",
+    "const lastRow =",
     "CodeWorkflowNvim.gridRows",
     "CodeWorkflowNvim.highlights",
     "CodeWorkflowNvim.defaultColors",

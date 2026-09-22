@@ -49,14 +49,24 @@ Item {
     // layout/animation anchors instead of leaving detached stale popups.
     property int anchorRevision: 0
 
+    // Some tooltip parents are plain Items, not Controls or MouseAreas.
+    // Never treat an unknown hover state as hovered: that made the tooltip
+    // permanently visible as soon as the item had non-empty text.
+    // Callers with an explicit external hover source may opt out and supply
+    // extraVisibleCondition instead (e.g. a compact tile's child MouseArea).
+    property bool useParentHover: true
     readonly property bool parentHoverState: {
-        if (!parent)
+        if (!root.useParentHover)
             return true
+        if (!parent)
+            return false
         if (parent.buttonHovered !== undefined)
             return parent.buttonHovered
         if (parent.hovered !== undefined)
             return parent.hovered
-        return true
+        if (parent.containsMouse !== undefined)
+            return parent.containsMouse
+        return false
     }
     readonly property bool parentPressedState: {
         if (!parent)

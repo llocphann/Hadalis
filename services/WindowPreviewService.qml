@@ -39,7 +39,78 @@ Singleton {
     property bool capturing: false
     property bool captureAllRequested: false
     property var requestedWindowIds: []
-    
+
+    // Decoded CPU pixmaps outlive StyledPopup's lazy visual delegate, without
+    // holding the popup window or its FBO. At most 12 x 768 x 512 x 4 bytes
+    // (~18 MiB of pixel data) are resident in this independent cache.
+    readonly property int overviewWarmLimit: 12
+    readonly property int overviewWarmDecodeWidth: 768
+    readonly property int overviewWarmDecodeHeight: 512
+    property var overviewWarmImages: ({})
+    property var overviewWarmOrder: []
+    property var overviewWarmRequestedIds: []
+
+    Component {
+        id: overviewWarmImageComponent
+        Image {
+            width: 0
+            height: 0
+            visible: false
+            asynchronous: true
+            cache: true
+            fillMode: Image.PreserveAspectCrop
+            sourceSize: Qt.size(root.overviewWarmDecodeWidth, root.overviewWarmDecodeHeight)
+        }
+    }
+
+    function _dropOverviewWarmImage(windowId): void {
+        const item = overviewWarmImages[windowId]
+        if (item) {
+            item.image.destroy()
+            delete overviewWarmImages[windowId]
+        }
+        overviewWarmOrder = overviewWarmOrder.filter(id => id !== Number(windowId))
+    }
+
+    function _clearOverviewWarmImages(): void {
+        for (const id of Object.keys(overviewWarmImages))
+            overviewWarmImages[id].image.destroy()
+        overviewWarmImages = ({})
+        overviewWarmOrder = []
+    }
+
+    function _touchOverviewWarmImage(windowId): void {
+        const url = root.getPreviewUrl(windowId)
+        if (!url) {
+            root._dropOverviewWarmImage(windowId)
+            return
+        }
+        const previous = overviewWarmImages[windowId]
+        if (!previous || previous.url !== url) {
+            if (previous)
+                previous.image.destroy()
+            const image = overviewWarmImageComponent.createObject(root, { source: url })
+            if (!image) {
+                delete overviewWarmImages[windowId]
+                return
+            }
+            overviewWarmImages[windowId] = { image: image, url: url }
+        }
+        overviewWarmOrder = overviewWarmOrder.filter(id => id !== windowId).concat([windowId])
+        while (overviewWarmOrder.length > overviewWarmLimit)
+            root._dropOverviewWarmImage(overviewWarmOrder[0])
+    }
+
+    function _syncOverviewWarmImages(): void {
+        for (const id of overviewWarmRequestedIds)
+            root._touchOverviewWarmImage(id)
+    }
+
+    function warmForOverview(windowIds): void {
+        overviewWarmRequestedIds = PreviewPolicy.boundedWindowIds(windowIds, overviewWarmLimit)
+        root._syncOverviewWarmImages()
+    }
+
     // Debounce: coalesce rapid capture requests (e.g. hovering across multiple dock icons)
     Timer {
         id: captureDebounceTimer
@@ -108,6 +179,16 @@ Singleton {
 
     function _resetForCurrentSession(): void {
         sessionResetProcess.running = true
+    }
+
+    function _completeSessionReset(): void {
+        root._clearOverviewWarmImages()
+        root.previewCache = ({})
+        root.sessionReady = true
+        if (root.sessionKey.length > 0)
+            sessionFileView.setText(root.sessionKey + "\n")
+        root.captureComplete()
+        root._resumeRequestedCapture()
     }
     
     Process {
@@ -182,21 +263,11 @@ Singleton {
                 return
 
             console.warn("[WindowPreviewService] session reset helper failed to start")
-            root.previewCache = ({})
-            root.sessionReady = true
-            if (root.sessionKey.length > 0)
-                sessionFileView.setText(root.sessionKey + "\n")
-            root.captureComplete()
-            root._resumeRequestedCapture()
+            root._completeSessionReset()
         }
         onStarted: sessionResetProcess.startObserved = true
         onExited: {
-            root.previewCache = ({})
-            root.sessionReady = true
-            if (root.sessionKey.length > 0)
-                sessionFileView.setText(root.sessionKey + "\n")
-            root.captureComplete()
-            root._resumeRequestedCapture()
+            root._completeSessionReset()
         }
     }
     
@@ -229,6 +300,7 @@ Singleton {
             root.cleanupOrphans()
             root.previewCache = Object.assign({}, root.previewCache)
             root.sessionReady = true
+            root._syncOverviewWarmImages()
             root.captureComplete()
             root._resumeRequestedCapture()
         }
@@ -238,6 +310,7 @@ Singleton {
             root.cleanupOrphans()
             root.previewCache = Object.assign({}, root.previewCache)
             root.sessionReady = true
+            root._syncOverviewWarmImages()
             root.captureComplete()
             root._resumeRequestedCapture()
         }
@@ -258,7 +331,9 @@ Singleton {
         if (toDelete.length > 0) {
             for (const id of toDelete) {
                 delete previewCache[id]
+                root._dropOverviewWarmImage(id)
             }
+            overviewWarmRequestedIds = overviewWarmRequestedIds.filter(id => windowIds.has(id))
             previewCache = Object.assign({}, previewCache)
             
             // Delete files
@@ -400,15 +475,20 @@ Singleton {
                 console.log("[WindowPreviewService] capture process failed", exitCode, exitStatus)
             } else {
                 const timestamp = Date.now()
+                const liveIds = new Set((NiriService.windows ?? []).map(win => win.id))
                 for (const id of idsToCapture) {
+                    if (!liveIds.has(id))
+                        continue
                     const path = root.previewDir + "/window-" + id + ".png"
+                    const previous = root.previewCache[id]
                     root.previewCache[id] = {
                         path: path,
-                        timestamp: timestamp
+                        timestamp: PreviewPolicy.nextRevision(previous?.timestamp, timestamp)
                     }
                     root.previewUpdated(id)
                 }
                 root.previewCache = Object.assign({}, root.previewCache)
+                root._syncOverviewWarmImages()
             }
             
             idsToCapture = []
@@ -440,9 +520,7 @@ Singleton {
     
     // Public API
     function getPreviewUrl(windowId: int): string {
-        const cached = previewCache[windowId]
-        if (PreviewPolicy.needsCapture(cached)) return ""
-        return "file://" + cached.path + "?" + cached.timestamp
+        return PreviewPolicy.previewUrl(previewCache[windowId])
     }
     
     function hasPreview(windowId: int): bool {
@@ -450,6 +528,7 @@ Singleton {
     }
     
     function clearPreviews(): void {
+        root._clearOverviewWarmImages()
         Quickshell.execDetached(["/usr/bin/rm", "-rf", previewDir])
         previewCache = {}
     }

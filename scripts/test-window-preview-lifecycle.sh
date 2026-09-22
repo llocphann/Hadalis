@@ -92,10 +92,12 @@ if grep -Fq 'previewValidityMs' "$service"; then
 fi
 grep -Fq 'cache: true' "$overview_renderer" \
     || fail 'Overview preview must use the Qt image cache'
-grep -Fq 'sourceSize.width: Math.max(1, Math.min(768' "$overview_renderer" \
-    || fail 'Overview preview decode width must be bounded'
-grep -Fq 'sourceSize.height: Math.max(1, Math.min(512' "$overview_renderer" \
-    || fail 'Overview preview decode height must be bounded'
+grep -Fq 'WindowPreviewService.overviewWarmDecodeWidth' "$overview_renderer" \
+    || fail 'Overview must share the resident cache decode width'
+grep -Fq 'WindowPreviewService.overviewWarmDecodeHeight' "$overview_renderer" \
+    || fail 'Overview must share the resident cache decode height'
+grep -Fq 'WindowPreviewService.warmForOverview(windowItems.map(record => record.id))' "$overview_renderer" \
+    || fail 'Overview must retain bounded decoded previews across popup teardown'
 
 node - "$preview_policy" <<'NODE'
 const fs = require('node:fs');
@@ -114,6 +116,15 @@ assert.equal(needsCapture({path: '/tmp/window-42.png', timestamp: Date.now()}), 
     'fresh preview is reused without recapture');
 assert.equal(needsCapture({path: '/tmp/window-43.png', timestamp: 1}), false,
     'separate window IDs retain independent snapshots');
+assert.equal(scope.previewUrl({path: '/tmp/window-42.png', timestamp: 10}),
+    'file:///tmp/window-42.png?10', 'URL stays stable on cache hit');
+assert.equal(scope.nextRevision(10, 10), 11,
+    'force refresh advances URL even within one millisecond');
+assert.equal(scope.nextRevision(10, 15), 15, 'later capture advances URL');
+assert.equal(scope.previewUrl({path: '/tmp/window-42.png', timestamp: 11}),
+    'file:///tmp/window-42.png?11', 'new revision is observable');
+assert.deepEqual(Array.from(scope.boundedWindowIds([1, 1, 2, -5, 3, 4], 3)),
+    [1, 2, 3], 'resident window list is bounded and deduplicated');
 console.log('window preview session-cache behavior: PASS');
 NODE
 

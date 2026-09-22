@@ -482,6 +482,8 @@ Item {
                         root.firstVisibleWorkspaceSlot,
                         root.workspacesShown)
                     : []
+                if (root.presentationActive && !root.taskViewMode)
+                    WindowPreviewService.warmForOverview(windowItems.map(record => record.id))
             }
 
             Connections {
@@ -632,6 +634,18 @@ Item {
                             id: windowPreview
                             anchors.fill: parent
                             anchors.margins: 2
+                            asynchronous: true
+                            cache: true
+                            // Decode parameters precede source assignment. In
+                            // Overview they match the resident CPU image cache;
+                            // TaskView continues to decode to its smaller tile.
+                            sourceSize.width: root.taskViewMode
+                                ? Math.max(1, Math.min(768, Math.ceil(windowItem.width * 2)))
+                                : WindowPreviewService.overviewWarmDecodeWidth
+                            sourceSize.height: root.taskViewMode
+                                ? Math.max(1, Math.min(512, Math.ceil(windowItem.height * 2)))
+                                : WindowPreviewService.overviewWarmDecodeHeight
+                            fillMode: root.taskViewMode ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                             source: {
                                 const cache = WindowPreviewService.previewCache
                                 if (!parent.showPreviews || !windowItem.windowData
@@ -639,15 +653,6 @@ Item {
                                     return ""
                                 return WindowPreviewService.getPreviewUrl(windowItem.windowId)
                             }
-                            asynchronous: true
-                            cache: true
-                            // A full-resolution PNG can exhaust the Qt pixmap
-                            // cache after the Overview's delegate is destroyed.
-                            // Bound the decode to the displayed tile, so unchanged
-                            // source URLs are cheap to reuse after long idle.
-                            sourceSize.width: Math.max(1, Math.min(768, Math.ceil(windowItem.width * 2)))
-                            sourceSize.height: Math.max(1, Math.min(512, Math.ceil(windowItem.height * 2)))
-                            fillMode: root.taskViewMode ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                             smooth: true
                             mipmap: true
                             visible: parent.showPreviews && status === Image.Ready

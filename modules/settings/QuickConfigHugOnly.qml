@@ -1,4 +1,5 @@
 import QtQuick
+import qs.services
 import qs.modules.common
 
 // Quick settings facade for the Hug-only Classic Bar policy. The legacy page

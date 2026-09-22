@@ -1199,11 +1199,9 @@ Item {
                         width: Math.min(parent.width - 40, 280)
                         spacing: 8
                         visible: !LocalMusic.hasLocalLyrics
-                        MaterialLoadingIndicator {
+                        LoadingText {
                             Layout.alignment: Qt.AlignHCenter
                             visible: LocalMusic.localLyricsStatus === "loading"
-                            loading: visible
-                            implicitSize: 30
                         }
                         MaterialSymbol {
                             Layout.alignment: Qt.AlignHCenter
@@ -1216,11 +1214,10 @@ Item {
                             Layout.fillWidth: true
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
+                            visible: LocalMusic.localLyricsStatus !== "loading"
                             text: LocalMusic.currentPath.length === 0
                                 ? Translation.tr("Nothing playing")
-                                : LocalMusic.localLyricsStatus === "loading"
-                                    ? Translation.tr("Loading local lyrics")
-                                    : Translation.tr("No local .lrc or .txt lyrics beside this track")
+                                : Translation.tr("No local .lrc or .txt lyrics beside this track")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.smaller
                         }

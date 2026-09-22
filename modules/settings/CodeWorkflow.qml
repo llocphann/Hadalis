@@ -557,6 +557,10 @@ Item {
     onSourcePathChanged: {
         root.stashSourceEditorBuffer()
         root.sourceEditorStatus = ""
+        CodeWorkflowSession.selectSemantic("")
+        Qt.callLater(root.reloadSource)
+        Qt.callLater(() => root.requestAnalysis(false))
+        Qt.callLater(root.evaluatePreApplyGate)
         if (root.sourceEditorUseNvim)
             Qt.callLater(root.syncEmbeddedNvimView)
         Qt.callLater(root.syncSourceSyntaxHighlighter)
@@ -1473,12 +1477,6 @@ Item {
     onInspectedSemanticAnchorChanged:
         Qt.callLater(root.focusSourceAnchor)
 
-    onSourcePathChanged: {
-        CodeWorkflowSession.selectSemantic("")
-        Qt.callLater(root.reloadSource)
-        Qt.callLater(() => root.requestAnalysis(false))
-        Qt.callLater(root.evaluatePreApplyGate)
-    }
     onSourceNeedleChanged: {
         Qt.callLater(root.focusSourceAnchor)
         Qt.callLater(() => root.requestAnalysis(false))

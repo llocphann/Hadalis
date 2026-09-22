@@ -89,7 +89,7 @@ Item {
     readonly property var descriptor:
         CodeWorkflowRuntime.descriptor(CodeWorkflowSession.selectedTargetId)
             ?? CodeWorkflowRuntime.activeCatalog[0]
-            ?? CodeWorkflowRuntime.catalog[0]
+            ?? null
     readonly property var record: root.recordFor(CodeWorkflowSession.selectedTargetId)
     readonly property var graph:
         CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)
@@ -156,9 +156,21 @@ Item {
                 category: "runtime",
                 id: target.targetId,
                 label: target.label,
-                detail: rowRecord?.state === "resident"
-                    ? String(rowRecord.output ?? "") + " · live"
-                    : "source only",
+                detail: {
+                    const state = String(
+                        rowRecord?.state ?? target?.state ?? "inactive")
+                    if (state === "resident")
+                        return String(rowRecord?.output ?? "") + " · live"
+                    if (state === "loaded")
+                        return "loaded"
+                    if (state === "loaded-hidden")
+                        return "loaded · hidden"
+                    if (state === "loading")
+                        return "loading"
+                    if (state === "disabled")
+                        return "disabled · source"
+                    return "inactive · source"
+                },
                 icon: target.icon,
                 depth: Math.min(5, Math.max(
                     0, Number(target.depth ?? 0)))
@@ -678,9 +690,12 @@ Item {
                 ? CodeWorkflowSession.semanticAnchor
                 : ""
     readonly property bool live:
-        root.snapshot.records?.some(item => item.state === "resident") ?? false
+        root.snapshot.records?.some(item =>
+            ["resident", "loaded", "loaded-hidden"].includes(
+                String(item?.state ?? ""))) ?? false
     readonly property bool selectedLive:
-        root.record?.state === "resident"
+        ["resident", "loaded", "loaded-hidden"].includes(
+            String(root.record?.state ?? ""))
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
     readonly property bool analyzerMatchesSource:
         CodeWorkflowAnalyzer.sourcePath === root.sourcePath
@@ -1220,11 +1235,19 @@ Item {
 
     function stateLabel(item): string {
         if (!item)
-            return "RUNTIME TARGET NOT LOADED"
+            return "RUNTIME TARGET NOT DISCOVERED"
         if (item.state === "resident")
             return "LIVE · RESIDENT"
-        if (item.state === "unloaded")
-            return "UNLOADED · STATIC SOURCE"
+        if (item.state === "loaded")
+            return "LIVE · LOADED"
+        if (item.state === "loaded-hidden")
+            return "LOADED · HIDDEN"
+        if (item.state === "loading")
+            return "LOADING"
+        if (item.state === "inactive")
+            return "INACTIVE · SOURCE"
+        if (item.state === "disabled")
+            return "DISABLED · SOURCE"
         return String(item.state ?? "unknown").toUpperCase()
     }
 
@@ -1825,14 +1848,18 @@ Item {
                 }
 
                 Pill {
-                    label: root.selectedLive ? "LIVE" : "STATIC"
+                    label: root.record?.state === "loaded-hidden"
+                        ? "HIDDEN"
+                        : root.selectedLive ? "LIVE" : "SOURCE"
                     accent: root.selectedLive
                         ? Appearance.colors.colPrimary
                         : Appearance.colors.colSubtext
                     StyledToolTip {
-                        text: root.selectedLive
-                            ? "Selected target is resident in the running shell"
-                            : "Selected target is inspected from source"
+                        text: root.record?.state === "loaded-hidden"
+                            ? "Selected target is loaded but currently hidden"
+                            : root.selectedLive
+                                ? "Selected target is loaded in the running shell"
+                                : "Selected target is available from runtime source metadata"
                     }
                 }
 

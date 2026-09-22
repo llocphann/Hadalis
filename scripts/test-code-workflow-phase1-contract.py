@@ -563,11 +563,23 @@ for token in (
 ):
     require(source_editor, token,
             "modal Source Editor missing hot-fix behavior " + token)
+for token in (
+    "root.sourceEditorPendingPath = root.sourceEditorPath",
+    "root.sourceEditorPendingTargetPath = root.sourceEditorTargetPath",
+    "root.sourceEditorPendingBaseHash =",
+    "root.sourceEditorPendingText = root.sourceDraft",
+    "root.sourceEditorBaseText = root.sourceEditorPendingText",
+    "draft: draftNow,",
+    "root.sourceEditorPath === savedPath",
+):
+    require(page, token,
+            "async source CAS must preserve its original file and bytes")
+
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
 require(page, "visible: root.sourceEditorStatus.length > 0",
         "Source Editor must show save/conflict status instead of failing silently")
-require(page, "sourceDraftWriter.setText(root.sourceDraft)",
+require(page, "sourceDraftWriter.setText(root.sourceEditorPendingText)",
         "Source Editor must stage draft text before atomic compare-and-swap")
 require(page, 'Quickshell.shellPath("scripts/code-workflow-editor-save.py")',
         "Source Editor save must use the dedicated atomic helper")
@@ -1018,7 +1030,7 @@ if page.count("function stateLabel(item): string {") != 1:
 if "setText(" in canvas:
     raise SystemExit("FAIL: IR canvas must never write source")
 if page.count("setText(") != 1 \
-        or "sourceDraftWriter.setText(root.sourceDraft)" not in page:
+        or "sourceDraftWriter.setText(root.sourceEditorPendingText)" not in page:
     raise SystemExit(
         "FAIL: Source Editor may only stage its guarded draft write")
 

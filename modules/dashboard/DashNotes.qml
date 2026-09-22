@@ -78,7 +78,7 @@ DashCard {
 
                     StyledText {
                         text: Translation.tr("Capture")
-                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                         color: Appearance.colors.colOnLayer1
                     }

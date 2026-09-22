@@ -131,6 +131,23 @@ require(editor, 'enabled: editor.activeFocus && root.mode !== "insert"',
         "fallback must require editor focus and non-Insert mode")
 require(editor, "&& !root.findVisible",
         "fallback must never steal text from Find/Replace")
+for key, call in (
+    ("W", "root.moveWord(1, false)"),
+    ("B", "root.moveWord(-1, false)"),
+    ("E", "root.moveWord(1, true)"),
+):
+    require(motion, "case Qt.Key_" + key + ": " + call,
+            "lightweight Vim-style word motion missing")
+    require(editor, "onActivated: root.handleMotionKey(Qt.Key_" + key + ", 0)",
+            "word motion must use the same focus-gated shortcut path")
+require(editor, r"if (/\s/.test(char))",
+        "word navigation must classify actual whitespace")
+require(editor, "onModalCursorPositionChanged: root.ensureCursorVisible()",
+        "Normal/Visual motions must keep the modal caret in the viewport")
+require(editor, "property int preferredColumn: -1",
+        "vertical motions must retain the desired column across short lines")
+require(editor, "root.lineNumberAt(root.modalCursorPosition)",
+        "Visual line numbers must follow the modal selection cursor")
 
 root_key_handlers = editor[:editor.index("readonly property int lineCount:")]
 require(root_key_handlers, "Keys.onShortcutOverride: event =>",

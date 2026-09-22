@@ -135,6 +135,20 @@ class FcitxSettingsTest(unittest.TestCase):
                 self.assertIn('"ok": false', output.getvalue())
         self.assertFalse(bridge.UNIKEY.exists())
 
+    def test_text_bindings_import_translation_singleton(self):
+        # Regression: missing qs.services left all text/labels blank while icons,
+        # backgrounds and controls still appeared in Keyboard Settings.
+        controls = QML.read_text(encoding="utf-8")
+        translation = (ROOT / "services/Translation.qml").read_text(encoding="utf-8")
+        qmldir = (ROOT / "services/qmldir").read_text(encoding="utf-8")
+        self.assertIn("Translation.tr(", controls)
+        self.assertIn("import qs.services\n", controls)
+        self.assertIn("singleton Translation 1.0 Translation.qml", qmldir)
+        self.assertIn("function tr(text)", translation)
+        for label in ('"Refresh"', '"English"', '"Vietnamese"',
+                      '"Telex"', '"VNI"', '"Advanced Fcitx5 settings"'):
+            self.assertIn("Translation.tr(" + label + ")", controls)
+
     def test_qml_wiring_and_search(self):
         page = NIRI.read_text(encoding="utf-8")
         controls = QML.read_text(encoding="utf-8")

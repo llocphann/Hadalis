@@ -26,13 +26,21 @@ Item {
         CodeWorkflowIr.unifiedGraphFor(root.showInternals)
     readonly property var groups: root.graph?.groups ?? []
     property bool initialFitDone: false
+    readonly property bool inventoryReady: CodeWorkflowIr.ready
+        && (CodeWorkflowRuntime.hasLocalDeclarations
+            || CodeWorkflowRuntime.remoteSnapshot !== null
+            || CodeWorkflowRuntime.remoteError.length > 0)
     function fitInitialGraph(): void {
-        if (root.initialFitDone || root.width <= 0 || root.height <= 0
+        // Waiting for both the reviewed IR and the real declaration inventory
+        // avoids fitting a partial board, then hiding the later runtime groups.
+        if (root.initialFitDone || !root.inventoryReady
+                || root.width < 240 || root.height < 160
                 || root.nodes.length === 0)
             return
         root.initialFitDone = true
         Qt.callLater(root.fitGraph)
     }
+    onInventoryReadyChanged: root.fitInitialGraph()
     onWidthChanged: root.fitInitialGraph()
     onHeightChanged: root.fitInitialGraph()
     onGraphChanged: {

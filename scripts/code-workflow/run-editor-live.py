@@ -58,8 +58,8 @@ def instrument(config: Path) -> None:
     # Prevent tests from touching the actual source buffer, even inside the
     # temporary archive. This fixture still instantiates the real editor.
     replace_once(
-        page, "draft: root.sourceDraft",
-        r'draft: "alpha\n\nbeta gamma"',
+        page, "                        draft: root.sourceDraft\n",
+        '                        draft: "alpha\\n\\nbeta gamma"\n',
     )
     editor = config / "modules/settings/CodeWorkflowSourceEditor.qml"
     replace_once(

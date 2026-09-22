@@ -114,7 +114,7 @@ MouseArea {
 
         MaterialSymbol {
             id: updateIcon
-            text: ShellUpdates.isUpdating ? "progress_activity" : "upgrade"
+            text: ShellUpdates.isUpdating ? "settings" : "upgrade"
             iconSize: Appearance.font.pixelSize.normal
             color: root.accentColor
             Layout.alignment: Qt.AlignVCenter
@@ -186,7 +186,7 @@ MouseArea {
                         anchors.verticalCenter: parent.verticalCenter
                         fill: 0
                         font.weight: Font.Medium
-                        text: ShellUpdates.isUpdating ? "progress_activity" : "deployed_code_update"
+                        text: ShellUpdates.isUpdating ? "settings" : "deployed_code_update"
                         iconSize: Appearance.font.pixelSize.large
                         color: Appearance.colors.colOnSurfaceVariant
 

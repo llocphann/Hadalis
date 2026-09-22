@@ -1438,7 +1438,7 @@ Scope {
                             // Spinner when updating
                             MaterialSymbol {
                                 visible: ShellUpdates.isUpdating
-                                text: "progress_activity"
+                                text: "settings"
                                 iconSize: Appearance.font.pixelSize.small
                                 color: Appearance.colors.colOnPrimary
 

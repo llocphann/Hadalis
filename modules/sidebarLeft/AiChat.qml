@@ -845,6 +845,11 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                     }
 
                     Keys.onPressed: event => {
+                        // A composition key is owned by Fcitx, not chat shortcuts.
+                        if (messageInputField.inputMethodComposing) {
+                            event.accepted = false;
+                            return;
+                        }
                         if (event.key === Qt.Key_Tab) {
                             suggestions.acceptSelectedWord();
                             event.accepted = true;

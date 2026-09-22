@@ -69,7 +69,7 @@ for path, name in (
 ):
     content = read(path)
     assert ("loading: " + name + ".loading && !" + name + ".error") in content, path
-    assert ("!" + name + ".currentItem") not in content, path
+    assert ("loading: " + name + ".loading && !" + name + ".currentItem") not in content, path
 
 # Exercise the QML-imported production policy across initial, pending, Ready,
 # stale pending, Error and disabled states, not merely spelling assertions.

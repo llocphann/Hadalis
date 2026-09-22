@@ -22,6 +22,17 @@ Singleton {
     readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
 
+    // A renderer-specific page is shown only for its active panel family.
+    // Keep historical slots in the registry so stored indices remain stable.
+    readonly property bool waffleFamily: Config.options?.panelFamily === "waffle"
+    function isPageApplicable(index: int): bool {
+        if (index < 0 || index >= root.pages.length
+                || root.isHiddenLegacyIndex(index)) return false
+        if (root.waffleFamily)
+            return index !== root.barPageIndex && index !== 16 && index !== 29
+        return index !== 11
+    }
+
     // Stable route keys survive page reordering and legacy numeric slot
     // retirement. The active Settings chrome navigates inside its own window
     // instead of spawning a second instance when a related-settings link runs.
@@ -29,8 +40,9 @@ Singleton {
     function pageIndexForKey(key: string): int {
         const value = String(key ?? "").trim()
         if (!value) return -1
-        return root.pages.findIndex(page => page.key === value
-            && page.devNavigationHidden !== true)
+        return root.pages.findIndex((page, index) => page.key === value
+            && page.devNavigationHidden !== true
+            && root.isPageApplicable(index))
     }
     function navigateToKey(key: string, section: string): bool {
         const index = root.pageIndexForKey(key)

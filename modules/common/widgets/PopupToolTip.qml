@@ -11,7 +11,23 @@ Item {
     property string text: ""
     property font font
     property bool extraVisibleCondition: true
-    property bool alternativeVisibleCondition: parent?.activeFocus ?? false
+    // Mouse clicks commonly leave Controls with activeFocus. Using activeFocus
+    // here made a hover tooltip survive after the pointer left. visualFocus is
+    // keyboard-origin focus only, which is the accessibility behavior wanted.
+    readonly property bool parentKeyboardFocusState: {
+        if (!parent)
+            return false
+        if (parent.visualFocus !== undefined)
+            return parent.visualFocus
+        if (parent.focusReason !== undefined) {
+            return parent.activeFocus
+                && (parent.focusReason === Qt.TabFocusReason
+                    || parent.focusReason === Qt.BacktabFocusReason
+                    || parent.focusReason === Qt.ShortcutFocusReason)
+        }
+        return false
+    }
+    property bool alternativeVisibleCondition: root.parentKeyboardFocusState
     property int delay: 16
     property real horizontalPadding: 10
     property real verticalPadding: 5
@@ -23,9 +39,15 @@ Item {
             root.contentItem.shown = shown
     }
     
-    function updateAnchor() {
-        tooltipLoader.item?.anchor?.updateAnchor();
+    function updateAnchor(): void {
+        tooltipLoader.item?.anchor?.updateAnchor()
     }
+
+    // PopupAnchor item geometry is sampled only when a PopupWindow is shown.
+    // Keep a tiny revision heartbeat while a tooltip is live so both the
+    // PopupWindow anchor and the ApplicationWindow fallback follow moving
+    // layout/animation anchors instead of leaving detached stale popups.
+    property int anchorRevision: 0
 
     readonly property bool parentHoverState: {
         if (!parent)
@@ -91,6 +113,18 @@ Item {
         id: _showDelayTimer
         interval: root.delay
         onTriggered: root.setContentShown(true)
+    }
+
+    Timer {
+        id: _anchorRefreshTimer
+        interval: 50
+        repeat: true
+        running: root.visible && root.internalVisibleCondition
+        onTriggered: {
+            root.anchorRevision += 1
+            if (tooltipLoader.active)
+                root.updateAnchor()
+        }
     }
 
     // Primary path: PopupWindow for shell overlay contexts (PanelWindow)
@@ -162,6 +196,9 @@ Item {
             // Position via x/y computed from the anchor item's geometry
             readonly property Item anchorItem: root.parent
             readonly property point anchorPos: {
+                // Force mapToItem() to re-evaluate while the tooltip is live;
+                // coordinate mapping itself is intentionally non-reactive.
+                const revision = root.anchorRevision
                 if (!anchorItem || !fallbackItem.parent)
                     return Qt.point(0, 0)
                 return anchorItem.mapToItem(fallbackItem.parent, 0, 0)

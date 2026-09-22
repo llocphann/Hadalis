@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 widget = (ROOT / "modules/sidebarRight/notepad/NotepadWidget.qml").read_text(encoding="utf-8")
 service = (ROOT / "services/Zettelkasten.qml").read_text(encoding="utf-8")
 dash = (ROOT / "modules/dashboard/DashNotes.qml").read_text(encoding="utf-8")
+helper = (ROOT / "scripts" / "notes" / "zettelkasten.py").read_text(encoding="utf-8")
+settings = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 qmldir = (ROOT / "services/qmldir").read_text(encoding="utf-8")
 config = (ROOT / "modules/common/Config.qml").read_text(encoding="utf-8")
 defaults = json.loads((ROOT / "defaults/config.json").read_text(encoding="utf-8"))
@@ -85,3 +87,11 @@ assert defaults["notes"]["zettelkasten"] == {
 }
 
 print("Zettelkasten quick-note service/UI contract: PASS")
+
+zettel_start = settings.index('title: Translation.tr("Quick Notes & Zettelkasten")')
+zettel_end = settings.index('title: Translation.tr("Calendar Sync")', zettel_start)
+zettel_settings = settings[zettel_start:zettel_end]
+assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in zettel_settings
+assert "color: Appearance.colors.colSubtext" not in zettel_settings
+assert 'placeholderText: Translation.tr("Leave blank to reuse the Todo Obsidian vault")' not in zettel_settings
+assert 'placeholderText: "00_Capture/03_Zettelkasten"' not in zettel_settings

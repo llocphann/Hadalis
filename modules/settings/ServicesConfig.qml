@@ -1374,7 +1374,7 @@ ContentPage {
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurface
                     text: String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-                        ?? "Day Planner")
+                        ?? "Tasks")
                     background: Rectangle {
                         color: Appearance.colors.colLayer1
                         radius: Appearance.rounding.small
@@ -1387,7 +1387,7 @@ ContentPage {
                         const value = text.trim()
                         if (value.length > 0
                                 && value !== String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-                                    ?? "Day Planner"))
+                                    ?? "Tasks"))
                             Config.setNestedValue("todo.obsidian.dailyNote.plannerHeading", value)
                     }
                 }
@@ -1829,7 +1829,7 @@ ContentPage {
                 MaterialTextField {
                     id: zettelkastenVaultPath
                     Layout.fillWidth: true
-                    placeholderText: Translation.tr("Leave blank to reuse the Todo Obsidian vault")
+                    placeholderText: ""
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurface
                     placeholderTextColor: Appearance.colors.colSubtext
@@ -1853,9 +1853,9 @@ ContentPage {
                     Layout.fillWidth: true
                     text: String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim().length > 0
                         ? Translation.tr("Using the dedicated Zettelkasten vault override.")
-                        : Translation.tr("Using Todo's configured Obsidian vault when available.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                        : Translation.tr("Leave blank to reuse Todo's configured Obsidian vault.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
                 }
             }
@@ -1873,7 +1873,7 @@ ContentPage {
                 MaterialTextField {
                     id: zettelkastenFolder
                     Layout.fillWidth: true
-                    placeholderText: "00_Capture/03_Zettelkasten"
+                    placeholderText: ""
                     font.pixelSize: Appearance.font.pixelSize.small
                     font.family: Appearance.font.family.monospace
                     color: Appearance.colors.colOnSurface
@@ -1895,6 +1895,14 @@ ContentPage {
                                     ?? "00_Capture/03_Zettelkasten"))
                             Config.setNestedValue("notes.zettelkasten.folder", value)
                     }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Vault-relative folder for captured Zettelkasten notes.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    wrapMode: Text.WordWrap
                 }
             }
 
@@ -1928,8 +1936,8 @@ ContentPage {
                 StyledText {
                     Layout.fillWidth: true
                     text: Translation.tr("The generated Markdown follows the vault's Zettelkasten schema: id, date, type, zettelkasten tag, aliases, Core Idea, Content, Context & Connections, and Sources & References.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
                 }
             }

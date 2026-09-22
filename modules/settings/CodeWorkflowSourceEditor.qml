@@ -306,6 +306,23 @@ Item {
         root.setCursor(root.targetLinePosition(current, delta))
     }
 
+    // One motion dispatcher for both focused TextEdit keys and the
+    // window-shortcut fallback. Read-only TextEdit must not be relied on
+    // as the only route for bare-letter modal commands.
+    function handleMotionKey(key: int, modifiers: int): bool {
+        if (root.mode === "insert" || root.findVisible
+                || (modifiers & (Qt.ControlModifier | Qt.AltModifier
+                    | Qt.MetaModifier)) !== 0)
+            return false
+        switch (key) {
+        case Qt.Key_H: root.moveHorizontal(-1); return true
+        case Qt.Key_J: root.moveVertical(1); return true
+        case Qt.Key_K: root.moveVertical(-1); return true
+        case Qt.Key_L: root.moveHorizontal(1); return true
+        }
+        return false
+    }
+
     function applyVisualSelection(): void {
         if (root.visualAnchor < 0 || root.visualCursor < 0)
             return
@@ -755,6 +772,41 @@ Item {
                     }
                 }
 
+                // Qt resolves window shortcuts before TextEdit's key
+                // handler. Keep a guarded fallback so hjkl work in both
+                // NORMAL and VISUAL even if a read-only TextEdit does not
+                // deliver the corresponding key press. Never capture text
+                // from INSERT or either Find/Replace field.
+                Shortcut {
+                    sequence: "H"
+                    context: Qt.WindowShortcut
+                    enabled: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    onActivated: root.handleMotionKey(Qt.Key_H, 0)
+                }
+                Shortcut {
+                    sequence: "J"
+                    context: Qt.WindowShortcut
+                    enabled: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    onActivated: root.handleMotionKey(Qt.Key_J, 0)
+                }
+                Shortcut {
+                    sequence: "K"
+                    context: Qt.WindowShortcut
+                    enabled: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    onActivated: root.handleMotionKey(Qt.Key_K, 0)
+                }
+                Shortcut {
+                    sequence: "L"
+                    context: Qt.WindowShortcut
+                    enabled: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    onActivated: root.handleMotionKey(Qt.Key_L, 0)
+                }
+
+                Keys.priority: Keys.BeforeItem
                 Keys.onShortcutOverride: event => {
                     const ctrl =
                         (event.modifiers & Qt.ControlModifier) !== 0
@@ -802,6 +854,11 @@ Item {
                         return
                     }
 
+                    if (root.handleMotionKey(event.key, event.modifiers)) {
+                        event.accepted = true
+                        return
+                    }
+
                     if (ctrl && event.key === Qt.Key_V) {
                         const returnMode = root.mode
                         root.setMode("insert")
@@ -815,11 +872,7 @@ Item {
                     }
 
                     if (root.mode === "visual") {
-                        if (event.key === Qt.Key_H) root.moveHorizontal(-1)
-                        else if (event.key === Qt.Key_L) root.moveHorizontal(1)
-                        else if (event.key === Qt.Key_J) root.moveVertical(1)
-                        else if (event.key === Qt.Key_K) root.moveVertical(-1)
-                        else if (event.key === Qt.Key_Y
+                        if (event.key === Qt.Key_Y
                                 || (ctrl && event.key === Qt.Key_C))
                             root.yankSelection()
                         else if (event.key === Qt.Key_D
@@ -848,15 +901,7 @@ Item {
                         root.openFind(false)
                     } else if (event.key === Qt.Key_N) {
                         root.findNext(shift, false)
-                    } else if (event.key === Qt.Key_H)
-                        root.moveHorizontal(-1)
-                    else if (event.key === Qt.Key_L)
-                        root.moveHorizontal(1)
-                    else if (event.key === Qt.Key_J)
-                        root.moveVertical(1)
-                    else if (event.key === Qt.Key_K)
-                        root.moveVertical(-1)
-                    else if (event.key === Qt.Key_0)
+                    } else if (event.key === Qt.Key_0)
                         root.setCursor(root.lineStart(cursor))
                     else if (event.key === Qt.Key_Dollar)
                         root.setCursor(root.lineEnd(cursor))

@@ -332,10 +332,10 @@ Singleton {
         _staticSearchIndex = [
         {
             pageIndex: 7, pageName: root.pages[7].name,
-            section: Translation.tr("Todo & Obsidian"),
-            label: Translation.tr("Prepare Obsidian"),
-            description: Translation.tr("Hadalis internal Todo is canonical"),
-            keywords: ["todo", "to-do", "obsidian", "tasks", "markdown", "vault", "sync", "data"]
+            section: Translation.tr("To-do & Quick Notes"),
+            label: Translation.tr("To-do & Quick Notes"),
+            description: Translation.tr("Shared vault for tasks and Zettelkasten notes"),
+            keywords: ["todo", "to-do", "quick notes", "zettelkasten", "obsidian", "tasks", "markdown", "vault", "sync", "data"]
         },
         {
             pageIndex: 30, pageName: root.pages[30].name,

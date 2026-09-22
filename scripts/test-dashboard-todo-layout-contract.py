@@ -14,19 +14,30 @@ for token in (
     "id: tabShell",
     "readonly property real innerHeight:",
     "readonly property real cornerRadius: innerHeight / 2",
-    "id: inactiveLeftShape",
-    "id: inactiveRightShape",
+    "readonly property real arcKappa: 0.5522847498",
+    "readonly property int iconSlotSize:",
+    "readonly property int tabIconSize:",
+    "readonly property int badgeSize:",
+    "readonly property real contentPadding:",
+    "readonly property real contentSpacing:",
+    "id: inactiveTabShape",
+    "PathCubic {",
+    "xScale: root.currentTab === 0 ? -1 : 1",
+    "width: tabShell.halfWidth + tabShell.cornerRadius",
     "id: activeTabPill",
-    "PathArc.Counterclockwise",
-    "PathArc.Clockwise",
-    "radiusX: tabShell.cornerRadius",
-    "radiusY: tabShell.cornerRadius",
-    "x: tabShell.halfWidth - tabShell.cornerRadius",
+    "? tabShell.inset",
+    ": tabShell.halfWidth",
+    "width: tabShell.halfWidth - tabShell.inset",
     "radius: tabShell.cornerRadius",
     "id: leftTabHover",
     "id: rightTabHover",
     'Translation.tr("Unfinished")',
     'Translation.tr("Done")',
+    "horizontalAlignment: Text.AlignHCenter",
+    "verticalAlignment: Text.AlignVCenter",
+    "font.weight: Font.Medium",
+    "Layout.preferredWidth: tabShell.iconSlotSize",
+    "Layout.preferredWidth: tabShell.badgeSize",
     "root.unfinishedTasks.length",
     "root.doneTasks.length",
     "readonly property int safeEdgeInset: 2",
@@ -39,18 +50,27 @@ for token in (
 ):
     assert token in todo, f"Dashboard Todo adaptive UI contract lost: {token}"
 
-# The inactive contact edge must be a true inward semicircle whose radius is
-# exactly the same as the ordinary outer pill radius. The active pill uses that
-# same R, so the two silhouettes are complementary rather than approximate.
-assert todo.count("id: inactiveLeftShape") == 1
-assert todo.count("id: inactiveRightShape") == 1
+# Only one inactive path is maintained; right-side presentation is a mirror of
+# the same canonical geometry. Both convex and concave ends use the same R and
+# cubic-circle constant, so the two tab states cannot drift apart.
+assert todo.count("id: inactiveTabShape") == 1
+assert "id: inactiveLeftShape" not in todo
+assert "id: inactiveRightShape" not in todo
+assert todo.count("PathCubic {") == 4
+assert todo.count("tabShell.arcKappa * tabShell.cornerRadius") >= 8
 assert todo.count("id: activeTabPill") == 1
-assert todo.count("radiusX: tabShell.cornerRadius") >= 6
-assert todo.count("radiusY: tabShell.cornerRadius") >= 6
+assert "PathArc.Counterclockwise" not in todo
+assert "PathArc.Clockwise" not in todo
+
+# Both logical halves use identical icon and badge slots, fixed text weight and
+# centered labels. Active state may change color, not metrics or typography.
+assert todo.count("Layout.preferredWidth: tabShell.iconSlotSize") == 2
+assert todo.count("Layout.preferredWidth: tabShell.badgeSize") == 2
+assert todo.count("font.weight: Font.Medium") >= 2
+assert todo.count("horizontalAlignment: Text.AlignHCenter") >= 2
+
 assert "seamOverlap" not in todo
 assert "tabSurfaceWidth" not in todo
-assert "id: leftTabSurface" not in todo
-assert "id: rightTabSurface" not in todo
 assert "implicitHeight: root.tabControlHeight" in todo
 assert "Layout.minimumHeight: root.veryShallowLayout" in todo
 assert todo.count("Layout.preferredWidth: root.actionButtonSize") >= 4

@@ -51,15 +51,17 @@ Item {
     StyledRectangularShadow {
         target: background
         radius: background.radius
+        // Detached Dashboard retains its own shadow owner, but shares the
+        // physical Screen Edge elevation controls with connected surfaces.
         blur: Math.max(0, Math.min(32,
-            Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+            Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
         spread: 0
         offset: Qt.vector2d(0, 0)
-        color: ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
+        color: Qt.alpha(Appearance.m3colors.m3shadow,
             Math.max(0, Math.min(1.0,
-                Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
+                Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70))))
         visible: !root.embeddedSurface
-            && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
+            && (Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true)
             && !Appearance.gameModeMinimal
     }
 

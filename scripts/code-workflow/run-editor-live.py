@@ -67,7 +67,7 @@ def instrument(config: Path) -> None:
         editor, "    id: root\n",
         "    id: root\n"
         "    readonly property bool testTextEditFocus: editor.activeFocus\n"
-        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n",
+        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    readonly property string testClickOutput: editor.window?.screen?.name ?? ""\n",
     )
     replace_once(
         editor, "                    onTapped: eventPoint => {\n",
@@ -93,7 +93,7 @@ def instrument(config: Path) -> None:
                 focused: modal.testTextEditFocus,
                 tapCount: modal.testTapCount,
                 clickX: modal.testClickPoint.x,
-                clickY: modal.testClickPoint.y,
+                clickY: modal.testClickPoint.y,\n                clickOutput: modal.testClickOutput,
                 visible: modal.visible,
                 findFocused: modal.testFindFocus,
                 findVisible: modal.findVisible,
@@ -249,7 +249,7 @@ def main() -> int:
         # User interaction: compositor pointer click, then literal lowercase
         # input. No IPC command can set focus/mode between these operations.
         before_click = state()
-        probe.move(before_click["clickX"], before_click["clickY"], "left")
+        probe.record("Editor click target has a real compositor output",\n                     before_click["clickOutput"] in probe.outputs(), before_click)\n        probe.move(before_click["clickX"], before_click["clickY"], "left",\n                   output=before_click["clickOutput"])
         clicked = runtime.wait_for(
             lambda: value if (value := state())["tapCount"] > before_click["tapCount"]
                 else None,

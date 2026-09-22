@@ -600,7 +600,8 @@ if "RegExp" in ir_service or ".match(" in ir_service:
 
 for token in (
     "CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)",
-    "CodeWorkflowSession.graphLayoutRevision",
+    "function onGraphLayoutRevisionChanged(): void",
+    "Qt.callLater(root.rebuildEdgeRouteCache)",
     "function nodeLayoutOffset(node): var",
     "function nodeX(node): real",
     "function nodeY(node): real",
@@ -614,8 +615,10 @@ for token in (
     "mouse.accepted = false",
     "id: nodeDrag",
     "dragThreshold: 3",
-    "centroid.scenePosition.x - startSceneX",
-    "centroid.scenePosition.y - startSceneY",
+    "root.activeNodeDragSceneX - startSceneX",
+    "root.activeNodeDragSceneY - startSceneY",
+    "root.activeNodeDragSceneX = startSceneX",
+    "root.activeNodeDragSceneY = startSceneY",
     "CodeWorkflowSession.setNodeLayoutOffset(",
     "z: nodeDrag.active ? 1.4 : 1",
     "Behavior on scale {",

@@ -19,7 +19,9 @@ Singleton {
     property string semanticAnchorNodeId: ""
     property real panX: 32
     property real panY: 28
-    readonly property real minimumZoom: 0.20
+    // Fit must include disconnected modules on the shared canvas. Users can
+    // zoom in for inspection without losing the all-components overview.
+    readonly property real minimumZoom: 0.06
     readonly property real maximumZoom: 2.5
     property real zoom: 1
     property bool sourcePreviewVisible: true

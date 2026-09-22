@@ -456,6 +456,13 @@ ApplicationWindow {
         Quickshell.watchFiles = false
         Config.readWriteDelay = 0 // Settings app always only sets one var at a time so delay isn't needed
 
+        // Config can become ready before this standalone root finishes loading.
+        // Mirror shell.qml's already-ready path so the window never keeps the
+        // singleton's stale/default palette for its first frame.
+        if (Config.ready) {
+            Qt.callLater(() => ThemeService.applyCurrentTheme())
+        }
+
         const startPage = parseInt(Quickshell.env("QS_SETTINGS_PAGE"));
         if (!isNaN(startPage)) root._requestedStartPage = startPage;
 

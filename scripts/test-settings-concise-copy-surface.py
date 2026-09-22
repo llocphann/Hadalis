@@ -82,4 +82,9 @@ assert "CF.ColorUtils.applyAlpha(" not in focus_surface
 assert 'Translation.tr("Panel background opacity (%)")' not in MODULES
 assert "Settings base surface has one owner." in README
 
+# Standalone Settings must handle Config already being ready before
+# Connections.onReadyChanged can observe the transition, just like shell.qml.
+assert "if (Config.ready) {" in WINDOW
+assert "Qt.callLater(() => ThemeService.applyCurrentTheme())" in WINDOW
+
 print("Settings concise-copy/shared-surface contract: PASS")

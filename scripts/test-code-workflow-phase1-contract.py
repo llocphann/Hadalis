@@ -111,6 +111,7 @@ ii_host = read("ShellIiPanels.qml")
 waffle_host = read("ShellWafflePanels.qml")
 session = read("services/CodeWorkflowSession.qml")
 ripple_button = read("modules/common/widgets/RippleButton.qml")
+popup_tooltip = read("modules/common/widgets/PopupToolTip.qml")
 capture_script = read("scripts/capture-code-workflow-ui.sh")
 ir = json.loads(read("defaults/code-workflow-ir.json"))
 
@@ -611,6 +612,21 @@ for token in (
 ):
     require(page, token, "Code Workflow collapsible pane UI missing " + token)
 
+for token in (
+    "component WorkflowPaneToggle: RippleButtonWithIcon",
+    "implicitWidth: 28",
+    "? 36 : CodeWorkflowSession.targetsPaneWidth",
+    "? 36 : CodeWorkflowSession.inspectorPaneWidth",
+    'buttonText: "Hide Targets"',
+    'buttonText: "Show Targets"',
+    'buttonText: "Hide Inspector"',
+    'buttonText: "Show Inspector"',
+    "SplitView.maximumHeight: 720",
+):
+    require(page, token, "compact pane control contract missing " + token)
+require(session, "720, Number(state.codeWorkflowSourcePreviewHeight ?? 190)",
+        "Source Editor restored height must support the taller hot-fix workspace")
+
 require(page, "inspectedSemanticRangeText", "parsed QML targets must expose source range evidence")
 require(session, 'property string selectedSemanticAnchor: ""',
         "semantic inspect selection must live in the session singleton")
@@ -650,6 +666,14 @@ require(source_editor, "renderType: Text.QtRendering",
         "Source Editor must use Qt text rendering for clean monospace antialiasing")
 require(source_editor, "text: root.lineNumberText",
         "Source Editor must expose synchronized line numbers")
+for token in (
+    "cursorVisible: activeFocus",
+    "cursorShape: Qt.IBeamCursor",
+    "editor.positionAt(",
+    "root.enterInsertAt(position)",
+):
+    require(source_editor, token,
+            "Source Editor pointer-edit contract missing " + token)
 require(page, "CodeWorkflowRuntime.activeCatalog[0]",
         "Code Workflow selection fallback must use the active shell inventory")
 require(page, 'category: "section"',
@@ -856,6 +880,25 @@ require(canvas, 'Accessible.name: "Open "',
         "graph subflow drill-down must expose an accessibility label")
 require(canvas, "preferredRendererType: Shape.CurveRenderer",
         "IR canvas must use the qualified Curve renderer")
+for token in (
+    "function edgeWireInk(",
+    "function edgeHaloWidth(",
+    "id: edgeHaloPath",
+    "edgeShape.highlighted,",
+    "edgeShape.hoveredEdge,",
+    "focused ? 0.94 : hovered ? 0.46 : 0.22",
+):
+    require(canvas, token,
+            "IR graph subdued EQ/DSP cable rendering missing " + token)
+for token in (
+    "property bool suppressUntilHoverExit: false",
+    "readonly property bool parentPressedState:",
+    "&& !root.suppressUntilHoverExit",
+    "onParentPressedStateChanged:",
+    "onParentHoverStateChanged:",
+):
+    require(popup_tooltip, token,
+            "moving-control tooltip dismissal missing " + token)
 require(source_editor, 'readOnly: root.mode !== "insert"',
         "Source Editor must accept guarded edits only in insert mode")
 require(page, "FileView {", "Source Editor must read selected source")

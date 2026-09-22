@@ -18,7 +18,7 @@ RippleButton {
 
     property var appEntry
     property var taskbarRoot
-    property real iconSize: 24
+    property real iconSize: 24 * Appearance.sizes.barModuleScale
     property bool vertical: false
     // "top", "bottom", "left", "right"
     property string barPosition: "top"
@@ -106,7 +106,7 @@ RippleButton {
 
     // ─── Layout sizing ──────────────────────────────────────────────
     property real barSize: vertical ? Appearance.sizes.baseVerticalBarWidth : Appearance.sizes.baseBarHeight
-    readonly property real buttonSize: barSize - 4
+    readonly property real buttonSize: barSize - 4 * Appearance.sizes.barModuleScale
 
     enabled: !isSeparator
     Layout.fillHeight: !vertical
@@ -114,17 +114,17 @@ RippleButton {
 
     implicitWidth: vertical
         ? (isSeparator ? buttonSize : buttonSize)
-        : (isSeparator ? 10 : buttonSize)
+        : (isSeparator ? 10 * Appearance.sizes.barModuleScale : buttonSize)
     // Full bar size on the cross axis so the delegate is centred in the row
     // (using buttonSize here left the content top-aligned and slightly raised).
     implicitHeight: vertical
-        ? (isSeparator ? 10 : buttonSize)
+        ? (isSeparator ? 10 * Appearance.sizes.barModuleScale : buttonSize)
         : barSize
 
-    topInset: 4
-    bottomInset: 4
-    leftInset: 2
-    rightInset: 2
+    topInset: 4 * Appearance.sizes.barModuleScale
+    bottomInset: 4 * Appearance.sizes.barModuleScale
+    leftInset: 2 * Appearance.sizes.barModuleScale
+    rightInset: 2 * Appearance.sizes.barModuleScale
 
     buttonRadius: Appearance.rounding.small
     cookieMorphing: true
@@ -385,18 +385,18 @@ RippleButton {
 
                 // Horizontal bar: dots at bottom center
                 anchors.bottom: !root.vertical ? parent.bottom : undefined
-                anchors.bottomMargin: !root.vertical ? 2 : 0
+                anchors.bottomMargin: !root.vertical ? 2 * Appearance.sizes.barModuleScale : 0
                 anchors.horizontalCenter: !root.vertical ? parent.horizontalCenter : undefined
                 // Vertical bar: dots at right center
                 anchors.right: root.vertical ? parent.right : undefined
-                anchors.rightMargin: root.vertical ? 2 : 0
+                anchors.rightMargin: root.vertical ? 2 * Appearance.sizes.barModuleScale : 0
                 anchors.verticalCenter: root.vertical ? parent.verticalCenter : undefined
 
                 sourceComponent: Grid {
                     // Horizontal: row of dots. Vertical: column of dots.
                     columns: root.vertical ? 1 : -1
                     rows: root.vertical ? -1 : 1
-                    spacing: 2
+                    spacing: 2 * Appearance.sizes.barModuleScale
 
                     Repeater {
                         model: {
@@ -423,8 +423,8 @@ RippleButton {
                                 enabled: Appearance.animationsEnabled
                                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                             }
-                            implicitWidth: root.vertical ? (isFocused ? 2 : 3) : (isFocused ? 8 : 3)
-                            implicitHeight: root.vertical ? (isFocused ? 8 : 3) : (isFocused ? 2 : 3)
+                            implicitWidth: (root.vertical ? (isFocused ? 2 : 3) : (isFocused ? 8 : 3)) * Appearance.sizes.barModuleScale
+                            implicitHeight: (root.vertical ? (isFocused ? 8 : 3) : (isFocused ? 2 : 3)) * Appearance.sizes.barModuleScale
                             color: isFocused
                                 ? Appearance.colors.colPrimary
                                 : ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.5)
@@ -448,8 +448,8 @@ RippleButton {
                     Rectangle {
                         opacity: (!root.appIsActive && root.hasWindows && Config.options?.dock?.showAllWindowDots === false) ? 1 : 0
                         visible: opacity > 0
-                        width: root.vertical ? 2 : 3
-                        height: root.vertical ? 3 : 2
+                        width: (root.vertical ? 2 : 3) * Appearance.sizes.barModuleScale
+                        height: (root.vertical ? 3 : 2) * Appearance.sizes.barModuleScale
                         radius: Math.min(width, height) / 2
                         Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                         color: ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.5)
@@ -469,8 +469,8 @@ RippleButton {
         active: root.isSeparator
         anchors.centerIn: parent
         sourceComponent: Rectangle {
-            width: root.vertical ? (root.barSize / 2.5) : 1
-            height: root.vertical ? 1 : (root.barSize / 2.5)
+            width: root.vertical ? (root.barSize / 2.5) : Appearance.sizes.barModuleScale
+            height: root.vertical ? Appearance.sizes.barModuleScale : (root.barSize / 2.5)
             color: Appearance.colors.colOutlineVariant
         }
     }

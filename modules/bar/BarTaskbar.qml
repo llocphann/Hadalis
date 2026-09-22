@@ -29,8 +29,8 @@ Item {
     // Maximum height for vertical mode (-1 = no limit, 0+ = cap)
     property real maximumHeight: -1
 
-    // Height the host grants us. Islands hand over the capsule's inner height, so
-    // the buttons size to the surface they sit on instead of the whole bar.
+    // Respect an optional host-granted slot instead of assuming that the
+    // available content height always equals the entire Bar thickness.
     property real slotSize: -1
 
     readonly property real barSize: vertical
@@ -38,21 +38,22 @@ Item {
         : (slotSize > 0 ? Math.min(slotSize, Appearance.sizes.baseBarHeight) : Appearance.sizes.baseBarHeight)
     property real iconSize: vertical ? Math.round(barSize * 0.58) : Math.round(barSize * 0.68)
 
-    readonly property bool isOverflowing: vertical && maximumHeight > 0 && listView.contentHeight > (maximumHeight - 8)
+    readonly property real contentInset: 8 * Appearance.sizes.barModuleScale
+    readonly property bool isOverflowing: vertical && maximumHeight > 0 && listView.contentHeight > (maximumHeight - root.contentInset)
 
     Layout.fillHeight: !vertical
     Layout.fillWidth: vertical
-    implicitWidth: vertical ? barSize : (listView.contentWidth + 8)
+    implicitWidth: vertical ? barSize : (listView.contentWidth + root.contentInset)
     implicitHeight: vertical
-        ? (maximumHeight > 0 ? Math.min(listView.contentHeight + 8, maximumHeight) : (listView.contentHeight + 8))
+        ? (maximumHeight > 0 ? Math.min(listView.contentHeight + root.contentInset, maximumHeight) : (listView.contentHeight + root.contentInset))
         : barSize
 
     // Per-item slot pitch in horizontal mode (icon + spacing), used to decide
     // how many items fit before the focused/running ones must be prioritised.
     readonly property real itemPitch: barSize + listView.spacing
     // Visible width available for items in horizontal mode (slot width minus the
-    // 8px the implicitWidth accounts for). Drives focus-priority trimming below.
-    readonly property real availableWidth: vertical ? -1 : Math.max(0, root.width - 8)
+    // the content inset accounts for). Drives focus-priority trimming below.
+    readonly property real availableWidth: vertical ? -1 : Math.max(0, root.width - root.contentInset)
 
     // ─── Dock Items Model (mirrored from DockApps logic) ─────────────
     // `dockItems` is the full model; `visibleDockItems` is what the ListView
@@ -386,7 +387,7 @@ Item {
     // ─── ListView ───────────────────────────────────────────────────
     StyledListView {
         id: listView
-        spacing: 2
+        spacing: 2 * Appearance.sizes.barModuleScale
         orientation: root.vertical ? ListView.Vertical : ListView.Horizontal
         // Horizontal: align left (next to sidebar button). Vertical: center horizontally, top-align.
         anchors.left: root.vertical ? undefined : parent.left
@@ -397,7 +398,7 @@ Item {
         implicitHeight: root.vertical ? contentHeight : root.barSize
         width: root.vertical ? root.barSize : contentWidth
         height: root.vertical
-            ? (root.maximumHeight > 0 ? Math.min(contentHeight, root.maximumHeight - 8) : contentHeight)
+            ? (root.maximumHeight > 0 ? Math.min(contentHeight, root.maximumHeight - root.contentInset) : contentHeight)
             : root.barSize
         interactive: false
         clip: root.isOverflowing

@@ -177,10 +177,10 @@ def main() -> None:
     require(screen_edges, "attachmentThickness: root.thickness",
             "Top-edge Overview must use physical Screen Edge thickness without changing geometry.")
     require(timer_indicator,
-            "? ((anyActive || showPinnedIdle) ? 34 : 0)",
+            "? ((anyActive || showPinnedIdle) ? 34 * Appearance.sizes.barModuleScale : 0)",
             "Inactive vertical Timer must collapse to zero main-axis height.")
     require(shell_update_indicator,
-            "? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 : 0)",
+            "? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 * Appearance.sizes.barModuleScale : 0)",
             "Inactive vertical update indicator must collapse to zero main-axis height.")
 
     require(util, "property bool vertical: false",

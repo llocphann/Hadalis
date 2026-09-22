@@ -175,7 +175,7 @@ Item {
                                     resultRow.modelData.pageName || ""
                                 readonly property string sectionName: {
                                     const section = String(resultRow.modelData.section || "")
-                                    const pieces = section.split(/\\s*[·›]\\s*/).filter(part => part.length > 0)
+                                    const pieces = section.split(/\s*[·›]\s*/).filter(part => part.length > 0)
                                     if (pieces.length > 1 && pieces[0] === pageName) pieces.shift()
                                     return pieces.join(" › ")
                                 }

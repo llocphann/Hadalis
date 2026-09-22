@@ -451,9 +451,16 @@ for token in (
     "initialFitTimer.restart()",
     "root.initialFitDone = true",
     "root.fitGraph()",
+    "CodeWorkflowSession.viewportInitialized",
+    "initialFitTimer.stop()",
+    "function onViewportInitializedChanged(): void",
 ):
     require(canvas, token,
-            "initial shared-board Fit must wait for settled real inventory")
+            "initial shared-board Fit must wait for inventory and preserve restored viewport")
+require(session, "property bool viewportInitialized: false",
+        "session must remember whether a viewport was restored or user-adjusted")
+require(session, "root.viewportInitialized = true",
+        "manual pan and zoom must cancel delayed automatic Fit")
 
 require(canvas, "if (!root.viewportContains(screenX, screenY))\n            return \"\"",
         "edge hit testing must reject pointer coordinates outside the canvas")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract guard for the independent Daily Note Todo backend."""
+"""Contract guard for the independent heading-based Markdown Todo backend."""
 
 from pathlib import Path
 
@@ -11,7 +11,7 @@ qmldir = (ROOT / "services" / "qmldir").read_text(encoding="utf-8")
 for token in (
     'property string folder: "00_Capture/01_Journal"',
     'property string noteFormat: "YYYY/MMMM/DD-MM-YYYY-dddd"',
-    'property string plannerHeading: "Day Planner"',
+    'property string plannerHeading: "Tasks"',
     "property int plannerHeadingLevel: 2",
     "property int defaultDurationMinutes: 30",
     'sourceMode: "markdown-note"',
@@ -33,7 +33,7 @@ for token in (
 for token in (
     'DEFAULT_FOLDER = "00_Capture/01_Journal"',
     'DEFAULT_FORMAT = "YYYY/MMMM/DD-MM-YYYY-dddd"',
-    'DEFAULT_HEADING = "Day Planner"',
+    'DEFAULT_HEADING = "Tasks"',
     "def scan_daily_note(",
     "def add_task(",
     "def toggle_task(",

@@ -2084,7 +2084,7 @@
             "dailyNote": {
                 "folder": "00_Capture/01_Journal",
                 "format": "YYYY/MMMM/DD-MM-YYYY-dddd",
-                "plannerHeading": "Day Planner",
+                "plannerHeading": "Tasks",
                 "plannerHeadingLevel": 2,
                 "defaultDurationMinutes": 30
             },

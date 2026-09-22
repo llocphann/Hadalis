@@ -101,7 +101,7 @@ Singleton {
         noteFormat: String(Config.options?.todo?.obsidian?.dailyNote?.format
             ?? "YYYY/MMMM/DD-MM-YYYY-dddd")
         plannerHeading: String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-            ?? "Day Planner")
+            ?? "Tasks")
         plannerHeadingLevel: Number(
             Config.options?.todo?.obsidian?.dailyNote?.plannerHeadingLevel ?? 2)
         defaultDurationMinutes: Number(

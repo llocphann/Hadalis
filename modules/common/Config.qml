@@ -2766,7 +2766,7 @@ Singleton {
                     property JsonObject dailyNote: JsonObject {
                         property string folder: "00_Capture/01_Journal"
                         property string format: "YYYY/MMMM/DD-MM-YYYY-dddd"
-                        property string plannerHeading: "Day Planner"
+                        property string plannerHeading: "Tasks"
                         property int plannerHeadingLevel: 2
                         property int defaultDurationMinutes: 30
                     }

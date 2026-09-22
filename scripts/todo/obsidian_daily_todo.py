@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Independent Daily Note / Day Planner-compatible Todo helper.
+"""Independent heading-based Markdown Todo helper.
 
-The filesystem Markdown note is canonical. This helper does not call Obsidian,
-Day Planner, Templater, or any plugin.
+The filesystem Markdown note is canonical. Obsidian or any third-party plugin
+may use the same file, but this helper does not require or invoke them.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ import obsidian_todo as core
 
 DEFAULT_FOLDER = "00_Capture/01_Journal"
 DEFAULT_FORMAT = "YYYY/MMMM/DD-MM-YYYY-dddd"
-DEFAULT_HEADING = "Day Planner"
+DEFAULT_HEADING = "Tasks"
 DEFAULT_HEADING_LEVEL = 2
 DEFAULT_DURATION_MINUTES = 30
 

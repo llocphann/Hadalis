@@ -9,18 +9,14 @@ import qs.modules.common
 /**
  * Filesystem-canonical Zettelkasten quick-note capture.
  *
- * Uses an explicit notes.zettelkasten vault override when configured; otherwise
- * it reuses the Obsidian vault from Todo. No Obsidian process/plugin is needed.
+ * Uses Todo.sharedVaultPath, the same resolved vault as the Todo backends.
+ * Legacy Quick Notes vault overrides are handled centrally by Todo.
+ * No Obsidian process/plugin is needed.
  */
 Singleton {
     id: root
 
-    readonly property string configuredVaultPath: {
-        const own = String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim()
-        if (own.length > 0)
-            return own
-        return String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim()
-    }
+    readonly property string configuredVaultPath: Todo.sharedVaultPath
     readonly property string folder:
         String(Config.options?.notes?.zettelkasten?.folder
             ?? "00_Capture/03_Zettelkasten")

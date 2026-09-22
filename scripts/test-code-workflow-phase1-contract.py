@@ -191,7 +191,8 @@ for token in (
     "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
     'targetId: "runtime/" + root.workflowHostId + "/page/"',
     "registrationEnabled: root.workflowDiscoveryEnabled",
-    "presented: pageLoader.visible && root.visible",
+    "presented: pageLoader.visible && pageLoader.opacity > 0.01",
+    "&& root.visible",
     "sourcePath: CodeWorkflowRuntime.relativeSourcePath(",
     "internal: true",
 ):

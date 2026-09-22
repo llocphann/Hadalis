@@ -26,6 +26,28 @@ Item {
     signal saveRequested()
     signal statusMessage(string message)
 
+    // Escape belongs to the entire editor surface, including Find toolbar
+    // buttons. Do not let the Settings overlay's window-wide Shortcut close
+    // Settings while a child of the editor still has keyboard focus.
+    Keys.onShortcutOverride: event => {
+        const ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+        if (event.key === Qt.Key_Escape
+                || (ctrl && (event.key === Qt.Key_F
+                    || event.key === Qt.Key_H)))
+            event.accepted = true
+    }
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Escape) {
+            if (root.findVisible)
+                root.closeFind()
+            else {
+                root.setMode("normal")
+                editor.forceActiveFocus()
+            }
+            event.accepted = true
+        }
+    }
+
     readonly property int lineCount:
         Math.max(1, root.documentText.split("\n").length)
     readonly property int currentLineNumber:
@@ -152,6 +174,8 @@ Item {
         root.findVisible = true
         root.replaceVisible = withReplace
         Qt.callLater(() => {
+            if (!root.findVisible)
+                return
             findField.forceActiveFocus()
             findField.selectAll()
             if (root.findText.length > 0)
@@ -179,7 +203,10 @@ Item {
         root.replaceRange(start, end, root.replaceText)
         root.activeFindStart = -1
         root.activeFindEnd = -1
-        Qt.callLater(() => root.findNext(false, false))
+        Qt.callLater(() => {
+            if (root.findVisible)
+                root.findNext(false, false)
+        })
         return true
     }
 
@@ -201,7 +228,10 @@ Item {
         root.activeFindStart = -1
         root.activeFindEnd = -1
         root.statusMessage(String(matches.length) + " replacements applied")
-        Qt.callLater(() => root.findNext(false, true))
+        Qt.callLater(() => {
+            if (root.findVisible)
+                root.findNext(false, true)
+        })
         return matches.length
     }
 
@@ -451,7 +481,10 @@ Item {
                         root.findText = text
                         root.activeFindStart = -1
                         root.activeFindEnd = -1
-                        Qt.callLater(() => root.findNext(false, true))
+                        Qt.callLater(() => {
+                            if (root.findVisible)
+                                root.findNext(false, true)
+                        })
                     }
                     Keys.onShortcutOverride: event => {
                         if (event.key === Qt.Key_Escape)

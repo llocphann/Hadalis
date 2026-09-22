@@ -158,6 +158,9 @@ for source, target_id in (
             "family implementation host must stay hidden by default")
 
 for token in (
+    'targetId: "settings"',
+    'sourcePath: "modules/settings/SettingsOverlay.qml"',
+    'sourcePath: "modules/settings/SettingsFocus.qml"',
     'targetId: "runtime/alt-switcher-router"',
     'targetId: "runtime/region-selector-router"',
     'targetId: "runtime/tiling-overlay-router"',

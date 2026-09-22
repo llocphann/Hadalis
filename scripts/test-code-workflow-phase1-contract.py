@@ -217,8 +217,10 @@ require(page, "id: pillHover",
         "status pills must reveal full labels through hover")
 require(page, "readonly property bool compactHeader:",
         "Code Workflow header must expose a narrow-layout mode")
-require(page, "mainText: root.compactHeader",
-        "toolbar buttons must collapse to icon-only in compact mode")
+require(page, 'Layout.preferredHeight: 42',
+        "Code Workflow toolbar must stay compact")
+require(page, 'mainText: ""',
+        "Code Workflow toolbar actions must stay icon-first")
 require(ripple_button,
         "Accessible.name: root.buttonText.length > 0 ? root.buttonText : root.text",
         "compact icon buttons must derive accessibility names from buttonText")
@@ -332,15 +334,17 @@ require(page, "id: workflowHorizontalSplit",
         "Targets, graph and Inspector must share a horizontal SplitView")
 require(page, "id: workflowVerticalSplit",
         "graph workspace and Source Preview must share a vertical SplitView")
-require(page, "SplitView.preferredWidth: CodeWorkflowSession.targetsPaneWidth",
-        "Targets width must restore from session state")
-require(page, "SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneWidth",
-        "Inspector width must restore from session state")
+require(page, "SplitView.preferredWidth: CodeWorkflowSession.targetsPaneCollapsed",
+        "Targets width must account for collapsed state")
+require(page, "SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneCollapsed",
+        "Inspector width must account for collapsed state")
 require(page, "SplitView.preferredHeight: CodeWorkflowSession.sourcePreviewHeight",
         "Source Preview height must restore from session state")
 for token in (
     'property real codeWorkflowTargetsPaneWidth: 224',
     'property real codeWorkflowInspectorPaneWidth: 280',
+    'property bool codeWorkflowTargetsPaneCollapsed: false',
+    'property bool codeWorkflowInspectorPaneCollapsed: false',
     'property real codeWorkflowSourcePreviewHeight: 190',
 ):
     require(persistent, token,
@@ -349,15 +353,33 @@ for token in (
 for token in (
     'property real targetsPaneWidth: 224',
     'property real inspectorPaneWidth: 280',
+    'property bool targetsPaneCollapsed: false',
+    'property bool inspectorPaneCollapsed: false',
     'property real sourcePreviewHeight: 190',
     'state.codeWorkflowTargetsPaneWidth = root.targetsPaneWidth',
     'state.codeWorkflowInspectorPaneWidth = root.inspectorPaneWidth',
+    'state.codeWorkflowTargetsPaneCollapsed = root.targetsPaneCollapsed',
+    'state.codeWorkflowInspectorPaneCollapsed = root.inspectorPaneCollapsed',
     'state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight',
     'onTargetsPaneWidthChanged: root.persist()',
     'onInspectorPaneWidthChanged: root.persist()',
     'onSourcePreviewHeightChanged: root.persist()',
 ):
     require(session, token, "resizable pane state missing " + token)
+
+for token in (
+    "function setTargetsPaneCollapsed(collapsed: bool): void",
+    "function setInspectorPaneCollapsed(collapsed: bool): void",
+):
+    require(session, token, "Code Workflow pane-collapse session contract missing " + token)
+for token in (
+    'buttonText: CodeWorkflowSession.targetsPaneCollapsed',
+    'buttonText: CodeWorkflowSession.inspectorPaneCollapsed',
+    'visible: !CodeWorkflowSession.targetsPaneCollapsed',
+    'visible: !CodeWorkflowSession.inspectorPaneCollapsed',
+):
+    require(page, token, "Code Workflow collapsible pane UI missing " + token)
+
 require(page, "inspectedSemanticRangeText", "parsed QML targets must expose source range evidence")
 require(session, 'property string selectedSemanticAnchor: ""',
         "semantic inspect selection must live in the session singleton")

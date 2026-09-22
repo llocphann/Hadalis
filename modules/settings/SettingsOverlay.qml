@@ -1543,8 +1543,11 @@ Scope {
                             Item {
                                 id: overlayPageHeader
                                 anchors { top: parent.top; left: parent.left; right: parent.right }
-                                height: 48
                                 readonly property var meta: root.overlayPages[root.overlayCurrentPage] ?? {}
+                                readonly property bool delegatedToPage:
+                                    String(meta.key ?? "") === "code-workflow"
+                                height: delegatedToPage ? 0 : 48
+                                visible: !delegatedToPage
 
                                 RowLayout {
                                     id: overlayPageHeaderRow

@@ -267,6 +267,8 @@ Singleton {
                 property bool codeWorkflowSourcePreview: true
                 property real codeWorkflowTargetsPaneWidth: 224
                 property real codeWorkflowInspectorPaneWidth: 280
+                property bool codeWorkflowTargetsPaneCollapsed: false
+                property bool codeWorkflowInspectorPaneCollapsed: false
                 property real codeWorkflowSourcePreviewHeight: 190
             }
 

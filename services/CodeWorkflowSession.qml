@@ -25,6 +25,8 @@ Singleton {
     property bool sourcePreviewVisible: true
     property real targetsPaneWidth: 224
     property real inspectorPaneWidth: 280
+    property bool targetsPaneCollapsed: false
+    property bool inspectorPaneCollapsed: false
     property real sourcePreviewHeight: 190
     // Visual graph layout is session-only. It never mutates reviewed IR or
     // source, but survives Settings page eviction while this shell lives.
@@ -127,6 +129,10 @@ Singleton {
             420, Number(state.codeWorkflowTargetsPaneWidth ?? 224)))
         root.inspectorPaneWidth = Math.max(240, Math.min(
             520, Number(state.codeWorkflowInspectorPaneWidth ?? 280)))
+        root.targetsPaneCollapsed =
+            state.codeWorkflowTargetsPaneCollapsed === true
+        root.inspectorPaneCollapsed =
+            state.codeWorkflowInspectorPaneCollapsed === true
         root.sourcePreviewHeight = Math.max(120, Math.min(
             420, Number(state.codeWorkflowSourcePreviewHeight ?? 190)))
         root._restoring = false
@@ -155,7 +161,19 @@ Singleton {
         state.codeWorkflowSourcePreview = root.sourcePreviewVisible
         state.codeWorkflowTargetsPaneWidth = root.targetsPaneWidth
         state.codeWorkflowInspectorPaneWidth = root.inspectorPaneWidth
+        state.codeWorkflowTargetsPaneCollapsed = root.targetsPaneCollapsed
+        state.codeWorkflowInspectorPaneCollapsed = root.inspectorPaneCollapsed
         state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight
+    }
+
+    function setTargetsPaneCollapsed(collapsed: bool): void {
+        root.targetsPaneCollapsed = collapsed
+        root.persist()
+    }
+
+    function setInspectorPaneCollapsed(collapsed: bool): void {
+        root.inspectorPaneCollapsed = collapsed
+        root.persist()
     }
 
     function nodeLayoutOffset(graphId: string, nodeId: string): var {

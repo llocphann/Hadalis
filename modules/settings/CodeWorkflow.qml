@@ -296,6 +296,8 @@ Item {
             canvasHeight: canvas.height,
             targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
             inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
+            targetsPaneCollapsed: CodeWorkflowSession.targetsPaneCollapsed,
+            inspectorPaneCollapsed: CodeWorkflowSession.inspectorPaneCollapsed,
             sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
             actualTargetsPaneWidth: targetsPane.width,
             actualInspectorPaneWidth: inspectorPane.width,
@@ -328,6 +330,8 @@ Item {
             sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible,
             targetsPaneWidth: CodeWorkflowSession.targetsPaneWidth,
             inspectorPaneWidth: CodeWorkflowSession.inspectorPaneWidth,
+            targetsPaneCollapsed: CodeWorkflowSession.targetsPaneCollapsed,
+            inspectorPaneCollapsed: CodeWorkflowSession.inspectorPaneCollapsed,
             sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
             graphNodeLayoutOffsets: JSON.parse(JSON.stringify(
                 CodeWorkflowSession.graphNodeLayoutOffsets ?? ({})))
@@ -370,6 +374,10 @@ Item {
             Number(baseline.targetsPaneWidth ?? 224)
         CodeWorkflowSession.inspectorPaneWidth =
             Number(baseline.inspectorPaneWidth ?? 280)
+        CodeWorkflowSession.targetsPaneCollapsed =
+            baseline.targetsPaneCollapsed === true
+        CodeWorkflowSession.inspectorPaneCollapsed =
+            baseline.inspectorPaneCollapsed === true
         CodeWorkflowSession.sourcePreviewHeight =
             Number(baseline.sourcePreviewHeight ?? 190)
         CodeWorkflowSession.graphNodeLayoutOffsets = JSON.parse(
@@ -1773,7 +1781,7 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 48
+            Layout.preferredHeight: 42
             radius: Appearance.rounding.normal
             color: Appearance.colors.colLayer1
             border.width: 1
@@ -1783,38 +1791,27 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 10
                 anchors.rightMargin: 8
-                spacing: 8
+                spacing: 6
 
                 MaterialSymbol {
                     text: "account_tree"
                     iconSize: Appearance.font.pixelSize.large
                     color: Appearance.colors.colPrimary
-                }
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 0
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: "Code Workflow"
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnLayer1
-                    }
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: "Phase 2 · "
-                            + (root.graph?.title ?? "Workflow")
-                            + " · guarded literal writes + binding preview"
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        color: Appearance.colors.colSubtext
+                    StyledToolTip {
+                        text: "Code Workflow · inspect, trace, and guarded source editing"
                     }
                 }
 
-                Pill {
-                    visible: !root.compactHeader
-                    label: "LITERAL APPLY"
-                    accent: Appearance.colors.colPrimary
+                StyledText {
+                    Layout.fillWidth: true
+                    text: root.graph?.title ?? "Code Workflow"
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer1
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
                 }
+
                 Pill {
                     visible: CodeWorkflowTransaction.dirty
                     label: CodeWorkflowTransaction.status === "preview"
@@ -1824,16 +1821,17 @@ Item {
                         ? Appearance.colors.colError
                         : Appearance.colors.colTertiary
                 }
+
                 Pill {
-                    visible: !root.compactHeader
-                    label: root.selectedLive
-                        ? "LIVE · RESIDENT"
-                        : root.record?.state === "unloaded"
-                            ? "UNLOADED · STATIC SOURCE"
-                            : "STATIC SOURCE"
+                    label: root.selectedLive ? "LIVE" : "STATIC"
                     accent: root.selectedLive
                         ? Appearance.colors.colPrimary
                         : Appearance.colors.colSubtext
+                    StyledToolTip {
+                        text: root.selectedLive
+                            ? "Selected target is resident in the running shell"
+                            : "Selected target is inspected from source"
+                    }
                 }
 
                 RippleButtonWithIcon {
@@ -1841,57 +1839,49 @@ Item {
                     buttonText: "Output · "
                         + (CodeWorkflowSession.outputName.length > 0
                             ? CodeWorkflowSession.outputName : "none")
-                    mainText: root.compactHeader
-                        ? ""
-                        : CodeWorkflowSession.outputName.length > 0
-                            ? CodeWorkflowSession.outputName : "Output"
+                    mainText: ""
                     enabled: (root.snapshot.outputs?.length ?? 0) > 0
                     onClicked: root.cycleOutput()
                     StyledToolTip {
                         text: "Output · "
                             + (CodeWorkflowSession.outputName.length > 0
-                                ? CodeWorkflowSession.outputName
-                                : "none")
+                                ? CodeWorkflowSession.outputName : "none")
                     }
                 }
                 RippleButtonWithIcon {
                     visible: CodeWorkflowSession.subflowTargetId !== "bar"
                     materialIcon: "arrow_back"
                     buttonText: "Back to Bar workflow"
-                    mainText: root.compactHeader ? "" : "Bar"
+                    mainText: ""
                     onClicked: CodeWorkflowSession.openSubflow("bar")
                     StyledToolTip { text: "Back to Bar workflow" }
                 }
-
                 RippleButtonWithIcon {
                     materialIcon: "ads_click"
                     buttonText: CodeWorkflowPicker.phase === "idle"
                         ? "Pick component" : "Picking component"
-                    mainText: root.compactHeader
-                        ? ""
-                        : CodeWorkflowPicker.phase === "idle"
-                            ? "Pick component" : "Picking…"
+                    mainText: ""
                     enabled: root.pickerAvailable
                     onClicked: CodeWorkflowPicker.begin()
                     StyledToolTip {
                         text: root.pickerAvailable
-                            ? "Hide Settings and select a live ii Bar component"
+                            ? "Pick a live component from the shell"
                             : (root.live
                                 ? "Picker is available from overlay Settings only"
-                                : "No live ii Bar targets in this Settings process")
+                                : "No live inspect target is available")
                     }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"
                     buttonText: "Fit graph"
-                    mainText: root.compactHeader ? "" : "Fit graph"
+                    mainText: ""
                     onClicked: canvas.fitGraph()
                     StyledToolTip { text: "Fit graph to viewport" }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "restart_alt"
                     buttonText: "Reset graph layout"
-                    mainText: root.compactHeader ? "" : "Reset layout"
+                    mainText: ""
                     enabled: CodeWorkflowSession.graphLayoutRevision >= 0
                         && CodeWorkflowSession.hasGraphLayout(
                             CodeWorkflowSession.subflowTargetId)
@@ -1910,15 +1900,12 @@ Item {
                     materialIcon: "code"
                     buttonText: CodeWorkflowSession.sourcePreviewVisible
                         ? "Hide source preview" : "Show source preview"
-                    mainText: root.compactHeader
-                        ? ""
-                        : CodeWorkflowSession.sourcePreviewVisible
-                            ? "Hide source" : "Show source"
+                    mainText: ""
                     onClicked: CodeWorkflowSession.sourcePreviewVisible =
                         !CodeWorkflowSession.sourcePreviewVisible
                     StyledToolTip {
                         text: CodeWorkflowSession.sourcePreviewVisible
-                            ? "Hide source preview" : "Show source preview"
+                            ? "Hide source editor" : "Show source editor"
                     }
                 }
             }
@@ -1941,26 +1928,51 @@ Item {
                 onResizingChanged: {
                     if (resizing)
                         return
-                    CodeWorkflowSession.targetsPaneWidth = targetsPane.width
-                    CodeWorkflowSession.inspectorPaneWidth = inspectorPane.width
+                    if (!CodeWorkflowSession.targetsPaneCollapsed)
+                        CodeWorkflowSession.targetsPaneWidth = targetsPane.width
+                    if (!CodeWorkflowSession.inspectorPaneCollapsed)
+                        CodeWorkflowSession.inspectorPaneWidth = inspectorPane.width
                 }
 
             Rectangle {
                 id: targetsPane
-                SplitView.preferredWidth: CodeWorkflowSession.targetsPaneWidth
-                SplitView.minimumWidth: 180
-                SplitView.maximumWidth: 420
+                SplitView.preferredWidth: CodeWorkflowSession.targetsPaneCollapsed
+                    ? 42 : CodeWorkflowSession.targetsPaneWidth
+                SplitView.minimumWidth: CodeWorkflowSession.targetsPaneCollapsed
+                    ? 42 : 180
+                SplitView.maximumWidth: CodeWorkflowSession.targetsPaneCollapsed
+                    ? 42 : 420
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
                 border.color: Appearance.colors.colOutlineVariant
 
+                RippleButtonWithIcon {
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.margins: 5
+                    z: 5
+                    materialIcon: CodeWorkflowSession.targetsPaneCollapsed
+                        ? "chevron_right" : "chevron_left"
+                    buttonText: CodeWorkflowSession.targetsPaneCollapsed
+                        ? "Expand Targets" : "Collapse Targets"
+                    mainText: ""
+                    onClicked: CodeWorkflowSession.setTargetsPaneCollapsed(
+                        !CodeWorkflowSession.targetsPaneCollapsed)
+                    StyledToolTip {
+                        text: CodeWorkflowSession.targetsPaneCollapsed
+                            ? "Expand Targets" : "Collapse Targets"
+                    }
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 9
+                    visible: !CodeWorkflowSession.targetsPaneCollapsed
                     spacing: 7
 
                     StyledText {
+                        Layout.rightMargin: 30
                         text: "Targets"
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.normal
@@ -2152,17 +2164,39 @@ Item {
 
             Rectangle {
                 id: inspectorPane
-                SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneWidth
-                SplitView.minimumWidth: 240
-                SplitView.maximumWidth: 520
+                SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneCollapsed
+                    ? 42 : CodeWorkflowSession.inspectorPaneWidth
+                SplitView.minimumWidth: CodeWorkflowSession.inspectorPaneCollapsed
+                    ? 42 : 240
+                SplitView.maximumWidth: CodeWorkflowSession.inspectorPaneCollapsed
+                    ? 42 : 520
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
                 border.color: Appearance.colors.colOutlineVariant
                 clip: true
 
+                RippleButtonWithIcon {
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.margins: 5
+                    z: 5
+                    materialIcon: CodeWorkflowSession.inspectorPaneCollapsed
+                        ? "chevron_left" : "chevron_right"
+                    buttonText: CodeWorkflowSession.inspectorPaneCollapsed
+                        ? "Expand Inspector" : "Collapse Inspector"
+                    mainText: ""
+                    onClicked: CodeWorkflowSession.setInspectorPaneCollapsed(
+                        !CodeWorkflowSession.inspectorPaneCollapsed)
+                    StyledToolTip {
+                        text: CodeWorkflowSession.inspectorPaneCollapsed
+                            ? "Expand Inspector" : "Collapse Inspector"
+                    }
+                }
+
                 StyledFlickable {
                     id: inspectorScroll
+                    visible: !CodeWorkflowSession.inspectorPaneCollapsed
                     anchors.fill: parent
                     anchors.margins: 4
                     contentWidth: width
@@ -2177,6 +2211,7 @@ Item {
                         spacing: 8
 
                     StyledText {
+                        Layout.rightMargin: 30
                         text: "Inspector"
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.normal

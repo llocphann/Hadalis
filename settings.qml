@@ -1409,8 +1409,11 @@ ApplicationWindow {
                 Item {
                     id: windowPageHeader
                     anchors { top: parent.top; left: parent.left; right: parent.right }
-                    height: 48
                     readonly property var meta: root.pages[root.currentPage] ?? {}
+                    readonly property bool delegatedToPage:
+                        String(meta.key ?? "") === "code-workflow"
+                    height: delegatedToPage ? 0 : 48
+                    visible: !delegatedToPage
 
                     RowLayout {
                         id: windowPageHeaderRow

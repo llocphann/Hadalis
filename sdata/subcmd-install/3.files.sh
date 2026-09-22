@@ -342,8 +342,7 @@ case "${SKIP_NIRI}" in
           fi
         fi
       fi
-      if command -v fcitx5 >/dev/null 2>&1 && [[ -f "$NIRI_STARTUP_TARGET" ]] \\
-          && ! grep -Fq '"input-method" "start"' "$NIRI_STARTUP_TARGET"; then
+      if command -v fcitx5 >/dev/null 2>&1 && [[ -f "$NIRI_STARTUP_TARGET" ]] && ! grep -Fq '"input-method" "start"' "$NIRI_STARTUP_TARGET"; then
         printf '%s\n' '' 'spawn-at-startup "inir" "input-method" "start"' >> "$NIRI_STARTUP_TARGET"
       fi
 

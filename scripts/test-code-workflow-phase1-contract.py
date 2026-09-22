@@ -431,7 +431,7 @@ require(session, "function selectUnifiedEdge(edge): bool",
         "shared graph edges must preserve their own source scope")
 require(session, "Selection changes inspector context, not the unified board viewport.",
         "target changes must no longer discard the shared canvas viewport")
-require(session, "readonly property real minimumZoom: 0.06",
+require(session, "readonly property real minimumZoom: 0.015",
         "session must allow full-board Fit with disconnected modules")
 require(session, "readonly property real maximumZoom: 2.5",
         "session must centralize the graph zoom ceiling")

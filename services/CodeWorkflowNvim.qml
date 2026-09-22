@@ -222,6 +222,14 @@ Singleton {
         return root._send({ op: "save" })
     }
 
+    function paste(text: string): bool {
+        const payload = String(text ?? "")
+        return payload.length > 0 && root._send({
+            op: "paste",
+            text: payload
+        })
+    }
+
     function mouse(
         button: string, action: string, modifier: string,
         row: int, col: int

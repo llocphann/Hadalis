@@ -568,6 +568,10 @@ class Bridge:
             self.pending_open[msgid] = target
         elif op == "save":
             self.request("nvim_command", ["write"], "save")
+        elif op == "paste":
+            text = str(payload.get("text", ""))
+            if text:
+                self.request("nvim_paste", [text, False, -1], "paste")
         elif op == "mouse":
             button = str(payload.get("button", "left"))
             action = str(payload.get("action", "press"))

@@ -26,6 +26,7 @@ for token in (
     "function resize(nextCols: int, nextRows: int): bool",
     "function input(keys: string): bool",
     "function save(): bool",
+    "function paste(text: string): bool",
     "property bool cursorVisible: true",
     "property var cursorStyle: ({})",
     "function mouse(",
@@ -35,6 +36,7 @@ for token in (
     'op: "resize"',
     'op: "input"',
     'op: "save"',
+    'op: "paste"',
     'op: "mouse"',
 ):
     if token not in service:
@@ -55,6 +57,7 @@ for token in (
     'name == "mouse_on"',
     'name == "mouse_off"',
     '"nvim_input_mouse"',
+    '"nvim_paste"',
     "self.pending_open: dict[int, Path]",
     'if tag == "open":',
     "self.pending_open[msgid] = target",

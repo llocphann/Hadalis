@@ -412,14 +412,18 @@ ContentPage {
                 onCheckedChanged: Config.setNestedValue("screenRecord.showNotifications", checked)
             }
 
+            LoadingText {
+                Layout.fillWidth: true
+                visible: !recordingCapabilitiesLoaded
+            }
+
             NoticeBox {
                 Layout.fillWidth: true
-                materialIcon: recordingCapabilitiesLoaded ? (gpuRecordingAvailable ? "memory" : "developer_board") : "progress_activity"
-                text: !recordingCapabilitiesLoaded
-                    ? Translation.tr("Detecting available encoders…")
-                    : gpuRecordingAvailable
-                        ? Translation.tr("GPU recording available. Hardware acceleration will be used when possible.")
-                        : Translation.tr("No GPU encoder detected. Software recording will be used.")
+                visible: recordingCapabilitiesLoaded
+                materialIcon: gpuRecordingAvailable ? "memory" : "developer_board"
+                text: gpuRecordingAvailable
+                    ? Translation.tr("GPU recording available. Hardware acceleration will be used when possible.")
+                    : Translation.tr("No GPU encoder detected. Software recording will be used.")
             }
 
             ContentSubsection {

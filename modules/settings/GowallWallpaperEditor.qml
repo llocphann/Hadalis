@@ -617,13 +617,19 @@ ColumnLayout {
                     anchors.centerIn: parent
                     spacing: 6
                     MaterialSymbol {
-                        text: GowallService.busy ? "progress_activity" : "visibility"
+                        visible: !GowallService.busy
+                        text: "visibility"
                         iconSize: 16
                         color: Appearance.colors.colOnLayer1
                     }
                     StyledText {
-                        text: GowallService.busy ? Translation.tr("Processing...") : Translation.tr("Preview")
+                        visible: !GowallService.busy
+                        text: Translation.tr("Preview")
                         font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnLayer1
+                    }
+                    LoadingText {
+                        visible: GowallService.busy
                         color: Appearance.colors.colOnLayer1
                     }
                 }

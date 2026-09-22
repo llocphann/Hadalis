@@ -8,6 +8,7 @@ import Quickshell
 import qs.services
 import qs.services.deferred
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.settings
 import qs.modules.waffle.looks
@@ -840,13 +841,20 @@ WSettingsPage {
                     spacing: 6
 
                     FluentIcon {
-                        icon: GowallService.busy ? "arrow-sync" : "eye"
+                        visible: !GowallService.busy
+                        icon: "eye"
                         implicitSize: 14
                         color: Looks.colors.fg
                     }
                     WText {
-                        text: GowallService.busy ? Translation.tr("Processing...") : Translation.tr("Preview")
+                        visible: !GowallService.busy
+                        text: Translation.tr("Preview")
                         font.pixelSize: Looks.font.pixelSize.normal
+                    }
+                    LoadingText {
+                        visible: GowallService.busy
+                        font.pixelSize: Looks.font.pixelSize.normal
+                        color: Looks.colors.fg
                     }
                 }
 

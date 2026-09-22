@@ -473,6 +473,17 @@ for token in (
 ):
     require(session, token, "Code Workflow pane-collapse session contract missing " + token)
 for token in (
+    "const runtimeInventoryReady =",
+    "CodeWorkflowRuntime.hasLocalDeclarations",
+    "CodeWorkflowRuntime.remoteSnapshot !== null",
+    "CodeWorkflowRuntime.remoteError.length > 0",
+    "target: CodeWorkflowRuntime",
+    "function onRevisionChanged(): void",
+    "function onRemoteErrorChanged(): void",
+):
+    require(session, token,
+            "runtime-aware session restore contract missing " + token)
+for token in (
     'buttonText: CodeWorkflowSession.targetsPaneCollapsed',
     'buttonText: CodeWorkflowSession.inspectorPaneCollapsed',
     'visible: !CodeWorkflowSession.targetsPaneCollapsed',

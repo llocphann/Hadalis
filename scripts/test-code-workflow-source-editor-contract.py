@@ -39,6 +39,10 @@ for token in (
     "editor.copy()",
     "editor.paste()",
     "root.saveRequested()",
+    "cursorVisible: activeFocus",
+    "cursorShape: Qt.IBeamCursor",
+    "editor.positionAt(",
+    "root.enterInsertAt(position)",
 ):
     require(editor, token, "modal editing contract missing")
 
@@ -67,6 +71,9 @@ for token in (
     "onDraftEdited: text =>",
     "onSaveRequested: root.saveSourceEditor()",
     '"Source Editor · " + root.sourcePath',
+    'SplitView.maximumHeight: 720',
+    'buttonText: CodeWorkflowSession.targetsPaneCollapsed',
+    'buttonText: CodeWorkflowSession.inspectorPaneCollapsed',
 ):
     require(page, token, "Code Workflow page missing modal Source Editor integration")
 

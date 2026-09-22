@@ -54,20 +54,35 @@ assert "RoundCorner {" not in edge
 require(theme, "property color colShadow: Qt.alpha(m3colors.m3shadow, 0.45)")
 assert 'property color colShadow: m3colors.transparent' not in theme
 
-# Every connected body samples a live shadow outside the opaque iRiS field.
-# The ownership clip prevents shadows leaking across attached Screen Edges.
+# Connected corners must cast shadow from their actual SDF union, not a
+# rectangular approximation of the body. Capture is bounded to the body/fuse
+# reach, and both mask and final output respect the owning Screen Edge.
 require(iris,
+    "readonly property real shadowTextureExtent:",
+    "Math.max(0, root.shadowExtent) + root.fuse + root.aaReach + 2",
+    "readonly property rect shadowMaskBounds:",
     "readonly property rect shadowPaintBounds:",
     "root.clipExternalOwners(root.rawShadowBounds, 0)",
+    "id: shadowMaskField",
+    "shapes: field.shapes",
+    "paintBounds: root.shadowMaskBounds",
     "id: shadowTextureSource",
+    "sourceItem: shadowMaskField",
+    "sourceRect: root.rawShadowBounds",
+    "id: blurredShadow",
+    "source: shadowTextureSource",
+    "blurEnabled: true",
+    "blur: 1.0",
+    "autoPaddingEnabled: false",
     "id: isolatedShadow",
-    "sourceItem: shadowTextureSource",
+    "sourceItem: blurredShadow",
+    "sourceRect: Qt.rect(",
     "hideSource: true",
     "live: true",
-    "cached: false",
     "id: field",
 )
-assert iris.index("id: isolatedShadow") < iris.index("id: field")
+assert iris.index("id: shadowMaskField") < iris.index("id: blurredShadow") < iris.index("id: isolatedShadow") < iris.index("id: field")
+assert "RectangularShadow {" not in iris, "The connected shadow may not diverge from the iRiS silhouette"
 
 for surface in (popup, sidebar, overview):
     require(surface, "Appearance.m3colors.m3shadow", "shadowEnabled:")

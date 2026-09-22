@@ -116,6 +116,15 @@ with tempfile.TemporaryDirectory() as tmp:
                 and message.get("rows") == 8,
         )
         assert isinstance(first_frame.get("dirtyRows"), list)
+        visible_text = "".join(
+            str(cell[0])
+            for row in first_frame["dirtyRows"]
+            for cell in row.get("cells", [])
+            if isinstance(cell, list) and cell
+        )
+        assert visible_text.strip(), (
+            "Neovim attached but its first redraw frame contained no visible cells"
+        )
 
         send(proc, {"op": "input", "keys": "gg0iHELLO"})
         modified = wait_message(

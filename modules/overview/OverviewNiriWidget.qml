@@ -482,7 +482,8 @@ Item {
                         root.firstVisibleWorkspaceSlot,
                         root.workspacesShown)
                     : []
-                if (root.presentationActive && !root.taskViewMode)
+                if (root.presentationActive && !root.taskViewMode
+                        && root.overviewOptions.showPreviews !== false)
                     WindowPreviewService.warmForOverview(windowItems.map(record => record.id))
             }
 

@@ -109,7 +109,10 @@ Button {
                 Image {
                     id: previewImage
                     anchors.fill: parent
-                    property string previewUrl: ""
+                    readonly property string previewUrl: {
+                        const cached = WindowPreviewService.previewCache[root.niriWindowId]
+                        return cached ? WindowPreviewService.getPreviewUrl(root.niriWindowId) : ""
+                    }
                     property bool hasPreview: status === Image.Ready
 
                     source: previewUrl
@@ -129,31 +132,7 @@ Button {
                         }
                     }
 
-                    // Listen for preview updates from WindowPreviewService
-                    Connections {
-                        target: WindowPreviewService
-                        function onPreviewUpdated(updatedId: int): void {
-                            if (updatedId === root.niriWindowId) {
-                                previewImage.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
-                            }
-                        }
-                        function onCaptureComplete(): void {
-                            if (root.niriWindowId > 0) {
-                                const url = WindowPreviewService.getPreviewUrl(root.niriWindowId)
-                                if (url) previewImage.previewUrl = url
-                            }
-                        }
-                    }
-
-                    Component.onCompleted: {
-                        WindowPreviewService.initialize()
-                        if (root.niriWindowId > 0) {
-                            Qt.callLater(() => {
-                                const url = WindowPreviewService.getPreviewUrl(root.niriWindowId)
-                                if (url) previewImage.previewUrl = url
-                            })
-                        }
-                    }
+                    Component.onCompleted: WindowPreviewService.initialize()
                 }
 
                 // Rounded corners mask

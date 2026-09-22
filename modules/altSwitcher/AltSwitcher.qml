@@ -728,7 +728,10 @@ Scope {
                     }
                     readonly property real edgeOpacity: isCurrent ? 1.0
                         : Math.max(0.25, 1.0 - (_distFromCenter / (skewDeck.width * 0.55)) * 0.65)
-                    property string previewUrl: ""
+                    readonly property string previewUrl: {
+                        const cached = WindowPreviewService.previewCache[modelData?.id]
+                        return cached ? WindowPreviewService.getPreviewUrl(modelData.id) : ""
+                    }
                     width: isCurrent ? root.skewExpandedWidth : root.skewSliceWidth
                     height: skewDeck.height
                     y: isCurrent ? -8 : 0
@@ -747,14 +750,6 @@ Scope {
                             const rightX = w - sk * (point.y / h)
                             return point.x >= leftX && point.x <= rightX && point.y >= 0 && point.y <= h
                         }
-                    }
-
-                    function refreshPreview(): void {
-                        if (modelData?.id === undefined)
-                            return
-                        const url = WindowPreviewService.getPreviewUrl(modelData.id)
-                        if (url && url.length > 0)
-                            previewUrl = url
                     }
 
                     Behavior on width {
@@ -786,19 +781,6 @@ Scope {
                         NumberAnimation {
                             duration: Appearance.calcEffectiveDuration(150)
                             easing.type: Easing.OutQuad
-                        }
-                    }
-
-                    Component.onCompleted: Qt.callLater(() => skewSlice.refreshPreview())
-
-                    Connections {
-                        target: WindowPreviewService
-                        function onPreviewUpdated(updatedId: int): void {
-                            if (updatedId === skewSlice.modelData?.id)
-                                skewSlice.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
-                        }
-                        function onCaptureComplete(): void {
-                            skewSlice.refreshPreview()
                         }
                     }
 

@@ -358,33 +358,15 @@ Item {
                         }
                     }
 
-                    property string previewUrl: ""
-
-                    function refreshPreview(): void {
-                        if (modelData?.id === undefined)
-                            return
-                        const url = WindowPreviewService.getPreviewUrl(modelData.id)
-                        if (url && url.length > 0)
-                            previewUrl = url
+                    readonly property string previewUrl: {
+                        const cached = WindowPreviewService.previewCache[modelData?.id]
+                        return cached ? WindowPreviewService.getPreviewUrl(modelData.id) : ""
                     }
 
                     Behavior on width {
                         NumberAnimation {
                             duration: Looks.transition.enabled ? 200 : 0
                             easing.type: Easing.OutQuad
-                        }
-                    }
-
-                    Component.onCompleted: Qt.callLater(() => skewSlice.refreshPreview())
-
-                    Connections {
-                        target: WindowPreviewService
-                        function onPreviewUpdated(updatedId: int): void {
-                            if (updatedId === skewSlice.modelData?.id)
-                                skewSlice.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
-                        }
-                        function onCaptureComplete(): void {
-                            skewSlice.refreshPreview()
                         }
                     }
 

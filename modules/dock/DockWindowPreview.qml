@@ -166,7 +166,11 @@ Button {
             readonly property int windowId: CompositorService.isNiri
                 ? (root.toplevel?.niriWindowId ?? root.toplevel?.id ?? 0)
                 : (root.toplevel?.id ?? 0)
-            property string previewUrl: ""
+            // Reactive to both compositor identity and cache/session invalidation.
+            readonly property string previewUrl: {
+                const cached = WindowPreviewService.previewCache[previewArea.windowId]
+                return cached ? WindowPreviewService.getPreviewUrl(previewArea.windowId) : ""
+            }
 
             // Loading shimmer effect
             Rectangle {
@@ -249,27 +253,6 @@ Button {
                 }
             }
 
-            // Listen for preview updates
-            Connections {
-                target: WindowPreviewService
-                function onPreviewUpdated(updatedId: int): void {
-                    if (updatedId === previewArea.windowId) {
-                        previewArea.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
-                    }
-                }
-                function onCaptureComplete(): void {
-                    const url = WindowPreviewService.getPreviewUrl(previewArea.windowId)
-                    if (url) previewArea.previewUrl = url
-                }
-            }
-
-            // Check if preview exists on load
-            Component.onCompleted: {
-                Qt.callLater(() => {
-                    const url = WindowPreviewService.getPreviewUrl(windowId)
-                    if (url) previewUrl = url
-                })
-            }
         }
     }
 }

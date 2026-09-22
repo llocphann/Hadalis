@@ -340,9 +340,9 @@ Singleton {
         {
             pageIndex: 30, pageName: root.pages[30].name,
             section: Translation.tr("Code Workflow"),
-            label: Translation.tr("Read-only workflow"),
-            description: Translation.tr("Inspect live ii Bar components and source as a workflow"),
-            keywords: ["workflow", "qml", "graph", "dataflow", "binding", "event", "lifecycle", "source", "inspect", "debug", "bar", "media", "clock", "resources"]
+            label: Translation.tr("Workflow editor"),
+            description: Translation.tr("Inspect, trace, and edit live QML components and source"),
+            keywords: ["workflow", "qml", "graph", "dataflow", "binding", "event", "lifecycle", "source", "inspect", "debug", "editor", "neovim", "nvim", "bar", "media", "clock", "resources"]
         },
         {
             pageIndex: 28, pageName: root.pages[28].name,

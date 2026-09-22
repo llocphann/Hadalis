@@ -19,6 +19,19 @@ ColumnLayout {
     property var inputState: ({ installed: false, engineInstalled: false, running: false,
         state: 0, current: "", unikeyConfigured: false, method: "0", charset: "0" })
     property bool loaded: false
+    function syncMethod() {
+        if (!loaded)
+            return
+        const options = methodCombo.model
+        for (let i = 0; i < options.length; ++i) {
+            if (options[i].value === String(root.inputState.method)) {
+                methodCombo.currentIndex = i
+                return
+            }
+        }
+        methodCombo.currentIndex = -1
+    }
+    onInputStateChanged: Qt.callLater(root.syncMethod)
     property string errorText: ""
     property string infoText: ""
     readonly property bool busy: readProcess.running || writeProcess.running
@@ -262,10 +275,15 @@ ColumnLayout {
         Layout.fillWidth: true
         Button {
             text: Translation.tr("Advanced Fcitx5 settings")
-            enabled: root.inputState.installed
+            enabled: root.inputState.configtoolInstalled ?? false
             onClicked: ShellExec.execDetachedArgs(["fcitx5-configtool"], Translation.tr("Fcitx5 settings"))
         }
         Item { Layout.fillWidth: true }
+    }
+
+    SettingsNote {
+        visible: root.loaded && root.inputState.installed && !root.inputState.configtoolInstalled
+        text: Translation.tr("Install fcitx5-configtool for additional shortcuts and input-method options.")
     }
 
     MaterialTextField {

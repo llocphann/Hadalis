@@ -18,6 +18,14 @@ Item {
     CodeWorkflowRuntimeTarget {
         runtimeObject: root
         targetId: "bar"
+        label: "Bar"
+        icon: "toolbar"
+        kind: "surface"
+        family: "ii"
+        panelId: "iiBar"
+        parentId: ""
+        depth: 0
+        sourcePath: "modules/bar/BarContent.qml"
     }
 
     layer.enabled: Appearance.shouldDesaturate("bar") && root.visible

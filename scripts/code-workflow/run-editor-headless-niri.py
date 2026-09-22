@@ -18,6 +18,7 @@ def main():
     parser.add_argument('--sway', type=Path, required=True)
     parser.add_argument('--pointer', type=Path, required=True)
     parser.add_argument('--revision', default='HEAD')
+    parser.add_argument('--surface', choices=('rail', 'focus'), default='rail')
     args = parser.parse_args()
     directory = args.work_dir.resolve()
     directory.mkdir(parents=True, exist_ok=False)
@@ -75,6 +76,7 @@ def main():
             child_env.update(graphics_env)
             command = [sys.executable,str(Path(__file__).with_name('run-editor-live.py')),
                        '--work-dir',str(directory/'probe'), '--revision', args.revision,
+                       '--surface', args.surface,
                        '--pointer',str(args.pointer.resolve())]
             report['command'] = command
             completed = subprocess.run(command,env=child_env,timeout=420)

@@ -40,7 +40,18 @@ def main():
               'input_isolation':'Niri winit backend in an owned headless Sway; no desktop pointer ingress',
               'failure':None}
     with (directory/'host.log').open('w') as log:
-        process = subprocess.Popen(['dbus-run-session','--',str(args.sway.resolve()),'-c',str(config)],
+        # Match Probe.dbus_session(): Nix provides an explicit session config
+        # and daemon, whereas /etc/dbus-1/session.conf is absent on CI hosts.
+        bus_command = [env.get('HADALIS_WORKFLOW_DBUS_RUN_SESSION',
+                               'dbus-run-session')]
+        if env.get('HADALIS_WORKFLOW_DBUS_SESSION_CONFIG'):
+            bus_command.append('--config-file='
+                + env['HADALIS_WORKFLOW_DBUS_SESSION_CONFIG'])
+        if env.get('HADALIS_WORKFLOW_DBUS_DAEMON'):
+            bus_command.append('--dbus-daemon='
+                + env['HADALIS_WORKFLOW_DBUS_DAEMON'])
+        bus_command += ['--', str(args.sway.resolve()), '-c', str(config)]
+        process = subprocess.Popen(bus_command,
                                    env=env,stdout=log,stderr=log,start_new_session=True)
         try:
             deadline = time.monotonic()+20

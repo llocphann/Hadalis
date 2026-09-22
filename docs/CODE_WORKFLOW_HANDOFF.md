@@ -8,7 +8,7 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
 
 ## Current production state — 2026-09-22
 
-- Source Editor is a native QML modal editor, not an embedded Neovim instance.
+- Source Editor is a native QML modal editor with no external editor process.
   Click places and focuses the caret in read-only NORMAL mode; `i/a/I/A/o/O`
   enter INSERT, `v` enters VISUAL, and NORMAL/VISUAL draw a rectangular caret.
   Native INSERT text editing and IME remain with TextEdit. Escape is intercepted
@@ -348,7 +348,7 @@ character Visual selection; `y` yanks, `x` deletes a character, Visual `d/x`
 deletes the selection, Visual `c` deletes then enters Insert, and `p/P` pastes
 the internal yank buffer. The gutter combines absolute + relative numbering:
 the cursor line shows its real source line while surrounding lines show their
-distance from the cursor, matching Vim/Neovim `number + relativenumber`
+distance from the cursor, using absolute and relative line numbers
 semantics. Find is available through `/` or `Ctrl+F`, `n/N` repeats the
 search, and the compact find surface supports next/previous, case sensitivity,
 Replace and Replace All. Replacement is mutation-gated to `INSERT` mode.

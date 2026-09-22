@@ -121,7 +121,7 @@ ir = json.loads(read("defaults/code-workflow-ir.json"))
 
 require(registry, 'key: "code-workflow"', "registry missing Code Workflow")
 require(registry, 'pages: [20, 30, 9, 13]', "Advanced & Help must retain Settings UI, Code Workflow, Shortcuts, About")
-require(arrangement, "layoutSchemaVersion: 6", "saved layouts need v6 migration")
+require(arrangement, "layoutSchemaVersion: 8", "saved layouts need current v8 migration")
 require(arrangement, "codeWorkflowPageIndex: 30", "Code Workflow must keep appended index 30")
 
 for token in ("codeWorkflowTargetId", "codeWorkflowInstanceId", "codeWorkflowOutputName",

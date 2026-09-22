@@ -38,15 +38,68 @@ Item {
         && Zettelkasten.ready
         && !Zettelkasten.busy
         && textArea.text.trim().length > 0
+    property var _pendingZettelCapture: null
 
-    function saveAsZettel(): bool {
+    function _captureZettel(clearDraftOnSuccess: bool): bool {
         if (!root.canSaveZettel)
             return false
-        const tabTitle = String(
-            Notepad.tabs[Notepad.currentTab]?.title ?? ""
-        ).trim()
+
+        // Flush the visible editor into the draft service before snapshotting
+        // so async capture/cleanup never compares against stale tab state.
+        Notepad.setTextValue(textArea.text)
+
+        const index = Notepad.currentTab
+        const tabTitle = String(Notepad.tabs[index]?.title ?? "").trim()
         const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
-        return Zettelkasten.capture(title, textArea.text)
+        const snapshot = {
+            index: index,
+            tabTitle: String(Notepad.tabs[index]?.title ?? ""),
+            text: String(textArea.text),
+            clearDraft: clearDraftOnSuccess === true
+        }
+
+        if (!Zettelkasten.capture(title, snapshot.text))
+            return false
+        root._pendingZettelCapture = snapshot
+        return true
+    }
+
+    function saveAsZettel(): bool {
+        return root._captureZettel(false)
+    }
+
+    function captureQuickNote(): bool {
+        return root._captureZettel(true)
+    }
+
+    function _clearCapturedDraft(snapshot): void {
+        if (!snapshot || snapshot.clearDraft !== true)
+            return
+
+        const index = Number(snapshot.index)
+        if (!Number.isInteger(index) || index < 0 || index >= Notepad.tabs.length)
+            return
+
+        const tab = Notepad.tabs[index] ?? ({})
+        if (String(tab.title ?? "") !== String(snapshot.tabTitle ?? "")
+                || String(tab.text ?? "") !== String(snapshot.text ?? "")) {
+            // The user edited or renamed the draft while capture was running.
+            // The Zettel was saved, but the newer draft must remain untouched.
+            return
+        }
+
+        if (Notepad.tabs.length > 1) {
+            Notepad.removeTab(index)
+            return
+        }
+
+        if (Notepad.currentTab === index) {
+            root._loadingTab = true
+            textArea.text = ""
+            root._loadingTab = false
+            Notepad.setTextValue("")
+            Notepad.setTabTitle(index, "Note 1")
+        }
     }
 
     // When this widget gets focus (from BottomWidgetGroup.focusActiveItem),
@@ -394,6 +447,9 @@ Item {
         target: Zettelkasten
 
         function onCaptured(payload): void {
+            const snapshot = root._pendingZettelCapture
+            root._pendingZettelCapture = null
+            root._clearCapturedDraft(snapshot)
             copiedToast.show(Translation.tr("Saved to Zettelkasten"))
         }
     }

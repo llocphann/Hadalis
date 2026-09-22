@@ -408,7 +408,7 @@ def toggle_task(
     if task["statusChar"] not in (" ", "x", "X"):
         raise core.TodoError(
             "unsupported_task_status",
-            "Daily Note mode only toggles ordinary space/x checkbox states",
+            "Markdown source mode only toggles ordinary space/x checkbox states",
         )
     raw_line = task["rawLine"]
     start, end = task["_match"].span(3)

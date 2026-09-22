@@ -17,7 +17,7 @@ defaults = json.loads((ROOT / "defaults/config.json").read_text(encoding="utf-8"
 for token in (
     'icon: "note_add"',
     'Translation.tr("Save as Zettelkasten quick note")',
-    "Zettelkasten.capture(title, textArea.text)",
+    "Zettelkasten.capture(title, snapshot.text)",
     "function saveAsZettel(): bool",
     "function captureQuickNote(): bool",
     "function _clearCapturedDraft(snapshot): void",

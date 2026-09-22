@@ -133,7 +133,7 @@ class DailyTodoTests(unittest.TestCase):
             scan["document"]["sha256"], scan["managed"]["sha256"],
         )
         text = note.read_text(encoding="utf-8")
-        self.assertIn("## Tasks\n\n- [ ] Buy coffee\n## Daily Log", text)
+        self.assertIn("## Tasks\n- [ ] Buy coffee\n\n## Daily Log", text)
         self.assertTrue(text.endswith("keep me\n"))
         self.assertEqual(result["tasks"][0]["content"], "Buy coffee")
 

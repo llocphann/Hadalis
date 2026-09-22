@@ -445,6 +445,16 @@ require(canvas_root_prefix, "clip: true",
         "graph canvas root must hard-clip transformed content to its viewport")
 require(canvas, "function viewportContains(screenX: real, screenY: real): bool",
         "graph hit testing must expose an explicit viewport guard")
+for token in (
+    "id: initialFitTimer",
+    "interval: 450",
+    "initialFitTimer.restart()",
+    "root.initialFitDone = true",
+    "root.fitGraph()",
+):
+    require(canvas, token,
+            "initial shared-board Fit must wait for settled real inventory")
+
 require(canvas, "if (!root.viewportContains(screenX, screenY))\n            return \"\"",
         "edge hit testing must reject pointer coordinates outside the canvas")
 require(canvas, "function itemPointInsideViewport(",

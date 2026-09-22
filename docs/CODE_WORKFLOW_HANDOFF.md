@@ -12,7 +12,12 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   Click places and focuses the caret in read-only NORMAL mode; `i/a/I/A/o/O`
   enter INSERT, `v` enters VISUAL, and NORMAL/VISUAL draw a rectangular caret.
   Native INSERT text editing and IME remain with TextEdit. Escape is intercepted
-  at the editor/Find surface rather than closing Settings.
+  at the editor/Find surface rather than closing Settings. The modal motion
+  dispatcher handles h/j/k/l and w/b/e for NORMAL/VISUAL; focus-gated
+  single-key shortcuts provide a read-only TextEdit fallback, and are disabled
+  in INSERT and Find/Replace. The modal caret auto-scrolls, vertical movement
+  preserves the desired column, and VISUAL gutter numbers track its cursor.
+  This is a small hotfix/live-test surface, not full LazyVim or an IDE.
 - Find/Replace, relative line numbers and guarded source Save are present.
   Save snapshots the target path, CAS base hash and exact staged bytes before
   asynchronous FileView/process work. A later keystroke or source selection

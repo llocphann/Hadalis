@@ -313,7 +313,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         color: Appearance.colors.colPrimary
                         border.width: 1
-                        border.color: Appearance.colors.colSurface
+                        border.color: Appearance.colors.colLayer2
                     }
                 }
 

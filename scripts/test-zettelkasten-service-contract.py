@@ -62,6 +62,19 @@ for token in (
 ):
     assert token in helper, f"Zettelkasten helper lost vault-template contract: {token}"
 
+for token in (
+    'title: Translation.tr("Quick Notes & Zettelkasten")',
+    'Config.setNestedValue("notes.zettelkasten.vaultPath", value)',
+    'Config.setNestedValue("notes.zettelkasten.folder", value)',
+    'Config.setNestedValue("notes.zettelkasten.defaultType", newValue)',
+    'Translation.tr("Default Zettelkasten type")',
+    'value: "Fleeting"',
+    'value: "Literature"',
+    'value: "Permanent"',
+    "Zettelkasten.configuredVaultPath",
+):
+    assert token in settings, f"Zettelkasten settings contract lost: {token}"
+
 assert "singleton Zettelkasten 1.0 Zettelkasten.qml" in qmldir
 assert "property JsonObject notes: JsonObject {" in config
 assert 'property string folder: "00_Capture/03_Zettelkasten"' in config

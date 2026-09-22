@@ -7,8 +7,10 @@ Templater or Obsidian. Filesystem Markdown is canonical.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import stat
 import re
 import sys
 from datetime import datetime, timedelta
@@ -113,6 +115,7 @@ def _render_markdown(
     body: str,
     note_type: str,
     created: datetime,
+    import_id: str = "",
 ) -> str:
     """Render the static structure of 90_System/91_Templates/Zettelkasten_Template.md."""
 
@@ -128,6 +131,10 @@ def _render_markdown(
         "tags:",
         "  - zettelkasten",
         "aliases: []",
+    ]
+    if import_id:
+        parts.append(f"hadalis_import_id: {json.dumps(import_id, ensure_ascii=False)}")
+    parts.extend([
         "---",
         "",
         f"# {title}",
@@ -148,7 +155,7 @@ def _render_markdown(
         "- **Author / Source:** ",
         "- **Link / Reference:**",
         "",
-    ]
+    ])
     return "\n".join(parts)
 
 
@@ -166,6 +173,7 @@ def capture(
     body: str,
     note_type: str = DEFAULT_TYPE,
     now: datetime | None = None,
+    import_id: str = "",
 ) -> dict[str, Any]:
     vault = _resolve_vault(vault_path)
     normalized_folder, target_dir = _resolve_folder(vault, folder)
@@ -189,7 +197,7 @@ def capture(
 
         candidate = target_dir / f"{note_id} - {filename_title}.md"
         markdown = _render_markdown(
-            note_id, clean_title, body, clean_type, candidate_time
+            note_id, clean_title, body, clean_type, candidate_time, import_id
         )
         payload = markdown.encode("utf-8")
         try:
@@ -238,6 +246,328 @@ def capture(
         "notePath": relative,
         "noteFullPath": str(created_path),
         "templateCompatible": True,
+    }
+
+
+
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _load_notepad_tabs(notepad_json_path: str) -> tuple[Path, bytes, list[dict[str, str]]]:
+    try:
+        source = Path(str(notepad_json_path or "")).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise ZettelError("migration_source_missing", f"cannot resolve Notepad store: {exc}") from exc
+    if not source.is_file():
+        raise ZettelError("migration_source_missing", "Notepad store is not a regular file")
+
+    try:
+        raw = source.read_bytes()
+        payload = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ZettelError("migration_source_invalid", f"cannot read Notepad store: {exc}") from exc
+
+    tabs = payload.get("tabs") if isinstance(payload, dict) else None
+    if not isinstance(tabs, list):
+        raise ZettelError("migration_source_invalid", "Notepad store must contain a tabs list")
+
+    entries: list[dict[str, str]] = []
+    occurrence: dict[str, int] = {}
+    for item in tabs:
+        if not isinstance(item, dict):
+            continue
+        raw_title = str(item.get("title", "") or "").strip()
+        body = str(item.get("text", "") or "").replace("\x00", "")
+        is_default_title = re.fullmatch(r"Note \d+", raw_title) is not None
+        requested_title = "" if is_default_title else raw_title
+        if not requested_title.strip() and not body.strip():
+            continue
+
+        title = _clean_title(requested_title, body)
+        digest = hashlib.sha256(
+            (title + "\0" + body).encode("utf-8")
+        ).hexdigest()[:24]
+        ordinal = occurrence.get(digest, 0) + 1
+        occurrence[digest] = ordinal
+        entries.append({
+            "title": title,
+            "body": body,
+            "importId": f"notepad-{digest}-{ordinal}",
+        })
+    return source, raw, entries
+
+
+def _readonly_target_dir(vault: Path, folder: str) -> Path | None:
+    normalized = _normalize_folder(folder)
+    candidate = vault.joinpath(*PurePosixPath(normalized).parts)
+    try:
+        resolved = candidate.resolve(strict=False)
+        if os.path.commonpath((str(vault), str(resolved))) != str(vault):
+            raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
+        if not candidate.exists():
+            return None
+        resolved = candidate.resolve(strict=True)
+        if os.path.commonpath((str(vault), str(resolved))) != str(vault):
+            raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
+    except ZettelError:
+        raise
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ZettelError("folder_read_failed", f"cannot inspect Zettelkasten folder: {exc}") from exc
+    if not resolved.is_dir():
+        raise ZettelError("invalid_folder", "Zettelkasten target is not a directory")
+    return resolved
+
+
+_IMPORT_RE = re.compile(r'^hadalis_import_id:\s*"([^"]+)"\s*    json.dump(payload, sys.stdout, ensure_ascii=False, separators=(",", ":"))
+    sys.stdout.write("\n")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--vault", required=True)
+    parser.add_argument("--folder", default=DEFAULT_FOLDER)
+    parser.add_argument("--title", default="")
+    parser.add_argument("--body", default="")
+    parser.add_argument("--type", default=DEFAULT_TYPE)
+    parser.add_argument("--preview-notepad", default="")
+    parser.add_argument("--migrate-notepad", default="")
+    parser.add_argument("--expected-source-sha", default="")
+    args = parser.parse_args(argv)
+    try:
+        if args.preview_notepad:
+            payload = preview_notepad_migration(
+                args.vault, args.folder, args.preview_notepad, args.type
+            )
+        elif args.migrate_notepad:
+            payload = migrate_notepad_json(
+                args.vault, args.folder, args.migrate_notepad,
+                args.expected_source_sha, args.type,
+            )
+        else:
+            payload = capture(
+                args.vault, args.folder, args.title, args.body, args.type
+            )
+        _emit(payload)
+        return 0
+    except ZettelError as exc:
+        _emit({"ok": False, "error": {"code": exc.code, "message": exc.message}})
+        return 2
+    except Exception as exc:
+        _emit({"ok": False, "error": {"code": "internal_error", "message": str(exc)}})
+        return 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+)
+
+
+def _import_marker_counts(target_dir: Path | None) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    if target_dir is None:
+        return counts
+    try:
+        paths = list(target_dir.glob("*.md"))
+    except OSError as exc:
+        raise ZettelError("folder_read_failed", f"cannot list Zettelkasten notes: {exc}") from exc
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for line in text.splitlines()[:40]:
+            match = _IMPORT_RE.match(line)
+            if match:
+                marker = match.group(1)
+                counts[marker] = counts.get(marker, 0) + 1
+                break
+    return counts
+
+
+def preview_notepad_migration(
+    vault_path: str,
+    folder: str,
+    notepad_json_path: str,
+    note_type: str = DEFAULT_TYPE,
+) -> dict[str, Any]:
+    vault = _resolve_vault(vault_path)
+    _normalize_type(note_type)
+    source, raw, entries = _load_notepad_tabs(notepad_json_path)
+    target_dir = _readonly_target_dir(vault, folder)
+    markers = _import_marker_counts(target_dir)
+
+    added = 0
+    duplicates = 0
+    conflicts = 0
+    for entry in entries:
+        count = markers.get(entry["importId"], 0)
+        if count == 0:
+            added += 1
+        elif count == 1:
+            duplicates += 1
+        else:
+            conflicts += 1
+
+    return {
+        "ok": True,
+        "mutation": "preview-notepad-migration",
+        "source": {
+            "path": str(source),
+            "sha256": _sha256_bytes(raw),
+            "tabCount": len(entries),
+        },
+        "target": {
+            "folder": _normalize_folder(folder),
+            "exists": target_dir is not None,
+        },
+        "preview": {
+            "added": added,
+            "duplicates": duplicates,
+            "conflicts": conflicts,
+        },
+    }
+
+
+def _backup_notepad_source(source: Path, raw: bytes) -> tuple[Path, bool]:
+    digest = _sha256_bytes(raw)
+    backup = source.parent / f".{source.name}.hadalis-zettel-backup-{digest[:12]}"
+    try:
+        if source.read_bytes() != raw:
+            raise ZettelError(
+                "migration_source_conflict",
+                "Notepad store changed before migration backup",
+            )
+        mode = stat.S_IMODE(source.stat().st_mode)
+    except ZettelError:
+        raise
+    except OSError as exc:
+        raise ZettelError("migration_backup_failed", f"cannot prepare migration backup: {exc}") from exc
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
+    try:
+        fd = os.open(backup, flags, mode)
+    except FileExistsError:
+        try:
+            if not backup.is_file() or backup.read_bytes() != raw:
+                raise ZettelError(
+                    "migration_backup_conflict",
+                    "existing Notepad migration backup does not match source",
+                )
+        except OSError as exc:
+            raise ZettelError("migration_backup_failed", f"cannot verify migration backup: {exc}") from exc
+        return backup, False
+    except OSError as exc:
+        raise ZettelError("migration_backup_failed", f"cannot create migration backup: {exc}") from exc
+
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        dir_fd = os.open(source.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except OSError as exc:
+        try:
+            backup.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise ZettelError("migration_backup_failed", f"cannot persist migration backup: {exc}") from exc
+    return backup, True
+
+
+def migrate_notepad_json(
+    vault_path: str,
+    folder: str,
+    notepad_json_path: str,
+    expected_source_sha: str,
+    note_type: str = DEFAULT_TYPE,
+) -> dict[str, Any]:
+    if not str(expected_source_sha or "").strip():
+        raise ZettelError("missing_precondition", "expected Notepad source SHA is required")
+
+    clean_type = _normalize_type(note_type)
+    source, raw, entries = _load_notepad_tabs(notepad_json_path)
+    source_sha = _sha256_bytes(raw)
+    if source_sha != expected_source_sha:
+        raise ZettelError(
+            "migration_source_conflict",
+            "Notepad store changed since migration preview",
+        )
+
+    vault = _resolve_vault(vault_path)
+    target_dir = _readonly_target_dir(vault, folder)
+    markers = _import_marker_counts(target_dir)
+    if any(markers.get(entry["importId"], 0) > 1 for entry in entries):
+        raise ZettelError(
+            "migration_target_conflict",
+            "duplicate Hadalis import markers exist in the Zettelkasten target",
+        )
+
+    try:
+        if source.read_bytes() != raw:
+            raise ZettelError(
+                "migration_source_conflict",
+                "Notepad store changed while preparing migration",
+            )
+    except ZettelError:
+        raise
+    except OSError as exc:
+        raise ZettelError("migration_source_missing", f"cannot revalidate Notepad store: {exc}") from exc
+
+    backup, backup_created = _backup_notepad_source(source, raw)
+    created_paths: list[str] = []
+    skipped = 0
+
+    for entry in entries:
+        if markers.get(entry["importId"], 0) == 1:
+            skipped += 1
+            continue
+
+        try:
+            if source.read_bytes() != raw:
+                raise ZettelError(
+                    "migration_source_conflict",
+                    "Notepad store changed while importing tabs",
+                )
+        except ZettelError:
+            raise
+        except OSError as exc:
+            raise ZettelError("migration_source_missing", f"cannot revalidate Notepad store: {exc}") from exc
+
+        result = capture(
+            vault_path,
+            folder,
+            entry["title"],
+            entry["body"],
+            clean_type,
+            import_id=entry["importId"],
+        )
+        created_paths.append(result["notePath"])
+
+    final_dir = _readonly_target_dir(vault, folder)
+    final_markers = _import_marker_counts(final_dir)
+    for entry in entries:
+        if final_markers.get(entry["importId"], 0) != 1:
+            raise ZettelError(
+                "migration_verify_failed",
+                "Zettelkasten import verification failed",
+            )
+
+    return {
+        "ok": True,
+        "mutation": "migrate-notepad",
+        "sourceSha256": source_sha,
+        "sourcePreserved": True,
+        "backupPath": str(backup),
+        "backupCreated": backup_created,
+        "migratedCount": len(created_paths),
+        "duplicateCount": skipped,
+        "notePaths": created_paths,
+        "verified": True,
     }
 
 

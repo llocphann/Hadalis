@@ -40,11 +40,18 @@ DashCard {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Zettelkasten.ready
-                        ? Translation.tr("Fleeting note · draft clears after verified save")
-                        : Translation.tr("Configure an Obsidian vault to capture notes")
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                    color: Appearance.colors.colSubtext
+                    text: {
+                        if (Zettelkasten.errorMessage.length > 0)
+                            return Zettelkasten.errorMessage
+                        if (Zettelkasten.ready)
+                            return Translation.tr("%1 note · draft clears after verified save")
+                                .arg(Zettelkasten.defaultType)
+                        return Translation.tr("Configure an Obsidian vault to capture notes")
+                    }
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Zettelkasten.errorMessage.length > 0
+                        ? Appearance.colors.colError
+                        : Appearance.colors.colOnSurfaceVariant
                     elide: Text.ElideRight
                 }
             }
@@ -79,7 +86,8 @@ DashCard {
 
                 StyledToolTip {
                     text: Zettelkasten.ready
-                        ? Translation.tr("Create a Fleeting Zettelkasten note. The unchanged draft is cleared only after the file is saved successfully.")
+                        ? Translation.tr("Create a %1 Zettelkasten note. The unchanged draft is cleared only after the file is saved successfully.")
+                            .arg(Zettelkasten.defaultType)
                         : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
                 }
             }

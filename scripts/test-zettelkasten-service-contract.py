@@ -45,7 +45,9 @@ for token in (
 for token in (
     'Translation.tr("Quick Notes")',
     'Translation.tr("Zettelkasten capture")',
-    'Translation.tr("Fleeting note · draft clears after verified save")',
+    'Translation.tr("%1 note · draft clears after verified save")',
+    ".arg(Zettelkasten.defaultType)",
+    "Zettelkasten.errorMessage.length > 0",
     "enabled: notepad.canSaveZettel",
     "onClicked: notepad.captureQuickNote()",
 ):
@@ -95,3 +97,6 @@ assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in zettel_settin
 assert "color: Appearance.colors.colSubtext" not in zettel_settings
 assert 'placeholderText: Translation.tr("Leave blank to reuse the Todo Obsidian vault")' not in zettel_settings
 assert 'placeholderText: "00_Capture/03_Zettelkasten"' not in zettel_settings
+
+assert 'Translation.tr("Create a Fleeting Zettelkasten note.' not in dash
+assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in dash

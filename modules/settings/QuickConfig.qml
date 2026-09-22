@@ -1799,8 +1799,14 @@ ContentPage {
                 RippleButtonWithIcon {
                     Layout.fillWidth: true
                     materialIcon: "toast"
-                    mainText: Translation.tr("Bar & layout")
-                    onClicked: SettingsPageRegistry.navigateToKey("bar", "Appearance & Layout")
+                    mainText: Config.options?.panelFamily === "waffle"
+                        ? Translation.tr("Taskbar settings")
+                        : Translation.tr("Bar & layout")
+                    onClicked: SettingsPageRegistry.navigateToKey(
+                        Config.options?.panelFamily === "waffle"
+                            ? "waffle-style" : "bar",
+                        Config.options?.panelFamily === "waffle"
+                            ? "Taskbar" : "Appearance & Layout")
                 }
 
                 RippleButtonWithIcon {

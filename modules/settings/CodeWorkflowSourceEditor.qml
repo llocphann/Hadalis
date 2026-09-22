@@ -751,6 +751,7 @@ Item {
                         root.setMode("normal")
                         editor.cursorPosition = root.clampPosition(position)
                         editor.deselect()
+                        editor.forceActiveFocus()
                     }
                 }
 

@@ -479,6 +479,28 @@ Singleton {
             root._log("[WindowPreviewService:capture]", line)
     }
     
+    // Recover completion records which QProcess may flush only at exit. The
+    // helper returns zero only when every explicitly requested PNG was
+    // successfully published by atomic rename.
+    function _completeCapture(exitCode: int, exitStatus: var): void {
+        if (exitCode === 0) {
+            for (const id of captureProcess.idsToCapture)
+                root._publishCapturedPreview(id)
+        } else {
+            console.warn("[WindowPreviewService] capture process failed", exitCode, exitStatus)
+        }
+        capturing = false
+        captureProcess.idsToCapture = []
+        captureProcess.publishedIds = []
+        captureProcess.captureSessionKey = ""
+        root.cleanupOrphans()
+        Cliphist.suppressRefresh = false
+        Cliphist.refresh()
+        root.captureComplete()
+        if (root._hasPendingCaptureRequest())
+            captureDebounceTimer.restart()
+    }
+
     // Capture ALL windows (force refresh)
     function captureAllWindows(): void {
         if (capturing) return
@@ -537,27 +559,7 @@ Singleton {
         }
         onStarted: captureProcess.startObserved = true
         
-        onExited: (exitCode, exitStatus) => {
-            root.capturing = false
-
-            if (exitCode !== 0) {
-                console.warn("[WindowPreviewService] capture process failed", exitCode, exitStatus)
-            }
-            // Successes were published individually as their PNGs became ready;
-            // do not give failed captures a revision merely because an old
-            // snapshot still exists at that path.
-            idsToCapture = []
-            publishedIds = []
-            captureSessionKey = ""
-            root.cleanupOrphans()
-            // The capture script has already removed only its own entries and
-            // conditionally restored the clipboard before returning.
-            Cliphist.suppressRefresh = false
-            Cliphist.refresh()
-            root.captureComplete()
-            if (root._hasPendingCaptureRequest())
-                captureDebounceTimer.restart()
-        }
+        onExited: (exitCode, exitStatus) => root._completeCapture(exitCode, exitStatus)
     }
     
     // Clean up when window closes

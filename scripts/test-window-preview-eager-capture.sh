@@ -55,7 +55,7 @@ const ctx = {
     NiriService: {windowListReady: false, windows: []},
     captureDebounceTimer: {restart() {scheduled++;}},
     cleanupTimer: {restart() {cleanupScheduled++;}},
-    Cliphist: {suppressRefresh: false},
+    Cliphist: {suppressRefresh: false, refresh() {}},
     ShellExec: {supportsFish: () => false},
     Quickshell: {shellPath: path => path},
     console
@@ -73,7 +73,7 @@ vm.createContext(ctx);
 const names = ['_startPrewarming','_observeWindowSet','_queueWindowIds',
     '_hasPendingCaptureRequest','_clearCaptureRequest','_pendingRequestNeedsCapture',
     'captureForTaskView','_doCapture','_publishCapturedPreview',
-    '_handleCaptureOutput','getPreviewUrl','_resumeRequestedCapture'];
+    '_handleCaptureOutput','_completeCapture','getPreviewUrl','_resumeRequestedCapture'];
 vm.runInContext(names.map(method).join('\n') + '\n' +
     names.map(name => 'root.' + name + ' = ' + name + ';').join('\n'), ctx);
 
@@ -109,12 +109,14 @@ assert.deepEqual(Array.from(root.requestedWindowIds), [13],
     'new window arriving during capture stays queued for next batch');
 root._handleCaptureOutput('PREVIEW_READY 12');
 assert.deepEqual(root.previewUpdates, [11,12], 'second PNG independently published');
-root.capturing = false;
+root._completeCapture(0, null);
+assert.deepEqual(root.previewUpdates, [11,12], 'clean exit does not duplicate a published ID');
 root._doCapture();
 assert.deepEqual(Array.from(captureProcess.idsToCapture), [13],
     'in-flight new window is captured after prior batch');
-root._handleCaptureOutput('PREVIEW_READY 13');
-assert.deepEqual(root.previewUpdates, [11,12,13]);
+// The last completion line may still be buffered at process exit.
+root._completeCapture(0, null);
+assert.deepEqual(root.previewUpdates, [11,12,13], 'clean exit publishes buffered final ID');
 const stable = root.getPreviewUrl(11);
 root.captureForTaskView([11]);
 assert.equal(root.getPreviewUrl(11), stable, 'long-idle cache hit keeps URL');
@@ -129,5 +131,8 @@ assert.equal(root.previewUpdates.length, 3, 'stale batch output cannot publish')
 captureProcess.captureSessionKey = 'session-old';
 root._handleCaptureOutput('PREVIEW_READY 12');
 assert.equal(root.previewUpdates.length, 3, 'old Niri session output cannot publish');
+root._completeCapture(1, 'failure');
+assert.equal(root.previewUpdates.length, 3,
+    'failed batch must not mark an old snapshot as new');
 console.log('window preview eager/incremental behavior: PASS');
 NODE

@@ -123,26 +123,35 @@ fi
 
 mapfile -t all_windows < <("$niri_bin" msg -j windows 2>/dev/null | "$jq_bin" -r '.[].id')
 if [[ ${#all_windows[@]} -eq 0 ]]; then
+  if [[ ${#ids_to_capture[@]} -gt 0 ]]; then
+    echo "[capture-windows] requested windows not yet available" >&2
+    exit 1
+  fi
   exit 0
 fi
 
 windows_to_capture=()
-
+requested_missing=0
 if $capture_all || [[ ${#ids_to_capture[@]} -eq 0 ]]; then
   windows_to_capture=("${all_windows[@]}")
 else
   for id in "${ids_to_capture[@]}"; do
+    matched=false
     for w in "${all_windows[@]}"; do
       if [[ "$id" == "$w" ]]; then
         windows_to_capture+=("$id")
+        matched=true
         break
       fi
     done
+    if ! $matched; then
+      echo "[capture-windows] requested window not yet available: $id" >&2
+      requested_missing=1
+    fi
   done
 fi
-
 if [[ ${#windows_to_capture[@]} -eq 0 ]]; then
-  exit 0
+  exit "$requested_missing"
 fi
 
 before_id=0
@@ -160,7 +169,7 @@ if [[ ! "$max_concurrent" =~ ^[1-4]$ ]]; then
 fi
 pids=()
 count=0
-capture_failed=0
+capture_failed="$requested_missing"
 
 # Publish each preview by rename. The shell polls this directory with a plain
 # Image source, so a reader must never open a half-written PNG, and a capture

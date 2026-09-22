@@ -198,6 +198,7 @@ ApplicationWindow {
         visible: !root.uiReady
         
         WText {
+            id: startupLoadingLabel
             anchors.centerIn: parent
             text: Translation.tr("Loading")
             font.pixelSize: Looks.font.pixelSize.normal
@@ -209,14 +210,14 @@ ApplicationWindow {
                 loops: Animation.Infinite
                 NumberAnimation { from: 0.55; to: 1; duration: 780; easing.type: Easing.InOutSine }
                 NumberAnimation { from: 1; to: 0.55; duration: 780; easing.type: Easing.InOutSine }
-                onRunningChanged: { if (!running) parent.opacity = 1 }
+                onRunningChanged: { if (!running) startupLoadingLabel.opacity = 1 }
             }
             SequentialAnimation on scale {
                 running: !root.uiReady && Looks.transition.enabled
                 loops: Animation.Infinite
                 NumberAnimation { from: 0.98; to: 1.04; duration: 780; easing.type: Easing.InOutSine }
                 NumberAnimation { from: 1.04; to: 0.98; duration: 780; easing.type: Easing.InOutSine }
-                onRunningChanged: { if (!running) parent.scale = 1 }
+                onRunningChanged: { if (!running) startupLoadingLabel.scale = 1 }
             }
         }
     }

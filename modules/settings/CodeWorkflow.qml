@@ -24,7 +24,6 @@ Item {
     property bool sourceEditorStagePending: false
     property string sourceEditorStatus: ""
     property var sourceEditorBuffers: ({})
-    property bool sourceEditorUseNvim: false
     readonly property bool sourceEditorDirty:
         root.sourceDraft !== root.sourceEditorBaseText
     readonly property bool sourceEditorCanSave:
@@ -42,27 +41,8 @@ Item {
     readonly property string sourceEditorTempPath:
         "/tmp/hadalis-code-workflow-editor-"
             + String(Quickshell.processId) + ".tmp"
-    readonly property var embeddedNvimView:
-        embeddedNvimLoader.item ?? null
-    readonly property string embeddedNvimPath:
-        String(root.embeddedNvimView?.nvimPath ?? "")
-    readonly property bool embeddedNvimBufferModified:
-        root.embeddedNvimView?.bufferModified === true
-    readonly property string embeddedNvimMode:
-        String(root.embeddedNvimView?.nvimMode ?? "normal")
-    readonly property bool embeddedNvimReady:
-        root.embeddedNvimView?.nvimReady === true
-    readonly property string sourceEditorNvimDisplayPath: {
-        const activePath = root.embeddedNvimPath
-        if (activePath.length === 0)
-            return root.sourcePath
-        const prefix = root.sourceEditorShellRoot.endsWith("/")
-            ? root.sourceEditorShellRoot
-            : root.sourceEditorShellRoot + "/"
-        return activePath.startsWith(prefix)
-            ? activePath.slice(prefix.length)
-            : activePath
-    }
+    readonly property string sourceEditorMode:
+        String(sourceEditor?.mode ?? "normal")
     readonly property bool compactHeader: root.width < 1080
     readonly property string sourceHighlightDefinition: {
         const path = String(root.sourcePath ?? "").toLowerCase()
@@ -564,29 +544,6 @@ Item {
             ?? root.selectedIrNode?.sourcePath
             ?? root.descriptor?.sourcePath
             ?? ""
-    function syncEmbeddedNvimView(): void {
-        const item = embeddedNvimLoader.item
-        if (!item)
-            return
-        item.sourcePath = root.sourceEditorTargetPath
-        item.active = root.sourceEditorUseNvim
-        if (item.active && item.sourcePath.length > 0)
-            item.ensureSession()
-    }
-
-    function saveEmbeddedNvim(): bool {
-        const item = embeddedNvimLoader.item
-        return item ? item.saveBuffer() : false
-    }
-
-    function syncSourceSyntaxHighlighter(): void {
-        const item = sourceSyntaxLoader.item
-        if (!item)
-            return
-        item.targetTextEdit = sourcePreviewText
-        item.definitionName = root.sourceHighlightDefinition
-    }
-
     onSourcePathChanged: {
         root.stashSourceEditorBuffer()
         root.sourceEditorStatus = ""
@@ -594,9 +551,10 @@ Item {
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
-        if (root.sourceEditorUseNvim)
-            Qt.callLater(root.syncEmbeddedNvimView)
-        Qt.callLater(root.syncSourceSyntaxHighlighter)
+        Qt.callLater(() => {
+            sourceEditor.setMode("normal")
+            sourceEditor.clearSelection()
+        })
     }
 
     function stashSourceEditorBuffer(): void {
@@ -657,6 +615,7 @@ Item {
 
     function revertSourceEditor(): void {
         root.syncSourceEditorFromDisk(true)
+        Qt.callLater(() => sourceEditor.setMode("normal"))
         Qt.callLater(root.focusSourceAnchor)
     }
 
@@ -667,24 +626,6 @@ Item {
         root.sourceEditorStagePending = true
         root.sourceEditorStatus = "Staging source draft"
         sourceDraftWriter.setText(root.sourceDraft)
-        return true
-    }
-
-    function openSourceInNeovim(): bool {
-        const target = root.sourceEditorTargetPath
-        if (target.length === 0)
-            return false
-        const configured = String(
-            AppLauncher.commandFor("terminal") ?? "kitty").trim()
-        const terminal = configured.length > 0
-            ? configured.split(/\\s+/)[0] : "kitty"
-        const terminalName = terminal.split("/").pop()
-        const command = terminalName === "wezterm"
-            ? [terminal, "start", "--always-new-process", "--", "nvim", target]
-            : [terminal, "-e", "nvim", target]
-        ShellExec.execDetachedArgs(
-            command, "Open Code Workflow source in Neovim",
-            root.sourceEditorShellRoot)
         return true
     }
 
@@ -1477,29 +1418,11 @@ Item {
             return
         const safeStart = Math.min(start, root.sourceText.length)
         const safeEnd = Math.min(end, root.sourceText.length)
-        sourcePreviewText.select(safeStart, safeEnd)
-        Qt.callLater(() => {
-            const rect = sourcePreviewText.positionToRectangle(safeStart)
-            const margin = 18
-            sourcePreviewFlick.contentX = Math.max(
-                0,
-                Math.min(
-                    Math.max(0,
-                        sourcePreviewFlick.contentWidth
-                            - sourcePreviewFlick.width),
-                    rect.x - margin))
-            sourcePreviewFlick.contentY = Math.max(
-                0,
-                Math.min(
-                    Math.max(0,
-                        sourcePreviewFlick.contentHeight
-                            - sourcePreviewFlick.height),
-                    rect.y - sourcePreviewFlick.height / 3))
-        })
+        sourceEditor.revealSelection(safeStart, safeEnd)
     }
 
     function focusSourceAnchor(): void {
-        sourcePreviewText.deselect()
+        sourceEditor.clearSelection()
         if (root.sourceText.length === 0)
             return
 
@@ -3793,66 +3716,28 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.sourceEditorUseNvim
-                            ? "Neovim · " + root.sourceEditorNvimDisplayPath
-                            : "Source Editor · " + root.sourcePath
+                        text: "Source Editor · " + root.sourcePath
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                         elide: Text.ElideMiddle
                     }
                     Pill {
-                        label: root.sourceEditorUseNvim
-                            ? (root.embeddedNvimBufferModified
-                                ? "NVIM · MODIFIED"
-                                : "NVIM · " + root.embeddedNvimMode.toUpperCase())
-                            : root.sourceEditorConflict
-                                ? "CONFLICT"
-                                : root.sourceEditorSaving
-                                    ? "SAVING"
-                                    : root.sourceEditorDirty
-                                        ? "MODIFIED" : "SYNCED"
-                        accent: root.sourceEditorUseNvim
-                            ? (root.embeddedNvimBufferModified
+                        label: root.sourceEditorConflict
+                            ? "CONFLICT"
+                            : root.sourceEditorSaving
+                                ? "SAVING"
+                                : root.sourceEditorMode.toUpperCase()
+                                    + (root.sourceEditorDirty
+                                        ? " · MODIFIED" : " · SYNCED")
+                        accent: root.sourceEditorConflict
+                            ? Appearance.colors.colError
+                            : root.sourceEditorDirty
                                 ? Appearance.colors.colTertiary
-                                : Appearance.colors.colPrimary)
-                            : root.sourceEditorConflict
-                                ? Appearance.colors.colError
-                                : root.sourceEditorDirty
-                                    ? Appearance.colors.colTertiary
-                                    : Appearance.colors.colPrimary
-                    }
-                    RippleButtonWithIcon {
-                        buttonText: root.sourceEditorUseNvim
-                            ? "Use inline source editor"
-                            : "Use embedded Neovim"
-                        mainText: ""
-                        materialIcon: root.sourceEditorUseNvim
-                            ? "edit_note" : "terminal"
-                        enabled: root.sourcePath.length > 0
-                            && !root.sourceEditorDirty
-                            && !root.sourceEditorConflict
-                            && !root.sourceEditorSaving
-                            && !CodeWorkflowTransaction.dirty
-                        onClicked: {
-                            root.sourceEditorUseNvim =
-                                !root.sourceEditorUseNvim
-                            if (root.sourceEditorUseNvim)
-                                Qt.callLater(root.syncEmbeddedNvimView)
-                        }
-                        StyledToolTip {
-                            text: root.sourceEditorUseNvim
-                                ? "Return to the inline guarded editor"
-                                : CodeWorkflowTransaction.dirty
-                                    ? "Finish or discard the active Code Workflow transaction first"
-                                    : root.sourceEditorDirty
-                                        ? "Save or revert the inline draft before starting Neovim"
-                                        : "Run Neovim --embed inside Source Editor"
-                        }
+                                : Appearance.colors.colPrimary
                     }
                     RippleButtonWithIcon {
                         buttonText: "Revert source editor"
-                        visible: !root.sourceEditorUseNvim
                         mainText: ""
                         materialIcon: "restart_alt"
                         enabled: (root.sourceEditorDirty
@@ -3862,45 +3747,24 @@ Item {
                         StyledToolTip { text: "Discard draft and reload from disk" }
                     }
                     RippleButtonWithIcon {
-                        buttonText: root.sourceEditorUseNvim
-                            ? "Save Neovim buffer"
-                            : "Save source editor"
+                        buttonText: "Save source editor"
                         mainText: ""
                         materialIcon: "save"
-                        enabled: root.sourceEditorUseNvim
-                            ? root.embeddedNvimReady
-                                && root.embeddedNvimBufferModified
-                            : root.sourceEditorCanSave
-                        onClicked: {
-                            if (root.sourceEditorUseNvim)
-                                root.saveEmbeddedNvim()
-                            else
-                                root.saveSourceEditor()
-                        }
+                        enabled: root.sourceEditorCanSave
+                        onClicked: root.saveSourceEditor()
                         StyledToolTip {
-                            text: root.sourceEditorUseNvim
-                                ? "Write the active Neovim buffer"
-                                : CodeWorkflowTransaction.dirty
-                                    ? "Finish or discard the active Code Workflow transaction first"
-                                    : root.sourceEditorConflict
-                                        ? "Reload or reconcile the external change before saving"
-                                        : "Save source · Ctrl+S"
+                            text: CodeWorkflowTransaction.dirty
+                                ? "Finish or discard the active Code Workflow transaction first"
+                                : root.sourceEditorConflict
+                                    ? "Reload or reconcile the external change before saving"
+                                    : "Save source · Ctrl+S"
                         }
-                    }
-                    RippleButtonWithIcon {
-                        buttonText: "Open source in Neovim"
-                        mainText: ""
-                        materialIcon: "terminal"
-                        enabled: root.sourcePath.length > 0
-                        onClicked: root.openSourceInNeovim()
-                        StyledToolTip { text: "Open this source in Neovim" }
                     }
                 }
 
                 StyledText {
                     Layout.fillWidth: true
-                    visible: !root.sourceEditorUseNvim
-                        && root.sourceEditorStatus.length > 0
+                    visible: root.sourceEditorStatus.length > 0
                     text: root.sourceEditorStatus
                     color: root.sourceEditorConflict
                         || root.sourceEditorStatus.startsWith("Save failed")
@@ -3919,88 +3783,25 @@ Item {
                     color: Appearance.colors.colLayer0
                     clip: true
 
-                    Loader {
-                        id: embeddedNvimLoader
-                        anchors.fill: parent
-                        active: root.sourceEditorUseNvim
-                        visible: active
-                        source: active ? "CodeWorkflowNvimView.qml" : ""
-                        asynchronous: true
-
-                        onLoaded: Qt.callLater(root.syncEmbeddedNvimView)
-
-                        onStatusChanged: {
-                            if (status !== Loader.Error)
-                                return
-                            root.sourceEditorUseNvim = false
-                            root.sourceEditorStatus =
-                                "Embedded Neovim failed to load · using inline editor"
-                        }
-                    }
-
-                    Flickable {
-                        id: sourcePreviewFlick
-                        visible: !root.sourceEditorUseNvim
+                    CodeWorkflowSourceEditor {
+                        id: sourceEditor
                         anchors.fill: parent
                         anchors.margins: 7
-                        contentWidth: Math.max(width, sourcePreviewText.implicitWidth)
-                        contentHeight: Math.max(height, sourcePreviewText.implicitHeight)
-                        clip: true
-                        boundsBehavior: Flickable.StopAtBounds
+                        draft: root.sourceDraft
+                        definitionName: root.sourceHighlightDefinition
 
-                        TextEdit {
-                            id: sourcePreviewText
-                            width: Math.max(parent.width, implicitWidth)
-                            text: root.sourceDraft
-                            readOnly: false
-                            selectByMouse: true
-                            activeFocusOnTab: true
-                            Accessible.name: "Source editor"
-                            Accessible.description:
-                                "Editable source draft for the current inspect selection"
-                            onTextChanged: {
-                                if (root.sourceDraft !== text) {
-                                    root.sourceDraft = text
-                                    if (!root.sourceEditorSaving
-                                            && !root.sourceEditorConflict)
-                                        root.sourceEditorStatus = ""
-                                }
-                            }
-                            Keys.onPressed: event => {
-                                if (event.key === Qt.Key_S
-                                        && (event.modifiers
-                                            & Qt.ControlModifier)) {
-                                    root.saveSourceEditor()
-                                    event.accepted = true
-                                }
-                            }
-                            wrapMode: TextEdit.NoWrap
-                            renderType: Text.QtRendering
-                            color: Appearance.colors.colOnLayer1
-                            selectionColor: Appearance.colors.colPrimaryContainer
-                            selectedTextColor: Appearance.colors.colOnPrimaryContainer
-                            font.family: Appearance.font.family.monospace
-                            font.pixelSize: Appearance.font.pixelSize.small
-                        }
-
-                        Loader {
-                            id: sourceSyntaxLoader
-                            active: !root.sourceEditorUseNvim
-                            source: active
-                                ? "CodeWorkflowSyntaxHighlighter.qml" : ""
-                            asynchronous: true
-                            visible: false
-
-                            onLoaded:
-                                Qt.callLater(root.syncSourceSyntaxHighlighter)
-
-                            onStatusChanged: {
-                                if (status !== Loader.Error)
-                                    return
-                                root.sourceEditorStatus =
-                                    "Syntax highlighting unavailable · plain editor active"
+                        onDraftEdited: text => {
+                            if (root.sourceDraft !== text) {
+                                root.sourceDraft = text
+                                if (!root.sourceEditorSaving
+                                        && !root.sourceEditorConflict)
+                                    root.sourceEditorStatus = ""
                             }
                         }
+                        onSaveRequested: root.saveSourceEditor()
+                        onStatusMessage: message =>
+                            root.sourceEditorStatus = message
+                    }
                     }
                 }
             }

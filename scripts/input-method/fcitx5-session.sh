@@ -10,6 +10,18 @@ if [[ ! -f "$data_dir/unikey.conf" ]]; then
     exit 0
 fi
 
+# An existing non-Fcitx session is not ours to take over. Niri default installs
+# export fcitx; user-owned profiles may explicitly select another framework.
+manager_env=""
+if command -v systemctl >/dev/null 2>&1; then
+    manager_env="$(systemctl --user show-environment 2>/dev/null || true)"
+fi
+manager_qt_im="$(printf '%s\\n' "$manager_env" | sed -n 's/^QT_IM_MODULE=//p' | head -n 1)"
+if [[ -n "${QT_IM_MODULE:-}" && "$QT_IM_MODULE" != "fcitx" ]] \\
+    || [[ -n "$manager_qt_im" && "$manager_qt_im" != "fcitx" ]]; then
+    exit 0
+fi
+
 umask 077
 mkdir -p "$config_dir/conf"
 # Keyboard US is the inactive EN state; Unikey is the VI state.
@@ -45,7 +57,6 @@ fi
 # Bridge the compositor's input-method environment to systemd app launchers.
 # Respect an existing value (e.g. ibus or a custom Qt input method).
 if command -v systemctl >/dev/null 2>&1; then
-    manager_env="$(systemctl --user show-environment 2>/dev/null || true)"
     assignments=()
     for assignment in 'QT_IM_MODULE=fcitx' 'XMODIFIERS=@im=fcitx'; do
         key="${assignment%%=*}"

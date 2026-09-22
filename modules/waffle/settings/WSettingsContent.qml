@@ -27,6 +27,45 @@ Item {
     property var searchResults: []
     property bool navExpanded: width > Looks.dp(760)
 
+    // One information architecture for both renderer families. Page keys keep
+    // Waffle's persisted numeric indices and search/deep links unchanged.
+    readonly property var navigationGroups: [
+        { label: Translation.tr("Home"), keys: ["quick"] },
+        { label: Translation.tr("Appearance"), keys: ["themes", "wallpaper", "gowall", "effects"] },
+        { label: Translation.tr("Desktop & Layout"), keys: ["monitors", "shell-layout", "bar", "workspace-strip", "panels", "waffle-style", "modules"] },
+        { label: Translation.tr("System"), keys: ["system", "power", "autostart"] },
+        { label: Translation.tr("Features & Services"), keys: ["ai", "mascot"] },
+        { label: Translation.tr("Advanced & Help"), keys: ["shortcuts", "about"] }
+    ]
+    readonly property var navigationItems: {
+        const items = []
+        const seen = new Set()
+        for (const group of navigationGroups) {
+            const entries = []
+            for (const key of group.keys) {
+                const index = root.pages.findIndex(page => page.key === key)
+                if (index < 0 || seen.has(index)) continue
+                seen.add(index)
+                entries.push({ type: "page", pageIndex: index,
+                    name: root.pages[index].name, icon: root.pages[index].icon })
+            }
+            if (entries.length === 0) continue
+            items.push({ type: "header", label: group.label })
+            entries.forEach(entry => items.push(entry))
+        }
+        const ungrouped = []
+        for (let index = 0; index < root.pages.length; index++) {
+            if (!seen.has(index))
+                ungrouped.push({ type: "page", pageIndex: index,
+                    name: root.pages[index].name, icon: root.pages[index].icon })
+        }
+        if (ungrouped.length > 0) {
+            items.push({ type: "header", label: Translation.tr("More") })
+            ungrouped.forEach(entry => items.push(entry))
+        }
+        return items
+    }
+
     Component.onCompleted: Qt.callLater(() => root.navigationReady = true)
     
     // Complete search index with all individual options + targetLabel for spotlight
@@ -876,19 +915,56 @@ Item {
                         spacing: Looks.dp(2)
                         
                         Repeater {
-                            model: root.pages
-                            
-                            WSettingsNavItem {
-                                required property int index
+                            model: root.navigationItems
+
+                            delegate: ColumnLayout {
                                 required property var modelData
-                                
                                 Layout.fillWidth: true
-                                text: modelData.name
-                                navIcon: modelData.icon
-                                selected: root.currentPage === index
-                                expanded: root.navExpanded
-                                
-                                onClicked: root.currentPage = index
+                                spacing: 0
+
+                                Item {
+                                    readonly property bool isHeader: modelData.type === "header"
+                                    visible: isHeader
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: isHeader
+                                        ? Looks.dp(root.navExpanded ? 30 : 16) : 0
+
+                                    WText {
+                                        visible: root.navExpanded
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: Looks.dp(12)
+                                        anchors.bottom: parent.bottom
+                                        anchors.bottomMargin: Looks.dp(5)
+                                        text: modelData.label ?? ""
+                                        font.pixelSize: Looks.font.pixelSize.small
+                                        font.weight: Looks.font.weight.strong
+                                        color: Looks.colors.subfg
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Rectangle {
+                                        visible: !root.navExpanded
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: Looks.dp(24)
+                                        height: 1
+                                        color: Looks.settings.stroke
+                                        opacity: 0.45
+                                    }
+                                }
+
+                                WSettingsNavItem {
+                                    readonly property bool isPage: modelData.type === "page"
+                                    visible: isPage
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: isPage ? implicitHeight : 0
+                                    text: modelData.name ?? ""
+                                    navIcon: modelData.icon ?? ""
+                                    selected: isPage && root.currentPage === modelData.pageIndex
+                                    expanded: root.navExpanded
+
+                                    onClicked: if (isPage) root.currentPage = modelData.pageIndex
+                                }
                             }
                         }
                     }

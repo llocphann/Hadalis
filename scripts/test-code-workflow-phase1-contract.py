@@ -102,6 +102,10 @@ canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 shell = read("shell.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 runtime_declaration = read("services/CodeWorkflowRuntimeDeclaration.qml")
+settings_host = read("modules/settings/SettingsPageHost.qml")
+settings_focus = read("modules/settings/SettingsFocus.qml")
+settings_overlay = read("modules/settings/SettingsOverlay.qml")
+standalone_settings = read("settings.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
 ii_panels = read("modules/ii/ShellIiPanelsImpl.qml")
 ii_critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
@@ -167,6 +171,46 @@ for token in (
 ):
     require(runtime_declaration, token,
             "runtime loader declaration missing " + token)
+
+# Settings page targets are internal and derive their lifecycle from actual
+# QtQuick Loaders. Standalone Settings must retain remote shell IPC discovery.
+for token in (
+    "property bool registrationEnabled: true",
+    "function syncRegistration(): void",
+    "onRegistrationEnabledChanged: root.syncRegistration()",
+    "function onStatusChanged(): void { root.notifyChanged() }",
+    "root.loader?.status === Loader.Loading",
+    "root.loader?.status !== Loader.Ready",
+):
+    require(runtime_declaration, token,
+            "QtQuick Loader lifecycle or optional registration missing " + token)
+for token in (
+    'property bool workflowDiscoveryEnabled: false',
+    'property string workflowHostId: "settings"',
+    "model: root.pages.length",
+    "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
+    'targetId: "runtime/" + root.workflowHostId + "/page/"',
+    "registrationEnabled: root.workflowDiscoveryEnabled",
+    "presented: pageLoader.visible && root.visible",
+    "sourcePath: CodeWorkflowRuntime.relativeSourcePath(",
+    "internal: true",
+):
+    require(settings_host, token,
+            "Settings page runtime discovery missing " + token)
+for source, host_id in (
+    (settings_focus, "settings-focus"),
+    (settings_overlay, "settings-overlay"),
+):
+    require(source, f'workflowHostId: "{host_id}"',
+            "Settings page host identity missing " + host_id)
+    require(source, "workflowDiscoveryEnabled: true",
+            "embedded Settings must register page runtime targets")
+require(standalone_settings, "SettingsPageHost {",
+        "standalone Settings must use the shared page host")
+if "workflowDiscoveryEnabled: true" in standalone_settings:
+    raise SystemExit("FAIL: standalone Settings must not shadow shell IPC discovery")
+if '"neovim"' in registry or '"nvim"' in registry:
+    raise SystemExit("FAIL: retired Code Workflow search keywords remain")
 
 for token in (
     "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
